@@ -1,20 +1,25 @@
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { authOptions } from '@lib/auth';
-import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
-import { getServerSession } from 'next-auth';
+import { getCurrentUser } from '@lib/auth/currentPlatformUser';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
+import { getServerSession, type Session } from 'next-auth';
 import { redirect } from 'next/navigation';
-
-const getPlatformRoleFromSession = (session: any) => (
-    (session as any)?.platformRole || (session?.user as any)?.platformRole
-);
 
 export async function requirePlatformRoleRouteAccess(
     allowedPlatformRoles: readonly string[],
     redirectPath = '/unauthorized',
 ) {
     const session = await getServerSession(authOptions);
+    const sessionPlatformRole = resolveExactSessionPlatformRole(session);
 
-    if (!allowedPlatformRoles.includes(getPlatformRoleFromSession(session))) {
+    if (!sessionPlatformRole || !allowedPlatformRoles.includes(sessionPlatformRole)) {
+        redirect(redirectPath);
+    }
+    const currentUser = await getCurrentUser(session);
+    if (
+        !currentUser
+        || currentUser.userData.platformRole !== sessionPlatformRole
+    ) {
         redirect(redirectPath);
     }
 
@@ -22,8 +27,5 @@ export async function requirePlatformRoleRouteAccess(
 }
 
 export async function requirePlatformAdminRouteAccess(redirectPath = '/unauthorized') {
-    const session = await requirePlatformRoleRouteAccess([ECOMSAI_PLATFORM_USER_ROLE], redirectPath);
-    const currentPlatformUser = await getCurrentPlatformUser(session);
-    if (!currentPlatformUser) redirect(redirectPath);
-    return session;
+    return requirePlatformRoleRouteAccess([ECOMSAI_PLATFORM_USER_ROLE], redirectPath);
 }

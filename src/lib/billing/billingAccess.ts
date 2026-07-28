@@ -1,11 +1,19 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { ANSWERLATTICE_PERMISSION_KEYS } from "@constant/answerlattice/permissions";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import {
+    resolveExactSessionPlatformRole,
+    resolveExactSessionStoreRole,
+} from "@lib/auth/sessionPlatformRole";
 import { requireAnswerlatticePermission } from "@lib/answerlattice/accessControl";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import {
+    isSensitiveStoreRecordInScope,
+    resolveSensitiveSessionStoreScope,
+} from "@lib/security/sensitiveStoreScope";
 import { getBoundedRazorpaySecurityContext, getBoundedRazorpayStringContext } from "@lib/billing/razorpayDiagnostics";
 import { NextRequest } from "next/server";
 
@@ -14,13 +22,12 @@ export type BillingMutationScopeDocumentId = {
     documentId: string;
 };
 
-const getSessionStoreRoleId = (session: any): string | undefined => {
-    const storeId = session?.user?.storeId ?? session?.sId;
+const getSessionStoreRoleId = (session: any, storeId: number): string | undefined => {
     const storeMembership = session?.user?.stores?.find(
         (store: any) => String(store?.storeId) === String(storeId)
     );
 
-    return storeMembership?.role || session?.user?.role || session?.role;
+    return storeMembership?.role || resolveExactSessionStoreRole(session) || undefined;
 };
 
 export function normalizeBillingMutationScopeDocumentId(value: unknown): BillingMutationScopeDocumentId | null {
@@ -39,18 +46,19 @@ export const canManageBillingMutation = async (
     request: NextRequest,
     endpoint: string,
 ): Promise<boolean> => {
-    if (
-        session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-        || session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-    ) {
+    if (resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE) {
         return true;
     }
 
-    const storeId = session?.user?.storeId ?? session?.sId;
-    const tenantId = session?.user?.tenantId ?? session?.tId;
-    const roleId = getSessionStoreRoleId(session);
-    const tenantScope = normalizeBillingMutationScopeDocumentId(tenantId);
-    const storeScope = normalizeBillingMutationScopeDocumentId(storeId);
+    const sessionScope = resolveSensitiveSessionStoreScope({
+        tenantValues: [session?.tId, session?.user?.tenantId],
+        storeValues: [session?.sId, session?.user?.storeId],
+    });
+    const tenantScope = sessionScope?.tenantScope;
+    const storeScope = sessionScope?.storeScope;
+    const tenantId = tenantScope?.numericId;
+    const storeId = storeScope?.numericId;
+    const roleId = storeId ? getSessionStoreRoleId(session, storeId) : undefined;
 
     if (!tenantScope || !storeScope || !roleId) {
         logger.security('Billing Mutation Authorization Failed', {
@@ -68,7 +76,11 @@ export const canManageBillingMutation = async (
     const storeData = storeSnap.exists ? storeSnap.data() : null;
     if (
         !storeData
-        || Number(storeData?.tenantId) !== tenantScope.numericId
+        || !isSensitiveStoreRecordInScope({
+            storeData,
+            storeDocumentId: storeScope.documentId,
+            tenantDocumentId: tenantScope.documentId,
+        })
         || storeData.active === false
         || storeData.deleted === true
         || isPlatformEntityBlocked(storeData)

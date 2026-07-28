@@ -5,10 +5,10 @@ import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
 import IndustryLandingPage from '@/components/website/industries/IndustryLandingPage';
 import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
-import { getWebsiteIndustryPage } from '@/content/websiteIndustries';
+import { getRequiredWebsiteIndustryPage } from '@/content/websiteIndustries';
 import '@/styles/website.css';
 
-const industry = getWebsiteIndustryPage('takeaway-cloud-kitchens')!;
+const industry = getRequiredWebsiteIndustryPage('takeaway-cloud-kitchens');
 
 export const metadata: Metadata = completeWebsiteMetadata({
     title: industry.metaTitle,

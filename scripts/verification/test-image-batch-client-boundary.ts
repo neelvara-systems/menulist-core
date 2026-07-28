@@ -9,6 +9,7 @@ import {
     normalizeImageBatchGenerationConfig,
     normalizeImageBatchJobCreateInput,
     normalizeImageBatchJobForClient,
+    selectLatestOwnerVisibleImageBatchJob,
     shouldApplyImageBatchListenerSnapshot,
     toPersistedImageBatchProjectImage,
 } from '@lib/ai/imageBatchClientBoundary';
@@ -88,6 +89,38 @@ assert.equal(
     'A queued legacy callback must not replace a newer primary snapshot.',
 );
 assert.equal(shouldApplyImageBatchListenerSnapshot('primary', true), true);
+
+const olderProcessingJob = {
+    ...normalized,
+    id: 'BcDeFgHiJkLmNoPqRsTu',
+    modifiedOn: '2025-01-02T03:04:05.000Z',
+    status: BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING,
+    statusHistory: [{
+        createdOn: '2025-01-02T03:04:05.000Z',
+        status: BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING,
+    }],
+};
+const newerFinishedJob = {
+    ...normalized,
+    id: 'CdEfGhIjKlMnOpQrStUv',
+    modifiedOn: '2025-01-03T03:04:05.000Z',
+    selectedImagesPersisted: true,
+    status: BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
+    statusHistory: [{
+        createdOn: '2025-01-03T03:04:05.000Z',
+        status: BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
+    }],
+};
+assert.equal(
+    selectLatestOwnerVisibleImageBatchJob([newerFinishedJob, olderProcessingJob])?.id,
+    olderProcessingJob.id,
+    'A newer owner-hidden terminal row must not conceal an older overlapping active job.',
+);
+assert.equal(
+    selectLatestOwnerVisibleImageBatchJob([newerFinishedJob]),
+    null,
+    'A project with only owner-hidden terminal rows must clear the active job.',
+);
 assert.equal(
     isAllowedImageBatchOwnerTransition(
         BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED,

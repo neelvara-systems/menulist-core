@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import {
     ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
     AnswerlatticeAnswerTestCaseSchema,
+    AnswerlatticeAnswerTestRollbackResponseSchema,
     AnswerlatticeAnswerTestRunClientSchema,
     createEmptyAnswerlatticeAnswerTestSummary,
+    isAnswerlatticeAnswerTestRollbackAuthorityInScope,
     parseAnswerlatticeAnswerTestSummaryForClient,
     projectAnswerlatticeAnswerTestSummaryForClient,
 } from '../../src/lib/answerlattice/answerTestContracts';
@@ -14,6 +16,24 @@ import {
 } from '../../src/lib/answerlattice/answerTestServer';
 
 const timestamp = '2026-07-18T00:00:00.000Z';
+const rollbackScope = { tId: 11, sId: 22 };
+assert.equal(
+    isAnswerlatticeAnswerTestRollbackAuthorityInScope({ pId: 'AL', tId: 11, sId: 22 }, rollbackScope),
+    true,
+    'rollback authority must accept exact product and numeric workspace identity',
+);
+for (const malformedRollbackAuthority of [
+    { pId: 'ML', tId: 11, sId: 22 },
+    { pId: 'AL', tId: '11', sId: 22 },
+    { pId: 'AL', tId: 11, sId: '22' },
+    { pId: 'AL', tId: 11, sId: 999 },
+]) {
+    assert.equal(
+        isAnswerlatticeAnswerTestRollbackAuthorityInScope(malformedRollbackAuthority, rollbackScope),
+        false,
+        'rollback authority must reject wrong-product, coercive, and foreign workspace identity',
+    );
+}
 const testCase = AnswerlatticeAnswerTestCaseSchema.parse({
     id: 'billing_policy',
     title: 'Billing policy',
@@ -119,6 +139,30 @@ assert.equal(
     false,
     'the browser run contract must reject contradictory derived counts',
 );
+assert.deepEqual(
+    AnswerlatticeAnswerTestRollbackResponseSchema.parse({
+        proposalId: 'rollback_audit_123',
+        created: true,
+        status: 'pending_review',
+    }),
+    {
+        proposalId: 'rollback_audit_123',
+        created: true,
+        status: 'pending_review',
+    },
+);
+for (const malformedRollbackResponse of [
+    { proposalId: 'audit_123', created: true, status: 'pending_review' },
+    { proposalId: 'rollback_audit_123', created: 'true', status: 'pending_review' },
+    { proposalId: 'rollback_audit_123', created: true, status: 'unknown' },
+    { proposalId: 'rollback_audit_123', created: true, status: 'pending_review', private: true },
+]) {
+    assert.equal(
+        AnswerlatticeAnswerTestRollbackResponseSchema.safeParse(malformedRollbackResponse).success,
+        false,
+        'rollback acknowledgements must reject wrong identity, loose values, unknown status and extra fields',
+    );
+}
 
 assert.deepEqual(
     normalizeAnswerlatticeAnswerTestSummary(summary, { tId: 11, sId: 22 }),

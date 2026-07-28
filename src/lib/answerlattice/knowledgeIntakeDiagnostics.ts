@@ -1,5 +1,10 @@
 import { getBoundedSecurityStringContext } from '@lib/security/securityDiagnostics';
 import { secureError } from '@lib/security/secureLogger';
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 type IntakeLogScope = {
     tId?: unknown;
@@ -22,15 +27,8 @@ type IntakeLogContextInput = {
     usageUnits?: unknown;
 };
 
-type IntakeSourceErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
-
 const toFiniteNumber = (value: unknown): number | undefined => {
-    const numeric = typeof value === 'number' ? value : Number(value);
-    return Number.isFinite(numeric) ? numeric : undefined;
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 };
 
 const toSafeLabel = (value: unknown): string | undefined => {
@@ -41,25 +39,15 @@ const toSafeLabel = (value: unknown): string | undefined => {
 };
 
 const getSourceErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getSourceErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as IntakeSourceErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getSourceErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as IntakeSourceErrorLike).status
-        : (error as IntakeSourceErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export function getAnswerlatticeKnowledgeIntakeSourceErrorContext(error: unknown) {

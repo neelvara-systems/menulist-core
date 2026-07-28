@@ -119,7 +119,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     const systemRefund = generateComplianceContent('refund', inputs);
 
     // Check for custom overrides
-    const overrides = await getComplianceOverridesServer(sId);
+    const overrides = await getComplianceOverridesServer(sId, tId);
 
     return NextResponse.json({
         privacy: {
@@ -229,7 +229,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     if (action === 'reset') {
-        await deleteComplianceOverrideServer(sId, type);
+        await deleteComplianceOverrideServer(sId, tId, type);
         const refreshPending = await revalidateCompliancePublicCache(sId, tId);
 
         return NextResponse.json({

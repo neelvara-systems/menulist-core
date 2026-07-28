@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from "@config/features";
+import { resolveExactSessionStoreRole } from "@lib/auth/sessionPlatformRole";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin, storageAdmin } from "@lib/firebase/firebaseAdmin";
@@ -19,6 +20,10 @@ import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTrut
 import { projectDocumentMatchesScope } from "@lib/menu/projectDocumentScope";
 import { nextProjectLocalVersion, nextProjectMenuVersion } from "@lib/menu/projectMutationAuthority";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
+import {
+    isStorePermissionDataInScope,
+    normalizeStorePermissionScopeDocumentId,
+} from "@lib/permissions/scopeDocumentId";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { checkRateLimit } from "@lib/rateLimit";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -32,6 +37,7 @@ import {
     logMultiOutletFailure,
     type MultiOutletLogContext,
 } from "@lib/multiOutlet/diagnostics";
+import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
 import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
 import { normalizeMenuExtractionJobId } from "@lib/menu-extraction/jobIdBoundary";
 import { DEFAULT_OUTLET_POLICY, LOCAL_CATEGORY_PREFIX, LOCAL_ITEM_PREFIX, type OutletPolicy } from "@type/multiOutlet.types";
@@ -486,10 +492,16 @@ const requireLinkedOutletAuthority = ({
     tenantId: number;
     tenantSnap: FirebaseFirestore.DocumentSnapshot;
 }) => {
+    const tenantScope = normalizeStorePermissionScopeDocumentId(tenantId);
+    const callerStoreScope = normalizeStorePermissionScopeDocumentId(currentStoreId);
+    const outletStoreScope = normalizeStorePermissionScopeDocumentId(outletStoreId);
+    const masterStoreScope = normalizeStorePermissionScopeDocumentId(masterStoreId);
     const callerStore = callerStoreSnap.data();
     if (
         !callerStoreSnap.exists
-        || Number(callerStore?.tenantId) !== tenantId
+        || !tenantScope
+        || !callerStoreScope
+        || !isStorePermissionDataInScope(callerStore, callerStoreScope, tenantScope)
         || callerStore?.active === false
         || callerStore?.deleted === true
         || isPlatformEntityBlocked(callerStore)
@@ -512,7 +524,9 @@ const requireLinkedOutletAuthority = ({
     const outletStore = outletStoreSnap.data();
     if (
         !outletStoreSnap.exists
-        || Number(outletStore?.tenantId) !== tenantId
+        || !tenantScope
+        || !outletStoreScope
+        || !isStorePermissionDataInScope(outletStore, outletStoreScope, tenantScope)
         || outletStore?.active === false
         || outletStore?.deleted === true
         || outletStore?.isMaster === true
@@ -524,7 +538,9 @@ const requireLinkedOutletAuthority = ({
     const masterStore = masterStoreSnap.data();
     if (
         !masterStoreSnap.exists
-        || Number(masterStore?.tenantId) !== tenantId
+        || !tenantScope
+        || !masterStoreScope
+        || !isStorePermissionDataInScope(masterStore, masterStoreScope, tenantScope)
         || masterStore?.active === false
         || masterStore?.deleted === true
         || masterStore?.isMaster !== true
@@ -628,14 +644,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const tenantId = outletProjectRef.tId;
         const outletStoreId = outletProjectRef.sId;
         const masterStoreId = masterProjectRef.sId;
-        const sessionTenantScope = normalizeMultiOutletNumericDocumentId(session.tId ?? session.user?.tenantId);
-        const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);
+        const outletSessionScope = getOutletSessionScope(session);
+        const sessionTenantScope = normalizeMultiOutletNumericDocumentId(outletSessionScope?.tenantDocumentId);
+        const currentStoreScope = normalizeMultiOutletNumericDocumentId(outletSessionScope?.storeDocumentId);
         failureContext = {
             ...failureContext,
             ...getBoundedMultiOutletStringContext("tenantId", tenantId),
             ...getBoundedMultiOutletStringContext("outletStoreId", outletStoreId),
             ...getBoundedMultiOutletStringContext("masterStoreId", masterStoreId),
-            ...getBoundedMultiOutletStringContext("currentStoreId", currentStoreScope?.documentId ?? session.sId ?? session.user?.storeId),
+            ...getBoundedMultiOutletStringContext("currentStoreId", currentStoreScope?.documentId),
         };
         if (!sessionTenantScope || !currentStoreScope || sessionTenantScope.numericId !== tenantId) {
             logMultiOutletFailure("linked_outlet_save_invalid_session_store_scope", undefined, failureContext);
@@ -754,7 +771,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         pId: latestOutlet.pId || session.pId || session.user?.pId,
                         tId: tenantId,
                         sId: outletStoreId,
-                        role: session.role || session.user?.role,
+                        role: resolveExactSessionStoreRole(session) || undefined,
                         uId: session.uId || session.user?.id,
                         modifiedBy: session.user?.name || session.user?.email || "system",
                         modifiedOn: localMutationAt,
@@ -920,8 +937,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         !reviewJob
                         || reviewJob.status !== "preview_ready"
                         || String(reviewJob.projectId || "") !== standardProject.projectId
-                        || Number(reviewJob.tId) !== tenantId
-                        || Number(reviewJob.sId) !== outletStoreId
+                        || reviewJob.tId !== tenantId
+                        || reviewJob.sId !== outletStoreId
                         || !reviewJob.uId
                         || !sessionUserIds.includes(String(reviewJob.uId))
                         || currentLocalVersion !== extractionReview.expectedLocalVersion
@@ -970,7 +987,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     pId: existingProject.pId || session.pId || session.user?.pId,
                     tId: tenantId,
                     sId: outletStoreId,
-                    role: session.role || session.user?.role,
+                    role: resolveExactSessionStoreRole(session) || undefined,
                     uId: session.uId || session.user?.id,
                     modifiedBy: session.user?.name || session.user?.email || "system",
                     modifiedOn: localMutationAt,

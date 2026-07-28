@@ -5,6 +5,7 @@ import {
     SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH,
 } from "@constant/signaldesk/routes";
 import { authOptions } from "@lib/auth";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { getSignalDeskAccessContext } from "@lib/signaldesk/access";
 import AntdThemeProvider from "@providers/antdThemeProvider";
@@ -49,8 +50,9 @@ export default async function SignalDeskSigninLayout({ children }: { children: R
     const session = await getServerSession(authOptions);
     if (session) {
         if (
+            !resolveCurrentSessionUserDocumentId(session) ||
             session.user?.active === false
-            || (session.user as any)?.deleted === true
+            || session.user?.deleted === true
             || session.user?.isVerified === false
             || isPlatformEntityBlocked(session.user)
         ) {

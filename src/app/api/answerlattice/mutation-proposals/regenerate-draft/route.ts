@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
@@ -148,13 +149,16 @@ async function getExistingAnswerSummaries(tId: number, sId: number, entityId: st
 export const POST = withAuth(async (request: NextRequest, session) => {
     let tenantIdForLog: number | string | undefined;
     let storeIdForLog: number | string | undefined;
-    const userIdForLog = session.uId || session.user?.id;
+    const userIdForLog = resolveCurrentSessionUserDocumentId(session);
     let proposalIdForLog: string | undefined;
     let requestIdForLog: string | undefined;
     let claimedProposalRef: FirebaseFirestore.DocumentReference | null = null;
     let claimedActor = 'answerlattice_owner';
 
     try {
+        if (!userIdForLog) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const scope = resolveAnswerlatticeSessionScope(session);
         tenantIdForLog = scope?.tenantId;
         storeIdForLog = scope?.storeId;
@@ -167,13 +171,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (safeModeResponse) return safeModeResponse;
 
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
-        const userId = userIdForLog || 'unknown';
+        const userId = userIdForLog;
         const rateLimit = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey('answerlattice-draft-regenerate', userId, scope.tenantId, scope.storeId),
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
 
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
             logger.security('Rate Limit Exceeded', {
                 endpoint: '/api/answerlattice/mutation-proposals/regenerate-draft',
@@ -187,12 +193,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             return NextResponse.json(
                 {
-                    error: `Too many requests. Please wait ${waitSeconds} seconds.`,
+                    error: providerUnavailable
+                        ? 'Draft generation is temporarily unavailable. Please try again later.'
+                        : `Too many requests. Please wait ${waitSeconds} seconds.`,
                     retryAfter: waitSeconds,
                     resetAt: rateLimit.resetAt,
                 },
                 {
-                    status: 429,
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'Retry-After': String(waitSeconds),
                         'X-RateLimit-Limit': String(rateLimitConfig.limit),

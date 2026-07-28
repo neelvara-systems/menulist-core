@@ -26,6 +26,33 @@ const WEEKLY_NARRATIVE_FAILURE = 'WEEKLY_NARRATIVE_FAILED';
 const WEEKLY_NARRATIVE_STORE_FAILURE = 'WEEKLY_NARRATIVE_STORE_FAILED';
 const WEEKLY_NARRATIVE_BATCH_FAILURE = 'WEEKLY_NARRATIVE_BATCH_FAILED';
 
+interface WeeklyMetrics {
+  totalChats: number;
+  satisfactionRate: number;
+  avgMessagesPerChat: number;
+  totalFeedback: number;
+  volumeChange: number;
+  satisfactionChange: number;
+  topCategory: string;
+  categories: Array<{ name: string; count: number }>;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function getNonNegativeMetric(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function normalizeCategory(value: unknown): string {
+  return typeof value === 'string'
+    ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)
+    : '';
+}
+
 function getWeeklyNarrativeScope(tId: string, sId: string): {
   tenantId: ReturnType<typeof getAnalyticsIdContext>;
   storeId: ReturnType<typeof getAnalyticsIdContext>;
@@ -76,10 +103,10 @@ export async function generateWeeklyNarrativeForStore(
       getWeeklyNarrativeScope(tId, sId),
     );
 
-    // Calculate week boundaries (last 7 days)
+    // Calculate seven inclusive calendar dates: today plus the prior six.
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 7);
+    startDate.setDate(endDate.getDate() - 6);
 
     const weekStart = startDate.toISOString().split('T')[0];
     const weekEnd = endDate.toISOString().split('T')[0];
@@ -167,7 +194,7 @@ async function getWeeklyMetrics(
   sId: string,
   weekStart: string,
   weekEnd: string
-): Promise<any> {
+): Promise<WeeklyMetrics | null> {
   const snapshot = await db
     .collection(DB_COLLECTIONS.CHAT_ANALYTICS)
     .where('tId', '==', tId)
@@ -187,18 +214,21 @@ async function getWeeklyMetrics(
   let totalMessages = 0;
   const categories: Record<string, number> = {};
 
-  snapshot.forEach((doc: any) => {
+  snapshot.forEach((doc) => {
     const data = doc.data();
-    totalChats += data.totalChats || 0;
-    totalSatisfied += data.satisfiedUsers || 0;
-    totalFeedback += data.totalFeedback || 0;
-    totalMessages += data.totalMessages || 0;
+    totalChats += getNonNegativeMetric(data.totalChats);
+    totalSatisfied += getNonNegativeMetric(data.satisfiedUsers);
+    totalFeedback += getNonNegativeMetric(data.totalFeedback);
+    totalMessages += getNonNegativeMetric(data.totalMessages);
 
     // Aggregate categories
     if (data.topQuestions && Array.isArray(data.topQuestions)) {
-      data.topQuestions.forEach((q: any) => {
-        if (q.category) {
-          categories[q.category] = (categories[q.category] || 0) + q.count;
+      data.topQuestions.forEach((value: unknown) => {
+        const question = asRecord(value);
+        const category = normalizeCategory(question?.category);
+        const count = getNonNegativeMetric(question?.count);
+        if (category && count > 0) {
+          categories[category] = (categories[category] || 0) + count;
         }
       });
     }
@@ -232,11 +262,11 @@ async function getWeeklyMetrics(
   let prevTotalSatisfied = 0;
   let prevTotalFeedback = 0;
 
-  prevSnapshot.forEach((doc: any) => {
+  prevSnapshot.forEach((doc) => {
     const data = doc.data();
-    prevTotalChats += data.totalChats || 0;
-    prevTotalSatisfied += data.satisfiedUsers || 0;
-    prevTotalFeedback += data.totalFeedback || 0;
+    prevTotalChats += getNonNegativeMetric(data.totalChats);
+    prevTotalSatisfied += getNonNegativeMetric(data.satisfiedUsers);
+    prevTotalFeedback += getNonNegativeMetric(data.totalFeedback);
   });
 
   // Calculate changes

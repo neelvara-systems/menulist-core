@@ -7,6 +7,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { OwnerBusinessAssistantFeedbackRequestSchema } from '@lib/ownerBusinessAssistant/schemas';
+import { buildOwnerBusinessAssistantFeedbackRecord } from '@lib/ownerBusinessAssistant/feedbackRecordBoundary';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
@@ -63,15 +64,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK).doc(docId).set({
-    ...parsed.data,
-    tId: String(scope.tId),
-    sId: String(scope.sId),
-    userId: scope.userId ? String(scope.userId) : null,
+  const feedbackRecord = buildOwnerBusinessAssistantFeedbackRecord({
     createdAt: Timestamp.now(),
     expiresAt: Timestamp.fromMillis(Date.now() + FEEDBACK_RETENTION_MS),
-    source: 'owner_business_assistant',
-  }, { merge: true });
+    feedback: parsed.data,
+    storeId: scope.sId,
+    tenantId: scope.tId,
+    userId: String(scope.userId),
+  });
+  await firestoreAdmin
+    .collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK)
+    .doc(docId)
+    .set(feedbackRecord);
 
   return NextResponse.json({ data: { success: true } });
 });

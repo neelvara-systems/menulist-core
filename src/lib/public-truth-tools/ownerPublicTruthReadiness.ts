@@ -151,29 +151,67 @@ function hasAnyWorkingHours(workingHours: unknown): boolean {
   return Object.values(workingHours as Record<string, unknown>).some(hasText);
 }
 
-function readTimestampMs(value: unknown): number | null {
+export function readOwnerPublicTruthTimestampMs(value: unknown): number | null {
   if (!value) return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.getTime();
-
-  if (typeof value === 'string' || typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
-  }
-
-  if (typeof value === 'object') {
-    const maybeTimestamp = value as {
-      _seconds?: number;
-      seconds?: number;
-      toDate?: () => Date;
-    };
-
-    if (typeof maybeTimestamp.toDate === 'function') {
-      const date = maybeTimestamp.toDate();
-      return date instanceof Date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
+  try {
+    if (value instanceof Date) {
+      const milliseconds = value.getTime();
+      return Number.isFinite(milliseconds) && milliseconds >= 0 ? milliseconds : null;
     }
 
-    if (typeof maybeTimestamp.seconds === 'number') return maybeTimestamp.seconds * 1000;
-    if (typeof maybeTimestamp._seconds === 'number') return maybeTimestamp._seconds * 1000;
+    if (typeof value === 'number') {
+      return Number.isFinite(value) && value >= 0 ? value : null;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim();
+      if (!normalized) return null;
+      const milliseconds = Date.parse(normalized);
+      return Number.isFinite(milliseconds) && milliseconds >= 0 ? milliseconds : null;
+    }
+
+    if (typeof value === 'object') {
+      const maybeTimestamp = value as {
+        _nanoseconds?: unknown;
+        _seconds?: unknown;
+        nanoseconds?: unknown;
+        seconds?: unknown;
+        toDate?: unknown;
+        toMillis?: unknown;
+      };
+
+      if (typeof maybeTimestamp.toMillis === 'function') {
+        const milliseconds = maybeTimestamp.toMillis();
+        return typeof milliseconds === 'number' && Number.isFinite(milliseconds) && milliseconds >= 0
+          ? milliseconds
+          : null;
+      }
+
+      if (typeof maybeTimestamp.toDate === 'function') {
+        const date = maybeTimestamp.toDate();
+        if (!(date instanceof Date)) return null;
+        const milliseconds = date.getTime();
+        return Number.isFinite(milliseconds) && milliseconds >= 0 ? milliseconds : null;
+      }
+
+      const seconds = maybeTimestamp.seconds ?? maybeTimestamp._seconds;
+      const nanoseconds = maybeTimestamp.nanoseconds ?? maybeTimestamp._nanoseconds ?? 0;
+      if (
+        typeof seconds !== 'number'
+        || !Number.isSafeInteger(seconds)
+        || seconds < 0
+        || typeof nanoseconds !== 'number'
+        || !Number.isInteger(nanoseconds)
+        || nanoseconds < 0
+        || nanoseconds > 999_999_999
+      ) {
+        return null;
+      }
+      const milliseconds = seconds * 1000 + Math.floor(nanoseconds / 1_000_000);
+      return Number.isSafeInteger(milliseconds) ? milliseconds : null;
+    }
+  } catch {
+    return null;
   }
 
   return null;
@@ -181,7 +219,7 @@ function readTimestampMs(value: unknown): number | null {
 
 function getMostRecentTimestampMs(values: unknown[]): number | null {
   const timestamps = values
-    .map(readTimestampMs)
+    .map(readOwnerPublicTruthTimestampMs)
     .filter((value): value is number => typeof value === 'number');
   return timestamps.length > 0 ? Math.max(...timestamps) : null;
 }
@@ -198,7 +236,7 @@ function getProjectFileTimestampCandidates(projectData?: Record<string, any> | n
 
 function getDaysSince(timestampMs: number | null, generatedAt?: string): number | null {
   if (!timestampMs) return null;
-  const nowMs = readTimestampMs(generatedAt) || Date.now();
+  const nowMs = readOwnerPublicTruthTimestampMs(generatedAt) ?? Date.now();
   return Math.max(0, Math.floor((nowMs - timestampMs) / (24 * 60 * 60 * 1000)));
 }
 

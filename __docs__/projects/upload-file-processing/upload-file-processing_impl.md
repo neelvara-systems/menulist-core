@@ -153,7 +153,7 @@ projects/files/{tId}/{sId}/{fileId}
 
 Example: `projects/files/14/22/1699876543210-ABC123`
 
-Legacy files may still exist under `MenuListAi/project/files/` from older deployments. New project upload flows use `generateStoragePath()` so active writes include tenant/store path segments, and legacy project Storage paths are read-only in `storage.rules` so old paths cannot receive new uploads or deletes.
+Legacy files may still exist under `MenuListAi/project/files/` from older deployments. New project upload flows use `generateStoragePath()` so active writes include tenant/store path segments. Because legacy paths contain no tenant/store identity, `storage.rules` denies direct client reads, writes, and deletes; required authenticated legacy access must be server-mediated.
 
 ### ProjectFileType Interface
 

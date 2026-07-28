@@ -10,12 +10,14 @@ import { getGrowthOSBoundedStringContext, logGrowthOSApiFailure } from '@lib/gro
 import { isGrowthOSSummaryKitStale } from '@lib/growthos/todayTrigger';
 import type { GrowthOSOutput, GrowthOSStaffBriefOutput } from '@type/growthos';
 import { theme } from 'antd';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { LuCopy, LuRefreshCw, LuSend, LuShieldCheck } from 'react-icons/lu';
 import { Button, Card, Flex, Tag, Text, Toast } from '../antd';
 
 interface GrowthKitsMobileCardProps {
     projectId?: string | null;
+    storeId?: string | number | null;
+    tenantId?: string | number | null;
 }
 
 const MOBILE_GROWTHOS_COPY_CLIPBOARD_UNAVAILABLE = 'mobile_growthos_copy_clipboard_unavailable';
@@ -81,10 +83,15 @@ const isStaffBriefOutput = (output: GrowthOSOutput): output is GrowthOSStaffBrie
 );
 type MobileGrowthOSLogContext = Record<string, boolean | number | string | null | undefined>;
 
-export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCardProps) {
+export default function GrowthKitsMobileCard({
+    projectId,
+    storeId,
+    tenantId,
+}: GrowthKitsMobileCardProps) {
     const { token } = theme.useToken();
-    const { growthOSSummary, mutate } = useGrowthOS();
+    const { growthOSSummary, mutate } = useGrowthOS({ storeId, tenantId });
     const [isWorking, setIsWorking] = useState(false);
+    const pendingOperationsRef = useRef(new Set<string>());
     const latestKit = growthOSSummary?.latestKit || null;
     const primaryAction = growthOSSummary?.primaryAction || null;
     const primaryOutput = useMemo(() => (
@@ -130,10 +137,12 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
     };
 
     const refresh = async () => {
+        if (pendingOperationsRef.current.has('refresh')) return;
         if (!projectId) {
             Toast.show({ content: 'Select a menu first', duration: 1500 });
             return;
         }
+        pendingOperationsRef.current.add('refresh');
         setIsWorking(true);
         try {
             const payload = await refreshGrowthOSForProject(projectId, true);
@@ -146,15 +155,18 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
                 duration: 2200,
             });
         } finally {
+            pendingOperationsRef.current.delete('refresh');
             setIsWorking(false);
         }
     };
 
     const createKit = async () => {
+        if (pendingOperationsRef.current.has('generate')) return;
         if (!projectId) {
             Toast.show({ content: 'Select a menu first', duration: 1500 });
             return;
         }
+        pendingOperationsRef.current.add('generate');
         setIsWorking(true);
         try {
             const payload = await createGrowthOSKitForProject({
@@ -167,26 +179,34 @@ export default function GrowthKitsMobileCard({ projectId }: GrowthKitsMobileCard
             logMobileGrowthOSFailure('mobile_growthos_generate_failed', error, 'generate');
             Toast.show({ content: 'Could not prepare Sales Pack', duration: 2000 });
         } finally {
+            pendingOperationsRef.current.delete('generate');
             setIsWorking(false);
         }
     };
 
     const record = async (output: GrowthOSOutput, method: 'copy' | 'share' | 'mark_used') => {
         if (!latestKit) return;
-        const payload = await recordGrowthOSKitExport({
-            kitId: latestKit.id,
-            destination: output.destination,
-            method,
-            outputId: output.id,
-        });
-        await mutate((current) => current ? {
-            ...current,
-            latestKit: current.latestKit ? {
-                ...current.latestKit,
-                status: method === 'mark_used' ? 'used' : method === 'copy' ? 'copied' : 'shared',
-                isStale: typeof payload?.data?.isStale === 'boolean' ? payload.data.isStale : current.latestKit.isStale,
-            } : current.latestKit,
-        } : current, { revalidate: false });
+        const operationKey = `record:${latestKit.id}:${output.id}:${method}`;
+        if (pendingOperationsRef.current.has(operationKey)) return;
+        pendingOperationsRef.current.add(operationKey);
+        try {
+            const payload = await recordGrowthOSKitExport({
+                kitId: latestKit.id,
+                destination: output.destination,
+                method,
+                outputId: output.id,
+            });
+            await mutate((current) => current ? {
+                ...current,
+                latestKit: current.latestKit ? {
+                    ...current.latestKit,
+                    status: method === 'mark_used' ? 'used' : method === 'copy' ? 'copied' : 'shared',
+                    isStale: typeof payload?.data?.isStale === 'boolean' ? payload.data.isStale : current.latestKit.isStale,
+                } : current.latestKit,
+            } : current, { revalidate: false });
+        } finally {
+            pendingOperationsRef.current.delete(operationKey);
+        }
     };
 
     const copyOutput = async (output: GrowthOSOutput | null) => {

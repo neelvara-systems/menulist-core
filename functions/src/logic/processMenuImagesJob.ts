@@ -53,10 +53,11 @@ import { buildExtractionResultSummary } from "../utils/menuExtractionResultSumma
 import { hardenExtractedData } from "./extractionHardening";
 import { tryExtractMenuLinkTextFromJob } from "./menuLinkTextExtraction";
 import { processMenuImagesLogic } from "./processMenuImages";
-import { buildExistingCategoriesMap, processParallelResponse } from "./redistributeUtils";
+import { buildExistingCategoriesMap, processParallelResponse, type CombinedAIResponse } from "./redistributeUtils";
 import { getProject, saveFilesToProject } from "./saveFilesToProject";
 import { applyMenuDerivedBusinessAttributeDefaultsForStore } from "./businessAttributeDefaults";
 import { revalidatePublicClientCacheForStore } from "./publicCacheRevalidation";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from '../utils/boundedErrorContext';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIDENCE SUMMARY (Infrastructure Compounding 10.1)
@@ -116,25 +117,15 @@ function getMenuExtractionJobLogContext(jobId: string, job: MenuImageProcessingJ
 }
 
 function getFunctionErrorName(error: unknown): string | undefined {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return (error.name || "Error").slice(0, 64);
-    return typeof error;
+    return getBoundedFunctionsErrorName(error);
 }
 
 function getFunctionErrorCode(error: unknown): string | undefined {
-    if (!error || typeof error !== "object" || !("code" in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedFunctionsErrorCode(error);
 }
 
 function getFunctionErrorStatus(error: unknown): number | undefined {
-    if (!error || typeof error !== "object") return undefined;
-    const statusValue = "status" in error
-        ? (error as { status?: unknown }).status
-        : (error as { statusCode?: unknown }).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedFunctionsErrorStatus(error);
 }
 
 function timestampMillis(value: unknown): number | null {
@@ -1233,10 +1224,9 @@ export async function processMenuImagesJobLogic(
             ...getBoundedFunctionStringContext("masterProjectId", existingProject?.masterProjectId),
         });
 
-        // Wrap result.data in the format expected by processParallelResponse
-        // Cast to any to handle flexible AI output format
-        const combinedResponse = {
-            data: result.data.data as any,
+        // Wrap the admitted provider result in the redistribution contract.
+        const combinedResponse: CombinedAIResponse = {
+            data: result.data.data,
             qualityScore: result.data.qualityScore,
             qualityDetails: result.data.qualityDetails,
         };

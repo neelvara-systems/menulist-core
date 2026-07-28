@@ -12,10 +12,16 @@
  */
 
 import { getAnswerVersionHistory } from '@database/answerlattice/auditLogs';
-import { getCanonicalAnswers } from '@database/answerlattice/canonicalAnswers';
-import { AnswerlatticeAuditLog, AnswerlatticeCanonicalAnswer } from '@type/answerlattice';
+import { getAnswerlatticeCanonicalAnswersScopeKey } from '@hook/answerlattice/canonicalAnswersScopeState';
+import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
+import {
+    formatAnswerlatticeAuditTimestamp,
+    getAnswerlatticeAuditStateSummary,
+} from '@lib/answerlattice/auditLogPresentation';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
+import { AnswerlatticeAuditLog } from '@type/answerlattice';
 import { Badge, Card, Empty, Select, Spin, Tag, Timeline, Typography, theme } from 'antd';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     LuCheckCircle,
     LuClock,
@@ -54,52 +60,78 @@ function getActionMeta(action: string) {
     return ACTION_LABELS[action] ?? { label: action, color: 'default', icon: <LuClock /> };
 }
 
-function formatTimestamp(ts: any): string {
-    if (!ts) return 'Unknown';
-    const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    });
-}
-
 export default function AnswerVersionHistory({ tId, sId }: Props) {
     const { token } = theme.useToken();
-    const [answers, setAnswers] = useState<AnswerlatticeCanonicalAnswer[]>([]);
-    const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
-    const [history, setHistory] = useState<AnswerlatticeAuditLog[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [loadingAnswers, setLoadingAnswers] = useState(true);
+    const {
+        answers,
+        loading: loadingAnswers,
+        selectedAnswer,
+        setSelectedAnswer,
+    } = useCanonicalAnswers(tId, sId);
+    const selectedAnswerId = selectedAnswer?.id ?? null;
+    const scopeKey = getAnswerlatticeCanonicalAnswersScopeKey(tId, sId);
+    const [historyState, setHistoryState] = useState<{
+        scopeKey: string | null;
+        answerId: string | null;
+        history: AnswerlatticeAuditLog[];
+        loading: boolean;
+        error: boolean;
+    }>({ scopeKey: null, answerId: null, history: [], loading: false, error: false });
+    const requestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!requestGuardRef.current) requestGuardRef.current = createLatestRequestGuard();
 
     useEffect(() => {
-        async function loadAnswers() {
-            setLoadingAnswers(true);
-            try {
-                const data = await getCanonicalAnswers(tId, sId);
-                setAnswers(data ?? []);
-            } finally {
-                setLoadingAnswers(false);
-            }
-        }
-        loadAnswers();
-    }, [tId, sId]);
-
-    useEffect(() => {
-        if (!selectedAnswerId) {
-            setHistory([]);
+        const requestGuard = requestGuardRef.current;
+        if (!requestGuard || !scopeKey || !selectedAnswerId) {
+            requestGuard?.invalidate();
+            setHistoryState({
+                scopeKey,
+                answerId: selectedAnswerId,
+                history: [],
+                loading: false,
+                error: false,
+            });
             return;
         }
+        const requestId = requestGuard.begin();
+        setHistoryState({
+            scopeKey,
+            answerId: selectedAnswerId,
+            history: [],
+            loading: true,
+            error: false,
+        });
         async function loadHistory() {
-            setLoading(true);
             try {
                 const data = await getAnswerVersionHistory(tId, sId, selectedAnswerId!);
-                setHistory(data ?? []);
-            } finally {
-                setLoading(false);
+                if (!requestGuard.isCurrent(requestId)) return;
+                setHistoryState({
+                    scopeKey,
+                    answerId: selectedAnswerId,
+                    history: data ?? [],
+                    loading: false,
+                    error: false,
+                });
+            } catch {
+                if (!requestGuard.isCurrent(requestId)) return;
+                setHistoryState({
+                    scopeKey,
+                    answerId: selectedAnswerId,
+                    history: [],
+                    loading: false,
+                    error: true,
+                });
             }
         }
-        loadHistory();
-    }, [selectedAnswerId, tId, sId]);
+        void loadHistory();
+        return () => requestGuard.invalidate();
+    }, [scopeKey, selectedAnswerId, tId, sId]);
+
+    const historyIsCurrent = historyState.scopeKey === scopeKey
+        && historyState.answerId === selectedAnswerId;
+    const history = historyIsCurrent ? historyState.history : [];
+    const loading = historyIsCurrent ? historyState.loading : Boolean(selectedAnswerId);
+    const historyError = historyIsCurrent && historyState.error;
 
     if (loadingAnswers) {
         return <Spin tip="Loading answers..." />;
@@ -117,11 +149,14 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
                     placeholder="Choose a canonical answer"
                     style={{ width: 400 }}
                     value={selectedAnswerId}
-                    onChange={setSelectedAnswerId}
+                    onChange={(answerId) => {
+                        setSelectedAnswer(answers.find(answer => answer.id === answerId) ?? null);
+                    }}
                     showSearch
-                    filterOption={(input, option) =>
-                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                    }
+                    filterOption={(input, option) => (
+                        typeof option?.label === 'string'
+                        && option.label.toLowerCase().includes(input.toLowerCase())
+                    )}
                     options={answers.map(a => ({
                         value: a.id,
                         label: a.title,
@@ -142,11 +177,15 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
 
             {selectedAnswerId && loading && <Spin tip="Loading history..." />}
 
-            {selectedAnswerId && !loading && history.length === 0 && (
+            {selectedAnswerId && !loading && historyError && (
+                <Empty description="Could not load version history" />
+            )}
+
+            {selectedAnswerId && !loading && !historyError && history.length === 0 && (
                 <Empty description="No governance events found for this answer" />
             )}
 
-            {selectedAnswerId && !loading && history.length > 0 && (
+            {selectedAnswerId && !loading && !historyError && history.length > 0 && (
                 <Card size="small" title={`Version History (${history.length} events)`}>
                     <Timeline
                         items={history.map((log) => {
@@ -159,18 +198,16 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <Tag color={meta.color}>{meta.label}</Tag>
                                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                                {formatTimestamp(log.timestamp)}
+                                                {formatAnswerlatticeAuditTimestamp(log.timestamp)}
                                             </Text>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <LuUser size={12} />
                                             <Text style={{ fontSize: 12 }}>{log.performedBy}</Text>
                                         </div>
-                                        {log.newState && (
+                                        {getAnswerlatticeAuditStateSummary(log.newState) && (
                                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                                {log.newState.reason || log.newState.driftReason ||
-                                                    (log.newState.driftClasses ? `Classes: ${log.newState.driftClasses.join(', ')}` : '') ||
-                                                    (log.newState.mutationType ? `Type: ${log.newState.mutationType}` : '')}
+                                                {getAnswerlatticeAuditStateSummary(log.newState)}
                                             </Text>
                                         )}
                                     </div>

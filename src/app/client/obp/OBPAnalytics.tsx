@@ -15,6 +15,7 @@ import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
 import { trackOBPLanguageAdoption, trackOBPView } from '@lib/analytics/unified';
 import { secureError } from '@lib/security/secureLogger';
 import { useEffect } from 'react';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const OBP_LANGUAGE_STORAGE_PREFIX = 'menulist_obp_language_v1';
 type OBPAnalyticsFailureType = 'view_tracking' | 'setup' | 'language_adoption' | 'language_storage';
@@ -69,7 +70,7 @@ const buildOBPAnalyticsLogContext = (
         includeLocation: Boolean(metadata.includeLocation),
         hasStoreTimeZone: Boolean(metadata.hasStoreTimeZone),
         hasBusinessDayEndTime: Boolean(metadata.hasBusinessDayEndTime),
-        errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error,
+        errorName: getBoundedErrorName(metadata.error) || typeof metadata.error,
     };
 };
 

@@ -1,8 +1,9 @@
-import { Editor } from '@tiptap/react';
+import type { Content, JSONContent } from '@tiptap/core';
+import type { Editor } from '@tiptap/react';
 
 export interface TiptapEditorProps {
-    value?: any; // antd form compatibility
-    onChange?: (content: any) => void; // emit JSON
+    value?: Content;
+    onChange?: (content: JSONContent) => void;
     placeholder?: string;
     isEditable?: boolean;
     editorBoxHeight?: number | string;

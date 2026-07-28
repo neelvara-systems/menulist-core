@@ -1,5 +1,7 @@
 # Public Menu Entry - Implementation
 
+July 28, 2026 persisted-identity correction: an authenticated draft claim revalidates transaction-current store tenant aliases and optional embedded store aliases as one exact identity before project/summary writes or public cache effects. Conflicting compatibility fields fail closed.
+
 **Status:** Local source complete; external release evidence pending
 **Last reviewed:** July 16, 2026
 

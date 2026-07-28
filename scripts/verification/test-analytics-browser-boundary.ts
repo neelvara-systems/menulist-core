@@ -20,6 +20,7 @@ import {
 } from '../../src/lib/analytics/eventPayload';
 import { toCoarseAnalyticsLocationKey } from '../../src/lib/analytics/geo';
 import { filterAnalyticsUpdateData } from '../../src/lib/analytics/writePolicy';
+import { getSearchDedupStorageKey } from '../../src/lib/analytics/searchDedup';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -239,6 +240,15 @@ assert(
 );
 assert(toCoarseAnalyticsLocationKey(Number.NaN, 72.878) === null, 'non-finite latitude must fail closed');
 assert(toCoarseAnalyticsLocationKey(91, 72.878) === null, 'out-of-range latitude must fail closed');
+assert(
+  getSearchDedupStorageKey(1, 101, 'project_1') === 'menulist_search_terms_1_101_project_1',
+  'search de-duplication storage must include tenant, store, and project scope',
+);
+assert(
+  getSearchDedupStorageKey(2, 101, 'project_1') !== getSearchDedupStorageKey(1, 101, 'project_1'),
+  'same-store-ID search sessions must remain isolated across tenants',
+);
+assert(getSearchDedupStorageKey(0, 101, 'project_1') === null, 'invalid search de-duplication scope must fail closed');
 
 const searchPolicy = filterAnalyticsUpdateData({
   'searchTerms.chicken biryani': 1,

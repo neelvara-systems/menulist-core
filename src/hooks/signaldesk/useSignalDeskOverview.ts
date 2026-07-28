@@ -18,6 +18,7 @@ import type {
     SignalDeskWorkspaceResponse,
 } from "@type/signaldesk";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 export type SignalDeskLatestRequest = {
     finish: () => void;
@@ -62,13 +63,7 @@ export const createSignalDeskLatestRequestCoordinator = () => {
 };
 
 const isAbortError = (error: unknown): boolean => (
-    error instanceof Error && error.name === "AbortError"
-    || (
-        typeof error === "object"
-        && error !== null
-        && "name" in error
-        && error.name === "AbortError"
-    )
+    getBoundedErrorName(error) === "AbortError"
 );
 
 export const isSignalDeskRefreshCurrentSection = (
@@ -96,6 +91,10 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
     const latestRequestRef = useRef(createSignalDeskLatestRequestCoordinator());
     const auditLoadControllerRef = useRef<AbortController | null>(null);
     const targetLoadControllerRef = useRef<AbortController | null>(null);
+    const auditLoadInFlightRef = useRef(false);
+    const targetLoadInFlightRef = useRef(false);
+    const actionInFlightRef = useRef<Set<SignalDeskAction>>(new Set());
+    const killSwitchInFlightRef = useRef(false);
     const killSwitchRetryRef = useRef<{ idempotencyKey: string; requestKey: string } | null>(null);
     const mountedRef = useRef(true);
     const pendingActionCountRef = useRef(0);
@@ -154,6 +153,7 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
     const loadOlderAuditEvents = useCallback(async () => {
         if (
             section !== "audit"
+            || auditLoadInFlightRef.current
             || auditLoadingMore
             || !auditHasMore
             || data?.workspace.section !== "audit"
@@ -166,6 +166,7 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
         auditLoadControllerRef.current?.abort();
         const controller = new AbortController();
         auditLoadControllerRef.current = controller;
+        auditLoadInFlightRef.current = true;
         setAuditLoadingMore(true);
         setError(null);
         try {
@@ -192,14 +193,18 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
                 setError(loadError instanceof Error ? loadError.message : "SignalDesk audit unavailable");
             }
         } finally {
-            if (auditLoadControllerRef.current === controller) auditLoadControllerRef.current = null;
-            if (mountedRef.current) setAuditLoadingMore(false);
+            if (auditLoadControllerRef.current === controller) {
+                auditLoadControllerRef.current = null;
+                auditLoadInFlightRef.current = false;
+                if (mountedRef.current) setAuditLoadingMore(false);
+            }
         }
     }, [auditHasMore, auditLoadingMore, data, section]);
 
     const loadOlderTargets = useCallback(async () => {
         if (
             section !== "targets"
+            || targetLoadInFlightRef.current
             || targetLoadingMore
             || !targetHasMore
             || data?.workspace.section !== "targets"
@@ -212,6 +217,7 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
         targetLoadControllerRef.current?.abort();
         const controller = new AbortController();
         targetLoadControllerRef.current = controller;
+        targetLoadInFlightRef.current = true;
         setTargetLoadingMore(true);
         setError(null);
         try {
@@ -238,8 +244,11 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
                 setError(loadError instanceof Error ? loadError.message : "SignalDesk targets unavailable");
             }
         } finally {
-            if (targetLoadControllerRef.current === controller) targetLoadControllerRef.current = null;
-            if (mountedRef.current) setTargetLoadingMore(false);
+            if (targetLoadControllerRef.current === controller) {
+                targetLoadControllerRef.current = null;
+                targetLoadInFlightRef.current = false;
+                if (mountedRef.current) setTargetLoadingMore(false);
+            }
         }
     }, [data, section, targetHasMore, targetLoadingMore]);
 
@@ -259,6 +268,8 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
         action: Action,
         payload?: unknown,
     ): Promise<SignalDeskActionResult<Action> | null> => {
+        if (actionInFlightRef.current.has(action)) return null;
+        actionInFlightRef.current.add(action);
         pendingActionCountRef.current += 1;
         if (mountedRef.current) {
             setSaving(true);
@@ -274,6 +285,7 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
             }
             return null;
         } finally {
+            actionInFlightRef.current.delete(action);
             pendingActionCountRef.current = Math.max(0, pendingActionCountRef.current - 1);
             if (mountedRef.current) setSaving(pendingActionCountRef.current > 0);
         }
@@ -284,6 +296,8 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
         scope: SignalDeskKillSwitchScope;
         status: SignalDeskKillSwitchStatus;
     }) => {
+        if (killSwitchInFlightRef.current) return;
+        killSwitchInFlightRef.current = true;
         const requestKey = JSON.stringify({
             reason: input.reason.trim(),
             scope: input.scope,
@@ -309,6 +323,7 @@ export function useSignalDeskOverview(section: SignalDeskSection = "dashboard") 
                 setError(saveError instanceof Error ? saveError.message : "SignalDesk update failed");
             }
         } finally {
+            killSwitchInFlightRef.current = false;
             pendingActionCountRef.current = Math.max(0, pendingActionCountRef.current - 1);
             if (mountedRef.current) setSaving(pendingActionCountRef.current > 0);
         }

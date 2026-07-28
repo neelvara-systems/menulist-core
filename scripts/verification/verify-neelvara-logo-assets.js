@@ -1,21 +1,21 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const MASTER_SVG = 'public/neelvara-logo.svg';
 const FAVICON_SVG = 'public/neelvara-favicon.svg';
-const MASTER_VIEWBOX = '68 0 487 320';
-const SQUARE_VIEWBOX = '68 -83.5 487 487';
-
-const CANONICAL_PATHS = [
-  'M101 139 L445 27 C461 22 474 31 480 51 L506 149 C512 169 504 183 490 187 L166 291 C149 296 134 286 128 269 L100 174 C95 157 96 145 101 139 Z',
-  'M230 121 L506 158 C523 160 531 175 527 194 L516 258 C512 278 499 290 481 288 L218 252 C201 250 192 236 195 219 L209 148 C212 130 221 120 230 121 Z',
-  'M145 94 L309 174 C324 181 329 195 323 213 L309 239 C302 257 286 267 270 259 L106 179 C95 174 92 159 99 140 L113 114 C121 97 132 88 145 94 Z',
-];
+const MASTER_VIEWBOX = '0 0 1135 686';
+const SQUARE_VIEWBOX = '0 -224.5 1135 1135';
+const MASTER_SHA256 = 'c62797f5332e11abfb7b8fdea41618a77ae2a532deffb35ed985c856d2dad98a';
+const APPROVED_COLORS = ['#2384FF', '#1457D9', '#2737C8', '#6542E8'];
+const CTA_BACKGROUND_COLORS = ['#1457D9', '#2737C8', '#6542E8'];
+const CTA_FOREGROUND_COLOR = '#FFFFFF';
+const RETIRED_COLORS = ['#A9C2F5', '#9CA8EC', '#D0C8F4', '#9ABAF4', '#8798E7', '#D9CBF3', '#9FC6F6', '#8FA2E8', '#B7ACEF', '#6F86E2'];
 
 const PNG_ASSETS = [
-  [MASTER_SVG.replace('.svg', '.png'), 578, 328, 'master'],
+  [MASTER_SVG.replace('.svg', '.png'), 1135, 686, 'master'],
   ['public/neelvara-favicon-16.png', 16, 16, 'favicon'],
   ['public/neelvara-favicon-32.png', 32, 32, 'favicon'],
   ['public/neelvara-icon-96.png', 96, 96, 'icon'],
@@ -37,8 +37,32 @@ function assert(condition, message) {
   }
 }
 
+function relativeLuminance(hex) {
+  const channels = hex
+    .slice(1)
+    .match(/../g)
+    .map((channel) => parseInt(channel, 16) / 255)
+    .map((channel) => (
+      channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4
+    ));
+
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function contrastRatio(first, second) {
+  const lighter = Math.max(relativeLuminance(first), relativeLuminance(second));
+  const darker = Math.min(relativeLuminance(first), relativeLuminance(second));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 function read(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+}
+
+function sha256(relativePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, relativePath))).digest('hex');
 }
 
 function extractPaths(svg) {
@@ -51,12 +75,12 @@ function verifySvg(relativePath, expectedViewBox) {
   assert(!/<image\b|data:image|base64/i.test(svg), `${relativePath} must remain a true vector`);
 
   const paths = extractPaths(svg);
-  assert(paths.length === 3, `${relativePath} must contain exactly three paths`);
-  CANONICAL_PATHS.forEach((expected, index) => {
-    assert(paths[index] === expected, `${relativePath} path ${index + 1} geometry changed`);
-  });
+  assert(paths.length === 1, `${relativePath} must contain the supplied single compound path`);
+  assert(svg.includes('id="neelvaraGradient"'), `${relativePath} must retain the supplied gradient`);
+  assert(svg.includes('fill="url(#neelvaraGradient)"'), `${relativePath} must use the supplied gradient`);
+  assert(svg.includes('fill-rule="evenodd"'), `${relativePath} must retain the supplied even-odd fill rule`);
 
-  for (const color of ['#A9C2F5', '#9CA8EC', '#D0C8F4', '#9ABAF4', '#8798E7', '#D9CBF3', '#9FC6F6', '#8FA2E8', '#B7ACEF', '#6F86E2']) {
+  for (const color of APPROVED_COLORS) {
     assert(svg.includes(color), `${relativePath} is missing approved color ${color}`);
   }
 
@@ -125,13 +149,14 @@ async function main() {
   const masterSvg = verifySvg(MASTER_SVG, MASTER_VIEWBOX);
   const faviconSvg = verifySvg(FAVICON_SVG, SQUARE_VIEWBOX);
 
-  assert(masterSvg.includes('width="487" height="320"'), 'Master SVG intrinsic size must match its balanced canvas');
+  assert(sha256(MASTER_SVG) === MASTER_SHA256, 'Master SVG must remain byte-for-byte identical to the supplied source');
+  assert(masterSvg.includes('width="1135" height="686"'), 'Master SVG intrinsic size must match the supplied canvas');
   assert(!masterSvg.includes('transform='), 'Master SVG paths must not be repositioned through transforms');
   assert(!faviconSvg.includes('transform='), 'Favicon SVG must preserve the master path positions without transforms');
-  assert(faviconSvg.includes('fill-opacity="0.68"'), 'Favicon SVG must use the small-size first-path opacity');
-  assert(faviconSvg.includes('fill-opacity="0.66"'), 'Favicon SVG must use the small-size second-path opacity');
-  assert(faviconSvg.includes('fill-opacity="0.64"'), 'Favicon SVG must use the small-size third-path opacity');
-  assert((faviconSvg.match(/stroke-width="14"/g) || []).length === 3, 'Favicon SVG must use the small-size outline width on all paths');
+  assert(
+    extractPaths(faviconSvg)[0] === extractPaths(masterSvg)[0],
+    'Favicon SVG must reuse the supplied compound path without redrawing it',
+  );
 
   for (const [relativePath, expectedWidth, expectedHeight, kind] of PNG_ASSETS) {
     const stats = await imageStats(relativePath);
@@ -146,7 +171,7 @@ async function main() {
 
     if (kind === 'favicon') {
       assert(stats.visibleWidth >= expectedWidth * 0.82, `${relativePath} must use the available favicon width`);
-      assert(stats.visibleHeight >= expectedHeight * 0.5, `${relativePath} must keep the three-path silhouette visible`);
+      assert(stats.visibleHeight >= expectedHeight * 0.5, `${relativePath} must keep the supplied silhouette visible`);
       assert(stats.averageAlpha >= 120, `${relativePath} must retain enough contrast at small size`);
     }
 
@@ -167,13 +192,49 @@ async function main() {
   }
 
   const content = read('src/app/sites/neelvara/content.tsx');
+  const bento = read('src/app/sites/neelvara/BentoReferenceSection.tsx');
   const styles = read('src/app/sites/neelvara/styles.css');
   const missingRoute = read('src/app/sites/neelvara/[...missing]/route.ts');
   const constants = read('src/constants/neelvara/website.ts');
   assert(styles.includes('url("/neelvara-logo.svg")'), 'Header and footer mark must use the master Neelvara SVG');
+  assert(styles.includes('--on-accent: #ffffff;'), 'Neelvara stylesheet must define the white on-accent foreground');
+  assert(
+    styles.includes('linear-gradient(135deg, var(--m-blue) 0%, var(--m-indigo) 56%, var(--m-violet) 100%)'),
+    'Solid CTAs must use the contrast-safe supplied gradient stops',
+  );
+  assert(
+    (styles.match(/color: var\(--on-accent\);/g) || []).length >= 3,
+    'Solid CTA, icon/visited, and active segmented states must use the on-accent foreground',
+  );
+  assert(missingRoute.includes('--on-accent: #ffffff;'), 'Static 404 must define the white on-accent foreground');
+  assert(
+    missingRoute.includes('background: linear-gradient(135deg, var(--blue), var(--indigo), var(--violet));'),
+    'Static 404 primary action must use contrast-safe supplied gradient stops',
+  );
+  assert(missingRoute.includes('color: var(--on-accent);'), 'Static 404 primary action must use the on-accent foreground');
+  for (const color of CTA_BACKGROUND_COLORS) {
+    assert(
+      contrastRatio(CTA_FOREGROUND_COLOR, color) >= 4.5,
+      `White CTA foreground must retain at least 4.5:1 contrast against ${color}`,
+    );
+  }
+  assert(styles.includes('.nv-prism-source-mark'), 'Legacy bento visual must use the source-mark class');
+  assert(bento.includes('className="nv-prism-source-mark"'), 'Legacy bento visual must use the master Neelvara mark');
+  assert(!bento.includes('<span />'), 'Legacy bento visual must not reconstruct the retired three-panel mark');
+  for (const color of APPROVED_COLORS) {
+    assert(styles.toUpperCase().includes(color), `Neelvara stylesheet is missing supplied color ${color}`);
+  }
+  for (const color of RETIRED_COLORS) {
+    assert(!styles.toUpperCase().includes(color), `Neelvara stylesheet still contains retired logo color ${color}`);
+    assert(!missingRoute.toUpperCase().includes(color), `Static 404 still contains retired logo color ${color}`);
+  }
   assert(content.includes('NEELVARA_LOGO_PATH'), 'Structured data must use the shared Neelvara logo path');
   assert(constants.includes("NEELVARA_LOGO_PATH = '/neelvara-logo.svg'"), 'Shared logo constant must point to the master SVG');
-  assert(missingRoute.includes('src="/neelvara-logo.svg"'), 'Static 404 must use the master Neelvara SVG');
+  assert(
+    (missingRoute.match(/src="\/neelvara-logo\.svg"/g) || []).length === 2,
+    'Static 404 must use the master Neelvara SVG for both brand and recovery artwork',
+  );
+  assert(!missingRoute.includes('.prism-visual span'), 'Static 404 must not reconstruct the retired three-panel mark');
   assert(missingRoute.includes('href="/neelvara-favicon.svg"'), 'Static 404 must use the optimized SVG favicon');
 
   if (failures > 0) {

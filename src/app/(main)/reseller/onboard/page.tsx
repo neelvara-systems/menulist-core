@@ -21,7 +21,7 @@ export default function ResellerOnboardPage() {
         redirect('/dashboard');
     }
 
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user?.platformRole;
     if (platformRole !== 'RESELLER' && platformRole !== 'PLATFORM') {
         redirect('/dashboard');
     }

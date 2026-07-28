@@ -4,28 +4,14 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import {
-    isImageBatchOwnerVisibleStatus,
     normalizeImageBatchJobForClient,
+    selectLatestOwnerVisibleImageBatchJob,
     shouldApplyImageBatchListenerSnapshot,
 } from '@lib/ai/imageBatchClientBoundary';
 import { message } from 'antd';
 import { onSnapshot, type DocumentData, type QuerySnapshot } from "firebase/firestore";
 import { useContext, useEffect, useRef } from "react";
 import { BatchImageGenerationJobType, Project } from '../components/templates/main-app/projects/types';
-import { toDate, type DateLike } from '@util/dateTime';
-
-function timestampValue(value: unknown): number {
-    const date = toDate(value as DateLike);
-    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
-}
-
-function getJobSortTime(job: BatchImageGenerationJobType): number {
-    return Math.max(
-        timestampValue((job as Record<string, unknown>).modifiedOn),
-        timestampValue((job as Record<string, unknown>).createdOn),
-        ...((job.statusHistory || []).map((entry) => timestampValue(entry.createdOn))),
-    );
-}
 
 function withSelectedGeneratedImages(job: BatchImageGenerationJobType): BatchImageGenerationJobType {
     return {
@@ -134,9 +120,9 @@ export const useImageBatchJobListener = ({ project, setActiveBatchImageJob }: Us
                     }
 
                     if (jobsList.length > 0) {
-                        const latestJob = jobsList.sort((a, b) => getJobSortTime(b) - getJobSortTime(a))[0];
-                        if (isImageBatchOwnerVisibleStatus(latestJob.status)) {
-                            const updatedJob = withSelectedGeneratedImages(latestJob);
+                        const latestVisibleJob = selectLatestOwnerVisibleImageBatchJob(jobsList);
+                        if (latestVisibleJob) {
+                            const updatedJob = withSelectedGeneratedImages(latestVisibleJob);
                             logHookDiagnostic('image_batch_job_listener_active_job_updated', {
                                 ...getBoundedHookStringContext('jobId', updatedJob.id),
                                 itemsCount: updatedJob.itemsList.length,

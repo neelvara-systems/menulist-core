@@ -71,7 +71,8 @@ Subdomain Request → brand.menulist.ai/privacy → same pages
 Generation: Pure template substitution (zero AI, zero cost)
 Storage: compliancePages collection (1 doc per store)
 Override: Plain text only, sanitized, max 15K chars
-Public override read: tagged 60-second cache; save/reset invalidates compliance-store-{sId}
+Public override read: server-only, tenant/store-keyed tagged 60-second cache; save/reset invalidates compliance-store-{sId}
+Direct Firestore access: denied for every browser client; public bots consume the SSR routes
 Template date: stable store modification timestamp, then fixed template effective-date fallback
 Owner editor API calls: shared authenticated browser request policy, bounded response parsing
 Local gate: npm run verify:compliance-pages-boundary

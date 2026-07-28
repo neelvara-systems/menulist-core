@@ -609,8 +609,6 @@ export type StoreDataType = {
             name: string;
             keyPrefix: string;
             keySuffix?: string | null;
-            encryptedKey?: string | null;
-            encryptionVersion?: string | null;
             status: 'active' | 'revoked';
             productId?: 'AL' | string;
             purpose?: 'answerlattice_widget' | string;

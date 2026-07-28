@@ -13,9 +13,18 @@
 2. Select every changed product area.
 3. Choose Published and save.
 4. Answerlattice first saves the note privately.
-5. It registers and activates the release, checks affected approved answers, and then publishes the linked note.
+5. After the later preventive-review hardening is deployed, Answerlattice will
+   register the pending release and show directly affected approved answers and
+   linked Answer Test proof before activation.
+6. Until that hardening is deployed, the current flow registers and activates
+   the release, checks affected approved answers, and then publishes the linked
+   note.
 
 The note is visible to customers only after the release check succeeds.
+
+Do not interpret a zero direct-answer count as proof that every article,
+procedure, or product surface is ready. The maintained check is bounded to
+governed direct dependencies.
 
 ## If publication does not finish
 

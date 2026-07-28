@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { RefObject, useEffect, useState } from "react";
 
 const OPTIONS = {
     root: null,
@@ -6,20 +6,22 @@ const OPTIONS = {
     threshold: 0,
 };
 
-const useInViewport = (elementRef) => {
+const useInViewport = (elementRef: RefObject<Element | null>) => {
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
-        if (elementRef.current) {
+        const element = elementRef.current;
+        if (element) {
             const observer = new IntersectionObserver((entries, observer) => {
                 entries.forEach((entry) => {
                     if (entry.isIntersecting) {
                         setIsVisible(true);
-                        observer?.unobserve(elementRef.current);
+                        observer.unobserve(element);
                     }
                 });
             }, OPTIONS);
-            observer?.observe(elementRef.current);
+            observer.observe(element);
+            return () => observer.disconnect();
         }
     }, [elementRef]);
 

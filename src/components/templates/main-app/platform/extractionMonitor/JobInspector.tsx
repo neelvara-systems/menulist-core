@@ -37,6 +37,7 @@ import {
 } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { LuCopy, LuRefreshCw } from 'react-icons/lu';
+import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 
 const { Text } = Typography;
 
@@ -108,8 +109,7 @@ function PipelineTag({ value }: { value?: string | null }) {
 }
 
 function getBoundedJobErrorCode(error: ExtractionJobDetails['error']): string {
-    const code = error?.code;
-    return code ? String(code).slice(0, 64) : 'extraction_failed';
+    return getBoundedErrorCode(error) || 'extraction_failed';
 }
 
 interface JobInspectorProps {

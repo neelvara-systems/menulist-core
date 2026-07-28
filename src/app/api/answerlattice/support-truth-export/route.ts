@@ -10,6 +10,7 @@ import {
     recordAnswerlatticeSupportTruthExportAudit,
 } from '@lib/answerlattice/supportTruthExport';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -44,7 +45,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             { status: 400, headers: privateNoStoreHeaders },
         );
     }
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: privateNoStoreHeaders });
+    }
     const rateLimit = await checkRateLimit({
         key: buildAnswerlatticeRateLimitKey(
             'answerlattice-support-truth-export',

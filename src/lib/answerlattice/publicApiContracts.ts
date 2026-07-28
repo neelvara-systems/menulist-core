@@ -18,6 +18,72 @@ export type AnswerlatticePublicApiScope = typeof ANSWERLATTICE_PUBLIC_API_SCOPES
 export type AnswerlatticePublicEntityStatus = typeof ANSWERLATTICE_PUBLIC_ENTITY_STATUSES[number];
 export type AnswerlatticePublicSignalType = typeof ANSWERLATTICE_PUBLIC_SIGNAL_TYPES[number];
 
+export type AnswerlatticePublicEntityQueryPredicate =
+    | { field: 'type'; operator: '=='; value: string }
+    | {
+        field: 'status';
+        operator: '==' | 'in';
+        value: AnswerlatticePublicEntityStatus | AnswerlatticePublicEntityStatus[];
+    };
+
+export function buildAnswerlatticePublicEntityQueryPredicates(
+    type: string | undefined,
+    status: AnswerlatticePublicEntityStatus | undefined,
+): AnswerlatticePublicEntityQueryPredicate[] {
+    const predicates: AnswerlatticePublicEntityQueryPredicate[] = [];
+    if (type) predicates.push({ field: 'type', operator: '==', value: type });
+    predicates.push(status
+        ? { field: 'status', operator: '==', value: status }
+        : {
+            field: 'status',
+            operator: 'in',
+            value: [...ANSWERLATTICE_PUBLIC_ENTITY_STATUSES],
+        });
+    return predicates;
+}
+
+export function toAnswerlatticePublicIsoTimestamp(value: unknown): string | null {
+    const millis = toAnswerlatticePublicTimestampMillis(value);
+    return millis === null ? null : new Date(millis).toISOString();
+}
+
+export function toAnswerlatticePublicTimestampMillis(value: unknown): number | null {
+    try {
+        if (typeof value === 'string') {
+            const parsed = new Date(value);
+            return Number.isFinite(parsed.getTime()) ? parsed.getTime() : null;
+        }
+        if (value instanceof Date) {
+            return Number.isFinite(value.getTime()) ? value.getTime() : null;
+        }
+        if (!value || (typeof value !== 'object' && typeof value !== 'function')) return null;
+
+        const timestamp = value as { toDate?: unknown; toMillis?: unknown };
+        const toDate = timestamp.toDate;
+        if (typeof toDate === 'function') {
+            const date = toDate.call(value);
+            return date instanceof Date && Number.isFinite(date.getTime()) ? date.getTime() : null;
+        }
+
+        const toMillis = timestamp.toMillis;
+        if (typeof toMillis === 'function') {
+            const millis = toMillis.call(value);
+            if (typeof millis !== 'number' || !Number.isFinite(millis)) return null;
+            return Number.isFinite(new Date(millis).getTime()) ? millis : null;
+        }
+    } catch {
+        return null;
+    }
+    return null;
+}
+
+export const AnswerlatticePublicApiManagementScopeSchema = z.object({
+    tenantId: z.number().int().positive(),
+    storeId: z.number().int().positive(),
+}).strict();
+
+export type AnswerlatticePublicApiManagementScope = z.infer<typeof AnswerlatticePublicApiManagementScopeSchema>;
+
 const ANSWERLATTICE_PUBLIC_API_SCOPE_SET = new Set<string>(ANSWERLATTICE_PUBLIC_API_SCOPES);
 const ANSWERLATTICE_PUBLIC_SIGNAL_METADATA_RESERVED_KEYS = new Set([
     'createdBy',
@@ -33,6 +99,9 @@ const ANSWERLATTICE_PUBLIC_SIGNAL_METADATA_RESERVED_KEYS = new Set([
 export const AnswerlatticePublicApiKeyActionSchema = z.discriminatedUnion('action', [
     z.object({
         action: z.literal('generate'),
+        apiKey: z.string().regex(/^al_[A-Za-z0-9_-]{20,128}$/),
+        requestId: z.string().uuid(),
+        expectedScope: AnswerlatticePublicApiManagementScopeSchema,
         scopes: z.array(z.enum(ANSWERLATTICE_PUBLIC_API_SCOPES))
             .min(1)
             .max(ANSWERLATTICE_PUBLIC_API_SCOPES.length)
@@ -40,6 +109,7 @@ export const AnswerlatticePublicApiKeyActionSchema = z.discriminatedUnion('actio
     }).strict(),
     z.object({
         action: z.literal('revoke'),
+        expectedScope: AnswerlatticePublicApiManagementScopeSchema,
     }).strict(),
 ]);
 
@@ -53,19 +123,35 @@ export const AnswerlatticePublicApiKeySummarySchema = z.object({
 
 export type AnswerlatticePublicApiKeySummary = z.infer<typeof AnswerlatticePublicApiKeySummarySchema>;
 
+export type AnswerlatticePublicApiKeyRotationReplay =
+    | { kind: 'new' }
+    | { kind: 'replay'; summary: AnswerlatticePublicApiKeySummary }
+    | { kind: 'conflict' };
+
 export const AnswerlatticePublicApiKeyStatusResponseSchema = z.object({
     credential: AnswerlatticePublicApiKeySummarySchema.nullable(),
+    scope: AnswerlatticePublicApiManagementScopeSchema,
 }).strict();
 
 export const AnswerlatticePublicApiKeyGeneratedResponseSchema = z.object({
     apiKey: z.string().regex(/^al_[A-Za-z0-9_-]{20,128}$/),
     credential: AnswerlatticePublicApiKeySummarySchema,
+    scope: AnswerlatticePublicApiManagementScopeSchema,
 }).strict();
 
 export const AnswerlatticePublicApiKeyRevokedResponseSchema = z.object({
     success: z.literal(true),
     credential: z.null(),
+    scope: AnswerlatticePublicApiManagementScopeSchema,
 }).strict();
+
+export function answerlatticePublicApiManagementScopesMatch(
+    expected: AnswerlatticePublicApiManagementScope,
+    authoritative: AnswerlatticePublicApiManagementScope,
+): boolean {
+    return expected.tenantId === authoritative.tenantId
+        && expected.storeId === authoritative.storeId;
+}
 
 export function normalizeAnswerlatticePublicApiScopes(value: unknown): AnswerlatticePublicApiScope[] {
     if (!Array.isArray(value)) return [];
@@ -119,6 +205,32 @@ export function buildAnswerlatticePublicApiKeySummary(
     return parsed.success ? parsed.data : null;
 }
 
+export function classifyAnswerlatticePublicApiKeyRotationReplay(
+    existingCredential: Record<string, unknown> | undefined,
+    request: {
+        apiKeyHash: string;
+        requestId: string;
+        scopes: AnswerlatticePublicApiScope[];
+    },
+): AnswerlatticePublicApiKeyRotationReplay {
+    if (!existingCredential || existingCredential.rotationRequestId !== request.requestId) {
+        return { kind: 'new' };
+    }
+
+    const summary = buildAnswerlatticePublicApiKeySummary(existingCredential);
+    const existingScopes = normalizeAnswerlatticePublicApiScopes(existingCredential.scopes);
+    if (
+        !summary
+        || existingCredential.apiKeyHash !== request.apiKeyHash
+        || existingScopes.length !== request.scopes.length
+        || existingScopes.some((scope, index) => scope !== request.scopes[index])
+    ) {
+        return { kind: 'conflict' };
+    }
+
+    return { kind: 'replay', summary };
+}
+
 export function sanitizeAnswerlatticePublicSignalMetadata(
     metadata: Record<string, unknown> | undefined,
 ): Record<string, string | number | boolean | null | Array<string | number | boolean>> {
@@ -132,13 +244,19 @@ export function sanitizeAnswerlatticePublicSignalMetadata(
 
         if (typeof value === 'string') {
             sanitized[safeKey] = value.trim().slice(0, 500);
-        } else if (typeof value === 'number' || typeof value === 'boolean') {
+        } else if (typeof value === 'number') {
+            if (Number.isFinite(value)) sanitized[safeKey] = value;
+        } else if (typeof value === 'boolean') {
             sanitized[safeKey] = value;
         } else if (value === null) {
             sanitized[safeKey] = null;
         } else if (Array.isArray(value)) {
             sanitized[safeKey] = value
-                .filter((item): item is string | number | boolean => ['string', 'number', 'boolean'].includes(typeof item))
+                .filter((item): item is string | number | boolean => (
+                    typeof item === 'string'
+                    || typeof item === 'boolean'
+                    || (typeof item === 'number' && Number.isFinite(item))
+                ))
                 .slice(0, 20)
                 .map((item) => (typeof item === 'string' ? item.slice(0, 180) : item));
         }

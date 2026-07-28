@@ -126,6 +126,20 @@ function isStoragePreconditionFailure(error) {
   return Boolean(error) && typeof error === "object" && Number(error.code) === 412;
 }
 
+async function assertExistingPayloadMatches(file, payloadJson) {
+  const [metadata] = await file.getMetadata();
+  const expectedSize = Buffer.byteLength(payloadJson, "utf8");
+  const expectedMd5 = crypto.createHash("md5").update(payloadJson).digest("base64");
+  if (
+    Number(metadata.size) !== expectedSize
+    || metadata.md5Hash !== expectedMd5
+    || metadata.contentType !== "application/json"
+    || metadata.cacheControl !== "private, max-age=31536000, immutable"
+  ) {
+    throw new Error(`Existing immutable payload does not match ${file.name}`);
+  }
+}
+
 async function main() {
   const seeds = JSON.parse(fs.readFileSync(SEED_PATH, "utf8"));
   if (!Array.isArray(seeds)) throw new Error("Platform template seed file must contain an array");
@@ -185,8 +199,9 @@ async function main() {
   const bucket = admin.storage().bucket();
 
   for (const artifact of artifacts) {
+    const file = bucket.file(artifact.payloadPath);
     try {
-      await bucket.file(artifact.payloadPath).save(artifact.payloadJson, {
+      await file.save(artifact.payloadJson, {
         contentType: "application/json",
         metadata: {
           cacheControl: "private, max-age=31536000, immutable",
@@ -195,6 +210,7 @@ async function main() {
       });
     } catch (error) {
       if (!isStoragePreconditionFailure(error)) throw error;
+      await assertExistingPayloadMatches(file, artifact.payloadJson);
     }
   }
 

@@ -3,10 +3,15 @@
 import assert = require('node:assert/strict');
 import { admin, firestoreAdmin } from '../../functions/src/firebaseAdmin';
 import {
+    getMenuDriftWindowStart,
     readStoreDriftAccumulators,
     writeProjectDriftMetrics,
     type ProjectDriftAccumulators,
 } from '../../functions/src/analytics/menuDriftMetrics';
+import {
+    logMenuDriftCostTelemetry,
+    logTelemetry,
+} from '../../functions/src/telemetry/logger';
 
 const COLLECTION = 'menuItemState';
 
@@ -26,16 +31,94 @@ async function run(): Promise<void> {
     }
 
     const db = firestoreAdmin;
+    const today = new Date().toISOString().split('T')[0];
+    const dailyTelemetryRef = db.collection('systemTelemetry').doc(today);
+    const costTelemetryRef = db.collection('systemTelemetry').doc(`mol_costs_${today}`);
     const changeLog = db.collection('menuChangeLog').doc('1').collection('101');
     const metrics = db.collection(COLLECTION)
         .doc('1')
         .collection('101')
         .doc('project-101')
         .collection('metrics');
-    await Promise.all([clearCollection(metrics), clearCollection(changeLog)]);
+    await Promise.all([
+        clearCollection(metrics),
+        clearCollection(changeLog),
+        dailyTelemetryRef.delete(),
+        costTelemetryRef.delete(),
+    ]);
 
-    const windowStartTimestamp = admin.firestore.Timestamp.fromDate(new Date('2026-06-21T00:00:00.000Z'));
+    await Promise.all([
+        logTelemetry('menuDriftMetricsFn', {
+            status: 'success',
+            runTime: 20,
+            recordsProcessed: 4,
+        }),
+        logTelemetry('weeklyNarrative', {
+            status: 'failed',
+            runTime: 5,
+            error: 'TEST_FAILURE',
+        }),
+    ]);
+    const dailyTelemetry = (await dailyTelemetryRef.get()).data() || {};
+    assert.deepEqual(
+        Object.keys(dailyTelemetry).sort(),
+        ['date', 'expiresAt', 'functions', 'summary', 'timestamp'],
+        'daily telemetry must use nested maps rather than literal dotted field names',
+    );
+    assert.equal(dailyTelemetry.functions.menuDriftMetricsFn.status, 'success');
+    assert.equal(dailyTelemetry.functions.weeklyNarrative.status, 'failed');
+    assert.equal(dailyTelemetry.summary.successCount, 1);
+    assert.equal(dailyTelemetry.summary.failedCount, 1);
+    assert.equal(dailyTelemetry.summary.totalRunTime, 25);
+    assert.ok(dailyTelemetry.expiresAt instanceof admin.firestore.Timestamp);
+    assert.ok(
+        dailyTelemetry.expiresAt.toMillis() > Date.now() + 89 * 24 * 60 * 60 * 1000,
+        'daily telemetry must carry a future 90-day retention boundary',
+    );
+    assert.equal(dailyTelemetry['functions.menuDriftMetricsFn'], undefined);
+    assert.equal(dailyTelemetry['summary.successCount'], undefined);
+
+    await costTelemetryRef.set({
+        type: 'legacy',
+        unknownLegacyField: 'must-be-pruned',
+    });
+    await logMenuDriftCostTelemetry({
+        readsCount: 11,
+        writesCount: 3,
+        executionMs: 90,
+        storesProcessed: 2,
+        itemsProcessed: 7,
+        errors: 1,
+    });
+    const costTelemetry = (await costTelemetryRef.get()).data() || {};
+    assert.deepEqual(
+        Object.keys(costTelemetry).sort(),
+        [
+            'date',
+            'errors',
+            'executionMs',
+            'expiresAt',
+            'functionName',
+            'itemsProcessed',
+            'readsCount',
+            'storesProcessed',
+            'timestamp',
+            'type',
+            'writesCount',
+        ].sort(),
+        'cost telemetry must exact-replace its bounded daily sample',
+    );
+    assert.equal(costTelemetry.type, 'mol_cost_telemetry');
+    assert.ok(costTelemetry.expiresAt instanceof admin.firestore.Timestamp);
+    assert.equal(costTelemetry.unknownLegacyField, undefined);
+
     const windowEndTimestamp = admin.firestore.Timestamp.fromDate(new Date('2026-07-21T23:59:59.999Z'));
+    const windowStartTimestamp = getMenuDriftWindowStart(windowEndTimestamp);
+    assert.equal(
+        windowStartTimestamp.toDate().toISOString(),
+        '2026-06-21T23:59:59.999Z',
+        'the 30-day window must preserve the exact end-time offset',
+    );
     await Promise.all([
         changeLog.doc('current-price').set({
             projectId: 'project-101',
@@ -48,6 +131,12 @@ async function run(): Promise<void> {
             itemId: 'item-current',
             changeType: 'PRICE',
             timestamp: admin.firestore.Timestamp.fromDate(new Date('2027-07-20T00:00:00.000Z')),
+        }),
+        changeLog.doc('just-before-window-price').set({
+            projectId: 'project-101',
+            itemId: 'item-current',
+            changeType: 'PRICE',
+            timestamp: admin.firestore.Timestamp.fromDate(new Date('2026-06-21T23:59:59.998Z')),
         }),
     ]);
     const boundedSource = await readStoreDriftAccumulators(

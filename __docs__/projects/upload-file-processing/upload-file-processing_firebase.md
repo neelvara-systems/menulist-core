@@ -12,7 +12,7 @@
 ## Summary
 
 - **Collections Used:** `projects/{tId}/{sId}` (projectsData), `platformSummary` (projectsSummary)
-- **Storage Buckets:** Active uploads use `projects/files/{tId}/{sId}/{stable-file-prefix}-{attemptId}`. Legacy files may still exist under `MenuListAi/project/files/{timestamp}-{uid}`, but that namespace is read-only.
+- **Storage Buckets:** Active uploads use `projects/files/{tId}/{sId}/{stable-file-prefix}-{attemptId}`. Legacy files may still exist under `MenuListAi/project/files/{timestamp}-{uid}`, but that unscoped namespace denies all direct client access.
 - **Cloud Functions:** None (client-side processing)
 - **Estimated Monthly Cost:** **Low** — Storage-dominated
 
@@ -65,7 +65,7 @@
 - File type validation: client UX, DAL, and Storage rules admit JPG, PNG, WebP, or PDF in `projects/files`; image-only project namespaces reject PDFs and SVG remains blocked.
 - Size limit: DAL and Storage rules both enforce 10MB for images and 50MB for PDFs in `projects/files`; image-only namespaces remain capped at 10MB.
 - Tenant isolation: files stored under project path which includes `{tId}/{sId}`
-- Legacy compatibility: older `MenuListAi/project/files/*` objects remain readable, but active rules keep legacy paths read-only. New writes use tenant/store-scoped paths.
+- Legacy compatibility: older `MenuListAi/project/files/*` objects remain retained, but active rules deny direct client reads, writes, and deletes because ownership cannot be derived from the path. Existing tokenized URLs are independently revocable; new writes use tenant/store-scoped paths.
 
 ---
 

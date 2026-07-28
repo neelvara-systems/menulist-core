@@ -12,6 +12,11 @@ import {
     PermanentArticleEmbeddingError,
     type AnswerlatticeArticleScope,
 } from './articleEmbedding';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
+import {
+    hasExactStoredAnswerlatticeProductAliases,
+    parseStoredAnswerlatticeScopeAliases,
+} from '../answerlattice/scopeBoundary';
 
 const PRODUCT_ID = 'AL';
 const MAX_EMBEDDING_ARTICLES_PER_JOB = 100;
@@ -57,11 +62,9 @@ function normalizeScopeId(value: unknown): number | null {
 
 function parseWorkerJob(data: FirebaseFirestore.DocumentData | undefined): WorkerJob | null {
     if (!data) return null;
-    const tId = normalizeScopeId(data.tId ?? data.tenantId);
-    const sId = normalizeScopeId(data.sId ?? data.storeId);
-    const pId = data.pId ?? data.productId;
+    const scope = parseStoredAnswerlatticeScopeAliases(data);
     const status = typeof data.status === 'string' ? data.status : '';
-    if (!tId || !sId || pId !== PRODUCT_ID || !status) return null;
+    if (!scope || !hasExactStoredAnswerlatticeProductAliases(data) || !status) return null;
     const articleIds = normalizeIdList(data.articleIds);
     const pending = normalizeIdList(data.embeddingPendingArticleIds);
     const completed = normalizeIdList(data.embeddingCompletedArticleIds);
@@ -79,8 +82,8 @@ function parseWorkerJob(data: FirebaseFirestore.DocumentData | undefined): Worke
     ) return null;
     return {
         pId: PRODUCT_ID,
-        tId,
-        sId,
+        tId: scope.tId,
+        sId: scope.sId,
         status,
         articleIds,
         embeddingPendingArticleIds: effectivePending,
@@ -88,12 +91,6 @@ function parseWorkerJob(data: FirebaseFirestore.DocumentData | undefined): Worke
         embeddingFailedArticleIds: failed,
         embeddingRunId,
     };
-}
-
-function boundedDiagnosticValue(value: unknown): string | number | null {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') return value.slice(0, 120);
-    return null;
 }
 
 function getEmbedArticleWorkerContext(articleId: string, jobId: string, retryCount: number) {
@@ -105,13 +102,11 @@ function getEmbedArticleWorkerContext(articleId: string, jobId: string, retryCou
 }
 
 function getEmbedArticleWorkerErrorContext(error: unknown) {
-    const sourceError = error as { code?: unknown; status?: unknown };
-    const sourceErrorCode = boundedDiagnosticValue(sourceError?.code);
-    const sourceStatusCode = boundedDiagnosticValue(sourceError?.status);
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        ...(sourceErrorCode ? { sourceErrorCode } : {}),
-        ...(sourceStatusCode ? { sourceStatusCode } : {}),
+        sourceErrorName: context.sourceErrorName || typeof error,
+        ...(context.sourceErrorCode ? { sourceErrorCode: context.sourceErrorCode } : {}),
+        ...(context.sourceStatusCode !== undefined ? { sourceStatusCode: context.sourceStatusCode } : {}),
     };
 }
 

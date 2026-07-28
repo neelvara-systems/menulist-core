@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
-import { normalizeStoreSummaryNumericDocumentId } from "@data/shared/storeSummaryBoundary";
+import { normalizeStoreSummaryNumericAliases } from "@data/shared/storeSummaryBoundary";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import {
@@ -148,7 +148,7 @@ export const POST = withAuth(async (request, session) => {
             if (
                 !freshStoreSnap.exists
                 || !freshTenantSnap.exists
-                || normalizeStoreSummaryNumericDocumentId(freshStore.tenantId ?? freshStore.tId) !== tenantDocumentId
+                || normalizeStoreSummaryNumericAliases([freshStore.tenantId, freshStore.tId]) !== tenantDocumentId
                 || freshStore.active === false
                 || freshStore.deleted === true
                 || isPlatformEntityBlocked(freshStore)

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { createHash } from 'node:crypto';
 import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
@@ -25,7 +26,11 @@ import {
     normalizeAnswerlatticeKbArticleId,
 } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -135,10 +140,13 @@ const addArticleEntityLinkInvalidationWrites = (
 export const POST = withAuth(async (request: NextRequest, session) => {
     let tenantIdForLog: number | string | undefined;
     let storeIdForLog: number | string | undefined;
-    const userIdForLog = session.uId || session.user?.id;
+    const userIdForLog = resolveCurrentSessionUserDocumentId(session);
     let articleIdForLog: string | undefined;
 
     try {
+        if (!userIdForLog) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const scope = resolveAnswerlatticeSessionScope(session);
         tenantIdForLog = scope?.tenantId;
         storeIdForLog = scope?.storeId;
@@ -151,13 +159,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (safeModeResponse) return safeModeResponse;
 
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
-        const userId = userIdForLog || 'unknown';
+        const userId = userIdForLog;
         const rateLimit = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey('answerlattice-article-entity-extraction', userId, scope.tenantId, scope.storeId),
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
 
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
             logger.security('Rate Limit Exceeded', {
                 endpoint: '/api/answerlattice/articles/extract-entities',
@@ -171,12 +181,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             return NextResponse.json(
                 {
-                    error: `Too many requests. Please wait ${waitSeconds} seconds.`,
+                    error: providerUnavailable
+                        ? 'Entity extraction is temporarily unavailable. Please try again later.'
+                        : `Too many requests. Please wait ${waitSeconds} seconds.`,
                     retryAfter: waitSeconds,
                     resetAt: rateLimit.resetAt,
                 },
                 {
-                    status: 429,
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'Retry-After': String(waitSeconds),
                         'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -220,8 +232,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const persistedArticle = articleSnap.data() || {};
-        const articleTenantId = normalizeAnswerlatticeScopeDocumentId(persistedArticle.tId ?? persistedArticle.tenantId);
-        const articleStoreId = normalizeAnswerlatticeScopeDocumentId(persistedArticle.sId ?? persistedArticle.storeId);
+        const articleTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+            persistedArticle.tId,
+            persistedArticle.tenantId,
+        ]);
+        const articleStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+            persistedArticle.sId,
+            persistedArticle.storeId,
+        ]);
         if (
             persistedArticle.pId !== PRODUCT_IDS.ANSWERLATTICE
             || !articleTenantId
@@ -399,6 +417,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const matchedEntityIds = await syncArticleEntityIds(result?.matchedEntityIds);
         let newCandidateCount = 0;
+        let candidateStoreFailed = false;
         for (const candidate of result.candidateDrafts || []) {
             try {
                 const storedCandidate = await upsertAnswerlatticeExtractedEntityCandidate({
@@ -419,6 +438,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 });
                 if (storedCandidate.created) newCandidateCount += 1;
             } catch (candidateError) {
+                candidateStoreFailed = true;
                 logRuntimeFailure('answerlattice_article_entity_candidate_store_failed', candidateError, {
                     ...getBoundedRuntimeStringContext('articleId', article.id),
                     ...getBoundedRuntimeStringContext('entityName', candidate.name),
@@ -426,6 +446,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     ...getBoundedRuntimeStringContext('tenantId', tenantId),
                 });
             }
+        }
+        if (candidateStoreFailed) {
+            throw new Error('One or more extracted entity candidates could not be stored');
         }
 
         return NextResponse.json({

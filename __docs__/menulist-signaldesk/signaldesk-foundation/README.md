@@ -46,3 +46,4 @@ The corrected review says the first build must start with team auth, roles, and 
 | 0.3 | 2026-07-21 | Reconciled current-user/session admission, transactional member identity, human-role enforcement, Firebase costs, mobile parity, and emulator evidence. |
 | 0.4 | 2026-07-21 | Reconciled durable audit/privacy boundaries and added stable, bounded older-history pagination with emulator evidence. |
 | 0.5 | 2026-07-21 | Reconciled all eleven kill-switch scopes, stable audit classification, clean reactivation state, and the mobile global-emergency-only boundary. |
+| 0.6 | 2026-07-26 | Reconciled shared protected-route admission: actor-scoped rate limiting now precedes membership/permission reads and fails closed when distributed limiter authority is unavailable. |

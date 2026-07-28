@@ -21,6 +21,11 @@ const websiteReadme = read('__docs__/main-website/README.md');
 const websiteImpl = read('__docs__/main-website/main-website_impl.md');
 const securityGuide = read('__docs__/security/secure-logging-guide.md');
 const changelog = read('__docs__/changelog.md');
+const opsRoute = read('src/app/api/ops/website-enquiries/route.ts');
+const opsClientResponse = read('src/lib/ops/websiteEnquiryClientResponse.ts');
+const opsMonitor = read('src/components/templates/main-app/platform/websiteEnquiryMonitor/index.tsx');
+const opsControlRoom = read('src/components/templates/main-app/platform/opsControlRoom/index.tsx');
+const featureFlags = read('src/config/features.ts');
 const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
 const legacyEnquiriesDalPath = path.join(ROOT, 'src/database/landingPage/enquiries.ts');
 
@@ -86,6 +91,51 @@ requireTokens(publicApi, [
   'signal: controller.signal',
   'clearTimeout(timeout)',
 ], 'public limiter and Turnstile boundary');
+
+requireTokens(opsRoute, [
+  "export const dynamic = 'force-dynamic';",
+  'ENABLE_WEBSITE_CONTACT_ENQUIRY_OPS_DASHBOARD',
+  "withAuth(async (request, session) =>",
+  "{ requiredPlatformRole: 'PLATFORM' }",
+  'getCurrentPlatformUser(session)',
+  'resolveCurrentSessionUserDocumentId(session)',
+  "getRateLimitForFeature('DATA_READ')",
+  "failClosedOnProviderError: process.env.NODE_ENV === 'production'",
+  '.orderBy(\'createdOn\', \'desc\')',
+  '.limit(scanLimit)',
+  'Math.min(Math.max(limit * 3, 60), 120)',
+  "cleanOpsText(data.source, 80) !== 'menulist_public_contact'",
+  'realtimeListeners: false',
+  'const NO_STORE_HEADERS = { \'Cache-Control\': \'no-store\' };',
+], 'website enquiry Ops route');
+assert(!opsRoute.includes('.onSnapshot('), 'website enquiry Ops route must not add a realtime listener');
+assert(!opsRoute.includes('.add('), 'website enquiry Ops route must remain read-only');
+assert(!opsRoute.includes('.set('), 'website enquiry Ops route must remain read-only');
+assert(!opsRoute.includes('.update('), 'website enquiry Ops route must remain read-only');
+
+requireTokens(opsClientResponse, [
+  'WEBSITE_ENQUIRY_OPS_RESPONSE_JSON_MAX_BYTES = 192 * 1024',
+  'readJsonResponseWithLimit<unknown>',
+  'isWebsiteEnquiryOpsSnapshot',
+], 'website enquiry bounded client response');
+requireTokens(opsMonitor, [
+  "fetch(`/api/ops/website-enquiries?",
+  "cache: 'no-store'",
+  'resolveExactSessionPlatformRole(session)',
+  'requestIdRef.current + 1',
+  'requestId !== requestIdRef.current',
+  'setSnapshot(null)',
+  'Manual refresh only',
+  'Open email reply',
+], 'website enquiry operator UI');
+requireTokens(opsControlRoom, [
+  'href="/ops/website-enquiries"',
+  'Website Enquiries',
+], 'website enquiry Ops navigation');
+requireTokens(featureFlags, [
+  'ENABLE_WEBSITE_CONTACT_ENQUIRY_OPS_DASHBOARD: true',
+  'No listener or write',
+], 'website enquiry feature flag');
 
 requireTokens(packageJson, [
   '"verify:public-contact-boundary"',

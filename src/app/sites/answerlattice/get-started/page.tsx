@@ -66,16 +66,27 @@ export default async function AnswerlatticeGetStartedPage(props: AnswerlatticeGe
             <AnswerlatticePageStructuredData path="/get-started" />
             <AnswerlatticeHeader basePath={basePath} />
             <main className="al-page-flow">
-                <section className="px-6 py-24">
+                <section className="px-6 pb-20 pt-16">
                     <div className="mx-auto w-full max-w-3xl">
                         <div className="text-center">
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Get Started</p>
                             <h1 className="mb-4 max-w-full text-4xl font-bold sm:text-5xl">
                                 Create your AnswerLattice workspace.
                             </h1>
-                            <p className="mb-12 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
-                                Sign in with Google, add your app, bring the scattered product knowledge you already have, pick the pages where users need help, and get a widget key for your first support layer.
+                            <p className="mb-8 max-w-full text-lg leading-relaxed text-[#a0a0c0]">
+                                Sign in with Google to create the workspace. You can add product details, knowledge, support pages, and the widget after signup.
                             </p>
+                        </div>
+
+                        <div
+                            className="mx-auto mb-10 max-w-xl"
+                            data-answerlattice-activation-primary="workspace-signup"
+                        >
+                            <OnboardingForm
+                                basePath={basePath}
+                                initialCurrency={initialCurrency}
+                                initialPlanId={initialPlanId}
+                            />
                         </div>
 
                         <PageProofStrip
@@ -111,31 +122,21 @@ export default async function AnswerlatticeGetStartedPage(props: AnswerlatticeGe
                             </div>
                         </div>
 
-                        <div className="grid w-full gap-8 md:grid-cols-2">
-                            {/* Left: criteria */}
-                            <div>
-                                <h2 className="mb-6 text-xl font-semibold">AnswerLattice is a good fit when</h2>
-                                <div className="space-y-4">
-                                    {CRITERIA.map((item, i) => (
-                                        <div key={i} className="flex items-start gap-3">
-                                            <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-[10px] text-teal-300">
-                                                {i + 1}
-                                            </span>
-                                            <div>
-                                                <div className="text-sm font-medium text-white">{item.label}</div>
-                                                <div className="text-xs text-[#6b6b8a]">{item.description}</div>
-                                            </div>
+                        <div>
+                            <h2 className="mb-6 text-xl font-semibold">AnswerLattice is a good fit when</h2>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                {CRITERIA.map((item, i) => (
+                                    <div key={i} className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                                        <span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-teal-500/10 text-[10px] text-teal-300">
+                                            {i + 1}
+                                        </span>
+                                        <div>
+                                            <div className="text-sm font-medium text-white">{item.label}</div>
+                                            <div className="mt-1 text-xs leading-relaxed text-[#6b6b8a]">{item.description}</div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
-
-                            {/* Right: Self-service signup form */}
-                            <OnboardingForm
-                                basePath={basePath}
-                                initialCurrency={initialCurrency}
-                                initialPlanId={initialPlanId}
-                            />
                         </div>
                     </div>
                 </section>

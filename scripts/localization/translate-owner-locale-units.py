@@ -71,8 +71,14 @@ def batch(items, size):
 def load_or_initialize_results(output_path, payload):
     if Path(output_path).exists():
         results = read_json(output_path)
+        if results.get("version") != 1:
+            raise ValueError("Existing result file uses an unsupported version")
         if results.get("sourceOwnerSha256") != payload["sourceOwnerSha256"]:
             raise ValueError("Existing result file belongs to a different en-US owner source")
+        if results.get("providers") != payload["providers"]:
+            raise ValueError("Existing result file uses different translation provider metadata")
+        if not isinstance(results.get("locales"), dict):
+            raise ValueError("Existing result file has an invalid locale result map")
         return results
     return {
         "version": 1,

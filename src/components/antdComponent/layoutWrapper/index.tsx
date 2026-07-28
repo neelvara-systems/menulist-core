@@ -12,7 +12,6 @@ import {
     isStarterRecoveryRoute,
     isStarterWorkspaceRoute,
 } from '@lib/onboarding/starterActivation';
-import HeadMetaTags from '@organisms/headMetaTags';
 import HorizontalSidebar from '@organisms/sidebar/horizontalSidebar';
 import AntdThemeProvider from '@providers/antdThemeProvider';
 import GlobalKeyboardShortcutsProvider from '@providers/GlobalKeyboardShortcutsProvider';
@@ -117,7 +116,6 @@ export default function AntdLayoutWrapper(props: any) {
         }
 
         return <Layout className={`${styles.layoutWrapper}`} dir={isRTLDirection ? "rtl" : "ltr"} >
-            <HeadMetaTags title={undefined} description={undefined} image={undefined} siteName={undefined} storeData={undefined} />
             <Fragment>
                 {/* "Return to Mobile" banner — shown when mobile user forced desktop mode */}
                 {hasMounted && isHandheld && forceDesktop && FEATURE_FLAGS.ENABLE_MOBILE_UI && (

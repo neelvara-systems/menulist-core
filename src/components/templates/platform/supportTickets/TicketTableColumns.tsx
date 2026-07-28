@@ -1,5 +1,10 @@
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
-import { SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
+import {
+    getSupportTicketTimestampMillis,
+    SUPPORT_TICKET_PRIORITY,
+    SUPPORT_TICKET_STATUS,
+    SupportTicketType,
+} from '@type/supportTicket';
 import { Avatar, Badge, Button, Dropdown, MenuProps, Modal, Space, Tag, Tooltip, Typography } from 'antd';
 import { GlobalToken } from 'antd/es/theme/interface';
 import { ColumnsType } from 'antd/es/table';
@@ -226,7 +231,10 @@ export const getTicketTableColumns = ({ token, onView, onEdit, onDelete, onResto
                     <DateTimeDisplay value={createdOn} mode='datetime' />
                 </Text>
             ),
-            sorter: (a, b) => b.createdOn.toMillis() - a.createdOn.toMillis(),
+            sorter: (a, b) => (
+                (getSupportTicketTimestampMillis(b.createdOn) ?? 0)
+                - (getSupportTicketTimestampMillis(a.createdOn) ?? 0)
+            ),
             defaultSortOrder: 'descend',
         },
         {
@@ -239,7 +247,10 @@ export const getTicketTableColumns = ({ token, onView, onEdit, onDelete, onResto
                     <DateTimeDisplay value={modifiedOn} mode='datetime' />
                 </Text>
             ),
-            sorter: (a, b) => b.modifiedOn.toMillis() - a.modifiedOn.toMillis(),
+            sorter: (a, b) => (
+                (getSupportTicketTimestampMillis(b.modifiedOn) ?? 0)
+                - (getSupportTicketTimestampMillis(a.modifiedOn) ?? 0)
+            ),
         },
         {
             title: 'Action',

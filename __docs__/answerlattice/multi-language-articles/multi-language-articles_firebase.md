@@ -14,7 +14,7 @@ Drafts use the existing `kb_articles/{articleId}.translations.{locale}` map. No 
 | Gemini translation | 0 | 0 | 1 model call |
 | Post-provider transaction re-read | 1 | 0 | 0 |
 | Successful locale draft field update | 0 | 1 | 0 |
-| Best-effort AI operation accounting | 0 | up to 1 existing accounting row | 0 |
+| Awaited, failure-contained AI operation accounting | 0 | up to 1 existing accounting row | 0 |
 | Owner UI refresh after success | 1 | 0 | 0 |
 
 No KB cache/context version write occurs for a private draft.

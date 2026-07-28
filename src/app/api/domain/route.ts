@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
  * URL Routing Architecture — Phase 2 (Custom Domain)
  * @see __docs__/url-routing-architecture/README.md
  */
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import { getBoundedLogValueContext, getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { isAnswerlatticeHostedHelpCandidateHostname } from "@constant/answerlattice/hostedHelp";
@@ -88,8 +88,9 @@ const getBoundedDomainRouteStringContext = (label: string, value: unknown) => {
 
 const normalizeDomainRouteFailure = (error: unknown, message: string): Error => {
     const normalized = new Error(message);
-    if (error instanceof Error && error.name) {
-        normalized.name = error.name;
+    const errorName = getBoundedErrorName(error);
+    if (errorName) {
+        normalized.name = errorName;
     }
     return normalized;
 };

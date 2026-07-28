@@ -22,6 +22,8 @@ function assertIncludes(haystack, needle, message) {
 }
 
 const nextConfig = read('next.config.js');
+const razorpayDiagnostics = read('src/lib/billing/razorpayDiagnostics.ts');
+const sessionUserDocumentId = read('src/lib/auth/sessionUserDocumentId.ts');
 const packageJson = JSON.parse(read('package.json'));
 const packageLock = JSON.parse(read('package-lock.json'));
 const proxy = read('src/proxy.ts');
@@ -132,6 +134,20 @@ assert(
 assert(
   !serverExternalPackagesBlock.includes("'firebase-admin'"),
   'Firebase Admin must not be explicitly server-externalized.',
+);
+assertIncludes(
+  razorpayDiagnostics,
+  "from '@lib/auth/sessionUserDocumentId'",
+  'Shared billing diagnostics must use the pure session identity boundary.',
+);
+assert(
+  !razorpayDiagnostics.includes("from '@lib/auth/currentPlatformUser'"),
+  'Shared billing diagnostics must not pull Firebase Admin current-user authority into browser graphs.',
+);
+assert(
+  !sessionUserDocumentId.includes('firebaseAdmin')
+    && !sessionUserDocumentId.includes('firebase-admin'),
+  'The browser-safe session identity projector must remain free of Firebase Admin imports.',
 );
 assert(
   !webpackServerExternalsBlock.includes("'firebase-admin'")

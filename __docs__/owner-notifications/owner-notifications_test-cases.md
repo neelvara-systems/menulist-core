@@ -1,7 +1,7 @@
 # Owner Notifications - Test Cases
 
 **Status:** Implemented source-gate coverage; provider and manual recovery smokes require a configured non-production environment
-**Date:** 2026-07-16
+**Date:** 2026-07-28
 
 ## Test Matrix
 
@@ -18,7 +18,16 @@
 | Formatting | Store timezone is Asia/Kolkata | Notification dates/times render in Asia/Kolkata. |
 | Formatting | Store date format is `2-digit|short|numeric` | Rendered date matches selected format. |
 | Formatting | Store currency is USD/$ | Money renders with `$`/USD policy, not INR fallback. |
-| Dedupe | Same trigger/reference enqueued twice | Only one successful delivery per channel. |
+| Dedupe | Same trigger/reference enqueued twice | A terminal delivery row prevents a second provider call for the same deterministic event/channel/recipient. |
+| Persisted event boundary | Stored event has drifted dedupe, scope, priority, timestamp, metadata, or processing fields | Processing fails closed before recipient, rate-limit, template, or provider work. |
+| Persisted rate boundary | Existing count is a string, negative, or belongs to another scope/date | Counter admission fails closed; the value is not coerced or reused. |
+| Delivery claim | Provider call is about to run | The deterministic delivery row is first transactionally written as `sending`; finalization proves the same identity and attempt. |
+| Ambiguous delivery replay | Retry sees a pre-existing `sending` row | No provider call occurs; the event becomes failed for explicit reconciliation. |
+| Stale processing recovery | Exact-MenuList event remains `processing` for at least 15 minutes | Bounded recovery marks it failed with `owner_notification_processing_outcome_ambiguous` and emits an error diagnostic; it is not automatically resent. |
+| Retry bookkeeping drift | Failed event has coercible/malformed `retryCount` or `retriedAt` | The row is excluded without mutation; no raw query value consumes or expands the retry budget. |
+| Retry settlement race | Query row changes or another worker owns/settles the event | Post-processing transaction records a retry only for exact deterministic attempt-two terminal truth. |
+| App retention | App creates MenuList event/delivery/rate rows | Event and delivery expire after 30 days; rate counters expire after 2 days. |
+| Legacy retention | Old exact-MenuList row lacks `expiresAt` | Bounded maintenance transaction deletes it; current rows and Answerlattice rows remain. |
 | Rate limit | Store exceeds non-critical daily cap | Advisory/required event skipped or delayed. |
 | Critical bypass | Payment failed after cap | Critical event still sends subject to recipient/channel safety. |
 | Email | SMTP not configured | Event delivery fails, log is written, source flow continues. |
@@ -94,6 +103,8 @@ Source and behavior gates:
 - `npm run verify:owner-notifications-boundary`
 - `npm run test:owner-notification-delivery-boundaries`
 - `npm run test:notification-delivery-claim:emulator`
+- `npm run test:maintenance-task-lease`
+- `npm run verify:functions-compiled-test-paths`
 - `npm run verify:messaging-onboarding-monitor-boundary`
 - `npm run test:messaging-whatsapp-adapter`
 

@@ -35,9 +35,11 @@ function downloadTextFile(filename: string, text: string) {
 export default function MobilePublicTruthMonitorCard({
     selectedProjectId,
     storeId,
+    tenantId,
 }: {
     selectedProjectId?: string | null;
     storeId?: string | number | null;
+    tenantId?: string | number | null;
 }) {
     const { token } = theme.useToken();
     const isEnabled = FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS
@@ -47,6 +49,7 @@ export default function MobilePublicTruthMonitorCard({
         enabled: isEnabled,
         selectedProjectId,
         storeId,
+        tenantId,
     });
     const [isRefreshing, setIsRefreshing] = useState(false);
     const latest = summary?.latest || null;

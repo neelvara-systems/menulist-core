@@ -14,6 +14,7 @@
  */
 
 import { ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG } from '@data/shared/answerlatticeEmbedding';
+import { GEMINI_STABLE_MODELS } from '@data/shared/geminiRuntime';
 
 // ═══════════════════════════════════════════════════════════════
 // GOOGLE GEMINI MODELS
@@ -21,16 +22,16 @@ import { ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG } from '@data/shared/answerlattic
 
 export const GEMINI_MODELS = {
     // Text Generation Models
-    TEXT_GEN: 'gemini-2.5-flash',
-    TEXT_FAST: 'gemini-2.5-flash-lite',
-    TEXT_PRO: 'gemini-2.5-pro',
-    TEXT_FRONTIER_STABLE: 'gemini-3.5-flash',
-    TEXT_FRONTIER_FAST_STABLE: 'gemini-3.1-flash-lite',
+    TEXT_GEN: GEMINI_STABLE_MODELS.TEXT_HIGH_THROUGHPUT,
+    TEXT_FAST: GEMINI_STABLE_MODELS.TEXT_HIGH_THROUGHPUT,
+    TEXT_PRO: GEMINI_STABLE_MODELS.TEXT_COMPLEX,
+    TEXT_FRONTIER_STABLE: GEMINI_STABLE_MODELS.TEXT_BALANCED,
+    TEXT_FRONTIER_FAST_STABLE: GEMINI_STABLE_MODELS.TEXT_HIGH_THROUGHPUT,
 
     // Image Generation Models
-    IMAGE_GEN: 'gemini-2.5-flash-image',
-    IMAGE_FRONTIER_STABLE: 'gemini-3.1-flash-image',
-    IMAGE_FRONTIER_FAST_STABLE: 'gemini-3.1-flash-lite-image',
+    IMAGE_GEN: GEMINI_STABLE_MODELS.IMAGE_QUALITY,
+    IMAGE_FRONTIER_STABLE: GEMINI_STABLE_MODELS.IMAGE_QUALITY,
+    IMAGE_FRONTIER_FAST_STABLE: GEMINI_STABLE_MODELS.IMAGE_HIGH_THROUGHPUT,
 
     // Embedding Model
     MULTIMODAL_EMBEDDING: ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.model,
@@ -53,10 +54,8 @@ export const AI_MODELS = {
     /**
      * 🖼️ Image/Menu Data Extraction (OCR)
      * 
-     * Model: Gemini 2.5 Flash
-     * Why: Production-optimized for parallel processing with batch support
-     *      Better price-performance for high-volume tasks
-     *      Supports up to 65,536 output tokens
+     * Model: Gemini 3.5 Flash-Lite
+     * Why: High-throughput stable model for structured extraction.
      * 
      * Config: Low temperature for accuracy, JSON output
      */
@@ -75,9 +74,8 @@ export const AI_MODELS = {
     /**
      * 🌐 Translation
      *
-     * Model: Gemini 2.5 Flash
-     * Why: Stable production model. Gemini 2.0 Flash is shut down and must not
-     *      be used in production paths.
+     * Model: Gemini 3.5 Flash-Lite
+     * Why: Explicit stable high-throughput model.
      *
      * Config: Moderate temperature for natural language
      */
@@ -96,8 +94,8 @@ export const AI_MODELS = {
     /**
      * ✍️ Description Generation
      * 
-     * Model: Gemini 2.5 Flash
-     * Why: Creative tasks benefit from 2.5's improved language capabilities
+     * Model: Gemini 3.5 Flash-Lite
+     * Why: Shared high-throughput text contract.
      * 
      * Config: Higher temperature for creative, engaging descriptions
      */
@@ -116,7 +114,7 @@ export const AI_MODELS = {
     /**
      * 📝 New Item Metadata Generation
      *
-     * Model: Gemini 2.5 Flash
+     * Model: Gemini 3.5 Flash-Lite
      * Why: Stable production model for structured JSON output.
      *
      * Config: Moderate temperature for balanced output
@@ -151,8 +149,8 @@ export const AI_MODELS = {
     /**
      * 💬 Chat / QnA (Knowledge Base)
      * 
-     * Model: Gemini 2.5 Flash
-     * Why: Better conversational capabilities
+     * Model: Gemini 3.5 Flash-Lite
+     * Why: Shared high-throughput text contract
      * 
      * Config: Zero temperature for factual grounding
      */

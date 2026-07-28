@@ -41,4 +41,5 @@
 - Mobile cannot send/export.
 - Mobile cannot edit team roles.
 - Mobile uses the same fresh current-user and exact-membership admission as desktop/API access.
+- Mobile uses the same fail-closed actor-scoped rate admission before membership reads or blocked-action audit writes.
 - A blocked, revoked, deactivated, deleted, or ambiguous member loses mobile summary/pause access on the next protected request.

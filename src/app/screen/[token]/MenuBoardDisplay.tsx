@@ -39,10 +39,6 @@ const SCREEN_SEEN_REQUEST_POLICY = {
     redirect: 'manual' as RequestRedirect,
 };
 
-// Bind guardedReload to this component's identity for unique localStorage key
-const guardedReload = () => _guardedReload('menuboard');
-const guardedReloadWithJitter = () => _guardedReloadWithJitter('menuboard');
-
 // Per ChatGPT review v3: Cap total rendered items to prevent layout overflow on TVs
 const MAX_TOTAL_ITEMS = 200;
 
@@ -226,7 +222,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
             if (snapshot.exists()) {
                 const data = snapshot.data();
                 if (data?.enabled !== true) {
-                    guardedReload();
+                    _guardedReload('menuboard', token);
                     return;
                 }
                 const newVersion = data?.contentVersion || 0;
@@ -234,7 +230,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                 if (newVersion > contentVersionRef.current) {
                     contentVersionRef.current = newVersion;
                     // Per ChatGPT review v3: Use jitter to prevent mass reload spikes
-                    guardedReloadWithJitter();
+                    _guardedReloadWithJitter('menuboard', token);
                 }
             }
         }, (error) => {
@@ -252,7 +248,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     useEffect(() => {
         const fallbackRefresh = setInterval(() => {
             if (isOffline) {
-                guardedReload();
+                _guardedReload('menuboard', token);
             }
         }, 30 * 60 * 1000);
         return () => clearInterval(fallbackRefresh);
@@ -305,7 +301,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     useEffect(() => {
         const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
         const timer = setInterval(() => {
-            guardedReload();
+            _guardedReload('menuboard', token);
         }, SIX_HOURS_MS);
         return () => clearInterval(timer);
     }, []);

@@ -107,6 +107,9 @@ assertIncludes(assistantLib, 'const snapshots = await db.getAll(...refs);', 'bou
 assertIncludes(assistantLib, "readModel: { firestoreReads: packet.cacheHit ? 0 : 6, source: 'summary_only', cacheHit: packet.cacheHit }", 'summary-only read model');
 assertIncludes(assistantLib, 'const DAILY_ACTION_LIMIT = 4;', 'bounded daily action count');
 assertIncludes(assistantLib, 'answer-outcome-review', 'explicit outcome review action');
+assertIncludes(assistantLib, 'friction?.topFrictionEntities[0]', 'bounded highest-friction entity projection');
+assertIncludes(assistantLib, "`${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`", 'existing Friction governance route');
+assertIncludes(assistantLib, 'This prioritization reuses the loaded friction summary and adds no read or model call.', 'friction action cost boundary');
 assertIncludes(assistantLib, "href: `${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1`", 'release-change founder handoff');
 assertIncludes(assistantLib, "'release'", 'release intent');
 assertIncludes(assistantLib, "'install'", 'install intent');
@@ -164,6 +167,7 @@ assertIncludes(founderDailyBriefReadme, 'No new Firestore collection.', 'Founder
 assertIncludes(founderDailyBriefSpec, 'New assistant task queue', 'Founder Daily Brief spec boundary');
 assertIncludes(founderDailyBriefImpl, 'no new route', 'Founder Daily Brief implementation boundary');
 assertIncludes(founderDailyBriefFirebase, 'uses the existing six-document Support Assistant packet', 'Founder Daily Brief Firebase cost boundary');
+assertIncludes(founderDailyBriefFirebase, 'adds no Firestore operation', 'Founder Daily Brief friction projection cost boundary');
 assertIncludes(changelog, 'Answerlattice Founder Daily Brief', 'changelog entry');
 assertIncludes(changelog, 'six compact summary reads on an uncached brief request', 'changelog cost boundary');
 

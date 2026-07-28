@@ -133,22 +133,20 @@ function FontPresets() {
 
     const onClickSave = async () => {
         try {
-            const fontsListCopy = removeObjRef(fontsList)
             if (fontDetails.id) {
                 const fontResult = await updateFontPreset({ ...fontDetails })
-                const index = fontsListCopy.findIndex(f => f.id == fontDetails.id);
-                if (index < 0) throw new Error('platform_font_preset_local_state_missing');
-                fontsListCopy[index] = fontResult
+                setFontsList((currentFonts) => currentFonts.map((font) => (
+                    font.id == fontDetails.id ? fontResult : font
+                )));
                 dispatch(showSuccessToast("Font updated successfully"))
             } else {
                 const fontResult = await addFontPreset({
                     ...fontDetails,
                     index: fontsList.length,
                 })
-                fontsListCopy.push(fontResult);
+                setFontsList((currentFonts) => [...currentFonts, fontResult]);
                 dispatch(showSuccessToast("Font added successfully"))
             }
-            setFontsList(fontsListCopy);
             setFontDetails(emptyFontDetails)
         } catch (error) {
             logRuntimeFailure('platform_font_preset_save_failed', error, {
@@ -161,11 +159,7 @@ function FontPresets() {
     const onDeleteFont = async () => {
         try {
             await deletFontPreset(fontDetails.id, fontDetails.fileUrl);
-            const fontsListCopy = removeObjRef(fontsList)
-            const index = fontsListCopy.findIndex(f => f.id == fontDetails.id);
-            if (index < 0) throw new Error('platform_font_preset_local_state_missing');
-            fontsListCopy.splice(index, 1);
-            setFontsList(fontsListCopy);
+            setFontsList((currentFonts) => currentFonts.filter((font) => font.id != fontDetails.id));
             setFontDetails(emptyFontDetails)
             dispatch(showSuccessToast("Font deleted successfully"))
         } catch (error) {
@@ -180,7 +174,7 @@ function FontPresets() {
         <Flex align="flex-start" justify="flex-start" gap={20}>
             <Flex vertical style={{ width: 300, height: "100%", overflow: "auto" }} gap={10}>
                 <Text strong>Added Fonts List</Text>
-                {(fontsList.sort((a, b) => a.index - b.index)).map((fontData: any, i: number) => {
+                {([...fontsList].sort((a, b) => a.index - b.index)).map((fontData: any, i: number) => {
                     return <Fragment key={i}>
                         <Button
                             ghost={fontData.id == fontDetails?.id}

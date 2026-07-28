@@ -150,9 +150,24 @@ export default function RootLayout({ children }: RootLayoutProps) {
                             const originalConsoleWarn = console.warn;
                             const getBoundedDevSwErrorContext = (error) => {
                                 const isObject = error && typeof error === 'object';
-                                const errorName = isObject && error.name ? String(error.name) : typeof error;
-                                const errorCode = isObject && error.code ? String(error.code).slice(0, 80) : undefined;
-                                const errorStatus = isObject && Number.isFinite(Number(error.status)) ? Number(error.status) : undefined;
+                                const readField = (field) => {
+                                    if (!isObject) return undefined;
+                                    try {
+                                        return field in error ? error[field] : undefined;
+                                    } catch {
+                                        return undefined;
+                                    }
+                                };
+                                const nameValue = readField('name');
+                                const codeValue = readField('code');
+                                const statusValue = readField('status');
+                                const errorName = typeof nameValue === 'string' && nameValue ? nameValue : typeof error;
+                                const errorCode = typeof codeValue === 'string'
+                                    ? codeValue.slice(0, 80)
+                                    : (typeof codeValue === 'number' && Number.isFinite(codeValue) ? String(codeValue) : undefined);
+                                const errorStatus = typeof statusValue === 'number' && Number.isFinite(statusValue)
+                                    ? statusValue
+                                    : undefined;
                                 return {
                                     sourceErrorName: errorName.slice(0, 80),
                                     sourceErrorCode: errorCode,

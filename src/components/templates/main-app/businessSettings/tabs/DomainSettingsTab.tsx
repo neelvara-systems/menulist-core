@@ -7,6 +7,7 @@ import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
 import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getBoundedErrorNumberAtPath, getBoundedErrorStatus } from '@lib/monitoring/boundedLogContext';
 import { Alert, Button, Card, Divider, Input, List, message, Space, Steps, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -113,10 +114,10 @@ const copyDesktopDomainSettingsText = async (value: string): Promise<void> => {
     }
 };
 
-function getAxiosStatus(error: any): number | undefined {
-    const status = Number(error?.status ?? error?.response?.status);
-    return Number.isFinite(status) ? status : undefined;
-}
+const getAxiosStatus = (error: unknown): number | undefined => (
+    getBoundedErrorStatus(error)
+    ?? getBoundedErrorNumberAtPath(error, ['response', 'status'])
+);
 
 function createDomainSettingsError(failureCode: string, status?: number): Error & { code: string; status?: number } {
     return Object.assign(new Error(failureCode), {

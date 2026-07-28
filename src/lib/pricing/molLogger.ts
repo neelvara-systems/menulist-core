@@ -90,8 +90,8 @@ export function logPriceChange(params: {
     version: number;
     tId: number;
     sId: number;
-}): void {
-    void logMOLEvent({
+}): Promise<void> {
+    return logMOLEvent({
         type: params.attributeId ? "ATTRIBUTE_PRICE_CHANGED" : "PRICE_CHANGED",
         projectId: params.projectId,
         actorUserId: params.actorUserId,
@@ -121,8 +121,8 @@ export function logPDFEvent(params: {
     sId: number;
     url?: string;
     error?: string;
-}): void {
-    void logMOLEvent({
+}): Promise<void> {
+    return logMOLEvent({
         type: params.type,
         projectId: params.projectId,
         actorUserId: params.actorUserId,

@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Test Cases
 
 > **Status:** IMPLEMENTED — day-one regression matrix plus future extension matrix
-> **Version:** 2.2.0
+> **Version:** 2.3.0
 > **Created:** 2026-05-31
 > **Audience:** QA / Engineering / Product
 
@@ -34,6 +34,10 @@
 | KICC-D1-021 | Nested source or usage metadata contains credentials, tokens, emails, or card-like values | Recursive sanitizer redacts sensitive strings and enforces depth/key/array/string caps before Firestore writes. |
 | KICC-D1-022 | URL source contains credentials, sensitive query keys, or local/private/reserved destination | Source creation rejects before persistence or fetch, including when `contentText` was supplied directly. |
 | KICC-D1-023 | Owner publishes an FAQ from Knowledge Intake | Destination stores declared `knowledge_intake` source plus intake lineage and remains eligible for normal FAQ retrieval. |
+| KICC-D1-024 | DOCX archive metadata uses strings/booleans or a throwing getter | Browser extraction fails closed before expansion; only exact safe-integer compressed/uncompressed sizes reach ratio and byte checks. |
+| KICC-D1-025 | Source metadata contains non-finite numbers, invalid Dates or a hostile object | Invalid scalar edges become `null` or the hostile top-level object becomes `{}`; Firestore writes and diagnostics do not retain coerced/infinite values. |
+| KICC-D1-026 | Required product-surface summary rebuild fails after a deterministic article/FAQ/surface destination is created | Publish rejects; the review item remains accepted with the exact target marker. Retry rebuilds the summary, runs cache/source/public freshness, and only then marks the item published without duplicating the destination. |
+| KICC-D1-027 | A summary source has a malformed, coercible or throwing timestamp value | Related-content ordering contains the invalid edge and completes; strings/booleans cannot become invented Firestore chronology. |
 
 The sections below preserve the broader long-term matrix. Native helpdesk/OAuth connectors, retained raw-media Storage artifacts, discovery/evidence/publish manifests, source deletion/retention, cancellation, intake-specific source-version counters, and scheduler directory repair remain future-extension tests. Screenshot OCR, short media transcription, support-credit ledger charging, bounded multi-source lineage, nested metadata redaction, selected-URL admission, FAQ retrieval, and summary-only scheduler analytics are implemented runtime claims.
 
@@ -84,14 +88,18 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 
 ---
 
-## 4. Source Governance And Product Map — Future Extension
+## 4. Source Governance And Product Map
 
 | ID | Scenario | Expected result |
 | --- | --- | --- |
-| KICC-AUD-001 (future) | Pricing page conflicts with old PDF | Governed conflict review is created without silently choosing authority. |
+| KICC-AUD-001 | Pricing page conflicts with old PDF | Owner can link the conflicting same-job sources; canonical acceptance and publication stay blocked without silently choosing authority. |
 | KICC-AUD-002 (future) | Product has no refund policy | Evidence-backed knowledge-gap review is created. |
 | KICC-AUD-003 (future) | Product has clean docs | A reviewed product map can be proposed without becoming automatic truth. |
 | KICC-AUD-004 (future) | No docs, only product URL and policy notes | Missing evidence stays explicit; no product map is invented. |
+| KICC-AUD-005 | Owner reviews a source | Authority, owner, approval, access, citation, applicability, dates, conflicts, reviewer, and review time are stored on the existing source. |
+| KICC-AUD-006 | Governance mutation is replayed with the same request ID and payload | Existing source state is returned and no second audit event is created. |
+| KICC-AUD-007 | Conflict source belongs to another job or workspace | Server rejects before source or audit mutation. |
+| KICC-AUD-008 | Private source is marked publicly citable | Server rejects the incompatible access/citation contract. |
 
 ---
 
@@ -110,12 +118,14 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 
 | ID | Scenario | Expected result |
 | --- | --- | --- |
-| KICC-PUB-001 | Publish article and FAQ | Writes `kb_articles`, `kb_categories`, `answerlattice_faqs`, embeddings, cache/source versions, public cache invalidation, surface-summary refresh/stale marker, and lineage. |
+| KICC-PUB-001 | Publish article and FAQ | Writes `kb_articles`, `kb_categories`, and `answerlattice_faqs`; requires one product-surface summary rebuild plus cache/source-version and public-cache freshness before review settlement; attempts article embedding afterward; and preserves lineage. |
 | KICC-PUB-002 | Publish canonical answer draft | Creates a canonical mutation proposal with source lineage; active canonical truth still requires the Governance approval flow. |
 | KICC-PUB-003 | Publish product surface suggestion | Creates/updates `answerlattice_productSurfaces` with source lineage and summary rebuild. |
 | KICC-PUB-004 | Partial publish failure | Successful item destination IDs/status remain, failures stay visible, and retry uses deterministic destination IDs; no persisted publish manifest is required. |
 | KICC-PUB-005 | Attempt to publish approved changelog/release output through intake | API blocks changelog/release publication from intake and directs the owner to the Changelog workflow. |
-| KICC-PUB-006 (future) | Publish entity candidates and one approved entity | Candidate stays review-only; any future entity destination must use the ontology approval flow. Entity publishing is not a current intake target. |
+| KICC-PUB-006 | Destination commit succeeds but the required summary rebuild, cache/source-version effect, public-cache revalidation or acknowledgement fails | The review item remains accepted with its deterministic target ID; retry verifies the exact target, reruns required freshness effects, and only then marks it published without creating duplicate destination truth. |
+| KICC-PUB-007 | Client explicitly sends `itemIds: []` or duplicate IDs | Request fails validation and no accepted item changes; only omitted `itemIds` means publish all accepted items. |
+| KICC-PUB-008 (future) | Publish entity candidates and one approved entity | Candidate stays review-only; any future entity destination must use the ontology approval flow. Entity publishing is not a current intake target. |
 
 ---
 
@@ -127,7 +137,7 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | KICC-RUN-002 | No canonical match, but approved FAQ matches the question | Runtime returns the published `answerlattice_faqs` result before vector/RAG fallback. |
 | KICC-RUN-003 | Article publish succeeds but embedding fails | Hosted help can show the article and `embeddingStatus` is `failed`; no topic-level partial-readiness record is claimed. |
 | KICC-RUN-004 | Article embedding completes after publish | Vector/RAG fallback can retrieve the article without reprocessing the source. |
-| KICC-RUN-005 | Product surface, article, and FAQ are published in one batch | `contextContent_{tId}_{sId}` is rebuilt or marked stale once, and widget related content shows the new surface links after refresh. |
+| KICC-RUN-005 | Product surface, article, and FAQ are published in one batch | `contextContent_{tId}_{sId}` is rebuilt once before item finalization, then target-specific compiled-source markers and public caches are refreshed before terminal review state. |
 | KICC-RUN-006 | Intake summary counters change without a destination publish | Public context bundle/source versions remain unchanged. |
 | KICC-RUN-007 | Runtime image/search question is submitted after screenshot intake source was approved into content | Image-assisted query still uses the normal canonical/FAQ/RAG path; screenshot evidence is searchable only through approved outputs. |
 | KICC-RUN-008 | Owner tries to PATCH a review item directly to `published` | API rejects the patch; only the publish action can mark review items published and write runtime destinations. |
@@ -142,7 +152,7 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | KICC-READY-001 (future) | Onboarding has approved article + surface + answer | Topic readiness may show `ready` only after evaluation and deployment checks pass. |
 | KICC-READY-002 (future) | Billing has unresolved refund policy | Topic readiness shows `partial` or `needs_review`, not ready. |
 | KICC-READY-003 (future) | Widget not installed | Deployment readiness stays incomplete even if content is approved. |
-| KICC-READY-004 | Dashboard opens after a large import | First screen reads `knowledgeIntakeSummary_{tId}_{sId}` only before paginated tabs are opened. |
+| KICC-READY-004 | Owner command center opens after a large import | It reads the capped job list and then the selected active-job bundle; it does not scan source/review collections or rely on the operations aggregate summary as the primary UI model. |
 | KICC-READY-005 (future) | Destination publish succeeds but a required deployment/evaluation refresh fails | Readiness remains incomplete and the failure is visible without inventing successful coverage. |
 
 ---
@@ -161,8 +171,8 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 
 | ID | Scenario | Expected result |
 | --- | --- | --- |
-| KICC-MOB-001 | Open intake on mobile | Summary/readiness/review cards fit without horizontal scroll. |
-| KICC-MOB-002 | Approve high-risk item on mobile | Explicit confirmation required; target size >=44px. |
+| KICC-MOB-001 | Open intake on mobile | Job/source/review cards fit without horizontal scroll. |
+| KICC-MOB-002 | Accept, edit or reject an item on mobile | Linked evidence remains readable and action targets are at least 44px. |
 | KICC-MOB-003 | Try multi-file upload on mobile | UI recommends desktop when bulk upload is complex. |
 
 ---
@@ -179,6 +189,10 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | KICC-REG-006 | Existing manual FAQ create/update/archive | Existing FAQ DAL still bumps KB cache version and public cache tags after intake is added. |
 | KICC-REG-007 | Existing article embedding API | Intake-published articles can use the same embedding readiness path without a duplicate embedding collection. |
 | KICC-REG-008 | Existing product-surface summary API | Intake-published articles/FAQs/surfaces are reflected in the same compact surface summary. Owner-managed changelog entries remain available through the existing changelog summary path. |
+| KICC-REG-009 | A runtime caller supplies string/boolean/fractional workspace IDs | Service scope admission fails closed instead of coercing the values into tenant/workspace authority. |
+| KICC-REG-010 | A legacy processing lease contains an invalid or throwing timestamp getter/conversion | Runtime validation and lease comparison contain the failure; the malformed lease cannot crash the workflow or block it as active. |
+| KICC-REG-011 | A fetched `/guides/start/` page links to relative `setup` | Discovery returns `/guides/start/setup`, not the site-root `/setup`, while cross-origin links remain excluded. |
+| KICC-REG-012 | A response value contains a throwing timestamp getter or a cycle | Serialization returns a bounded null at the invalid edge and does not crash the private route response. |
 
 ---
 
@@ -187,12 +201,12 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | ID | Scenario | Expected result |
 | --- | --- | --- |
 | KICC-SUM-001 | Source/review/job state changes | Workspace summary updates through bounded server transitions; no bucketed intake directory is written today. |
-| KICC-SUM-002 | Summary hash is unchanged | Summary write is skipped. |
+| KICC-SUM-002 | Nightly aggregate summary hash is unchanged | The scheduler skips the aggregate summary write; normal job/source/review transitions retain their own bounded transactional patches. |
 | KICC-SUM-003 | Answerlattice scheduler looks for intake repair work | Scheduler uses normal tenant discovery and reads only latest bounded intake job docs for that workspace; it does not read source/review lists, retry failed jobs, crawl URLs, call providers, or publish outputs. |
 | KICC-SUM-004 (future) | Directory entry is dirty | A future repair directory reads bounded workspace data and clears dirty only after successful write. |
 | KICC-SUM-005 (future) | Source content changes | An intake-specific source-version design, if adopted, increments without forcing public bundle rebuilds. No such counter is currently written. |
-| KICC-SUM-006 | Approved output publishes | The matching existing runtime source key (`kb`, `canonical`, `surfaces`, `entities`, or `entityRelations`) changes only when destination content changed; intake does not own the `releases` path. |
-| KICC-SUM-007 | Intake readiness changes but runtime content does not | Intake summary/source fields update; public bundle manifest remains ready and is not marked stale. |
+| KICC-SUM-006 | Approved output publishes | Articles/FAQs update KB freshness; articles also mark `docsNav`; product surfaces mark `surfaces`. Canonical proposals do not mark active canonical truth stale, and intake does not own `entities`, `entityRelations`, or `releases`. |
+| KICC-SUM-007 | Aggregate intake counters change but runtime content does not | Intake summary/source fields update; public bundle source versions remain unchanged. |
 | KICC-SUM-008 | Publish batch affects 20 articles and 15 FAQs | Product-surface summary rebuild runs once for the batch, not once per output item. |
 | KICC-SUM-009 | Platform monitor refreshes with no selected workspace | It reads one tenant summary and recent scheduler logs only; it does not read intake jobs, ledger rows, source/review collections, or start provider work. |
 | KICC-SUM-010 | Platform admin selects one workspace | It reads only capped job and ledger rows for the selected `tId/sId`. |
@@ -212,3 +226,9 @@ The sections below preserve the broader long-term matrix. Native helpdesk/OAuth 
 | 2026-05-31 | 2.0.0 | Added implemented screenshot/media/usage-ledger/scheduler tests. |
 | 2026-05-31 | 2.1.0 | Added platform-owner intake monitor tests and cost guardrail expectations. |
 | 2026-07-18 | 2.2.0 | Added current evidence/privacy/FAQ retrieval expectations, fixed duplicate day-one IDs, and marked cancellation, deletion, manifests, and intake-specific source versions as future-only. |
+| 2026-07-26 | 2.2.1 | Added strict runtime workspace-scope and malformed persisted timestamp/lease regression cases. |
+| 2026-07-26 | 2.2.2 | Added interrupted destination-publication freshness recovery and deterministic retry coverage. |
+| 2026-07-26 | 2.2.3 | Added fetched-page-relative discovery and hostile/cyclic response serialization coverage. |
+| 2026-07-26 | 2.2.4 | Added explicit empty/duplicate publish-selection rejection at route and service boundaries. |
+| 2026-07-26 | 2.2.5 | Added exact DOCX archive-size, invalid metadata scalar and diagnostic coercion regression coverage. |
+| 2026-07-26 | 2.3.0 | Reconciled owner/mobile read models and exact destination freshness keys; added required context-summary recovery and hostile summary-timestamp cases. |

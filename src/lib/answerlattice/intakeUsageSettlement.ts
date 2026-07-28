@@ -1,11 +1,7 @@
 import { isValidBillingPeriodKey } from '@lib/billing/billingPeriod';
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeBillingScopeDocumentId } from '@lib/answerlattice/billingDocumentIdBoundary';
-
-const asNonNegativeFiniteNumber = (value: unknown): number | null => {
-    const normalized = Number(value);
-    return Number.isFinite(normalized) && normalized >= 0 ? normalized : null;
-};
+import { getNonNegativeCreditInteger } from '@data/shared/aiCreditScalarContract';
 
 export function isAnswerlatticeIntakeLedgerInScope(
     ledger: unknown,
@@ -42,10 +38,10 @@ export function resolveAnswerlatticeIntakeRefundAllocation(params: {
     ) {
         return null;
     }
-    const refundMonthlyCredits = asNonNegativeFiniteNumber(params.refundMonthlyCredits);
-    const refundTopUpCredits = asNonNegativeFiniteNumber(params.refundTopUpCredits);
-    const currentMonthlyCredits = asNonNegativeFiniteNumber(params.currentMonthlyCredits);
-    const monthlyCreditsAllowance = asNonNegativeFiniteNumber(params.monthlyCreditsAllowance);
+    const refundMonthlyCredits = getNonNegativeCreditInteger(params.refundMonthlyCredits);
+    const refundTopUpCredits = getNonNegativeCreditInteger(params.refundTopUpCredits);
+    const currentMonthlyCredits = getNonNegativeCreditInteger(params.currentMonthlyCredits);
+    const monthlyCreditsAllowance = getNonNegativeCreditInteger(params.monthlyCreditsAllowance);
     if (
         refundMonthlyCredits === null
         || refundTopUpCredits === null

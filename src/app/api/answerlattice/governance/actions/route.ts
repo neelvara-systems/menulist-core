@@ -12,6 +12,7 @@ import {
 } from '@lib/answerlattice/governanceServer';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { checkRateLimit } from '@lib/rateLimit';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -35,7 +36,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Canonical answers are not enabled.' }, { status: 403, headers: NO_STORE_HEADERS });
     }
 
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: NO_STORE_HEADERS });
+    }
     try {
         const rateLimit = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey(
@@ -45,11 +49,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 scope.storeId,
             ),
             ...GOVERNANCE_RATE_LIMIT,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             return NextResponse.json(
-                { error: 'Too many governance actions. Please wait before trying again.' },
-                { status: 429, headers: NO_STORE_HEADERS },
+                {
+                    error: providerUnavailable
+                        ? 'Governance actions are temporarily unavailable. Please try again later.'
+                        : 'Too many governance actions. Please wait before trying again.',
+                },
+                { status: providerUnavailable ? 503 : 429, headers: NO_STORE_HEADERS },
             );
         }
 

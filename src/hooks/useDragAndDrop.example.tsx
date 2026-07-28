@@ -82,7 +82,7 @@ export const MultiFileUpload = () => {
     const [files, setFiles] = useState<File[]>([]);
 
     const { isDragging, dragHandlers } = useDragAndDrop({
-        onFilesDrop: (files) => setFiles([...files, ...files]),
+        onFilesDrop: (droppedFiles) => setFiles((currentFiles) => [...currentFiles, ...droppedFiles]),
         accept: ['image/*', 'application/pdf', 'text/*'],
         maxFiles: 10,
         maxSize: 20 * 1024 * 1024, // 20MB

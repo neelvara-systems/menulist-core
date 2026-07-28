@@ -31,6 +31,7 @@ import {
     parseAnswerlatticeRetrievalSearchIndex,
 } from '@lib/answerlattice/retrievalContracts';
 import { normalizeAnswerlatticePublicCitations } from '@lib/answerlattice/publicAnswerContracts';
+import { toAnswerlatticePublicTimestampMillis } from '@lib/answerlattice/publicApiContracts';
 import { answerlatticeTokenize } from "@lib/answerlattice/tokenizer";
 import { AnswerlatticeAnswerType, AnswerlatticeCanonicalAnswer, AnswerlatticeContextPayload, AnswerlatticeEntity, AnswerlatticeEntityGraphIndex, AnswerlatticeEntitySearchIndex, AnswerlatticeGraphExpansionResult, AnswerlatticePublicCitation, AnswerlatticeRelease, AnswerlatticeScopeClarification } from "@type/answerlattice";
 
@@ -132,7 +133,9 @@ export const isCanonicalGovernedFallbackReason = (
     reason && Object.prototype.hasOwnProperty.call(CANONICAL_GOVERNED_FALLBACK_MESSAGES, reason),
 );
 
-const normalizeScopeValue = (value: unknown): string => String(value || '').trim().toLowerCase();
+const normalizeScopeValue = (value: unknown): string => (
+    typeof value === 'string' ? value.trim().toLowerCase() : ''
+);
 
 const normalizeScopeIds = (values: unknown): string[] => (
     Array.isArray(values)
@@ -568,8 +571,9 @@ function scoreBySpecificity(
             }
 
             // Validation recency (newer = slightly higher)
-            if (answer.validation?.lastValidatedOn && typeof answer.validation.lastValidatedOn.toMillis === 'function') {
-                const daysSinceValidation = (Date.now() - answer.validation.lastValidatedOn.toMillis()) / (1000 * 60 * 60 * 24);
+            const lastValidatedAt = toAnswerlatticePublicTimestampMillis(answer.validation?.lastValidatedOn);
+            if (lastValidatedAt !== null) {
+                const daysSinceValidation = (Date.now() - lastValidatedAt) / (1000 * 60 * 60 * 24);
                 score += Math.max(0, 10 - daysSinceValidation / 30); // Decay over months
             }
 

@@ -137,7 +137,7 @@ const changelogPath = `${DB_COLLECTIONS.CHANGELOG}/${scope.tId}/${scope.sId}`;
 
 const database = new FakeFirestore({
     [DB_COLLECTIONS.ANSWERLATTICE_ENTITIES]: [
-        { id: 'entity_b', data: scoped({ type: 'feature', name: 'Billing', slug: 'billing', status: 'active' }) },
+        { id: 'entity_b', data: scoped({ type: 'feature', name: 'Billing', slug: 'billing', status: 'active', currentVersion: '7' }) },
         { id: 'entity_a', data: scoped({ type: 'feature', name: 'Accounts', slug: 'accounts', status: 'beta' }) },
         { id: 'entity_hidden', data: scoped({ type: 'feature', name: 'Hidden', slug: 'hidden', status: 'draft' }) },
         {
@@ -252,6 +252,11 @@ const database = new FakeFirestore({
             question: 'Where is billing?',
             sortOrder: 1,
             status: 'published',
+            publishedOn: {
+                get toDate() {
+                    throw new Error('hostile timestamp getter');
+                },
+            },
         }),
     }],
     [DB_COLLECTIONS.ANSWERLATTICE_RELEASES]: [{
@@ -267,6 +272,8 @@ const database = new FakeFirestore({
     [changelogPath]: [{
         id: 'page_1',
         data: {
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
             pageNumber: 1,
             entries: [
                 {
@@ -282,6 +289,16 @@ const database = new FakeFirestore({
                     id: 'entry_draft',
                     title: 'Draft change',
                     published: false,
+                },
+                {
+                    id: 'entry_legacy_missing_publication',
+                    title: 'Missing publication state',
+                },
+                {
+                    id: 'entry_version_without_release',
+                    title: 'Unlinked version',
+                    published: true,
+                    version: '3.0',
                 },
             ],
         },
@@ -309,6 +326,11 @@ assert.deepEqual(
     built.payload.entities.map(entity => entity.id),
     ['entity_a', 'entity_b'],
     'portable entity output must be deterministic',
+);
+assert.equal(
+    built.payload.entities.find(entity => entity.id === 'entity_b')?.currentVersion,
+    0,
+    'coercible persisted numbers must not become portable numeric truth',
 );
 assert.deepEqual(
     built.payload.canonicalAnswers[0].evidence.sourceIds,
@@ -352,6 +374,7 @@ assert.equal(
 );
 assert.deepEqual(built.payload.changelogEntries[0].entityChanges, ['entity_b']);
 assert.equal(built.payload.changelogEntries[0].releaseId, 'release_1');
+assert.equal(built.payload.faqs[0].publishedOn, null, 'hostile timestamp values must be contained');
 
 await recordAnswerlatticeSupportTruthExportAudit({
     actorId: 'founder_user',
@@ -419,6 +442,28 @@ await assert.rejects(
         && error.section === 'entities'
     ),
     'cap-plus-one collection input must fail instead of truncating',
+);
+
+const wrongScopeChangelogDatabase = new FakeFirestore({
+    [changelogPath]: [{
+        id: 'page_wrong_scope',
+        data: {
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: scope.tId,
+            sId: scope.sId + 1,
+            pageNumber: 1,
+            entries: [],
+        },
+    }],
+});
+await assert.rejects(
+    () => buildAnswerlatticeSupportTruthExport({
+        db: wrongScopeChangelogDatabase as unknown as FirebaseFirestore.Firestore,
+        productName: 'Wrong-scope changelog',
+        ...scope,
+    }),
+    /answerlattice_support_truth_export_changelog_scope_invalid/,
+    'nested changelog pages must corroborate exact product and workspace identity',
 );
 
 const largeArticleContent = 'x'.repeat(200_000);

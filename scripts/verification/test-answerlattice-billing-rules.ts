@@ -18,6 +18,7 @@ import {
     setDoc,
     where,
 } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-billing-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -77,6 +78,7 @@ async function run(): Promise<void> {
 
         await testEnv.withSecurityRulesDisabled(async (context) => {
             const adminDb = context.firestore();
+            await seedActiveAnswerlatticeRuleWorkspace(adminDb);
             await setDoc(doc(adminDb, 'subscriptions', 'sub_Answerlattice123'), answerlatticeBillingRecord({
                 status: 'active',
             }));

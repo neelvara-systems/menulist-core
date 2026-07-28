@@ -17,6 +17,11 @@ MenuList has one persisted menu-price contract across owner mutation and custome
 
 `src/lib/pricing/integrityEngine.ts`, `molLogger.ts`, and `pdfQueue.ts` remain reserved scaffold. `runPricingIntegrity()` has no current caller, `ENABLE_BACKGROUND_PDF_REGEN` is false, and the active `src/lib/pricing/index.ts` barrel does not export that dormant path.
 
+The retired `projectsMetadata` and `projectsData` aliases are authenticated
+tenant-and-store-scoped read-only compatibility paths. Browser writes are denied; active project
+mutations must use `projects` and its maintained validation, outlet, cache, and
+publication pipeline.
+
 ## Maintained documents
 
 | Document | Purpose |

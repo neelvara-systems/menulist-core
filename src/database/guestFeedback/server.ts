@@ -3,6 +3,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import type { GuestFeedback } from '@type/guestFeedback';
 import { createHash } from 'crypto';
+import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import { getBoundedGuestFeedbackStringContext, logGuestFeedbackFailure } from './guestFeedbackDiagnostics';
 
 type SubmitGuestFeedbackAdminInput = Pick<
@@ -23,8 +24,7 @@ const hashGuestFeedbackValue = (value: string): string => (
 );
 
 const isAlreadyExistsError = (error: unknown): boolean => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return false;
-    const code = String((error as { code?: unknown }).code);
+    const code = getBoundedErrorCode(error);
     return code === '6' || code === 'already-exists' || code === 'ALREADY_EXISTS';
 };
 

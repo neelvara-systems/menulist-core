@@ -111,6 +111,30 @@ Recommended packages:
 
 Do not sell GrowthOS to non-MenuList clients in the current plan.
 
+### Distribution Channel Boundary
+
+GrowthOS/Growth Kits must not build a separate product audience, social account,
+YouTube channel, creator program, or acquisition funnel.
+
+The July 28 [Product Portfolio Distribution Insight
+Ledger](../strategy/product-portfolio-distribution-insight-ledger.md) confirms
+the useful distribution shape:
+
+- market the capability only inside a MenuList owner/proof story;
+- lead with one real current-menu action becoming accurate WhatsApp, Instagram,
+  Google, staff, and print/counter handoffs;
+- derive any walkthrough or short clip from repeated Pro/Premium usage and
+  owner-approved proof;
+- measure eligible owners who copy, share, print, or mark a fresh pack used
+  without explanation;
+- do not treat Growth Kits followers, impressions, or a separate niche audience
+  as a product goal.
+
+Do not apply proxy/fake-region account tactics, undisclosed partner
+amplification, engagement manipulation, algorithm guarantees, or high-volume
+posting doctrine. Broader public placement still requires the existing
+30-day usage proof.
+
 ## 7. Pricing Direction
 
 Pricing should be tied to:

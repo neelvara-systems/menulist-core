@@ -16,9 +16,11 @@ import { admin } from '@lib/firebase/firebaseAdmin';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { sendPlatformAlertDelivery } from '@lib/ops/platformNotificationDelivery';
 import { Timestamp } from 'firebase-admin/firestore';
+import { FEATURE_FLAGS } from '@config/features';
 
 const db = admin.firestore();
 
+// @firestore-collection-evidence DB_COLLECTIONS.SYSTEM_ALERTS operations=write
 const TELEGRAM_BOT_TOKEN_PATTERN = /^\d{5,20}:[A-Za-z0-9_-]{20,256}$/;
 
 function getTelegramSendMessageUrl(botToken: string): string | null {
@@ -77,6 +79,9 @@ export async function createAlert(
       tId: params.tId || 'system',
       sId: params.sId || 'system',
       timestamp: Timestamp.now(),
+      expiresAt: Timestamp.fromMillis(
+        Date.now() + FEATURE_FLAGS.SYSTEM_ALERT_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+      ),
       acknowledged: false,
       actionRequired: params.severity === 'critical',
       actionTaken: false,

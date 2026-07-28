@@ -40,7 +40,11 @@ import {
     ItemOverride,
     ProjectOverrides,
 } from "@template/main-app/projects/types/project.types";
-import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from "@type/multiOutlet.types";
+import {
+    DEFAULT_OUTLET_POLICY,
+    type MasterSnapshot,
+    type OutletPolicy,
+} from "@type/multiOutlet.types";
 import { deleteField, doc, getDoc, increment, Timestamp, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.PROJECTS;
@@ -353,7 +357,7 @@ export const linkStoreToMaster = async (
             // Master Updates Awareness: Create initial snapshot so outlet
             // has a baseline and doesn't see a banner for pre-existing data.
             // @see __docs__/multi-outlet-consistency/master-updates-awareness_impl.md §10.2
-            let initialSnapshot: Record<string, unknown> | undefined;
+            let initialSnapshot: MasterSnapshot | undefined;
             if (FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS) {
                 try {
                     const { createMasterSnapshot } = await import(
@@ -395,7 +399,7 @@ export const linkStoreToMaster = async (
                         currentVersion,
                         session.uId,
                         null, // No lastDiff on initial link
-                    ) as unknown as Record<string, unknown>;
+                    );
                 } catch (e) {
                     // Snapshot capture is best-effort; linking still succeeds with diagnostics.
                     logMultiOutletFailure('master_update_awareness_initial_snapshot_failed', e, {
@@ -486,7 +490,7 @@ export const switchStoreMaster = async (
 
             // Master Updates Awareness: Create fresh snapshot for new master baseline
             // Same pattern as linkStoreToMaster — prevents stale diff banners.
-            let initialSnapshot: Record<string, unknown> | undefined;
+            let initialSnapshot: MasterSnapshot | undefined;
             if (FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS) {
                 try {
                     const { createMasterSnapshot } = await import(
@@ -527,7 +531,7 @@ export const switchStoreMaster = async (
                         currentVersion,
                         session.uId,
                         null,
-                    ) as unknown as Record<string, unknown>;
+                    );
                 } catch (e) {
                     logMultiOutletFailure('master_update_awareness_switch_snapshot_failed', e, {
                         ...getMultiOutletProjectLogContext(storeProjectId, newMasterProjectId),
@@ -681,9 +685,9 @@ export const applyItemOverride = async (
 
             const masterItems =
                 masterProject.files?.flatMap(
-                    (f: any) => f.extractedData?.data?.items || [],
+                    (file) => file.extractedData?.data?.items || [],
                 ) || [];
-            const masterItemIds = new Set(masterItems.map((i: any) => i.id));
+            const masterItemIds = new Set(masterItems.map((item) => item.id));
 
             if (!masterItemIds.has(itemId)) {
                 throw new Error(
@@ -991,9 +995,14 @@ export const getLinkedOutletStoreIds = async (
                 return [];
             }
 
-            const storeIds = (tenantSnap.data()?.storesList || [])
-                .filter((store: any) => store?.active !== false && store?.isMaster !== true)
-                .map((store: any) => Number(store?.storeId))
+            const storesList = tenantSnap.data()?.storesList;
+            const storeIds = (Array.isArray(storesList) ? storesList : [])
+                .filter((store): store is Record<string, unknown> => (
+                    isRecord(store)
+                    && store.active !== false
+                    && store.isMaster !== true
+                ))
+                .map((store) => Number(store.storeId))
                 .filter((storeId: number) => Number.isFinite(storeId) && storeId > 0);
 
             // Check each store for projects linked to this master

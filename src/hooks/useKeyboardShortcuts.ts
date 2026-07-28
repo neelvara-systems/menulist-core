@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export interface ShortcutConfig {
     key: string;
@@ -7,6 +7,21 @@ export interface ShortcutConfig {
     metaKey?: boolean;
     action: () => void;
     description: string;
+}
+
+export function matchesKeyboardShortcut(
+    event: Pick<KeyboardEvent, 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+    shortcut: Pick<ShortcutConfig, 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+): boolean {
+    const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
+    const ctrlMatch = shortcut.ctrlKey
+        ? (event.ctrlKey || event.metaKey)
+        : shortcut.metaKey
+            ? !event.ctrlKey
+            : (!event.ctrlKey && !event.metaKey);
+    const shiftMatch = shortcut.shiftKey ? event.shiftKey : !event.shiftKey;
+    const metaMatch = shortcut.metaKey ? event.metaKey : true;
+    return keyMatch && ctrlMatch && shiftMatch && metaMatch;
 }
 
 /**
@@ -50,23 +65,14 @@ export const useKeyboardShortcuts = (
                 return;
             }
 
-            shortcuts.forEach(shortcut => {
-                const keyMatch = e.key.toLowerCase() === shortcut.key.toLowerCase();
-
-                // Handle Ctrl/Cmd key: ctrlKey on Windows/Linux, metaKey on Mac
-                const ctrlMatch = shortcut.ctrlKey
-                    ? (e.ctrlKey || e.metaKey)
-                    : (!e.ctrlKey && !e.metaKey);
-
-                const shiftMatch = shortcut.shiftKey ? e.shiftKey : !e.shiftKey;
-                const metaMatch = shortcut.metaKey ? e.metaKey : true; // Allow if not specified
-
-                if (keyMatch && ctrlMatch && shiftMatch && metaMatch) {
+            for (const shortcut of shortcuts) {
+                if (matchesKeyboardShortcut(e, shortcut)) {
                     e.preventDefault();
                     e.stopPropagation(); // Prevent event bubbling
                     shortcut.action();
+                    return;
                 }
-            });
+            }
         };
 
         document.addEventListener('keydown', handleKeyDown);
@@ -77,15 +83,20 @@ export const useKeyboardShortcuts = (
 /**
  * Hook for sequence-based shortcuts (e.g., "g" + "h")
  */
-let sequenceBuffer: string[] = [];
-let sequenceTimer: NodeJS.Timeout;
-
 export const useSequenceShortcuts = (
     shortcuts: Array<{ sequence: string[]; action: () => void; description: string }>,
     enabled: boolean = true
 ) => {
+    const sequenceBufferRef = useRef<string[]>([]);
+    const sequenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     useEffect(() => {
-        if (!enabled) return;
+        if (!enabled) {
+            sequenceBufferRef.current = [];
+            if (sequenceTimerRef.current) clearTimeout(sequenceTimerRef.current);
+            sequenceTimerRef.current = null;
+            return;
+        }
 
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement;
@@ -98,23 +109,24 @@ export const useSequenceShortcuts = (
             }
 
             // Add key to sequence buffer
-            sequenceBuffer.push(e.key.toLowerCase());
+            sequenceBufferRef.current.push(e.key.toLowerCase());
 
             // Clear buffer after 1 second of inactivity
-            clearTimeout(sequenceTimer);
-            sequenceTimer = setTimeout(() => {
-                sequenceBuffer = [];
+            if (sequenceTimerRef.current) clearTimeout(sequenceTimerRef.current);
+            sequenceTimerRef.current = setTimeout(() => {
+                sequenceBufferRef.current = [];
+                sequenceTimerRef.current = null;
             }, 1000);
 
             // Check if any shortcut matches
             shortcuts.forEach(shortcut => {
-                const sequenceStr = sequenceBuffer.join(' ');
+                const sequenceStr = sequenceBufferRef.current.join(' ');
                 const shortcutStr = shortcut.sequence.join(' ');
 
                 if (sequenceStr === shortcutStr) {
                     e.preventDefault();
                     shortcut.action();
-                    sequenceBuffer = []; // Reset buffer
+                    sequenceBufferRef.current = []; // Reset buffer
                 }
             });
         };
@@ -122,7 +134,9 @@ export const useSequenceShortcuts = (
         document.addEventListener('keydown', handleKeyDown);
         return () => {
             document.removeEventListener('keydown', handleKeyDown);
-            clearTimeout(sequenceTimer);
+            sequenceBufferRef.current = [];
+            if (sequenceTimerRef.current) clearTimeout(sequenceTimerRef.current);
+            sequenceTimerRef.current = null;
         };
     }, [shortcuts, enabled]);
 };

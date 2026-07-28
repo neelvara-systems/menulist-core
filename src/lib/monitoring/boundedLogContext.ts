@@ -44,6 +44,16 @@ const readUnknownObjectField = (value: unknown, field: string): unknown => {
     }
 };
 
+const readUnknownObjectPath = (
+    value: unknown,
+    fields: readonly string[],
+): unknown => (
+    fields.reduce<unknown>(
+        (current, field) => readUnknownObjectField(current, field),
+        value,
+    )
+);
+
 const projectErrorCode = (value: unknown): string | undefined => {
     if (typeof value === "string") return value.slice(0, 64);
     if (typeof value === "number" && Number.isFinite(value)) return String(value).slice(0, 64);
@@ -62,7 +72,7 @@ export const getBoundedErrorLogContext = (error: unknown): BoundedErrorLogContex
     let sourceErrorName: string | undefined;
     try {
         sourceErrorName = error instanceof Error
-            ? (typeof error.name === "string" && error.name ? error.name : "Error")
+            ? (typeof error.name === "string" && error.name ? error.name.slice(0, 80) : "Error")
             : (error === undefined ? undefined : typeof error);
     } catch {
         sourceErrorName = "object";
@@ -79,3 +89,61 @@ export const getBoundedErrorLogContext = (error: unknown): BoundedErrorLogContex
         sourceStatusCode: projectErrorStatus(statusCode),
     };
 };
+
+export const getBoundedErrorCode = (error: unknown): string | undefined => (
+    getBoundedErrorLogContext(error).sourceErrorCode
+);
+
+export const getBoundedErrorStatus = (error: unknown): number | undefined => (
+    getBoundedErrorLogContext(error).sourceStatusCode
+);
+
+export const getBoundedErrorName = (error: unknown): string | undefined => (
+    getBoundedErrorLogContext(error).sourceErrorName
+);
+
+export const getBoundedNestedErrorCode = (
+    error: unknown,
+    nestedField: string,
+): string | undefined => (
+    getBoundedErrorCode(readUnknownObjectField(error, nestedField))
+);
+
+export const getBoundedErrorNumericField = (
+    error: unknown,
+    field: string,
+): number | undefined => (
+    projectErrorStatus(readUnknownObjectField(error, field))
+);
+
+export const getBoundedErrorCodeAtPath = (
+    error: unknown,
+    fields: readonly string[],
+): string | undefined => (
+    projectErrorCode(readUnknownObjectPath(error, fields))
+);
+
+export const getBoundedErrorNumberAtPath = (
+    error: unknown,
+    fields: readonly string[],
+): number | undefined => (
+    projectErrorStatus(readUnknownObjectPath(error, fields))
+);
+
+export const getBoundedErrorStringField = (
+    error: unknown,
+    field: string,
+    maxLength = 64,
+): string | undefined => {
+    const value = readUnknownObjectField(error, field);
+    return typeof value === "string" ? value.slice(0, maxLength) : undefined;
+};
+
+export const getBoundedNumericLogValue = (value: unknown): number | undefined => (
+    projectErrorStatus(value)
+);
+
+export const getUnknownObjectValueAtPath = (
+    value: unknown,
+    fields: readonly string[],
+): unknown => readUnknownObjectPath(value, fields);

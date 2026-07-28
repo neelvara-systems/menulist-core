@@ -120,5 +120,23 @@ assert.equal(
     fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/sharedData/answerlatticeSupportEvidencePrivacy.ts'), 'utf8'),
     'app and Functions support-evidence privacy helpers must stay byte-identical',
 );
+const menuListKnowledgeTypes = fs.readFileSync(
+    path.join(ROOT, 'functions/src/types/knowledgeBase.types.ts'),
+    'utf8',
+);
+const answerlatticeKnowledgeTypes = fs.readFileSync(
+    path.join(ROOT, 'functions-answerlattice/src/types/knowledgeBase.types.ts'),
+    'utf8',
+);
+assert.equal(
+    menuListKnowledgeTypes,
+    answerlatticeKnowledgeTypes,
+    'MenuList and dedicated Answerlattice Functions knowledge-base types must stay byte-identical',
+);
+assert.ok(menuListKnowledgeTypes.includes('content: KnowledgeBaseTiptapContent'));
+assert.ok(menuListKnowledgeTypes.includes('embedding?: KnowledgeBaseEmbedding | null'));
+assert.ok(!menuListKnowledgeTypes.includes('content: any'));
+assert.ok(!menuListKnowledgeTypes.includes('embedding?: any'));
+assert.ok(!menuListKnowledgeTypes.includes('page?: any'));
 
 console.log('Answerlattice ticket knowledge and mutation proposal contracts passed.');

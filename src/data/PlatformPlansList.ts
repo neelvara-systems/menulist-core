@@ -1,4 +1,3 @@
-import { removeObjRef } from "@util/utils";
 import { AIEnhancementPack, Feature, Plan } from "./common";
 import PlatformFeaturesList from "./PlatformFeaturesList";
 
@@ -80,7 +79,7 @@ const B2BplansList = [
     {
         "planId": "pro", "type": "B2B", "name": "Pro API",
         "description": "Most popular for growing businesses",
-        "priceINR": { "price": 18999000, "monthlyCredits": 1000 },
+        "priceINR": { "price": 1899900, "monthlyCredits": 1000 },
         "priceUSD": { "price": 24900, "monthlyCredits": 1000 },
         "billingInterval": "MONTH", "monthlyApiCallAllowance": 5000
     },
@@ -94,7 +93,7 @@ const B2BplansList = [
     }
 ] as const;
 
-const CustomePlanForB2B: any = {
+const CustomePlanForB2B = {
     "planId": "custom",
     "type": "B2B",
     "name": "Custom API",
@@ -123,30 +122,24 @@ const aiEnhancementPacksList: AIEnhancementPack[] = [
 /** @deprecated Use aiEnhancementPacksList instead */
 const creditPacksList: AIEnhancementPack[] = aiEnhancementPacksList;
 
-const getB2CPlansList = () => {
-    const plansList: Plan[] = [];
-    removeObjRef(B2CplansList).map((plan: any) => {
+const getB2CPlansList = (): Plan[] => {
+    return B2CplansList.map((plan) => {
         const planFeaturesList: { [key: string]: string | number | boolean } = {};
-        PlatformFeaturesList.B2C.map((feature: Feature) => {
+        PlatformFeaturesList.B2C.forEach((feature: Feature) => {
             planFeaturesList[feature.id] = feature.values[plan.planId];
-        })
-        plan.featuresList = planFeaturesList;
-        return plansList.push(plan);
-    })
-    return plansList;
+        });
+        return { ...plan, featuresList: planFeaturesList };
+    });
 }
 
-const getB2BPlansList = () => {
-    const plansList: Plan[] = [];
-    removeObjRef(B2BplansList).map((plan: any) => {
+const getB2BPlansList = (): Plan[] => {
+    return B2BplansList.map((plan) => {
         const planFeaturesList: { [key: string]: string | number | boolean } = {};
-        PlatformFeaturesList.B2B.map((feature: Feature) => {
+        PlatformFeaturesList.B2B.forEach((feature: Feature) => {
             planFeaturesList[feature.id] = feature.values[plan.planId];
-        })
-        plan.featuresList = planFeaturesList;
-        return plansList.push(plan);
-    })
-    return plansList;
+        });
+        return { ...plan, featuresList: planFeaturesList };
+    });
 }
 
 export { aiEnhancementPacksList, B2BplansList, B2CplansList, creditPacksList, CustomePlanForB2B, getB2BPlansList, getB2CPlansList };

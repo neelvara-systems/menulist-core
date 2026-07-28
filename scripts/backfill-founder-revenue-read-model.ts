@@ -10,8 +10,15 @@
  *   npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-founder-revenue-read-model.ts --project-id menulist-qa --write --confirm-project menulist-qa --all-founder-revenue
  */
 import { createHash } from 'crypto';
-import * as admin from 'firebase-admin';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { initializeApp } from 'firebase-admin/app';
+import {
+  FieldPath,
+  FieldValue,
+  getFirestore,
+  Timestamp,
+  type Query,
+  type QueryDocumentSnapshot,
+} from 'firebase-admin/firestore';
 
 type MovementKind =
   | 'new_mrr'
@@ -34,12 +41,11 @@ type MovementCandidate = {
   planId?: string | null;
   planName?: string | null;
   sourceDocPath: string;
-  storeId?: string | number | null;
+  storeId: number;
   subscriptionId?: string | null;
-  tenantId?: string | number | null;
+  tenantId: number;
 };
 
-const args = process.argv.slice(2);
 const DB_COLLECTIONS = {
   FOUNDER_ONBOARDING_TRANSITIONS: 'founderOnboardingTransitions',
   FOUNDER_REVENUE_MOVEMENTS: 'founderRevenueMovements',
@@ -53,31 +59,49 @@ const INDIA_OFFSET_MS = 330 * 60 * 1000;
 const SUMMARY_DOC_ID = 'founderMonitorRevenue';
 const DAILY_DOC_PREFIX = 'founderMonitorRevenueDaily_';
 const SOURCE = 'scripts/backfill-founder-revenue-read-model';
+const ALLOWED_PROJECT_IDS = new Set(['menulist-qa', 'menulist']);
 
-function hasFlag(flag: string): boolean {
+function hasFlag(args: readonly string[], flag: string): boolean {
   return args.includes(flag);
 }
 
-function getArg(name: string): string | undefined {
+function getArg(args: readonly string[], name: string): string | undefined {
+  if (args.filter((arg) => arg === name).length > 1) {
+    throw new Error(`Duplicate option: ${name}`);
+  }
   const index = args.indexOf(name);
   if (index === -1) return undefined;
-  return args[index + 1];
+  const value = args[index + 1];
+  if (!value || value.startsWith('--')) {
+    throw new Error(`Missing value for ${name}.`);
+  }
+  return value;
 }
 
-function safeNumber(value: unknown): number {
-  const numberValue = Number(value || 0);
-  return Number.isFinite(numberValue) ? numberValue : 0;
+function positiveSafeInteger(value: unknown): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : null;
 }
 
 function cleanText(value: unknown, max = 180): string {
-  return String(value || '')
+  if (typeof value !== 'string') return '';
+  return value
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
 }
 
-function normalizeId(value: string): string {
+function firstCleanText(max: number, ...values: unknown[]): string {
+  for (const value of values) {
+    const text = cleanText(value, max);
+    if (text) return text;
+  }
+  return '';
+}
+
+function normalizeId(value: unknown): string {
   return cleanText(value, 240)
     .replace(/[^a-zA-Z0-9_.:-]+/g, '_')
     .replace(/^_+|_+$/g, '')
@@ -88,17 +112,37 @@ function hashPath(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 24);
 }
 
-function toDate(value: any): Date | null {
-  if (!value) return null;
+export function toBackfillDate(value: unknown): Date | null {
+  if (value == null) return null;
   if (value instanceof Date && Number.isFinite(value.getTime())) return value;
-  if (typeof value?.toDate === 'function') return value.toDate();
-  if (typeof value?.seconds === 'number') return new Date(value.seconds * 1000);
-  if (typeof value?._seconds === 'number') return new Date(value._seconds * 1000);
+  if (typeof value === 'object') {
+    const timestampLike = value as {
+      _seconds?: unknown;
+      seconds?: unknown;
+      toDate?: unknown;
+    };
+    if (typeof timestampLike.toDate === 'function') {
+      try {
+        const date = timestampLike.toDate.call(value);
+        return date instanceof Date && Number.isFinite(date.getTime()) ? date : null;
+      } catch {
+        return null;
+      }
+    }
+    const seconds = timestampLike.seconds ?? timestampLike._seconds;
+    if (typeof seconds === 'number' && Number.isSafeInteger(seconds)) {
+      const date = new Date(seconds * 1000);
+      return Number.isFinite(date.getTime()) ? date : null;
+    }
+    return null;
+  }
   if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return null;
     const date = new Date(value > 1_000_000_000_000 ? value : value * 1000);
     return Number.isFinite(date.getTime()) ? date : null;
   }
   if (typeof value === 'string') {
+    if (!/^\d{4}-\d{2}-\d{2}T.+(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
     const date = new Date(value);
     return Number.isFinite(date.getTime()) ? date : null;
   }
@@ -115,11 +159,42 @@ function getMonthKey(date: Date): string {
   return local.toISOString().slice(0, 7);
 }
 
+export function shouldReplaceLatestMovement(
+  data: FirebaseFirestore.DocumentData | undefined,
+  occurredAt: Date,
+  movementId: string,
+): boolean {
+  const existingAt = toBackfillDate(data?.latestMovementAt);
+  if (!existingAt) return true;
+  if (occurredAt.getTime() !== existingAt.getTime()) {
+    return occurredAt.getTime() > existingAt.getTime();
+  }
+  return movementId > cleanText(data?.latestMovementId, 220);
+}
+
+export function shouldReplaceFirstPayment(
+  data: FirebaseFirestore.DocumentData | undefined,
+  occurredAt: Date,
+): boolean {
+  const existingAt = toBackfillDate(data?.paymentAt);
+  return !existingAt || occurredAt.getTime() < existingAt.getTime();
+}
+
 function normalizeStatus(value: unknown): string {
   return cleanText(value, 80).toLowerCase().replace(/\s+/g, '_');
 }
 
-function shouldTrack(data: Record<string, any>): boolean {
+function normalizeCurrency(value: unknown): 'INR' | 'USD' | null {
+  if (value == null) return 'INR';
+  return value === 'INR' || value === 'USD' ? value : null;
+}
+
+function shouldTrack(data: Record<string, unknown>): data is Record<string, unknown> & {
+  sId: number;
+  storeId: number;
+  tId: number;
+  tenantId: number;
+} {
   const tenantId = data.tenantId;
   const storeId = data.storeId;
   return data.pId === PRODUCT_ID
@@ -134,24 +209,32 @@ function shouldTrack(data: Record<string, any>): boolean {
     && data.sId === storeId;
 }
 
-function getDocumentDate(data: Record<string, any>): Date {
-  return toDate(data.created_at)
-    || toDate(data.paidAt)
-    || toDate(data.createdAt)
-    || toDate(data.createdOn)
-    || toDate(data.subscriptionStartDate)
-    || toDate(data.modifiedOn)
-    || new Date();
+function getDocumentDate(data: Record<string, unknown>): Date | null {
+  return toBackfillDate(data.created_at)
+    || toBackfillDate(data.paidAt)
+    || toBackfillDate(data.createdAt)
+    || toBackfillDate(data.createdOn)
+    || toBackfillDate(data.subscriptionStartDate)
+    || toBackfillDate(data.modifiedOn);
 }
 
-function getSubscriptionMrrPaise(data: Record<string, any>): number {
-  const amount = Math.max(0, Math.round(safeNumber(data.amount)));
+function getSubscriptionMrrPaise(data: Record<string, unknown>): number | null {
+  const amount = positiveSafeInteger(data.amount);
+  if (amount == null) return null;
   const billingMode = normalizeStatus(data.billingMode);
-  const commitmentMonths = Math.max(0, Math.round(safeNumber(data.commitmentPeriodMonths)));
-  const planType = normalizeStatus(data.planType || data.interval);
-  const quantity = billingMode === 'manual' ? 1 : Math.max(1, Math.round(safeNumber(data.quantity) || 1));
+  const commitmentMonths = data.commitmentPeriodMonths == null
+    ? null
+    : positiveSafeInteger(data.commitmentPeriodMonths);
+  if (data.commitmentPeriodMonths != null && commitmentMonths == null) return null;
+  const planType = normalizeStatus(firstCleanText(40, data.planType, data.interval));
+  const quantity = billingMode === 'manual'
+    ? 1
+    : data.quantity == null
+      ? 1
+      : positiveSafeInteger(data.quantity);
+  if (quantity == null) return null;
 
-  if (billingMode === 'manual' && commitmentMonths > 1) {
+  if (billingMode === 'manual' && commitmentMonths != null && commitmentMonths > 1) {
     return Math.round(amount / commitmentMonths);
   }
   if (planType === 'year') {
@@ -160,17 +243,17 @@ function getSubscriptionMrrPaise(data: Record<string, any>): number {
   return Math.round(amount * quantity);
 }
 
-function isActiveSubscription(data: Record<string, any>): boolean {
+function isActiveSubscription(data: Record<string, unknown>): boolean {
   const status = normalizeStatus(data.status);
   if (status === 'active' || status === 'paid') return true;
   if (normalizeStatus(data.billingMode) === 'manual' && data.manualPaymentConfirmed === true) {
-    const validUntil = toDate(data.validUntil);
+    const validUntil = toBackfillDate(data.validUntil);
     return !validUntil || validUntil.getTime() >= Date.now();
   }
   return false;
 }
 
-function isChurnedSubscription(data: Record<string, any>): boolean {
+function isChurnedSubscription(data: Record<string, unknown>): boolean {
   return ['cancelled', 'canceled', 'expired', 'failed', 'completed'].includes(normalizeStatus(data.status));
 }
 
@@ -237,67 +320,102 @@ function getSummaryCounterUpdates(kind: MovementKind, amountPaise: number, mrrDe
   return updates;
 }
 
-function movementFromSubscription(doc: FirebaseFirestore.QueryDocumentSnapshot): MovementCandidate | null {
-  const data = doc.data() || {};
+export async function readSourceDocuments(
+  query: Query,
+  pageSize: number,
+  scanAll: boolean,
+): Promise<{ documents: QueryDocumentSnapshot[]; truncated: boolean }> {
+  const documents: QueryDocumentSnapshot[] = [];
+  let cursor: QueryDocumentSnapshot | null = null;
+
+  do {
+    let pageQuery = query.orderBy(FieldPath.documentId()).limit(scanAll ? pageSize : pageSize + 1);
+    if (cursor) pageQuery = pageQuery.startAfter(cursor);
+    const snapshot = await pageQuery.get();
+    const page = scanAll ? snapshot.docs : snapshot.docs.slice(0, pageSize);
+    documents.push(...page);
+    if (!scanAll) {
+      return { documents, truncated: snapshot.size > pageSize };
+    }
+    cursor = snapshot.size === pageSize ? snapshot.docs[snapshot.docs.length - 1] : null;
+  } while (cursor);
+
+  return { documents, truncated: false };
+}
+
+export function movementFromSubscription(doc: FirebaseFirestore.QueryDocumentSnapshot): MovementCandidate | null {
+  const data: Record<string, unknown> = doc.data() || {};
   if (!shouldTrack(data)) return null;
-  const subscriptionId = cleanText(data.id || data.providerSubscriptionId || doc.id, 160);
+  const subscriptionId = firstCleanText(160, data.id, data.providerSubscriptionId, doc.id);
   if (!subscriptionId) return null;
+  const amountPaise = getSubscriptionMrrPaise(data);
+  const currency = normalizeCurrency(data.currency);
+  if (amountPaise == null || currency == null) return null;
 
   if (isActiveSubscription(data)) {
+    const occurredAt = toBackfillDate(data.subscriptionStartDate) || getDocumentDate(data);
+    if (!occurredAt) return null;
     return {
-      amountPaise: getSubscriptionMrrPaise(data),
-      currency: cleanText(data.currency || 'INR', 12) || 'INR',
+      amountPaise,
+      currency,
       description: 'Backfilled active subscription MRR.',
       eventName: 'backfill.subscription.active_mrr',
       id: `new_mrr:${subscriptionId}`,
       kind: 'new_mrr',
-      occurredAt: toDate(data.subscriptionStartDate) || getDocumentDate(data),
+      occurredAt,
       planId: cleanText(data.planId, 80) || null,
       planName: cleanText(data.planName, 120) || null,
       sourceDocPath: doc.ref.path,
-      storeId: data.storeId || data.sId,
+      storeId: data.storeId,
       subscriptionId,
-      tenantId: data.tenantId || data.tId,
+      tenantId: data.tenantId,
     };
   }
 
   if (isChurnedSubscription(data)) {
+    const occurredAt = toBackfillDate(data.subscriptionEndDate)
+      || toBackfillDate(data.cycleEndDate)
+      || getDocumentDate(data);
+    if (!occurredAt) return null;
     return {
-      amountPaise: getSubscriptionMrrPaise(data),
-      currency: cleanText(data.currency || 'INR', 12) || 'INR',
+      amountPaise,
+      currency,
       description: 'Backfilled churned subscription MRR.',
       eventName: 'backfill.subscription.churned_mrr',
       id: `churn:${subscriptionId}`,
       kind: 'churn',
-      occurredAt: toDate(data.subscriptionEndDate) || toDate(data.cycleEndDate) || getDocumentDate(data),
+      occurredAt,
       planId: cleanText(data.planId, 80) || null,
       planName: cleanText(data.planName, 120) || null,
       sourceDocPath: doc.ref.path,
-      storeId: data.storeId || data.sId,
+      storeId: data.storeId,
       subscriptionId,
-      tenantId: data.tenantId || data.tId,
+      tenantId: data.tenantId,
     };
   }
 
   return null;
 }
 
-function movementsFromPaymentTransaction(doc: FirebaseFirestore.QueryDocumentSnapshot): MovementCandidate[] {
-  const data = doc.data() || {};
+export function movementsFromPaymentTransaction(doc: FirebaseFirestore.QueryDocumentSnapshot): MovementCandidate[] {
+  const data: Record<string, unknown> = doc.data() || {};
   if (!shouldTrack(data)) return [];
-  const eventName = cleanText(data.event || data.status || 'payment_transaction', 120);
-  const amountPaise = Math.max(0, Math.round(safeNumber(data.amount)));
-  const paymentId = cleanText(data.paymentId || data.providerPaymentId, 120) || null;
+  const eventName = firstCleanText(120, data.event, data.status) || 'payment_transaction';
+  const amountPaise = positiveSafeInteger(data.amount);
+  const currency = normalizeCurrency(data.currency);
+  if (amountPaise == null || currency == null) return [];
+  const paymentId = firstCleanText(120, data.paymentId, data.providerPaymentId) || null;
   const createdAt = getDocumentDate(data);
+  if (!createdAt) return [];
   const base = {
     amountPaise,
-    currency: cleanText(data.currency || 'INR', 12) || 'INR',
+    currency,
     occurredAt: createdAt,
     paymentId,
     sourceDocPath: doc.ref.path,
-    storeId: data.storeId || data.sId,
+    storeId: data.storeId,
     subscriptionId: cleanText(data.subscriptionId, 160) || null,
-    tenantId: data.tenantId || data.tId,
+    tenantId: data.tenantId,
   };
 
   const movements: MovementCandidate[] = [];
@@ -319,11 +437,13 @@ function movementsFromPaymentTransaction(doc: FirebaseFirestore.QueryDocumentSna
       kind: 'failed_payment',
     });
   }
-  const refundedAmount = Math.max(0, Math.round(safeNumber(data.amount_refunded || data.amountRefunded)));
-  if (eventName === 'payment.refunded' || refundedAmount > 0) {
+  const rawRefundedAmount = data.amount_refunded ?? data.amountRefunded;
+  const refundedAmount = rawRefundedAmount == null ? null : positiveSafeInteger(rawRefundedAmount);
+  if (rawRefundedAmount != null && refundedAmount == null) return [];
+  if (eventName === 'payment.refunded' || refundedAmount != null) {
     movements.push({
       ...base,
-      amountPaise: refundedAmount || amountPaise,
+      amountPaise: refundedAmount ?? amountPaise,
       description: 'Backfilled refund.',
       eventName: 'payment.refunded',
       id: `refund:${paymentId || `legacy:${hashPath(doc.ref.path)}`}`,
@@ -334,36 +454,45 @@ function movementsFromPaymentTransaction(doc: FirebaseFirestore.QueryDocumentSna
   return movements;
 }
 
-function movementFromTopup(doc: FirebaseFirestore.QueryDocumentSnapshot): MovementCandidate | null {
-  const data = doc.data() || {};
+export function movementFromTopup(doc: FirebaseFirestore.QueryDocumentSnapshot): MovementCandidate | null {
+  const data: Record<string, unknown> = doc.data() || {};
   if (!shouldTrack(data)) return null;
   if (normalizeStatus(data.status) !== 'paid') return null;
+  const amountPaise = positiveSafeInteger(data.amount);
+  const currency = normalizeCurrency(data.currency);
+  const occurredAt = toBackfillDate(data.paidAt) || getDocumentDate(data);
+  if (amountPaise == null || currency == null || !occurredAt) return null;
   const paymentId = cleanText(data.providerPaymentId, 120) || null;
   return {
-    amountPaise: Math.max(0, Math.round(safeNumber(data.amount))),
-    currency: cleanText(data.currency || 'INR', 12) || 'INR',
+    amountPaise,
+    currency,
     description: 'Backfilled credit top-up payment.',
     eventName: 'order.paid',
     id: `cash:${paymentId || `legacy:${hashPath(doc.ref.path)}`}`,
     kind: 'cash_collected',
-    occurredAt: toDate(data.paidAt) || getDocumentDate(data),
+    occurredAt,
     paymentId,
     sourceDocPath: doc.ref.path,
-    storeId: data.storeId || data.sId,
+    storeId: data.storeId,
     subscriptionId: null,
-    tenantId: data.tenantId || data.tId,
+    tenantId: data.tenantId,
   };
 }
 
 async function writeMovement(db: FirebaseFirestore.Firestore, candidate: MovementCandidate): Promise<'created' | 'skipped'> {
   const movementId = normalizeId(candidate.id);
-  const amountPaise = Math.max(0, Math.round(safeNumber(candidate.amountPaise)));
+  if (!movementId) throw new Error('Founder revenue backfill movement identity is invalid.');
+  const amountPaise = positiveSafeInteger(candidate.amountPaise);
+  if (amountPaise == null) throw new Error('Founder revenue backfill amount is invalid.');
   const occurredAt = candidate.occurredAt;
+  if (!(occurredAt instanceof Date) || !Number.isFinite(occurredAt.getTime())) {
+    throw new Error('Founder revenue backfill time is invalid.');
+  }
   const dayKey = getIndiaDayKey(occurredAt);
   const monthKey = getMonthKey(occurredAt);
   const mrrDeltaPaise = getMrrDelta(candidate.kind, amountPaise);
-  const tenantId = cleanText(candidate.tenantId, 80) || null;
-  const storeId = cleanText(candidate.storeId, 80) || null;
+  const tenantId = String(candidate.tenantId);
+  const storeId = String(candidate.storeId);
   const subscriptionId = cleanText(candidate.subscriptionId, 160) || null;
   const dailyCounterUpdates = getDailyCounterUpdates(candidate.kind, amountPaise);
   if (candidate.kind === 'new_mrr') {
@@ -381,7 +510,13 @@ async function writeMovement(db: FirebaseFirestore.Firestore, candidate: Movemen
     const transitionRef = candidate.kind === 'new_mrr' && storeId
       ? db.collection(DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS).doc(storeId)
       : null;
-    const transitionSnap = transitionRef ? await transaction.get(transitionRef) : null;
+    const [summarySnap, dailySnap, transitionSnap] = await Promise.all([
+      transaction.get(summaryRef),
+      transaction.get(dailyRef),
+      transitionRef ? transaction.get(transitionRef) : Promise.resolve(null),
+    ]);
+    const summaryLatest = shouldReplaceLatestMovement(summarySnap.data(), occurredAt, movementId);
+    const dailyLatest = shouldReplaceLatestMovement(dailySnap.data(), occurredAt, movementId);
 
     transaction.set(movementRef, {
       amountPaise,
@@ -411,9 +546,11 @@ async function writeMovement(db: FirebaseFirestore.Firestore, candidate: Movemen
     });
     transaction.set(summaryRef, {
       ...getSummaryCounterUpdates(candidate.kind, amountPaise, mrrDeltaPaise),
-      latestMovementAt: Timestamp.fromDate(occurredAt),
-      latestMovementId: movementId,
-      latestMovementKind: candidate.kind,
+      ...(summaryLatest ? {
+        latestMovementAt: Timestamp.fromDate(occurredAt),
+        latestMovementId: movementId,
+        latestMovementKind: candidate.kind,
+      } : {}),
       pId: PRODUCT_ID,
       productId: PRODUCT_ID,
       updatedAt: FieldValue.serverTimestamp(),
@@ -421,13 +558,15 @@ async function writeMovement(db: FirebaseFirestore.Firestore, candidate: Movemen
     transaction.set(dailyRef, {
       ...dailyCounterUpdates,
       dateKey: dayKey,
-      latestMovementAt: Timestamp.fromDate(occurredAt),
-      latestMovementId: movementId,
+      ...(dailyLatest ? {
+        latestMovementAt: Timestamp.fromDate(occurredAt),
+        latestMovementId: movementId,
+      } : {}),
       pId: PRODUCT_ID,
       productId: PRODUCT_ID,
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
-    if (transitionRef && storeId && (!transitionSnap?.exists || !transitionSnap.data()?.paymentAt)) {
+    if (transitionRef && storeId && shouldReplaceFirstPayment(transitionSnap?.data(), occurredAt)) {
       transaction.set(transitionRef, {
         paymentAt: Timestamp.fromDate(occurredAt),
         paymentMovementId: movementId,
@@ -445,58 +584,82 @@ async function writeMovement(db: FirebaseFirestore.Firestore, candidate: Movemen
   });
 }
 
-async function main() {
-  const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;
+export async function main(argv: readonly string[] = process.argv.slice(2)) {
+  const projectId = getArg(argv, '--project-id') || process.env.FIREBASE_PROJECT_ID;
   if (!projectId) {
     throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running Founder Monitor revenue backfill.');
   }
+  if (!ALLOWED_PROJECT_IDS.has(projectId)) {
+    throw new Error(`Refusing Founder Monitor revenue backfill for non-MenuList project: ${projectId}.`);
+  }
 
-  const write = hasFlag('--write');
-  const confirmedProjectId = getArg('--confirm-project');
+  const write = hasFlag(argv, '--write');
+  const confirmedProjectId = getArg(argv, '--confirm-project');
   if (write && confirmedProjectId !== projectId) {
     throw new Error(`Refusing write: pass --confirm-project ${projectId} to confirm the target Firebase project.`);
   }
-  if (write && !hasFlag('--all-founder-revenue')) {
+  if (write && !hasFlag(argv, '--all-founder-revenue')) {
     throw new Error('Refusing write: pass --all-founder-revenue after reviewing dry-run output and Firestore backup state.');
   }
 
-  const requestedLimit = Math.round(safeNumber(getArg('--limit')) || 2000);
-  const limitArg = Math.max(1, Math.min(10_000, requestedLimit));
-  admin.initializeApp({ projectId });
-  const db = admin.firestore();
+  const rawLimit = getArg(argv, '--limit');
+  const requestedLimit = rawLimit == null ? 2000 : Number(rawLimit);
+  if (!Number.isSafeInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 10_000) {
+    throw new Error('--limit must be an integer between 1 and 10000.');
+  }
+  const limitArg = requestedLimit;
+  const app = initializeApp({ projectId });
+  const db = getFirestore(app);
 
   console.log(`Mode: ${write ? 'WRITE' : 'DRY RUN'}`);
   console.log(`Project: ${projectId}`);
-  console.log(`Collection limit per source: ${limitArg}`);
+  console.log(`Collection page size per source: ${limitArg}`);
 
-  const [subscriptionSnap, paymentTransactionSnap, topupSnap] = await Promise.all([
+  const scanAll = hasFlag(argv, '--all-founder-revenue');
+  const [subscriptions, paymentTransactions, topups] = await Promise.all([
+    readSourceDocuments(
     db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
       .where('pId', '==', PRODUCT_ID)
-      .where('productId', '==', PRODUCT_ID)
-      .limit(limitArg)
-      .get(),
+      .where('productId', '==', PRODUCT_ID),
+    limitArg,
+    scanAll,
+    ),
+    readSourceDocuments(
     db.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS)
       .where('pId', '==', PRODUCT_ID)
-      .where('productId', '==', PRODUCT_ID)
-      .limit(limitArg)
-      .get(),
+      .where('productId', '==', PRODUCT_ID),
+    limitArg,
+    scanAll,
+    ),
+    readSourceDocuments(
     db.collection(DB_COLLECTIONS.TOPUPS)
       .where('pId', '==', PRODUCT_ID)
-      .where('productId', '==', PRODUCT_ID)
-      .limit(limitArg)
-      .get(),
+      .where('productId', '==', PRODUCT_ID),
+    limitArg,
+    scanAll,
+    ),
   ]);
 
   const candidates: MovementCandidate[] = [
-    ...subscriptionSnap.docs.map(movementFromSubscription).filter((candidate): candidate is MovementCandidate => Boolean(candidate)),
-    ...paymentTransactionSnap.docs.flatMap(movementsFromPaymentTransaction),
-    ...topupSnap.docs.map(movementFromTopup).filter((candidate): candidate is MovementCandidate => Boolean(candidate)),
-  ].filter((candidate) => normalizeId(candidate.id).length > 0 && candidate.amountPaise >= 0);
+    ...subscriptions.documents.map(movementFromSubscription).filter((candidate): candidate is MovementCandidate => Boolean(candidate)),
+    ...paymentTransactions.documents.flatMap(movementsFromPaymentTransaction),
+    ...topups.documents.map(movementFromTopup).filter((candidate): candidate is MovementCandidate => Boolean(candidate)),
+  ].filter((candidate) => normalizeId(candidate.id).length > 0 && positiveSafeInteger(candidate.amountPaise) != null);
 
   const stats = {
     candidates: candidates.length,
     created: 0,
     skipped: 0,
+    sourceReads: {
+      paymentTransactions: paymentTransactions.documents.length,
+      subscriptions: subscriptions.documents.length,
+      topups: topups.documents.length,
+    },
+    sourceTruncated: {
+      paymentTransactions: paymentTransactions.truncated,
+      subscriptions: subscriptions.truncated,
+      topups: topups.truncated,
+    },
     wouldCreate: 0,
     byKind: {} as Record<string, number>,
   };
@@ -522,11 +685,14 @@ async function main() {
 
   console.log(JSON.stringify(stats, null, 2));
   if (!write) {
-    console.log(`\nTo apply after backup/review: --write --confirm-project ${projectId} --all-founder-revenue`);
+    console.log(`\nTo scan every matching source document: --all-founder-revenue`);
+    console.log(`To apply after backup/review: --write --confirm-project ${projectId} --all-founder-revenue`);
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  void main().catch((error) => {
+    console.error(error instanceof Error ? error.message : 'Founder Monitor revenue backfill failed.');
+    process.exitCode = 1;
+  });
+}

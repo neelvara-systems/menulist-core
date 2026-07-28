@@ -1,61 +1,27 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Firebase Function Test</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Firebase Functions Local Test Boundary</title>
 </head>
-
 <body>
-    <h1>Test Callable Function</h1>
-    <button id="testButton">Call helloWorld</button>
-    <pre id="response"></pre>
-
-    <!-- IMPORTANT: We now use the 'module' version of the SDKs -->
-    <script type="module">
-        // --- 1. Import the necessary functions from the SDKs ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
-        import { getFunctions, connectFunctionsEmulator, httpsCallable } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-functions.js";
-
-        // --- 2. PASTE YOUR LOCAL FIREBASE WEB CONFIG HERE ---
-        // Keep this file placeholder-only in git. Do not commit API keys or app IDs.
-        const firebaseConfig = {
-            // apiKey: "",
-            // authDomain: "",
-            // databaseURL: "",
-            // projectId: "",
-            // storageBucket: "",
-            // messagingSenderId: "",
-            // appId: "",
-            // measurementId: ""
-        };
-
-        // --- 3. Initialize Firebase ---
-        const app = initializeApp(firebaseConfig);
-        const functions = getFunctions(app);
-
-        // --- 4. Connect to the Local Emulator ---
-        connectFunctionsEmulator(functions, "localhost", 5001);
-
-        // --- 5. Get a reference to the function ---
-        const helloWorld = httpsCallable(functions, 'helloWorld');
-
-        // --- 6. Add event listener to the button ---
-        document.getElementById('testButton').addEventListener('click', () => {
-            console.log('Calling function...');
-            document.getElementById('response').textContent = 'Calling...';
-
-            // --- 7. Call the function and show the response ---
-            helloWorld({ text: 'This is a test payload from the client!' })
-                .then((result) => {
-                    console.log('Function response:', result.data);
-                    document.getElementById('response').textContent = JSON.stringify(result.data, null, 2);
-                })
-                .catch((error) => {
-                    console.error('Function error:', error);
-                    document.getElementById('response').textContent = 'Error: ' + error.message;
-                });
-        });
-    </script>
+    <main>
+        <h1>Firebase Functions local testing</h1>
+        <p>
+            This repository does not expose an unauthenticated generic callable
+            smoke function. Use the maintained emulator and verification scripts
+            from the repository root so authentication, tenant scope, fixtures,
+            and assertions remain explicit.
+        </p>
+        <pre>npm run verify:menu-extraction-pipeline
+npm run verify:auth-security-failure-matrix</pre>
+        <p>
+            Keep this file placeholder-only in git. Do not commit API keys or app IDs.
+            Keep Firebase web configuration and credentials out of this file.
+            Target-specific emulator commands are documented in the relevant
+            feature validation and Firebase documents.
+        </p>
+    </main>
 </body>
-
 </html>

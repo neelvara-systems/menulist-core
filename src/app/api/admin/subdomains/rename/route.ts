@@ -39,7 +39,8 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
-import { normalizeStoreSummaryNumericDocumentId } from '@data/shared/storeSummaryBoundary';
+import { normalizeStoreSummaryNumericAliases } from '@data/shared/storeSummaryBoundary';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { runStorePublicTruthPostCommitEffects } from '@lib/cache/storePublicTruthPostCommit';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
@@ -98,7 +99,7 @@ const getOperatorLogContext = (session: any): SubdomainRenameLogContext => ({
 });
 
 function getAdminSubdomainRenameOperatorId(session: any): string {
-    return String(session?.uId || session?.user?.id || session?.user?.email || 'platform');
+    return resolveCurrentSessionUserDocumentId(session) || 'invalid-platform-operator';
 }
 
 function normalizeAdminSubdomainRenameScopeDocumentId(value: unknown): AdminSubdomainRenameScopeDocumentId | null {
@@ -227,7 +228,7 @@ export const POST = withAuth(
                 return NextResponse.json({ error: 'Store not found' }, { status: 404 });
             }
             const store = storeSnap.data() as Record<string, unknown>;
-            if (normalizeStoreSummaryNumericDocumentId(store?.tenantId ?? store?.tId) !== tenantScope.documentId) {
+            if (normalizeStoreSummaryNumericAliases([store?.tenantId, store?.tId]) !== tenantScope.documentId) {
                 return NextResponse.json(
                     { error: 'Store belongs to a different tenant' },
                     { status: 403 },
@@ -260,7 +261,7 @@ export const POST = withAuth(
                 const freshStore = freshStoreSnap.exists ? freshStoreSnap.data() || {} : {};
                 if (
                     !freshStoreSnap.exists
-                    || normalizeStoreSummaryNumericDocumentId(freshStore.tenantId ?? freshStore.tId) !== tenantScope.documentId
+                    || normalizeStoreSummaryNumericAliases([freshStore.tenantId, freshStore.tId]) !== tenantScope.documentId
                 ) {
                     throw new Error('admin_subdomain_store_scope_changed');
                 }
@@ -347,7 +348,7 @@ export const POST = withAuth(
                     reason,
                     ackRef,
                     operatorEmail: session?.user?.email || 'unknown',
-                    operatorUserId: session?.user?.id || null,
+                    operatorUserId: getAdminSubdomainRenameOperatorId(session),
                 });
                 return {
                     expiresAt,

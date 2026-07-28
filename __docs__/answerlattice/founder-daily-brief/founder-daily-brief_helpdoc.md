@@ -1,8 +1,12 @@
 # Founder Daily Brief Help
 
+> **Publication status:** Existing Daily Brief behavior is live. Publish the strict quiet-state and qualification wording only after the Feature 1 code-level acceptance tests pass.
+
 ## What It Does
 
 Founder Daily Brief shows the most important support work for today.
+
+It may also tell you that nothing needs your decision. Answerlattice does not create reminders merely to keep the page busy.
 
 It may point you to:
 
@@ -10,7 +14,7 @@ It may point you to:
 - support gaps that need answers;
 - imported knowledge waiting for approval;
 - tickets or escalations that need a grounded reply;
-- release checks before a product change;
+- release-related answer risk already detected by the governed source workflows;
 - widget/setup verification;
 - support-credit or no-AI-cost boundaries.
 
@@ -23,6 +27,9 @@ After launch verification is ready, Daily Brief becomes the normal management ho
 - It does not change widget settings.
 - It does not read raw conversations.
 - It does not spend support credits.
+- It does not create or manage tasks.
+- It does not track seen, snoozed, dismissed, or completed action cards.
+- It does not monitor ticket SLAs or assign support work.
 
 ## How To Use It
 
@@ -32,6 +39,16 @@ After launch verification is ready, Daily Brief becomes the normal management ho
 4. Approve, edit, or reject work inside the linked governed screen.
 5. Use `I shipped a change` to record affected entities and surfaces before running the existing release checks.
 6. Return to Daily Brief after the next summary refresh.
+
+An item clears when its owning source no longer reports the condition. There is no separate Mark complete button in Daily Brief.
+
+## When Nothing Needs You
+
+A complete, current quiet state says:
+
+> Nothing needs your decision right now.
+
+If one or more source summaries are stale or unavailable, Daily Brief reports that uncertainty instead of showing a false healthy state.
 
 ## Evidence Health
 

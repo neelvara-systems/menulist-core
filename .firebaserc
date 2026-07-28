@@ -6,6 +6,8 @@
     "answerlattice-qa": "answerlattice-qa",
     "answerlattice-prod": "answerlattice",
     "campaigncue-qa": "campaigncue-qa",
-    "campaigncue-prod": "campaigncue"
+    "campaigncue-prod": "campaigncue",
+    "signaldesk-qa": "menulist-signaldesk-qa",
+    "signaldesk-prod": "menulist-signaldesk"
   }
 }

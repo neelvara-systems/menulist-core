@@ -160,6 +160,17 @@ function getCanonicalCategoryName(normalizedKey: string): string | null {
     return CATEGORY_SYNONYMS[normalizedKey] || null;
 }
 
+function resolveItemCategoryId(item: MenuItem): string {
+    const legacyCategory = Reflect.get(item, 'category');
+    if (typeof legacyCategory === 'string' && legacyCategory.trim().length > 0) {
+        return legacyCategory;
+    }
+    if (typeof legacyCategory === 'number' && Number.isFinite(legacyCategory)) {
+        return String(legacyCategory);
+    }
+    return typeof item.categoryId === 'string' ? item.categoryId : '';
+}
+
 export interface CategoryNormalizationResult {
     categories: MenuCategory[];
     items: MenuItem[];
@@ -231,10 +242,10 @@ export function normalizeCategorySynonyms(data: ExtractedMenuData): CategoryNorm
             mergedCount++;
 
             logger.info('[extractionHardening] Category merged', {
-                merged: originalName,
-                into: existing.displayName,
-                oldId: cat.id,
-                newId: existing.id,
+                mergedNameLength: originalName.length,
+                targetNameLength: existing.displayName.length,
+                oldIdLength: String(cat.id).length,
+                newIdLength: existing.id.length,
             });
         } else {
             // New category — add to map
@@ -255,7 +266,7 @@ export function normalizeCategorySynonyms(data: ExtractedMenuData): CategoryNorm
 
     // Remap item category references
     const remappedItems = (data.items || []).map(item => {
-        const itemCatId = String((item as any).category || item.categoryId);
+        const itemCatId = resolveItemCategoryId(item);
         const newCatId = idRemapping.get(itemCatId);
         if (newCatId) {
             return {
@@ -328,7 +339,7 @@ export function validateExtractionIntegrity(data: ExtractedMenuData): IntegrityV
     // Check 1: Orphan items (reference non-existent category)
     let orphanCount = 0;
     for (const item of data.items) {
-        const catId = String((item as any).category || item.categoryId);
+        const catId = resolveItemCategoryId(item);
         if (catId && !validCategoryIds.has(catId)) {
             orphanCount++;
             if (orphanCount <= 5) { // Log max 5 to avoid spam

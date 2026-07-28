@@ -11,13 +11,14 @@ import {
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { logAnswerlatticeKnowledgeIntakeFailure } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
+import { isAnswerlatticeKnowledgeIntakeHttpUrl } from '@lib/answerlattice/knowledgeIntakeUrlContracts';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
 const DiscoverSchema = z.object({
-    url: z.string().trim().min(8).max(500).url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)),
+    url: z.string().trim().min(8).max(500).url().refine(isAnswerlatticeKnowledgeIntakeHttpUrl),
     fetchText: z.boolean().optional().default(false),
 }).strict();
 const KNOWLEDGE_INTAKE_DISCOVER_MAX_BODY_BYTES = 4 * 1024;

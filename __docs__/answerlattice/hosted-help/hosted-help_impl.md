@@ -97,3 +97,6 @@ The browser receives display configuration, navigation labels, article safe HTML
 - Provider add/status failure: fixed owner message plus bounded diagnostics.
 - Removed-domain provider cleanup failure: authoritative registry/config remain removed; retry is operational work.
 - Direct production request to the internal route: redirect away from the implementation path.
+### Concurrent provider compensation
+
+Provider-side domain additions are compensated only when `answerlattice_publicHelpSites/{domain}` is proven absent. If another workspace wins the registry transaction, or registry existence cannot be read, compensation preserves the provider domain and emits a bounded diagnostic. This prevents the losing request from detaching the concurrent winner's committed domain.

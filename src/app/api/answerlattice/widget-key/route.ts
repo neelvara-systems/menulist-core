@@ -10,8 +10,12 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { DB_COLLECTIONS } from '@constant/database';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import {
     ANSWERLATTICE_WIDGET_KEY_LIMIT,
@@ -74,26 +78,31 @@ const toKeyResponse = (state: unknown) => {
     };
 };
 
-const keyJsonResponse = (body: unknown, init: ResponseInit = {}) => NextResponse.json(body, {
-    ...init,
-    headers: {
-        'Cache-Control': 'private, no-store',
-        ...(init.headers || {}),
-    },
-});
+const keyJsonResponse = (body: unknown, init: ResponseInit = {}) => {
+    const headers = new Headers(init.headers);
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return NextResponse.json(body, { ...init, headers });
+};
 const withPrivateNoStore = <T extends NextResponse>(response: T): T => {
-    response.headers.set('Cache-Control', 'private, no-store');
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
     return response;
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     let tenantIdForLog: number | string | undefined;
     let storeIdForLog: number | string | undefined;
-    let userIdForLog: string | undefined = session?.uId || session?.user?.id;
+    const userIdForLog = resolveCurrentSessionUserDocumentId(session);
     let actionForLog: string | undefined;
     let keyIdForLog: string | undefined;
 
     try {
+        if (!userIdForLog) {
+            return keyJsonResponse({ error: 'Forbidden' }, { status: 403 });
+        }
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
             return keyJsonResponse({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
         }
@@ -111,16 +120,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-widget-key', storeId),
+            key: buildAnswerlatticeRateLimitKey(
+                'answerlattice-widget-key',
+                userIdForLog,
+                tenantId,
+                storeId,
+            ),
             limit: 10,
             window: 60,
+            failClosedOnProviderError: true,
         });
-        if (
-            rateLimitResult.allowed
-            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
-            && rateLimitResult.current === 0
-            && rateLimitResult.remaining === 10
-        ) {
+        if (!rateLimitResult.allowed && rateLimitResult.reason === 'provider_unavailable') {
             return keyJsonResponse({ error: 'Widget key management is temporarily unavailable' }, {
                 status: 503,
                 headers: { 'Cache-Control': 'no-store' },

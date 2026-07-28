@@ -10,6 +10,10 @@ import {
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
     ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS,
     ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE,
+    ANSWERLATTICE_SOURCE_ACCESS_SCOPE,
+    ANSWERLATTICE_SOURCE_APPROVAL_STATUS,
+    ANSWERLATTICE_SOURCE_AUTHORITY,
+    ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY,
     type AnswerlatticeIntakeReviewItem,
     type AnswerlatticeKnowledgeSource,
 } from '@type/answerlattice';
@@ -59,6 +63,7 @@ import {
     LuVideo,
     LuX,
 } from 'react-icons/lu';
+import type { IconType } from 'react-icons';
 
 const { Paragraph, Text, Title } = Typography;
 const { TextArea } = Input;
@@ -67,7 +72,7 @@ const MAX_BROWSER_EXTRACTED_TEXT_CHARS = ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAI
 const ANSWERLATTICE_INTAKE_ENTITY_SEARCH_FAILED = 'Could not search product entities.';
 const ANSWERLATTICE_INTAKE_URL_INSPECT_FAILED = 'Could not inspect URL.';
 
-const TARGET_LABELS: Record<string, { label: string; color: string; icon: any }> = {
+const TARGET_LABELS: Record<string, { label: string; color: string; icon: IconType }> = {
     [ANSWERLATTICE_INTAKE_REVIEW_TARGET.KB_ARTICLE]: { label: 'KB Article', color: 'blue', icon: LuBookOpen },
     [ANSWERLATTICE_INTAKE_REVIEW_TARGET.FAQ]: { label: 'FAQ', color: 'cyan', icon: LuHelpCircle },
     [ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL]: { label: 'Answer Proposal', color: 'purple', icon: LuShieldCheck },
@@ -89,6 +94,37 @@ const SOURCE_TYPE_OPTIONS = [
     { label: 'Ticket macro', value: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.TICKET_MACRO },
     { label: 'Markdown', value: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.MARKDOWN },
     { label: 'CSV', value: ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.CSV },
+];
+
+const SOURCE_AUTHORITY_OPTIONS = [
+    { label: 'Owner policy', value: ANSWERLATTICE_SOURCE_AUTHORITY.OWNER_POLICY },
+    { label: 'Owner-confirmed fact', value: ANSWERLATTICE_SOURCE_AUTHORITY.OWNER_CONFIRMED_FACT },
+    { label: 'Official documentation', value: ANSWERLATTICE_SOURCE_AUTHORITY.OFFICIAL_DOCUMENTATION },
+    { label: 'Official release', value: ANSWERLATTICE_SOURCE_AUTHORITY.OFFICIAL_RELEASE },
+    { label: 'Official website', value: ANSWERLATTICE_SOURCE_AUTHORITY.OFFICIAL_WEBSITE },
+    { label: 'Product surface', value: ANSWERLATTICE_SOURCE_AUTHORITY.PRODUCT_SURFACE },
+    { label: 'Approved support material', value: ANSWERLATTICE_SOURCE_AUTHORITY.APPROVED_SUPPORT_MATERIAL },
+    { label: 'Support signal', value: ANSWERLATTICE_SOURCE_AUTHORITY.SUPPORT_SIGNAL },
+    { label: 'Unverified reference', value: ANSWERLATTICE_SOURCE_AUTHORITY.UNVERIFIED_REFERENCE },
+];
+
+const SOURCE_APPROVAL_OPTIONS = [
+    { label: 'Unreviewed', value: ANSWERLATTICE_SOURCE_APPROVAL_STATUS.UNREVIEWED },
+    { label: 'Approved as evidence', value: ANSWERLATTICE_SOURCE_APPROVAL_STATUS.APPROVED },
+    { label: 'Excluded', value: ANSWERLATTICE_SOURCE_APPROVAL_STATUS.EXCLUDED },
+    { label: 'Superseded', value: ANSWERLATTICE_SOURCE_APPROVAL_STATUS.SUPERSEDED },
+];
+
+const SOURCE_ACCESS_OPTIONS = [
+    { label: 'Public', value: ANSWERLATTICE_SOURCE_ACCESS_SCOPE.PUBLIC },
+    { label: 'Workspace private', value: ANSWERLATTICE_SOURCE_ACCESS_SCOPE.WORKSPACE_PRIVATE },
+    { label: 'Restricted', value: ANSWERLATTICE_SOURCE_ACCESS_SCOPE.RESTRICTED },
+];
+
+const SOURCE_CITATION_OPTIONS = [
+    { label: 'Publicly citable', value: ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY.PUBLIC },
+    { label: 'Internal citation only', value: ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY.INTERNAL_ONLY },
+    { label: 'Not citable', value: ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY.NOT_CITABLE },
 ];
 
 const MEDIA_EXTENSIONS = /\.(png|jpe?g|webp|gif|mp3|m4a|wav|webm|mp4|mov|ogg)$/i;
@@ -148,8 +184,13 @@ async function extractTextFromFile(file: File): Promise<{ text: string; sourceTy
     }
 
     if (name.endsWith('.pdf')) {
-        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-        const loadingTask = pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), disableWorker: true } as any);
+        const [pdfjs] = await Promise.all([
+            import('pdfjs-dist/legacy/build/pdf.mjs'),
+            import('pdfjs-dist/legacy/build/pdf.worker.mjs'),
+        ]);
+        const loadingTask = pdfjs.getDocument({
+            data: new Uint8Array(await file.arrayBuffer()),
+        });
         const pdf = await loadingTask.promise;
         const pages: string[] = [];
         const pageCount = Math.min(pdf.numPages, 30);
@@ -204,15 +245,11 @@ function TargetTag({ target }: { target: string }) {
 }
 
 const getReviewItemSourceIds = (item: AnswerlatticeIntakeReviewItem): string[] => (
-    Array.from(new Set(
-        item.sourceIds?.length
-            ? item.sourceIds
-            : item.launchPack?.sourceIds?.length
-                ? item.launchPack.sourceIds
-                : item.sourceId
-                    ? [item.sourceId]
-                    : [],
-    )).slice(0, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_SOURCE_IDS)
+    Array.from(new Set([
+        ...(item.sourceIds || []),
+        ...(item.launchPack?.sourceIds || []),
+        ...(item.sourceId ? [item.sourceId] : []),
+    ].filter(Boolean))).slice(0, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_SOURCE_IDS)
 );
 
 const getSafeHttpsSourceUrl = (value: unknown): string | null => {
@@ -225,6 +262,28 @@ const getSafeHttpsSourceUrl = (value: unknown): string | null => {
         return null;
     }
 };
+
+function SourceGovernanceTags({ source }: { source: AnswerlatticeKnowledgeSource }) {
+    const governance = source.governance;
+    if (!governance) return <Tag color="warning">Governance unreviewed</Tag>;
+    const approvalColor = governance.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.APPROVED
+        ? 'green'
+        : governance.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.UNREVIEWED
+            ? 'warning'
+            : 'default';
+    return (
+        <>
+            <Tag color={approvalColor}>{governance.approvalStatus.replace(/_/g, ' ')}</Tag>
+            <Tag>{governance.authority.replace(/_/g, ' ')}</Tag>
+            <Tag>{governance.accessScope.replace(/_/g, ' ')}</Tag>
+            <Tag>{governance.citationEligibility.replace(/_/g, ' ')}</Tag>
+            {governance.conflictSourceIds.length ? (
+                <Tag color="red">{governance.conflictSourceIds.length} unresolved conflict{governance.conflictSourceIds.length === 1 ? '' : 's'}</Tag>
+            ) : null}
+            {governance.reviewDate ? <Tag>Review {governance.reviewDate}</Tag> : null}
+        </>
+    );
+}
 
 function ReviewEvidence({ sources }: { sources: AnswerlatticeKnowledgeSource[] }) {
     const { token } = theme.useToken();
@@ -252,6 +311,9 @@ function ReviewEvidence({ sources }: { sources: AnswerlatticeKnowledgeSource[] }
                         <Space size={[6, 6]} wrap>
                             <Text strong>{source.title}</Text>
                             <Tag>{source.type.replace(/_/g, ' ')}</Tag>
+                            {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE ? (
+                                <SourceGovernanceTags source={source} />
+                            ) : null}
                             {safeOriginUrl ? (
                                 <a href={safeOriginUrl} target="_blank" rel="noreferrer">Open source</a>
                             ) : null}
@@ -294,6 +356,12 @@ function ReviewItemCard({
     const supportedAnswerText = item.launchPack ? item.answer : item.answer || item.body;
     const needsSupportedAnswer = isCanonicalProposal && String(supportedAnswerText || '').trim().length < 20;
     const needsEvidenceSource = evidenceSources.length === 0;
+    const needsGovernedEvidence = isCanonicalProposal
+        && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE
+        && evidenceSources.some(source => (
+            source.governance?.approvalStatus !== ANSWERLATTICE_SOURCE_APPROVAL_STATUS.APPROVED
+            || Boolean(source.governance?.conflictSourceIds.length)
+        ));
     const applicability = Object.entries(item.launchPack?.applicability || {})
         .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0)
         .slice(0, 6);
@@ -352,12 +420,13 @@ function ReviewItemCard({
                         This item is intentionally set to {item.launchPack?.expectedSource === 'escalation' ? 'escalation' : 'no answer'}. Add approved source evidence and refresh the product-specific set before turning it into a canonical proposal.
                     </Text>
                 ) : null}
-                {needsEntity || needsSupportedAnswer || needsEvidenceSource ? (
+                {needsEntity || needsSupportedAnswer || needsEvidenceSource || needsGovernedEvidence ? (
                     <Text type="warning">
                         {[
                             needsEntity ? 'Link a product entity.' : '',
                             needsSupportedAnswer ? 'Add a source-supported answer.' : '',
                             needsEvidenceSource ? 'Recreate this draft from a linked source before accepting it.' : '',
+                            needsGovernedEvidence ? 'Review every linked source and resolve its conflicts before accepting this canonical proposal.' : '',
                         ].filter(Boolean).join(' ')}
                     </Text>
                 ) : null}
@@ -377,7 +446,7 @@ function ReviewItemCard({
                         <Button
                             type="primary"
                             icon={<LuCheck />}
-                            disabled={saving || isPublished || isAccepted || isLegacyChangelog || requiresSafeFallback || needsEntity || needsSupportedAnswer || needsEvidenceSource}
+                            disabled={saving || isPublished || isAccepted || isLegacyChangelog || requiresSafeFallback || needsEntity || needsSupportedAnswer || needsEvidenceSource || needsGovernedEvidence}
                             onClick={() => onAccept(item)}
                             style={{ minHeight: 44 }}
                         >
@@ -399,9 +468,11 @@ export default function AnswerlatticeKnowledgeIntake() {
     const [textForm] = Form.useForm();
     const [urlForm] = Form.useForm();
     const [editForm] = Form.useForm();
+    const [governanceForm] = Form.useForm();
     const editingAnswerType = Form.useWatch('answerType', editForm);
     const [createOpen, setCreateOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<AnswerlatticeIntakeReviewItem | null>(null);
+    const [governingSource, setGoverningSource] = useState<AnswerlatticeKnowledgeSource | null>(null);
     const [discoveredLinks, setDiscoveredLinks] = useState<Array<{ url: string; title: string; role: string; reason: string }>>([]);
     const [selectedLinks, setSelectedLinks] = useState<string[]>([]);
     const [discovering, setDiscovering] = useState(false);
@@ -409,6 +480,7 @@ export default function AnswerlatticeKnowledgeIntake() {
     const [entitySearching, setEntitySearching] = useState(false);
     const entitySearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const entitySearchSeqRef = useRef(0);
+    const discoverySeqRef = useRef(0);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const {
@@ -429,7 +501,9 @@ export default function AnswerlatticeKnowledgeIntake() {
         saving,
         searchEntityOptions,
         setActiveJobId,
+        workspaceScopeKey,
         updateReviewItem,
+        updateSourceGovernance,
     } = useKnowledgeIntake();
 
     const reviewGroups = useMemo(() => {
@@ -453,6 +527,16 @@ export default function AnswerlatticeKnowledgeIntake() {
     ), [editingItem, sourceById]);
 
     const repeatedReplyEnabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT === true;
+    const sourceGovernanceEnabled: boolean = Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE);
+    const governanceConflictOptions = useMemo(() => (
+        bundle.sources
+            .filter(source => source.id !== governingSource?.id)
+            .map(source => ({
+                label: source.governance ? source.title : `${source.title} (review first)`,
+                value: source.id,
+                disabled: !source.governance,
+            }))
+    ), [bundle.sources, governingSource?.id]);
 
     const entitySelectOptions = useMemo(() => entityOptions.map(entity => ({
         value: entity.id,
@@ -504,6 +588,40 @@ export default function AnswerlatticeKnowledgeIntake() {
         }
     }, []);
 
+    useEffect(() => {
+        setCreateOpen(false);
+        jobForm.resetFields();
+    }, [jobForm, workspaceScopeKey]);
+
+    useEffect(() => {
+        discoverySeqRef.current += 1;
+        entitySearchSeqRef.current += 1;
+        if (entitySearchTimerRef.current) {
+            clearTimeout(entitySearchTimerRef.current);
+            entitySearchTimerRef.current = null;
+        }
+        setEditingItem(null);
+        setGoverningSource(null);
+        setDiscoveredLinks([]);
+        setSelectedLinks([]);
+        setDiscovering(false);
+        setEntityOptions([]);
+        setEntitySearching(false);
+        editForm.resetFields();
+        governanceForm.resetFields();
+        replyForm.resetFields();
+        textForm.resetFields();
+        urlForm.resetFields();
+    }, [
+        activeJobId,
+        editForm,
+        governanceForm,
+        replyForm,
+        textForm,
+        urlForm,
+        workspaceScopeKey,
+    ]);
+
     const currentStep = activeJob?.status === 'published'
         ? 3
         : bundle.reviewItems.length > 0
@@ -511,6 +629,75 @@ export default function AnswerlatticeKnowledgeIntake() {
             : bundle.sources.length > 0
                 ? 1
                 : 0;
+
+    const openSourceGovernance = (source: AnswerlatticeKnowledgeSource) => {
+        const governance = source.governance;
+        setGoverningSource(source);
+        governanceForm.setFieldsValue({
+            authority: governance?.authority || ANSWERLATTICE_SOURCE_AUTHORITY.UNVERIFIED_REFERENCE,
+            owner: governance?.owner || '',
+            approvalStatus: governance?.approvalStatus || ANSWERLATTICE_SOURCE_APPROVAL_STATUS.UNREVIEWED,
+            accessScope: governance?.accessScope || ANSWERLATTICE_SOURCE_ACCESS_SCOPE.WORKSPACE_PRIVATE,
+            citationEligibility: governance?.citationEligibility || ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY.NOT_CITABLE,
+            effectiveDate: governance?.effectiveDate || '',
+            reviewDate: governance?.reviewDate || '',
+            products: governance?.applicability.products.join(', ') || '',
+            plans: governance?.applicability.plans.join(', ') || '',
+            roles: governance?.applicability.roles.join(', ') || '',
+            regions: governance?.applicability.regions.join(', ') || '',
+            versions: governance?.applicability.versions.join(', ') || '',
+            conflictSourceIds: governance?.conflictSourceIds || [],
+            notes: governance?.notes || '',
+        });
+    };
+
+    const handleSourceGovernanceSave = async () => {
+        if (!activeJobId || !governingSource) return;
+        const values = await governanceForm.validateFields();
+        if (
+            values.citationEligibility === ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY.PUBLIC
+            && values.accessScope !== ANSWERLATTICE_SOURCE_ACCESS_SCOPE.PUBLIC
+        ) {
+            message.error('Only public sources can be publicly citable.');
+            return;
+        }
+        if (
+            (
+                values.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.EXCLUDED
+                || values.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.SUPERSEDED
+            )
+            && values.citationEligibility !== ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY.NOT_CITABLE
+        ) {
+            message.error('Excluded or superseded sources must not be citable.');
+            return;
+        }
+        if (values.effectiveDate && values.reviewDate && values.reviewDate < values.effectiveDate) {
+            message.error('The next review date cannot be before the effective date.');
+            return;
+        }
+        const source = await updateSourceGovernance(activeJobId, governingSource.id, {
+            authority: values.authority,
+            owner: values.owner || null,
+            approvalStatus: values.approvalStatus,
+            accessScope: values.accessScope,
+            citationEligibility: values.citationEligibility,
+            effectiveDate: values.effectiveDate || null,
+            reviewDate: values.reviewDate || null,
+            applicability: {
+                products: splitTags(values.products),
+                plans: splitTags(values.plans),
+                roles: splitTags(values.roles),
+                regions: splitTags(values.regions),
+                versions: splitTags(values.versions),
+            },
+            conflictSourceIds: values.conflictSourceIds || [],
+            notes: values.notes || null,
+        });
+        if (source) {
+            setGoverningSource(null);
+            governanceForm.resetFields();
+        }
+    };
 
     const handleCreateJob = async () => {
         const values = await jobForm.validateFields();
@@ -523,15 +710,21 @@ export default function AnswerlatticeKnowledgeIntake() {
 
     const handleDiscover = async () => {
         const values = await urlForm.validateFields();
+        const discoverySeq = discoverySeqRef.current + 1;
+        discoverySeqRef.current = discoverySeq;
         setDiscovering(true);
         try {
             const links = await discoverLinks(values.url);
+            if (discoverySeqRef.current !== discoverySeq) return;
             setDiscoveredLinks(links);
             setSelectedLinks(links.slice(0, 5).map(link => link.url));
         } catch {
+            if (discoverySeqRef.current !== discoverySeq) return;
             message.error(ANSWERLATTICE_INTAKE_URL_INSPECT_FAILED);
         } finally {
-            setDiscovering(false);
+            if (discoverySeqRef.current === discoverySeq) {
+                setDiscovering(false);
+            }
         }
     };
 
@@ -746,6 +939,50 @@ export default function AnswerlatticeKnowledgeIntake() {
                                     <Col xs={12} md={6}><Card><Statistic title="Credits used" value={activeJob.usageUnitsConsumed || 0} /></Card></Col>
                                 </Row>
 
+                                {sourceGovernanceEnabled && bundle.sources.length ? (
+                                    <Card
+                                        title={<Space><LuShieldCheck /> Source governance</Space>}
+                                        extra={<Tag>{bundle.sources.filter(source => source.governance?.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.APPROVED).length}/{bundle.sources.length} approved evidence</Tag>}
+                                        style={{ borderRadius: 8 }}
+                                    >
+                                        <Paragraph type="secondary">
+                                            Review which sources are suitable evidence before accepting a canonical answer proposal. Evidence approval does not publish product truth.
+                                        </Paragraph>
+                                        <List
+                                            dataSource={bundle.sources}
+                                            pagination={bundle.sources.length > 8 ? { pageSize: 8, showSizeChanger: false } : false}
+                                            renderItem={source => (
+                                                <List.Item
+                                                    actions={[
+                                                        <Button
+                                                            key="review-source-governance"
+                                                            icon={<LuShieldCheck />}
+                                                            onClick={() => openSourceGovernance(source)}
+                                                            style={{ minHeight: 44 }}
+                                                        >
+                                                            Review
+                                                        </Button>,
+                                                    ]}
+                                                >
+                                                    <List.Item.Meta
+                                                        title={(
+                                                            <Space size={[6, 6]} wrap>
+                                                                <Text strong>{source.title}</Text>
+                                                                <Tag>{source.type.replace(/_/g, ' ')}</Tag>
+                                                            </Space>
+                                                        )}
+                                                        description={(
+                                                            <Space size={[6, 6]} wrap>
+                                                                <SourceGovernanceTags source={source} />
+                                                            </Space>
+                                                        )}
+                                                    />
+                                                </List.Item>
+                                            )}
+                                        />
+                                    </Card>
+                                ) : null}
+
                                 <Card
                                     title={<Space><LuGlobe /> Product and docs URLs</Space>}
                                     extra={<Button loading={discovering} icon={<LuRefreshCw />} onClick={handleDiscover}>Inspect URL</Button>}
@@ -758,7 +995,12 @@ export default function AnswerlatticeKnowledgeIntake() {
                                     </Form>
                                     {discoveredLinks.length ? (
                                         <Flex vertical gap={12} style={{ marginTop: 16 }}>
-                                            <Checkbox.Group value={selectedLinks} onChange={(values) => setSelectedLinks(values as string[])}>
+                                            <Checkbox.Group
+                                                value={selectedLinks}
+                                                onChange={(values) => setSelectedLinks(
+                                                    values.filter((value): value is string => typeof value === 'string'),
+                                                )}
+                                            >
                                                 <Flex vertical gap={8}>
                                                     {discoveredLinks.map(link => (
                                                         <Checkbox key={link.url} value={link.url}>
@@ -1018,6 +1260,115 @@ export default function AnswerlatticeKnowledgeIntake() {
                     </Form.Item>
                     <Form.Item name="description" label="What should Answerlattice learn?">
                         <TextArea rows={3} placeholder="Billing, onboarding, team settings, release changes..." />
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={governingSource ? `Review source: ${governingSource.title}` : 'Review source'}
+                open={Boolean(governingSource)}
+                onCancel={() => {
+                    setGoverningSource(null);
+                    governanceForm.resetFields();
+                }}
+                onOk={handleSourceGovernanceSave}
+                okText="Save source review"
+                confirmLoading={saving}
+                width={760}
+                okButtonProps={{ style: { minHeight: 44 } }}
+                cancelButtonProps={{ style: { minHeight: 44 } }}
+            >
+                <Alert
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message="Evidence review is not answer approval"
+                    description="This decision records whether the source may support review. Canonical product truth still requires the separate Governance approval flow."
+                />
+                <Form form={governanceForm} layout="vertical">
+                    <Row gutter={[12, 0]}>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="authority" label="Source authority" rules={[{ required: true }]}>
+                                <Select options={SOURCE_AUTHORITY_OPTIONS} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="approvalStatus" label="Evidence status" rules={[{ required: true }]}>
+                                <Select options={SOURCE_APPROVAL_OPTIONS} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="owner" label="Source owner">
+                        <Input maxLength={160} placeholder="Product, Support, Legal, founder..." />
+                    </Form.Item>
+                    <Row gutter={[12, 0]}>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="accessScope" label="Access" rules={[{ required: true }]}>
+                                <Select options={SOURCE_ACCESS_OPTIONS} />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="citationEligibility" label="Citation" rules={[{ required: true }]}>
+                                <Select options={SOURCE_CITATION_OPTIONS} />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={[12, 0]}>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="effectiveDate" label="Effective date">
+                                <Input type="date" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="reviewDate" label="Next review date">
+                                <Input type="date" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Row gutter={[12, 0]}>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="products" label="Products">
+                                <Input placeholder="Core app, API" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="plans" label="Plans">
+                                <Input placeholder="Starter, Pro" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="roles" label="Roles">
+                                <Input placeholder="Owner, admin" />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} md={12}>
+                            <Form.Item name="regions" label="Regions">
+                                <Input placeholder="US, EU, India" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="versions" label="Versions">
+                        <Input placeholder="v2, 2026.07" />
+                    </Form.Item>
+                    <Form.Item
+                        name="conflictSourceIds"
+                        label="Unresolved conflicts"
+                        extra="Link only sources that currently disagree. Remove the link after a reviewer resolves the difference."
+                    >
+                        <Select
+                            mode="multiple"
+                            options={governanceConflictOptions}
+                            maxTagCount="responsive"
+                            placeholder="Select reviewed conflicting sources"
+                        />
+                    </Form.Item>
+                    <Form.Item name="notes" label="Reviewer note">
+                        <TextArea
+                            rows={4}
+                            maxLength={ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_NOTES_CHARS}
+                            showCount
+                            placeholder="Why this source is trusted, limited, excluded, or superseded"
+                        />
                     </Form.Item>
                 </Form>
             </Modal>

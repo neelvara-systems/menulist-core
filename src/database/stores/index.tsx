@@ -28,6 +28,7 @@ import { revalidatePublicClientCache } from "@lib/cache/publicClientCache";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import type { PreparedMediaImage } from "@lib/media/prepareMediaImage";
 import {
     normalizeProjectPresetReferenceMutation,
     normalizeTimeSlotPresetId,
@@ -86,6 +87,25 @@ const DIGITAL_SCREEN_STORE_OUTPUT_FIELDS = [
 ] as const;
 const SUBDOMAIN_ASSIGN_RESPONSE_MAX_BYTES = 8 * 1024;
 const CUSTOM_DOMAIN_AVAILABILITY_RESPONSE_MAX_BYTES = 8 * 1024;
+
+type StoreMutationData = Omit<
+    Partial<StoreDataType>,
+    'analytics' | 'businessAttributes' | 'externalLocationIdentity' | 'posSync' | 'publicPresence' | 'workingHours'
+> & {
+    [key: string]: unknown;
+    analytics?: Record<string, unknown>;
+    businessAttributes?: Record<string, unknown>;
+    externalLocationIdentity?: unknown;
+    id?: string | number;
+    imageToUpdate?: string | null;
+    imageType?: string;
+    posSync?: Record<string, unknown>;
+    preparedMedia?: PreparedMediaImage;
+    publicPresence?: Record<string, unknown>;
+    storeId?: number;
+    tenantId?: number;
+    workingHours?: unknown;
+};
 
 const normalizeWorkingHoursUpdate = (value: unknown, allowDeleteMarkers: boolean): unknown => {
     if (value === null) return null;
@@ -239,7 +259,7 @@ const hasDigitalScreenStoreOutputFieldChanges = (data: Record<string, any>): boo
     DIGITAL_SCREEN_STORE_OUTPUT_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(data, field))
 );
 
-const getDocRef = (docId: any) => {
+const getDocRef = (docId: string | number) => {
     return doc(firebaseClient, `${COLLECTION}`, `${docId}`)
 }
 
@@ -247,9 +267,17 @@ export const getAllStores = async () => {
     return await apiCallComposer(
         async () => {
             const querySnapshot = await getDocs(await getCollectionRef());
-            const list = [];
+            const list: StoreDataType[] = [];
             querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id })
+                const storeId = Number(doc.id);
+                const value = doc.data();
+                if (Number.isSafeInteger(storeId) && isStoreDataType(value, storeId)) {
+                    list.push(value);
+                } else {
+                    logStoreDataFailure('store_list_document_shape_invalid', new Error('store_list_document_shape_invalid'), {
+                        ...getBoundedStoreStringContext('storeId', doc.id),
+                    });
+                }
             });
             return (list);
         },
@@ -257,17 +285,36 @@ export const getAllStores = async () => {
     );
 }
 
-export const getAllStoresByTenantId = async (tenantId: any) => {
+export const getAllStoresByTenantId = async (tenantId: string | number) => {
     return await apiCallComposer(
         async () => {
-            const ref = query(await getCollectionRef(), where("tenantId", "==", tenantId));
+            const tenantDocumentId = String(tenantId).trim();
+            const normalizedTenantId = Number(tenantDocumentId);
+            if (
+                !/^(?:0|[1-9]\d*)$/.test(tenantDocumentId)
+                || !Number.isSafeInteger(normalizedTenantId)
+                || normalizedTenantId < 0
+                || String(normalizedTenantId) !== tenantDocumentId
+            ) {
+                throw new Error('store_list_tenant_scope_invalid');
+            }
+            const ref = query(await getCollectionRef(), where("tenantId", "==", normalizedTenantId));
             const querySnapshot = await getDocs(ref);
             if (querySnapshot.empty) {
                 return ([]);
             } else {
-                const list: any = [];
+                const list: StoreDataType[] = [];
                 querySnapshot.forEach((doc) => {
-                    list.push({ ...doc.data(), id: doc.id })
+                    const storeId = Number(doc.id);
+                    const value = doc.data();
+                    if (Number.isSafeInteger(storeId) && isStoreDataType(value, storeId)) {
+                        list.push(value);
+                    } else {
+                        logStoreDataFailure('store_list_document_shape_invalid', new Error('store_list_document_shape_invalid'), {
+                            ...getBoundedStoreStringContext('storeId', doc.id),
+                            tenantId: normalizedTenantId,
+                        });
+                    }
                 });
                 return (list)
             }
@@ -366,26 +413,20 @@ export const checkCustomDomainAvailability = async (
     );
 }
 
-const updateLogoImage = async (data) => {
-
-    let logoUrl: any = '';
-    let imageType: any = data.imageType;
-    let imageToUpdate: any = data.imageToUpdate;
-    let preparedMedia: any = data.preparedMedia;
-
-    delete data.imageToUpdate;
-    delete data.imageType;
-    delete data.preparedMedia;
+const updateLogoImage = async (data: StoreMutationData): Promise<string> => {
+    const imageType = data.imageType;
+    const imageToUpdate = data.imageToUpdate;
+    const preparedMedia = data.preparedMedia;
     const docId = data.storeId//which is storeId
-    const docRef = await getDocRef(`${docId}`);
 
     if (imageToUpdate) {
         if (isDataUrl(imageToUpdate)) {
             const session = await getActiveSession();
-            logoUrl = await uploadPreparedMediaImage({
+            if (!session) throw new Error('store_logo_session_missing');
+            return await uploadPreparedMediaImage({
                 contentType: imageType,
                 dataUrl: imageToUpdate,
-                entityId: docId,
+                entityId: String(docId),
                 prepared: preparedMedia,
                 profile: 'businessLogo',
                 storeId: docId || session.sId,
@@ -393,11 +434,11 @@ const updateLogoImage = async (data) => {
                 variant: 'full',
             });
         }
-        return logoUrl || imageToUpdate;
+        return imageToUpdate;
     } else return "";
 }
 
-export const addStore = async (data: any, from: string = "") => {
+export const addStore = async (data: StoreMutationData, from: string = "") => {
     return await apiCallComposer(
         async () => {
             if (from !== "onboarding") {
@@ -484,7 +525,7 @@ export const addStore = async (data: any, from: string = "") => {
     );
 }
 
-export const updateStore = async (data: any) => {
+export const updateStore = async (data: StoreMutationData) => {
     return await apiCallComposer(
         async () => {
             let currentStoreData: any | null = null;

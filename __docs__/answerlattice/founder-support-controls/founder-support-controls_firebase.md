@@ -8,6 +8,8 @@
 
 The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId}` document with exact ID, product, numeric scope, supported schema, suite revision, valid-case, and unique-case admission. Stored releases use the strict release schema. The same summary holds at most five 15-minute run reservations whose SHA-256 request fingerprints bind run kind, mode, suite revision, selected case IDs, and release ID; successful runs remove their reservation, failed pre-execution runs attempt cleanup, and expired reservations are pruned on the next claim. Summary writes are measured and rejected above 480 KiB. Version 4 retains bounded risk, evidence policy, reference IDs, proof status, governed-source versions, request fingerprint, and suite revision. No Answer Tests listener, scheduled run, per-case document, search-history write, signal write, or instant-cache write is added.
 
+The admitted critical-RAG hardening is evaluator/UI logic over this existing summary. It requires no schema version, migration scan, new document, index, listener, scheduled function, Storage object, source read, or write. Legacy critical-RAG cases stay in the bounded summary and produce blocked evidence on their next owner-triggered run.
+
 | Data | Location | Growth control |
 | --- | --- | --- |
 | Test cases and last runs | `platformSummary/answerTests_{tId}_{sId}` | 100 cases, 10 compact runs, document-size guard |
@@ -69,10 +71,9 @@ The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId
 
 ### Rollback Proposal
 
-- 1 canonical-answer read.
-- 1 exact audit-history document read for the selected normalized version ID.
-- The idempotency transaction reads the deterministic mutation-proposal record and its deterministic audit record: 2 additional reads.
+- One transaction reads the current canonical answer, exact selected audit-history document, deterministic mutation proposal, and deterministic paired audit row: 4 reads per transaction attempt.
 - New pair: up to 2 writes. Valid existing pair: 0 writes. Valid partial pair: 1 repair write. Conflicting product, scope, target answer, mutation type, source audit, or audit identity fails closed.
+- The answer/audit ownership, current entity bindings, restorable content, strict saved procedure, and existing pair are evaluated from the same transaction snapshot.
 
 ### Proposal Impact Preview
 
@@ -134,6 +135,9 @@ The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId
 
 ## Scale Rules
 
+- No separate `answerTestSuites`, `answerTestRuns`, scenario, variant, assertion, manifest, or artifact collection.
+- No Cloud Storage run artifact or scheduled nightly/weekly test runner.
+- Save, run, release-check, rollback, and proposal-impact admission fails closed when distributed limiter capacity cannot be established.
 - No test case subcollection or per-result write.
 - No nightly execution of every test suite.
 - No nightly proposal simulation or proposal-impact summary.
@@ -147,4 +151,4 @@ The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId
 
 ## Costing Verdict
 
-Normal end-user widget traffic gains no mandatory Firestore operation. Owner costs occur only on explicit tests, previews, known-issue mutations, key rotation, and export. Standard Answer Tests keep one summary read on load and one governed source-version snapshot read per new run. Current-proof freshness is opt-in for the First 10 launch screen: two compact reads on load, one compact source-version read after a launch-screen case save, and a second compact source-version read after a newly executed launch run. Activation adds one compact source-version read. Proposal impact is an explicit, rate-limited, read-only comparison that stops after compact/exact reads when no linked test exists and never duplicates the expensive approval overlap scan. When linked tests exist, its variable canonical reads remain bounded by the 10-case and 100-admitted-document-per-query guards described above. These checks add no listener, provider call, or write. The retained numeric snapshot slightly increases the existing bounded summary payload and remains protected by the 480 KiB write guard. The only variable provider cost is full-runtime testing, which is capped and settled through existing Answerlattice accounting.
+Normal end-user widget traffic gains no mandatory Firestore operation. Owner costs occur only on explicit tests, previews, known-issue mutations, key rotation, and export. Standard Answer Tests keep one summary read on load and one governed source-version snapshot read per new run. Current-proof freshness is opt-in for the First 10 launch screen: two compact reads on load, one compact source-version read after a launch-screen case save, and a second compact source-version read after a newly executed launch run. Activation adds one compact source-version read. Proposal impact is an explicit, rate-limited, read-only comparison that stops after compact/exact reads when no linked test exists and never duplicates the expensive approval overlap scan. When linked tests exist, its variable canonical reads remain bounded by the 10-case and 100-admitted-document-per-query guards described above. These checks add no listener, provider call, or write. The retained numeric snapshot slightly increases the existing bounded summary payload and remains protected by the 480 KiB write guard. The only variable provider cost is full-runtime testing, which is capped and settled through existing Answerlattice accounting. Critical-RAG blocking adds zero Firebase cost because it evaluates the already-resolved route in memory.

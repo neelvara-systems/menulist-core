@@ -86,7 +86,8 @@ export const resolveOwnerReferralTokenForAttribution = async (
     const storeData = referrerStore.exists ? referrerStore.data() : null;
     if (
         !storeData
-        || Number(storeData.tenantId) !== payload.referrerTenantId
+        || storeData.tenantId !== payload.referrerTenantId
+        || storeData.storeId !== payload.referrerStoreId
         || storeData.active === false
         || storeData.deleted === true
         || isPlatformEntityBlocked(storeData)
@@ -127,7 +128,11 @@ const hasSuccessfulMenuListSubscriptionPayment = (
 ): boolean => snapshot.size >= OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT || snapshot.docs.some((document) => {
     const subscription = document.data() || {};
     if (!getMenuListSubscriptionEntitlementScope(subscription)) return false;
-    return Number(subscription.totalPaymentsMadeCount || 0) > 0
+    return (
+        typeof subscription.totalPaymentsMadeCount === 'number'
+        && Number.isSafeInteger(subscription.totalPaymentsMadeCount)
+        && subscription.totalPaymentsMadeCount > 0
+    )
         || subscription.manualPaymentConfirmed === true
         || (Array.isArray(subscription.billingHistory) && subscription.billingHistory.length > 0);
 });

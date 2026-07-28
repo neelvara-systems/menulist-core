@@ -9,8 +9,8 @@ import {
     MYCODEX_ROBOTS_TAG,
     MYCODEX_SESSION_COOKIE,
     createMyCodexSessionToken,
-    getMyCodexExpectedCredentials,
     getMyCodexSessionCookieOptions,
+    isMyCodexAccessConfigured,
     sanitizeMyCodexReturnTo,
     validateMyCodexCredentials,
 } from '@lib/mycodex/auth';
@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
     const rateLimit = await checkRateLimit({
         key: `mycodex-login:${requestIpHash}`,
         ...getRateLimitForFeature('AUTH_LOGIN'),
+        failClosedOnProviderError: true,
     });
 
     if (!rateLimit.allowed) {
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
         return redirectToLogin(request, 'input', '/');
     }
 
-    if (!getMyCodexExpectedCredentials()) {
+    if (!isMyCodexAccessConfigured()) {
         logger.security('MyCodex Login Attempt While Unconfigured', {
             endpoint: request.nextUrl.pathname,
             ...getBoundedSecurityStringContext('requestIpHash', requestIpHash),

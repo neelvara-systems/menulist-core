@@ -70,7 +70,7 @@ export const CampaignCueCueLayerUploadSchema = z.object({
     dataUrl: dataUrlSchema,
     fileName: z.string().trim().min(1).max(180),
     height: z.number().int().min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE).optional(),
-    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),
     sourceKind: z.enum(CAMPAIGNCUE_CUE_LAYER_SOURCE_KINDS).default("user_upload"),
     title: z.string().trim().min(2).max(120).optional(),
@@ -328,7 +328,7 @@ export const CampaignCueCueLayerEditorDocumentSchema = CampaignCueCreativeEditor
 export const CampaignCueCueLayerAutosaveSchema = z.object({
     document: CampaignCueCueLayerEditorDocumentSchema,
     expectedRevision: z.number().int().min(0).optional(),
-    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
 });
 
 export const CampaignCueCueLayerRepairSchema = z.object({
@@ -343,14 +343,14 @@ export const CampaignCueCueLayerRepairSchema = z.object({
         "image_replaced",
     ]).default("restore_fallback"),
     expectedRevision: z.number().int().min(0),
-    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     layerId: z.string().trim().regex(idPattern).min(2).max(160).optional(),
 });
 
 export const CampaignCueCueLayerExportSchema = z.object({
     document: CampaignCueCueLayerEditorDocumentSchema,
     format: z.enum(["png", "jpeg", "webp", "pdf_flattened", "json"]).default("png"),
-    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     mimeType: z.string().trim().max(120).optional(),
     renderedDataUrl: renderedExportDataUrlSchema.optional(),
     sizeBytes: z.number().int().min(0).max(250 * 1024 * 1024).optional(),

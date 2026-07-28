@@ -3,7 +3,6 @@
  * Central export point for all AI prompts with version management
  */
 
-import { GeminiPrompt } from './types';
 import { CAMPAIGN_CAPTION_PROMPT_V1 } from './v1/campaignCaption.prompt';
 import { FEEDBACK_ANALYSIS_PROMPT_V1 } from './v1/feedbackAnalysis.prompt';
 import { KB_QUALITY_PROMPT_V1 } from './v1/kbQuality.prompt';
@@ -31,7 +30,7 @@ export type PromptType = keyof typeof PROMPTS;
  * Get a prompt by type
  * Future: Add version parameter for A/B testing
  */
-export function getPrompt(type: PromptType): GeminiPrompt {
+export function getPrompt<TType extends PromptType>(type: TType): (typeof PROMPTS)[TType] {
   return PROMPTS[type];
 }
 
@@ -58,4 +57,3 @@ export { CAMPAIGN_CAPTION_PROMPT_V1 } from './v1/campaignCaption.prompt';
 export { FEEDBACK_ANALYSIS_PROMPT_V1 } from './v1/feedbackAnalysis.prompt';
 export { KB_QUALITY_PROMPT_V1 } from './v1/kbQuality.prompt';
 export { WEEKLY_NARRATIVE_PROMPT_V1 } from './v1/weeklyNarrative.prompt';
-

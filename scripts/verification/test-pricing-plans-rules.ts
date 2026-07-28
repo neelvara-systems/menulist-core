@@ -7,7 +7,7 @@ import {
     assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, setDoc, Timestamp, where } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-pricing-plans-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -23,6 +23,7 @@ const validPlan = (name: string) => ({
     periodicity: 'MONTH',
     planType: 'B2C',
     price: 9900,
+    publicSafe: true,
     razorpayPlanId: 'plan_safe123',
     recommended: false,
     version: 1,
@@ -46,9 +47,16 @@ async function run(): Promise<void> {
             await setDoc(doc(db, 'pricingPlans', 'public-valid'), validPlan('Public valid'));
             await setDoc(doc(db, 'pricingPlans', 'legacy-private'), {
                 ...validPlan('Legacy private'),
+                active: false,
                 modifiedBy: 'Founder Name',
                 tId: 1,
                 uId: 'internal-user',
+            });
+            const { publicSafe: _publicSafe, ...legacyPublicPlan } = validPlan('Legacy public valid');
+            await setDoc(doc(db, 'pricingPlans', 'legacy-public-valid'), legacyPublicPlan);
+            await setDoc(doc(db, 'pricingPlans', 'inactive-valid'), {
+                ...validPlan('Inactive valid'),
+                active: false,
             });
         });
 
@@ -61,8 +69,29 @@ async function run(): Promise<void> {
         }).firestore();
 
         await assertSucceeds(getDoc(doc(publicDb, 'pricingPlans', 'public-valid')));
+        await assertSucceeds(getDoc(doc(publicDb, 'pricingPlans', 'legacy-public-valid')));
         await assertFails(getDoc(doc(publicDb, 'pricingPlans', 'legacy-private')));
+        await assertFails(getDoc(doc(publicDb, 'pricingPlans', 'inactive-valid')));
         await assertSucceeds(getDoc(doc(platformDb, 'pricingPlans', 'legacy-private')));
+        await assertSucceeds(getDoc(doc(platformDb, 'pricingPlans', 'inactive-valid')));
+        await assertSucceeds(setDoc(
+            doc(platformDb, 'pricingPlans', 'legacy-private'),
+            validPlan('Repaired public plan'),
+            { merge: false },
+        ));
+        await assertSucceeds(getDoc(doc(publicDb, 'pricingPlans', 'legacy-private')));
+        await assertFails(getDocs(query(
+            collection(publicDb, 'pricingPlans'),
+            where('active', '==', true),
+            where('publicSafe', '==', true),
+        )));
+        await assertSucceeds(getDocs(query(
+            collection(publicDb, 'pricingPlans'),
+            where('active', '==', true),
+            where('publicSafe', '==', true),
+            limit(101),
+        )));
+        await assertSucceeds(getDocs(query(collection(platformDb, 'pricingPlans'), limit(101))));
 
         await assertSucceeds(setDoc(doc(platformDb, 'pricingPlans', 'platform-valid'), validPlan('Platform valid')));
         await assertFails(setDoc(doc(ownerDb, 'pricingPlans', 'owner-write'), validPlan('Owner write')));

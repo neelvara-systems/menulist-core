@@ -10,7 +10,10 @@ import {
     parseAnswerlatticeSupportTicketDocument,
     parseAnswerlatticeTicketMutation,
 } from '@lib/answerlattice/supportTicketLifecycle';
-import { calculateSupportTicketSLAStatus } from '@type/supportTicket';
+import {
+    calculateSupportTicketSLAStatus,
+    getSupportTicketTimestampMillis,
+} from '@type/supportTicket';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const NOW = Timestamp.fromMillis(1_700_000_000_000);
@@ -83,6 +86,28 @@ const lateSla = calculateSupportTicketSLAStatus({
 }, NOW.toMillis() + (26 * 60 * 60 * 1000));
 assert.equal(lateSla?.responseStatus, 'breached');
 assert.equal(lateSla?.resolutionStatus, 'breached');
+
+assert.equal(
+    getSupportTicketTimestampMillis({ seconds: 1_700_000_000, nanoseconds: 123_000_000 }),
+    1_700_000_000_123,
+);
+assert.equal(getSupportTicketTimestampMillis({ seconds: 1.5 }), null);
+assert.equal(getSupportTicketTimestampMillis({ seconds: 1, nanoseconds: 1_000_000_000 }), null);
+assert.equal(getSupportTicketTimestampMillis({ toMillis: () => '1700000000000' }), null);
+const hostileTimestamp = Object.defineProperty({}, 'toMillis', {
+    get() {
+        throw new Error('hostile timestamp getter');
+    },
+}) as Timestamp;
+assert.equal(getSupportTicketTimestampMillis(hostileTimestamp), null);
+assert.doesNotThrow(() => calculateSupportTicketSLAStatus({
+    ...baseTicket,
+    createdOn: hostileTimestamp,
+}, NOW.toMillis()));
+assert.equal(calculateSupportTicketSLAStatus({
+    ...baseTicket,
+    createdOn: hostileTimestamp,
+}, NOW.toMillis()), null);
 
 assert.ok(parseAnswerlatticeSupportTicketDocument({
     id: 'ticket-1',
@@ -193,6 +218,10 @@ assert.ok(!ticketDal.includes("data.source === 'ai_escalation'"), 'browser ticke
 assert.ok(ticketDal.includes('recipientEmail !== actor.email'), 'customer self-replies must not trigger a support-reply notification');
 assert.ok(!ticketDal.includes('const updatedMessages = [...currentMessages, message]'), 'ticket replies must not rebuild from caller state');
 assert.ok(!ticketDal.includes('const updatedStatuses = [...currentStatuses'), 'ticket statuses must not rebuild from caller state');
+assert.ok(!ticketDal.includes('updateTicket = async (data: any)'), 'ticket updates must keep a typed caller boundary');
+assert.ok(!ticketDal.includes('attachments?: any[]'), 'ticket attachments must enter through the runtime-validated unknown boundary');
+assert.ok(!ticketDal.includes('_currentStatuses: any[]'), 'legacy ticket status snapshots must not weaken the mutation boundary');
+assert.ok(!ticketDal.includes('uploadedUrl: any'), 'ticket storage results must preserve the upload helper return contract');
 
 for (const indexFile of ['firestore-answerlattice.indexes.json', 'firestore.indexes.json']) {
     const indexes = JSON.parse(fs.readFileSync(path.join(ROOT, indexFile), 'utf8')).indexes as Array<any>;

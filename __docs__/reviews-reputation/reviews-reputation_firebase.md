@@ -9,14 +9,15 @@
 
 ## Summary
 
-> **Current source truth:** `reviewsState/{reviewId}` is a flat, server-written state contract with embedded `tId`/`sId`, active rules/indexes, and a disabled authenticated read route. No source writes this collection today. The collections and functions below are future planning only.
+> **Current source truth:** `reviewsState/{reviewId}` is a flat, server-only state contract with embedded `tId`/`sId`, Admin-SDK-only rules, two query-required indexes, and a disabled authenticated boolean-projection route. No source writes this collection today. The collections and functions below are future planning only.
 
 ### July 17, 2026 Cost and Scale Recheck
 
 - Both flags are false, both server routes reject before rate limiting, Firestore, SAFE_MODE, capacity, or provider work, and the unmounted components cannot create browser traffic. Current runtime cost is therefore zero.
+- The reserved nested `reviews/{tId}/{sId}/{reviewId}` namespace denies every browser read and write while ingestion, runtime schema, retention, and owner consumption are absent. Future activation must replace that deny only with dedicated authorization and persisted-shape coverage.
 - The two `reviewsState` composites exactly match the two bounded `limit(1)` state queries. They are intentionally retained: an empty dormant collection has no growing index fanout, and deleting the query-required definitions would only make an accidental flag activation fail at runtime.
 - No cache, summary document, listener, scheduler, TTL policy, or extra collection is justified while there is no ingestion or writer. Activation must define bounded retention and provider polling/webhook economics before any review document is persisted.
-- `npm run verify:reviews-reputation-boundary` protects the zero-work-while-disabled ordering, exact rules/index/query shape, missing writer/posting runtime, and publication hold. `npm run test:reviews:rules` remains the local authorization proof.
+- `npm run verify:reviews-reputation-boundary` protects the zero-work-while-disabled ordering, exact Admin-SDK-only rules/index/query shape, boolean-only response, missing writer/posting runtime, and publication hold. `npm run test:reviews:rules` remains the local authorization proof.
 
 - **Collections (Planned):** `reviewAlerts/{tId}/{sId}`, `replyDrafts/{tId}/{sId}`, `reputationConfig/{tId}/{sId}`
 - **Storage Buckets:** None planned
@@ -60,9 +61,9 @@ June 30, 2026 Review Reply copy acknowledgement is browser-only hardening. `Revi
 
 July 11, 2026 classification input/keyword hardening is pre-persistence and cost-neutral. The dormant classifier rejects ratings outside the integer 1-5 contract and non-string comments before classification, matches complete words/phrases instead of arbitrary substrings, and preserves discrimination variants through an explicit bounded rule. It changes no Firestore read/write/delete count, rules, indexes, scheduler, provider, cache, deployment, or owner-visible runtime while the parent feature remains disabled.
 
-July 11, 2026 state-path and provider-fallback reconciliation is persistence-cost neutral. The executable contract is one flat `reviewsState/{reviewId}` collection with required embedded `tId`/`sId`; the protected state API applies both equality predicates and active rules authorize from the embedded scope. Reply-provider failures emit bounded diagnostics before returning the existing static, uncharged fallback. No Firestore operation count, rule/index source, AI debit, scheduler, cache, Firebase deploy, or Vercel deploy changed.
+July 11, 2026 state-path and provider-fallback reconciliation is persistence-cost neutral. The executable contract is one flat `reviewsState/{reviewId}` collection with required embedded `tId`/`sId`; the protected state API applies both equality predicates. Reply-provider failures emit bounded diagnostics before returning the existing static, uncharged fallback. No Firestore operation count, AI debit, scheduler, cache, Firebase deploy, or Vercel deploy changed.
 
-July 11, 2026 rules evidence is local and cost-neutral: `npm run test:reviews:rules` proves own-store/multi-store reads, numeric/string embedded identity compatibility, cross-store/cross-tenant/public denial, scoped-query admission, malformed-scope denial, platform reads, and owner/platform client-write denial against the current Firestore rules emulator. It does not prove deployed rules or live data.
+July 28, 2026 private-field boundary repair is cost-neutral: `reviewsState` now denies every browser identity, including owner, multi-store owner and platform-client sessions. The authenticated Admin-SDK route remains the sole current reader and returns only `hasBlockActive` and `hasEscalationActive`; classifier version, classification and trigger evidence cannot bypass that projection. `npm run test:reviews:rules` proves document/query/write denial for browser identities. This changes no Admin SDK read count, index, writer, cache or public output. It does not prove deployed rules or live data.
 
 July 1, 2026 Review Reply source acknowledgement is browser-only hardening. `ReviewReplyTool` now requires the successful suggestion envelope to include `source: "ai" | "fallback"` before showing a reply, setting the source badge, syncing balance, or incrementing attempts. It adds no Firestore reads/writes/deletes, Storage operations, provider calls, route behavior, AI accounting writes, rules, indexes, Cloud Function logic, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
 

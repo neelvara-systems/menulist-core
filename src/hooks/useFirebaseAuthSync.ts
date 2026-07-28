@@ -12,54 +12,67 @@
  * and syncs them by getting a custom token from the server.
  */
 
-import { ensureFirebaseAuthForSession } from '@lib/auth/firebaseAuthSync';
+import {
+    ensureFirebaseAuthForSession,
+    getFirebaseAuthSessionScopeKey,
+} from '@lib/auth/firebaseAuthSync';
 import { getFirebaseAuthSessionLogContext, logFirebaseBootstrapFailure } from '@lib/firebase/firebaseDiagnostics';
 import { firebaseAuth } from '@lib/firebase/firebaseClient';
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 export function useFirebaseAuthSync() {
     const { data: session, status } = useSession();
     const [isSyncing, setIsSyncing] = useState(false);
-    const [isSynced, setIsSynced] = useState(false);
+    const [syncedScopeKey, setSyncedScopeKey] = useState<string | null>(null);
     const [error, setError] = useState<Error | null>(null);
+    const latestSyncRef = useRef(0);
+    const scopeKey = useMemo(
+        () => status === 'authenticated' ? getFirebaseAuthSessionScopeKey(session) : null,
+        [session, status],
+    );
+    const isSynced = Boolean(scopeKey && syncedScopeKey === scopeKey);
 
     useEffect(() => {
-        // Don't run if NextAuth is still loading
-        if (status === 'loading') return;
+        const syncId = latestSyncRef.current + 1;
+        latestSyncRef.current = syncId;
 
-        // Don't run if user is not authenticated in NextAuth
-        if (status === 'unauthenticated') {
-            setIsSynced(false);
+        if (status !== 'authenticated' || !scopeKey) {
+            setSyncedScopeKey(null);
+            setIsSyncing(false);
+            setError(null);
             return;
         }
 
-        // Don't run if already synced or currently syncing
-        if (isSynced || isSyncing) return;
-
-        // NextAuth is authenticated. Ensure Firebase Auth also has matching
-        // tenant/store claims before any Firestore DAL read runs.
-        syncFirebaseAuth();
-
-    }, [status, session, isSynced, isSyncing]);
-
-    const syncFirebaseAuth = async () => {
+        if (syncedScopeKey === scopeKey) return;
         setIsSyncing(true);
         setError(null);
 
-        try {
-            await ensureFirebaseAuthForSession(session);
-            setIsSynced(true);
-        } catch (err) {
-            logFirebaseBootstrapFailure('firebase_auth_hook_sync_failed', err, {
-                ...getFirebaseAuthSessionLogContext(session),
-                firebaseUserPresent: Boolean(firebaseAuth.currentUser),
+        ensureFirebaseAuthForSession(session)
+            .then((result) => {
+                if (latestSyncRef.current !== syncId) return;
+                if (!result.ready) {
+                    throw new Error('Firebase Auth sync did not establish a scoped identity');
+                }
+                setSyncedScopeKey(scopeKey);
+            })
+            .catch((err: unknown) => {
+                if (latestSyncRef.current !== syncId) return;
+                logFirebaseBootstrapFailure('firebase_auth_hook_sync_failed', err, {
+                    ...getFirebaseAuthSessionLogContext(session),
+                    firebaseUserPresent: Boolean(firebaseAuth.currentUser),
+                });
+                setSyncedScopeKey(null);
+                setError(new Error('Firebase Auth sync failed'));
+            })
+            .finally(() => {
+                if (latestSyncRef.current === syncId) setIsSyncing(false);
             });
-            setError(new Error('Firebase Auth sync failed'));
-        } finally {
-            setIsSyncing(false);
-        }
-    };
+
+        return () => {
+            if (latestSyncRef.current === syncId) latestSyncRef.current += 1;
+        };
+    }, [scopeKey, session, status, syncedScopeKey]);
 
     return {
         isSyncing,

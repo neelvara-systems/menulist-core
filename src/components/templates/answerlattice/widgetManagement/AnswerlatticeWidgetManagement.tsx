@@ -50,6 +50,7 @@ import {
 } from 'react-icons/lu';
 import {
     AnswerlatticeWidgetConfig,
+    ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
     DEFAULT_ANSWERLATTICE_WIDGET_CONFIG,
     buildAnswerlatticeWidgetEmbedCode,
     buildAnswerlatticeGuidedResolutionSnippet,
@@ -106,6 +107,7 @@ type SnippetType = 'html' | 'env' | 'spa' | 'guidance' | 'next' | 'react' | 'vue
 const FULL_WIDGET_KEY_PLACEHOLDER = 'al_full_widget_key_shown_once';
 const ANSWERLATTICE_WIDGET_SETTINGS_LOAD_FAILED = 'Could not load widget settings';
 const ANSWERLATTICE_WIDGET_SETTINGS_SAVE_FAILED = 'Could not save widget settings';
+const ANSWERLATTICE_WIDGET_SETTINGS_CONFLICT = 'Widget settings changed in another session. Reload and review the latest settings before saving again.';
 const ANSWERLATTICE_WIDGET_ACTIVITY_LOAD_FAILED = 'Could not load widget activity';
 const ANSWERLATTICE_WIDGET_KEY_CREATE_FAILED = 'Could not create widget key';
 const ANSWERLATTICE_WIDGET_KEY_RENAME_FAILED = 'Could not rename widget key';
@@ -126,6 +128,7 @@ type AnswerlatticeWidgetManagementProps = {
 };
 
 type WidgetConfigResponse = {
+    schemaVersion: typeof ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION;
     config: Partial<AnswerlatticeWidgetConfig>;
     allowedOrigins: string[];
     keyPrefix: string | null;
@@ -134,6 +137,7 @@ type WidgetConfigResponse = {
     keyLimit: number;
     encryptionConfigured: boolean;
     runtimeStatus?: AnswerlatticeWidgetRuntimeStatus | null;
+    configVersion: number;
 };
 
 type WidgetKeySummary = {
@@ -321,8 +325,10 @@ const hasValidWidgetKeyState = (value: Record<string, unknown>): boolean => {
 const isWidgetConfigResponse = (value: unknown): value is WidgetConfigResponse => {
     if (!isRecord(value)) return false;
     return isRecord(value.config)
+        && value.schemaVersion === ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION
         && isStringArray(value.allowedOrigins)
         && hasValidWidgetKeyState(value)
+        && isSafeIntegerInRange(value.configVersion, 0, Number.MAX_SAFE_INTEGER)
         && (value.runtimeStatus === undefined || value.runtimeStatus === null || isAnswerlatticeWidgetRuntimeStatus(value.runtimeStatus));
 };
 
@@ -624,6 +630,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
     const [generatingKey, setGeneratingKey] = useState(false);
     const keyGenerationInFlightRef = useRef(false);
     const [config, setConfig] = useState<AnswerlatticeWidgetConfig>(DEFAULT_ANSWERLATTICE_WIDGET_CONFIG);
+    const [configVersion, setConfigVersion] = useState(0);
     const [origins, setOrigins] = useState<string[]>([]);
     const [newOrigin, setNewOrigin] = useState('');
     const [newBlockedRoute, setNewBlockedRoute] = useState('');
@@ -673,6 +680,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                 ANSWERLATTICE_WIDGET_SETTINGS_LOAD_FAILED,
             );
             setConfig(normalizeWidgetConfig(data.config));
+            setConfigVersion(data.configVersion);
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
             setKeyPrefix(data.keyPrefix);
             setHasWidgetKey(data.hasWidgetKey);
@@ -751,8 +759,16 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                 ...ANSWERLATTICE_WIDGET_MANAGEMENT_REQUEST_POLICY,
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ config, allowedOrigins: origins }),
+                body: JSON.stringify({
+                    config,
+                    allowedOrigins: origins,
+                    expectedConfigVersion: configVersion,
+                }),
             });
+            if (res.status === 409) {
+                message.warning(ANSWERLATTICE_WIDGET_SETTINGS_CONFLICT);
+                return;
+            }
             const data = await readWidgetManagementResponse(
                 res,
                 'widget_config_save',
@@ -760,6 +776,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                 ANSWERLATTICE_WIDGET_SETTINGS_SAVE_FAILED,
             );
             setConfig(normalizeWidgetConfig(data.config));
+            setConfigVersion(data.configVersion);
             setOrigins(normalizeWidgetAllowedOrigins(data.allowedOrigins));
             setKeyPrefix(data.keyPrefix);
             setHasWidgetKey(data.hasWidgetKey);
@@ -775,7 +792,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         } finally {
             setSaving(false);
         }
-    }, [config, origins]);
+    }, [config, configVersion, origins]);
 
     const handleGenerateKey = useCallback(async () => {
         if (keyGenerationInFlightRef.current) return;

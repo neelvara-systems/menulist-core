@@ -1,0 +1,214 @@
+.shell {
+  display: grid;
+  gap: 16px;
+}
+
+.header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.controls {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 190px) minmax(170px, 210px);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.canvas {
+  align-items: center;
+  background:
+    linear-gradient(var(--knowledge-map-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--knowledge-map-grid) 1px, transparent 1px);
+  background-color: var(--knowledge-map-canvas);
+  background-size: 24px 24px;
+  border: 1px solid var(--knowledge-map-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(190px, 1fr) minmax(220px, 280px) minmax(190px, 1fr);
+  min-height: 430px;
+  overflow: hidden;
+  padding: 28px;
+}
+
+.branch {
+  display: grid;
+  gap: 10px;
+}
+
+.relationGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.relationGroupLabel {
+  color: var(--knowledge-map-active);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.relationList {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.branchLeft .nodeButton::after,
+.branchRight .nodeButton::before {
+  background: var(--knowledge-map-connector);
+  content: '';
+  height: 1px;
+  position: absolute;
+  top: 50%;
+  width: 28px;
+}
+
+.branchLeft .nodeButton::after {
+  right: -29px;
+}
+
+.branchRight .nodeButton::before {
+  left: -29px;
+}
+
+.rootColumn {
+  display: grid;
+  gap: 12px;
+}
+
+.nodeButton,
+.rootNode {
+  background: var(--knowledge-map-node);
+  border: 1px solid var(--knowledge-map-border-strong);
+  border-radius: 6px;
+  color: inherit;
+  min-width: 0;
+  padding: 12px;
+  position: relative;
+  text-align: left;
+}
+
+.nodeButton {
+  cursor: pointer;
+  min-height: 64px;
+  width: 100%;
+}
+
+.nodeButton:hover,
+.nodeButton:focus-visible {
+  border-color: var(--knowledge-map-active);
+  outline: 2px solid var(--knowledge-map-focus);
+  outline-offset: 2px;
+}
+
+.rootNode {
+  border-color: var(--knowledge-map-active);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 10%);
+  min-height: 128px;
+}
+
+.nodeTitle {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.nodeMeta {
+  color: var(--knowledge-map-muted);
+  display: block;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 5px;
+}
+
+.nodeStatus {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.nodeStatus :global(.ant-tag) {
+  font-size: 11px;
+  line-height: 18px;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mobileDisclosure {
+  display: none;
+}
+
+@media (max-width: 840px) {
+  .header {
+    display: grid;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .controls :global(.ant-select-selector) {
+    align-items: center;
+    min-height: 44px !important;
+  }
+
+  .canvas {
+    align-items: stretch;
+    background: var(--knowledge-map-canvas);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: visible;
+    padding: 16px;
+  }
+
+  .rootColumn {
+    order: -1;
+  }
+
+  .branchLeft .nodeButton::after,
+  .branchRight .nodeButton::before {
+    display: none;
+  }
+
+  .nodeButton {
+    min-height: 64px;
+  }
+
+  .header :global(.ant-btn),
+  .actions :global(.ant-btn),
+  .mobileDisclosure {
+    min-height: 44px;
+  }
+
+  .mobileDisclosure {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .mobileCollapsed {
+    display: none;
+  }
+}

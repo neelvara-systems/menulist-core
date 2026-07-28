@@ -6,6 +6,10 @@ import {
     recordGrowthOSExport,
     suggestGrowthOSReviewReply,
 } from "@database/growthos";
+import {
+    getGrowthOSClientScope,
+    getGrowthOSSummaryCacheKey,
+} from "@lib/growthos/clientContracts";
 import type {
     GrowthOSDestination,
     GrowthOSExportMethod,
@@ -14,10 +18,17 @@ import type {
 } from "@type/growthos";
 import useSWR from "swr";
 
-export const useGrowthOS = (enabled = true) => {
+export const useGrowthOS = (
+    input: { storeId: unknown; tenantId: unknown },
+    enabled = true,
+) => {
+    const scope = getGrowthOSClientScope(input);
+    const cacheKey = FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON && enabled
+        ? getGrowthOSSummaryCacheKey(scope)
+        : null;
     const { data, error, isLoading, mutate } = useSWR<GrowthOSSummaryDocument | null>(
-        FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON && enabled ? "growthos-summary" : null,
-        getGrowthOSSummary,
+        cacheKey,
+        () => getGrowthOSSummary(scope!),
         {
             revalidateOnFocus: true,
             revalidateOnReconnect: true,

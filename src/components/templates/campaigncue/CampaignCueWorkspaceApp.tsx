@@ -248,6 +248,17 @@ type CampaignCueWorkspaceResponseResult<T> =
     | { code?: undefined; ok: true; data: T; status: number }
     | { code?: string; message?: string; ok: false; status: number };
 
+const isCampaignCueMutationOutcomeAuthoritative = <T,>(
+    result: CampaignCueWorkspaceResponseResult<T>,
+) => (
+    result.ok
+    || (
+        result.status >= 400
+        && result.status < 500
+        && result.code !== CAMPAIGNCUE_ERROR_CODES.IDEMPOTENCY_CONFLICT
+    )
+);
+
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === "object" && !Array.isArray(value)
 );
@@ -516,9 +527,11 @@ const readImageDimensions = (dataUrl: string) => new Promise<{ height: number; w
 
 const getLocalSignInUrl = () => {
     if (typeof window === "undefined") return buildCampaignCueAuthLaunchUrl(SIGNIN_URL);
-    const callbackUrl = encodeURIComponent(window.location.href);
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    return isLocal ? `/signin?callbackUrl=${callbackUrl}` : buildCampaignCueAuthLaunchUrl(SIGNIN_URL);
+    return buildCampaignCueAuthLaunchUrl(
+        isLocal ? "/signin" : SIGNIN_URL,
+        window.location.href,
+    );
 };
 
 const getUserInitials = (name?: string | null, email?: string | null) => {
@@ -1847,6 +1860,22 @@ export default function CampaignCueWorkspaceApp() {
     const cueLayerUploadInputRef = useRef<HTMLInputElement | null>(null);
     const cueLayerAutosaveTimeoutRef = useRef<number | null>(null);
     const cueLayerLastSavedFingerprintRef = useRef("");
+    const mutationIdempotencyKeysRef = useRef(new Map<string, string>());
+    const getMutationIdempotencyKey = (prefix: string, requestFingerprint: string) => {
+        const existing = mutationIdempotencyKeysRef.current.get(requestFingerprint);
+        if (existing) return existing;
+        const key = buildIdempotencyKey(prefix);
+        mutationIdempotencyKeysRef.current.set(requestFingerprint, key);
+        return key;
+    };
+    const settleMutationIdempotencyKey = <T,>(
+        requestFingerprint: string,
+        result: CampaignCueWorkspaceResponseResult<T>,
+    ) => {
+        if (isCampaignCueMutationOutcomeAuthoritative(result)) {
+            mutationIdempotencyKeysRef.current.delete(requestFingerprint);
+        }
+    };
     const [cueLayerDesigns, setCueLayerDesigns] = useState<CampaignCueCueLayerDesign[]>([]);
     const [activeCueLayerDesign, setActiveCueLayerDesign] = useState<CampaignCueCueLayerDesign | null>(null);
     const [activeCueLayerRevision, setActiveCueLayerRevision] = useState<number | null>(null);
@@ -2111,6 +2140,8 @@ export default function CampaignCueWorkspaceApp() {
         }
         const fingerprint = fingerprintDocument(documentValue);
         if (fingerprint === cueLayerLastSavedFingerprintRef.current) return activeCueLayerRevision;
+        const requestFingerprint = `cue_layers_save:${activeCueLayerDesign.id}:${activeCueLayerRevision}:${fingerprint}`;
+        const idempotencyKey = getMutationIdempotencyKey("cue_layers_save", requestFingerprint);
         const res = await fetch(getCampaignCueCueLayersAutosaveApiPath(activeCueLayerDesign.id), {
             method: "POST",
             credentials: "include",
@@ -2118,7 +2149,7 @@ export default function CampaignCueWorkspaceApp() {
             body: JSON.stringify({
                 document: documentValue,
                 expectedRevision: activeCueLayerRevision,
-                idempotencyKey: buildIdempotencyKey("cue_layers_save"),
+                idempotencyKey,
             }),
         });
         const payload = await readCampaignCueWorkspaceData(
@@ -2126,6 +2157,7 @@ export default function CampaignCueWorkspaceApp() {
             "cue_layers_autosave",
             isCueLayerAutosaveData,
         );
+        settleMutationIdempotencyKey(requestFingerprint, payload);
         if (!payload.ok) {
             throw new Error("Reusable image could not be saved.");
         }
@@ -2155,6 +2187,8 @@ export default function CampaignCueWorkspaceApp() {
         try {
             const dataUrl = await fileToDataUrl(file);
             const dimensions = await readImageDimensions(dataUrl);
+            const requestFingerprint = `cue_layers_upload:${file.name}:${file.type}:${file.size}:${file.lastModified}`;
+            const idempotencyKey = getMutationIdempotencyKey("cue_layers_upload", requestFingerprint);
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.CUE_LAYERS_UPLOADS, {
                 method: "POST",
                 credentials: "include",
@@ -2163,7 +2197,7 @@ export default function CampaignCueWorkspaceApp() {
                     dataUrl,
                     fileName: file.name,
                     height: dimensions.height,
-                    idempotencyKey: buildIdempotencyKey("cue_layers_upload"),
+                    idempotencyKey,
                     mimeType: file.type,
                     sourceKind: "user_upload",
                     title: `${file.name.replace(/\.[a-z0-9]+$/i, "")} reusable edit`,
@@ -2175,6 +2209,7 @@ export default function CampaignCueWorkspaceApp() {
                 "cue_layers_upload",
                 isCueLayerUploadResultData,
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (!payload.ok) {
                 setNotice("Image could not be prepared for reuse.");
                 return;
@@ -2192,6 +2227,8 @@ export default function CampaignCueWorkspaceApp() {
         setBusyKey("cue-layer-repair");
         setNotice("");
         try {
+            const requestFingerprint = `cue_layers_repair:${activeCueLayerDesign.id}:${activeCueLayerRevision}:restore_fallback`;
+            const idempotencyKey = getMutationIdempotencyKey("cue_layers_repair", requestFingerprint);
             const res = await fetch(getCampaignCueCueLayersRepairApiPath(activeCueLayerDesign.id), {
                 method: "POST",
                 credentials: "include",
@@ -2199,10 +2236,11 @@ export default function CampaignCueWorkspaceApp() {
                 body: JSON.stringify({
                     correctionType: "restore_fallback",
                     expectedRevision: activeCueLayerRevision,
-                    idempotencyKey: buildIdempotencyKey("cue_layers_repair"),
+                    idempotencyKey,
                 }),
             });
             const payload = await readCampaignCueWorkspaceData(res, "cue_layers_repair", isRecordData);
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             setNotice(payload.ok ? "Original fallback is available." : "Fallback could not be prepared.");
         } finally {
             setBusyKey(null);
@@ -2357,19 +2395,24 @@ export default function CampaignCueWorkspaceApp() {
         );
         setNotice("");
         try {
+            const requestIdentity = {
+                brief: templateDraft?.brief,
+                channels: templateDraft?.channels,
+                opportunityId,
+                outputIntentId: templateDraft?.outputIntentId,
+                reuseCampaignId,
+                sourceTemplateId: templateDraft?.sourceTemplateId,
+                title: templateDraft?.title,
+            };
+            const requestFingerprint = `create:${JSON.stringify(requestIdentity)}`;
+            const idempotencyKey = getMutationIdempotencyKey("create", requestFingerprint);
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.CAMPAIGNS, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    brief: templateDraft?.brief,
-                    channels: templateDraft?.channels,
-                    opportunityId,
-                    outputIntentId: templateDraft?.outputIntentId,
-                    reuseCampaignId,
-                    sourceTemplateId: templateDraft?.sourceTemplateId,
-                    title: templateDraft?.title,
-                    idempotencyKey: buildIdempotencyKey("create"),
+                    ...requestIdentity,
+                    idempotencyKey,
                 }),
             });
             const payload = await readCampaignCueWorkspaceData<{
@@ -2380,6 +2423,7 @@ export default function CampaignCueWorkspaceApp() {
                 "campaign_create",
                 isRecordData,
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (!payload.ok) {
                 setNotice(("message" in payload && payload.message) || "Campaign pack could not be created.");
                 return;
@@ -2458,17 +2502,20 @@ export default function CampaignCueWorkspaceApp() {
                 },
                 targetLocales,
             };
+            const requestFingerprint = `business_patch:${JSON.stringify(requestPayload)}`;
+            const idempotencyKey = getMutationIdempotencyKey("business_patch", requestFingerprint);
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.WORKSPACE, {
                 method: "PATCH",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(requestPayload),
+                body: JSON.stringify({ ...requestPayload, idempotencyKey }),
             });
             const payload = await readCampaignCueWorkspaceData<Partial<CampaignCueOverview>>(
                 res,
                 "business_details_save",
                 isRecordData,
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (!payload.ok) {
                 setNotice("Business details could not be saved.");
                 return;
@@ -2494,20 +2541,24 @@ export default function CampaignCueWorkspaceApp() {
         setBusyKey("source");
         setNotice("");
         try {
+            const requestPayload = {
+                ...sourceDraft,
+                expiresAt: parseDateTimeLocal(sourceDraft.expiresAt, businessDraft.timezone) || undefined,
+            };
+            const requestFingerprint = `source_input_create:${JSON.stringify(requestPayload)}`;
+            const idempotencyKey = getMutationIdempotencyKey("source_input_create", requestFingerprint);
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.SOURCES, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...sourceDraft,
-                    expiresAt: parseDateTimeLocal(sourceDraft.expiresAt, businessDraft.timezone) || undefined,
-                }),
+                body: JSON.stringify({ ...requestPayload, idempotencyKey }),
             });
             const payload = await readCampaignCueWorkspaceData(
                 res,
                 "source_input_create",
                 (value): value is CampaignCueSourceInput => isRecord(value) && typeof value.id === "string",
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (!payload.ok) {
                 setNotice(("message" in payload && payload.message) || "Source input could not be saved.");
                 return;
@@ -2536,32 +2587,36 @@ export default function CampaignCueWorkspaceApp() {
         setBusyKey("inspiration-pattern");
         setNotice("");
         try {
+            const requestPayload = {
+                inspiration: {
+                    durationSeconds: inspirationDraft.durationSeconds
+                        ? Number(inspirationDraft.durationSeconds)
+                        : undefined,
+                    ownerTakeaway: inspirationDraft.ownerTakeaway || undefined,
+                    platform: inspirationDraft.platform,
+                    rightsStatus: inspirationDraft.rightsStatus,
+                    sourceUrl: inspirationDraft.sourceUrl,
+                    transcriptOrNotes: inspirationDraft.transcriptOrNotes,
+                },
+                label: inspirationDraft.label,
+                sourceType: "inspiration_pattern",
+                status: "active",
+                value: inspirationDraft.sourceUrl,
+            };
+            const requestFingerprint = `source_input_create:${JSON.stringify(requestPayload)}`;
+            const idempotencyKey = getMutationIdempotencyKey("source_input_create", requestFingerprint);
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.SOURCES, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    inspiration: {
-                        durationSeconds: inspirationDraft.durationSeconds
-                            ? Number(inspirationDraft.durationSeconds)
-                            : undefined,
-                        ownerTakeaway: inspirationDraft.ownerTakeaway || undefined,
-                        platform: inspirationDraft.platform,
-                        rightsStatus: inspirationDraft.rightsStatus,
-                        sourceUrl: inspirationDraft.sourceUrl,
-                        transcriptOrNotes: inspirationDraft.transcriptOrNotes,
-                    },
-                    label: inspirationDraft.label,
-                    sourceType: "inspiration_pattern",
-                    status: "active",
-                    value: inspirationDraft.sourceUrl,
-                }),
+                body: JSON.stringify({ ...requestPayload, idempotencyKey }),
             });
             const payload = await readCampaignCueWorkspaceData(
                 res,
                 "inspiration_pattern_create",
                 (value): value is CampaignCueSourceInput => isRecord(value) && typeof value.id === "string" && isRecord(value.patternCue),
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (!payload.ok) {
                 setNotice(("message" in payload && payload.message) || "Example pattern could not be prepared.");
                 return;
@@ -2591,17 +2646,20 @@ export default function CampaignCueWorkspaceApp() {
         setBusyKey("location");
         setNotice("");
         try {
+            const requestFingerprint = `location_create:${JSON.stringify(locationDraft)}`;
+            const idempotencyKey = getMutationIdempotencyKey("location_create", requestFingerprint);
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.LOCATIONS, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(locationDraft),
+                body: JSON.stringify({ ...locationDraft, idempotencyKey }),
             });
             const payload = await readCampaignCueWorkspaceData(
                 res,
                 "location_create",
                 (value): value is CampaignCueLocation => isRecord(value) && typeof value.id === "string",
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (!payload.ok) {
                 setNotice("Location could not be saved.");
                 return;
@@ -2642,36 +2700,41 @@ export default function CampaignCueWorkspaceApp() {
             const scheduledAt = action === "schedule"
                 ? parseDateTimeLocal(staffTaskDraft.scheduledAt, businessDraft.timezone) || undefined
                 : undefined;
+            const requestIdentity = {
+                action,
+                channel: output?.channel || campaign.channels[0],
+                outputId: output?.id,
+                scheduledAt,
+                note: action === "schedule"
+                    ? staffTaskDraft.assigneeLabel.trim()
+                        ? `Manual CampaignCue task for ${staffTaskDraft.assigneeLabel.trim()}`
+                        : "Manual CampaignCue task"
+                    : action === "record_outcome"
+                        ? noteOverride ?? outcomeDraft
+                        : action === "approve" || action === "reject"
+                            ? (noteOverride ?? approvalDecisionNote.trim()) || undefined
+                            : undefined,
+                resultSignalId: action === "record_outcome"
+                    ? resultSignalId || selectedOutcomeSignalId
+                    : undefined,
+                resultReceipt: action === "record_outcome" ? {
+                    evidenceNote: noteOverride ?? outcomeDraft,
+                    experimentVariable: resultReceiptDraft.experimentVariable || undefined,
+                    metrics: resultMetrics,
+                    usedAt: parseDateTimeLocal(resultReceiptDraft.usedAt, businessDraft.timezone) || undefined,
+                } : undefined,
+                staffAssignee: action === "schedule" ? staffTaskDraft.assigneeLabel : undefined,
+                taskType: action === "schedule" ? staffTaskDraft.taskType : undefined,
+            };
+            const requestFingerprint = `campaign_action:${campaign.id}:${JSON.stringify(requestIdentity)}`;
+            const idempotencyKey = getMutationIdempotencyKey(action, requestFingerprint);
             const res = await fetch(getCampaignCueCampaignActionApiPath(campaign.id), {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    action,
-                    channel: output?.channel || campaign.channels[0],
-                    outputId: output?.id,
-                    scheduledAt,
-                    note: action === "schedule"
-                        ? staffTaskDraft.assigneeLabel.trim()
-                            ? `Manual CampaignCue task for ${staffTaskDraft.assigneeLabel.trim()}`
-                            : "Manual CampaignCue task"
-                        : action === "record_outcome"
-                            ? noteOverride ?? outcomeDraft
-                            : action === "approve" || action === "reject"
-                                ? (noteOverride ?? approvalDecisionNote.trim()) || undefined
-                            : undefined,
-                    resultSignalId: action === "record_outcome"
-                        ? resultSignalId || selectedOutcomeSignalId
-                        : undefined,
-                    resultReceipt: action === "record_outcome" ? {
-                        evidenceNote: noteOverride ?? outcomeDraft,
-                        experimentVariable: resultReceiptDraft.experimentVariable || undefined,
-                        metrics: resultMetrics,
-                        usedAt: parseDateTimeLocal(resultReceiptDraft.usedAt, businessDraft.timezone) || undefined,
-                    } : undefined,
-                    staffAssignee: action === "schedule" ? staffTaskDraft.assigneeLabel : undefined,
-                    taskType: action === "schedule" ? staffTaskDraft.taskType : undefined,
-                    idempotencyKey: buildIdempotencyKey(action),
+                    ...requestIdentity,
+                    idempotencyKey,
                 }),
             });
             const payload = await readCampaignCueWorkspaceData<{
@@ -2683,6 +2746,7 @@ export default function CampaignCueWorkspaceApp() {
                 "campaign_action_record",
                 isRecordData,
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (payload.ok === false) {
                 setNotice(("message" in payload && payload.message) || "Action could not be recorded.");
                 return;
@@ -2747,24 +2811,28 @@ export default function CampaignCueWorkspaceApp() {
         setBusyKey("asset");
         setNotice("");
         try {
+            const requestPayload = {
+                ...assetDraft,
+                source: "manual",
+                tags: assetDraft.tags
+                    .split(",")
+                    .map((tag) => tag.trim())
+                    .filter(Boolean),
+            };
+            const requestFingerprint = `asset_create:${JSON.stringify(requestPayload)}`;
+            const idempotencyKey = getMutationIdempotencyKey("asset_create", requestFingerprint);
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.ASSETS, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    ...assetDraft,
-                    source: "manual",
-                    tags: assetDraft.tags
-                        .split(",")
-                        .map((tag) => tag.trim())
-                        .filter(Boolean),
-                }),
+                body: JSON.stringify({ ...requestPayload, idempotencyKey }),
             });
             const payload = await readCampaignCueWorkspaceData(
                 res,
                 "asset_register",
                 (value): value is CampaignCueAsset => isRecord(value) && typeof value.id === "string",
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (!payload.ok) {
                 setNotice("Asset could not be registered.");
                 return;
@@ -3078,18 +3146,23 @@ export default function CampaignCueWorkspaceApp() {
                     return;
                 }
                 const savedRevision = await saveCueLayerDocumentNow(result.document);
+                const requestIdentity = {
+                    document: result.document,
+                    format: result.format === "json" ? "json" : result.format,
+                    mimeType: result.mimeType,
+                    renderedDataUrl: result.dataUrl,
+                    sizeBytes: result.sizeBytes,
+                    sourceRevision: savedRevision ?? activeCueLayerRevision,
+                };
+                const requestFingerprint = `cue_layers_export:${activeCueLayerDesign.id}:${JSON.stringify(requestIdentity)}`;
+                const idempotencyKey = getMutationIdempotencyKey("cue_layers_export", requestFingerprint);
                 const res = await fetch(getCampaignCueCueLayersExportApiPath(activeCueLayerDesign.id), {
                     method: "POST",
                     credentials: "include",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        document: result.document,
-                        format: result.format === "json" ? "json" : result.format,
-                        idempotencyKey: buildIdempotencyKey("cue_layers_export"),
-                        mimeType: result.mimeType,
-                        renderedDataUrl: result.dataUrl,
-                        sizeBytes: result.sizeBytes,
-                        sourceRevision: savedRevision ?? activeCueLayerRevision,
+                        ...requestIdentity,
+                        idempotencyKey,
                     }),
                 });
                 const payload = await readCampaignCueWorkspaceData<{
@@ -3099,6 +3172,7 @@ export default function CampaignCueWorkspaceApp() {
                     "cue_layers_export",
                     isRecordData,
                 );
+                settleMutationIdempotencyKey(requestFingerprint, payload);
                 if (!payload.ok) {
                     setNotice("Reusable export could not be saved.");
                     return;
@@ -3114,34 +3188,38 @@ export default function CampaignCueWorkspaceApp() {
                 return;
             }
             const metadata = result.document.metadata || {};
+            const requestPayload = {
+                name: result.document.title,
+                assetType: "export",
+                source: "generated",
+                rightsStatus: "needs_review",
+                rightsNote: "Created in the shared creative editor. Review image rights before public use.",
+                consentType: "not_applicable",
+                tags: [
+                    "creative-editor",
+                    result.format,
+                    metadata.channel,
+                ].filter(Boolean),
+                mimeType: result.mimeType,
+                sizeBytes: result.sizeBytes,
+                campaignId: metadata.campaignId,
+                outputId: metadata.outputId,
+                channel: metadata.channel,
+            };
+            const requestFingerprint = `asset_create:${JSON.stringify(requestPayload)}`;
+            const idempotencyKey = getMutationIdempotencyKey("asset_create", requestFingerprint);
             const res = await fetch(CAMPAIGNCUE_API_ROUTES.ASSETS, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: result.document.title,
-                    assetType: "export",
-                    source: "generated",
-                    rightsStatus: "needs_review",
-                    rightsNote: "Created in the shared creative editor. Review image rights before public use.",
-                    consentType: "not_applicable",
-                    tags: [
-                        "creative-editor",
-                        result.format,
-                        metadata.channel,
-                    ].filter(Boolean),
-                    mimeType: result.mimeType,
-                    sizeBytes: result.sizeBytes,
-                    campaignId: metadata.campaignId,
-                    outputId: metadata.outputId,
-                    channel: metadata.channel,
-                }),
+                body: JSON.stringify({ ...requestPayload, idempotencyKey }),
             });
             const payload = await readCampaignCueWorkspaceData(
                 res,
                 "creative_asset_save",
                 (value): value is CampaignCueAsset => isRecord(value) && typeof value.id === "string",
             );
+            settleMutationIdempotencyKey(requestFingerprint, payload);
             if (!payload.ok) {
                 setNotice("Creative asset could not be saved.");
                 return;

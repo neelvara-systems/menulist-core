@@ -36,6 +36,15 @@ const getDb = () => {
 };
 
 const sha = (value: string) => createHash('sha256').update(value).digest('hex');
+const normalizeActorText = (value: unknown, maxLength: number, fallback = ''): string => {
+    if (typeof value !== 'string') return fallback;
+    const normalized = value
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return (normalized || fallback).slice(0, maxLength);
+};
+
 const safeCounter = (value: unknown) => {
     if (value === undefined || value === null) return 0;
     if (!Number.isSafeInteger(value) || Number(value) < 0) {
@@ -81,8 +90,15 @@ export const executeAnswerlatticeContentFeedback = async (
     scope: { tId: number; sId: number },
     actor: AnswerlatticeContentFeedbackActor,
 ) => {
+    const actorId = normalizeActorText(actor.id, 180);
+    if (!actorId || actorId === 'unknown') {
+        throw new AnswerlatticeContentFeedbackError(401, 'Content feedback requires an authenticated user.');
+    }
+    const actorName = normalizeActorText(actor.name, 160, actorId);
+    const actorEmail = normalizeActorText(actor.email, 180);
+    const actorPhone = normalizeActorText(actor.phone, 80);
     const db = getDb();
-    const operationId = sha(`${scope.tId}:${scope.sId}:${actor.id}:${input.requestId}`).slice(0, 24);
+    const operationId = sha(`${scope.tId}:${scope.sId}:${actorId}:${input.requestId}`).slice(0, 24);
     const fingerprint = sha(JSON.stringify({
         action: input.action,
         contentId: input.contentId,
@@ -126,8 +142,8 @@ export const executeAnswerlatticeContentFeedback = async (
         let entryIndex = -1;
         if (input.type === 'article' || input.type === 'faq') {
             if (content.pId !== PRODUCT_IDS.ANSWERLATTICE
-                || Number(content.tId) !== scope.tId
-                || Number(content.sId) !== scope.sId
+                || content.tId !== scope.tId
+                || content.sId !== scope.sId
                 || content.active !== true
                 || content.status !== 'published') {
                 throw new AnswerlatticeContentFeedbackError(404, 'Feedback content was not found.');
@@ -135,8 +151,8 @@ export const executeAnswerlatticeContentFeedback = async (
             target = content;
         } else {
             if (content.pId !== PRODUCT_IDS.ANSWERLATTICE
-                || Number(content.tId) !== scope.tId
-                || Number(content.sId) !== scope.sId
+                || content.tId !== scope.tId
+                || content.sId !== scope.sId
                 || !Array.isArray(content.entries)) {
                 throw new AnswerlatticeContentFeedbackError(404, 'Feedback content was not found.');
             }
@@ -166,8 +182,8 @@ export const executeAnswerlatticeContentFeedback = async (
         const stateData = stateSnapshot.exists ? stateSnapshot.data() as Record<string, any> : null;
         if (stateData && (
             stateData.pId !== PRODUCT_IDS.ANSWERLATTICE
-            || Number(stateData.tId) !== scope.tId
-            || Number(stateData.sId) !== scope.sId
+            || stateData.tId !== scope.tId
+            || stateData.sId !== scope.sId
             || stateData.type !== input.type
             || stateData.contentId !== input.contentId
             || (stateData.pageId || null) !== (input.pageId || null)
@@ -178,7 +194,7 @@ export const executeAnswerlatticeContentFeedback = async (
         if (stateData && Number(stateData.actorCount) !== Object.keys(activeActors).length) {
             throw new AnswerlatticeContentFeedbackError(409, 'Content feedback actor state is invalid.');
         }
-        const actorKey = sha(`${scope.tId}:${scope.sId}:${actor.id}`).slice(0, 40);
+        const actorKey = sha(`${scope.tId}:${scope.sId}:${actorId}`).slice(0, 40);
         const currentSentiment = activeActors[actorKey] || null;
         if (input.increment && currentSentiment === input.sentiment) {
             result = {
@@ -258,10 +274,10 @@ export const executeAnswerlatticeContentFeedback = async (
             sentiment: input.sentiment,
             action: input.action,
             createdOn: Timestamp.now(),
-            uId: actor.id.slice(0, 180),
-            userName: actor.name.slice(0, 160),
-            ...(actor.email ? { userEmail: actor.email.slice(0, 180) } : {}),
-            ...(actor.phone ? { userPhone: actor.phone.slice(0, 80) } : {}),
+            uId: actorId,
+            userName: actorName,
+            ...(actorEmail ? { userEmail: actorEmail } : {}),
+            ...(actorPhone ? { userPhone: actorPhone } : {}),
             ...(actor.sourceContext ? { sourceContext: actor.sourceContext } : {}),
         };
         const currentList = feedbackSnapshot.exists ? feedbackSnapshot.data()?.list : [];
@@ -276,15 +292,15 @@ export const executeAnswerlatticeContentFeedback = async (
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 tId: scope.tId,
                 sId: scope.sId,
-                uId: actor.id,
+                uId: actorId,
                 role: 'CUSTOMER',
                 sourceContext: actor.sourceContext || null,
                 traceId: input.requestId,
                 requestId: input.requestId,
                 createdOn: FieldValue.serverTimestamp(),
-                createdBy: actor.name,
+                createdBy: actorName,
                 modifiedOn: FieldValue.serverTimestamp(),
-                modifiedBy: actor.name,
+                modifiedBy: actorName,
                 ...retentionFields,
             });
             feedbackLogged = true;
@@ -292,7 +308,7 @@ export const executeAnswerlatticeContentFeedback = async (
             transaction.update(feedbackRef, {
                 list: [...currentList, feedbackItem],
                 modifiedOn: FieldValue.serverTimestamp(),
-                modifiedBy: actor.name,
+                modifiedBy: actorName,
                 ...retentionFields,
             });
             feedbackLogged = true;
@@ -320,7 +336,7 @@ export const executeAnswerlatticeContentFeedback = async (
                     message: sanitizeFeedbackComment(input.comment, 360) || `${input.type} marked not helpful`,
                 },
                 createdOn: FieldValue.serverTimestamp(),
-                createdBy: actor.id,
+                createdBy: actorId,
             });
         }
 

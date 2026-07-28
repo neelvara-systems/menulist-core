@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-implemented and hardened — not current launch or deploy certification
-**Last Updated:** July 10, 2026
+**Last Updated:** July 26, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -117,7 +117,7 @@ MenuList uses Google Gemini AI across multiple features: menu extraction, descri
 | ------------------------- | ------------------------------------------------------------------------ |
 | **Unified protection**    | All Cloud Function AI calls have rate limiting + retry + circuit breaker |
 | **SDK standardization**   | Single Gemini SDK (`@google/genai`) across all Cloud Functions           |
-| **Model consistency**     | All features use `gemini-2.5-flash` unless explicitly overridden         |
+| **Model consistency**     | Explicit stable registry: `gemini-3.5-flash-lite` for high-throughput work, `gemini-3.6-flash` for complex/escalation work, and deliberate balanced/image overrides |
 | **Cost visibility**       | Per-feature AI cost tracked and queryable                                |
 | **Zero breaking changes** | Existing extraction pipeline behavior unchanged                          |
 
@@ -200,7 +200,7 @@ Behavior is determined by how many keys are configured in environment variables.
 | Feedback Analysis | `functions/src/services/gemini/feedbackAnalysis.ts`      | `@google/genai` | `AI_MODEL`     | No active runtime cost | Dormant compatibility source |
 | Owner Dashboard   | `functions/src/services/gemini/ownerDashboardSummary.ts` | `@google/genai` | `OWNER_ANALYTICS_AI_MODEL` | ~$0.001 | Nightly |
 | Weekly Narrative  | `functions/src/analytics/weeklyNarrative.ts`             | `@google/genai` | `AI_MODEL`     | No active runtime cost | Dormant compatibility source |
-| KB Quality        | `functions/src/analytics/kbQuality.ts`                   | `@google/genai` | `AI_MODEL`     | No active runtime cost | Dormant compatibility source |
+| KB Quality        | Retired MenuList source                                  | —               | —              | No runtime cost | Worker and provider helper absent; Answerlattice owns current truth |
 | AI Provider Health | `functions/src/schedulers/aiProviderHealth.ts`          | `@google/genai` | `AI_MODEL`     | tiny      | Daily      |
 
 ### Frontend API Routes (Client → Server → Gemini)

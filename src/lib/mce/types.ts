@@ -38,13 +38,13 @@ export interface MCEMetadata {
  */
 export interface CSRInput {
     /** The project data being saved */
-    projectData: Record<string, any>;
+    projectData: unknown;
     /** Whether this is an outlet project (has masterProjectId) */
     isOutlet: boolean;
     /** Master project ID if this is an outlet */
     masterProjectId?: string;
     /** Previous project data for comparison (price anomaly detection) */
-    oldProjectData?: Record<string, any>;
+    oldProjectData?: unknown;
 }
 
 /**

@@ -1,6 +1,6 @@
 # Internal Ops Monitoring — Firebase And Cost
 
-**Last updated:** July 17, 2026
+**Last updated:** July 28, 2026
 
 ## Manual refresh costs
 
@@ -8,7 +8,7 @@
 | --- | --- |
 | Control Room | 1 current-user read; 2 alert/config document reads; up to 10 alert rows; 3 aggregation count queries |
 | Store selector | 1 current-user read; 1 `storesSummary` document read, shared in provider state |
-| Scheduler | 1 current-user read; up to 30 run rows; up to 100 settlement rows; filtered history may add 10 health rows |
+| Scheduler | 1 current-user read; up to 30 run rows; up to 100 settlement rows; 1 exact seven-day run-count aggregation; filtered history may add 10 health rows |
 | Extraction | 1 current-user read; up to 150 job rows; up to 100 cost rows |
 | Messaging onboarding | 1 current-user read; at most 30 document reads plus 18 aggregation-count queries |
 | Platform notifications | 1 current-user read; bounded newest-first scan capped at 150 |

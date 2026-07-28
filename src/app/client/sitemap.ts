@@ -27,7 +27,7 @@
  * @see __docs__/discovery-infrastructure/deep-architecture-audit.md — freshness
  */
 
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import { getBoundedLogValueContext, getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
@@ -126,7 +126,7 @@ const logTenantSitemapFailure = (
 ): void => {
     const failureCode = TENANT_SITEMAP_FAILURE_CODES[failureType];
     const boundedContext = getTenantSitemapFailureContext(context);
-    const errorName = error instanceof Error ? error.name : typeof error;
+    const errorName = getBoundedErrorName(error) || typeof error;
     const failureKey = JSON.stringify({
         failureType,
         errorName,

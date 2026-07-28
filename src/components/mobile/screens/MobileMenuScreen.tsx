@@ -14,6 +14,7 @@ import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { appendImageBatchSelectionsToProject } from '@lib/ai/imageBatchProjectSelection';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { getDismissedMenuProcessingJobIds, clearExpiredMenuProcessingJobDismissals } from '@lib/extraction/menuProcessingDismissal';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
@@ -439,6 +440,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const t = useTranslations('MobileMenu');
     const tShare = useTranslations('MobileShare');
     const { storeDetails, setStoreDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
+    const processingStorageKey = getTenantStoreStorageKey(
+        'menulist:mobileMenuActiveProcessingJob',
+        storeDetails?.tenantId,
+        storeDetails?.storeId,
+    );
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'menu'), [storeDetails]);
     const {
         isLoading: loadingProjects,
@@ -493,25 +499,31 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const [expandedCategoryKeys, setExpandedCategoryKeys] = useState<string[]>([]);
     const [isMenuQualityExpanded, setIsMenuQualityExpanded] = useState(true);
-    const [activeProcessingState, setActiveProcessingStateState] = useState<{ jobId: string; projectId: string } | null>(() => {
-        if (typeof window === 'undefined') return null;
+    const [activeProcessingState, setActiveProcessingStateState] = useState<{ jobId: string; projectId: string } | null>(null);
+
+    useEffect(() => {
+        setActiveProcessingStateState(null);
+        if (typeof window === 'undefined' || !processingStorageKey) return;
         clearExpiredMenuProcessingJobDismissals();
         const dismissedSet = new Set(getDismissedMenuProcessingJobIds());
-        const raw = window.sessionStorage.getItem('mobileMenuActiveProcessingJob');
-        if (!raw) return null;
+        const raw = window.sessionStorage.getItem(processingStorageKey);
+        window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+        if (!raw) return;
         try {
             const parsed = JSON.parse(raw);
             if (!parsed?.jobId || !parsed?.projectId || dismissedSet.has(parsed.jobId)) {
-                window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
-                return null;
+                window.sessionStorage.removeItem(processingStorageKey);
+                return;
             }
 
-            return parsed;
+            setActiveProcessingStateState({
+                jobId: String(parsed.jobId),
+                projectId: String(parsed.projectId),
+            });
         } catch {
-            window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
-            return null;
+            window.sessionStorage.removeItem(processingStorageKey);
         }
-    });
+    }, [clearExpiredMenuProcessingJobDismissals, processingStorageKey]);
 
     const refreshActiveProcessingState = useCallback(() => {
         clearExpiredMenuProcessingJobDismissals();
@@ -519,18 +531,19 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         const dismissedSet = new Set(dismissedJobs);
         setActiveProcessingStateState((current) => {
             if (typeof window === 'undefined') return current;
-            const raw = window.sessionStorage.getItem('mobileMenuActiveProcessingJob');
+            if (!processingStorageKey) return null;
+            const raw = window.sessionStorage.getItem(processingStorageKey);
             if (!raw) return null;
 
             try {
                 const parsed = JSON.parse(raw);
                 if (!parsed?.jobId || !parsed?.projectId) {
-                    window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+                    window.sessionStorage.removeItem(processingStorageKey);
                     return null;
                 }
 
                 if (dismissedSet.has(parsed.jobId)) {
-                    window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+                    window.sessionStorage.removeItem(processingStorageKey);
                     return null;
                 }
 
@@ -539,11 +552,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     projectId: parsed.projectId,
                 };
             } catch {
-                window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+                window.sessionStorage.removeItem(processingStorageKey);
                 return null;
             }
         });
-    }, [clearExpiredMenuProcessingJobDismissals]);
+    }, [clearExpiredMenuProcessingJobDismissals, processingStorageKey]);
 
     useEffect(() => {
         refreshActiveProcessingState();
@@ -877,13 +890,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
     const setActiveProcessingState = useCallback((value: { jobId: string; projectId: string } | null) => {
         setActiveProcessingStateState(value);
-        if (typeof window === 'undefined') return;
+        if (typeof window === 'undefined' || !processingStorageKey) return;
         if (value) {
-            window.sessionStorage.setItem('mobileMenuActiveProcessingJob', JSON.stringify(value));
+            window.sessionStorage.setItem(processingStorageKey, JSON.stringify(value));
         } else {
-            window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
+            window.sessionStorage.removeItem(processingStorageKey);
         }
-    }, []);
+    }, [processingStorageKey]);
 
     const flushPendingMenuPersist = useCallback(async () => {
         if (isPersistingRef.current || !pendingMenuRef.current?.projectId) {

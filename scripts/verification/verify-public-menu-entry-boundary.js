@@ -151,10 +151,10 @@ requireOrder(createRoute, [
   'projectData._mce = toMCEMetadata(mceValidate({',
   'transaction.set(projectRef, projectData);',
   'const cacheResults = await Promise.allSettled',
-  "revalidateTag(`menu-store-${result.storeId}`)",
-  "revalidateTag(`store-${result.storeId}`)",
-  "revalidateTag('client-stores')",
-  "revalidateTag('screen-data')",
+  "revalidateTag(`menu-store-${result.storeId}`, { expire: 0 })",
+  "revalidateTag(`store-${result.storeId}`, { expire: 0 })",
+  "revalidateTag('client-stores', { expire: 0 })",
+  "revalidateTag('screen-data', { expire: 0 })",
 ].forEach((token) => requireToken(claimRoute, token, 'Public Menu Entry claim route'));
 requireOrder(claimRoute, [
   'const storeDoc = await transaction.get(storeRef);',

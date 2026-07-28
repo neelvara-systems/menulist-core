@@ -631,6 +631,10 @@ function verifyMiddlewareBoundary() {
   assertIncludes(middleware, "CONTROLLED_TENANT_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged tenant-header removal');
   assertIncludes(middleware, "CONTROLLED_HOSTED_HELP_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged hosted-help header removal');
   assertIncludes(middleware, "CONTROLLED_PRODUCT_REQUEST_HEADERS.forEach((header) => requestHeaders.delete(header));", 'middleware forged product-header removal');
+  assertIncludes(middleware, 'function isTrustedLocalDevelopmentRequest(hostname: string | null): boolean', 'middleware local-development trust helper');
+  assertIncludes(middleware, 'return !process.env.VERCEL && isLocalDevelopmentHost(hostname);', 'middleware local-development paths must be unavailable on Vercel even for local-looking Host values');
+  assertIncludes(middleware, 'isSignalDeskRuntimePath(pathname) && !isTrustedLocalDevelopmentRequest(hostname)', 'middleware SignalDesk alternate paths require a genuinely local runtime');
+  assertIncludes(middleware, "!isTrustedLocalDevelopmentRequest(request.headers.get('host'))", 'middleware HTTPS enforcement must not trust a local-looking Host on Vercel');
   assertIncludes(middleware, 'request: { headers: requestHeaders }', 'middleware trusted routing headers forwarded to rewritten request');
   assertIncludes(middleware, 'nextWithSanitizedRoutingHeaders(request)', 'middleware pass-through routing-header sanitization');
   assertIncludes(middleware, 'nextWithProductHeaders(request, productConfig)', 'middleware product pass-through trusted header injection');
@@ -808,11 +812,17 @@ function verifySubdomainClaimBoundary() {
 
   [
     'const renameResult = await db.runTransaction(async (tx) => {',
+    'normalizeStoreSummaryNumericAliases([freshStore.tenantId, freshStore.tId])',
     'readSubdomainReservationInTransaction({',
     'writeCurrentSubdomainClaim(tx, reservation, now);',
     'writeRedirectSubdomainClaim({',
     'previousSubdomain: freshCurrentSubdomain',
   ].forEach((token) => assertIncludes(adminRename, token, 'Admin subdomain rename claim/redirect transaction'));
+  assertNotIncludes(
+    adminRename,
+    'freshStore.tenantId ?? freshStore.tId',
+    'Admin subdomain rename must reject conflicting transaction-current tenant aliases',
+  );
   [
     'Concurrent onboarding transactions must not commit the same public subdomain',
     'Exactly one concurrent onboarding transaction may own the requested public subdomain',
@@ -827,6 +837,7 @@ function verifySubdomainClaimBoundary() {
     'Explicit outlet must not claim a brand subdomain',
     'Legacy single store must retain subdomain assignment compatibility',
     'Legacy multi-store topology without a master marker must fail closed',
+    'Conflicting persisted tenant aliases must fail closed before subdomain ownership',
   ].forEach((token) => assertIncludes(emulatorTest, token, 'Concurrent subdomain claim emulator regression'));
   assertIncludes(readme, 'Durable Subdomain Claim Boundary', 'URL routing README subdomain claim boundary');
   assertIncludes(readme, 'Brand subdomain master-store admission', 'URL routing README master-store subdomain boundary');

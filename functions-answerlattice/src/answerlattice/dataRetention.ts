@@ -1,9 +1,12 @@
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 import {
+    getAnswerlatticeBundleLockDocId,
     getAnswerlatticeBundleManifestDocId,
+    getExpectedAnswerlatticePublicBundleId,
     isOwnedAnswerlatticeBundleManifest,
     normalizeAnswerlatticeStoredBundleVersion,
     shouldDeleteAnswerlatticeContextBundleVersion,
@@ -19,6 +22,7 @@ import {
 const BUNDLE_ROOT = 'answerlattice-context';
 const DEFAULT_BATCH_LIMIT = 100;
 const DEFAULT_STORAGE_DELETE_LIMIT = 250;
+const MAX_CONTEXT_BUNDLE_VERSIONS_SCANNED_PER_RUN = 25;
 const RETENTION_TASK_FAILED = 'ANSWERLATTICE_RETENTION_TASK_FAILED';
 
 export const ANSWERLATTICE_CONTEXT_BUNDLE_KEEP_PREVIOUS_VERSIONS = 2;
@@ -65,16 +69,11 @@ const toMillis = (value?: Timestamp | Date | number | null): number => {
 };
 
 function getRetentionErrorContext(error: unknown): Record<string, string | number | null> {
-    const source = error as { name?: unknown; code?: unknown; status?: unknown; statusCode?: unknown };
-    const status = typeof source?.status === 'number'
-        ? source.status
-        : typeof source?.statusCode === 'number'
-            ? source.statusCode
-            : null;
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: typeof source?.name === 'string' ? source.name : typeof error,
-        sourceErrorCode: typeof source?.code === 'string' || typeof source?.code === 'number' ? String(source.code) : null,
-        sourceStatusCode: status,
+        sourceErrorName: context.sourceErrorName ?? null,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceStatusCode: context.sourceStatusCode ?? null,
     };
 }
 
@@ -157,13 +156,6 @@ async function cleanupTenantContentFeedback(
     return deleted;
 }
 
-const extractBundleVersion = (path: string): number | null => {
-    const match = path.match(/\/v(\d+)\//);
-    if (!match) return null;
-    const version = normalizeAnswerlatticeStoredBundleVersion(match[1]);
-    return version !== null && version > 0 ? version : null;
-};
-
 const getVersionsToKeep = (manifest: any): Set<number> => {
     const activeVersion = normalizeAnswerlatticeStoredBundleVersion(manifest?.activeVersion ?? manifest?.bundleVersion);
     const lastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(manifest?.lastReadyVersion ?? activeVersion);
@@ -183,6 +175,99 @@ const getVersionsToKeep = (manifest: any): Set<number> => {
     return versions;
 };
 
+type ContextBundleRetentionScan = {
+    activeVersion: number;
+    keepVersions: Set<number>;
+    nextVersion: number;
+    publicBundleId: string;
+};
+
+const isOwnedFailedBundleLock = (
+    value: unknown,
+    tId: number,
+    sId: number,
+): value is Record<string, any> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const lock = value as Record<string, unknown>;
+    return lock.schemaVersion === 1
+        && lock.pId === 'AL'
+        && lock.tId === tId
+        && lock.sId === sId
+        && typeof lock.lockId === 'string'
+        && lock.lockId.length > 0
+        && lock.status === 'failed'
+        && normalizeAnswerlatticeStoredBundleVersion(lock.bundleVersion) !== null;
+};
+
+const getContextBundleRetentionScan = (
+    manifest: Record<string, any>,
+    currentActiveVersion: number,
+    currentKeepVersions: Set<number>,
+    currentPublicBundleId: string,
+): ContextBundleRetentionScan => {
+    const storedActiveVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.retentionScanActiveVersion);
+    const storedNextVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.retentionScanNextVersion);
+    const storedKeepVersions = Array.isArray(manifest.retentionScanKeepVersions)
+        ? manifest.retentionScanKeepVersions.map(normalizeAnswerlatticeStoredBundleVersion)
+        : null;
+    const storedPublicBundleId = typeof manifest.retentionScanPublicBundleId === 'string'
+        ? manifest.retentionScanPublicBundleId
+        : null;
+    const hasValidStoredKeepVersions = storedKeepVersions !== null
+        && storedKeepVersions.length > 0
+        && storedActiveVersion !== null
+        && storedKeepVersions.includes(storedActiveVersion)
+        && storedKeepVersions.every((version): version is number => (
+            version !== null
+            && version > 0
+            && version <= storedActiveVersion
+        ))
+        && new Set(storedKeepVersions).size === storedKeepVersions.length;
+
+    if (
+        storedActiveVersion !== null
+        && storedActiveVersion > 0
+        && storedActiveVersion <= currentActiveVersion
+        && storedNextVersion !== null
+        && storedNextVersion > 0
+        && storedNextVersion <= storedActiveVersion + 1
+        && hasValidStoredKeepVersions
+        && storedPublicBundleId === currentPublicBundleId
+    ) {
+        return {
+            activeVersion: storedActiveVersion,
+            keepVersions: new Set(storedKeepVersions),
+            nextVersion: storedNextVersion,
+            publicBundleId: storedPublicBundleId,
+        };
+    }
+
+    return {
+        activeVersion: currentActiveVersion,
+        keepVersions: currentKeepVersions,
+        nextVersion: 1,
+        publicBundleId: currentPublicBundleId,
+    };
+};
+
+const deleteContextBundleVersionPrefix = async (
+    prefix: string,
+    deleteLimit: number,
+): Promise<{ complete: boolean; deleted: number }> => {
+    if (deleteLimit <= 0) return { complete: false, deleted: 0 };
+    const [files, nextQuery] = await storageAdmin.bucket().getFiles({
+        autoPaginate: false,
+        maxResults: deleteLimit + 1,
+        prefix,
+    });
+    const targets = files.slice(0, deleteLimit);
+    await Promise.all(targets.map(file => file.delete({ ignoreNotFound: true })));
+    return {
+        complete: files.length <= targets.length && !nextQuery,
+        deleted: targets.length,
+    };
+};
+
 async function cleanupTenantContextBundleVersions(
     tenant: AnswerlatticeRetentionTenantScope,
     storageDeleteLimit: number,
@@ -200,54 +285,195 @@ async function cleanupTenantContextBundleVersions(
     const manifest = manifestSnap.data() || {};
     if (!isOwnedAnswerlatticeBundleManifest(manifest, tId, sId)) return 0;
     const activeVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.activeVersion ?? manifest.bundleVersion);
+    if (!activeVersion) return 0;
     const lastRetentionCleanedVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.lastRetentionCleanedVersion);
-    if (!activeVersion || (lastRetentionCleanedVersion !== null && lastRetentionCleanedVersion >= activeVersion)) return 0;
-    const publicBundleId = typeof manifest.publicBundleId === 'string' ? manifest.publicBundleId : '';
+    const hasStoredScan = manifest.retentionScanActiveVersion !== undefined
+        || manifest.retentionScanNextVersion !== undefined
+        || manifest.retentionScanKeepVersions !== undefined
+        || manifest.retentionScanPublicBundleId !== undefined;
+    if (!hasStoredScan && lastRetentionCleanedVersion !== null && lastRetentionCleanedVersion >= activeVersion) return 0;
+    const storedPublicBundleId = typeof manifest.publicBundleId === 'string' ? manifest.publicBundleId : '';
+    const expectedPublicBundleId = getExpectedAnswerlatticePublicBundleId(tId, sId);
+    if (
+        !expectedPublicBundleId
+        || (storedPublicBundleId && storedPublicBundleId !== expectedPublicBundleId)
+    ) {
+        throw new Error('ANSWERLATTICE_CONTEXT_BUNDLE_PUBLIC_ID_SCOPE_MISMATCH');
+    }
+    const publicBundleId = expectedPublicBundleId;
     const keepVersions = getVersionsToKeep(manifest);
     if (!keepVersions.size) return 0;
+    const scan = getContextBundleRetentionScan(
+        manifest,
+        activeVersion,
+        keepVersions,
+        publicBundleId,
+    );
+    let deleted = 0;
+    let versionsScanned = 0;
+    while (
+        scan.nextVersion <= scan.activeVersion
+        && deleted < storageDeleteLimit
+        && versionsScanned < MAX_CONTEXT_BUNDLE_VERSIONS_SCANNED_PER_RUN
+    ) {
+        const candidateVersion = scan.nextVersion;
+        versionsScanned += 1;
+        if (!shouldDeleteAnswerlatticeContextBundleVersion(
+            candidateVersion,
+            scan.activeVersion,
+            scan.keepVersions,
+        )) {
+            scan.nextVersion += 1;
+            continue;
+        }
 
-    const prefixes = [
-        publicBundleId ? `${BUNDLE_ROOT}/public/${publicBundleId}/` : '',
-        `${BUNDLE_ROOT}/private/${tId}/${sId}/`,
-    ].filter(Boolean);
+        const prefixes = [
+            ...(scan.publicBundleId
+                ? [`${BUNDLE_ROOT}/public/${scan.publicBundleId}/v${candidateVersion}/`]
+                : []),
+            `${BUNDLE_ROOT}/private/${tId}/${sId}/v${candidateVersion}/`,
+        ];
+        let versionComplete = true;
+        for (const prefix of prefixes) {
+            const result = await deleteContextBundleVersionPrefix(
+                prefix,
+                storageDeleteLimit - deleted,
+            );
+            deleted += result.deleted;
+            if (!result.complete) {
+                versionComplete = false;
+                break;
+            }
+        }
+        if (!versionComplete) break;
+        scan.nextVersion += 1;
+    }
+
+    await db.runTransaction(async transaction => {
+        const currentManifestSnap = await transaction.get(manifestSnap.ref);
+        const currentManifest = currentManifestSnap.data();
+        const currentActiveVersion = normalizeAnswerlatticeStoredBundleVersion(
+            currentManifest?.activeVersion ?? currentManifest?.bundleVersion,
+        );
+        const currentStoredPublicBundleId = typeof currentManifest?.publicBundleId === 'string'
+            ? currentManifest.publicBundleId
+            : '';
+        if (
+            !currentManifestSnap.exists
+            || !isOwnedAnswerlatticeBundleManifest(currentManifest, tId, sId)
+            || currentActiveVersion === null
+            || currentActiveVersion < scan.activeVersion
+            || (
+                currentStoredPublicBundleId
+                && currentStoredPublicBundleId !== scan.publicBundleId
+            )
+        ) return;
+        if (scan.nextVersion > scan.activeVersion) {
+            transaction.update(manifestSnap.ref, {
+                lastRetentionCleanedVersion: scan.activeVersion,
+                lastRetentionCleanedAt: Timestamp.now(),
+                retentionScanActiveVersion: FieldValue.delete(),
+                retentionScanKeepVersions: FieldValue.delete(),
+                retentionScanNextVersion: FieldValue.delete(),
+                retentionScanPublicBundleId: FieldValue.delete(),
+                retentionScanUpdatedAt: FieldValue.delete(),
+            });
+            return;
+        }
+        transaction.update(manifestSnap.ref, {
+            retentionScanActiveVersion: scan.activeVersion,
+            retentionScanKeepVersions: Array.from(scan.keepVersions).sort((left, right) => left - right),
+            retentionScanNextVersion: scan.nextVersion,
+            retentionScanPublicBundleId: scan.publicBundleId,
+            retentionScanUpdatedAt: Timestamp.now(),
+        });
+    });
+
+    return deleted;
+}
+
+async function cleanupTenantFailedContextBundleVersion(
+    tenant: AnswerlatticeRetentionTenantScope,
+    storageDeleteLimit: number,
+): Promise<number> {
+    const scope = parseExactAnswerlatticeScope(tenant.tId, tenant.sId);
+    if (!scope || storageDeleteLimit <= 0) return 0;
+    const { tId, sId } = scope;
+    const manifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeBundleManifestDocId(tId, sId));
+    const lockRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeBundleLockDocId(tId, sId));
+    const [manifestSnap, lockSnap] = await Promise.all([
+        manifestRef.get(),
+        lockRef.get(),
+    ]);
+    const manifest = manifestSnap.data();
+    const lock = lockSnap.data();
+    if (
+        !manifestSnap.exists
+        || !isOwnedAnswerlatticeBundleManifest(manifest, tId, sId)
+        || !lockSnap.exists
+        || !isOwnedFailedBundleLock(lock, tId, sId)
+    ) return 0;
+
+    const failedVersion = normalizeAnswerlatticeStoredBundleVersion(lock.bundleVersion);
+    const activeVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.activeVersion);
+    const lastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(manifest.lastReadyVersion);
+    if (
+        !failedVersion
+        || failedVersion === activeVersion
+        || failedVersion === lastReadyVersion
+        || normalizeAnswerlatticeStoredBundleVersion(lock.storageCleanupCompletedVersion) === failedVersion
+    ) return 0;
+
+    const expectedPublicBundleId = getExpectedAnswerlatticePublicBundleId(tId, sId);
+    const storedPublicBundleId = typeof manifest.publicBundleId === 'string' ? manifest.publicBundleId : '';
+    if (
+        !expectedPublicBundleId
+        || (storedPublicBundleId && storedPublicBundleId !== expectedPublicBundleId)
+    ) {
+        throw new Error('ANSWERLATTICE_CONTEXT_BUNDLE_PUBLIC_ID_SCOPE_MISMATCH');
+    }
 
     let deleted = 0;
-    let listingWasTruncated = false;
-    const bucket = storageAdmin.bucket();
-
-    for (const prefix of prefixes) {
-        if (deleted >= storageDeleteLimit) break;
-
-        const [files] = await bucket.getFiles({ prefix, maxResults: 1000 });
-        if (files.length >= 1000) listingWasTruncated = true;
-        for (const file of files) {
-            if (deleted >= storageDeleteLimit) break;
-            const version = extractBundleVersion(file.name);
-            if (!version || !shouldDeleteAnswerlatticeContextBundleVersion(version, activeVersion, keepVersions)) continue;
-
-            await file.delete({ ignoreNotFound: true } as any);
-            deleted += 1;
+    let complete = true;
+    for (const prefix of [
+        `${BUNDLE_ROOT}/public/${expectedPublicBundleId}/v${failedVersion}/`,
+        `${BUNDLE_ROOT}/private/${tId}/${sId}/v${failedVersion}/`,
+    ]) {
+        const result = await deleteContextBundleVersionPrefix(
+            prefix,
+            storageDeleteLimit - deleted,
+        );
+        deleted += result.deleted;
+        if (!result.complete) {
+            complete = false;
+            break;
         }
     }
+    if (!complete) return deleted;
 
-    if (!listingWasTruncated && deleted < storageDeleteLimit) {
-        await db.runTransaction(async transaction => {
-            const currentManifestSnap = await transaction.get(manifestSnap.ref);
-            const currentManifest = currentManifestSnap.data();
-            if (
-                !currentManifestSnap.exists
-                || !isOwnedAnswerlatticeBundleManifest(currentManifest, tId, sId)
-                || normalizeAnswerlatticeStoredBundleVersion(
-                    currentManifest.activeVersion ?? currentManifest.bundleVersion,
-                ) !== activeVersion
-            ) return;
-            transaction.update(manifestSnap.ref, {
-                lastRetentionCleanedVersion: activeVersion,
-                lastRetentionCleanedAt: Timestamp.now(),
-            });
+    await db.runTransaction(async transaction => {
+        const [currentManifestSnap, currentLockSnap] = await Promise.all([
+            transaction.get(manifestRef),
+            transaction.get(lockRef),
+        ]);
+        const currentManifest = currentManifestSnap.data();
+        const currentLock = currentLockSnap.data();
+        if (
+            !currentManifestSnap.exists
+            || !isOwnedAnswerlatticeBundleManifest(currentManifest, tId, sId)
+            || !currentLockSnap.exists
+            || !isOwnedFailedBundleLock(currentLock, tId, sId)
+            || normalizeAnswerlatticeStoredBundleVersion(currentLock.bundleVersion) !== failedVersion
+            || normalizeAnswerlatticeStoredBundleVersion(currentManifest.activeVersion) === failedVersion
+            || normalizeAnswerlatticeStoredBundleVersion(currentManifest.lastReadyVersion) === failedVersion
+        ) return;
+        transaction.update(lockRef, {
+            storageCleanupCompletedAt: Timestamp.now(),
+            storageCleanupCompletedVersion: failedVersion,
         });
-    }
-
+    });
     return deleted;
 }
 
@@ -394,6 +620,11 @@ export async function cleanupAnswerlatticeOperationalRetention(options: {
         for (const tenant of tenants) {
             if (result.contextBundleObjectsDeleted >= storageDeleteLimit) break;
             result.contextBundleObjectsDeleted += await cleanupTenantContextBundleVersions(
+                tenant,
+                storageDeleteLimit - result.contextBundleObjectsDeleted,
+            );
+            if (result.contextBundleObjectsDeleted >= storageDeleteLimit) break;
+            result.contextBundleObjectsDeleted += await cleanupTenantFailedContextBundleVersion(
                 tenant,
                 storageDeleteLimit - result.contextBundleObjectsDeleted,
             );

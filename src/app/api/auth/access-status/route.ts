@@ -2,10 +2,19 @@ export const dynamic = "force-dynamic";
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import {
+    isAccessStatusEntityIdentityConsistent,
+    isAccessStatusStoreOwnedByTenant,
+    resolveAccessStatusPreferredScope,
+} from "@lib/auth/accessStatusScope";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
+import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
+import { getUniqueAuthUserByEmailFromCollection } from "@lib/auth/serverUserContext";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
+import { resolveStorePermissionSessionScope } from "@lib/permissions/scopeDocumentId";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getBoundedRuntimeStringContext } from "@lib/runtime/runtimeDiagnostics";
@@ -17,13 +26,12 @@ import { withAuth } from "../../../../middleware/auth";
 const ACCESS_STATUS_RATE_LIMIT_KEY = "auth-access-status";
 const CANONICAL_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
-const noStoreJson = (body: Record<string, unknown>, status = 200, headers: Record<string, string> = {}) => NextResponse.json(body, {
-    headers: {
-        "Cache-Control": "no-store, max-age=0",
-        ...headers,
-    },
-    status,
-});
+const noStoreJson = (body: Record<string, unknown>, status = 200, initHeaders: Record<string, string> = {}) => {
+    const headers = new Headers(initHeaders);
+    headers.set("Cache-Control", "private, no-store, max-age=0");
+    headers.set("X-Content-Type-Options", "nosniff");
+    return NextResponse.json(body, { headers, status });
+};
 
 const canonicalIsoTimestampToMillis = (value: string): number => {
     const normalized = value.trim();
@@ -50,26 +58,14 @@ const normalizeOptionalDocumentId = (value?: string | number | null): string | n
 };
 
 const isPlatformAccessSession = (session: any, userData: Record<string, any>): boolean => (
-    session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-    || session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-    || userData.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-    || userData.role === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
+    && userData.platformRole === ECOMSAI_PLATFORM_USER_ROLE
 );
-
-const normalizeReferencedScopeDocumentId = (value: unknown): string | null => (
-    typeof value === "string" || typeof value === "number"
-        ? normalizeOptionalDocumentId(value)
-        : null
-);
-
-const isStoreOwnedByTenant = (storeData: Record<string, any> | null, tenantDocumentId: string | null): boolean => {
-    if (!storeData || !tenantDocumentId) return false;
-    const storeTenantDocumentId = normalizeReferencedScopeDocumentId(storeData.tenantId ?? storeData.tId);
-    return storeTenantDocumentId === tenantDocumentId;
-};
 
 const getCurrentUserSnapshot = async (session: any) => {
-    const userId = session?.uId || session?.user?.id;
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    const hasSessionUserDocumentId = Boolean(session?.uId || session?.user?.id);
+    if (!userId && hasSessionUserDocumentId) return null;
     if (userId) {
         const userDocumentId = normalizeOptionalDocumentId(userId);
         if (!userDocumentId) return null;
@@ -80,13 +76,12 @@ const getCurrentUserSnapshot = async (session: any) => {
     const email = String(session?.user?.email || "").toLowerCase().trim();
     if (!email) return null;
 
-    const snapshot = await firestoreAdmin
-        .collection(DB_COLLECTIONS.USERS)
-        .where("email", "==", email)
-        .limit(1)
-        .get();
-
-    return snapshot.empty ? null : snapshot.docs[0];
+    const user = await getUniqueAuthUserByEmailFromCollection(
+        firestoreAdmin.collection(DB_COLLECTIONS.USERS),
+        email,
+    );
+    if (!user?.id) return null;
+    return firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(user.id).get();
 };
 
 const getEntityData = async (collectionName: string, id?: string | number | null) => {
@@ -99,9 +94,15 @@ const getEntityData = async (collectionName: string, id?: string | number | null
 
 const checkAccessStatusRateLimit = async (request: NextRequest, session: any) => {
     const rateLimitConfig = getRateLimitForFeature("DATA_READ");
-    const userId = session?.uId || session?.user?.id || "unknown";
-    const tenantId = session?.tId || session?.user?.tenantId || "unknown";
-    const storeId = session?.sId || session?.user?.storeId || "unknown";
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    const platformRole = resolveExactSessionPlatformRole(session);
+    const platformSession = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    if (!userId || platformRole === null || (!platformSession && !sessionScope)) {
+        return noStoreJson({ error: "Forbidden" }, 403);
+    }
+    const tenantId = sessionScope?.tenantScope.documentId || "platform";
+    const storeId = sessionScope?.storeScope.documentId || "platform";
     const userRateLimitHash = hashPublicRateLimitValue(userId);
     const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
     const storeRateLimitHash = hashPublicRateLimitValue(storeId);
@@ -109,6 +110,7 @@ const checkAccessStatusRateLimit = async (request: NextRequest, session: any) =>
     const rateLimit = await checkRateLimit({
         key: `${ACCESS_STATUS_RATE_LIMIT_KEY}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
 
     if (rateLimit.allowed) return null;
@@ -128,11 +130,13 @@ const checkAccessStatusRateLimit = async (request: NextRequest, session: any) =>
 
     return noStoreJson(
         {
-            error: "Too many requests. Please try again later.",
+            error: rateLimit.reason === "provider_unavailable"
+                ? "Session access check is temporarily unavailable."
+                : "Too many requests. Please try again later.",
             retryAfter: waitSeconds,
             resetAt: rateLimit.resetAt,
         },
-        429,
+        rateLimit.reason === "provider_unavailable" ? 503 : 429,
         {
             "Retry-After": String(waitSeconds),
             "X-RateLimit-Limit": String(rateLimitConfig.limit),
@@ -178,7 +182,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (isPlatformEntityBlocked(userData)) return invalidAccess(request, session, "USER_BLOCKED");
 
     const platformAccessSession = isPlatformAccessSession(session, userData);
-    const tenantId = userData.tenantId ?? session?.tId ?? session?.user?.tenantId;
+    const tenantScope = resolveAccessStatusPreferredScope(
+        [userData.tenantId, userData.tId],
+        [session?.tId, session?.user?.tenantId],
+    );
+    if (tenantScope.state === "invalid") {
+        return invalidAccess(request, session, "TENANT_REFERENCE_INVALID");
+    }
+    const tenantId = tenantScope.state === "resolved" ? tenantScope.documentId : null;
     const tenant = await getEntityData(DB_COLLECTIONS.TENANTS, tenantId);
     if (tenant.invalidId) {
         return invalidAccess(request, session, "TENANT_REFERENCE_INVALID", {
@@ -205,8 +216,25 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext("tenantId", tenantId),
         });
     }
+    if (
+        tenant.data
+        && !isAccessStatusEntityIdentityConsistent(
+            tenant.data,
+            tenant.documentId,
+            ["tenantId", "tId"],
+        )
+    ) {
+        return invalidAccess(request, session, "TENANT_REFERENCE_INVALID");
+    }
 
-    const storeId = userData.storeId ?? session?.sId ?? session?.user?.storeId;
+    const storeScope = resolveAccessStatusPreferredScope(
+        [userData.storeId, userData.sId],
+        [session?.sId, session?.user?.storeId],
+    );
+    if (storeScope.state === "invalid") {
+        return invalidAccess(request, session, "STORE_REFERENCE_INVALID");
+    }
+    const storeId = storeScope.state === "resolved" ? storeScope.documentId : null;
     const store = await getEntityData(DB_COLLECTIONS.STORES, storeId);
     if (store.invalidId) {
         return invalidAccess(request, session, "STORE_REFERENCE_INVALID", {
@@ -233,13 +261,23 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext("storeId", storeId),
         });
     }
+    if (
+        store.data
+        && !isAccessStatusEntityIdentityConsistent(
+            store.data,
+            store.documentId,
+            ["storeId", "sId"],
+        )
+    ) {
+        return invalidAccess(request, session, "STORE_REFERENCE_INVALID");
+    }
     if (!platformAccessSession && store.data && !tenant.documentId) {
         return invalidAccess(request, session, "TENANT_NOT_FOUND", {
             ...getBoundedRuntimeStringContext("storeId", storeId),
             ...getBoundedRuntimeStringContext("tenantId", tenantId),
         });
     }
-    if (!platformAccessSession && store.data && tenant.documentId && !isStoreOwnedByTenant(store.data, tenant.documentId)) {
+    if (!platformAccessSession && store.data && tenant.documentId && !isAccessStatusStoreOwnedByTenant(store.data, tenant.documentId)) {
         return invalidAccess(request, session, "STORE_TENANT_MISMATCH", {
             ...getBoundedRuntimeStringContext("storeId", storeId),
             ...getBoundedRuntimeStringContext("tenantId", tenantId),

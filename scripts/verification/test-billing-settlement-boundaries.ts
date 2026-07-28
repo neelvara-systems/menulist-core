@@ -44,6 +44,7 @@ import {
 import {
     getMenuListSubscriptionEntitlementScope,
     isMenuListSubscriptionEntitledForTenant,
+    isMenuListSubscriptionInExpectedEntitlementScope,
 } from '../../src/lib/billing/menuListSubscriptionEntitlementBoundary';
 import { getProductSubscriptionBillingScope } from '../../src/lib/billing/productSubscriptionScopeBoundary';
 import {
@@ -308,6 +309,18 @@ assert.deepEqual(getMenuListSubscriptionEntitlementScope(exactMenuListEntitlemen
 });
 assert.equal(isMenuListSubscriptionEntitledForTenant(exactMenuListEntitlementSubscription, 101), true);
 assert.equal(isMenuListSubscriptionEntitledForTenant(exactMenuListEntitlementSubscription, 999), false);
+assert.equal(isMenuListSubscriptionInExpectedEntitlementScope(
+    exactMenuListEntitlementSubscription,
+    { tenantId: 101, storeId: 202 },
+), true);
+assert.equal(isMenuListSubscriptionInExpectedEntitlementScope(
+    { ...exactMenuListEntitlementSubscription, tenantId: 999, tId: 999 },
+    { tenantId: 101, storeId: 202 },
+), false);
+assert.equal(isMenuListSubscriptionInExpectedEntitlementScope(
+    exactMenuListEntitlementSubscription,
+    { tenantId: '0101', storeId: 202 },
+), false);
 assert.equal(isMenuListSubscriptionEntitledForTenant({
     ...exactMenuListEntitlementSubscription,
     productId: 'AL',
@@ -641,6 +654,8 @@ assert.equal(resolveVerifiedTopupSettlement({
 }), null, 'immutable and provider pack names must agree');
 
 const currentTopupSubscription = {
+    id: 'sub_current_001',
+    providerSubscriptionId: 'sub_provider_001',
     productId: 'ML',
     pId: 'ML',
     tenantId: 101,
@@ -659,8 +674,10 @@ assert.deepEqual(resolveCurrentTopupSubscriptionSettlement({
     subscriptionSnapshot: currentTopupSubscription,
 }), {
     creditsLastResetMonth: 202607,
+    id: 'sub_current_001',
     monthlyCredits: 4,
     monthlyCreditsAllowance: 10,
+    providerSubscriptionId: 'sub_provider_001',
     storeId: 202,
     tenantId: 101,
     topUpCredits: 9,
@@ -707,6 +724,12 @@ assert.equal(resolveCurrentTopupSubscriptionSettlement({
     expectedStoreId: 202,
     subscriptionSnapshot: { ...currentTopupSubscription, topUpCredits: '9' },
 }), null, 'coercible persisted balances must not enter credit arithmetic');
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: { ...currentTopupSubscription, providerSubscriptionId: ' '.repeat(2) },
+}), null, 'malformed provider subscription identity must not enter the credit mirror');
 assert.equal(resolveCurrentTopupSubscriptionSettlement({
     expectedProductId: 'ML',
     expectedTenantId: 101,
@@ -871,5 +894,21 @@ assert.deepEqual(resolveAnswerlatticeIntakeRefundAllocation({
     refundedMonthlyCredits: 5,
     refundedTopUpCredits: 0,
 });
+assert.equal(resolveAnswerlatticeIntakeRefundAllocation({
+    currentBillingPeriod: 202607,
+    currentMonthlyCredits: '90',
+    monthlyCreditsAllowance: 100,
+    refundMonthlyCredits: 10,
+    refundTopUpCredits: 5,
+    reservedBillingPeriod: 202607,
+}), null, 'Coercible intake balances must not become refund authority.');
+assert.equal(resolveAnswerlatticeIntakeRefundAllocation({
+    currentBillingPeriod: 202607,
+    currentMonthlyCredits: 90,
+    monthlyCreditsAllowance: 100,
+    refundMonthlyCredits: 0.5,
+    refundTopUpCredits: 5,
+    reservedBillingPeriod: 202607,
+}), null, 'Fractional intake refund evidence must fail closed.');
 
 console.log('Billing settlement boundary tests passed.');

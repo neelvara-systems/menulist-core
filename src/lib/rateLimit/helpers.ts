@@ -12,11 +12,13 @@ import { getBoundedSecurityStringContext } from '@lib/security/securityDiagnosti
 import { getRateLimitForFeature, RateLimitFeature } from './configs';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const normalizeRateLimitHelperError = (error: unknown): Error => {
     const normalized = new Error('Rate limit helper failure');
-    if (error instanceof Error && error.name) {
-        normalized.name = error.name;
+    const errorName = getBoundedErrorName(error);
+    if (errorName) {
+        normalized.name = errorName;
     }
     return normalized;
 };
@@ -133,21 +135,24 @@ export async function checkAIRateLimit(
  * Convenience wrapper specifically for AI operations
  */
 export async function checkAIOperationLimit(): Promise<NextResponse | null> {
-    return checkAIRateLimit('AI_OPERATION', 'ai');
+    return checkAIRateLimit('AI_OPERATION', 'ai', { failClosedOnProviderError: true });
 }
 
 /**
  * Convenience wrapper for data write operations
  */
 export async function checkDataWriteLimit(options: AIRateLimitOptions = {}): Promise<NextResponse | null> {
-    return checkAIRateLimit('DATA_WRITE', 'write', options);
+    return checkAIRateLimit('DATA_WRITE', 'write', {
+        failClosedOnProviderError: true,
+        ...options,
+    });
 }
 
 /**
  * Convenience wrapper for file upload operations
  */
 export async function checkFileUploadLimit(): Promise<NextResponse | null> {
-    return checkAIRateLimit('FILE_UPLOAD', 'upload');
+    return checkAIRateLimit('FILE_UPLOAD', 'upload', { failClosedOnProviderError: true });
 }
 
 /**
@@ -155,7 +160,7 @@ export async function checkFileUploadLimit(): Promise<NextResponse | null> {
  * These operations take 20-40 seconds each
  */
 export async function checkExpensiveAILimit(): Promise<NextResponse | null> {
-    return checkAIRateLimit('AI_EXPENSIVE', 'ai-expensive');
+    return checkAIRateLimit('AI_EXPENSIVE', 'ai-expensive', { failClosedOnProviderError: true });
 }
 
 /**

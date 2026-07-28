@@ -344,7 +344,7 @@ assert.deepEqual(buildAnswerlatticeStaffClaimAccessProjection({
     roleId: 'owner',
     storeIds: ['401'],
     storeIsActive: false,
-}), { roleId: 'inactive', storeIds: ['401'] });
+}), { roleId: 'inactive', storeIds: [] });
 const allPermissionClaims = ANSWERLATTICE_ALL_PERMISSIONS.reduce((claims, permission) => {
     claims[permission] = true;
     return claims;

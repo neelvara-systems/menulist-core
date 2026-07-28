@@ -213,6 +213,23 @@ export const AnswerlatticeAnswerTestRollbackSchema = z.object({
     reason: z.string().trim().min(8).max(500),
 }).strict();
 
+export const isAnswerlatticeAnswerTestRollbackAuthorityInScope = (
+    value: unknown,
+    scope: { tId: number; sId: number },
+): boolean => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const authority = value as Record<string, unknown>;
+    return authority.pId === 'AL'
+        && authority.tId === scope.tId
+        && authority.sId === scope.sId;
+};
+
+export const AnswerlatticeAnswerTestRollbackResponseSchema = z.object({
+    proposalId: z.string().trim().min(1).max(169).regex(/^rollback_[a-zA-Z0-9_-]+$/),
+    created: z.boolean(),
+    status: z.enum(['pending_review', 'approved', 'rejected', 'implemented']),
+}).strict();
+
 export const AnswerlatticeAnswerTestCaseResultSchema = z.object({
     caseId: z.string().trim().min(1).max(80),
     title: z.string().trim().min(1).max(120),

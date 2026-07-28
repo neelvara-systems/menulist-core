@@ -1,6 +1,7 @@
 import type {
     AnswerlatticeActivationSummary,
     AnswerlatticeBundleStatus,
+    AnswerlatticeContextBundleStats,
     AnswerlatticeOperationsStatusSummary,
 } from '@type/answerlattice';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
@@ -34,7 +35,7 @@ export type AnswerlatticeCompiledContextRebuildResponse = {
         bundleVersion: number;
         activeVersion?: number;
         lastReadyVersion?: number;
-        stats?: unknown;
+        stats?: Partial<AnswerlatticeContextBundleStats>;
         lastBuildError?: string | null;
         staleReason?: string | null;
     };
@@ -54,6 +55,14 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
 
 const isFiniteNumber = (value: unknown): value is number => (
     typeof value === 'number' && Number.isFinite(value)
+);
+
+const isStringSetMember = (value: unknown, allowed: ReadonlySet<string>): value is string => (
+    typeof value === 'string' && allowed.has(value)
+);
+
+const hasOnlyKeys = (value: Record<string, unknown>, allowed: ReadonlySet<string>): boolean => (
+    Object.keys(value).every(key => allowed.has(key))
 );
 
 const isSafeIntegerBetween = (value: unknown, min: number, max: number): value is number => (
@@ -113,6 +122,29 @@ const ACTIVATION_STEP_STATUSES = new Set(['complete', 'attention', 'pending', 'o
 const ACTIVATION_STAGES = new Set(['setup', 'install', 'knowledge', 'live']);
 const SURFACE_READINESS_STATUSES = new Set(['ready', 'needs_mapping', 'needs_articles', 'open_signals']);
 const COMPILED_CONTEXT_STATUSES = new Set(['empty', 'building', 'ready', 'stale', 'failed', 'superseded']);
+const COMPILED_CONTEXT_REBUILD_RESPONSE_KEYS = new Set(['ok', 'manifest']);
+const COMPILED_CONTEXT_REBUILD_MANIFEST_KEYS = new Set([
+    'status',
+    'bundleVersion',
+    'activeVersion',
+    'lastReadyVersion',
+    'stats',
+    'lastBuildError',
+    'staleReason',
+]);
+const COMPILED_CONTEXT_STATS_KEYS = new Set([
+    'entities',
+    'entityRelations',
+    'canonicalAnswers',
+    'surfaces',
+    'routes',
+    'articles',
+    'faqs',
+    'releases',
+    'bytesTotal',
+    'publicBytesTotal',
+    'privateBytesTotal',
+]);
 const OPERATION_STATUSES = new Set([
     'completed',
     'success',
@@ -125,7 +157,7 @@ const OPERATION_STATUSES = new Set([
 const OPERATIONS_RUN_READ_CAP_MAX = 20;
 
 const isNullableOperationStatus = (value: unknown): boolean => (
-    value === null || OPERATION_STATUSES.has(String(value))
+    value === null || isStringSetMember(value, OPERATION_STATUSES)
 );
 
 const isOptionalLocalDate = (value: unknown): boolean => {
@@ -150,7 +182,7 @@ const isActivationStep = (value: unknown): boolean => {
         && value.title.length <= 160
         && typeof value.description === 'string'
         && value.description.length <= 800
-        && ACTIVATION_STEP_STATUSES.has(String(value.status))
+        && isStringSetMember(value.status, ACTIVATION_STEP_STATUSES)
         && typeof value.required === 'boolean'
         && isOptionalBoundedString(value.actionLabel, 120)
         && isOptionalBoundedString(value.route, 240)
@@ -169,7 +201,7 @@ const isLaunchProofItem = (value: unknown): boolean => {
         && value.title.length <= 160
         && typeof value.description === 'string'
         && value.description.length <= 800
-        && ACTIVATION_STEP_STATUSES.has(String(value.status))
+        && isStringSetMember(value.status, ACTIVATION_STEP_STATUSES)
         && isOptionalBoundedString(value.actionLabel, 120)
         && isOptionalBoundedString(value.route, 240)
     );
@@ -193,7 +225,7 @@ const isSurfaceReadinessItem = (value: unknown): boolean => {
         && isSafeIntegerBetween(value.ticketCount, 0, 1_000_000)
         && isSafeIntegerBetween(value.openTicketCount, 0, 1_000_000)
         && Number(value.openTicketCount) <= Number(value.ticketCount)
-        && SURFACE_READINESS_STATUSES.has(String(value.status))
+        && isStringSetMember(value.status, SURFACE_READINESS_STATUSES)
     );
 };
 
@@ -233,7 +265,7 @@ const isCompiledContextReadiness = (value: unknown): boolean => {
     if (value === undefined || value === null) return true;
     if (!isRecord(value)) return false;
     if (
-        !COMPILED_CONTEXT_STATUSES.has(String(value.status))
+        !isStringSetMember(value.status, COMPILED_CONTEXT_STATUSES)
         || !isSafeIntegerBetween(value.bundleVersion, 0, Number.MAX_SAFE_INTEGER)
         || !isSafeIntegerBetween(value.activeVersion, 0, Number.MAX_SAFE_INTEGER)
         || !isSafeIntegerBetween(value.lastReadyVersion, 0, Number.MAX_SAFE_INTEGER)
@@ -291,7 +323,7 @@ const isActivationSummary = (value: unknown): value is AnswerlatticeActivationSu
         || !isSafeIntegerBetween(value.tId, 1, Number.MAX_SAFE_INTEGER)
         || !isSafeIntegerBetween(value.sId, 1, Number.MAX_SAFE_INTEGER)
         || !isSafeIntegerBetween(value.readinessScore, 0, 100)
-        || !ACTIVATION_STAGES.has(String(value.stage))
+        || !isStringSetMember(value.stage, ACTIVATION_STAGES)
         || !isCanonicalIsoTimestamp(value.computedAtIso)
         || typeof value.signature !== 'string'
         || !/^[a-f0-9]{24}$/.test(value.signature)
@@ -417,7 +449,7 @@ const isOperationsStatus = (value: unknown): value is AnswerlatticeOperationsSta
         || !isNullableBoundedString(governanceTask.lastError, 200)
         || !isEmptyRecord(governanceTask.lastDetails)
         || !isRecord(value.workspace)
-        || !OPERATION_STATUSES.has(String(value.workspace.status))
+        || !isStringSetMember(value.workspace.status, OPERATION_STATUSES)
         || !isOptionalLocalDate(value.workspace.lastAttemptedLocalDate)
         || !isNullableCanonicalIsoTimestamp(value.workspace.lastAttemptedAt)
         || !isOptionalLocalDate(value.workspace.lastCompletedLocalDate)
@@ -466,6 +498,14 @@ export const isAnswerlatticeActivationSummaryResponse = (
     isRecord(value) && isActivationSummary(value.summary)
 );
 
+export const isAnswerlatticeActivationSummaryForScope = (
+    summary: AnswerlatticeActivationSummary,
+    scope: { tenantId: number; storeId: number },
+): boolean => (
+    summary.tId === scope.tenantId
+    && summary.sId === scope.storeId
+);
+
 export const isAnswerlatticeOperationsStatusResponse = (
     value: unknown,
 ): value is AnswerlatticeOperationsStatusResponse => (
@@ -482,34 +522,40 @@ export const isAnswerlatticeNotificationTestResponse = (
 
 export const isAnswerlatticeCompiledContextRebuildResponse = (
     value: unknown,
-): value is AnswerlatticeCompiledContextRebuildResponse => (
-    isRecord(value)
-    && typeof value.ok === 'boolean'
-    && isRecord(value.manifest)
-    && COMPILED_CONTEXT_STATUSES.has(String(value.manifest.status))
-    && value.ok === (value.manifest.status === 'ready')
-    && isSafeIntegerBetween(value.manifest.bundleVersion, 0, Number.MAX_SAFE_INTEGER)
-    && (
-        value.manifest.activeVersion === undefined
-        || isSafeIntegerBetween(value.manifest.activeVersion, 0, Number.MAX_SAFE_INTEGER)
-    )
-    && (
-        value.manifest.lastReadyVersion === undefined
-        || isSafeIntegerBetween(value.manifest.lastReadyVersion, 0, Number.MAX_SAFE_INTEGER)
-    )
-    && isOptionalBoundedString(value.manifest.lastBuildError, 200)
-    && isOptionalBoundedString(value.manifest.staleReason, 200)
-    && (
-        value.manifest.stats === undefined
-        || (
-            isRecord(value.manifest.stats)
+): value is AnswerlatticeCompiledContextRebuildResponse => {
+    try {
+        if (
+            !isRecord(value)
+            || !hasOnlyKeys(value, COMPILED_CONTEXT_REBUILD_RESPONSE_KEYS)
+            || typeof value.ok !== 'boolean'
+            || !isRecord(value.manifest)
+            || !hasOnlyKeys(value.manifest, COMPILED_CONTEXT_REBUILD_MANIFEST_KEYS)
+            || !isStringSetMember(value.manifest.status, COMPILED_CONTEXT_STATUSES)
+            || value.ok !== (value.manifest.status === 'ready')
+            || !isSafeIntegerBetween(value.manifest.bundleVersion, 0, Number.MAX_SAFE_INTEGER)
+            || (
+                value.manifest.activeVersion !== undefined
+                && !isSafeIntegerBetween(value.manifest.activeVersion, 0, Number.MAX_SAFE_INTEGER)
+            )
+            || (
+                value.manifest.lastReadyVersion !== undefined
+                && !isSafeIntegerBetween(value.manifest.lastReadyVersion, 0, Number.MAX_SAFE_INTEGER)
+            )
+            || !isOptionalBoundedString(value.manifest.lastBuildError, 200)
+            || !isOptionalBoundedString(value.manifest.staleReason, 200)
+        ) return false;
+
+        if (value.manifest.stats === undefined) return true;
+        return isRecord(value.manifest.stats)
+            && hasOnlyKeys(value.manifest.stats, COMPILED_CONTEXT_STATS_KEYS)
             && Object.values(value.manifest.stats).every(stat => (
                 stat === undefined
                 || isSafeIntegerBetween(stat, 0, Number.MAX_SAFE_INTEGER)
-            ))
-        )
-    )
-);
+            ));
+    } catch {
+        return false;
+    }
+};
 
 const getActivationDashboardResponseLogContext = (
     kind: AnswerlatticeActivationDashboardResponseKind,

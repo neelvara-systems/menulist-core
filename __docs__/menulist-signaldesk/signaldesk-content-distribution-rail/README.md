@@ -15,6 +15,33 @@ It is inspired by content distribution products such as Distribution.ai, but it 
 source asset -> canonical message -> channel drafts -> owner approval -> queued calendar -> manual performance capture
 ```
 
+## External Distribution Doctrine
+
+The July 28 review of the founder-supplied `distribution 101` article is
+maintained in the [Product Portfolio Distribution Insight
+Ledger](../../strategy/product-portfolio-distribution-insight-ledger.md).
+
+SignalDesk applies only the parts that strengthen the existing control model:
+
+- bind every draft to one approved product, audience, problem, proof source,
+  channel, and CTA;
+- define packaging before production: intended viewer, promise, title or first
+  frame, evidence, prohibited claims, disclosure, and next action;
+- derive multiple native drafts from one approved proof source without changing
+  the source truth;
+- use useful education and verified demonstrations instead of generic founder
+  volume;
+- score results through qualified conversations, previews, activations,
+  referrals, partner-attributed outcomes, complaints, and founder time;
+- treat platform metrics as diagnostics rather than authority.
+
+The Rail must never operationalize proxy or fake-region accounts, device-reset
+identity workarounds, aged/bought/transferred accounts, fake engagement,
+engagement groups, undisclosed affiliate or creator amplification, guaranteed
+growth, spam-volume schedules, competitor copying, or algorithm folklore.
+Creator, affiliate, employee, gifted, or paid-partner content requires the
+applicable clear disclosure and current proof permission.
+
 ## Boundary
 
 - No auto-publish.

@@ -71,6 +71,12 @@ export function findInvalidMenuExtractionSourceIndexes(
   return invalidRecordIndexes;
 }
 
+export function getMenuExtractionFailedSourceFileIndices(
+  files: ReadonlyArray<{ sourceFileIndex: number }>,
+): number[] {
+  return files.map((file) => file.sourceFileIndex);
+}
+
 export function resolveMenuExtractionBatchCompletion(
   batchResults: readonly MenuExtractionBatchResultSummary[] | undefined,
   options: { canReviewPartialResult: boolean },

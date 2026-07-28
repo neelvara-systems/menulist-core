@@ -17,6 +17,8 @@ These deterministic checks validate the rules you configured. They are regressio
 - Release checks for affected product areas with advisory ready, review, or blocked proof status.
 - Read-only proposal impact previews for explicitly linked priority questions before owner approval.
 
+Do not add a public claim that critical tests reject provider-backed RAG until the focused evaluator/UI hardening and browser verification are complete.
+
 ### Keep temporary problems separate from permanent truth
 
 Publish a short, expiring known-issue notice for the affected page while your team investigates. Normal approved answers stay unchanged.
@@ -32,6 +34,9 @@ No. Test runs are excluded from production search history, support signals, fric
 
 **Do passing answer tests guarantee that every answer is correct?**
 No. They verify configured source, ID, phrase, confidence, abstention, and evidence rules. Representative questions still require human review for factual correctness, completeness, and usefulness.
+
+**Can a provider-generated fallback count as verified critical support?**
+The intended contract is no: critical proof should use approved truth or an explicitly expected safe escalation/no-answer path. This claim must remain unpublished until the focused runtime hardening is implemented and verified.
 
 **Can Answerlattice roll back an answer automatically?**
 No. It prepares a rollback proposal for owner review through the existing governance flow.

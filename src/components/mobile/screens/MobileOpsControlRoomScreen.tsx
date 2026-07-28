@@ -11,7 +11,7 @@ import {
 } from '@lib/ops/opsControlRoomClientResponse';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
-import { formatDateTime, type IntlFormatter } from '@util/dateTime';
+import { formatDateTime, type DateLike, type IntlFormatter } from '@util/dateTime';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -24,7 +24,7 @@ interface MobileOpsControlRoomScreenProps {
     onBack: () => void;
 }
 
-function formatTimestamp(value: any, formatter: IntlFormatter): string {
+function formatTimestamp(value: DateLike, formatter: IntlFormatter): string {
     if (!value) return '-';
     const label = formatDateTime(value, 'datetime', formatter);
     return label === 'N/A' ? '-' : label;
@@ -331,16 +331,12 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                             <Flex gap={12} wrap>
                                 <Metric label="New Stores 24h" value={adoption?.newStores24h ?? '-'} />
                                 <Metric label="Active 7d" value={adoption?.activeStores7d ?? '-'} />
-                                <Metric label="Published Today" value={adoption?.publishedToday ?? '-'} />
-                                <Metric label="Feedback Today" value={adoption?.feedbackToday ?? '-'} />
                             </Flex>
                         </Card>
 
                         <Card size="small" title={<Text strong>Store Integrity</Text>}>
                             <Flex gap={12} wrap>
                                 <Metric label="No Publish 60d" value={integrity?.noPublish60d ?? '-'} />
-                                <Metric label="No Project" value={integrity?.noProject ?? '-'} />
-                                <Metric label="Unpublished 48h" value={integrity?.unpublished48h ?? '-'} />
                             </Flex>
                         </Card>
 

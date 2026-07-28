@@ -256,6 +256,67 @@ them.
 - July 19, 2026 - Cross-check against current Google documentation removed the old 160/180-character Place-ID truncation risk, bound accepted IDs without partial storage, switched top-level identity to validated grounding-source metadata only, corrected Gemini 3.5 multi-search cost wording, and added transactional store-state revalidation. The existing `confirmedAt` field is sufficient for future 12-month Place-ID freshness checks; no refresh scheduler was added.
 - July 22, 2026 - Applied the validated repo-fit P0 consolidation: froze the existing Business Truth Contract, corrected generic `modifiedOn` public copy from "verified" to localized update semantics, expanded Platform Pull identity/projection fixtures, and enforced the disabled Maps flag on new Place-ID confirmation while keeping removal available. Provider smoke, cross-store collision handling, the zero-write agent-answer pilot, allergen compliance expansion, public MCP, and new adapters remain deferred to their explicit gates.
 
+### ML-MKT-EXT-004 - Audience-Aligned Organic Distribution Across X, YouTube, And Short Form
+
+- **Status:** `ALREADY_COVERED`
+- **Shared:** July 28, 2026
+- **Source:** Founder-supplied full text attributed to `@eptwts`, titled `distribution 101: how to sell your products`; no stable post URL was supplied or found during review.
+- **Source type:** X article/post
+- **Topics:** founder-led-distribution, audience-product-fit, X, YouTube, high-intent-search, Instagram-Reels, TikTok, proof-assets, content-packaging, creator-disclosure, platform-integrity
+- **Use when:** Preparing a founder post, owner-proof walkthrough, YouTube demo, short-form derivative, or partner brief after the existing proof and permission gates are met.
+- **Revalidate:** Current platform recommendation guidance, account-integrity rules, creator/affiliate disclosure requirements, approved MenuList proof, and the active Bengaluru/pilot operating envelope.
+
+**Source idea**
+
+Build distribution around the exact buyer, teach useful sub-problems, package
+YouTube topics before production, prefer high-intent educational content over
+broad vanity reach, derive native short-form assets, and measure sales or
+qualified actions instead of follower count.
+
+**MenuList verdict**
+
+The durable principles confirm the existing MenuList strategy:
+
+- MenuList's acquisition audience is local business owners and the trusted
+  people who can introduce them, not a generic AI or builder audience.
+- The first distribution asset is an owner-approved activation proof, not a
+  large content calendar.
+- X is for founder/partner learning and a verified operating lesson, not the
+  primary restaurant-owner acquisition channel.
+- YouTube becomes a durable two-to-four-minute activation walkthrough after
+  real proof exists; short clips derive from the same approved source.
+- Instagram/Reels can show the visible owner problem and before/after truth
+  outcome after permission.
+- success remains qualified owner conversations, private-preview acceptance,
+  two-surface activation, referrals, and founder time—not followers or raw
+  impressions.
+
+Reject the source's numeric algorithm formulas, guaranteed growth, spam-volume
+posting, aged-account logic, undisclosed affiliate amplification, engagement
+manipulation, and proxy/device-reset/fake-US TikTok setup. X, TikTok, YouTube,
+Meta, and ASCI primary guidance does not support those tactics as a safe
+portfolio rule.
+
+**Current decision**
+
+No new channel, account, post, publishing action, provider connection, or spend.
+Continue the current manual-first activation plan and use these principles only
+when an owner-approved proof asset is eligible for distribution.
+
+**Related MenuList truth**
+
+- [Portfolio distribution insight ledger](../strategy/product-portfolio-distribution-insight-ledger.md)
+- [Social channel research and next plan](../menulist-signaldesk/menulist-signaldesk_social-channel-market-research-and-next-plan-2026-07-10.md)
+- [First proof distribution run](./menulist-marketing-distribution_first-proof-distribution-run-operating-pack.md)
+- [Pilot proof and owner learning](./menulist-marketing-distribution_pilot-proof-and-owner-learning-pack.md)
+
+**Outcome history**
+
+- July 28, 2026 - Checked the article against the current product matrix,
+  official X/YouTube/TikTok/Meta guidance, ASCI disclosure rules, MenuList
+  distribution research, SignalDesk boundaries, and the active proof gates;
+  retained the useful principles as already covered.
+
 ## Maintenance
 
 - Add entries sequentially as `ML-MKT-EXT-001`, `ML-MKT-EXT-002`, and so on.

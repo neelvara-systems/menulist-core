@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import {
     assertFails,
-    assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
@@ -82,17 +81,17 @@ async function run(): Promise<void> {
         }).firestore();
         const publicDb = testEnv.unauthenticatedContext().firestore();
 
-        await assertSucceeds(getDoc(doc(ownerDb, 'reviewsState', 'review-1-101')));
-        await assertSucceeds(getDoc(doc(ownerDb, 'reviewsState', 'review-string-scope')));
-        await assertSucceeds(getDoc(doc(multiStoreDb, 'reviewsState', 'review-1-101')));
+        await assertFails(getDoc(doc(ownerDb, 'reviewsState', 'review-1-101')));
+        await assertFails(getDoc(doc(ownerDb, 'reviewsState', 'review-string-scope')));
+        await assertFails(getDoc(doc(multiStoreDb, 'reviewsState', 'review-1-101')));
         await assertFails(getDoc(doc(ownerDb, 'reviewsState', 'review-1-102')));
         await assertFails(getDoc(doc(ownerDb, 'reviewsState', 'review-2-201')));
         await assertFails(getDoc(doc(otherTenantDb, 'reviewsState', 'review-1-101')));
         await assertFails(getDoc(doc(ownerDb, 'reviewsState', 'review-missing-scope')));
-        await assertSucceeds(getDoc(doc(platformDb, 'reviewsState', 'review-missing-scope')));
+        await assertFails(getDoc(doc(platformDb, 'reviewsState', 'review-missing-scope')));
         await assertFails(getDoc(doc(publicDb, 'reviewsState', 'review-1-101')));
 
-        await assertSucceeds(getDocs(query(
+        await assertFails(getDocs(query(
             collection(ownerDb, 'reviewsState'),
             where('tId', '==', 1),
             where('sId', '==', 101),

@@ -11,6 +11,7 @@ import {
 } from "@lib/firestore/parseSummaryProjects";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { normalizePublicProjectSlug } from "@lib/publicRouting/pathSegments";
+import { normalizeMenuListPublicEntityIdentityAliases } from "@lib/publicTruth/entityEligibility";
 import { mergeSpecialMenuOverlayProjects } from "@lib/menu/specialMenuOverlay";
 import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
 import { isValidScreenToken } from "@lib/screen/utils";
@@ -22,10 +23,9 @@ import {
     ScreenMenuProjection,
     ScreenStoreInfo,
 } from "@type/campaigns";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
-const getLogErrorName = (error: unknown): string => (
-    error instanceof Error ? error.name : typeof error
-);
+const getLogErrorName = (error: unknown): string => getBoundedErrorName(error) || typeof error;
 
 const CAMPAIGN_SUMMARY_ID_PATTERN = /^campaigns_(\d+)$/;
 const NUMERIC_SCOPE_ID_PATTERN = /^\d+$/;
@@ -113,8 +113,12 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
 
         const storeData = await getPublicStoreById(storeId);
         if (!storeData) return null;
-        const tenantId = String(storeData.tenantId ?? storeData.tId ?? '');
-        if (!NUMERIC_SCOPE_ID_PATTERN.test(tenantId)) return null;
+        const tenantScope = normalizeMenuListPublicEntityIdentityAliases([
+            storeData.tenantId,
+            storeData.tId,
+        ]);
+        if (!tenantScope) return null;
+        const tenantId = tenantScope.documentId;
 
         const activeSpecialMenuId = storeData?.activeSpecialMenuId || null;
         const projectionContext = getUsableScreenProjectionContext(data.screen?.menuProjection, {
@@ -226,7 +230,13 @@ export const getMenuItemsForScreenServer = async (
         }
 
         const storeData = await getPublicStoreById(storeId);
-        if (!storeData || String(storeData.tenantId ?? storeData.tId ?? '') !== tenantId) {
+        if (
+            !storeData
+            || normalizeMenuListPublicEntityIdentityAliases([
+                storeData.tenantId,
+                storeData.tId,
+            ])?.documentId !== tenantId
+        ) {
             return [];
         }
         const eligibleSpecialMenuId = String(storeData.activeSpecialMenuId || '') || null;

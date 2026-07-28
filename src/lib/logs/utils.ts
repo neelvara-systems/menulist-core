@@ -1,12 +1,18 @@
 import { join } from 'path';
 import { secureError } from '@lib/security/secureLogger';
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 const enableLocalLogs = process.env.NODE_ENV !== 'production';
 
 const normalizeLocalLogFailure = (error: unknown): Error => {
     const normalized = new Error('Local log file write failed');
-    if (error instanceof Error && error.name) {
-        normalized.name = error.name;
+    const errorName = getBoundedErrorName(error);
+    if (errorName) {
+        normalized.name = errorName;
     }
     return normalized;
 };
@@ -38,25 +44,15 @@ const getLocalLogStringContext = (label: string, value: unknown) => {
 };
 
 const getLocalLogErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getLocalLogErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getLocalLogErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as { status?: unknown }).status
-        : (error as { statusCode?: unknown }).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 const MAX_LOCAL_LOG_OBJECT_KEYS = 24;

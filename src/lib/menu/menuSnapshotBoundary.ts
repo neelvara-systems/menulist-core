@@ -3,7 +3,10 @@ export const MENU_SNAPSHOT_MAX_ESTIMATED_BYTES = 900 * 1024;
 
 export function getMenuSnapshotPayloadSizeBytes(payload: unknown): number {
     try {
-        return new TextEncoder().encode(JSON.stringify(payload)).byteLength;
+        const serialized = JSON.stringify(payload);
+        return typeof serialized === 'string'
+            ? new TextEncoder().encode(serialized).byteLength
+            : Number.POSITIVE_INFINITY;
     } catch {
         return Number.POSITIVE_INFINITY;
     }

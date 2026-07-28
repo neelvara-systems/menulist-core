@@ -1,5 +1,6 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import { authOptions } from '@lib/auth'
+import { getCurrentUser } from '@lib/auth/currentPlatformUser'
 import { APP_THEME_COLOR } from '@constant/common'
 import LocalisationProvider from '@providers/localisationProvider'
 import NoSSRProvider from '@providers/noSSRProvider'
@@ -37,7 +38,10 @@ export default async function AuthLayout({
     // Check if user is already authenticated - if yes, redirect to dashboard
     const session = await getServerSession(authOptions)
     if (session) {
-        redirect('/dashboard')
+        const currentUser = await getCurrentUser(session)
+        if (currentUser) {
+            redirect('/dashboard')
+        }
     }
 
     // Get locale for internationalization

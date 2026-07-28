@@ -7,9 +7,12 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import {
     AnswerlatticePublicApiKeyActionSchema,
+    AnswerlatticePublicApiManagementScopeSchema,
+    answerlatticePublicApiManagementScopesMatch,
     normalizeAnswerlatticePublicApiScopes,
 } from '@lib/answerlattice/publicApiContracts';
 import {
@@ -24,7 +27,6 @@ import { hashApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
-import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../middleware/auth';
 
@@ -79,7 +81,10 @@ async function authorizePublicApiKeyManagement(request: NextRequest, session: an
     }
 
     const isMutation = request.method !== 'GET';
-    const actorRateLimitId = session?.user?.id || session?.uId || session?.user?.email || 'unknown';
+    const actorRateLimitId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorRateLimitId) {
+        return { access: null, response: keyResponse({ error: 'Forbidden' }, { status: 403 }), scope: null };
+    }
     const rateLimit = await checkRateLimit({
         key: buildAnswerlatticeRateLimitKey(
             isMutation ? 'answerlattice-public-api-key-write' : 'answerlattice-public-api-key-read',
@@ -113,10 +118,20 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!admission.scope || !admission.access) {
         return keyResponse({ error: 'Access denied' }, { status: 403 });
     }
+    const expectedScope = AnswerlatticePublicApiManagementScopeSchema.safeParse({
+        tenantId: Number(request.nextUrl.searchParams.get('tenantId')),
+        storeId: Number(request.nextUrl.searchParams.get('storeId')),
+    });
+    if (
+        !expectedScope.success
+        || !answerlatticePublicApiManagementScopesMatch(expectedScope.data, admission.scope)
+    ) {
+        return keyResponse({ error: 'Workspace changed. Refresh and try again.' }, { status: 409 });
+    }
 
     try {
         const credential = await readAnswerlatticePublicApiKeySummary(admission.scope);
-        return keyResponse({ credential });
+        return keyResponse({ credential, scope: admission.scope });
     } catch (error) {
         if (error instanceof AnswerlatticePublicApiKeyStoreError) {
             return keyResponse({ error: error.message }, { status: error.status });
@@ -149,6 +164,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     const validation = AnswerlatticePublicApiKeyActionSchema.safeParse(bodyResult.data);
     if (!validation.success) return keyResponse({ error: 'Invalid input' }, { status: 400 });
+    if (!answerlatticePublicApiManagementScopesMatch(validation.data.expectedScope, admission.scope)) {
+        return keyResponse({ error: 'Workspace changed. Refresh and try again.' }, { status: 409 });
+    }
 
     try {
         if (validation.data.action === 'revoke') {
@@ -159,10 +177,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...getBoundedRuntimeStringContext('tenantId', admission.scope.tenantId),
                 ...getBoundedRuntimeStringContext('storeId', admission.scope.storeId),
             });
-            return keyResponse({ success: true, credential: null });
+            return keyResponse({ success: true, credential: null, scope: admission.scope });
         }
 
-        const apiKey = `al_${randomUUID().replace(/-/g, '')}`;
+        const apiKey = validation.data.apiKey;
         const createdAt = new Date().toISOString();
         const credential = await rotateAnswerlatticePublicApiKey(
             admission.scope,
@@ -170,6 +188,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             {
                 apiKeyHash: hashApiKey(apiKey),
                 keyPrefix: apiKey.slice(0, 7),
+                requestId: validation.data.requestId,
                 scopes: normalizeAnswerlatticePublicApiScopes(validation.data.scopes),
                 createdAt,
             },
@@ -179,7 +198,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('storeId', admission.scope.storeId),
             scopeCount: credential.scopes.length,
         });
-        return keyResponse({ apiKey, credential });
+        return keyResponse({ apiKey, credential, scope: admission.scope });
     } catch (error) {
         if (error instanceof AnswerlatticePublicApiKeyStoreError) {
             return keyResponse({ error: error.message }, { status: error.status });

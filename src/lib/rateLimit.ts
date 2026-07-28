@@ -23,14 +23,23 @@ import { Redis } from '@upstash/redis';
 import { FEATURE_FLAGS } from '@config/features';
 import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { secureError } from '@lib/security/secureLogger';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
-// Initialize Upstash client (only if rate limiting is enabled)
-const upstash = FEATURE_FLAGS.ENABLE_RATE_LIMITING
-    ? new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL!,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    })
-    : null;
+function createUpstashClient(): Redis | null {
+    if (!FEATURE_FLAGS.ENABLE_RATE_LIMITING) return null;
+
+    const url = (process.env.UPSTASH_REDIS_REST_URL || '').trim();
+    const token = (process.env.UPSTASH_REDIS_REST_TOKEN || '').trim();
+    if (!url || !token) return null;
+
+    try {
+        return new Redis({ url, token });
+    } catch {
+        return null;
+    }
+}
+
+const upstash = createUpstashClient();
 
 const RATE_LIMIT_PROVIDER_TIMEOUT_MS = 1500;
 const RATE_LIMIT_PROVIDER_BYPASS_MS = 60_000;
@@ -79,8 +88,9 @@ const isRateLimitProviderTimeoutError = (error: unknown): error is RateLimitProv
 
 const normalizeRateLimitLogError = (error: unknown, message: string): Error => {
     const normalized = new Error(message);
-    if (error instanceof Error && error.name) {
-        normalized.name = error.name;
+    const errorName = getBoundedErrorName(error);
+    if (errorName) {
+        normalized.name = errorName;
     }
     return normalized;
 };
@@ -181,7 +191,7 @@ export async function checkRateLimit(config: RateLimitConfig): Promise<RateLimit
         return {
             allowed: true,
             remaining: limit,
-            resetAt: now + (window * 1000),
+            resetAt: rateLimitProviderBypassUntil,
             current: 0
         };
     }

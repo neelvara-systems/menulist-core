@@ -1,7 +1,13 @@
 import { Timestamp } from 'firebase-admin/firestore';
+import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { getBusinessAnalyticsDateKey } from '../utils/businessDay';
-import { addDaysToAnalyticsDateKey, parseAnalyticsDateKey, formatAnalyticsDateKey } from '../utils/analyticsDate';
+import {
+  addDaysToAnalyticsDateKey,
+  formatAnalyticsDateKey,
+  isValidAnalyticsDateKey,
+  parseAnalyticsDateKey,
+} from '../utils/analyticsDate';
 import type {
   ActiveProjectEntry,
   OwnerBusinessFeedbackItemSummary,
@@ -16,6 +22,9 @@ const FEEDBACK_WINDOW_DAYS = 90;
 const MAX_FEEDBACK_DOCS = 80;
 const MAX_LATEST_ITEMS = 3;
 const MAX_THEME_COUNT = 4;
+const GUEST_FEEDBACK_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+const PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
+const logger = functions.logger;
 
 const THEME_DEFINITIONS: Array<{ key: OwnerBusinessFeedbackThemeKey; label: string; patterns: RegExp[] }> = [
   { key: 'wrong_price', label: 'Wrong price or menu detail', patterns: [/price/i, /rate/i, /cost/i, /wrong menu/i, /old menu/i] },
@@ -39,30 +48,15 @@ const compactLocalizedString = (value: unknown) => {
   if (direct) return direct;
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
   return Object.values(value as Record<string, unknown>)
-    .map(compactString)
+    .map((entry) => compactString(entry))
     .find(Boolean);
 };
 
-const getProjectName = (entry: ActiveProjectEntry) =>
+export const getOwnerBusinessFeedbackProjectName = (entry: ActiveProjectEntry) =>
   compactLocalizedString(entry.data?.projectName)
   || compactLocalizedString(entry.data?.name)
   || compactLocalizedString(entry.data?.title)
   || `Menu ${entry.projectId}`;
-
-const toDate = (value: unknown): Date | undefined => {
-  if (!value) return undefined;
-  if (value instanceof Date) return value;
-  if (value instanceof Timestamp) return value.toDate();
-  if (typeof (value as { toDate?: unknown }).toDate === 'function') {
-    const date = (value as { toDate: () => Date }).toDate();
-    return Number.isFinite(date.getTime()) ? date : undefined;
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    const date = new Date(value);
-    return Number.isFinite(date.getTime()) ? date : undefined;
-  }
-  return undefined;
-};
 
 const sanitizeSnippet = (value: unknown) => {
   const text = compactString(value);
@@ -106,7 +100,7 @@ const getWeekStart = (dateKey: string) => {
 const inRange = (dateKey: string | undefined, start: string, end: string) =>
   Boolean(dateKey && dateKey >= start && dateKey <= end);
 
-type FeedbackFact = {
+export type OwnerBusinessFeedbackFact = {
   feedbackId: string;
   projectId?: string;
   projectName?: string;
@@ -119,7 +113,115 @@ type FeedbackFact = {
   sourceFactId: string;
 };
 
-const toItemSummary = (fact: FeedbackFact): OwnerBusinessFeedbackItemSummary => ({
+const normalizePositiveSafeInteger = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    return Number.isSafeInteger(value) && value > 0 ? value : null;
+  }
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+};
+
+const projectPersistedTimestampDate = (value: unknown): Date | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (value instanceof Timestamp) {
+    const date = value.toDate();
+    return Number.isFinite(date.getTime()) ? date : null;
+  }
+  const candidate = value as { nanoseconds?: unknown; seconds?: unknown };
+  if (
+    !Number.isSafeInteger(candidate.seconds)
+    || !Number.isInteger(candidate.nanoseconds)
+    || Number(candidate.nanoseconds) < 0
+    || Number(candidate.nanoseconds) > 999_999_999
+  ) return null;
+  const date = new Date(
+    Number(candidate.seconds) * 1_000
+    + Math.floor(Number(candidate.nanoseconds) / 1_000_000),
+  );
+  return Number.isFinite(date.getTime()) ? date : null;
+};
+
+export const projectOwnerBusinessFeedbackFact = (params: {
+  feedbackId: string;
+  data: unknown;
+  expectedTId: number;
+  expectedSId: number;
+  projectNames?: ReadonlyMap<string, string>;
+  timeZone?: string;
+  businessDayEndTime?: string;
+}): OwnerBusinessFeedbackFact | null => {
+  if (
+    !GUEST_FEEDBACK_ID_PATTERN.test(params.feedbackId)
+    || !params.data
+    || typeof params.data !== 'object'
+    || Array.isArray(params.data)
+  ) return null;
+  const data = params.data as Record<string, unknown>;
+  const tId = normalizePositiveSafeInteger(data.tId);
+  const sId = normalizePositiveSafeInteger(data.sId);
+  const projectId = compactString(data.projectId);
+  const rating = data.rating;
+  const status = data.status;
+  const createdAtDate = projectPersistedTimestampDate(data.createdOn);
+  const expiresAtDate = projectPersistedTimestampDate(data.expiresOn);
+  const expectedNeedsAttention = Number.isInteger(rating)
+    && Number(rating) <= 3
+    && status === 'new';
+  const source = data.source;
+  const message = data.message;
+  if (
+    tId !== params.expectedTId
+    || sId !== params.expectedSId
+    || !projectId
+    || !PROJECT_ID_PATTERN.test(projectId)
+    || !Number.isInteger(rating)
+    || Number(rating) < 1
+    || Number(rating) > 5
+    || (status !== 'new' && status !== 'resolved')
+    || data.needsAttention !== expectedNeedsAttention
+    || data.createdBy !== 'guest'
+    || !createdAtDate
+    || !expiresAtDate
+    || expiresAtDate.getTime() <= createdAtDate.getTime()
+    || (
+      source !== 'menu_footer'
+      && source !== 'feedback_qr'
+      && source !== 'direct_link'
+    )
+    || (
+      message !== undefined
+      && (typeof message !== 'string' || message.length > 300)
+    )
+    || (
+      data.businessDate !== undefined
+      && !isValidAnalyticsDateKey(data.businessDate)
+    )
+  ) return null;
+
+  const createdAt = createdAtDate.toISOString();
+  const localDate = isValidAnalyticsDateKey(data.businessDate)
+    ? data.businessDate
+    : getBusinessAnalyticsDateKey(
+      createdAtDate,
+      params.timeZone,
+      params.businessDayEndTime,
+    );
+  return {
+    feedbackId: params.feedbackId,
+    projectId,
+    projectName: params.projectNames?.get(projectId),
+    rating: Number(rating),
+    source,
+    snippet: sanitizeSnippet(message),
+    createdAt,
+    localDate,
+    needsAttention: expectedNeedsAttention,
+    sourceFactId: `guest_feedback_${params.feedbackId}`,
+  };
+};
+
+const toItemSummary = (fact: OwnerBusinessFeedbackFact): OwnerBusinessFeedbackItemSummary => ({
   feedbackId: fact.feedbackId,
   projectId: fact.projectId,
   projectName: fact.projectName,
@@ -136,7 +238,7 @@ const buildPeriod = (
   label: string,
   start: string,
   end: string,
-  facts: FeedbackFact[],
+  facts: OwnerBusinessFeedbackFact[],
 ): OwnerBusinessFeedbackPeriodSummary => {
   const scoped = facts.filter((fact) => inRange(fact.localDate, start, end));
   return {
@@ -149,7 +251,7 @@ const buildPeriod = (
   };
 };
 
-const buildProjectBreakdown = (facts: FeedbackFact[]): Record<string, OwnerBusinessFeedbackProjectSummary> => {
+const buildProjectBreakdown = (facts: OwnerBusinessFeedbackFact[]): Record<string, OwnerBusinessFeedbackProjectSummary> => {
   const result: Record<string, OwnerBusinessFeedbackProjectSummary> = {};
   facts.forEach((fact) => {
     if (!fact.projectId) return;
@@ -172,7 +274,7 @@ const buildProjectBreakdown = (facts: FeedbackFact[]): Record<string, OwnerBusin
   return result;
 };
 
-const buildTopThemes = (facts: FeedbackFact[]): OwnerBusinessFeedbackThemeSummary[] => {
+const buildTopThemes = (facts: OwnerBusinessFeedbackFact[]): OwnerBusinessFeedbackThemeSummary[] => {
   const counts = new Map<OwnerBusinessFeedbackThemeKey, number>();
   facts
     .filter((fact) => fact.needsAttention && fact.snippet)
@@ -198,8 +300,8 @@ export async function buildOwnerBusinessFeedbackSummary(params: {
   timeZone?: string;
   businessDayEndTime?: string;
 }): Promise<{ summary: OwnerBusinessFeedbackSummary; readCount: number; feedbackDocIds: string[] }> {
-  const numericTId = Number(params.tId);
-  const numericSId = Number(params.sId);
+  const numericTId = normalizePositiveSafeInteger(params.tId);
+  const numericSId = normalizePositiveSafeInteger(params.sId);
   const emptySourceFactId = 'guest_feedback_summary';
   const emptySummary: OwnerBusinessFeedbackSummary = {
     version: 1,
@@ -217,11 +319,11 @@ export async function buildOwnerBusinessFeedbackSummary(params: {
     sourceFactIds: [emptySourceFactId],
   };
 
-  if (!Number.isFinite(numericTId) || !Number.isFinite(numericSId)) {
+  if (!numericTId || !numericSId || !isValidAnalyticsDateKey(params.localDate)) {
     return { summary: emptySummary, readCount: 0, feedbackDocIds: [] };
   }
 
-  const projectNames = new Map(params.activeProjects.map((entry) => [entry.projectId, getProjectName(entry)]));
+  const projectNames = new Map(params.activeProjects.map((entry) => [entry.projectId, getOwnerBusinessFeedbackProjectName(entry)]));
   const cutoff = new Date(params.runAt.getTime() - FEEDBACK_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const snapshot = await params.db
     .collection(DB_COLLECTIONS.GUEST_FEEDBACK)
@@ -233,35 +335,30 @@ export async function buildOwnerBusinessFeedbackSummary(params: {
     .get();
 
   const docs = snapshot.docs.slice(0, MAX_FEEDBACK_DOCS);
-  const facts: FeedbackFact[] = docs.map((doc) => {
-    const data = doc.data() || {};
-    const createdAtDate = toDate(data.createdOn);
-    const createdAt = createdAtDate?.toISOString();
-    const localDate = typeof data.businessDate === 'string' && data.businessDate
-      ? data.businessDate
-      : createdAtDate
-        ? getBusinessAnalyticsDateKey(createdAtDate, params.timeZone, params.businessDayEndTime)
-        : undefined;
-    const projectId = compactString(data.projectId);
-    const rating = typeof data.rating === 'number' && Number.isFinite(data.rating) ? data.rating : 0;
-    const status = compactString(data.status);
-    const source = ['menu_footer', 'feedback_qr', 'direct_link'].includes(String(data.source))
-      ? data.source as FeedbackFact['source']
-      : undefined;
-    const sourceFactId = `guest_feedback_${doc.id}`;
-    return {
+  const invalidFeedbackDocIds: string[] = [];
+  const facts = docs.flatMap((doc) => {
+    const fact = projectOwnerBusinessFeedbackFact({
       feedbackId: doc.id,
-      projectId,
-      projectName: projectId ? projectNames.get(projectId) : undefined,
-      rating,
-      source,
-      snippet: sanitizeSnippet(data.message),
-      createdAt,
-      localDate,
-      needsAttention: data.needsAttention === true || (rating > 0 && rating <= 3 && status !== 'resolved'),
-      sourceFactId,
-    };
+      data: doc.data(),
+      expectedTId: numericTId,
+      expectedSId: numericSId,
+      projectNames,
+      timeZone: params.timeZone,
+      businessDayEndTime: params.businessDayEndTime,
+    });
+    if (fact) return [fact];
+    invalidFeedbackDocIds.push(doc.id);
+    return [];
   });
+  if (invalidFeedbackDocIds.length > 0) {
+    logger.warn('[OwnerBusinessAssistant] Invalid guest feedback records omitted', {
+      failureCode: 'OWNER_BUSINESS_FEEDBACK_INVALID_RECORD',
+      invalidRecordCount: invalidFeedbackDocIds.length,
+      sampledDocumentIds: invalidFeedbackDocIds.slice(0, 3),
+      storeId: params.sId,
+      tenantId: params.tId,
+    });
+  }
 
   const today = params.localDate;
   const yesterday = addDaysToAnalyticsDateKey(today, -1);
@@ -319,6 +416,6 @@ export async function buildOwnerBusinessFeedbackSummary(params: {
   return {
     summary,
     readCount: snapshot.size,
-    feedbackDocIds: docs.map((doc) => doc.id),
+    feedbackDocIds: facts.map((fact) => fact.feedbackId),
   };
 }

@@ -23,6 +23,10 @@ import {
     EmbedArticleType,
     IngestionJobCategoriesMap,
 } from '../types';
+import {
+    hasCallableTenantStoreAccess,
+    parseCallableTenantStoreScope,
+} from '../utils/callableScopeAccess';
 
 const SHARED_KB_EMBED_TASK_OPTIONS = {
     ...FUNCTION_OPTIONS.aiCallable,
@@ -67,10 +71,8 @@ function assertStoreScopedAccount(request: { auth?: { token?: Record<string, any
     if (getRequesterRole(request) === ECOMSAI_PLATFORM_USER_ROLE) return;
 
     const token = request.auth?.token || {};
-    const tenantId = token.tenantId || token.tId;
-    const storeId = token.storeId || token.sId;
-
-    if (!tenantId || !storeId) {
+    const scope = parseCallableTenantStoreScope(token);
+    if (!scope?.directStoreId) {
         throw new HttpsError('failed-precondition', 'Tenant ID and Store ID are required for this action.');
     }
 }
@@ -83,13 +85,7 @@ function hasTenantStoreAccess(
     if (!request.auth) return false;
     if (getRequesterRole(request) === ECOMSAI_PLATFORM_USER_ROLE) return true;
 
-    const token = request.auth.token || {};
-    const tokenTenantId = String(token.tenantId || token.tId || '');
-    const tokenStoreId = String(token.storeId || token.sId || '');
-    const tokenStoreIds = Array.isArray(token.storeIds) ? token.storeIds.map(String) : [];
-
-    return tokenTenantId === String(tenantId)
-        && (tokenStoreId === String(storeId) || tokenStoreIds.includes(String(storeId)));
+    return hasCallableTenantStoreAccess(request.auth.token || {}, tenantId, storeId);
 }
 
 function assertTenantStoreAccess(
@@ -228,11 +224,15 @@ export const mapsPlaceCheck = onCall(
 
         const rateLimit = await checkRateLimit({
             key: `maps-place-check:${hashRateLimitValue(request.auth?.uid)}:${hashRateLimitValue(input.storeId)}`,
+            failClosedOnProviderError: true,
             ...RATE_LIMIT_CONFIGS.AI_EXPENSIVE,
         });
 
         if (!rateLimit.allowed) {
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+            if (rateLimit.reason === 'provider_unavailable') {
+                throw new HttpsError('unavailable', 'Maps place check is temporarily unavailable.');
+            }
             throw new HttpsError('resource-exhausted', `Too many requests. Please wait ${waitSeconds} seconds.`);
         }
 

@@ -24,6 +24,7 @@ import {
 import { genrateEmbedding, getKBFromSource } from '../utils/aiUtils';
 import { tiptapToText } from '../utils/tiptapUtils';
 import { getAnswerlatticeEmbeddingInput } from './embeddingSourceBoundary';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 const PRODUCT_ID = 'AL' as const;
 const START_GENERATION_FAILED_CODE = 'ANSWERLATTICE_START_GENERATION_FAILED';
@@ -47,21 +48,12 @@ type StartGenerationDependencies = {
     generateEmbedding?: typeof genrateEmbedding;
 };
 
-function boundedDiagnosticValue(value: unknown): string | number | null {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        return trimmed ? trimmed.slice(0, 80) : null;
-    }
-    return null;
-}
-
 function getStartGenerationErrorContext(error: unknown): Record<string, string | number | null> {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
-        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+        sourceErrorName: context.sourceErrorName || typeof error,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceErrorStatus: context.sourceStatusCode ?? null,
     };
 }
 

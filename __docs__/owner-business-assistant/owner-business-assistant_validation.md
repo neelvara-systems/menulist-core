@@ -103,6 +103,8 @@ Required after changes:
 
 If Firestore rules or Functions cleanup code changes, validate and deploy the matching Firebase target when credentials allow.
 
+Retention validation must cover disabled-feature state. `owner_business_assistant_cleanup` is a data-lifecycle task, not a feature-delivery task: expired snapshots, answer events, feedback, and threads remain eligible for bounded deletion even when their producer flags are off. Source verification must reject restoration of `isFunctionFeatureEnabled` or a skipped-cleanup branch inside this task.
+
 ## July 16, 2026 Cross-Check Evidence
 
 - Direct MobileShell dashboard and Business Health entry is source-gated by loaded `VIEW_ANALYTICS` permissions before analytics screens mount.

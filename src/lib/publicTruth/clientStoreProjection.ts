@@ -1,7 +1,7 @@
 import type { StoreDataType } from '@type/platform/store';
 import { getActiveTempStatus } from '@lib/tempStatus/statusBoundary';
 
-type PublicClientStore = Partial<StoreDataType> & Pick<StoreDataType, 'storeId' | 'tenantId'>;
+export type PublicClientStore = Partial<StoreDataType> & Pick<StoreDataType, 'storeId' | 'tenantId'>;
 
 const pickDefined = <T extends Record<string, unknown>>(
     source: T,

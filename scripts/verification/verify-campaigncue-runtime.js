@@ -86,6 +86,21 @@ function verifyApiRoutes() {
 
   assertIncludes(read("src/app/api/campaigncue/workspace/route.ts"), "CampaignCueBusinessPatchSchema", "workspace PATCH validation");
   assertIncludes(read("src/app/api/campaigncue/campaigns/route.ts"), "CampaignCueCreateCampaignSchema", "campaign create validation");
+  const campaignCueSchemas = read("src/lib/validation/campaigncueSchemas.ts");
+  assertOccurrenceCount(campaignCueSchemas, "idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),", 6, "all six CampaignCue mutation schemas require idempotency keys");
+  assertNotIncludes(campaignCueSchemas, "idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional()", "campaign mutation idempotency cannot be omitted");
+  assertNotIncludes(read("src/lib/validation/campaigncueCueLayersSchemas.ts"), "idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional()", "CueLayers mutation idempotency cannot be omitted");
+  assertIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), "mutationIdempotencyKeysRef", "CampaignCue browser retains retry identities across ambiguous responses");
+  assertIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), "isCampaignCueMutationOutcomeAuthoritative", "CampaignCue browser classifies authoritative mutation responses");
+  assertIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), "result.code !== CAMPAIGNCUE_ERROR_CODES.IDEMPOTENCY_CONFLICT", "CampaignCue browser retains active-conflict retry identities");
+  assertIncludes(read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"), "settleMutationIdempotencyKey(requestFingerprint, payload)", "CampaignCue browser retires retry identities only after classified responses");
+  for (const action of ["asset_create", "business_patch", "location_create", "source_input_create"]) {
+    assertIncludes(
+      read("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx"),
+      `getMutationIdempotencyKey("${action}"`,
+      `CampaignCue browser retains ${action} retry identity`,
+    );
+  }
   assertIncludes(read("src/app/api/campaigncue/campaigns/[campaignId]/actions/route.ts"), "CampaignCueCampaignActionSchema", "campaign action validation");
   assertIncludes(read("src/app/api/campaigncue/campaigns/[campaignId]/actions/route.ts"), "CampaignCueIdSchema", "campaign id validation");
   assertIncludes(read("src/app/api/campaigncue/assets/route.ts"), "CampaignCueAssetSchema", "asset validation");
@@ -139,6 +154,7 @@ function verifyApiRoutes() {
 
   const apiGuards = read("src/lib/campaigncue/apiGuards.ts");
   assertIncludes(apiGuards, "parseCampaignCueJsonBody", "CampaignCue shared invalid JSON parser");
+  assertIncludes(apiGuards, "resolveCampaignCueSessionIdentity", "CampaignCue session guard requires exact agreeing numeric tenant/store/user aliases");
   assertIncludes(apiGuards, "readBoundedJsonBody", "CampaignCue shared parser uses bounded JSON body reader");
   assertIncludes(apiGuards, "CAMPAIGNCUE_JSON_BODY_MAX_BYTES", "CampaignCue shared parser declares a body cap");
   assertIncludes(apiGuards, "Invalid JSON - CampaignCue API", "CampaignCue invalid JSON security log");
@@ -192,6 +208,7 @@ function verifyServerRuntime() {
   const dailyDeskConstants = read("src/constants/campaigncue/dailyDesk.ts");
   const campaigncueTypes = read("src/types/campaigncue.ts");
   const assetBoundary = read("src/lib/campaigncue/assetBoundary.ts");
+  const recordBoundary = read("src/lib/campaigncue/recordBoundary.ts");
   const errors = read("src/constants/campaigncue/errors.ts");
   const blockedActionStart = server.indexOf("if (finalActionError) {");
   const blockedActionEnd = server.indexOf("const updates = buildCampaignCueActionUpdates", blockedActionStart);
@@ -223,8 +240,37 @@ function verifyServerRuntime() {
   assertIncludes(server, "firestoreAdmin.collection(CAMPAIGNCUE_COLLECTIONS.WORKSPACES)", "CampaignCue workspace writes use dedicated Admin");
   assertIncludes(server, "CAMPAIGNCUE_PAGE_SIZE", "CampaignCue server bounded list limit");
   assertIncludes(server, "CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS", "CampaignCue server idempotency collection");
+  assertIncludes(server, "assertCampaignCueStoreRecordScope", "CampaignCue bootstrap verifies shared MenuList store ownership before consuming private profile data");
+  assertIncludes(server, "assertCampaignCueWorkspaceRecordScope", "CampaignCue server verifies product, tenant, store and member scope on persisted workspaces");
+  assertOccurrenceCount(
+    server,
+    "assertCurrentCampaignCueWorkspaceAccess(",
+    6,
+    "CampaignCue claim, asset, source, location and business transactions recheck current workspace membership",
+  );
+  assertIncludes(server, "if (!snap.exists) throw new CampaignCueWorkspaceScopeError()", "CampaignCue bootstrap rejects missing or deleted store scope");
+  const workspaceBootstrap = server.slice(
+    server.indexOf("export async function ensureCampaignCueWorkspaceServer"),
+    server.indexOf("async function ensureCampaignCueWorkspaceOnlyServer"),
+  );
+  assertIncludes(workspaceBootstrap, "transaction.create(ref", "CampaignCue workspace ownership is claimed create-only in a transaction");
+  assertIncludes(workspaceBootstrap, "transaction.create(businessRef", "CampaignCue Business Brain initialization is create-only");
+  assertIncludes(workspaceBootstrap, "transaction.create(sourceRef", "CampaignCue source snapshot initialization is create-only");
+  assertIncludes(workspaceBootstrap, "transaction.create(summaryRef", "CampaignCue summary initialization cannot reset concurrent counters");
+  assertIncludes(workspaceBootstrap, "assertCampaignCueBusinessBrainRecordScope", "CampaignCue bootstrap rejects a foreign embedded Business Brain scope");
   assertIncludes(server, "CAMPAIGNCUE_IDEMPOTENCY_LEASE_MS", "CampaignCue server idempotency claim has a bounded lease");
+  assertIncludes(server, "CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS", "CampaignCue server idempotency records have bounded retention");
+  assertIncludes(server, "expiresAt: admin.firestore.Timestamp.fromMillis(nowMillis + CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS)", "CampaignCue primary idempotency claims set their TTL deadline");
   assertIncludes(server, "getCampaignCueIdempotencyClaimDecision", "CampaignCue server transactionally decides claim, replay, or conflict");
+  assertIncludes(server, "loadCampaignCueDecisionAuthority", "CampaignCue campaign generation loads one coherent authority snapshot");
+  assertIncludes(server, "currentAuthorityHash !== authorityHash", "CampaignCue campaign commit rejects concurrent decision-input changes");
+  assertIncludes(server, "parseCampaignCueCampaignRecord", "CampaignCue persisted campaign reads use a runtime decoder");
+  assertIncludes(server, "parseCampaignCueAnalyticsSummaryRecord", "CampaignCue persisted summary reads use a runtime decoder");
+  assertIncludes(recordBoundary, "stripLegacyNullObjectFields", "CampaignCue persisted decoder normalizes legacy optional nulls");
+  assertIncludes(server, 'undefinedObjectValue: "omit"', "CampaignCue Firestore writes omit optional undefined fields");
+  assertIncludes(cueLayersServer, 'undefinedObjectValue: "omit"', "CueLayers Firestore writes omit optional undefined fields");
+  assertNotIncludes(server, "const sanitizeForAdminFirestore = (value: any): any", "CampaignCue avoids its unsafe duplicate Firestore sanitizer");
+  assertNotIncludes(cueLayersServer, "const sanitizeForAdminFirestore = (value: any): any", "CueLayers avoids its unsafe duplicate Firestore sanitizer");
   assertIncludes(server, "assertCampaignCueIdempotencyClaimOwnership", "CampaignCue server completion proves exact claim ownership");
   assertIncludes(server, "CAMPAIGNCUE_ERROR_CODES.IDEMPOTENCY_CONFLICT", "CampaignCue server idempotency conflict response");
   assertIncludes(server, "FieldValue.increment", "CampaignCue analytics summary atomic increments");
@@ -246,7 +292,7 @@ function verifyServerRuntime() {
   assertIncludes(server, "buildDeliveryPolicy", "CampaignCue server exposes export/download delivery policy");
   assertIncludes(server, "buildCampaignCueDailyDesk", "CampaignCue server returns Daily Campaign Desk from overview data");
   assertIncludes(server, "buildCampaignCueDecisions", "CampaignCue server stores selected deterministic campaign decision");
-  assertIncludes(server, "listSubcollection<CampaignCueCampaign>", "CampaignCue create flow reads bounded campaign memory for scoring");
+  assertIncludes(server, "campaignCueDecisionQuery(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS)", "CampaignCue create flow reads bounded campaign memory for scoring and commit authority");
   assertIncludes(server, "decision: selectedDecision", "CampaignCue campaign pack stores selected decision object");
   assertIncludes(server, "recipeId: recipe.id", "CampaignCue campaign pack stores selected recipe id");
   assertIncludes(server, "CampaignCueDecisionGateError", "CampaignCue server blocks pack creation when missing-input gate is not ready");
@@ -263,14 +309,17 @@ function verifyServerRuntime() {
   assertIncludes(dailyDesk, "firestoreDeletes: 0", "CampaignCue AI assistance plan records zero Firestore deletes");
   assertIncludes(server, "normalizeCampaignCueWorkspace", "CampaignCue server normalizes legacy workspace delivery settings");
   assertIncludes(server, "providerConnections: []", "CampaignCue overview avoids active provider connection reads");
-  assertIncludes(server, "readsPerLoad: 8", "CampaignCue overview read cost excludes provider connection collection");
+  assertIncludes(server, "readsPerLoad: 9", "CampaignCue overview read cost includes the MenuList store-scope verification and excludes provider connection collection");
+  assertIncludes(server, "readsPerLoad: 3", "CampaignCue analytics read cost includes the MenuList store-scope verification");
   assertIncludes(server, "const updated: CampaignCueCampaign", "CampaignCue action response avoids post-write campaign reread");
   assertIncludes(server, "readSourceSnapshot", "CampaignCue source snapshot summary reader exists");
   assertIncludes(server, "buildSourceSnapshotFromExistingSnapshot", "CampaignCue source input save can merge into existing snapshot");
-  assertIncludes(sourceInputSaveBlock, "readSourceSnapshot(workspaceId)", "CampaignCue source input save reads compact source snapshot");
+  assertIncludes(sourceInputSaveBlock, "transaction.get(sourceSnapshotRef)", "CampaignCue source input save reads transaction-current compact source snapshot");
+  assertIncludes(sourceInputSaveBlock, "parseCampaignCueSourceSnapshotRecord", "CampaignCue source input save runtime-admits transaction-current snapshot truth");
   assertIncludes(sourceInputSaveBlock, "buildSourceSnapshotFromExistingSnapshot", "CampaignCue source input save merges source facts from snapshot");
   assertNotIncludes(sourceInputSaveBlock, "listSubcollection<CampaignCueSourceInput>", "CampaignCue source input save avoids source input collection scan");
-  assertIncludes(businessPatchBlock, "readSourceSnapshot(workspaceId)", "CampaignCue business patch reads compact source snapshot");
+  assertIncludes(businessPatchBlock, "transaction.get(sourceSnapshotRef)", "CampaignCue business patch reads transaction-current compact source snapshot");
+  assertIncludes(businessPatchBlock, "transaction.get(businessRef)", "CampaignCue business patch reads transaction-current Business Brain truth");
   assertIncludes(businessPatchBlock, "buildSourceSnapshotFromExistingSnapshot", "CampaignCue business patch rebuilds facts from snapshot");
   assertNotIncludes(businessPatchBlock, "listSubcollection<CampaignCueSourceInput>", "CampaignCue business patch avoids source input collection scan");
   assertIncludes(server, "normalizeBrandPlaybook", "CampaignCue server normalizes Brand Playbook for existing Business Brain docs");
@@ -297,7 +346,9 @@ function verifyServerRuntime() {
   assertIncludes(blockedActionBlock, "transaction.set(eventRef", "CampaignCue blocked actions transactionally record the event");
   assertIncludes(blockedActionBlock, "transaction.set(idempotencyRef", "CampaignCue blocked actions transactionally complete idempotency");
   assertNotIncludes(server, "await Promise.all([\n        updateDashboardSummary", "CampaignCue accepted actions avoid second summary commit");
-  assertIncludes(assetRegistrationBlock, "const batch = firestoreAdmin.batch()", "CampaignCue asset registration batches asset and event writes");
+  assertIncludes(assetRegistrationBlock, "await firestoreAdmin.runTransaction", "CampaignCue asset registration atomically binds current authority, asset, event and replay completion");
+  assertIncludes(assetRegistrationBlock, "assertCurrentCampaignCueWorkspaceAccess", "CampaignCue asset registration rechecks current member authority");
+  assertIncludes(assetRegistrationBlock, "assertCampaignCueAssetBinding", "CampaignCue asset registration rechecks transaction-current campaign/output/channel binding");
   assertIncludes(assetRegistrationBlock, "action: \"asset_registered\"", "CampaignCue asset registration still records audit event");
   assertNotIncludes(assetRegistrationBlock, "await writeEvent({", "CampaignCue asset registration avoids a second Firestore event commit");
   assertIncludes(server, "responseError: finalActionError", "CampaignCue blocked actions complete idempotency with replayable error");
@@ -315,9 +366,12 @@ function verifyServerRuntime() {
   assertIncludes(server, "createCampaignCueSourceInputServer", "CampaignCue source input mutation");
   assertIncludes(server, "createCampaignCueAssetDownloadServer", "CampaignCue asset download handoff");
   assertIncludes(assetRegistrationBlock, "isCampaignCueWorkspaceStoragePath", "CampaignCue asset registration is workspace-path scoped");
+  assertIncludes(assetRegistrationBlock, "const storageGeneration = String(metadata.generation || \"\")", "CampaignCue asset registration captures immutable Storage generation");
   assertIncludes(assetDownloadBlock, "parseCampaignCueAssetRecord", "CampaignCue asset download validates persisted asset records");
   assertIncludes(assetBoundary, "isCampaignCueWorkspaceStoragePath(value.file.storagePath as string, params.workspaceId)", "CampaignCue persisted asset parser enforces workspace-path ownership");
   assertIncludes(assetDownloadBlock, "getSignedUrl", "CampaignCue private Storage downloads use runtime signed URLs");
+  assertIncludes(assetDownloadBlock, "generation: storageGeneration", "CampaignCue private Storage downloads bind the registered object generation");
+  assertIncludes(assetDownloadBlock, "This legacy asset must be registered again before download.", "CampaignCue legacy unversioned Storage references fail closed");
   assertNotIncludes(server, "recordCampaignCueIntegrationServer", "CampaignCue server has no day-one integration mutation");
   assertIncludes(server, "createCampaignCueLocationServer", "CampaignCue location mutation");
   assertIncludes(server, "export_action_blocked", "CampaignCue trust-blocked export action event");
@@ -426,9 +480,18 @@ function verifyServerRuntime() {
   const cueLayersSchemas = read("src/lib/validation/campaigncueCueLayersSchemas.ts");
 
   assertIncludes(cueLayersServer, "ensureCampaignCueWorkspaceServer", "CueLayers server validates workspace scope");
+  assertIncludes(cueLayersServer, "async function assertCurrentCueLayersWorkspaceAccess", "CueLayers has one transaction-current workspace authority guard");
+  assertIncludes(cueLayersServer, "assertCampaignCueWorkspaceRecordScope(", "CueLayers transaction guard validates exact product, tenant, store and member scope");
+  assertOccurrenceCount(
+    cueLayersServer,
+    "assertCurrentCueLayersWorkspaceAccess(transaction,",
+    5,
+    "CueLayers idempotency claim, upload, autosave, repair and export transactions recheck current workspace membership",
+  );
   assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS", "CueLayers server writes design collection");
   assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS", "CueLayers server uses idempotency keys");
   assertIncludes(cueLayersServer, "CUE_LAYERS_IDEMPOTENCY_LEASE_MS", "CueLayers idempotency claims have a bounded lease");
+  assertIncludes(cueLayersServer, "expiresAt: admin.firestore.Timestamp.fromMillis(nowMillis + CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS)", "CueLayers idempotency claims set their TTL deadline");
   assertIncludes(cueLayersServer, "getCampaignCueCueLayersClaimDecision", "CueLayers idempotency permits expired and legacy claim recovery");
   assertIncludes(cueLayersServer, "assertCampaignCueCueLayersClaimOwnership", "CueLayers commits prove exact claim ownership");
   assertIncludes(cueLayersServer, "completeCueLayersIdempotencyClaim", "CueLayers early completion is claim-conditional");
@@ -457,9 +520,15 @@ function verifyServerRuntime() {
   assertNotIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_JOB_EVENTS", "CueLayers active v1 avoids job event collection writes");
   assertIncludes(cueLayersServer, "bootCampaignCueCueLayerDesignServer", "CueLayers boot server entry");
   assertIncludes(cueLayersServer, "autosaveCampaignCueCueLayerDesignServer", "CueLayers autosave server entry");
-  assertIncludes(cueLayersServer, "const committedDesign = await firestoreAdmin.runTransaction", "CueLayers autosave commits revision and version metadata transactionally");
+  assertIncludes(cueLayersServer, "committedDesign = await firestoreAdmin.runTransaction", "CueLayers autosave commits revision and version metadata transactionally");
   assertIncludes(cueLayersServer, "currentDesign.current.revision !== expectedRevision", "CueLayers autosave rechecks revision in its commit transaction");
-  assertIncludes(cueLayersServer, "deleteStorageObjectBestEffort(documentAsset.storagePath, \"autosave_snapshot\")", "CueLayers autosave removes stale uploaded snapshots");
+  assertOccurrenceCount(cueLayersServer, "deleteStorageObjectBestEffort(documentAsset.storagePath, \"autosave_snapshot\")", 2, "CueLayers autosave removes stale and failed-commit snapshots");
+  assertIncludes(cueLayersServer, "withUncommittedStorageCleanup", "CueLayers upload tracks pre-commit Storage objects for compensation");
+  assertIncludes(cueLayersServer, "recordUploadedPath(originalPath)", "CueLayers upload tracks its original image object");
+  assertIncludes(cueLayersServer, "recordUploadedPath(sourcePackageAsset.storagePath)", "CueLayers upload tracks its source package object");
+  assertIncludes(cueLayersServer, "recordUploadedPath(layerIndexAsset.storagePath)", "CueLayers upload tracks its layer-index object");
+  assertIncludes(cueLayersServer, "recordUploadedPath(editorSnapshotAsset.storagePath)", "CueLayers upload tracks its editor snapshot object");
+  assertIncludes(cueLayersServer, "markCommitted();", "CueLayers upload stops compensation after the Firestore commit");
   assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_REPAIR_REQUESTS", "CueLayers repair stores repair request metadata");
   assertIncludes(cueLayersServer, "layerIndex.entries.some((entry) => entry.layerId === params.input.layerId)", "CueLayers repair validates requested layer against the durable layer index");
   assertIncludes(cueLayersServer, "const idempotencyAction = \"cue_layers_repair\"", "CueLayers repair uses scoped idempotency");
@@ -468,10 +537,12 @@ function verifyServerRuntime() {
   assertIncludes(cueLayersServer, "exportCampaignCueCueLayerDesignServer", "CueLayers export server entry");
   assertIncludes(cueLayersServer, "params.input.sourceRevision !== design.current.revision", "CueLayers export rejects stale revisions");
   assertIncludes(cueLayersServer, "getCampaignCueCueLayerExportBindingError", "CueLayers export is bound to the immutable saved editor snapshot and canvas dimensions");
-  assertIncludes(cueLayersServer, "const committed = await firestoreAdmin.runTransaction", "CueLayers repair and export use final commit transactions");
+  assertIncludes(cueLayersServer, "const committed = await firestoreAdmin.runTransaction", "CueLayers repair uses a final commit transaction");
+  assertIncludes(cueLayersServer, "committed = await firestoreAdmin.runTransaction", "CueLayers export uses a final commit transaction");
   assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.ASSETS).doc(asset.id)", "CueLayers export registers its asset in the atomic commit");
   assertIncludes(cueLayersServer, "CAMPAIGNCUE_COLLECTIONS.EVENTS).doc(eventId)", "CueLayers export registers its audit event in the atomic commit");
   assertIncludes(cueLayersServer, "deleteStorageObjectBestEffort(exportOutputPath, \"stale_export_output\")", "CueLayers export removes stale uploaded output");
+  assertIncludes(cueLayersServer, "deleteStorageObjectBestEffort(exportOutputPath, \"export_output\")", "CueLayers export compensates failed commit transactions");
   assertIncludes(cueLayersServer, "parseRenderedExportDataUrl", "CueLayers export validates rendered output bytes");
   assertIncludes(cueLayersServer, "path: exportOutputPath", "CueLayers export writes immutable output before asset registration");
   assertNotIncludes(cueLayersServer, "exportReportAsset", "CueLayers active v1 avoids duplicate export report artifacts");
@@ -531,7 +602,7 @@ function verifyServerRuntime() {
   assertIncludes(cueLayersSchemas, '"900"', "CueLayers autosave accepts shared editor heavy font weight");
   assertIncludes(cueLayersIdempotency, "actorId !== expected.actorId", "CueLayers idempotency rejects cross-actor replay");
   assertIncludes(cueLayersIdempotency, "requestHash !== expected.requestHash", "CueLayers idempotency rejects changed-payload replay");
-  assertIncludes(cueLayersServer, "const snap = await transaction.get(ref)", "CueLayers idempotency reads claims transactionally");
+  assertIncludes(cueLayersServer, "transaction.get(ref),", "CueLayers idempotency reads claims transactionally");
   assertIncludes(cueLayersServer, "if (decision.kind === \"conflict\")", "CueLayers idempotency distinguishes an active duplicate claim");
   assertIncludes(cueLayersServer, "cueLayersIdempotencyCompletion", "CueLayers durable operations complete idempotency with their writes");
 }
@@ -764,6 +835,7 @@ function verifyClientRuntime() {
   assertIncludes(layout, "GlobalKeyboardShortcutsProvider", "CampaignCue protected layout uses shared keyboard shortcut provider");
   assertIncludes(layout, "NetworkStatusProvider", "CampaignCue protected layout uses shared network status provider");
   assertIncludes(layout, "isPlatformEntityBlocked", "CampaignCue protected layout blocks platform-blocked accounts");
+  assertIncludes(layout, "resolveCurrentSessionUserDocumentId(session)", "CampaignCue protected layout rejects ambiguous actor aliases");
   assertNotIncludes(layout, "@providers/sessionProvider", "CampaignCue shell avoids MenuList store/subscription bootstrap reads");
   assertIncludes(styles, "@media (max-width: 640px)", "CampaignCue mobile responsive breakpoint");
   assertIncludes(schemas, "const optionalUrl", "CampaignCue optional URL fields can be blank");
@@ -1319,6 +1391,16 @@ function verifyFirebaseBoundary() {
   assertIncludes(storageRules, "allow write, delete: if false", "CampaignCue CueLayers client Storage writes disabled");
   const parsedIndexes = JSON.parse(indexes);
   assert(parsedIndexes.indexes?.length === 0, "CampaignCue must not retain unused composite indexes");
+  assert(
+    parsedIndexes.fieldOverrides?.some((entry) => (
+      entry.collectionGroup === "idempotencyKeys"
+      && entry.fieldPath === "expiresAt"
+      && entry.ttl === true
+      && Array.isArray(entry.indexes)
+      && entry.indexes.length === 0
+    )),
+    "CampaignCue idempotency expiry has a TTL policy and no unused index",
+  );
   assertNotIncludes(read("src/lib/campaigncue/server.ts"), "collectionGroup(", "CampaignCue server cross-workspace collection-group query");
   assertNotIncludes(read("src/lib/campaigncue/cue-layers/server.ts"), "collectionGroup(", "CampaignCue CueLayers cross-workspace collection-group query");
 }
@@ -1364,6 +1446,7 @@ function verifyProductConstantSeparation() {
   const productDomains = read("src/constants/productDomains.ts");
   const domainResolver = read("src/lib/multiTenant/domainResolver.ts");
   const urls = read("src/constants/urls.ts");
+  const reservedSlugs = read("src/constants/reservedSlugs.ts");
   const apiSchemas = read("src/lib/validation/apiSchemas.ts");
   const billingPlans = read("src/lib/billing/productBillingPlans.ts");
   const billingServer = read("src/lib/billing/productBillingServer.ts");
@@ -1445,7 +1528,8 @@ function verifyProductConstantSeparation() {
   assertIncludes(urls, "Local: /__campaigncue", "URL architecture comments include CampaignCue local route");
   assertIncludes(urls, "QA: campaigncue.menulist.online", "URL architecture comments include CampaignCue preview domain");
   assertIncludes(urls, "Prod: campaigncue.ai", "URL architecture comments include CampaignCue production domain");
-  assertIncludes(urls, "CAMPAIGNCUE_PRODUCT_SLUG", "URL constants reserve CampaignCue slug namespace");
+  assertIncludes(reservedSlugs, "CAMPAIGNCUE_PRODUCT_SLUG", "canonical reserved-slug constants reserve CampaignCue namespace");
+  assertIncludes(urls, "ROUTING_RESERVED_SUBDOMAINS", "URL constants reuse the canonical reserved-subdomain registry");
 
   assertNotIncludes(read("src/lib/campaigncue/server.ts"), 'from "@constant/campaigncue";', "CampaignCue server avoids all-in barrel import");
   assertNotIncludes(read("src/lib/firebase/campaigncueFirebaseAdmin.ts"), 'const CAMPAIGNCUE_APP_NAME = "campaigncue-admin"', "CampaignCue Admin app name is not local literal");

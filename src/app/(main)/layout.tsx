@@ -1,6 +1,7 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import AntdLayoutWrapper from '@antdComponent/layoutWrapper'
 import { authOptions } from '@lib/auth'
+import { getCurrentUser } from '@lib/auth/currentPlatformUser'
 import { APP_THEME_COLOR } from '@constant/common'
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock'
 import LocalisationProvider from '@providers/localisationProvider'
@@ -42,7 +43,11 @@ export default async function MainLayout({ children }: { children: React.ReactNo
   if (!session) {
     redirect("/signin");
   }
-  if (session.user?.active === false || (session.user as any)?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
+  if (session.user?.active === false || session.user?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
+    redirect("/unauthorized");
+  }
+  const currentUser = await getCurrentUser(session);
+  if (!currentUser) {
     redirect("/unauthorized");
   }
 

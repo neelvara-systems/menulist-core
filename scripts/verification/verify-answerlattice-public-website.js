@@ -145,6 +145,15 @@ assertIncludes(billingPlans, 'provider fallback answers', 'Billing credit-pack f
 assertNotIncludes(billingPlans, 'widget chat, intake media, and review credits', 'stale Billing credit-pack wording');
 
 assertIncludes(onboardingPage, 'basePath={basePath}', 'onboarding public alias base path');
+assertIncludes(onboardingPage, 'data-answerlattice-activation-primary="workspace-signup"', 'onboarding primary activation marker');
+assert(
+  onboardingPage.indexOf('<OnboardingForm') < onboardingPage.indexOf('<PageProofStrip'),
+  'workspace signup must appear before supporting proof content',
+);
+assert(
+  onboardingPage.indexOf('<OnboardingForm') < onboardingPage.indexOf('CRITERIA.map'),
+  'workspace signup must appear before fit criteria',
+);
 assertIncludes(onboarding, '<form style={styles.card} onSubmit={handleCreateAccount}>', 'onboarding semantic details form');
 assertIncludes(onboarding, 'event.preventDefault()', 'onboarding form submission boundary');
 assertIncludes(onboarding, 'type="submit"', 'onboarding native submit button');
@@ -172,20 +181,79 @@ for (const publicPath of registeredPaths) {
 
 const sitemap = read(`${WEBSITE_ROOT}/sitemap.xml/route.ts`);
 const robots = read(`${WEBSITE_ROOT}/robots.txt/route.ts`);
+const notFound = read(`${WEBSITE_ROOT}/not-found.tsx`);
 assertIncludes(sitemap, 'ANSWERLATTICE_PUBLIC_PAGES.map', 'sitemap public registry');
 assertNotIncludes(sitemap, '<lastmod>', 'sitemap synthetic modified time');
 assertNotIncludes(sitemap, 'new Date()', 'sitemap synthetic modified time');
 assertIncludes(robots, 'Sitemap: ${ANSWERLATTICE_SITE_URL}/sitemap.xml', 'robots sitemap link');
-assertIncludes(robots, 'Disallow: /answerlattice/', 'robots private dashboard boundary');
-assertIncludes(robots, 'Disallow: /api/', 'robots private API boundary');
+assertIncludes(robots, "'/answerlattice/'", 'robots private dashboard boundary');
+assertIncludes(robots, "'/api/'", 'robots private API boundary');
+assertIncludes(robots, '.map((crawler) => `User-agent: ${crawler}\\nAllow: /\\n${disallowRules}`)', 'named crawler private-path boundaries');
+assertIncludes(notFound, "h.get('x-product-base-path')", 'not-found proxy-owned base path');
+assertIncludes(notFound, "href={basePath ? `${basePath}/` : '/'}", 'not-found product-local home recovery');
+assertNotIncludes(notFound, 'href="/"', 'not-found cross-product root recovery');
 
 const demo = read(`${WEBSITE_ROOT}/demo/AnswerlatticePublicDemo.tsx`);
+const supportLoopDemo = read(`${WEBSITE_ROOT}/demo/AnswerlatticeSupportLoopDemo.tsx`);
 assertIncludes(demo, 'const DEMO_STAGES = [', 'deterministic demo stage registry');
 assertIncludes(demo, 'Seeded product simulation', 'deterministic demo sample disclosure');
 assertIncludes(demo, 'No Firebase or AI provider call is made in this public demo.', 'deterministic demo runtime disclosure');
 assertNotIncludes(demo, 'fetch(', 'deterministic demo network path');
 assertNotIncludes(demo, '@google/genai', 'deterministic demo model dependency');
 assertNotIncludes(demo, 'getFirestore', 'deterministic demo Firebase dependency');
+assertIncludes(supportLoopDemo, 'const SUPPORT_DEMO_STAGES = [', 'support-loop demo stage registry');
+assertIncludes(supportLoopDemo, 'Seeded support simulation', 'support-loop demo sample disclosure');
+assertIncludes(supportLoopDemo, 'Known question', 'support-loop known-answer path');
+assertIncludes(supportLoopDemo, 'Safe fallback', 'support-loop fallback path');
+assertIncludes(supportLoopDemo, 'Founder review', 'support-loop human review path');
+assertIncludes(supportLoopDemo, 'Answer Test passed', 'support-loop pre-use test path');
+assertIncludes(supportLoopDemo, 'No Firebase or AI provider call is made in this public demo.', 'support-loop demo runtime disclosure');
+assertNotIncludes(supportLoopDemo, 'fetch(', 'support-loop demo network path');
+assertNotIncludes(supportLoopDemo, '@google/genai', 'support-loop demo model dependency');
+assertNotIncludes(supportLoopDemo, 'getFirestore', 'support-loop demo Firebase dependency');
+
+const homepage = read(`${WEBSITE_ROOT}/page.tsx`);
+const productPage = read(`${WEBSITE_ROOT}/product/page.tsx`);
+const widgetProductPage = read(`${WEBSITE_ROOT}/product/page-aware-widget/page.tsx`);
+const websiteStyles = read(`${WEBSITE_ROOT}/styles.css`);
+assertIncludes(homepage, 'Answer what is known. Catch what is missing. Improve it once.', 'homepage support-loop focus');
+assertIncludes(homepage, 'Why this answer is trusted', 'homepage trusted-answer proof');
+assertIncludes(
+    homepage,
+    'Deferred homepage sections retained for one-line reactivation.',
+    'homepage deferred section retention marker',
+);
+assertIncludes(
+    homepage,
+    '* <SupportSuiteSection basePath={basePath} />',
+    'homepage commented support-suite mount',
+);
+assertIncludes(homepage, '* <SupportSurfaceStorySection />', 'homepage commented support-surface mount');
+assertIncludes(
+    homepage,
+    '* <ProductOverviewSection basePath={basePath} />',
+    'homepage commented product-overview mount',
+);
+const homepageWithoutJsxBlockComments = homepage.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+assertNotIncludes(
+    homepageWithoutJsxBlockComments,
+    '<SupportSuiteSection basePath={basePath} />',
+    'homepage active support-suite mount',
+);
+assertNotIncludes(
+    homepageWithoutJsxBlockComments,
+    '<SupportSurfaceStorySection />',
+    'homepage active support-surface mount',
+);
+assertNotIncludes(
+    homepageWithoutJsxBlockComments,
+    '<ProductOverviewSection basePath={basePath} />',
+    'homepage active product-overview mount',
+);
+assertNotIncludes(productPage, 'Everything your SaaS needs', 'product hero broad inventory headline');
+assertIncludes(widgetProductPage, 'Opt-in guided resolution', 'widget bounded guided-resolution copy');
+assertIncludes(widgetProductPage, 'AnswerLattice does not click controls or change product data.', 'widget guided-resolution action boundary');
+assertIncludes(websiteStyles, '.al-page-flow > section.al-page-hero', 'mobile structured-data hero spacing boundary');
 
 const header = read(`${WEBSITE_ROOT}/components/Header.tsx`);
 const footer = read(`${WEBSITE_ROOT}/components/Footer.tsx`);
@@ -206,9 +274,14 @@ assertIncludes(contact, 'ANSWERLATTICE_CONTACT_RESPONSE_JSON_MAX_BYTES', 'contac
 assertIncludes(contact, "linkTo('/privacy-policy')", 'contact privacy consent link');
 assertIncludes(contact, "linkTo('/terms-of-service')", 'contact terms consent link');
 assertIncludes(contactRoute, 'ANSWERLATTICE_PUBLIC_CONTACT_MAX_BODY_BYTES', 'contact bounded request');
-assertIncludes(contactRoute, 'ContactRequestSchema', 'contact strict request schema');
+assertIncludes(contactRoute, 'AnswerlatticePublicContactRequestSchema', 'contact strict normalized request schema');
+assertIncludes(contactRoute, 'failClosed: true', 'contact limiter provider outage fail-closed policy');
 assertIncludes(contactRoute, 'verifyTurnstileToken', 'contact abuse verification');
 assertIncludes(contactRoute, 'getAnswerlatticeRetentionFields', 'contact retention policy');
+assertIncludes(contactRoute, "'Cache-Control': 'no-store'", 'contact response no-store policy');
+assertIncludes(contactRoute, "'X-Content-Type-Options': 'nosniff'", 'contact response nosniff policy');
+assertIncludes(contactRoute, 'return contactJson({ accepted: true });', 'contact success response boundary');
+assertNotIncludes(contactRoute, 'return NextResponse.json(', 'contact response boundary bypass');
 
 const trust = read(`${WEBSITE_ROOT}/trust/page.tsx`);
 const privacy = read(`${WEBSITE_ROOT}/privacy-policy/page.tsx`);
@@ -249,6 +322,9 @@ const publicClaimFiles = [
 ].filter(exists);
 const publicClaimSource = publicClaimFiles.map(read).join('\n');
 const publicClaimCopy = publicClaimSource.toLowerCase();
+const answerlatticeManifest = JSON.parse(read('public/answerlattice.webmanifest'));
+assert(answerlatticeManifest.start_url === '/', 'AnswerLattice manifest start_url must remain same-origin across preview and production domains');
+assert(answerlatticeManifest.scope === '/', 'AnswerLattice manifest scope must remain same-origin across preview and production domains');
 assert(!/\bCanonica\b/.test(publicClaimSource), 'public copy must not use Canonica as a standalone brand');
 for (const phrase of ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS.forbiddenPhrases.filter((value) => value !== 'Canonica')) {
   assertNotIncludes(publicClaimCopy, phrase.toLowerCase(), `public forbidden claim ${phrase}`);
@@ -272,8 +348,18 @@ for (const doc of requiredDocs) {
 const packageJson = JSON.parse(read('package.json'));
 assert(
   packageJson.scripts['verify:answerlattice-public-website']
-    === 'node scripts/verification/verify-answerlattice-public-website.js',
+    === 'node scripts/verification/verify-answerlattice-public-website.js && npm run test:answerlattice-public-contact-contracts && npm run test:answerlattice-robots-policy',
   'package must expose the Answerlattice public-website verifier',
+);
+assert(
+  packageJson.scripts['test:answerlattice-robots-policy']
+    === "ts-node --compiler-options '{\"module\":\"CommonJS\"}' -r tsconfig-paths/register scripts/verification/test-answerlattice-robots-policy.ts",
+  'Answerlattice robots runtime policy test must remain registered',
+);
+assert(
+  packageJson.scripts['test:answerlattice-public-contact-contracts']
+    === 'ts-node --compiler-options \'{"module":"CommonJS"}\' -r tsconfig-paths/register scripts/verification/test-answerlattice-public-contact-contracts.ts',
+  'package must expose the Answerlattice public-contact contract regression test',
 );
 assertIncludes(
   packageJson.scripts['verify:answerlattice-runtime-truth'],

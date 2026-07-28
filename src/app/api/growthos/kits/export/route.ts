@@ -1,12 +1,13 @@
 export const dynamic = "force-dynamic";
 
 import {
+    GROWTHOS_KIT_BECAME_STALE,
     findGrowthOSKitOutput,
+    readGrowthOSExportReplayServer,
     readGrowthOSKitServer,
     readGrowthOSStoreDataServer,
     readGrowthOSSummaryServer,
     recordGrowthOSExportServer,
-    writeGrowthOSSummaryServer,
 } from "@database/growthos/server";
 import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
@@ -69,6 +70,18 @@ export const POST = withAuth(async (request, session) => {
             }, { status: entitlement.reason === "feature_off" ? 404 : 403 });
         }
 
+        const replay = await readGrowthOSExportReplayServer({
+            destination: validation.data.destination,
+            kitId,
+            method: validation.data.method,
+            operationId: validation.data.operationId,
+            outputId: validation.data.outputId,
+            session,
+        });
+        if (replay) {
+            return NextResponse.json({ data: replay }, { status: 200 });
+        }
+
         const kit = await readGrowthOSKitServer({
             kitId,
             tId: session.tId,
@@ -93,7 +106,10 @@ export const POST = withAuth(async (request, session) => {
             }, { status: 409 });
         }
 
-        const summary = await readGrowthOSSummaryServer(session.sId);
+        const summary = await readGrowthOSSummaryServer({
+            storeId: session.sId,
+            tenantId: session.tId,
+        });
         let currentSourceFactsHash = summary?.sourceFactsHash;
         let sourceFactsUnavailable = false;
         if (kit.projectId) {
@@ -117,33 +133,24 @@ export const POST = withAuth(async (request, session) => {
 
         const result = await recordGrowthOSExportServer({
             destination: validation.data.destination,
+            isStale,
             kit,
             method: validation.data.method,
+            operationId: validation.data.operationId,
             outputId: validation.data.outputId,
             session,
         });
 
-        if (summary?.latestKit?.id === kit.id) {
-            const nextStatus = result.status || summary.latestKit.status;
-            if (summary.latestKit.status !== nextStatus || summary.latestKit.isStale !== isStale) {
-                await writeGrowthOSSummaryServer(session.sId, {
-                    ...summary,
-                    latestKit: {
-                        ...summary.latestKit,
-                        status: nextStatus,
-                        isStale,
-                    },
-                });
-            }
-        }
-
         return NextResponse.json({
-            data: {
-                ...result,
-                isStale,
-            },
+            data: result,
         }, { status: 200 });
     } catch (error) {
+        if (error instanceof Error && error.message === GROWTHOS_KIT_BECAME_STALE) {
+            return NextResponse.json({
+                error: "Growth Kit is stale",
+                message: "This kit may use old menu details. Create it again before using.",
+            }, { status: 409 });
+        }
         logGrowthOSApiFailure("GrowthOS Export API error", "growthos_export_api_failed", error, {
             endpoint: "/api/growthos/kits/export",
             ...getGrowthOSBoundedStringContext("userId", session?.uId || session?.user?.id),

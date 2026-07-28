@@ -67,7 +67,9 @@ function verifyPublicScreenRoute() {
   assertIncludes(serverDal, 'CAMPAIGN_SUMMARY_ID_PATTERN', 'Digital Screens server DAL campaign summary id guard');
   assertIncludes(serverDal, 'const storeData = await getPublicStoreById(storeId);', 'Digital Screens server DAL shared public store gate');
   assertIncludes(serverDal, 'if (!storeData) return null;', 'Digital Screens server DAL missing/blocked/deleted store fail-closed gate');
-  assertIncludes(serverDal, "String(storeData.tenantId ?? storeData.tId ?? '') !== tenantId", 'Digital Screens server menu tenant/store ownership gate');
+  assertIncludes(serverDal, 'normalizeMenuListPublicEntityIdentityAliases([', 'Digital Screens server exact all-alias tenant/store ownership gate');
+  assertIncludes(serverDal, '])?.documentId !== tenantId', 'Digital Screens server menu tenant/store ownership comparison');
+  assertNotIncludes(serverDal, 'storeData.tenantId ?? storeData.tId', 'Digital Screens server must reject conflicting persisted tenant aliases');
   assertIncludes(serverDal, 'if (baseProjectId && !isValidFirestoreDocumentId(baseProjectId)) return [];', 'Digital Screens server base project id guard');
   assertIncludes(serverDal, 'if (!isValidFirestoreDocumentId(projectId)) return null;', 'Digital Screens server project id guard');
   assertIncludes(serverDal, 'specialProject?.isSpecialMenu === true', 'Digital Screens server special menu type gate');
@@ -140,8 +142,8 @@ function verifyDisplayClients() {
     assertIncludes(content, 'enabled !== true', `${label} disabled-screen reload guard`);
     assertIncludes(content, 'getBoundedScreenStringContext', `${label} bounded diagnostics`);
     assertIncludes(content, `${failurePrefix}_listener_failed`, `${label} listener failure diagnostic`);
-    assertIncludes(content, `_guardedReload('${reloadKey}')`, `${label} guarded reload identity`);
-    assertIncludes(content, `_guardedReloadWithJitter('${reloadKey}')`, `${label} jittered reload identity`);
+    assertIncludes(content, `_guardedReload('${reloadKey}', token)`, `${label} guarded reload identity`);
+    assertIncludes(content, `_guardedReloadWithJitter('${reloadKey}', token)`, `${label} jittered reload identity`);
     assertNotIncludes(content, 'doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `campaigns_', `${label} internal campaign summary listener`);
     assertNotIncludes(content, 'console.', `${label} direct console diagnostics`);
     assertNotIncludes(content, 'requestFullscreen?.().catch(() => { })', `${label} swallowed fullscreen failure`);
@@ -173,6 +175,8 @@ function verifySeenSignalRoute() {
   assertIncludes(route, 'firestoreAdmin.runTransaction', 'Digital Screens seen route authority transaction');
   assertIncludes(route, 'transaction.get(params.screenRef)', 'Digital Screens seen route current screen read');
   assertIncludes(route, 'transaction.get(storeRef)', 'Digital Screens seen route current store read');
+  assertIncludes(route, 'const tenantScope = normalizeMenuListPublicEntityIdentityAliases([', 'Digital Screens seen route exact current tenant aliases');
+  assertNotIncludes(route, 'storeData?.tenantId ?? storeData?.tId', 'Digital Screens seen route must reject conflicting tenant aliases before tenant read');
   assertIncludes(route, 'transaction.get(tenantRef)', 'Digital Screens seen route current tenant read');
   assertIncludes(route, 'screen?.screenToken !== params.token', 'Digital Screens seen route current token binding');
   assertIncludes(route, 'screen?.enabled !== true', 'Digital Screens seen route current enabled-state gate');
@@ -279,6 +283,7 @@ function verifyInvalidationAndOwnerSettings() {
   assertIncludes(campaignDal, 'export function assertDigitalScreenSlideUploadSucceeded', 'Digital Screens owner DAL upload acknowledgement helper');
   assertIncludes(campaignDal, 'export const isDigitalScreenState = (value: unknown)', 'Digital Screens persisted state runtime validator');
   assertIncludes(campaignDal, 'screen.pinnedSlides.every(isPinnedScreenSlide)', 'Digital Screens persisted owner slide runtime validation');
+  assertIncludes(campaignDal, 'normalizeScreenImageUrl(slide.imageUrl) === slide.imageUrl', 'Digital Screens persisted owner slide URL runtime validation');
   assertIncludes(campaignDal, "throw new Error('digital_screen_state_invalid')", 'Digital Screens invalid persisted state fail-closed branch');
   assertIncludes(campaignDal, "throw new Error('digital_screen_initialization_rejected')", 'Digital Screens initialization response contract guard');
   assertIncludes(campaignDal, 'digital_screen_mutation_rejected', 'Digital Screens owner DAL default rejection code');

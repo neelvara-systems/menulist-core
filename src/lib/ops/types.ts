@@ -10,17 +10,19 @@
  * @see __docs__/ops-control-room/
  */
 
+import type { Timestamp } from 'firebase/firestore';
+
 // ================================================================
 // OPS CONFIG (ops_config/system document)
 // ================================================================
 
 export interface OpsConfig {
   SAFE_MODE: boolean;
-  activatedAt: any | null;       // Firestore Timestamp
+  activatedAt: Timestamp | null;
   activatedBy: string | null;    // "manual" | "budget_alert"
   reason: string | null;
-  deactivatedAt: any | null;     // Firestore Timestamp
-  alertsMutedUntil: any | null;  // Firestore Timestamp
+  deactivatedAt: Timestamp | null;
+  alertsMutedUntil: Timestamp | null;
 }
 
 // ================================================================
@@ -29,11 +31,11 @@ export interface OpsConfig {
 
 export interface StoreHealth {
   status: 'OK' | 'WARNING' | 'FAILED';
-  lastCheckedAt: any;            // Firestore Timestamp
-  lastPublishAt: any;            // Firestore Timestamp
+  lastCheckedAt: Timestamp;
+  lastPublishAt: Timestamp;
   lastPublishStatus: 'OK' | 'FAILED';
   lastFailureReason: string | null;
-  lastFailureAt: any | null;     // Firestore Timestamp
+  lastFailureAt: Timestamp | null;
   consecutiveFailures: number;
 }
 
@@ -44,28 +46,19 @@ export interface StoreHealth {
 export interface SystemState {
   safeModeActive: boolean;
   safeModeReason: string | null;
-  safeModeActivatedAt: any | null;
+  safeModeActivatedAt: Timestamp | null;
   alertsMuted: boolean;
-  alertsMutedUntil: any | null;
-  storeHealthSummary: {
-    ok: number;
-    warning: number;
-    failed: number;
-  };
+  alertsMutedUntil: Timestamp | null;
   lastAlertTitle: string | null;
-  lastAlertTimestamp: any | null;
+  lastAlertTimestamp: Timestamp | null;
 }
 
 export interface AdoptionPulse {
   newStores24h: number;
-  publishedToday: number;
   activeStores7d: number;
-  feedbackToday: number;
 }
 
 export interface IntegritySignals {
-  noProject: number;
-  unpublished48h: number;
   noPublish60d: number;
 }
 
@@ -75,7 +68,7 @@ export interface OpsAlert {
   severity: 'info' | 'warning' | 'critical';
   title: string;
   message: string;
-  timestamp: any;
+  timestamp: Timestamp | null;
   acknowledged: boolean;
   tId: string;
   sId: string;

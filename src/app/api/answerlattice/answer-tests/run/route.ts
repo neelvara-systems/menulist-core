@@ -2,7 +2,11 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeActivationAnswerTestSummary } from '@lib/answerlattice/activationAnswerTestSummary';
 import {
     ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES,
@@ -31,10 +35,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
 
 const ANSWER_TEST_RUN_MAX_BODY_BYTES = 8 * 1024;
-const PRIVATE_NO_STORE_HEADERS = {
-    'Cache-Control': 'private, no-store',
-    'X-Content-Type-Options': 'nosniff',
-};
+const PRIVATE_NO_STORE_HEADERS = ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS;
 
 const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
     response.headers.set('Cache-Control', PRIVATE_NO_STORE_HEADERS['Cache-Control']);
@@ -56,7 +57,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
         );
     }
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
+    }
     let reservedRunId: string | null = null;
     let executionCompleted = false;
 
@@ -70,11 +74,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ),
             limit: 5,
             window: 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             return NextResponse.json(
-                { error: 'Too many test runs. Please wait before trying again.' },
-                { status: 429, headers: PRIVATE_NO_STORE_HEADERS },
+                {
+                    error: providerUnavailable
+                        ? 'Answer test runs are temporarily unavailable. Please try again shortly.'
+                        : 'Too many test runs. Please wait before trying again.',
+                },
+                { status: providerUnavailable ? 503 : 429, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
 

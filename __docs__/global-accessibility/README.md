@@ -1,10 +1,12 @@
 # Global Accessibility and Interaction
 
 **Status:** Implemented and source-gated
-**Last updated:** July 17, 2026
+**Last updated:** July 28, 2026
 **Scope:** Shared keyboard, focus, zoom, motion, touch-target, control-name, image-alternative, and skip-navigation behavior
 
 This folder records the cross-system accessibility boundary. Feature-specific workflows retain their own UX documents; this boundary supplies the shared interaction rules they inherit.
+
+The MenuList website header keeps closed desktop Features and Resources panels `aria-hidden` and `inert`, so their links cannot remain in the keyboard order while the panel is visually closed. The source verifier also prevents the anonymous Header bundle from statically importing the authenticated Firebase sign-out chain.
 
 ## Documents
 

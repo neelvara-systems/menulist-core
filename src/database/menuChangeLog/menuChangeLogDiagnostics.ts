@@ -1,5 +1,10 @@
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { MENU_CHANGE_ACTORS, MENU_CHANGE_TYPES } from '@type/menuObservation';
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 type MenuChangeLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -60,30 +65,15 @@ export const getMenuChangeLogEntryContext = (
 };
 
 const getMenuChangeLogErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getMenuChangeLogErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    try {
-        return String(code).slice(0, 64);
-    } catch {
-        return undefined;
-    }
+    return getBoundedErrorCode(error);
 };
 
 const getMenuChangeLogErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object' || !('status' in error)) return undefined;
-    try {
-        const status = Number((error as { status?: unknown }).status);
-        return Number.isFinite(status) ? status : undefined;
-    } catch {
-        return undefined;
-    }
+    return getBoundedErrorStatus(error);
 };
 
 export const logMenuChangeLogFailure = (

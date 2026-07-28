@@ -79,6 +79,7 @@ const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
 const mobileProjectSelector = read('src/components/mobile/components/MobileProjectSelectorSheet.tsx');
 const bulkActionsSheet = read('src/components/mobile/sheets/BulkActionsSheet.tsx');
 const projectDal = read('src/database/projects/index.ts');
+const projectDeleteRoute = read('src/app/api/projects/delete/route.ts');
 const projectSlugOwnership = read('src/lib/menu/projectSlugOwnership.ts');
 const projectDocumentScope = read('src/lib/menu/projectDocumentScope.ts');
 const projectMutationAuthority = read('src/lib/menu/projectMutationAuthority.ts');
@@ -225,7 +226,7 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   'const transactionResult = await runTransaction(firebaseClient, async (transaction) => {',
   "throw new Error('Project update state changed');",
   'previousProject: freshProject,',
-  'savedProject: buildProjectAfterPartialUpdate(freshProject, persistedUpdateData),',
+  'const savedProject = buildProjectAfterPartialUpdate(freshProject, persistedUpdateData);',
   'const publishTransactionResult = await runTransaction(firebaseClient, async (transaction) => {',
   'persistedPublishData._mce = publishMceRuntime.toMCEMetadata(mceResult);',
   "throw new Error('Invalid project publish precondition');",
@@ -243,7 +244,7 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   'recordPublishedMenuTruth(\n                    operationProjectId,\n                    publishedProject,',
   'uploadedProjectFileUrls.map((url) => deleteFileByUrl(url))',
   'sanitizeProjectPartialUpdate(stripGeneratedProjectReadModels(data))',
-  'projectData: projectForValidation as Record<string, any>',
+  'projectData: projectForValidation,',
   'buildProjectAfterPartialUpdate(freshProject, persistedUpdateData)',
   'const buildProjectSummaryMutation = (',
   'const suppliedProjectId = Boolean(data.projectId);',
@@ -271,9 +272,9 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   "throw new Error('Legacy cross-store project read identity mismatch');",
   "throw new Error('Invalid project active scope');",
   "throw new Error('Project active identity mismatch');",
-  "throw new Error('Invalid project deletion scope');",
-  "if (projectDoc.data().deleted === true) throw new Error('Project is already deleted');",
-  "transactionResult.fallbackProjectId ? [transactionResult.fallbackProjectId] : []",
+  'fetch("/api/projects/delete", {',
+  'readJsonResponseWithLimit<unknown>(',
+  'assertProjectDeleteSucceeded(result, projectId);',
   'return await updateProjectMetadata(projectId, data, {',
   "throw new Error('Invalid project summary removal scope');",
   "throw new Error('Project summary removal requires a deleted project');",
@@ -295,6 +296,19 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   'current.deleted === true',
   '!projectDocumentMatchesScope(current, {',
 ].forEach((token) => requireToken(projectDal, token, 'project DAL'));
+
+[
+  'export const POST = withAuth(async (request: NextRequest, session) => {',
+  'verifyTenantAccess(session, tenantScope.numericId, storeScope.numericId, request)',
+  'requireAnyStorePermissionForStoreData(',
+  'const result = await db.runTransaction(async (transaction) => {',
+  'const linkedOutletQueries = tenantStoreIds',
+  'throw new ProjectDeleteRejection(409, "Project is already deleted");',
+  'transaction.set(projectRef, projectUpdate, { merge: true });',
+  'fallbackProjectId: fallbackDefaultEntry?.[0],',
+  'runStorePublicTruthPostCommitEffects({',
+  'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
+].forEach((token) => requireToken(projectDeleteRoute, token, 'project delete route'));
 [
   'export const preserveExistingProjectImageMetadata',
   "patch.projectImage === undefined",

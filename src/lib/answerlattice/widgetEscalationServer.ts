@@ -116,10 +116,8 @@ export const executeAnswerlatticeWidgetEscalation = async (
     const ticketId = buildAnswerlatticeWidgetEscalationTicketId({ tId, sId, searchHistoryId });
     const historyRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.AI_SEARCH_HISTORY).doc(searchHistoryId);
     const ticketRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.SUPPORT_TICKETS).doc(ticketId);
-    let created = false;
-    let signalContext: Record<string, any> | null = null;
 
-    await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+    const transactionResult = await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
         const [historySnapshot, ticketSnapshot] = await Promise.all([
             transaction.get(historyRef),
             transaction.get(ticketRef),
@@ -237,7 +235,8 @@ export const executeAnswerlatticeWidgetEscalation = async (
             requestId: ticketId,
         });
 
-        if (ticketSnapshot.exists) {
+        const created = !ticketSnapshot.exists;
+        if (!created) {
             const existing = ticketSnapshot.data() || {};
             if (
                 existing.pId !== PRODUCT_IDS.ANSWERLATTICE
@@ -256,7 +255,6 @@ export const executeAnswerlatticeWidgetEscalation = async (
                 throw new AnswerlatticeWidgetEscalationError('widget_escalation_ticket_invalid', 500);
             }
             transaction.create(ticketRef, ticket);
-            created = true;
         }
 
         const historyUpdate: Record<string, any> = {
@@ -274,7 +272,7 @@ export const executeAnswerlatticeWidgetEscalation = async (
         }
         transaction.set(historyRef, historyUpdate, { merge: true });
 
-        signalContext = {
+        const signalContext = {
             requestId: ticketId,
             ticketId,
             searchHistoryId,
@@ -289,8 +287,11 @@ export const executeAnswerlatticeWidgetEscalation = async (
             conversationId: cleanText(history.widgetSessionId, 120),
             contextKey,
         };
+
+        return { created, signalContext };
     });
 
+    const { created, signalContext } = transactionResult;
     if (signalContext) {
         try {
             const { emitAnswerlatticeSignal } = await import('@lib/answerlattice/signalEmitterServer');

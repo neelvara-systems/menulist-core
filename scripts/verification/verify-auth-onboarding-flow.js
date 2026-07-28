@@ -30,6 +30,9 @@ assert.match(claimAccount, /failClosedOnProviderError: true/);
 assert.match(validateClaim, /failClosedOnProviderError: true/);
 assert.match(claimAccount, /rl\.reason === 'provider_unavailable'/);
 assert.match(validateClaim, /rl\.reason === 'provider_unavailable'/);
+assert.match(claimAccount, /const sessionUserId = resolveCurrentSessionUserDocumentId\(session\);/);
+assert.match(claimAccount, /const googleUserId = normalizeOnboardingUserId\(sessionUserId\);/);
+assert.doesNotMatch(claimAccount, /normalizeOnboardingUserId\(session\.user\.id\)/);
 
 assert.match(loginPage, /const claimProcessingRef = useRef\(false\);/);
 assert.match(loginPage, /if \(pendingClaim && claimProcessingRef\.current\) return;/);

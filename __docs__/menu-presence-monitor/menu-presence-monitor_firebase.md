@@ -56,8 +56,8 @@ Standard explicit publish adds one transaction-time store point read and two nec
 Historical projects are not guessed from `active` or `modifiedOn`: those fields also exist before first publish. The next explicit publish or public create-menu claim writes canonical evidence. Before release, the owner can dry-run the existing bounded routing-summary backfill for a target store and then apply it after reviewing output:
 
 ```bash
-FIREBASE_PROJECT_ID=menulist-qa npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts --store-id 17 --force
-FIREBASE_PROJECT_ID=menulist-qa npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts --store-id 17 --force --write
+npx ts-node --compiler-options '{"module":"CommonJS"}' -r tsconfig-paths/register scripts/backfill-public-routing-project-summaries.ts --project-id menulist-qa --store-id 17 --force
+npx ts-node --compiler-options '{"module":"CommonJS"}' -r tsconfig-paths/register scripts/backfill-public-routing-project-summaries.ts --project-id menulist-qa --store-id 17 --force --write --confirm-project menulist-qa --confirm-force
 ```
 
 The backfill copies only valid canonical project timestamps, ignores inactive projects for store readiness, and commits the summary/store repair in one batch. Production targeting, credentials, dry-run review, and execution remain owner/release pending. No background scan, collection-group query, or recurring repair job is added.

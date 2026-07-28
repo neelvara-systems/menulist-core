@@ -1,5 +1,6 @@
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { secureError } from '@lib/security/secureLogger';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const VERCEL_API_BASE = 'https://api.vercel.com';
 const VERCEL_DOMAIN_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
@@ -68,7 +69,7 @@ async function readVercelDomainResponseData<T>(
             new Error(VERCEL_DOMAIN_PROVIDER_RESPONSE_PARSE_FAILED),
             {
                 ...getVercelProviderPathContext(path, options, response),
-                sourceErrorName: error instanceof Error ? error.name : typeof error,
+                sourceErrorName: getBoundedErrorName(error) || typeof error,
             },
         );
         return { data: {} as T, parsed: false };

@@ -7,7 +7,9 @@ export const normalizeExactAnswerlatticeSignalScopeId = (value: unknown): number
 );
 
 const cleanDeduplicationKey = (value: unknown): string | null => {
-    const normalized = String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim();
+    const normalized = typeof value === 'string'
+        ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
+        : '';
     return normalized && normalized.length <= 260 ? normalized : null;
 };
 
@@ -35,18 +37,42 @@ export const hashAnswerlatticeSignalIdentity = (value: string): string => {
     return `${(hashA >>> 0).toString(36)}${(hashB >>> 0).toString(36)}`;
 };
 
-const stableSignalIdentityValue = (value: unknown): unknown => {
+const stableSignalIdentityValue = (
+    value: unknown,
+    seen: WeakSet<object> = new WeakSet<object>(),
+    depth = 0,
+): unknown => {
     if (value === null || value === undefined) return null;
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
-    if (value instanceof Date) return value.toISOString();
-    if (Array.isArray(value)) return value.map(stableSignalIdentityValue);
-    if (typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value as Record<string, unknown>)
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([key, nested]) => [key, stableSignalIdentityValue(nested)]));
+    if (typeof value === 'string' || typeof value === 'boolean') return value;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toISOString() : null;
+    if (depth >= 6) return null;
+    if (Array.isArray(value)) {
+        if (seen.has(value)) return null;
+        seen.add(value);
+        try {
+            return value.map(item => stableSignalIdentityValue(item, seen, depth + 1));
+        } catch {
+            return null;
+        }
     }
-    return String(value);
+    if (typeof value === 'object') {
+        if (seen.has(value)) return null;
+        seen.add(value);
+        try {
+            return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([key, nested]) => [key, stableSignalIdentityValue(nested, seen, depth + 1)]));
+        } catch {
+            return null;
+        }
+    }
+    return null;
 };
+
+const normalizeSignalIdentityText = (value: unknown): string => (
+    typeof value === 'string' ? value : ''
+);
 
 export const buildAnswerlatticeSignalPayloadFingerprint = (params: {
     type: unknown;
@@ -54,9 +80,9 @@ export const buildAnswerlatticeSignalPayloadFingerprint = (params: {
     deduplicationKey: unknown;
     metadata: unknown;
 }): string => `sigfp_${hashAnswerlatticeSignalIdentity(JSON.stringify(stableSignalIdentityValue({
-    type: String(params.type || ''),
-    entityId: String(params.entityId || ''),
-    deduplicationKey: String(params.deduplicationKey || ''),
+    type: normalizeSignalIdentityText(params.type),
+    entityId: normalizeSignalIdentityText(params.entityId),
+    deduplicationKey: normalizeSignalIdentityText(params.deduplicationKey),
     metadata: params.metadata,
 })))}`;
 

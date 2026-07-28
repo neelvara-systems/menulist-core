@@ -170,7 +170,7 @@ export const updatePWASettings = async (
             await getRequiredPWAScope(storeId);
             // Build a nested-key update payload so we only touch pwaSettings.*
             // Firestore dot-notation updates merge into existing map fields.
-            const update: Record<string, any> = {};
+            const update: Record<string, unknown> = {};
             if (typeof settings.enableInstallableApp === 'boolean') {
                 update['pwaSettings.enableInstallableApp'] = settings.enableInstallableApp;
             }
@@ -214,7 +214,7 @@ export const updatePWAIconOverride = async (
                 || (override.pwaIconMode === 'override' && !isOwnedPWAIconUrl(override.pwaIconOverrideUrl, scope))
             ) throw new Error('pwa_icon_override_invalid');
             const pwaIconUpdatedAt = new Date().toISOString();
-            const update: Record<string, any> = {
+            const update: Record<string, unknown> = {
                 'publicPresence.pwaIconMode': override.pwaIconMode,
                 'publicPresence.pwaIconOverrideUrl': override.pwaIconOverrideUrl,
                 'publicPresence.pwaIconUpdatedAt': pwaIconUpdatedAt,
@@ -396,9 +396,21 @@ export const PWA_DEFAULTS: ResolvedPWASettings = {
  * Resolve effective PWA settings by merging store doc values with defaults.
  * UI layer should use this to avoid showing "undefined" states.
  */
-export function resolvePWASettings(storeDoc: any): ResolvedPWASettings {
-    const s = storeDoc?.pwaSettings || {};
-    const contentLanguage = storeDoc?.defaultLanguage || storeDoc?.activeLanguages?.[0] || storeDoc?.language || 'en';
+export function resolvePWASettings(storeDoc: unknown): ResolvedPWASettings {
+    const store = storeDoc && typeof storeDoc === 'object' && !Array.isArray(storeDoc)
+        ? storeDoc as Record<string, unknown>
+        : {};
+    const s = store.pwaSettings && typeof store.pwaSettings === 'object' && !Array.isArray(store.pwaSettings)
+        ? store.pwaSettings as Record<string, unknown>
+        : {};
+    const activeLanguages = Array.isArray(store.activeLanguages) ? store.activeLanguages : [];
+    const contentLanguage = (
+        typeof store.defaultLanguage === 'string' && store.defaultLanguage
+    ) || (
+        typeof activeLanguages[0] === 'string' && activeLanguages[0]
+    ) || (
+        typeof store.language === 'string' && store.language
+    ) || 'en';
     const resolvedShortName = getLocalizedText(
         s.pwaShortName as LocalizedTextValue,
         contentLanguage,

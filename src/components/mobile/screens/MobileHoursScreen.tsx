@@ -14,6 +14,7 @@ import { useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { useGrowthOS } from '@hook/useGrowthOS';
 import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { getStoreDayKey, getStoreStatus, parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
@@ -180,8 +181,12 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     ), [menuUrl, selectedProjectSummary?.name, storeDetails?.customDomain, storeDetails?.subdomain]);
 
     useEffect(() => {
-        if (!storeDetails?.storeId) return;
-        const dismissKey = `hours_nudge_dismissed_${storeDetails.storeId}`;
+        const dismissKey = getTenantStoreStorageKey(
+            'menulist:hours-nudge-dismissed',
+            storeDetails?.tenantId ?? (storeDetails as any)?.tId,
+            storeDetails?.storeId,
+        );
+        if (!dismissKey) return;
         const dismissedAt = localStorage.getItem(dismissKey);
         if (dismissedAt) {
             const daysSinceDismiss = (Date.now() - Number(dismissedAt)) / (1000 * 60 * 60 * 24);
@@ -190,7 +195,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             }
         }
         setNudgeInitialized(true);
-    }, [storeDetails?.storeId]);
+    }, [storeDetails?.storeId, storeDetails?.tenantId, (storeDetails as any)?.tId]);
 
     useEffect(() => {
         const todayRange = getTodayTimeRange(storeDetails?.workingHours?.[todayKey]);
@@ -218,13 +223,17 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     );
 
     useEffect(() => {
-        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        const dismissKey = getInactiveReminderDismissKey(
+            storeDetails?.tenantId ?? (storeDetails as any)?.tId,
+            storeDetails?.storeId,
+            inactiveItemsReminder?.projectId,
+        );
         if (!dismissKey) {
             setIsInactiveReminderDismissed(false);
             return;
         }
         setIsInactiveReminderDismissed(localStorage.getItem(dismissKey) === '1');
-    }, [inactiveItemsReminder?.projectId, storeDetails?.storeId]);
+    }, [inactiveItemsReminder?.projectId, storeDetails?.storeId, storeDetails?.tenantId, (storeDetails as any)?.tId]);
 
     const handleCloseToday = useCallback(async () => {
         if (!storeDetails?.storeId) return;
@@ -358,7 +367,10 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
         storeDetails,
         storeId: storeDetails?.storeId,
     }) && Boolean(selectedProjectId);
-    const { growthOSSummary } = useGrowthOS(canAccessGrowthKitsToday);
+    const { growthOSSummary } = useGrowthOS({
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    }, canAccessGrowthKitsToday);
     const growthOSTodayTrigger = getGrowthOSTodayTriggerState(growthOSSummary);
     const shouldShowGrowthKitsCard = canAccessGrowthKitsToday && growthOSTodayTrigger.shouldSurface;
     const hasMaintenanceCards = Boolean(
@@ -432,9 +444,13 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
         : t('hoursNeedUpdatingMessage');
 
     const handleDismissNudge = () => {
-        if (!storeDetails?.storeId) return;
+        const dismissKey = getTenantStoreStorageKey(
+            'menulist:hours-nudge-dismissed',
+            storeDetails?.tenantId ?? (storeDetails as any)?.tId,
+            storeDetails?.storeId,
+        );
+        if (!dismissKey) return;
         setIsNudgeDismissed(true);
-        const dismissKey = `hours_nudge_dismissed_${storeDetails.storeId}`;
         localStorage.setItem(dismissKey, Date.now().toString());
     };
 
@@ -459,7 +475,11 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
         : '';
 
     const dismissInactiveReminder = () => {
-        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        const dismissKey = getInactiveReminderDismissKey(
+            storeDetails?.tenantId ?? (storeDetails as any)?.tId,
+            storeDetails?.storeId,
+            inactiveItemsReminder?.projectId,
+        );
         if (dismissKey) {
             localStorage.setItem(dismissKey, '1');
         }
@@ -1083,7 +1103,13 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
 
             {weeklyGrowthPack ? <TodayWeeklyGrowthPackCard pack={weeklyGrowthPack} /> : null}
 
-            {shouldShowGrowthKitsCard ? <GrowthKitsMobileCard projectId={selectedProjectId} /> : null}
+            {shouldShowGrowthKitsCard ? (
+                <GrowthKitsMobileCard
+                    projectId={selectedProjectId}
+                    storeId={storeDetails?.storeId}
+                    tenantId={storeDetails?.tenantId}
+                />
+            ) : null}
 
             {shouldShowTodayDigest ? <Text type="secondary" style={{ fontSize: 13 }}>{todayDigest}</Text> : null}
 

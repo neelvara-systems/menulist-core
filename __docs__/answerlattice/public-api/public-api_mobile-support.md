@@ -19,6 +19,7 @@
 - The one-time key field and copy control remain inside the viewport.
 - No raw key is persisted in mobile storage, logs, notifications, deep links, or screenshots by Answerlattice.
 - Cross-origin requests to the management route are rejected.
+- A session/workspace transition immediately hides the prior status and one-time secret; stale responses and mutations cannot settle into the replacement workspace.
 
 ## Recommended Owner Guidance
 

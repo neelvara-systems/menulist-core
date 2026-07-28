@@ -1,0 +1,163 @@
+.map {
+  background:
+    linear-gradient(var(--hosted-help-map-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hosted-help-map-grid) 1px, transparent 1px);
+  background-color: var(--hosted-help-shell-bg);
+  background-size: 24px 24px;
+  border: 1px solid var(--hosted-help-border);
+  border-radius: 8px;
+  display: grid;
+  gap: 36px;
+  grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
+  min-height: 420px;
+  overflow: hidden;
+  padding: 28px;
+}
+
+.root {
+  align-self: center;
+  background: var(--hosted-help-active-bg);
+  border: 1px solid var(--hosted-help-active-text);
+  border-radius: 6px;
+  color: var(--hosted-help-text);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 16px;
+  position: relative;
+}
+
+.root::after {
+  background: var(--hosted-help-border-strong);
+  content: '';
+  height: 1px;
+  position: absolute;
+  right: -37px;
+  top: 50%;
+  width: 36px;
+}
+
+.branches {
+  align-content: center;
+  display: grid;
+  gap: 10px;
+}
+
+.branchList {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 22px;
+}
+
+.branchItem {
+  min-width: 0;
+  position: relative;
+}
+
+.branchItem::before {
+  background: var(--hosted-help-border-strong);
+  content: '';
+  height: 1px;
+  left: -22px;
+  position: absolute;
+  top: 22px;
+  width: 18px;
+}
+
+.topicButton,
+.disclosureButton {
+  align-items: center;
+  background: var(--hosted-help-card-bg);
+  border: 1px solid var(--hosted-help-border);
+  border-radius: 6px;
+  color: var(--hosted-help-text);
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 9px 11px;
+  text-align: left;
+  width: 100%;
+}
+
+.topicButton:hover,
+.topicButton:focus-visible,
+.disclosureButton:hover,
+.disclosureButton:focus-visible {
+  border-color: var(--hosted-help-active-text);
+  outline: 2px solid var(--hosted-help-active-bg);
+  outline-offset: 2px;
+}
+
+.topicText {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.childList {
+  border-left: 1px solid var(--hosted-help-border);
+  display: grid;
+  gap: 7px;
+  list-style: none;
+  margin: 7px 0 0 12px;
+  padding: 0 0 0 14px;
+}
+
+.related {
+  border-top: 1px solid var(--hosted-help-border);
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 14px;
+}
+
+.relatedTitle {
+  color: var(--hosted-help-muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.relatedLink {
+  background: var(--hosted-help-card-bg);
+  border: 1px solid var(--hosted-help-border);
+  border-radius: 6px;
+  color: var(--hosted-help-link);
+  min-height: 44px;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.empty {
+  color: var(--hosted-help-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .map {
+    background: var(--hosted-help-shell-bg);
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .root {
+    align-self: stretch;
+  }
+
+  .root::after,
+  .branchItem::before {
+    display: none;
+  }
+
+  .branchList {
+    padding-left: 0;
+  }
+}

@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Mobile Support
 
 > **Status:** IMPLEMENTED — responsive owner-screen contract
-> **Version:** 1.2.2
+> **Version:** 1.3.0
 > **Created:** 2026-05-31
 > **Audience:** Mobile / Frontend / QA
 
@@ -33,7 +33,7 @@ Rationale:
 
 ## Mobile Allowed Actions
 
-- View intake summary
+- View bounded job counters and status
 - View current job status
 - View bounded source list and status
 - Review one decision at a time
@@ -77,12 +77,10 @@ No horizontal overflow.
 
 ## Mobile Cost Rules
 
-- Mobile dashboard reads `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` first.
-- Mobile must not load source, review, or job lists until the owner opens the related screen.
-- Mobile summary cards use the embedded urgent review preview instead of querying the review queue on first paint.
-- Review list is paginated and capped.
-- No realtime listener on mobile review lists.
-- Active progress can poll on a slow interval while the screen is visible.
+- The shared responsive owner screen reads the capped job list, then the selected active-job bundle; it does not read source or review collections directly.
+- Sources and review items arrive only through the bounded active-job bundle API.
+- No realtime Firestore listener is used for jobs, sources, or review items.
+- Refresh is explicit through the shared owner flow; no background mobile polling is required.
 - Upload progress should not keep background mobile sessions alive indefinitely.
 
 ---
@@ -92,7 +90,7 @@ No horizontal overflow.
 - Minimum 44px touch targets.
 - Browser file selection should be exposed through a 44px `Choose files` button on mobile instead of relying on the native unstyled file input.
 - Clear color contrast in light/dark themes.
-- Source risk labels must not rely on color alone.
+- Source evidence and governance status must not rely on color alone.
 - Approve/reject controls require text labels.
 - Evidence excerpts must wrap and be scrollable.
 - Long filenames and URLs must truncate with accessible full text.
@@ -104,7 +102,7 @@ No horizontal overflow.
 | Device class | Required check |
 | --- | --- |
 | iPhone small | No horizontal overflow, review cards readable, sticky actions visible. |
-| iPhone large | Source cards and readiness topics fit without clipping. |
+| iPhone large | Source and review cards fit without clipping. |
 | Android mid-size | File/source names wrap or truncate cleanly. |
 | Tablet | Two-column summary may be used; no desktop table overflow. |
 | Dark mode | Parent cards, source risk labels, and action buttons remain readable. |
@@ -122,3 +120,4 @@ No horizontal overflow.
 | 2026-07-17 | 1.2.0 | Required bounded source evidence and applicability to appear before 44px review decision controls on mobile. |
 | 2026-07-18 | 1.2.1 | Removed the unimplemented persisted publish-manifest implication from the mobile contract. |
 | 2026-07-18 | 1.2.2 | Removed unimplemented topic-readiness, delete, defer, and risk-tier mobile actions; aligned to the shared responsive review flow. |
+| 2026-07-26 | 1.3.0 | Replaced the unimplemented summary-first/urgent-preview/polling contract with the shared capped job-list and active-job bundle flow. |

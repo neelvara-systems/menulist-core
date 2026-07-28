@@ -5,7 +5,7 @@
 
 import { GeminiPrompt, WeeklyMetrics } from '../types';
 
-export const WEEKLY_NARRATIVE_PROMPT_V1: GeminiPrompt = {
+export const WEEKLY_NARRATIVE_PROMPT_V1: GeminiPrompt<{ metrics: WeeklyMetrics }> = {
   version: {
     version: 'v1',
     createdAt: '2025-10-28',

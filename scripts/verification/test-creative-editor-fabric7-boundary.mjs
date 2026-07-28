@@ -11,6 +11,7 @@ import {
   Rect,
   config,
   filters,
+  getEnv,
 } from "fabric/node";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -36,6 +37,55 @@ for (const [source, token, label] of [
 ]) {
   assert.equal(source.includes(token), true, `Creative Editor must retain ${label}`);
 }
+
+const fabricEnvironment = getEnv();
+const contextByCanvas = new WeakMap();
+
+function createCanvasContext(canvas) {
+  const state = {
+    canvas,
+    createImageData: (width, height) => ({
+      data: new Uint8ClampedArray(Math.max(0, width * height * 4)),
+      height,
+      width,
+    }),
+    createLinearGradient: () => ({ addColorStop() {} }),
+    createPattern: () => ({}),
+    getImageData: (_x, _y, width, height) => ({
+      data: new Uint8ClampedArray(Math.max(0, width * height * 4)),
+      height,
+      width,
+    }),
+    getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+    isPointInPath: () => false,
+    measureText: (text) => ({
+      actualBoundingBoxAscent: 8,
+      actualBoundingBoxDescent: 2,
+      width: String(text).length * 8,
+    }),
+  };
+
+  return new Proxy(state, {
+    get(target, property) {
+      if (property in target) return target[property];
+      return () => {};
+    },
+    set(target, property, value) {
+      target[property] = value;
+      return true;
+    },
+  });
+}
+
+fabricEnvironment.window.HTMLCanvasElement.prototype.getContext = function getContext() {
+  let context = contextByCanvas.get(this);
+  if (!context) {
+    context = createCanvasContext(this);
+    contextByCanvas.set(this, context);
+  }
+  return context;
+};
+fabricEnvironment.window.HTMLCanvasElement.prototype.toDataURL = () => "data:image/png;base64,fixture";
 
 config.NUM_FRACTION_DIGITS = 4;
 FabricObject.customProperties = ["creativeEditorSrc"];

@@ -5,15 +5,23 @@
 
 import * as functions from 'firebase-functions';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { DB_COLLECTIONS } from '../constants/database';
+import { DB_COLLECTIONS, TTL_CONFIG } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 const telemetryLogger = functions.logger;
+// The collection reference and terminal set live in separate chained lines.
+// Keep the generated reverse-flow catalog bound to both real writer families.
+// @firestore-collection-evidence DB_COLLECTIONS.SYSTEM_TELEMETRY operations=write
 const TELEMETRY_LOG_WRITE_FAILED = 'TELEMETRY_LOG_WRITE_FAILED';
-const TELEMETRY_WRAPPED_FUNCTION_FAILED = 'TELEMETRY_WRAPPED_FUNCTION_FAILED';
-const TELEMETRY_TODAY_READ_FAILED = 'TELEMETRY_TODAY_READ_FAILED';
-const TELEMETRY_RANGE_READ_FAILED = 'TELEMETRY_RANGE_READ_FAILED';
-const TELEMETRY_HEALTH_READ_FAILED = 'TELEMETRY_HEALTH_READ_FAILED';
+const TELEMETRY_COST_WRITE_FAILED = 'TELEMETRY_COST_WRITE_FAILED';
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function getTelemetryExpiry(): Timestamp {
+  return Timestamp.fromMillis(
+    Date.now() + TTL_CONFIG.SYSTEM_TELEMETRY_DAYS * DAY_MS
+  );
+}
 
 function getTelemetryErrorContext(error: unknown): {
   name?: string;
@@ -24,7 +32,7 @@ function getTelemetryErrorContext(error: unknown): {
 
   const record = error as Record<string, unknown>;
   return {
-    name: error instanceof Error ? error.name : undefined,
+    name: getBoundedFunctionsErrorName(error),
     code: typeof record.code === 'string' ? record.code : undefined,
     status: typeof record.status === 'number' ? record.status : undefined,
   };
@@ -34,23 +42,6 @@ function getTelemetryErrorContext(error: unknown): {
 // TYPES
 // ================================================================
 
-export interface TelemetryLog {
-  date: string;
-  timestamp: Timestamp;
-  functions: {
-    aggregateFn?: FunctionResult;
-    feedbackFn?: FunctionResult;
-    kbQualityFn?: FunctionResult;
-    weeklyNarrativeFn?: FunctionResult;
-  };
-  summary: {
-    totalRunTime: number;
-    successCount: number;
-    failureCount: number;
-    skippedCount: number;
-  };
-}
-
 export interface FunctionResult {
   status: 'success' | 'failed' | 'skipped';
   runTime: number; // milliseconds
@@ -58,6 +49,15 @@ export interface FunctionResult {
   recordsProcessed?: number;
   startedAt?: Timestamp;
   completedAt?: Timestamp;
+}
+
+export interface MenuDriftCostTelemetry {
+  readsCount: number;
+  writesCount: number;
+  executionMs: number;
+  storesProcessed: number;
+  itemsProcessed: number;
+  errors: number;
 }
 
 // ================================================================
@@ -76,13 +76,21 @@ export async function logTelemetry(
     const today = new Date().toISOString().split('T')[0];
     const docRef = db.collection(DB_COLLECTIONS.SYSTEM_TELEMETRY).doc(today);
 
-    // Update or create telemetry document
+    // `set(..., { merge: true })` does not interpret dotted object keys as
+    // nested field paths. Preserve the declared document contract by passing
+    // actual nested maps; merge recursively protects results from concurrent
+    // function executions.
     await docRef.set({
       date: today,
       timestamp: FieldValue.serverTimestamp(),
-      [`functions.${functionName}`]: result,
-      [`summary.${result.status}Count`]: FieldValue.increment(1),
-      'summary.totalRunTime': FieldValue.increment(result.runTime),
+      expiresAt: getTelemetryExpiry(),
+      functions: {
+        [functionName]: result,
+      },
+      summary: {
+        [`${result.status}Count`]: FieldValue.increment(1),
+        totalRunTime: FieldValue.increment(result.runTime),
+      },
     }, { merge: true });
 
     telemetryLogger.info('[Telemetry] Logged function execution', {
@@ -98,6 +106,39 @@ export async function logTelemetry(
       error: getTelemetryErrorContext(error),
     });
     // Don't throw - telemetry failures shouldn't break functions
+  }
+}
+
+/**
+ * Record the latest bounded Menu Observation Layer cost sample for the day.
+ *
+ * Telemetry is deliberately best-effort: a monitoring write must not convert
+ * already-completed menu-drift work into a failed scheduler task that retries
+ * the full computation. Exact replacement also prunes retired fields from
+ * older daily samples.
+ */
+export async function logMenuDriftCostTelemetry(
+  result: MenuDriftCostTelemetry
+): Promise<void> {
+  const today = new Date().toISOString().split('T')[0];
+
+  try {
+    await firestoreAdmin
+      .collection(DB_COLLECTIONS.SYSTEM_TELEMETRY)
+      .doc(`mol_costs_${today}`)
+      .set({
+        type: 'mol_cost_telemetry',
+        functionName: 'menuDriftMetrics',
+        date: today,
+        ...result,
+        timestamp: FieldValue.serverTimestamp(),
+        expiresAt: getTelemetryExpiry(),
+      });
+  } catch (error) {
+    telemetryLogger.error('[Telemetry] Failed to log menu drift cost sample', {
+      failureCode: TELEMETRY_COST_WRITE_FAILED,
+      error: getTelemetryErrorContext(error),
+    });
   }
 }
 
@@ -120,140 +161,4 @@ export function startTimer(): {
       completedAt: Timestamp.now(),
     }),
   };
-}
-
-/**
- * Wrap a function with automatic telemetry logging
- */
-export async function withTelemetry<T>(
-  functionName: string,
-  fn: () => Promise<T>
-): Promise<T> {
-  const timer = startTimer();
-
-  try {
-    const result = await fn();
-
-    await logTelemetry(functionName, {
-      status: 'success',
-      runTime: timer.getElapsed(),
-      startedAt: timer.stop().startedAt,
-      completedAt: Timestamp.now(),
-    });
-
-    return result;
-  } catch (error) {
-    await logTelemetry(functionName, {
-      status: 'failed',
-      runTime: timer.getElapsed(),
-      error: TELEMETRY_WRAPPED_FUNCTION_FAILED,
-      startedAt: timer.stop().startedAt,
-      completedAt: Timestamp.now(),
-    });
-
-    throw error;
-  }
-}
-
-/**
- * Get today's telemetry data
- */
-export async function getTodayTelemetry(): Promise<TelemetryLog | null> {
-  try {
-    const db = firestoreAdmin;
-    const today = new Date().toISOString().split('T')[0];
-    const docRef = db.collection(DB_COLLECTIONS.SYSTEM_TELEMETRY).doc(today);
-
-    const doc = await docRef.get();
-    if (!doc.exists) {
-      return null;
-    }
-
-    return doc.data() as TelemetryLog;
-  } catch (error) {
-    telemetryLogger.error('[Telemetry] Failed to fetch today data', {
-      failureCode: TELEMETRY_TODAY_READ_FAILED,
-      error: getTelemetryErrorContext(error),
-    });
-    return null;
-  }
-}
-
-/**
- * Get telemetry for a date range
- */
-export async function getTelemetryRange(
-  startDate: string,
-  endDate: string
-): Promise<TelemetryLog[]> {
-  try {
-    const db = firestoreAdmin;
-    const snapshot = await db.collection(DB_COLLECTIONS.SYSTEM_TELEMETRY)
-      .where('date', '>=', startDate)
-      .where('date', '<=', endDate)
-      .orderBy('date', 'desc')
-      .get();
-
-    return snapshot.docs.map(doc => doc.data() as TelemetryLog);
-  } catch (error) {
-    telemetryLogger.error('[Telemetry] Failed to fetch telemetry range', {
-      failureCode: TELEMETRY_RANGE_READ_FAILED,
-      error: getTelemetryErrorContext(error),
-    });
-    return [];
-  }
-}
-
-/**
- * Get function health status
- */
-export async function getFunctionHealth(
-  functionName: string,
-  days: number = 7
-): Promise<{
-  totalRuns: number;
-  successRate: number;
-  avgRunTime: number;
-  lastRun?: TelemetryLog;
-}> {
-  try {
-    const endDate = new Date().toISOString().split('T')[0];
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    const startDateStr = startDate.toISOString().split('T')[0];
-
-    const logs = await getTelemetryRange(startDateStr, endDate);
-
-    let totalRuns = 0;
-    let successCount = 0;
-    let totalRunTime = 0;
-
-    logs.forEach(log => {
-      const fnResult = log.functions[functionName as keyof typeof log.functions];
-      if (fnResult) {
-        totalRuns++;
-        if (fnResult.status === 'success') {
-          successCount++;
-        }
-        totalRunTime += fnResult.runTime || 0;
-      }
-    });
-
-    return {
-      totalRuns,
-      successRate: totalRuns > 0 ? (successCount / totalRuns) * 100 : 0,
-      avgRunTime: totalRuns > 0 ? totalRunTime / totalRuns : 0,
-      lastRun: logs[0],
-    };
-  } catch (error) {
-    telemetryLogger.error('[Telemetry] Failed to calculate function health', {
-      failureCode: TELEMETRY_HEALTH_READ_FAILED,
-      error: getTelemetryErrorContext(error),
-    });
-    return {
-      totalRuns: 0,
-      successRate: 0,
-      avgRunTime: 0,
-    };
-  }
 }

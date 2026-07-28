@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
@@ -19,7 +20,10 @@ import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';
 import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -50,6 +54,13 @@ class FaqGenerationConflictError extends Error {
     constructor(public readonly publicMessage: string) {
         super(publicMessage);
         this.name = 'FaqGenerationConflictError';
+    }
+}
+
+class FaqGenerationProviderOutputError extends Error {
+    constructor() {
+        super('FAQ provider output exceeded the response boundary.');
+        this.name = 'FaqGenerationProviderOutputError';
     }
 }
 
@@ -151,10 +162,13 @@ ${text.slice(0, MAX_ARTICLE_TEXT_FOR_PROMPT)}`;
 export const POST = withAuth(async (request: NextRequest, session) => {
     let tenantIdForLog: number | string | undefined;
     let storeIdForLog: number | string | undefined;
-    const userIdForLog = session.uId || session.user?.id;
+    const userIdForLog = resolveCurrentSessionUserDocumentId(session);
     let articleIdForLog: string | undefined;
 
     try {
+        if (!userIdForLog) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT) {
             return NextResponse.json({ error: 'FAQ management is not enabled.' }, { status: 404 });
         }
@@ -173,12 +187,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (safeModeResponse) return safeModeResponse;
 
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-faq-generation', tenantId, storeId, userIdForLog || 'unknown'),
+            key: buildAnswerlatticeRateLimitKey('answerlattice-faq-generation', tenantId, storeId, userIdForLog),
             limit: 8,
             window: 3600,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({ error: 'Too many FAQ refresh requests. Try again later.' }, { status: 429 });
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            return NextResponse.json(
+                {
+                    error: providerUnavailable
+                        ? 'FAQ generation is temporarily unavailable. Try again later.'
+                        : 'Too many FAQ refresh requests. Try again later.',
+                },
+                { status: providerUnavailable ? 503 : 429 },
+            );
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
@@ -215,8 +238,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const article = { ...articleSnap.data(), id: articleSnap.id } as KnowledgeBaseArticleType;
         const articleRecord = article as unknown as Record<string, unknown>;
-        const articleTenantId = normalizeAnswerlatticeScopeDocumentId(articleRecord.tId ?? articleRecord.tenantId);
-        const articleStoreId = normalizeAnswerlatticeScopeDocumentId(articleRecord.sId ?? articleRecord.storeId);
+        const articleTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+            articleRecord.tId,
+            articleRecord.tenantId,
+        ]);
+        const articleStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+            articleRecord.sId,
+            articleRecord.storeId,
+        ]);
         if (
             articleRecord.pId !== PRODUCT_IDS.ANSWERLATTICE
             || !articleTenantId ||
@@ -271,6 +300,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 providerResponseTextLength: responseText.originalLength,
                 providerResponseTextMaxChars: FAQ_PROVIDER_RESPONSE_TEXT_MAX_CHARS,
             });
+            throw new FaqGenerationProviderOutputError();
         }
 
         const parsed = extractJsonObject(responseText.text);
@@ -293,8 +323,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 id: currentArticleSnapshot.id,
             } as KnowledgeBaseArticleType;
             const currentArticleRecord = currentArticle as unknown as Record<string, unknown>;
-            const currentTenantId = normalizeAnswerlatticeScopeDocumentId(currentArticleRecord.tId ?? currentArticleRecord.tenantId);
-            const currentStoreId = normalizeAnswerlatticeScopeDocumentId(currentArticleRecord.sId ?? currentArticleRecord.storeId);
+            const currentTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+                currentArticleRecord.tId,
+                currentArticleRecord.tenantId,
+            ]);
+            const currentStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+                currentArticleRecord.sId,
+                currentArticleRecord.storeId,
+            ]);
             if (
                 currentArticleRecord.pId !== PRODUCT_IDS.ANSWERLATTICE
                 || currentTenantId !== tenantId
@@ -323,7 +359,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
             const now = Timestamp.now();
             const actor = String(session.user?.name || session.user?.email || userIdForLog || 'unknown');
-            const actorId = String(session.user?.id || userIdForLog || 'unknown');
+            const actorId = userIdForLog;
             const nextFaqs = uniqueFaqs.map((faq, index) => {
                 const ref = db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc();
                 return {
@@ -367,7 +403,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return nextFaqs;
         });
 
-        recordAnswerlatticeAiOperation({
+        await recordAnswerlatticeAiOperation({
             tId: tenantId,
             sId: storeId,
         }, {
@@ -421,6 +457,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
         if (error instanceof FaqGenerationConflictError) {
             return NextResponse.json({ error: error.publicMessage }, { status: 409 });
+        }
+        if (error instanceof FaqGenerationProviderOutputError) {
+            return NextResponse.json(
+                { error: 'The FAQ provider returned an invalid response. No suggestions were saved.' },
+                { status: 502 },
+            );
         }
         if (isAIProviderRateLimitError(error)) {
             const retryAfter = getAIProviderRetryAfter(error) || 60;

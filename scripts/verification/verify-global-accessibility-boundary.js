@@ -78,6 +78,28 @@ assert(layoutWrapper.includes('<button'), 'desktop-to-mobile return control must
 const websiteLayout = read('src/app/(website)/layout.tsx');
 assert(websiteLayout.includes('<SkipToContentLink />'), 'website shell must expose skip navigation');
 
+const websiteHeader = read('src/components/website/Header.tsx');
+[
+  'aria-hidden={openDesktopMenu !== "features"}',
+  'aria-hidden={openDesktopMenu !== "resources"}',
+  'data-open={openDesktopMenu === "features" ? "true" : "false"}',
+  'data-open={openDesktopMenu === "resources" ? "true" : "false"}',
+  'inert={openDesktopMenu !== "features" ? true : undefined}',
+  'inert={openDesktopMenu !== "resources" ? true : undefined}',
+  'onClick={() => setOpenDesktopMenu("features")}',
+].forEach((token) => assert(
+  websiteHeader.includes(token),
+  `website dropdown accessibility boundary must include ${token}`,
+));
+assert(
+  !websiteHeader.includes('import { signOutSession } from "@lib/auth/client";'),
+  'public website header must not statically load the authenticated Firebase sign-out chain',
+);
+assert(
+  websiteHeader.includes('await import("@lib/auth/client")'),
+  'public website header must lazy-load authenticated sign-out only when requested',
+);
+
 const accessibilityStyles = read('public/styles/base/_accessibility.scss');
 assert(accessibilityStyles.includes(':focus-visible'), 'global focus-visible treatment must exist');
 assert(accessibilityStyles.includes('@media (prefers-reduced-motion: reduce)'), 'global reduced-motion treatment must exist');

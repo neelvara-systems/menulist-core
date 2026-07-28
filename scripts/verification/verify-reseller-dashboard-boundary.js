@@ -50,7 +50,18 @@ function verifyPackageScript(packageJson) {
 
 function verifyReadRateLimit(helper) {
   [
+    "export const RESELLER_PRIVATE_RESPONSE_HEADERS = {",
+    "'Cache-Control': 'private, no-store'",
+    "'X-Content-Type-Options': 'nosniff'",
+    'export const resellerPrivateJson = (',
+    'const headers = new Headers(init.headers);',
+    'Object.entries(RESELLER_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {',
+    'headers.set(name, value);',
+    'return NextResponse.json(body, {',
+    'headers,',
     "getRateLimitForFeature('DATA_READ')",
+    'const userId = resolveCurrentSessionUserDocumentId(session);',
+    'if (!userId)',
     'const userRateLimitHash = hashPublicRateLimitValue(userId);',
     'const resellerProfileRateLimitHash = hashPublicRateLimitValue(resellerProfileId);',
     'key: `reseller-read:${routeKey}:${userRateLimitHash}:${resellerProfileRateLimitHash}`',
@@ -61,8 +72,10 @@ function verifyReadRateLimit(helper) {
 
   [
     'request.json()',
+    "session?.uId || session?.user?.id || 'unknown'",
     'key: `reseller-read:${routeKey}:${userId}',
     'key: `reseller-read:${routeKey}:${resellerProfileId}',
+    '...Object.fromEntries(new Headers(init.headers).entries())',
   ].forEach((token) => assertNotIncludes(helper, token, 'Reseller read rate limiter boundary'));
 }
 
@@ -102,6 +115,8 @@ function verifyManageRoute(route) {
     'GET /api/reseller/manage',
     'POST /api/reseller/manage',
     "requiredPlatformRole: 'PLATFORM'",
+    'resellerPrivateJson',
+    'from "../readRateLimit"',
     'applyResellerReadRateLimit(session, "manage")',
     'const persistedProfiles = await getAllResellerProfiles();',
     '.slice(0, 50)',
@@ -138,6 +153,15 @@ function verifyManageRoute(route) {
     'if (updates.password && !syncedAccount.createdAuthUser)',
     "logResellerApiFailure('reseller_manage_post_route_failed'",
   ].forEach((token) => assertIncludes(route, token, 'Reseller management API'));
+
+  assertOrder(route, [
+    'export const GET = withAuth(async (request, session) => {',
+    'applyResellerReadRateLimit(session, "manage")',
+    'return resellerPrivateJson({',
+    "logResellerApiFailure('reseller_manage_get_route_failed'",
+    "return resellerPrivateJson({ error: 'Failed to fetch reseller profiles.' }, { status: 500 });",
+    'export const POST = withAuth(async (request, session) => {',
+  ], 'Reseller management private GET response boundary');
 
   assertOrder(route, [
     "getRateLimitForFeature('DATA_WRITE')",
@@ -391,6 +415,10 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'isNonNegativeSafeInteger(params.transaction.amountExpected)',
     'addNonNegativeSafeIntegers(\n                totalRevenueCollectedPaise,',
     'totalRevenueCollectedPaise: nextRevenue',
+    'const existingScope = getMenuListSubscriptionEntitlementScope(existingSubscription);',
+    'existingScope?.tenantId !== params.transaction.tenantId',
+    'existingScope.storeId !== params.transaction.storeId',
+    'existingSubscription.providerSubscriptionId !== params.subscriptionId',
   ].forEach((token) => assertIncludes(resellerServer, token, 'Reseller onboarding billing transaction'));
 
   [
@@ -449,6 +477,7 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     "/profile counters are invalid/",
     "/profile counters would overflow/",
     "/profile identity is invalid/",
+    'A replay must reject transaction-current conflicting subscription ownership',
   ].forEach((token) => assertIncludes(onboardingEmulatorTest, token, 'Reseller onboarding emulator regression'));
   [
     'let razorpaySubscription: any',
@@ -688,7 +717,7 @@ function verifyReadRoutes(
     'const invalidRowCount = snapshot.size - projectedTransactions.length;',
     '|| invalidRowCount > 0',
     'normalizeRazorpaySubscriptionCheckoutUrl(subscription.shortUrl)',
-    'return NextResponse.json({ invalidRowCount, isPartial, transactions });',
+    'return resellerPrivateJson({ invalidRowCount, isPartial, transactions });',
     'logResellerApiFailure(\'reseller_clients_route_failed\'',
     "requiredPlatformRole: 'RESELLER'",
   ].forEach((token) => assertIncludes(clientsRoute, token, 'Reseller clients API'));
@@ -723,7 +752,7 @@ function verifyReadRoutes(
     'getCurrentPlatformUser(session)',
     'isActiveResellerProfileForSession({',
     'const parsedMonth = parseMonth(request.nextUrl.searchParams.get("month"));',
-    'return NextResponse.json({ error: "Invalid month filter." }, { status: 400 });',
+    'return resellerPrivateJson({ error: "Invalid month filter." }, { status: 400 });',
     'db.collection(DB_COLLECTIONS.RESELLER_PROFILES).limit(50).get()',
     'getVisibleProfileDocs(db, isPlatform, currentResellerProfile)',
     'projectResellerMonthlyTransaction(doc.data())',
@@ -791,6 +820,10 @@ function verifyReadRoutes(
     monthlyRoute,
     profileRoute,
   ].forEach((route, index) => {
+    ['applyResellerReadRateLimit', 'resellerPrivateJson', 'from "../readRateLimit"'].forEach((token) => (
+      assertIncludes(route, token, `Reseller read API ${index} private response boundary`)
+    ));
+    assertNotIncludes(route, 'return NextResponse.json(', `Reseller read API ${index} private response boundary`);
     ['request.json()', 'console.error', 'error.message'].forEach((token) => (
       assertNotIncludes(route, token, `Reseller read API ${index} boundary`)
     ));

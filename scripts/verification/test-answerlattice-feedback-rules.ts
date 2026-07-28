@@ -15,6 +15,7 @@ import {
     Timestamp,
     updateDoc,
 } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-feedback-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -166,6 +167,7 @@ async function run(): Promise<void> {
         await assertFails(setDoc(doc(selfDb, 'feedback', 'direct-client-create'), feedback()));
         await testEnv.withSecurityRulesDisabled(async (context) => {
             const db = context.firestore();
+            await seedActiveAnswerlatticeRuleWorkspace(db);
             await setDoc(doc(db, 'feedback', 'general-1'), feedback());
             await setDoc(doc(db, 'feedback', 'general-2'), feedback({ uId: 'user-2' }));
             await setDoc(doc(db, 'feedback', 'feature-usage-1'), feedback({

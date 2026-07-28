@@ -86,8 +86,31 @@ export interface BusinessEntityIndexDoc {
  * Collected from existing store + project data by the adapter.
  */
 export interface IndexBuildInput {
-    storeData: Record<string, any>;
-    projectData: Record<string, any>;
-    projectFiles: any[];
+    storeData: Pick<
+        StoreDataType,
+        | 'active'
+        | 'activeLanguages'
+        | 'businessAttributes'
+        | 'businessType'
+        | 'city'
+        | 'country'
+        | 'defaultLanguage'
+        | 'geo'
+        | 'language'
+        | 'name'
+        | 'priceRange'
+        | 'publicPresence'
+        | 'state'
+        | 'storeId'
+        | 'tenantId'
+        | 'tenantName'
+        | 'workingHours'
+    >;
+    projectData: {
+        lastPublishedAt?: unknown;
+        menuVersion?: number;
+    };
+    projectFiles: unknown[];
     businessCategory: string;
 }
+import type { StoreDataType } from '@type/platform/store';

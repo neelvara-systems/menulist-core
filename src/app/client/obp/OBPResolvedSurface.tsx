@@ -1196,7 +1196,7 @@ export default function OBPResolvedSurface({
                             )}
 
                             {(serviceModeItems.length > 0 || starterPreviewServiceItems.length > 0 || cuisineTypes.length > 0 || priceRange) && !isPermanentlyClosed && (
-                                <section className={`${styles.info} ${styles.utilityInfo} ${styles.serviceInfo}`} aria-label={t('publicServiceOptions')}>
+                                <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicServiceOptions')}>
                                     <h2 className={styles.groupTitle}>
                                         <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuStore, '🏪')}</span>
                                         {t('publicServiceOptions')}
@@ -1222,7 +1222,7 @@ export default function OBPResolvedSurface({
                             )}
 
                             {(paymentItems.length > 0 || starterPreviewPaymentItems.length > 0) && !isPermanentlyClosed && (
-                                <section className={`${styles.info} ${styles.utilityInfo} ${styles.paymentInfo}`} aria-label={t('publicPaymentOptions')}>
+                                <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicPaymentOptions')}>
                                     <h2 className={styles.groupTitle}>
                                         <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuCreditCard, '💳')}</span>
                                         {t('publicPaymentOptions')}
@@ -1234,7 +1234,7 @@ export default function OBPResolvedSurface({
                             )}
 
                             {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && dietaryAttributeTags.length > 0 && (
-                                <section className={`${styles.info} ${styles.utilityInfo} ${styles.dietaryInfo}`} aria-label={t('publicDietaryOptions')}>
+                                <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicDietaryOptions')}>
                                     <h2 className={styles.groupTitle}>
                                         <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuLeaf, '🌿')}</span>
                                         {t('publicDietaryOptions')}
@@ -1246,7 +1246,7 @@ export default function OBPResolvedSurface({
                             )}
 
                             {FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES && amenityAttributeTags.length > 0 && (
-                                <section className={`${styles.info} ${styles.utilityInfo} ${styles.amenitiesInfo}`} aria-label={t('publicAmenities')}>
+                                <section className={`${styles.info} ${styles.utilityInfo}`} aria-label={t('publicAmenities')}>
                                     <h2 className={styles.groupTitle}>
                                         <span className={styles.groupTitleIcon}>{renderDisplayIcon(iconVariant, LuStore, '🏪')}</span>
                                         {t('publicAmenities')}

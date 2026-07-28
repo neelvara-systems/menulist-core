@@ -17,7 +17,13 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from '@constant/product';
 import { addDoc, collection, getDocs, limit, orderBy, query, where } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
+import {
+    normalizeAnswerlatticeCanonicalAnswerId,
+    normalizeAnswerlatticeResolvedEntityId,
+} from '@lib/answerlattice/governanceIdBoundary';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { AnswerlatticeAuditLog } from "@type/answerlattice";
 
@@ -26,9 +32,21 @@ const MAX_AUDIT_LOGS_PER_LOAD = 200;
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 const clampAuditLimit = (value: number, fallback: number) => {
-    const normalized = Math.floor(Number(value));
+    const normalized = typeof value === 'number' ? Math.floor(value) : Number.NaN;
     if (!Number.isFinite(normalized) || normalized <= 0) return fallback;
     return Math.min(normalized, MAX_AUDIT_LOGS_PER_LOAD);
+};
+const getActiveScope = async (expected?: { tId?: unknown; sId?: unknown }) => {
+    const session = await getActiveSession();
+    const scope = resolveAnswerlatticeSessionScope(session);
+    if (!scope) throw new Error('Answerlattice workspace scope is required');
+    if (expected?.tId !== undefined && expected.tId !== scope.tenantId) {
+        throw new Error('Answerlattice tenant scope mismatch');
+    }
+    if (expected?.sId !== undefined && expected.sId !== scope.storeId) {
+        throw new Error('Answerlattice workspace scope mismatch');
+    }
+    return { tId: scope.tenantId, sId: scope.storeId };
 };
 
 /**
@@ -37,7 +55,12 @@ const clampAuditLimit = (value: number, fallback: number) => {
 export const addAuditLog = async (data: Omit<AnswerlatticeAuditLog, 'id'>) => {
     return await apiCallComposer(
         async () => {
-            const submitData = await answerlatticeRequestBodyComposer(data, { isNew: true });
+            const scope = await getActiveScope({ tId: data.tId, sId: data.sId });
+            const submitData = await answerlatticeRequestBodyComposer({
+                ...data,
+                tId: scope.tId,
+                sId: scope.sId,
+            }, { isNew: true });
             const docRef = await addDoc(getCollectionRef(), submitData);
             return { ...submitData, id: docRef.id } as AnswerlatticeAuditLog;
         },
@@ -52,12 +75,13 @@ export const addAuditLog = async (data: Omit<AnswerlatticeAuditLog, 'id'>) => {
 export const getAuditLogs = async (tId: number, sId: number, maxResults: number = 100) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope({ tId, sId });
             const boundedMaxResults = clampAuditLimit(maxResults, 100);
             const q = query(
                 getCollectionRef(),
                 where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 orderBy('timestamp', 'desc'),
                 limit(boundedMaxResults)
             );
@@ -80,13 +104,16 @@ export const getAuditLogs = async (tId: number, sId: number, maxResults: number 
 export const getAnswerVersionHistory = async (tId: number, sId: number, answerId: string) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope({ tId, sId });
+            const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(answerId);
+            if (!normalizedAnswerId) return [];
             const q = query(
                 getCollectionRef(),
                 where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
                 where('entityType', '==', 'canonicalAnswer'),
-                where('entityId', '==', answerId),
+                where('entityId', '==', normalizedAnswerId),
                 orderBy('timestamp', 'desc'),
                 limit(100)
             );
@@ -107,12 +134,15 @@ export const getAnswerVersionHistory = async (tId: number, sId: number, answerId
 export const getAuditLogsForEntity = async (tId: number, sId: number, entityId: string) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getActiveScope({ tId, sId });
+            const normalizedEntityId = normalizeAnswerlatticeResolvedEntityId(entityId);
+            if (!normalizedEntityId) return [];
             const q = query(
                 getCollectionRef(),
                 where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
-                where('tId', '==', tId),
-                where('sId', '==', sId),
-                where('entityId', '==', entityId),
+                where('tId', '==', scope.tId),
+                where('sId', '==', scope.sId),
+                where('entityId', '==', normalizedEntityId),
                 orderBy('timestamp', 'desc'),
                 limit(200)
             );

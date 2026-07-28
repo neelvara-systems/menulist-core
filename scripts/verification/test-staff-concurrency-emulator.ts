@@ -387,6 +387,95 @@ const verifyConcurrentRoleEditsPreserveBothChanges = async (): Promise<void> => 
     assert(roleIds.includes('custom-a') && roleIds.includes('custom-b'), 'Concurrent role edits must both persist');
 };
 
+const verifyMalformedAccessStateFailsClosed = async (): Promise<void> => {
+    const storeId = 93550;
+    const stateRef = firestoreAdmin.collection(DB_COLLECTIONS.STAFF_STORE_ACCESS_STATE)
+        .doc(`${tenantId}_${storeId}`);
+    await seedStore(storeId);
+    await runStaffRoleMutationTransaction({
+        actorEmail: 'owner@example.com',
+        buildResult: (roles) => ({ result: roles, roles }),
+        db: firestoreAdmin,
+        modifiedOn: timestamp(),
+        storeId,
+        tenantId,
+    });
+    const validState = (await stateRef.get()).data();
+    assert(validState, 'Access state initialization must persist exact guard truth');
+
+    const malformedStates: Array<Record<string, unknown>> = [
+        { revision: '1' },
+        { tenantId: tenantId + 1 },
+        {
+            assignments: [
+                { role: DEFAULT_ROLE_IDS.OWNER, userId: 'duplicate-owner' },
+                { role: DEFAULT_ROLE_IDS.STAFF, userId: 'duplicate-owner' },
+            ],
+        },
+        {
+            assignments: Array.from({ length: 501 }, (_, index) => ({
+                role: DEFAULT_ROLE_IDS.STAFF,
+                userId: `overflow-staff-${index}`,
+            })),
+        },
+    ];
+
+    for (const malformed of malformedStates) {
+        await stateRef.set({ ...validState, ...malformed });
+        await assert.rejects(
+            runStaffRoleMutationTransaction({
+                actorEmail: 'owner@example.com',
+                buildResult: (roles) => ({ result: roles, roles }),
+                db: firestoreAdmin,
+                modifiedOn: timestamp(),
+                storeId,
+                tenantId,
+            }),
+            (error: unknown) => error instanceof StaffConcurrencyError && error.code === 'FORBIDDEN',
+            'Malformed staff access guard state must fail closed before store-role mutation',
+        );
+    }
+};
+
+const verifyLegacyMappingWithoutAliasesStillGuardsRole = async (): Promise<void> => {
+    const storeId = 93575;
+    const customRoleId = 'legacy-mapping-role';
+    await seedStore(storeId, [
+        role(DEFAULT_ROLE_IDS.OWNER),
+        role(DEFAULT_ROLE_IDS.STAFF),
+        role(customRoleId),
+    ]);
+    await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc('staff-legacy-alias-gap').set({
+        active: true,
+        deleted: false,
+        email: 'staff-legacy-alias-gap@example.com',
+        isVerified: true,
+        stores: [{ name: `Store ${storeId}`, role: customRoleId, storeId }],
+        tenantId,
+    });
+
+    await assert.rejects(
+        runStaffRoleMutationTransaction({
+            actorEmail: 'owner@example.com',
+            buildResult: (roles) => ({
+                result: roles.map((currentRole) => (
+                    currentRole.id === customRoleId ? { ...currentRole, active: false } : currentRole
+                )),
+                roles: roles.map((currentRole) => (
+                    currentRole.id === customRoleId ? { ...currentRole, active: false } : currentRole
+                )),
+            }),
+            db: firestoreAdmin,
+            deactivatingRoleId: customRoleId,
+            modifiedOn: timestamp(),
+            storeId,
+            tenantId,
+        }),
+        (error: unknown) => error instanceof StaffConcurrencyError && error.code === 'ROLE_IN_USE',
+        'A legacy exact store mapping must guard role use even when storeId/storeIds aliases are missing',
+    );
+};
+
 const run = async (): Promise<void> => {
     assert(process.env.FIRESTORE_EMULATOR_HOST, 'FIRESTORE_EMULATOR_HOST is required');
     await verifyConcurrentAddsPreserveEveryMapping();
@@ -398,6 +487,8 @@ const run = async (): Promise<void> => {
     await verifyUnverifiedOwnerDoesNotSatisfyLastOwner();
     await verifyRoleAssignmentAndDeactivationCannotBothCommit();
     await verifyConcurrentRoleEditsPreserveBothChanges();
+    await verifyMalformedAccessStateFailsClosed();
+    await verifyLegacyMappingWithoutAliasesStillGuardsRole();
     console.log('Staff concurrency emulator verification passed.');
 };
 

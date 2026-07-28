@@ -6,7 +6,17 @@
 /**
  * Generate weekly narrative prompt
  */
-export function weeklyNarrativePrompt(metrics: any): string {
+export interface WeeklyNarrativeMetrics {
+  totalChats: number;
+  satisfactionRate: number;
+  avgMessagesPerChat: number;
+  volumeChange: number;
+  satisfactionChange: number;
+  topCategory: string;
+  categories: Array<{ name: string; count: number }>;
+}
+
+export function weeklyNarrativePrompt(metrics: WeeklyNarrativeMetrics): string {
   return `You are an AI analytics assistant specialized in generating executive summaries for help center performance.
 
 Your task is to create a concise, actionable weekly summary for business leaders.
@@ -36,7 +46,7 @@ Satisfaction Change: ${metrics.satisfactionChange > 0 ? '+' : ''}${metrics.satis
 Top Category: ${metrics.topCategory}
 
 Category Breakdown:
-${metrics.categories ? metrics.categories.map((c: any) => `- ${c.name}: ${c.count} queries`).join('\n') : 'N/A'}
+${metrics.categories.length > 0 ? metrics.categories.map((category) => `- ${category.name}: ${category.count} queries`).join('\n') : 'N/A'}
 
 ---
 

@@ -1,13 +1,29 @@
 import assert from 'node:assert/strict';
 import { assertCurrentPlatformAccess } from '../../src/lib/auth/currentPlatformAccessClient';
 import {
+  buildSchedulerHealthSummaryFromRuns,
   normalizeSchedulerRunLog,
   normalizeSchedulerSettlementState,
 } from '../../src/database/ops/scheduler';
+import { normalizeOpsTimestamp } from '../../src/lib/ops/opsTimestamp';
 import {
   normalizeSchedulerRecoveryResponse,
   normalizeSchedulerRecoveryRunLogId,
 } from '../../src/lib/ops/schedulerRecoveryResponse';
+import { getMaintenanceRunStatus } from '../../functions/src/schedulers/maintenanceRunLogBoundary';
+
+assert.equal(getMaintenanceRunStatus([]), 'success');
+assert.equal(getMaintenanceRunStatus([{ status: 'skipped' }]), 'success');
+assert.equal(getMaintenanceRunStatus([{ status: 'success' }]), 'success');
+assert.equal(getMaintenanceRunStatus([{ status: 'failed' }]), 'failed');
+assert.equal(getMaintenanceRunStatus([
+  { status: 'failed' },
+  { status: 'skipped' },
+]), 'failed');
+assert.equal(getMaintenanceRunStatus([
+  { status: 'success' },
+  { status: 'failed' },
+]), 'partial');
 
 const validRecovery = {
   success: true,
@@ -55,8 +71,51 @@ assert.ok(normalizedRun);
 assert.equal(normalizedRun?.tasks.length, 1);
 assert.equal(String(normalizedRun?.tasks[0]?.details?.secret).length, 240);
 assert.equal(normalizedRun?.errors[0]?.phase, 'worker phase');
+const maintenanceRun = normalizeSchedulerRunLog('maintenance-run-1', {
+  trigger: 'scheduled',
+  startedAt: { seconds: 1 },
+  status: 'failed',
+  tasks: [
+    { name: 'messaging_intake', status: 'failed' },
+    { name: 'system_alert_retention_cleanup', status: 'skipped' },
+  ],
+});
+assert.deepEqual(
+  maintenanceRun?.tasks.map((task) => [task.name, task.status]),
+  [
+    ['messaging_intake', 'failed'],
+    ['system_alert_retention_cleanup', 'skipped'],
+  ],
+);
+assert.equal(
+  buildSchedulerHealthSummaryFromRuns(
+    maintenanceRun ? [maintenanceRun] : [],
+    168,
+  ).runsLast7Days,
+  168,
+  'the dashboard must use the exact seven-day aggregate rather than the ten-row health sample',
+);
 assert.equal(normalizeSchedulerRunLog('bad/run', { trigger: 'manual', status: 'success', startedAt: { seconds: 1 } }), null);
 assert.equal(normalizeSchedulerRunLog('run-1', { trigger: 'manual', status: 'invented', startedAt: { seconds: 1 } }), null);
+assert.equal(normalizeSchedulerRunLog('run-1', {
+  trigger: 'manual',
+  status: 'success',
+  startedAt: { seconds: 1 },
+  tasks: [{ name: 'invented_task', status: 'success' }],
+})?.tasks.length, 0);
+assert.equal(normalizeOpsTimestamp({ seconds: '1' }), null);
+assert.equal(normalizeOpsTimestamp({ seconds: 1, nanoseconds: 1_000_000_000 }), null);
+assert.equal(normalizeOpsTimestamp({
+  get toMillis() {
+    throw new Error('hostile timestamp getter');
+  },
+}), null);
+assert.equal(normalizeOpsTimestamp({
+  toMillis() {
+    throw new Error('hostile timestamp method');
+  },
+}), null);
+assert.equal(normalizeOpsTimestamp({ seconds: 1, nanoseconds: 500_000_000 })?.toMillis(), 1500);
 
 const settlement = normalizeSchedulerSettlementState('nightlyState_2', {
   tId: '1',

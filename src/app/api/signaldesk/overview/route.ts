@@ -16,9 +16,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     const disabled = requireSignalDeskRuntime();
     if (disabled) return disabled;
 
-    const accessResult = await requireSignalDeskAccess(request, session);
-    if ("response" in accessResult) return accessResult.response;
-
     const rateLimit = await applySignalDeskRateLimit({
         feature: "DATA_READ",
         keyPrefix: "overview",
@@ -26,6 +23,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         session,
     });
     if (rateLimit) return rateLimit;
+
+    const accessResult = await requireSignalDeskAccess(request, session);
+    if ("response" in accessResult) return accessResult.response;
 
     try {
         const overview = await loadSignalDeskOverviewServer(accessResult.access);

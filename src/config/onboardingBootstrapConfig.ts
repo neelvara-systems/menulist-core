@@ -1,17 +1,14 @@
 /**
  * Answerlattice — Founder Onboarding Bootstrap Configuration
  * 
- * Thresholds, limits, and constants for the knowledge bootstrap engine.
- * Used by both frontend (progress display) and CF (engine logic via copy).
+ * Compatibility reference for the bounded knowledge bootstrap engine.
+ * The active runtime copy lives in
+ * functions-answerlattice/src/answerlattice/onboardingBootstrap.ts.
  * 
  * @see __docs__/answerlattice/founder-onboarding/founder-onboarding_impl.md §5
  */
 
 export const ONBOARDING_BOOTSTRAP_CONFIG = {
-    // Entity auto-promotion thresholds
-    AUTO_PROMOTE_MIN_CONFIDENCE: 0.7,
-    AUTO_PROMOTE_MIN_ARTICLE_REFS: 2,
-
     // Per-run caps (Firebase cost protection)
     MAX_ENTITIES_PER_RUN: 50,
     MAX_DRAFTS_PER_RUN: 50,

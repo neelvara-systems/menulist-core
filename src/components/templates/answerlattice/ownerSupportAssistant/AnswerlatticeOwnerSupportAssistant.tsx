@@ -14,6 +14,7 @@ import {
     isAnswerlatticeOwnerAssistantQueryResponse,
 } from '@lib/answerlattice/ownerSupportAssistantContracts';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
     Alert,
@@ -32,7 +33,7 @@ import {
 } from 'antd';
 import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     LuArrowRight,
     LuAlertCircle,
@@ -88,6 +89,8 @@ export default function AnswerlatticeOwnerSupportAssistant() {
     const { token } = theme.useToken();
     const formatter = useFormatter();
     const router = useRouter();
+    const { access } = useAnswerlatticeAccess();
+    const scopeKey = access ? `${access.scope.tenantId}:${access.scope.storeId}` : null;
     const isMobile = screens.md !== true;
     const [brief, setBrief] = useState<AnswerlatticeOwnerAssistantBrief | null>(null);
     const [answer, setAnswer] = useState<AnswerlatticeOwnerAssistantAnswer | null>(null);
@@ -96,8 +99,22 @@ export default function AnswerlatticeOwnerSupportAssistant() {
     const [asking, setAsking] = useState(false);
     const [briefError, setBriefError] = useState<string | null>(null);
     const [answerError, setAnswerError] = useState<string | null>(null);
+    const mountedRef = useRef(false);
+    const briefRequestRef = useRef(0);
+    const answerRequestRef = useRef(0);
+    const briefAbortRef = useRef<AbortController | null>(null);
+    const answerAbortRef = useRef<AbortController | null>(null);
 
     const loadBrief = useCallback(async () => {
+        if (!scopeKey) {
+            setBrief(null);
+            setLoading(false);
+            return;
+        }
+        const requestId = ++briefRequestRef.current;
+        briefAbortRef.current?.abort();
+        const controller = new AbortController();
+        briefAbortRef.current = controller;
         setLoading(true);
         setBriefError(null);
         try {
@@ -105,29 +122,52 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
+                signal: controller.signal,
             });
             const payload = await readJsonResponseWithLimit<unknown>(response, RESPONSE_MAX_BYTES);
             if (!response.ok || !isAnswerlatticeOwnerAssistantBriefResponse(payload)) {
                 throw new Error('answerlattice_owner_assistant_brief_response_invalid');
             }
+            if (!mountedRef.current || requestId !== briefRequestRef.current) return;
             setBrief(payload.brief);
         } catch {
+            if (controller.signal.aborted || !mountedRef.current || requestId !== briefRequestRef.current) return;
             setBrief(null);
             setBriefError(SUPPORT_BRIEF_LOAD_FAILED);
             message.error(SUPPORT_BRIEF_LOAD_FAILED);
         } finally {
-            setLoading(false);
+            if (mountedRef.current && requestId === briefRequestRef.current) {
+                setLoading(false);
+            }
         }
-    }, []);
+    }, [scopeKey]);
 
     useEffect(() => {
-        if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT) void loadBrief();
-    }, [loadBrief]);
+        mountedRef.current = true;
+        setBrief(null);
+        setAnswer(null);
+        setBriefError(null);
+        setAnswerError(null);
+        if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT && scopeKey) void loadBrief();
+        return () => {
+            mountedRef.current = false;
+            briefRequestRef.current += 1;
+            answerRequestRef.current += 1;
+            briefAbortRef.current?.abort();
+            answerAbortRef.current?.abort();
+        };
+    }, [loadBrief, scopeKey]);
 
     const ask = useCallback(async (nextQuestion?: string) => {
+        if (!scopeKey) return;
         const query = String(nextQuestion || question).trim();
         if (query.length < 3) return;
+        const requestId = ++answerRequestRef.current;
+        answerAbortRef.current?.abort();
+        const controller = new AbortController();
+        answerAbortRef.current = controller;
         setQuestion(query);
+        setAnswer(null);
         setAsking(true);
         setAnswerError(null);
         try {
@@ -136,6 +176,7 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
+                signal: controller.signal,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ question: query }),
             });
@@ -143,14 +184,18 @@ export default function AnswerlatticeOwnerSupportAssistant() {
             if (!response.ok || !isAnswerlatticeOwnerAssistantQueryResponse(payload)) {
                 throw new Error('answerlattice_owner_assistant_query_response_invalid');
             }
+            if (!mountedRef.current || requestId !== answerRequestRef.current) return;
             setAnswer(payload.answer);
         } catch {
+            if (controller.signal.aborted || !mountedRef.current || requestId !== answerRequestRef.current) return;
             setAnswerError(SUPPORT_QUESTION_FAILED);
             message.error(SUPPORT_QUESTION_FAILED);
         } finally {
-            setAsking(false);
+            if (mountedRef.current && requestId === answerRequestRef.current) {
+                setAsking(false);
+            }
         }
-    }, [question]);
+    }, [question, scopeKey]);
 
     const prepareReviewCard = useCallback((action: NonNullable<AnswerlatticeOwnerAssistantBrief['dailyBrief']>['actions'][number]) => {
         if (

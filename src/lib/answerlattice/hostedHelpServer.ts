@@ -76,6 +76,10 @@ export function revalidateAnswerlatticeHostedHelpDomain(domain: string) {
     return tags;
 }
 
+export function shouldRemoveCompensatedHostedHelpProviderDomain(registryExists: unknown): boolean {
+    return registryExists === false;
+}
+
 const fetchHostedHelpSiteByDomain = async (domain: string): Promise<AnswerlatticeHostedHelpSite | null> => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_HOSTED_HELP_CENTER) return null;
 

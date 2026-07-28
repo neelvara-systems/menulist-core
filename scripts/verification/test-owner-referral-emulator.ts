@@ -12,12 +12,16 @@ import {
     OWNER_REFERRAL_STATUS,
 } from '@data/shared/ownerReferralPolicy';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import { setOwnerReferralAttributionBeforeSubscription } from '@lib/ownerReferral/ownerReferralAttributionServer';
+import {
+    resolveOwnerReferralTokenForAttribution,
+    setOwnerReferralAttributionBeforeSubscription,
+} from '@lib/ownerReferral/ownerReferralAttributionServer';
 import {
     recordReferredOwnerReferralPaymentAndSettle,
     settlePendingOwnerReferralsForPaidStore,
 } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import {
+    createOwnerReferralToken,
     getOwnerReferralDocumentId,
     getOwnerReferralRewardIssueId,
     getOwnerReferralRewardTransactionId,
@@ -311,6 +315,43 @@ const verifyMalformedWalletBalanceFailsClosed = async (): Promise<void> => {
     assert(referral.data()?.status !== OWNER_REFERRAL_STATUS.REWARD_ISSUED, 'Malformed wallet must not mark referral issued');
 };
 
+const verifyConflictingWalletScopeFailsClosed = async (): Promise<void> => {
+    const referrerScope = { tenantId: 8726, storeId: 8826 };
+    const referredScope = { tenantId: 8727, storeId: 8827 };
+    const referrerSubscriptionId = 'owner_referral_test_conflicting_wallet_referrer';
+    const referredSubscriptionId = 'owner_referral_test_conflicting_wallet_referred';
+    await Promise.all([
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referrerSubscriptionId).set({
+            ...makePaidSubscription({ ...referrerScope, topUpCredits: 8 }),
+            tId: 999_999,
+        }),
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referredSubscriptionId).set(
+            makePaidSubscription({ ...referredScope, topUpCredits: 12 }),
+        ),
+    ]);
+    const referralId = await seedReferral({
+        referredStoreId: referredScope.storeId,
+        referredTenantId: referredScope.tenantId,
+        referrerStoreId: referrerScope.storeId,
+        referrerTenantId: referrerScope.tenantId,
+    });
+
+    const result = await recordReferredOwnerReferralPaymentAndSettle({
+        referredScope,
+        evidence: {
+            paidAt: new Date(),
+            paymentEvidenceId: 'conflicting_wallet_scope_payment',
+            source: 'emulator:conflicting-wallet-scope',
+            subscriptionId: referredSubscriptionId,
+        },
+    });
+    assert(result === 'payment_pending', 'Conflicting subscription scope aliases must keep referral settlement pending');
+    assert(await readCredits(referrerSubscriptionId) === 8, 'Conflicting referrer scope must not receive credits');
+    assert(await readCredits(referredSubscriptionId) === 12, 'A valid peer must not receive a partial referral credit');
+    const referral = await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_REFERRALS).doc(referralId).get();
+    assert(referral.data()?.status !== OWNER_REFERRAL_STATUS.REWARD_ISSUED, 'Conflicting wallet scope must not mark referral issued');
+};
+
 const verifyBlockedStoreCannotSettle = async (): Promise<void> => {
     const referrerScope = { tenantId: 8731, storeId: 8831 };
     const referredScope = { tenantId: 8732, storeId: 8832 };
@@ -379,6 +420,80 @@ const verifyPriorPaymentCannotBind = async (): Promise<void> => {
         .doc(getOwnerReferralDocumentId(referredScope.tenantId, referredScope.storeId))
         .get();
     assert(!referral.exists, 'Prior-payment rejection must not create a referral record');
+};
+
+const verifyReferrerStoreScopeRequiresExactScalars = async (): Promise<void> => {
+    const referrerScope = { tenantId: 8741, storeId: 8841 };
+    (FEATURE_FLAGS as any).OWNER_REFERRAL_PILOT_STORE_IDS = [referrerScope.storeId];
+    process.env.MENULIST_OWNER_REFERRAL_TOKEN_SECRET = Buffer.alloc(32, 7).toString('base64url');
+    const { token } = createOwnerReferralToken({
+        referrerTenantId: referrerScope.tenantId,
+        referrerStoreId: referrerScope.storeId,
+    });
+    const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(referrerScope.storeId));
+
+    await storeRef.set({
+        active: true,
+        blocked: false,
+        storeId: referrerScope.storeId,
+        tenantId: String(referrerScope.tenantId),
+    });
+    assert(
+        await resolveOwnerReferralTokenForAttribution(token) === null,
+        'A string-coercible referrer tenant must not validate a signed referral token',
+    );
+
+    await storeRef.set({
+        active: true,
+        blocked: false,
+        storeId: String(referrerScope.storeId),
+        tenantId: referrerScope.tenantId,
+    });
+    assert(
+        await resolveOwnerReferralTokenForAttribution(token) === null,
+        'A string-coercible referrer store must not validate a signed referral token',
+    );
+
+    await storeRef.set({
+        active: true,
+        blocked: false,
+        storeId: referrerScope.storeId,
+        tenantId: referrerScope.tenantId,
+    });
+    assert(
+        await resolveOwnerReferralTokenForAttribution(token) !== null,
+        'An exact active referrer store must validate its signed referral token',
+    );
+};
+
+const verifyCoerciblePaymentCountCannotBlockAttribution = async (): Promise<void> => {
+    const referredScope = { tenantId: 8751, storeId: 8851 };
+    const referrerScope = { tenantId: 8752, storeId: 8852 };
+    await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('owner_referral_test_coercible_paid_count').set({
+        ...makePaidSubscription({ ...referredScope, topUpCredits: 0 }),
+        billingHistory: [],
+        manualPaymentConfirmed: false,
+        totalPaymentsMadeCount: '1',
+    });
+
+    const result = await setOwnerReferralAttributionBeforeSubscription({
+        referredBusinessName: 'Coercible Count Business',
+        referredScope,
+        resolvedToken: {
+            payload: {
+                version: 2,
+                referrerTenantId: referrerScope.tenantId,
+                referrerStoreId: referrerScope.storeId,
+                issuedAt: Math.floor(Date.now() / 1000),
+                expiresAt: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60),
+                tokenId: 'coercible_payment_count_token',
+            },
+            referrerBusinessName: 'Referrer Business',
+        },
+        onboardingSource: 'EMULATOR_TEST',
+    });
+
+    assert(result.status === 'bound', 'A string-coercible payment count must not suppress valid attribution');
 };
 
 const verifyConflictingPaymentHistoryCannotBlockAttribution = async (): Promise<void> => {
@@ -468,9 +583,12 @@ const run = async (): Promise<void> => {
     await verifyAtomicSettlementAndReplay();
     await verifyPendingRepairAndNoCap();
     await verifyPriorPaymentCannotBind();
+    await verifyReferrerStoreScopeRequiresExactScalars();
+    await verifyCoerciblePaymentCountCannotBlockAttribution();
     await verifyConflictingPaymentHistoryCannotBlockAttribution();
     await verifySaturatedHistoryFailsClosed();
     await verifyMalformedWalletBalanceFailsClosed();
+    await verifyConflictingWalletScopeFailsClosed();
     await verifyBlockedStoreCannotSettle();
     await verifyRules();
     console.log('Owner referral emulator verification passed.');

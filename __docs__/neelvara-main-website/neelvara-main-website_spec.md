@@ -248,7 +248,7 @@ Required:
 - Plain HTML links
 - No motion-heavy effects
 - No cards nested inside cards
-- No unrelated hue systems beyond the approved Neelvara current palette: site tokens `#071323`, `#1457D9`, `#2384FF`, `#2737C8`, `#6542E8`, `#F7F9FC`, `#EEF3FA`, `#5D6678`, plus logo-only frosted periwinkle and silver-lavender stops
+- No unrelated hue systems beyond the approved Neelvara current palette: site tokens `#071323`, `#1457D9`, `#2384FF`, `#2737C8`, `#6542E8`, `#F7F9FC`, `#EEF3FA`, and `#5D6678`; the logo uses the exact supplied four-stop gradient without additional colors
 - No oversized product hero that hides the next section
 - High color contrast
 - No text overlap at 320px width

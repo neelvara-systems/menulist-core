@@ -1,6 +1,9 @@
 export const dynamic = "force-dynamic";
 
-import { writeGrowthOSSummaryServer } from "@database/growthos/server";
+import {
+    GROWTHOS_SOURCE_FACTS_CHANGED,
+    writeGrowthOSRefreshedSummaryServer,
+} from "@database/growthos/server";
 import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
 import { buildGrowthOSEmptySummary, loadGrowthOSServerContext } from "@lib/growthos/serverContext";
@@ -8,37 +11,8 @@ import { logger } from "@lib/monitoring/logger";
 import { checkDataWriteLimit } from "@lib/rateLimit/helpers";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { GrowthOSRefreshRequestSchema, parseGrowthOSJsonBody } from "@lib/validation/growthosSchemas";
-import type { GrowthOSSummaryDocument } from "@type/growthos";
 import { NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "../../../../../middleware/auth";
-
-function normalizeSummaryForCompare(summary: GrowthOSSummaryDocument | null | undefined) {
-    if (!summary) return null;
-    return {
-        tId: summary.tId,
-        sId: summary.sId,
-        date: summary.date,
-        sourceFactsHash: summary.sourceFactsHash || null,
-        eligible: summary.eligible,
-        reason: summary.reason || null,
-        readiness: summary.readiness || null,
-        primaryAction: summary.primaryAction || null,
-        secondaryActions: summary.secondaryActions || [],
-        latestKit: summary.latestKit || null,
-    };
-}
-
-async function writeSummaryWhenChanged(params: {
-    current?: GrowthOSSummaryDocument | null;
-    next: GrowthOSSummaryDocument;
-    storeId: string | number;
-}) {
-    const currentComparable = JSON.stringify(normalizeSummaryForCompare(params.current));
-    const nextComparable = JSON.stringify(normalizeSummaryForCompare(params.next));
-    if (currentComparable !== nextComparable) {
-        await writeGrowthOSSummaryServer(params.storeId, params.next);
-    }
-}
 
 export const POST = withAuth(async (request, session) => {
     try {
@@ -97,12 +71,8 @@ export const POST = withAuth(async (request, session) => {
                 reason: "no_menu",
                 session,
             });
-            await writeSummaryWhenChanged({
-                current: context.summary,
-                next: summary,
-                storeId: session.sId,
-            });
-            return NextResponse.json({ data: summary }, { status: 200 });
+            const committed = await writeGrowthOSRefreshedSummaryServer(session.sId, summary, projectId);
+            return NextResponse.json({ data: committed }, { status: 200 });
         }
 
         if (!context.actions.length) {
@@ -112,12 +82,8 @@ export const POST = withAuth(async (request, session) => {
                 sourceFactsHash: context.sourceFactsHash,
                 readiness: context.readiness,
             });
-            await writeSummaryWhenChanged({
-                current: context.summary,
-                next: summary,
-                storeId: session.sId,
-            });
-            return NextResponse.json({ data: summary }, { status: 200 });
+            const committed = await writeGrowthOSRefreshedSummaryServer(session.sId, summary, projectId);
+            return NextResponse.json({ data: committed }, { status: 200 });
         }
 
         const previousKit = context.summary?.latestKit
@@ -126,7 +92,7 @@ export const POST = withAuth(async (request, session) => {
                 isStale: context.summary.latestKit.sourceFactsHash !== context.sourceFactsHash,
             }
             : null;
-        const summary: GrowthOSSummaryDocument = {
+        const summary = {
             tId: String(session.tId),
             sId: String(session.sId),
             date: new Date().toISOString().split("T")[0],
@@ -138,13 +104,15 @@ export const POST = withAuth(async (request, session) => {
             latestKit: previousKit,
         };
 
-        await writeSummaryWhenChanged({
-            current: context.summary,
-            next: summary,
-            storeId: session.sId,
-        });
-        return NextResponse.json({ data: summary }, { status: 200 });
+        const committed = await writeGrowthOSRefreshedSummaryServer(session.sId, summary, projectId);
+        return NextResponse.json({ data: committed }, { status: 200 });
     } catch (error) {
+        if (error instanceof Error && error.message === GROWTHOS_SOURCE_FACTS_CHANGED) {
+            return NextResponse.json({
+                error: "Menu details changed",
+                message: "Please check the menu again.",
+            }, { status: 409 });
+        }
         logGrowthOSApiFailure("GrowthOS Refresh API error", "growthos_refresh_api_failed", error, {
             endpoint: "/api/growthos/actions/refresh",
             ...getGrowthOSBoundedStringContext("userId", session?.uId || session?.user?.id),

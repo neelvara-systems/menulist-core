@@ -21,11 +21,48 @@ For a new or legacy-unlinked versioned entry, the editor uses:
 
 Already linked entries can update directly; the server revalidates the active dependency before accepting a published result.
 
+## Feature 4 Validation Result
+
+Current code creates a pending release and immediately activates it during one
+versioned publish attempt. Activation then queries directly affected active
+canonical answers and marks version drift. Answer Tests can separately run a
+release-scoped check.
+
+This proves the release, drift, and test foundations. It does not give the
+founder a preventive review point before activation.
+
+### Bounded later code scope
+
+1. Add a read-only `preview_impact` action to the existing authenticated release
+   route and strict release contracts.
+2. Reuse the same direct affected-answer resolution and 200-answer cap as
+   activation.
+3. Return a strict private/no-store projection with bounded answer identity,
+   current validated version, review/drift state, match reason, and current
+   linked Answer Tests proof state.
+4. Calculate a deterministic impact fingerprint from the release and current
+   affected authoritative versions.
+5. Split versioned publishing UI settlement so create is followed by preview,
+   explicit owner confirmation, activation, and final linked publication.
+6. Send the preview fingerprint with activation and revalidate it inside the
+   authoritative activation transaction.
+7. Preserve current retry, lease, audit, invalidation, and workspace-fencing
+   behavior.
+8. Add contract, emulator, narrow-width, stale-preview, idempotency, and
+   permission tests.
+
+The later pass must not add change-unit, impact-item, readiness, risk,
+scheduled-version, or monitoring collections.
+
 ## Release admission
 
 `releaseContracts.ts` validates body size-compatible fields, Firestore IDs, entity fan-out, canonical numeric version labels, and matching normalized versions. `releaseServer.ts` verifies exact entity ownership, monotonic version order, and idempotent request fingerprints.
 
 Activation uses a five-minute lease. It evaluates at most 200 active answers whose bound entities overlap the release. Malformed affected-answer state aborts the activation. Failure recovery returns the release to `pending` instead of leaving it stranded in `processing`.
+
+The preview and activation must share one pure affected-answer projector so
+their admission rules cannot drift. Preview evidence is not authority:
+activation always re-reads current release and answer state.
 
 ## Changelog persistence
 
@@ -59,6 +96,9 @@ Public page projection also verifies `pId=AL`, `tId`, and `sId`. Latest and olde
 If release creation, activation, or final publication fails after the draft write, the editor keeps the saved row private, refreshes the surface summary best-effort, closes with fixed recovery copy, and lets the owner reopen the draft. Deterministic release IDs make the retry replay-safe.
 
 If the active workspace changes, the editor and management list discard prior rows, previews, modal state, delayed results, and notifications. A save already in flight remains server-fenced to its initiating workspace and cannot be cancelled into an ambiguous browser settlement.
+
+A stale impact preview does not activate or publish. The draft and pending
+release remain retryable, and the UI requests a fresh preview.
 
 ## Verification
 

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { DB_COLLECTIONS } from '../../src/constants/database';
+import { AI_ACTIONS_TYPES } from '../../src/constants/common';
 import { PRODUCT_IDS } from '../../src/constants/product';
 import {
     analyzeKnowledgeIntakeJob,
@@ -10,8 +11,10 @@ import {
 import { generateAnswerlatticeProductStarterPack } from '../../src/lib/answerlattice/firstTrustedAnswerPackServer';
 import { normalizeAnswerlatticeRetrievalFaq } from '../../src/lib/answerlattice/faqContent';
 import { getBillingPeriodKey } from '../../src/lib/billing/billingPeriod';
+import { reserveAnswerlatticeIntakeUsage } from '../../src/lib/answerlattice/intakeUsageLedger';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
+import crypto from 'node:crypto';
 
 const scope = { tId: 1, sId: 101 };
 const jobId = 'ABCDEFGHIJKLMNOPQRST';
@@ -184,6 +187,17 @@ async function run(): Promise<void> {
     });
     await reviewBatch.commit();
 
+    await assert.rejects(
+        () => publishKnowledgeIntakeJob(scope, jobId, [], actor),
+        /Select at least one review item/,
+        'an explicit empty selection must not publish every accepted item',
+    );
+    const beforeSelectedPublish = await getKnowledgeIntakeBundle(scope, jobId);
+    assert.equal(
+        beforeSelectedPublish.reviewItems.find(item => item.id === faqItem.id)?.status,
+        'accepted',
+    );
+
     const publishResult = await publishKnowledgeIntakeJob(scope, jobId, undefined, actor);
     assert.equal(publishResult.published.length, 1, 'only the accepted FAQ should publish');
     assert.equal(publishResult.published[0]?.target, 'faq');
@@ -200,7 +214,7 @@ async function run(): Promise<void> {
     assert.equal(
         publishedBundle.reviewItems.find(item => item.id === faqItem.id)?.status,
         'published',
-        'review and target writes must commit together',
+        'review must become published after required destination freshness effects complete',
     );
     await assert.rejects(
         () => publishKnowledgeIntakeJob(scope, jobId, undefined, actor),
@@ -208,10 +222,119 @@ async function run(): Promise<void> {
         'a terminal published job must not start a second publish run',
     );
 
+    const resumedJobId = 'RESUMEABCDEFGHIJKLMN';
+    const resumedItemId = `kii_${'f'.repeat(28)}`;
+    const resumedFaqId = `intake_faq_${crypto
+        .createHash('sha256')
+        .update(`${scope.tId}:${scope.sId}:${resumedItemId}`)
+        .digest('hex')
+        .slice(0, 24)}`;
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(resumedJobId).set({
+            id: resumedJobId,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            title: 'Resumable FAQ publish',
+            status: 'reviewing',
+            sourceCount: 1,
+            readySourceCount: 1,
+            reviewItemCount: 1,
+            acceptedItemCount: 1,
+            publishedItemCount: 0,
+            rejectedItemCount: 0,
+            usageUnitsConsumed: 0,
+            createdOn,
+            modifiedOn: createdOn,
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_REVIEW_ITEMS).doc(resumedItemId).set({
+            id: resumedItemId,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            jobId: resumedJobId,
+            target: 'faq',
+            status: 'accepted',
+            title: 'How can a publish resume?',
+            question: 'How can a publish resume?',
+            answer: 'Retry the accepted item so required freshness effects complete before it becomes published.',
+            sourceIds: [sourceId],
+            publishTargetId: resumedFaqId,
+            createdOn,
+            modifiedOn: createdOn,
+        }),
+        db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc(resumedFaqId).set({
+            id: resumedFaqId,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            question: 'How can a publish resume?',
+            answer: 'Retry the accepted item so required freshness effects complete before it becomes published.',
+            status: 'published',
+            source: 'knowledge_intake',
+            active: true,
+            intakeJobId: resumedJobId,
+            intakeReviewItemId: resumedItemId,
+            intakeSourceIds: [sourceId],
+            createdOn,
+            modifiedOn: createdOn,
+        }),
+    ]);
+    let contextSummaryAttempts = 0;
+    await assert.rejects(
+        () => publishKnowledgeIntakeJob(
+            scope,
+            resumedJobId,
+            [resumedItemId],
+            actor,
+            {
+                rebuildContextSummary: async () => {
+                    contextSummaryAttempts += 1;
+                    throw new Error('Injected context summary failure');
+                },
+            },
+        ),
+        /Injected context summary failure/,
+        'a required context-summary failure must reject publication',
+    );
+    assert.equal(contextSummaryAttempts, 1);
+    const interruptedBundle = await getKnowledgeIntakeBundle(scope, resumedJobId);
+    assert.equal(
+        interruptedBundle.reviewItems.find(item => item.id === resumedItemId)?.status,
+        'accepted',
+        'a required context-summary failure must leave the deterministic destination retryable',
+    );
+    assert.equal(
+        interruptedBundle.reviewItems.find(item => item.id === resumedItemId)?.publishTargetId,
+        resumedFaqId,
+    );
+
+    const resumedPublish = await publishKnowledgeIntakeJob(scope, resumedJobId, [resumedItemId], actor);
+    assert.equal(resumedPublish.published.length, 1, 'a deterministic target from an interrupted publish must resume');
+    const resumedBundle = await getKnowledgeIntakeBundle(scope, resumedJobId);
+    assert.equal(
+        resumedBundle.reviewItems.find(item => item.id === resumedItemId)?.status,
+        'published',
+        'a target marker must not bypass required freshness effects or final review settlement',
+    );
+    assert.equal(resumedBundle.job?.status, 'published');
+
     const packJobId = 'PACKABCDEFGHIJKLMNOP';
     const packSourceId = `kis_${'d'.repeat(28)}`;
     const packEntityId = 'entity_billing_launch';
     const subscriptionId = await seedPackBilling();
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
+        monthlyCredits: '5',
+    }, { merge: true });
+    await assert.rejects(
+        () => reserveAnswerlatticeIntakeUsage(scope, {
+            action: AI_ACTIONS_TYPES.ANSWERLATTICE_PRODUCT_STARTER_PACK,
+            actor,
+            jobId: packJobId,
+        }),
+        /credit balance is invalid/,
+        'String-coercible subscription credits must fail before intake provider work',
+    );
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
+        monthlyCredits: 5,
+    }, { merge: true });
     await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(packJobId).set({
         id: packJobId,
         pId: PRODUCT_IDS.ANSWERLATTICE,

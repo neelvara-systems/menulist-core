@@ -5,6 +5,11 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { genAIClient } from '../genAiClient';
 import type { KeyManagerStats } from '../ai/keyManager';
+import {
+    getBoundedFunctionsErrorCode,
+    getBoundedFunctionsErrorName,
+    getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const HEALTH_DOC_ID = 'aiProvider_gemini';
@@ -49,29 +54,19 @@ function responseText(response: any): string {
     return '';
 }
 
-function boundedDiagnosticValue(value: unknown): string | number | null {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        return trimmed ? trimmed.slice(0, 80) : null;
-    }
-    return null;
-}
-
 function getAiProviderHealthErrorContext(error: unknown): Pick<
     Extract<AiProviderHealthState, { status: 'failed' }>,
     'sourceErrorCode' | 'sourceErrorName' | 'sourceErrorStatus'
 > {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
-        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+        sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
+        sourceErrorCode: getBoundedFunctionsErrorCode(error) ?? null,
+        sourceErrorStatus: getBoundedFunctionsErrorStatus(error) ?? null,
     };
 }
 
 function getAiProviderHealthFailureCode(error: unknown): string {
-    const code = boundedDiagnosticValue((error as { code?: unknown })?.code);
+    const code = getBoundedFunctionsErrorCode(error);
     if (code === AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE_CODE) {
         return AI_PROVIDER_HEALTH_UNEXPECTED_RESPONSE_CODE;
     }

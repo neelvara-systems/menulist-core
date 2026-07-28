@@ -4,7 +4,8 @@
  * Read-only DAL for scheduler monitoring dashboard.
  * Fetches run logs from Firestore schedulerRunLogs collection.
  * 
- * Firebase cost: ~3-5 reads per dashboard load.
+ * Firebase cost: bounded run/settlement document reads plus one aggregation
+ * count for the exact seven-day run total.
  * Used by founder only at /ops/scheduler.
  * 
  * @see __docs__/decision-intelligence/decision-intelligence_impl.md
@@ -15,6 +16,7 @@ import { assertCurrentPlatformAccess } from '@lib/auth/currentPlatformAccessClie
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import { normalizeOpsTimestamp } from '@lib/ops/opsTimestamp';
 import { normalizeSchedulerRecoveryRunLogId } from '@lib/ops/schedulerRecoveryResponse';
 import type {
   SchedulerDashboardSnapshot,
@@ -28,10 +30,13 @@ import type {
 import {
   collection,
   documentId,
+  getCountFromServer,
   getDocs,
   limit,
   orderBy,
   query,
+  Timestamp,
+  type QueryConstraint,
   where,
 } from 'firebase/firestore';
 
@@ -66,34 +71,43 @@ function schedulerDuration(value: unknown): number {
     : 0;
 }
 
-function schedulerTimestamp(value: unknown): unknown | null {
-  try {
-    if (!value || typeof value !== 'object') return null;
-    const timestamp = value as { seconds?: unknown; toMillis?: () => number };
-    if (typeof timestamp.toMillis === 'function') {
-      const millis = timestamp.toMillis();
-      return Number.isFinite(millis) && millis > 0 ? value : null;
-    }
-    return typeof timestamp.seconds === 'number' && Number.isFinite(timestamp.seconds) && timestamp.seconds > 0
-      ? value
-      : null;
-  } catch {
-    return null;
-  }
-}
+const schedulerTimestamp = normalizeOpsTimestamp;
+
+const SCHEDULER_TASK_NAMES = new Set<SchedulerTaskName>([
+  'decision_blocks', 'menu_intelligence', 'customer_obp_analytics',
+  'authority_maturation', 'menu_drift', 'guest_feedback_retention',
+  'subscription_reconciliation', 'obp_analytics', 'lifecycle_messaging',
+  'special_menu_switching', 'extraction_learning', 'store_truth_confidence',
+  'staleness_check', 'reseller_license_expiry', 'feedback_intelligence',
+  'kb_quality', 'weekly_narrative', 'health_signals', 'owner_business_health',
+  'kb_generation_watchdog', 'messaging_intake', 'menu_stuck_cleanup',
+  'special_menu_lifecycle', 'alert_escalation', 'founder_monitor_snapshot',
+  'chat_stats_aggregation', 'ai_provider_health_check', 'subscription_access_expiry',
+  'billing_health_snapshot', 'menu_old_cleanup', 'public_menu_draft_cleanup',
+  'messaging_session_cleanup', 'owner_business_assistant_cleanup',
+  'ai_operation_detail_cleanup', 'image_batch_job_retention_cleanup',
+  'ai_image_prompt_cache_cleanup', 'menu_snapshot_cleanup',
+  'owner_notification_retention_cleanup', 'feedback_event_retention_cleanup',
+  'scheduler_run_log_retention_cleanup', 'system_alert_retention_cleanup',
+  'answerlattice_nightly',
+]);
 
 function normalizeSchedulerDetails(value: unknown): Record<string, unknown> | undefined {
   if (!isRecord(value)) return undefined;
-  const entries = Object.entries(value).slice(0, 20).flatMap(([key, detail], index) => {
-    const normalizedKey = /^[a-zA-Z0-9_.:-]{1,48}$/.test(key) ? key : `detail_${index + 1}`;
-    if (detail === null || typeof detail === 'boolean') return [[normalizedKey, detail] as const];
-    if (typeof detail === 'number' && Number.isFinite(detail)) return [[normalizedKey, detail] as const];
-    if (typeof detail === 'string') return [[normalizedKey, cleanSchedulerText(detail, 240)] as const];
-    if (Array.isArray(detail)) return [[normalizedKey, detail.slice(0, 20)] as const];
-    if (isRecord(detail)) return [[normalizedKey, Object.fromEntries(Object.entries(detail).slice(0, 20))] as const];
-    return [];
-  });
-  return entries.length ? Object.fromEntries(entries) : undefined;
+  try {
+    const entries = Object.entries(value).slice(0, 20).flatMap(([key, detail], index) => {
+      const normalizedKey = /^[a-zA-Z0-9_.:-]{1,48}$/.test(key) ? key : `detail_${index + 1}`;
+      if (detail === null || typeof detail === 'boolean') return [[normalizedKey, detail] as const];
+      if (typeof detail === 'number' && Number.isFinite(detail)) return [[normalizedKey, detail] as const];
+      if (typeof detail === 'string') return [[normalizedKey, cleanSchedulerText(detail, 240)] as const];
+      if (Array.isArray(detail)) return [[normalizedKey, `[array:length=${Math.min(detail.length, 10_000)}]`] as const];
+      if (isRecord(detail)) return [[normalizedKey, `[object:keys=${Math.min(Object.keys(detail).length, 10_000)}]`] as const];
+      return [];
+    });
+    return entries.length ? Object.fromEntries(entries) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function normalizeSchedulerRunLog(id: string, value: unknown): SchedulerRunLog | null {
@@ -110,13 +124,14 @@ export function normalizeSchedulerRunLog(id: string, value: unknown): SchedulerR
       const status = entry.status === 'success' || entry.status === 'failed' || entry.status === 'skipped'
         ? entry.status
         : null;
-      if (!name || !status) return [];
+      if (!SCHEDULER_TASK_NAMES.has(name as SchedulerTaskName) || !status) return [];
       const error = cleanSchedulerText(entry.error, 160);
+      const details = normalizeSchedulerDetails(entry.details);
       return [{
         name: name as SchedulerTaskName,
         status: status as 'success' | 'failed' | 'skipped',
         durationMs: schedulerDuration(entry.durationMs),
-        ...(normalizeSchedulerDetails(entry.details) ? { details: normalizeSchedulerDetails(entry.details) } : {}),
+        ...(details ? { details } : {}),
         ...(error ? { error } : {}),
       }];
     })
@@ -203,7 +218,10 @@ function getEmptySchedulerHealthSummary(): SchedulerHealthSummary {
   };
 }
 
-function buildSchedulerHealthSummaryFromRuns(runs: SchedulerRunLog[]): SchedulerHealthSummary {
+export function buildSchedulerHealthSummaryFromRuns(
+  runs: SchedulerRunLog[],
+  exactRunsLast7Days?: number,
+): SchedulerHealthSummary {
   const summary = getEmptySchedulerHealthSummary();
   if (runs.length === 0) return summary;
 
@@ -222,10 +240,12 @@ function buildSchedulerHealthSummaryFromRuns(runs: SchedulerRunLog[]): Scheduler
 
   const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const recentRuns = runs.filter(r => {
-    const ts = r.startedAt?.toMillis?.() || r.startedAt?.seconds * 1000 || 0;
+    const ts = r.startedAt.toMillis();
     return ts > sevenDaysAgo;
   });
-  summary.runsLast7Days = recentRuns.length;
+  summary.runsLast7Days = exactRunsLast7Days === undefined
+    ? recentRuns.length
+    : schedulerCount(exactRunsLast7Days);
 
   const durationsMs = recentRuns.filter(r => r.durationMs).map(r => r.durationMs);
   summary.avgDurationMs = durationsMs.length > 0
@@ -239,7 +259,7 @@ function buildSchedulerHealthSummaryFromRuns(runs: SchedulerRunLog[]): Scheduler
   } else if (consecutiveFailures >= 1 || (summary.lastRun?.status === 'partial')) {
     summary.healthStatus = 'warning';
   } else if (summary.lastRun?.status === 'success') {
-    const lastRunTs = summary.lastRun.startedAt?.toMillis?.() || summary.lastRun.startedAt?.seconds * 1000 || 0;
+    const lastRunTs = summary.lastRun.startedAt.toMillis();
     const isStale = Date.now() - lastRunTs > 26 * 60 * 60 * 1000;
     summary.healthStatus = isStale ? 'warning' : 'healthy';
   }
@@ -255,12 +275,12 @@ function buildSchedulerHealthSummaryFromRuns(runs: SchedulerRunLog[]): Scheduler
  * Get scheduler run history with optional filters.
  * Firestore reads: 1 (limit capped at 30)
  */
-export async function getSchedulerRunHistory(
+async function getSchedulerRunHistory(
   filter?: SchedulerRunFilter
 ): Promise<SchedulerRunLog[]> {
   try {
     const logsRef = collection(firebaseClient, DB_COLLECTIONS.SCHEDULER_RUN_LOGS);
-    const constraints: any[] = [orderBy('startedAt', 'desc')];
+    const constraints: QueryConstraint[] = [orderBy('startedAt', 'desc')];
 
     if (filter?.status) {
       constraints.push(where('status', '==', filter.status));
@@ -296,18 +316,22 @@ export async function getSchedulerRunHistory(
  * Compute scheduler health from recent run logs.
  * Firestore reads: 1 (last 7 runs)
  */
-export async function getSchedulerHealthSummary(): Promise<SchedulerHealthSummary> {
+async function getSchedulerHealthSummary(): Promise<SchedulerHealthSummary> {
   try {
     const logsRef = collection(firebaseClient, DB_COLLECTIONS.SCHEDULER_RUN_LOGS);
+    const sevenDaysAgo = Timestamp.fromMillis(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // Get last 10 runs to compute health
     const recentQuery = query(logsRef, orderBy('startedAt', 'desc'), limit(10));
-    const snap = await getDocs(recentQuery);
+    const runsLast7DaysQuery = query(logsRef, where('startedAt', '>=', sevenDaysAgo));
+    const [snap, countSnapshot] = await Promise.all([
+      getDocs(recentQuery),
+      getCountFromServer(runsLast7DaysQuery),
+    ]);
 
     const runs = snap.docs
       .map((document) => normalizeSchedulerRunLog(document.id, document.data()))
       .filter((run): run is SchedulerRunLog => run !== null);
-    return buildSchedulerHealthSummaryFromRuns(runs);
+    return buildSchedulerHealthSummaryFromRuns(runs, countSnapshot.data().count);
   } catch (error) {
     logOpsFailure('ops_scheduler_health_summary_load_failed', error);
     throw new Error('ops_scheduler_health_summary_unavailable');
@@ -351,7 +375,7 @@ export async function getSchedulerRunDetails(runId: string): Promise<SchedulerRu
  * Get recent per-store analytics settlement state.
  * Firestore reads: 1 query over platformSummary/nightlyState_* docs.
  */
-export async function getSchedulerSettlementSummary(maxResults: number = 50): Promise<SchedulerSettlementSummary> {
+async function getSchedulerSettlementSummary(maxResults: number = 50): Promise<SchedulerSettlementSummary> {
   const settlementLimit = boundedPositiveInteger(maxResults, 50, SCHEDULER_SETTLEMENT_LIMIT);
   const summary: SchedulerSettlementSummary = {
     states: [],
@@ -402,6 +426,15 @@ export async function getSchedulerSettlementSummary(maxResults: number = 50): Pr
   }
 }
 
+async function getSchedulerRunsLast7Days(): Promise<number> {
+  const logsRef = collection(firebaseClient, DB_COLLECTIONS.SCHEDULER_RUN_LOGS);
+  const sevenDaysAgo = Timestamp.fromMillis(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const countSnapshot = await getCountFromServer(
+    query(logsRef, where('startedAt', '>=', sevenDaysAgo)),
+  );
+  return countSnapshot.data().count;
+}
+
 // ================================================================
 // GET DASHBOARD SNAPSHOT
 // ================================================================
@@ -421,13 +454,14 @@ export async function getSchedulerDashboardSnapshot(
   const boundedSettlementLimit = boundedPositiveInteger(settlementLimit, 50, SCHEDULER_SETTLEMENT_LIMIT);
 
   if (!hasHistoryFilter) {
-    const [runHistory, settlement] = await Promise.all([
+    const [runHistory, settlement, runsLast7Days] = await Promise.all([
       getSchedulerRunHistory({ ...filter, limit: Math.max(historyLimit, 10) }),
       getSchedulerSettlementSummary(boundedSettlementLimit),
+      getSchedulerRunsLast7Days(),
     ]);
 
     return {
-      health: buildSchedulerHealthSummaryFromRuns(runHistory.slice(0, 10)),
+      health: buildSchedulerHealthSummaryFromRuns(runHistory.slice(0, 10), runsLast7Days),
       runHistory: runHistory.slice(0, historyLimit),
       settlement,
     };

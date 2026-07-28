@@ -18,6 +18,11 @@
  */
 
 import { authOptions } from '@lib/auth';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import {
+    resolveExactSessionPlatformRole,
+    resolveExactSessionStoreRole,
+} from '@lib/auth/sessionPlatformRole';
 import { logger } from '@lib/monitoring/logger';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { addCORSHeaders, handleCORSPreflight, validateCORS } from '@lib/security/corsValidation';
@@ -26,6 +31,10 @@ import {
     getBoundedSecurityRouteContext,
     getBoundedSecurityStringContext,
 } from '@lib/security/securityDiagnostics';
+import {
+    normalizeStorePermissionScopeDocumentId,
+    resolveStorePermissionSessionScope,
+} from '@lib/permissions/scopeDocumentId';
 import { getServerSession } from 'next-auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -125,15 +134,35 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
                     { status: 403 }
                 );
             }
+            const sessionUserId = resolveCurrentSessionUserDocumentId(session);
+            if (!sessionUserId) {
+                logger.security('Authorization Failed - Actor Identity', {
+                    ...getAuthMiddlewareSecurityContext(session, request, {
+                        reason: 'Missing or conflicting actor identity',
+                    }),
+                }, 'high');
+
+                return NextResponse.json(
+                    { error: 'Forbidden', message: 'Invalid session identity' },
+                    { status: 403 },
+                );
+            }
 
             // Check platform role if specified
             // PLATFORM role has access to everything (founder/superadmin fallback)
             if (options?.requiredPlatformRole) {
-                if (session.user.platformRole !== options.requiredPlatformRole && session.user.platformRole !== 'PLATFORM') {
+                const sessionPlatformRole = resolveExactSessionPlatformRole(session);
+                if (
+                    !sessionPlatformRole
+                    || (
+                        sessionPlatformRole !== options.requiredPlatformRole
+                        && sessionPlatformRole !== 'PLATFORM'
+                    )
+                ) {
                     // 🚨 Log authorization failure to Sentry
                     logger.security('Authorization Failed - Platform Role', {
                         ...getAuthMiddlewareSecurityContext(session, request, {
-                            actualPlatformRole: session.user.platformRole,
+                            actualPlatformRole: sessionPlatformRole,
                             reason: 'Insufficient platform permissions',
                             requiredPlatformRole: options.requiredPlatformRole,
                         }),
@@ -148,11 +177,12 @@ export function withAuth(handler: AuthenticatedHandler, options?: {
 
             // Check store role if specified
             if (options?.requiredRole) {
-                if (session.user.role !== options.requiredRole) {
+                const sessionStoreRole = resolveExactSessionStoreRole(session);
+                if (sessionStoreRole !== options.requiredRole) {
                     // 🚨 Log authorization failure to Sentry
                     logger.security('Authorization Failed - Store Role', {
                         ...getAuthMiddlewareSecurityContext(session, request, {
-                            actualRole: session.user.role,
+                            actualRole: sessionStoreRole,
                             reason: 'Insufficient store permissions',
                             requiredRole: options.requiredRole,
                         }),
@@ -207,14 +237,11 @@ export function verifyTenantAccess(
     requestedStoreId?: string | number,
     request?: NextRequest
 ): boolean {
-    // ✅ SECURITY FIX: Validate inputs are not null/undefined
-    if (!session || session.tId == null || requestedTenantId == null) {
-        return false;
-    }
-
-    // Normalize to strings for comparison (handles both string and number IDs)
-    const sessionTenantId = String(session.tId);
-    const requestTenantId = String(requestedTenantId);
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    const requestTenantScope = normalizeStorePermissionScopeDocumentId(requestedTenantId);
+    if (!sessionScope || !requestTenantScope) return false;
+    const sessionTenantId = sessionScope.tenantScope.documentId;
+    const requestTenantId = requestTenantScope.documentId;
 
     // Check tenant access
     if (sessionTenantId !== requestTenantId) {
@@ -233,12 +260,10 @@ export function verifyTenantAccess(
 
     // Check store access if provided
     if (requestedStoreId != null) {
-        if (session.sId == null) {
-            return false;
-        }
-
-        const sessionStoreId = String(session.sId);
-        const requestStoreId = String(requestedStoreId);
+        const requestStoreScope = normalizeStorePermissionScopeDocumentId(requestedStoreId);
+        if (!requestStoreScope) return false;
+        const sessionStoreId = sessionScope.storeScope.documentId;
+        const requestStoreId = requestStoreScope.documentId;
 
         if (sessionStoreId !== requestStoreId) {
             // 🚨 CRITICAL: Store-level privilege escalation attempt!

@@ -6,10 +6,11 @@ import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
 import PageProofStrip from '../components/PageProofStrip';
 import AnswerlatticePublicDemo from './AnswerlatticePublicDemo';
+import AnswerlatticeSupportLoopDemo from './AnswerlatticeSupportLoopDemo';
 
 export const metadata: Metadata = {
     title: 'AnswerLattice Demo',
-    description: 'See a complete AnswerLattice governance event: conflicting sources, human approval, release drift, safe fallback, and corrected support truth.',
+    description: 'See a repeated SaaS support question move from approved answer or safe fallback to founder review, testing, and reusable guidance.',
     alternates: { canonical: '/demo' },
 };
 
@@ -37,16 +38,16 @@ export default async function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-10 max-w-3xl text-center">
                             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Interactive demo</p>
                             <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-                                See an answer stay correct through change.
+                                See a repeated support question become a trusted answer.
                             </h1>
                             <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                                Follow one answer from conflicting sources to approval, release drift, safe fallback, and a corrected answer across every support surface.
+                                Follow one user question from approved guidance or safe fallback to founder review and a tested improvement.
                             </p>
                             <PageProofStrip
                                 className="mt-8 text-left"
                                 items={[
-                                    { label: 'Shows', value: 'Conflict, proposal, approval, drift, and correction' },
-                                    { label: 'Proves', value: 'Stale policy is blocked before it reaches users' },
+                                    { label: 'Shows', value: 'Known answer, missing coverage, fallback, review, and test' },
+                                    { label: 'Proves', value: 'Support can improve without guessing or auto-publishing' },
                                     { label: 'Demo mode', value: 'Deterministic simulation with sample product policy' },
                                 ]}
                             />
@@ -55,7 +56,17 @@ export default async function AnswerlatticeDemoPage() {
                         <div className="mx-auto mb-8 max-w-3xl rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 text-center">
                             <h2 className="text-lg font-semibold text-white">What to notice</h2>
                             <p className="mt-2 text-sm leading-relaxed text-[#a0a0c0]">
-                                AnswerLattice does not choose between conflicting sources by guessing. A human approves authority, a release change creates drift, and support surfaces fall back safely until the corrected answer is validated. This simulation uses sample content and makes no Firebase or AI provider call.
+                                Known questions use approved support truth. Missing evidence opens fallback and creates founder review work. Nothing becomes official until it is approved and tested. This simulation uses sample content and makes no Firebase or AI provider call.
+                            </p>
+                        </div>
+
+                        <AnswerlatticeSupportLoopDemo />
+
+                        <div className="mx-auto mb-8 mt-20 max-w-3xl text-center">
+                            <p className="text-xs font-semibold uppercase tracking-widest text-teal-300">Governance proof</p>
+                            <h2 className="mt-3 text-3xl font-bold text-white">See an approved answer stay correct through change.</h2>
+                            <p className="mt-4 text-base leading-relaxed text-[#a0a0c0]">
+                                This second simulation shows how conflicting sources, human approval, release drift, safe fallback, and correction affect the same answer.
                             </p>
                         </div>
 

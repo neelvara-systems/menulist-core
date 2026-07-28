@@ -987,17 +987,6 @@
         { "fieldPath": "pId", "order": "ASCENDING" },
         { "fieldPath": "tId", "order": "ASCENDING" },
         { "fieldPath": "sId", "order": "ASCENDING" },
-        { "fieldPath": "uId", "order": "ASCENDING" },
-        { "fieldPath": "modifiedOn", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "chatSessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "pId", "order": "ASCENDING" },
-        { "fieldPath": "tId", "order": "ASCENDING" },
-        { "fieldPath": "sId", "order": "ASCENDING" },
         { "fieldPath": "modifiedOn", "order": "DESCENDING" }
       ]
     },
@@ -1120,6 +1109,32 @@
         },
         {
           "fieldPath": "type",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
           "order": "ASCENDING"
         }
       ]

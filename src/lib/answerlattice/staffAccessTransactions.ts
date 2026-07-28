@@ -14,8 +14,10 @@ import {
 } from '@lib/answerlattice/staffAccessContracts';
 import {
     isAnswerlatticeActiveStoreInScope,
+    isAnswerlatticeStoreInScope,
 } from '@lib/answerlattice/sessionScope';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export const ANSWERLATTICE_STAFF_QUERY_LIMIT = 500;
 
@@ -30,7 +32,8 @@ export type AnswerlatticeStaffTransactionErrorCode =
     | 'ROLE_NOT_FOUND'
     | 'STORE_MAPPING_NOT_FOUND'
     | 'STORE_NOT_FOUND'
-    | 'USER_NOT_FOUND';
+    | 'USER_NOT_FOUND'
+    | 'WORKSPACE_LIFECYCLE_INVALID';
 
 export class AnswerlatticeStaffTransactionError extends Error {
     readonly code: AnswerlatticeStaffTransactionErrorCode;
@@ -447,6 +450,98 @@ export const removeAnswerlatticeStaffMembershipTransaction = async (params: {
         ...accessFields,
         ...deletionFields,
     }, { undefinedObjectValue: 'omit' }));
+    return {
+        accessChanged: true,
+        accessRevision,
+        currentData,
+        memberships,
+        nextData,
+        primaryMembership,
+        replay: false,
+    };
+});
+
+export const removeAnswerlatticeWorkspaceMembershipForErasureTransaction = async (params: {
+    db: FirebaseFirestore.Firestore;
+    storeId: number;
+    tenantId: number;
+    userId: string;
+}): Promise<StaffTransactionResult> => params.db.runTransaction(async (transaction) => {
+    const userRef = params.db.collection(DB_COLLECTIONS.USERS).doc(params.userId);
+    const storeRef = params.db.collection(DB_COLLECTIONS.STORES).doc(String(params.storeId));
+    const [storeSnapshot, userSnapshot] = await Promise.all([
+        transaction.get(storeRef),
+        transaction.get(userRef),
+    ]);
+    const storeData = storeSnapshot.data() || {};
+    const lifecycle = storeData.answerlatticeWorkspaceLifecycle;
+    if (
+        !storeSnapshot.exists
+        || !isAnswerlatticeStoreInScope(
+            storeData,
+            { tenantId: params.tenantId, storeId: params.storeId },
+            storeSnapshot.id,
+        )
+        || !lifecycle
+        || typeof lifecycle !== 'object'
+        || Array.isArray(lifecycle)
+        || !['erasing', 'erased'].includes(String(lifecycle.state || ''))
+    ) {
+        throw new AnswerlatticeStaffTransactionError('WORKSPACE_LIFECYCLE_INVALID');
+    }
+    if (!userSnapshot.exists) {
+        throw new AnswerlatticeStaffTransactionError('USER_NOT_FOUND');
+    }
+
+    const currentData = userSnapshot.data() || {};
+    const state = readAnswerlatticeStaffAccessState(currentData);
+    if (!state || state.tenantId !== params.tenantId) {
+        throw new AnswerlatticeStaffTransactionError('FORBIDDEN');
+    }
+    const currentMembership = getAnswerlatticeStaffMembership(state, params.storeId);
+    if (!currentMembership) {
+        return {
+            accessChanged: false,
+            accessRevision: state.accessRevision,
+            currentData,
+            memberships: state.memberships,
+            nextData: currentData,
+            primaryMembership: state.primaryMembership,
+            replay: true,
+        };
+    }
+
+    const memberships = state.memberships.filter(({ storeId }) => storeId !== params.storeId);
+    const primaryMembership = selectAnswerlatticeStaffPrimaryMembership(
+        memberships,
+        state.primaryMembership?.storeId,
+    );
+    const accessRevision = state.accessRevision + 1;
+    const accessFields = buildAnswerlatticeStaffAccessFields({
+        accessRevision,
+        active: memberships.length > 0,
+        memberships,
+        preferredStoreId: primaryMembership?.storeId,
+        tenantId: params.tenantId,
+    });
+    const deletionFields = {
+        deleted: memberships.length === 0,
+        deletedAt: memberships.length === 0
+            ? Timestamp.now()
+            : null,
+    };
+    const nextData = {
+        ...currentData,
+        ...accessFields,
+        ...deletionFields,
+    };
+    const update = sanitizeForFirestore({
+        ...accessFields,
+        ...deletionFields,
+    }, { undefinedObjectValue: 'omit' }) as FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData>;
+    update[`membershipCreationRequests.${String(params.storeId)}`] = FieldValue.delete();
+    transaction.update(userRef, update);
+
     return {
         accessChanged: true,
         accessRevision,

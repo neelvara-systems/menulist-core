@@ -104,6 +104,7 @@ assertNotIncludes(
   'limit: z.coerce.number().int().min(5).max(60).default(30)',
   'validateAPIInput(ReportLeadQuerySchema',
   'getCurrentPlatformUser(session)',
+  'resolveCurrentSessionUserDocumentId(session)',
   'Authorization Failed - Report Lead Current Platform Role',
   'hashPublicRateLimitValue(operatorId)',
   'REPORT_LEAD_OPS_RATE_LIMIT_KEY',
@@ -149,7 +150,8 @@ assertNotIncludes(
 
 assertOrder(route, [
   'validateAPIInput(ReportLeadQuerySchema',
-  'const rateLimitResponse = await checkReportLeadOpsRateLimit(session);',
+  'const operatorId = resolveCurrentSessionUserDocumentId(session);',
+  'const rateLimitResponse = await checkReportLeadOpsRateLimit(operatorId);',
   'const currentPlatformUser = await getCurrentPlatformUser(session);',
   "collection(DB_COLLECTIONS.LANDING_PAGE_ENQUIRIES)",
 ], 'Report Leads ops API admission order');
@@ -195,13 +197,16 @@ assertIncludes(page, 'ReportLeadMonitor', 'Report Leads ops page');
 assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Report Leads link');
 
 [
-  "platformRole === 'PLATFORM'",
+  "resolveExactSessionPlatformRole(session) === 'PLATFORM'",
   "redirect('/dashboard')",
   "fetch(`/api/ops/report-leads?",
   "cache: 'no-store'",
   "credentials: 'same-origin'",
   "redirect: 'manual'",
   'readReportLeadOpsSnapshotResponse(response',
+  'requestIdRef.current + 1',
+  'requestId !== requestIdRef.current',
+  'setSnapshot(null)',
   "message.error('Failed to load report leads')",
   'copyRuntimeTextToClipboard(record.suggestedReply)',
   'hasRuntimeClipboardWrite()',

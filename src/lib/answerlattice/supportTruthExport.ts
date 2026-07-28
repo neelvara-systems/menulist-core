@@ -2,7 +2,9 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS } from '@type/answerlattice';
 import { FieldValue } from 'firebase-admin/firestore';
+import { isAnswerlatticeChangelogEntryPublished } from './changelogContracts';
 import { normalizeAnswerlatticePublicCitationUrl } from './publicAnswerContracts';
+import { toAnswerlatticePublicIsoTimestamp } from './publicApiContracts';
 
 export const ANSWERLATTICE_SUPPORT_TRUTH_EXPORT_SCHEMA_VERSION = 1;
 export const ANSWERLATTICE_SUPPORT_TRUTH_EXPORT_MAX_BYTES = 8 * 1024 * 1024;
@@ -40,17 +42,12 @@ export class AnswerlatticeSupportTruthExportTooLargeError extends Error {
 }
 
 const toIsoString = (value: unknown): string | null => {
-    if (!value) return null;
-    if (value instanceof Date) return value.toISOString();
-    if (typeof (value as { toDate?: unknown })?.toDate === 'function') {
-        const date = (value as { toDate: () => Date }).toDate();
-        return Number.isNaN(date.getTime()) ? null : date.toISOString();
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
+    if (typeof value === 'number') {
+        if (!Number.isFinite(value)) return null;
         const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? null : date.toISOString();
+        return Number.isFinite(date.getTime()) ? date.toISOString() : null;
     }
-    return null;
+    return toAnswerlatticePublicIsoTimestamp(value);
 };
 
 const compactStrings = (value: unknown, maxItems: number, maxLength = 200): string[] => {
@@ -73,8 +70,7 @@ const compactNullableString = (value: unknown, maxLength: number): string | null
 };
 
 const compactNumber = (value: unknown, fallback = 0): number => {
-    const normalized = Number(value);
-    return Number.isFinite(normalized) ? normalized : fallback;
+    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 };
 
 const compactBoolean = (value: unknown, fallback = false): boolean => (
@@ -383,7 +379,7 @@ export async function buildAnswerlatticeSupportTruthExport(
             .get(),
         db.collection(`${DB_COLLECTIONS.CHANGELOG}/${tId}/${sId}`)
             .orderBy('pageNumber', 'desc')
-            .select('pageNumber', 'entries')
+            .select('pId', 'tId', 'sId', 'pageNumber', 'entries')
             .limit(limits.changelogPages + 1)
             .get(),
     ]);
@@ -423,9 +419,18 @@ export async function buildAnswerlatticeSupportTruthExport(
         'changelogPages',
         limits.changelogPages,
     );
+    changelogPages.forEach((page) => {
+        if (
+            page.pId !== PRODUCT_IDS.ANSWERLATTICE
+            || page.tId !== tId
+            || page.sId !== sId
+        ) {
+            throw new Error('answerlattice_support_truth_export_changelog_scope_invalid');
+        }
+    });
     const changelogEntries = ensureWithinLimit(
         changelogPages.flatMap(page => (Array.isArray(page.entries) ? page.entries : [])
-            .filter((entry: Record<string, unknown>) => entry?.published !== false)
+            .filter(isAnswerlatticeChangelogEntryPublished)
             .map((entry: Record<string, unknown>) => projectChangelogEntry(entry, page.id))),
         'changelogEntries',
         limits.changelogEntries,

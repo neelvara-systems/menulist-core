@@ -15,6 +15,7 @@ import { extractStoreSemanticProfile } from '../semantics/attributeRegistry';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { extractTaxonomyFromProject } from '../taxonomy/adapter';
+import { normalizeStarterActivationTimestamp } from '@lib/onboarding/starterActivation';
 import type { BusinessEntityIndexDoc, IndexBuildInput } from './types';
 
 /**
@@ -83,11 +84,7 @@ export function buildBusinessEntityIndexDoc(
 
         // Freshness
         menuVersion: projectData.menuVersion,
-        lastPublishedAt: projectData.lastPublishedAt
-            ? (typeof projectData.lastPublishedAt.toDate === 'function'
-                ? projectData.lastPublishedAt.toDate().toISOString()
-                : String(projectData.lastPublishedAt))
-            : undefined,
+        lastPublishedAt: normalizeStarterActivationTimestamp(projectData.lastPublishedAt) || undefined,
         priceRange: storeData.priceRange,
 
         // Hours
@@ -112,16 +109,28 @@ export function validateIndexDocSafety(doc: BusinessEntityIndexDoc): boolean {
         'email', 'phone', 'password', 'apiKey', 'secret',
         'token', 'billing', 'subscription', 'payment',
         'analytics', 'chatSession', 'feedback', 'internalNote',
-    ];
+    ].map(field => field.toLowerCase());
+    const visited = new WeakSet<object>();
 
-    const docString = JSON.stringify(doc).toLowerCase();
-
-    for (const field of dangerousFields) {
-        // Check if any field key contains sensitive terms
-        if (Object.keys(doc).some(k => k.toLowerCase().includes(field))) {
-            return false;
+    const containsDangerousKey = (value: unknown): boolean => {
+        if (value === null || typeof value !== 'object') return false;
+        if (visited.has(value)) return true;
+        visited.add(value);
+        try {
+            for (const key of Object.keys(value)) {
+                const normalizedKey = key.toLowerCase();
+                if (dangerousFields.some(field => normalizedKey.includes(field))) {
+                    return true;
+                }
+                if (containsDangerousKey((value as Record<string, unknown>)[key])) {
+                    return true;
+                }
+            }
+        } catch {
+            return true;
         }
-    }
+        return false;
+    };
 
-    return true;
+    return !containsDangerousKey(doc);
 }

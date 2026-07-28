@@ -54,6 +54,23 @@ async function run(): Promise<void> {
     assert.equal((await db.collection('feedback').get()).size, 1);
     assert.equal((await db.collection('answerlattice_signalEvents').get()).size, 1);
 
+    const feedbackRef = db.collection('feedback').doc(first.id);
+    await feedbackRef.update({ stalePrivateField: 'must-not-enter-response' });
+    const staleFieldReplay = await executeAnswerlatticeFeedbackSubmission(request(), scope, actor);
+    assert.equal(
+        Object.prototype.hasOwnProperty.call(staleFieldReplay.record, 'stalePrivateField'),
+        false,
+        'replay responses must project an allowlisted record instead of spreading persisted fields',
+    );
+
+    await feedbackRef.update({ tId: '1' });
+    await assert.rejects(
+        executeAnswerlatticeFeedbackSubmission(request(), scope, actor),
+        (error: unknown) => Number((error as { status?: unknown })?.status) === 409,
+        'replay scope must reject coercive persisted metadata',
+    );
+    await feedbackRef.update({ tId: scope.tId });
+
     await assert.rejects(
         executeAnswerlatticeFeedbackSubmission(request('Changed replay payload.'), scope, actor),
         (error: unknown) => Number((error as { status?: unknown })?.status) === 409,

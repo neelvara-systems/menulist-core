@@ -86,6 +86,8 @@ The access resolver first validates the signed-in identity against the current M
 
 For a non-platform user, the resolver checks `signaldeskTeamMembers` by document ID, stored `userId`, and normalized `emailLower`. Exactly one active, correctly shaped human membership must match. Ambiguous matches, malformed permissions, a `system-worker` role, or identity disagreement fail closed. Direct browser reads remain platform-only; active team members use protected server APIs.
 
+The shared protected API limiter hashes the authenticated session identity and partitions by route/action. Overview, workspace, kill-switch and action endpoints apply it before current membership/permission Firestore reads or blocked-mobile audit writes. Distributed limiter uncertainty fails closed with bounded `503 RATE_LIMIT_UNAVAILABLE`; established exhaustion returns bounded `429 RATE_LIMITED`. This ordering prevents a throttled or protection-degraded request from amplifying SignalDesk datastore work.
+
 Team-member creation and update use one Firestore transaction. The transaction reads the explicit/canonical member candidates plus bounded user-ID and email queries before writing. It rejects ambiguous identity, missing explicit records, changed bound user IDs, and self-deactivation based on the persisted row. Member, audit, and daily-cost truth commit together.
 
 ## Audit Event Contract
@@ -144,12 +146,14 @@ Desktop founder controls can manage all governed scopes. Mobile can only activat
 Every mutation must check:
 
 1. internal session exists and is current;
-2. current MenuList user remains active and unblocked;
-3. exactly one current SignalDesk authority resolves;
-4. role has permission;
-5. relevant kill switch is inactive unless the action is pause/acknowledge;
-6. request validates against schema;
-7. audit event is written.
+2. bounded syntax and feature admission succeeds;
+3. actor-scoped distributed rate limiting admits the request;
+4. current MenuList user remains active and unblocked;
+5. exactly one current SignalDesk authority resolves;
+6. role has permission;
+7. relevant kill switch is inactive unless the action is pause/acknowledge;
+8. request validates against its action schema;
+9. audit event is written.
 
 Contact reveal additionally requires:
 

@@ -66,12 +66,26 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-notification-test', scope.storeId),
+            key: buildAnswerlatticeRateLimitKey(
+                'answerlattice-notification-test',
+                session.uId,
+                scope.tenantId,
+                scope.storeId,
+            ),
             limit: 3,
             window: 60 * 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return notificationTestJson({ error: 'Too many test emails. Try again later.' }, 429);
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            return notificationTestJson(
+                {
+                    error: providerUnavailable
+                        ? 'Notification testing is temporarily unavailable. Try again later.'
+                        : 'Too many test emails. Try again later.',
+                },
+                providerUnavailable ? 503 : 429,
+            );
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);

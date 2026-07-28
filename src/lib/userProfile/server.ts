@@ -5,6 +5,7 @@ import {
   logAuthDiagnostic,
   logAuthFailure,
 } from "@lib/auth/authDiagnostics";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
@@ -49,7 +50,7 @@ function normalizeProfileUserDocumentId(value: unknown): string | null {
 
 export async function updateCurrentUserProfile(request: NextRequest, session: any) {
   try {
-    const userId = normalizeProfileUserDocumentId(session?.uId || session?.user?.id);
+    const userId = normalizeProfileUserDocumentId(resolveCurrentSessionUserDocumentId(session));
     if (!userId) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }

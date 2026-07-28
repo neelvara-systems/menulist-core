@@ -17,7 +17,12 @@
 
 'use client';
 
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { getHelpCenterArticleRouteSegment, helpCenterArticleRouting, normalizeHelpCenterRouteSegment } from '@constant/navigations';
 import { getTiptapExtensions } from '@config/tiptap';
@@ -58,22 +63,15 @@ const getBoundedArticleViewStringContext = (
 };
 
 const getArticleViewErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getArticleViewErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getArticleViewErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object' || !('status' in error)) return undefined;
-    const status = Number((error as { status?: unknown }).status);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 const logArticleViewFailure = (

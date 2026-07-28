@@ -96,7 +96,7 @@ export async function checkPublicRateLimit(
     } catch (error) {
         secureError(
             '[Public API] Rate limit check failed',
-            error instanceof Error ? error : new Error(String(error)),
+            error instanceof Error ? error : new Error('public_rate_limit_provider_failed'),
             {
                 feature,
                 failurePolicy: options.failClosed ? 'closed' : 'open',

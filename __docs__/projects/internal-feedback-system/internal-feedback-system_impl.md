@@ -1,5 +1,7 @@
 # Guest Feedback System — Implementation Contract
 
+July 28, 2026 persisted-identity correction: public feedback submit and standalone feedback rendering reconcile all canonical/legacy store tenant aliases before accepting project/store scope. A conflicting `tenantId`/`tId` row cannot create guest feedback or render store-derived public output.
+
 **Status:** Implemented in source; environment certification is separate
 **Last Source Audit:** July 23, 2026
 **Audience:** Engineering, security, Firebase, QA

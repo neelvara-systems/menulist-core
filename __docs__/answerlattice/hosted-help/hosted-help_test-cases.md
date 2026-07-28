@@ -46,3 +46,9 @@ git diff --check
 - real custom-domain browser tests for home/docs/article/FAQ/changelog/robots/sitemap;
 - iOS/Android and accessibility review;
 - real customer search and resolution outcomes.
+### Concurrent domain claim compensation
+
+- Two workspaces race to claim one previously absent domain.
+- The transaction winner retains the registry document and provider domain.
+- The losing request returns a conflict and must not remove the provider domain once any durable registry row exists.
+- Registry-read uncertainty during compensation fails closed and leaves the provider domain for operator reconciliation.

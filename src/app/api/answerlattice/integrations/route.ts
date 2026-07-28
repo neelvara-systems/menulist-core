@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import {
     ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
     requireAnswerlatticePermission,
@@ -228,20 +229,31 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     }
     const scope = resolveSessionScope(session);
     if (!scope) return integrationJsonResponse({ error: 'Not onboarded' }, 400);
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return integrationJsonResponse({ error: 'Forbidden' }, 403);
 
     try {
         const rateLimitResult = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey(
                 'answerlattice-integrations',
-                session?.uId || session?.user?.id || session?.user?.email || 'unknown',
+                actorId,
                 scope.tenantId,
                 scope.storeId,
             ),
             limit: 12,
             window: 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return integrationJsonResponse({ error: 'Too many requests' }, 429);
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            return integrationJsonResponse(
+                {
+                    error: providerUnavailable
+                        ? 'Integration settings are temporarily unavailable'
+                        : 'Too many requests',
+                },
+                providerUnavailable ? 503 : 429,
+            );
         }
 
         const permission = await requireAnswerlatticePermission(
@@ -297,7 +309,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
                     eventFilters: parsed.email.eventFilters.length ? parsed.email.eventFilters : DEFAULT_EVENT_FILTERS,
                 },
                 modifiedOn: FieldValue.serverTimestamp(),
-                updatedBy: session?.uId || session?.user?.email || 'unknown',
+                updatedBy: actorId,
             };
             transaction.set(docRef, next, { merge: true });
             return next;

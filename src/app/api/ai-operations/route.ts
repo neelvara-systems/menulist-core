@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { PERMISSIONS } from '@constant/permissions';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
@@ -8,6 +10,7 @@ import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { requireAnyStorePermission } from '@lib/permissions/server';
+import { resolveStorePermissionSessionScope } from '@lib/permissions/scopeDocumentId';
 import {
     AI_OPERATION_DATE_FILTER_MAX_LENGTH,
     isAiOperationHistoryCursorAdmissible,
@@ -28,6 +31,18 @@ const DEFAULT_PAGE_SIZE = 15;
 const FILTER_SCAN_LIMIT = 100;
 const MAX_FILTER_SCAN_DOCS = 500;
 const AI_OPERATIONS_ENDPOINT = '/api/ai-operations';
+const AI_OPERATIONS_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+function privateJson(body: unknown, init: ResponseInit = {}) {
+    const headers = new Headers(init.headers);
+    Object.entries(AI_OPERATIONS_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return NextResponse.json(body, { ...init, headers });
+}
 
 const QuerySchema = z.object({
     action: z.string().trim().max(80).optional(),
@@ -134,10 +149,11 @@ function getAiOperationsReadLogContext(
 ) {
     const searchParams = request.nextUrl.searchParams;
     const requestedPageSize = Number(metadata.pageSize ?? searchParams.get('pageSize'));
-    const tenantId = session.tId || session.user?.tenantId;
-    const storeId = session.sId || session.user?.storeId;
-    const userId = session.uId || session.user?.id;
-    const platformRole = metadata.platformRole ?? (session.platformRole || session.user?.platformRole);
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    const tenantId = sessionScope?.tenantScope.documentId;
+    const storeId = sessionScope?.storeScope.documentId;
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    const platformRole = metadata.platformRole ?? resolveExactSessionPlatformRole(session);
 
     return {
         endpoint: AI_OPERATIONS_ENDPOINT,
@@ -261,34 +277,40 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     try {
         const validation = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
         if (!validation.success) {
-            return NextResponse.json(
+            return privateJson(
                 { error: 'Invalid query parameters', details: getSafeZodValidationDetails(validation.error) },
                 { status: 400 },
             );
         }
 
-        const tenantScope = normalizeAiOperationHistoryScopeDocumentId(session.tId || session.user?.tenantId);
-        const storeScope = normalizeAiOperationHistoryScopeDocumentId(session.sId || session.user?.storeId);
+        const sessionScope = resolveStorePermissionSessionScope(session);
+        const tenantScope = normalizeAiOperationHistoryScopeDocumentId(sessionScope?.tenantScope.documentId);
+        const storeScope = normalizeAiOperationHistoryScopeDocumentId(sessionScope?.storeScope.documentId);
         if (!tenantScope || !storeScope) {
-            return NextResponse.json({ error: 'User not onboarded' }, { status: 400 });
+            return privateJson({ error: 'User not onboarded' }, { status: 400 });
         }
         const tenantId = tenantScope.documentId;
         const storeId = storeScope.documentId;
-        const platformRole = session.platformRole || session.user?.platformRole;
+        const platformRole = resolveExactSessionPlatformRole(session);
         const isPlatform = platformRole === 'PLATFORM';
         const { action, cursorId, pageSize, startDate, endDate } = validation.data;
 
         const rateLimitConfig = getRateLimitForFeature('DATA_READ');
-        const userId = session.uId || session.user?.id || 'unknown';
+        const userId = resolveCurrentSessionUserDocumentId(session);
+        if (!userId || platformRole === null) {
+            return privateJson({ error: 'Forbidden' }, { status: 403 });
+        }
         const userRateLimitHash = hashPublicRateLimitValue(userId);
         const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
         const storeRateLimitHash = hashPublicRateLimitValue(storeId);
         const rateLimit = await checkRateLimit({
             key: `ai-operations:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
 
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
             logger.security('Rate Limit Exceeded', {
                 ...getAiOperationsReadLogContext(request, session, {
@@ -302,14 +324,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 window: rateLimitConfig.window,
             }, 'medium');
 
-            return NextResponse.json(
+            return privateJson(
                 {
-                    error: `Too many requests. Please wait ${waitSeconds} seconds.`,
+                    error: providerUnavailable
+                        ? 'AI transaction history is temporarily unavailable. Please try again later.'
+                        : `Too many requests. Please wait ${waitSeconds} seconds.`,
                     retryAfter: waitSeconds,
                     resetAt: rateLimit.resetAt,
                 },
                 {
-                    status: 429,
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'Retry-After': String(waitSeconds),
                         'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -322,7 +346,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         const dateRange = normalizeAiOperationHistoryDateRange(startDate, endDate);
         if (!dateRange) {
-            return NextResponse.json({ error: 'Invalid date filter' }, { status: 400 });
+            return privateJson({ error: 'Invalid date filter' }, { status: 400 });
         }
 
         const permissionError = await requireAnyStorePermission(
@@ -353,7 +377,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             cursorRequested: Boolean(cursorId),
             dateRange,
         })) {
-            return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });
+            return privateJson({ error: 'Invalid cursor' }, { status: 400 });
         }
 
         const result = action
@@ -376,7 +400,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 : sanitizeOwnerOperation(doc.id, doc.data())
         ));
 
-        return NextResponse.json({
+        return privateJson({
             data,
             hasMore: result.hasMore,
             lastVisibleDoc: result.lastVisibleDoc,
@@ -384,6 +408,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         });
     } catch (error) {
         logRuntimeFailure('ai_operations_read_failed', error, getAiOperationsReadLogContext(request, session));
-        return NextResponse.json({ error: 'Failed to load transactions' }, { status: 500 });
+        return privateJson({ error: 'Failed to load transactions' }, { status: 500 });
     }
 });

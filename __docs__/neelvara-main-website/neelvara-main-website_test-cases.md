@@ -77,7 +77,7 @@
 | SEO-05 | Sitemap | Public pages included |
 | SEO-06 | Robots | `robots.txt` references sitemap |
 | SEO-07 | JSON-LD | Organization JSON-LD present |
-| SEO-08 | Site logo and icons | `public/neelvara-logo.svg` exists as the source mark; `public/neelvara-favicon.svg` exists as the preferred browser favicon; favicon PNG fallbacks, Apple touch icon, and manifest PNG derivatives exist with transparent corners |
+| SEO-08 | Site logo and icons | `public/neelvara-logo.svg` remains byte-identical to the uploaded source mark; `public/neelvara-favicon.svg` reuses its exact compound path and colors; favicon PNG fallbacks, Apple touch icon, manifest PNG derivatives, and the Open Graph derivative exist with transparent corners |
 | SEO-09 | Missing routes | Unmatched Neelvara URLs return HTTP `404` and `noindex` |
 | SEO-10 | Open Graph image | Neelvara pages expose `public/neelvara-og-image.png` in metadata |
 | SEO-11 | Security contact discovery | `/.well-known/security.txt` returns a static security contact file |

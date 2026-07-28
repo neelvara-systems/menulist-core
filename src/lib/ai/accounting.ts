@@ -19,6 +19,7 @@ import {
     buildAiOperationDocument,
     getMenuListAiOperationRef,
     normalizeAiOperationDocumentId,
+    normalizeAiOperationForSessionInput,
     recordAiOperation,
     recordAiOperationForSession,
 } from "./operationLog";
@@ -82,16 +83,14 @@ export async function finalizeAiOperationAccounting({
     if (unitsConsumed === null) {
         throw new Error(`${logLabel} accounting units are invalid.`);
     }
+    const sessionOperationInput = session
+        ? normalizeAiOperationForSessionInput(session, input)
+        : input;
+    if (!sessionOperationInput) {
+        throw new Error(`${logLabel} session accounting scope is invalid.`);
+    }
     const operationInput: AiOperationLogInput = {
-        ...input,
-        ...(session ? {
-            pId: input.pId ?? session?.pId ?? session?.user?.pId ?? session?.user?.productId,
-            tId: input.tId ?? session?.tId ?? session?.user?.tenantId,
-            sId: input.sId ?? session?.sId ?? session?.user?.storeId,
-            uId: input.uId ?? session?.uId ?? session?.user?.id,
-            createdBy: input.createdBy ?? session?.user?.name,
-            modifiedBy: input.modifiedBy ?? session?.user?.name,
-        } : {}),
+        ...sessionOperationInput,
         unitsConsumed,
     };
 

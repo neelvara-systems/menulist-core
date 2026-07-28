@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Firestore } from 'firebase-admin/firestore';
+import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { writeOwnerBusinessHealthDocs } from '../../functions/src/ownerBusinessAssistant/ownerBusinessHealthWriters';
+import { buildOwnerBusinessAnalyticsPeriod } from '../../functions/src/ownerBusinessAssistant/buildOwnerBusinessAnalyticsIndex';
+import {
+  getOwnerBusinessFeedbackProjectName,
+  projectOwnerBusinessFeedbackFact,
+} from '../../functions/src/ownerBusinessAssistant/buildOwnerBusinessFeedbackSummary';
 import {
   OWNER_BUSINESS_ASSISTANT_CACHE,
   OWNER_BUSINESS_ASSISTANT_ENDPOINTS,
@@ -36,6 +41,10 @@ import type {
   OwnerBusinessHealthCheck,
   OwnerBusinessHealthCurrentDoc,
 } from '@lib/ownerBusinessAssistant/types';
+import {
+  OwnerBusinessAssistantAnswerRequestSchema,
+  OwnerBusinessAssistantFeedbackRequestSchema,
+} from '@lib/ownerBusinessAssistant/schemas';
 
 const repoRoot = process.cwd();
 
@@ -175,6 +184,64 @@ const projectedAnalytics = parseOwnerBusinessAnalyticsIndexDoc({
 assert.ok(projectedAnalytics);
 assert.equal('kind' in projectedAnalytics, false);
 assert.equal('expiresAt' in projectedAnalytics, false);
+
+const projectedPersistedPeriod = buildOwnerBusinessAnalyticsPeriod({
+  key: 'today',
+  label: 'Today',
+  rangeLabel: '2026-06-08',
+  scope: 'store',
+  sourceFactIds: ['analytics_test'],
+  source: {
+    metrics: {
+      menuVisits: 12,
+      itemClicks: -4,
+    },
+    topItems: [
+      { itemId: 'item-1', name: { en: 'Dosa' }, clicks: 3, privatePayload: 'drop-me' },
+      { itemId: { attacker: true }, clicks: 99 },
+    ],
+    topCategories: [
+      { categoryId: 'category-1', name: 'Breakfast', views: 4, privatePayload: 'drop-me' },
+      { categoryId: '', views: 12 },
+    ],
+    topSearchTerms: [
+      { term: ' masala dosa ', count: 2, privatePayload: 'drop-me' },
+      { term: { attacker: true }, count: 100 },
+    ],
+    sourceQuality: [
+      { source: 'direct', visits: 8, actionRate: 0.25, privatePayload: 'drop-me' },
+      { source: 'invalid-rate', visits: 2, actionRate: 4 },
+      { source: { attacker: true }, visits: 20 },
+    ],
+  },
+});
+assert.ok(projectedPersistedPeriod);
+assert.equal(projectedPersistedPeriod.metrics.menuVisits, 12);
+assert.equal(projectedPersistedPeriod.metrics.itemClicks, 0, 'negative persisted counters must not reach the owner read model');
+assert.deepEqual(projectedPersistedPeriod.topItems, [{
+  itemId: 'item-1',
+  name: 'Dosa',
+  value: 3,
+  signal: 'clicks',
+}]);
+assert.deepEqual(projectedPersistedPeriod.topCategories, [{
+  categoryId: 'category-1',
+  name: 'Breakfast',
+  value: 4,
+}]);
+assert.deepEqual(projectedPersistedPeriod.topSearches, [{ term: 'masala dosa', count: 2 }]);
+assert.deepEqual(projectedPersistedPeriod.sourceQuality, [
+  { source: 'direct', visits: 8, actionRate: 0.25 },
+  { source: 'invalid-rate', visits: 2 },
+]);
+assert.equal(
+  getOwnerBusinessFeedbackProjectName({
+    projectId: 'menu-1',
+    data: { projectName: { en: 'Localized menu name' } },
+  }),
+  'Localized menu name',
+  'localized project names must survive feedback-summary projection',
+);
 
 const projectedCachePacket = parseCachedOwnerBusinessAssistantPacket({
   version: 1,
@@ -320,10 +387,65 @@ const feedbackSummaryBuilder = readFileSync(join(repoRoot, 'functions/src/ownerB
 assert.match(feedbackSummaryBuilder, /MAX_FEEDBACK_DOCS = 80/);
 assert.match(feedbackSummaryBuilder, /DB_COLLECTIONS\.GUEST_FEEDBACK/);
 assert.match(feedbackSummaryBuilder, /sanitizeSnippet/);
+assert.match(feedbackSummaryBuilder, /projectOwnerBusinessFeedbackFact/);
+assert.match(feedbackSummaryBuilder, /OWNER_BUSINESS_FEEDBACK_INVALID_RECORD/);
 assert.doesNotMatch(feedbackSummaryBuilder, /generateFeedbackAnalysis/);
 assert.doesNotMatch(feedbackSummaryBuilder, /customerName/);
 assert.doesNotMatch(feedbackSummaryBuilder, /customerPhone/);
 assert.doesNotMatch(feedbackSummaryBuilder, /customerEmail/);
+
+const validFeedbackRecord = {
+  tId: 1,
+  sId: 101,
+  projectId: '1-menu-101',
+  rating: 2,
+  source: 'direct_link',
+  status: 'new',
+  needsAttention: true,
+  createdBy: 'guest',
+  createdOn: Timestamp.fromMillis(1_700_000_000_000),
+  expiresOn: Timestamp.fromMillis(1_707_776_000_000),
+  message: 'Wrong price. Contact me at owner@example.test',
+};
+const validFeedbackFact = projectOwnerBusinessFeedbackFact({
+  feedbackId: `guest_feedback_${'a'.repeat(40)}`,
+  data: validFeedbackRecord,
+  expectedTId: 1,
+  expectedSId: 101,
+  projectNames: new Map([['1-menu-101', 'Lunch menu']]),
+  timeZone: 'Asia/Kolkata',
+});
+assert.equal(validFeedbackFact?.rating, 2);
+assert.equal(validFeedbackFact?.projectName, 'Lunch menu');
+assert.equal(validFeedbackFact?.snippet, 'Wrong price. Contact me at [contact]');
+for (const malformed of [
+  { ...validFeedbackRecord, tId: 2 },
+  { ...validFeedbackRecord, sId: 102 },
+  { ...validFeedbackRecord, projectId: '../foreign' },
+  { ...validFeedbackRecord, rating: 0 },
+  { ...validFeedbackRecord, rating: 2.5 },
+  { ...validFeedbackRecord, rating: 6 },
+  { ...validFeedbackRecord, status: 'pending' },
+  { ...validFeedbackRecord, needsAttention: false },
+  { ...validFeedbackRecord, source: 'provider_import' },
+  { ...validFeedbackRecord, createdOn: new Date() },
+  { ...validFeedbackRecord, expiresOn: new Date() },
+  { ...validFeedbackRecord, businessDate: '2026-02-30' },
+  { ...validFeedbackRecord, message: 'x'.repeat(301) },
+]) {
+  assert.equal(projectOwnerBusinessFeedbackFact({
+    feedbackId: `guest_feedback_${'b'.repeat(40)}`,
+    data: malformed,
+    expectedTId: 1,
+    expectedSId: 101,
+  }), null);
+}
+assert.equal(projectOwnerBusinessFeedbackFact({
+  feedbackId: 'invalid/feedback-id',
+  data: validFeedbackRecord,
+  expectedTId: 1,
+  expectedSId: 101,
+}), null);
 
 const feedbackAnswerTemplates = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/answerTemplates.ts'), 'utf8');
 assert.match(feedbackAnswerTemplates, /buildFeedbackPatternAnswer/);
@@ -353,8 +475,9 @@ assert.doesNotMatch(contextPacketCache, /catch\s*\{\s*return \{ attempted: true/
 const locationsHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessLocationsSummary.ts'), 'utf8');
 assert.match(locationsHook, /browserLocationsPrefix/);
 assert.match(locationsHook, /selectedStoreScope/);
-assert.match(locationsHook, /params\.set\('storeId', String\(storeScopeKey\)\)/);
-assert.match(locationsHook, /\[url, scope, selectedStoreScope\] as const/);
+assert.match(locationsHook, /resolveOwnerBusinessAssistantClientScope\(session, storeScopeKey\)/);
+assert.match(locationsHook, /params\.set\('storeId', clientScope\.storeId\)/);
+assert.match(locationsHook, /\[url, clientScope\.tenantId, clientScope\.storeId\] as const/);
 assert.match(locationsHook, /fallbackData: cached/);
 assert.match(locationsHook, /shouldRevalidate/);
 assert.match(locationsHook, /browserReadModelTtlMs/);
@@ -365,7 +488,8 @@ assert.doesNotMatch(locationsHook, /response\.json\(\)/);
 
 const currentHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts'), 'utf8');
 assert.match(currentHook, /browserReadModelTtlMs/);
-assert.match(currentHook, /params\.set\('storeId', String\(storeScopeKey\)\)/);
+assert.match(currentHook, /resolveOwnerBusinessAssistantClientScope\(session, storeScopeKey\)/);
+assert.match(currentHook, /params\.set\('storeId', clientScope\.storeId\)/);
 assert.match(currentHook, /readOwnerBusinessAssistantCurrentResponse/);
 assert.match(currentHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
 assert.match(currentHook, /getBoundedRuntimeStringContext/);
@@ -379,7 +503,8 @@ assert.match(answerHook, /owner_business_assistant_answer_response_invalid/);
 assert.doesNotMatch(answerHook, /response\.json\(\)\.catch\(\(\) => null\)/);
 const analyticsHook = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAnalyticsIndex.ts'), 'utf8');
 assert.match(analyticsHook, /browserReadModelTtlMs/);
-assert.match(analyticsHook, /params\.set\('storeId', String\(storeScopeKey\)\)/);
+assert.match(analyticsHook, /resolveOwnerBusinessAssistantClientScope\(session, storeScopeKey\)/);
+assert.match(analyticsHook, /params\.set\('storeId', clientScope\.storeId\)/);
 assert.match(analyticsHook, /readOwnerBusinessAssistantAnalyticsResponse/);
 assert.match(analyticsHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
 assert.match(analyticsHook, /getBoundedRuntimeStringContext/);
@@ -440,8 +565,8 @@ const dashboardProjectSelector = readFileSync(join(repoRoot, 'src/components/tem
 assert.match(dashboardProjectSelector, /activeStoreScope/);
 assert.match(dashboardProjectSelector, /dashboard-projects-\$\{activeTenantScope\}-\$\{activeStoreScope\}/);
 const ownerProjectSelection = readFileSync(join(repoRoot, 'src/lib/projects/projectSelection.ts'), 'utf8');
-assert.match(ownerProjectSelection, /const hasStoreScope/);
-assert.match(ownerProjectSelection, /if \(hasStoreScope\) return null/);
+assert.match(ownerProjectSelection, /const hasScope = Boolean\(getOwnerProjectStoreScope\(storeId\) \|\| getOwnerProjectTenantScope\(tenantId\)\)/);
+assert.match(ownerProjectSelection, /if \(getOwnerProjectStoreScope\(storeId\) \|\| getOwnerProjectTenantScope\(tenantId\)\) return null/);
 
 const locationsRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/locations/route.ts'), 'utf8');
 assert.match(locationsRoute, /parseSummaryStores/);
@@ -452,10 +577,20 @@ assert.match(locationsRoute, /normalizeLocationStore/);
 assert.match(locationsRoute, /cleanSourceFactIds/);
 assert.match(locationsRoute, /isOwnerBusinessHealthStatus/);
 assert.match(locationsRoute, /firestoreReadCount: 2/);
+assert.match(locationsRoute, /'Cache-Control': 'private, no-store, max-age=0'/);
+assert.match(locationsRoute, /'X-Content-Type-Options': 'nosniff'/);
+assert.equal((locationsRoute.match(/return NextResponse\.json\(/g) || []).length, 1);
 
 const functionsInvalidator = readFileSync(join(repoRoot, 'functions/src/ownerBusinessAssistant/contextPacketCacheInvalidation.ts'), 'utf8');
 assert.match(functionsInvalidator, /serverPacketIndexPrefix/);
 assert.match(functionsInvalidator, /smembers/);
+assert.match(functionsInvalidator, /tId: string \| number;/);
+assert.doesNotMatch(functionsInvalidator, /params\.tId == null \? '\*'/);
+assert.match(functionsInvalidator, /redis\.srem\(indexKey/);
+assert.match(functionsInvalidator, /eligibleKeys\.length <= keysToDelete\.length/);
+assert.match(functionsInvalidator, /expectedPacketPrefix/);
+assert.match(functionsInvalidator, /serverPacketPrefix\}:\$\{params\.tId\}:\$\{params\.sId\}:/);
+assert.match(functionsInvalidator, /OWNER_BUSINESS_ASSISTANT_CACHE_INVALIDATION_FAILED/);
 
 const desktopLocations = readFileSync(join(repoRoot, 'src/components/templates/main-app/ownerBusinessAssistant/BusinessHealthLocationSummary.tsx'), 'utf8');
 assert.match(desktopLocations, /Checked/);
@@ -554,6 +689,23 @@ const ownerBusinessAssistantFirebaseDoc = readFileSync(join(repoRoot, '__docs__/
 const ownerBusinessAssistantValidationDoc = readFileSync(join(repoRoot, '__docs__/owner-business-assistant/owner-business-assistant_validation.md'), 'utf8');
 const productionReadinessAudit = readFileSync(join(repoRoot, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8');
 const changelog = readFileSync(join(repoRoot, '__docs__/changelog.md'), 'utf8');
+
+assert.equal(
+  OwnerBusinessAssistantAnswerRequestSchema.parse({ question: '  Are my hours current?  ' }).question,
+  'Are my hours current?',
+);
+assert.equal(
+  OwnerBusinessAssistantAnswerRequestSchema.safeParse({ question: '   ' }).success,
+  false,
+);
+assert.equal(
+  OwnerBusinessAssistantFeedbackRequestSchema.safeParse({
+    answerId: 'answer_1',
+    rating: 'helpful',
+    reason: '   ',
+  }).success,
+  false,
+);
 assert.doesNotMatch(requestSchemas, /owner_question_actionable/);
 assert.match(requestSchemas, /multi_location_summary/);
 assert.match(requestSchemas, /import \{ isValidFirestoreDocumentId \} from '@lib\/firebase\/firestoreDocumentId';/);

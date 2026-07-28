@@ -102,9 +102,7 @@ function CardVisual({ visual }: { visual: PrimaryCard['visual'] }) {
     if (visual === 'prism') {
         return (
             <div className="nv-prism-visual" aria-hidden="true">
-                <span />
-                <span />
-                <span />
+                <span className="nv-prism-source-mark" />
             </div>
         );
     }

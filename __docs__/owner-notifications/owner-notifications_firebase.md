@@ -1,12 +1,18 @@
 # Owner Notifications - Firebase And Cost Plan
 
 **Status:** Local source complete; current target deploy and provider certification pending
-**Date:** 2026-07-21
+**Date:** 2026-07-28
 **Audience:** Engineering, platform owner
 
 > **Launch boundary:** Not current launch certification or deploy approval. This Firebase/cost plan is source-gated owner-notification runtime and cost evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
 
 July 10 tenant/idempotency follow-up: `ownerNotificationEvents/{eventId}` creation is now a transactional direct-ID read plus conditional create, and processing is a transactional read plus `status: processing` / `processingAttempt` claim before recipient resolution or provider delivery. This preserves the bounded event/delivery collections and adds no collection or composite index. Normal successful delivery keeps the same order of Firestore operations, but the event read/status write are now atomic. A failed event may be claimed once more; processing attempts above two and terminal/active statuses fail closed. MenuList store rate-limit IDs now hash product, tenant, store, and day.
+
+July 28 persisted-boundary, delivery-claim, and retention correction: app and Functions processors now reject stored event rows unless product/scope identity, deterministic dedupe, registry policy, metadata/source, timestamps, processing fields, and the 128KB event cap all satisfy the shared runtime projector. Rate-limit documents require exact identity, date, non-negative safe-integer count, and timestamp; no string/boolean numeric coercion remains. Each channel performs one deterministic delivery-claim transaction before the provider call and writes `status: sending`; finalization is a second transaction that proves the same claim before writing a terminal state. Terminal rows converge without a provider replay. Existing `sending` rows are treated as ambiguous and require reconciliation rather than an automatic resend.
+
+The Functions recovery query uses `ownerNotificationEvents(productId ASC, status ASC, processingStartedAt ASC)`, exact `ML`, a 15-minute cutoff, ascending order, and a 20-row cap. Current row state is transactionally re-proved before terminal `owner_notification_processing_outcome_ambiguous` settlement. MenuList app and Functions event/delivery rows retain 30 days and rate-limit rows retain 2 days. App-created rows now include `expiresAt`; the maintenance scheduler also scans at most 50 old exact-MenuList missing-TTL rows per collection using the new `productId + createdAt` or `productId + updatedAt` indexes and deletes only rows still missing `expiresAt` at transaction time.
+
+Failed-event retry projection also validates exact optional `retryCount` (`0|1`) and `retriedAt` Timestamp fields. The retry marker is no longer merged from a query snapshot after an unowned/failed claim: a post-processing transaction re-projects the current deterministic event and writes `retryCount: 1` only after processing attempt two has reached a terminal state.
 
 The retry/digest product-boundary correction requires `ownerNotificationEvents(productId ASC, status ASC, updatedAt ASC)` for the bounded 24-hour MenuList failed-event retry query and `ownerNotificationDeliveries(productId ASC, status ASC, createdAt ASC)` for exact product-scoped daily aggregate counts. Retry remains limited to 20 eligible MenuList events. Delivery rows preserve their original `createdAt`, update `lastAttemptAt`, and store the real event `processingAttempt`; a retry no longer erases attempt history by writing `attempt: 1` again or touches a foreign-product event selected by a shared-collection scan.
 
@@ -69,7 +75,7 @@ One deterministic document per event/channel/destination. Retries preserve the f
 | `channel` | string | email/whatsapp |
 | `recipientHash` | string | No raw phone/email in indexes |
 | `recipientMasked` | string | Debug-safe display |
-| `status` | string | sent/failed/skipped/rate_limited |
+| `status` | string | sending/sent/failed/skipped/rate_limited |
 | `templateKey` | string | Template registry key |
 | `templateVersion` | string | Migration/debug |
 | `providerMessageId` | string | Optional normalized provider result, maximum 200 characters |
@@ -94,6 +100,8 @@ The July 5 Answerlattice template output boundary update also adds no Firestore 
 Deployment of the July 5, 2026 Functions lifecycle template-output boundary was attempted against `menulist-qa` for the scoped target list `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler`; the exact command is recorded in `__docs__/audits/menulist-production-readiness-audit.md`. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission. Live Functions effect remains blocked until an account with project access can deploy the changed Functions bundle.
 
 Current Owner Notifications Functions retry evidence must start with `npm run verify:functions-deploy-preflight`, then use External Certification Runbook Gate 1 against `menulist-qa`. If the owner-notification-specific target list differs from Gate 1, record the exact scoped target list and reason in `__docs__/audits/menulist-production-readiness-audit.md` before retry. Production deploys require QA evidence and explicit production deploy approval. The historical deploy notes below preserve past blocker evidence only; do not reuse older broad Functions command shapes, PATH-wrapped local commands, no-config commands, or widened target lists from those attempts as current guidance.
+
+Deployment of the July 28 persisted-boundary, durable-delivery, stale-processing and legacy-retention correction was attempted with the exact QA target list `firestore:indexes`, `functions:menulistMaintenanceScheduler`, `functions:verifyMenuPublish`, `functions:computeDecisionBlocksScores`, `functions:triggerDecisionBlocksScoring`, and `functions:triggerStoreNightlyScheduler`, then repeated after the transaction-current retry correction. Firebase CLI stopped before predeploy or upload both times with `Failed to authenticate, have you run firebase login?`. No remote Function or index revision changed.
 
 Deployment of the June 28, 2026 MenuList Functions processor diagnostic hardening was attempted against a scoped `menulist-qa` Functions target set. The predeploy lint/build completed, but Firebase failed to read `menulist-qa` project metadata through Cloud Resource Manager with HTTP 403: caller does not have permission.
 
@@ -134,7 +142,11 @@ Implemented rollout uses deterministic document IDs and bounded direct document 
 | Collection | Index | Purpose |
 | --- | --- | --- |
 | `ownerNotificationEvents` | `productId ASC, status ASC, updatedAt ASC` | Last-24-hour bounded failed-event retry for one product |
+| `ownerNotificationEvents` | `productId ASC, status ASC, processingStartedAt ASC` | Recover at most 20 stale MenuList processing claims without provider replay |
+| `ownerNotificationEvents` | `productId ASC, createdAt ASC` | Bounded cleanup of legacy MenuList rows missing `expiresAt` |
 | `ownerNotificationDeliveries` | `productId ASC, status ASC, createdAt ASC` | Exact sent/failed daily aggregate counts for one product |
+| `ownerNotificationDeliveries` | `productId ASC, createdAt ASC` | Bounded cleanup of legacy MenuList rows missing `expiresAt` |
+| `ownerNotificationRateLimits` | `productId ASC, updatedAt ASC` | Bounded cleanup of legacy MenuList rows missing `expiresAt` |
 | `ownerNotificationDeliveries` | `productId ASC, eventId ASC, createdAt DESC` | Newest 12 delivery attempts for one product and selected event |
 | `ownerNotificationEvents` | `productId ASC, updatedAt DESC` | Newest bounded platform-ops event window for one product |
 
@@ -179,10 +191,11 @@ No new standalone scheduled function was added. Existing deployed Functions that
 | Store/workspace preference read | 1 |
 | Dedupe/rate-limit direct reads | 1-3 |
 | Rate-limit counter write | 1 |
-| Delivery log write | 1 |
+| Delivery claim transaction | 1 read + 1 write |
+| Delivery finalization transaction | 1 read + 1 write |
 | Event status update | 1 |
 
-Estimated Firestore operations: 2-3 reads, 3-4 writes.
+Estimated Firestore operations: 4-6 reads, 4-5 writes, depending on direct rate-limit checks and recipient fallback.
 
 ### Happy path email + WhatsApp
 
@@ -195,10 +208,11 @@ WhatsApp delivery hashes the canonical international recipient digits, not the o
 | Store/workspace preference read | 1 |
 | Dedupe/rate-limit direct reads | 2-5 |
 | Rate-limit counter writes | 2 |
-| Delivery log writes | 2 |
+| Delivery claim transactions | 2 reads + 2 writes |
+| Delivery finalization transactions | 2 reads + 2 writes |
 | Event status update | 1 |
 
-Estimated Firestore operations: 4-7 reads, 6 writes.
+Estimated Firestore operations: 8-12 reads, 7-8 writes, depending on direct rate-limit checks and recipient fallback.
 
 ## Internal Tracking Dashboard Cost
 
@@ -315,11 +329,11 @@ Recommended API path:
 
 | Collection | Retention |
 | --- | --- |
-| `ownerNotificationEvents` | 180 days |
-| `ownerNotificationDeliveries` | 180 days |
-| `ownerNotificationRateLimits` | 2-14 days based on key |
+| `ownerNotificationEvents` | 30 days |
+| `ownerNotificationDeliveries` | 30 days |
+| `ownerNotificationRateLimits` | 2 days |
 
-Use Firestore TTL where available.
+Current writers set `expiresAt` and the Firestore index configuration enables TTL. The MenuList maintenance scheduler additionally deletes bounded legacy rows that predate the same cutoffs and still lack `expiresAt`.
 
 ## Firebase Deploy Impact
 

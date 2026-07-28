@@ -25,12 +25,28 @@ export type EmploymentType = {
 }
 
 export type COMMISIONS_TYPE = {
-    product: any,
-    service: any,
-    voucher: any,
-    giftCard: any,
+    product: unknown,
+    service: unknown,
+    voucher: unknown,
+    giftCard: unknown,
 
 }
+
+export type UserProductAccountType = {
+    tenantId: number;
+    storeId: number | null;
+    role?: string;
+    platformRole?: string;
+    storeIds?: Array<number | string>;
+    accessRevision?: number;
+    active?: boolean;
+    authDisabled?: boolean;
+    deleted?: boolean;
+    deletedAt?: unknown;
+    createdAt?: unknown;
+    updatedAt?: unknown;
+};
+
 export type UserDataType = {
     id?: string;
     isVerified: boolean;
@@ -40,25 +56,25 @@ export type UserDataType = {
     index: number;//used to display in users list dropdown in case of ording or assigning user list
 
     deleted: boolean;
-    deletedAt: string;
+    deletedAt: string | null;
     authDisabled?: boolean;
     authSyncPending?: {
         desiredDisabled: boolean;
-        leaseExpiresAt: any;
+        leaseExpiresAt: unknown;
         operationId: string;
-        requestedAt: any;
+        requestedAt: unknown;
     };
     authSyncRevision?: string;
     authSyncStatus?: "pending" | "synced" | "auth_user_missing" | "failed";
-    authSyncedAt?: any;
+    authSyncedAt?: unknown;
     passcodeResetPending?: {
-        leaseExpiresAt: any;
+        leaseExpiresAt: unknown;
         operationId: string;
-        requestedAt: any;
+        requestedAt: unknown;
         requestedBy: string;
     };
-    authTokensRevokedAt?: any;
-    sessionRevokedAt?: any;
+    authTokensRevokedAt?: unknown;
+    sessionRevokedAt?: unknown;
     sessionRevokedBy?: string;
     sessionRevokedByEmail?: string;
     sessionRevokedReason?: string;
@@ -100,15 +116,7 @@ export type UserDataType = {
     storeId: number;//defalt store id
     pId?: ProductId;
     productId?: ProductId;
-    productAccounts?: Partial<Record<ProductId, {
-        tenantId: number;
-        storeId: number;
-        role?: string;
-        platformRole?: string;
-        storeIds?: Array<number | string>;
-        createdAt?: any;
-        updatedAt?: any;
-    }>>;
+    productAccounts?: Partial<Record<ProductId, UserProductAccountType>>;
     stores: UserStoreMappingType[],
     storeIds: number[],
 
@@ -129,5 +137,5 @@ export type UserDataType = {
 
     additionalDocuments: { label: string, url: string, size?: number, type: string }[],
 
-    preferances: any,
+    preferances: Record<string, unknown>,
 }

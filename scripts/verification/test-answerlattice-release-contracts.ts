@@ -7,6 +7,10 @@ import {
     normalizeAnswerlatticeVersionLabel,
     parseAnswerlatticeReleaseAction,
 } from '../../src/lib/answerlattice/releaseContracts';
+import {
+    denormalizeVersion,
+    normalizeVersion,
+} from '../../src/types/answerlattice';
 
 const validCreate = {
     action: 'create',
@@ -31,6 +35,15 @@ assert.deepEqual(normalizeAnswerlatticeVersionLabel('v2.4.1'), { label: '2.4.1',
 assert.deepEqual(normalizeAnswerlatticeVersionLabel('2'), { label: '2', normalized: 2_000_000 });
 assert.equal(normalizeAnswerlatticeVersionLabel('2.1000.1'), null);
 assert.equal(normalizeAnswerlatticeVersionLabel('latest'), null);
+assert.equal(normalizeVersion('2.4.1'), 2_004_001);
+assert.equal(normalizeVersion('2'), 2_000_000);
+assert.equal(Number.isNaN(normalizeVersion('1.1000.0')), true, 'overflowing components must not collide');
+assert.equal(Number.isNaN(normalizeVersion('2.0.0.1')), true, 'extra components must fail closed');
+assert.equal(Number.isNaN(normalizeVersion('1.invalid.2')), true, 'nonnumeric components must fail closed');
+assert.equal(Number.isNaN(normalizeVersion('-1.2.3')), true, 'negative components must fail closed');
+assert.equal(denormalizeVersion(2_004_001), '2.4.1');
+assert.equal(denormalizeVersion(Number.NaN), '');
+assert.equal(denormalizeVersion(-1), '');
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, extra: true }), null, 'unknown request fields must fail closed');
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, entityChanges: ['billing', 'billing'] }), null, 'duplicate entity IDs must fail');
 assert.equal(parseAnswerlatticeReleaseAction({

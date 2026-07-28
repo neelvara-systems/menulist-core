@@ -5,7 +5,7 @@ import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@prov
 import { SupportTicketType } from '@type/supportTicket';
 import { updateList } from '@util/utils';
 import { Timestamp } from 'firebase/firestore';
-import { useCallback, useContext } from 'react';
+import { useCallback, useContext, useRef } from 'react';
 
 /**
  * Ticket caching hook for list-based ticket management
@@ -33,6 +33,8 @@ import { useCallback, useContext } from 'react';
 export const useTicketCache = (options?: { audience?: AnswerlatticeCacheAudience }) => {
     const { cachedTickets, setCachedTickets } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const scopeKey = useAnswerlatticeCacheScope(options?.audience);
+    const scopeKeyRef = useRef(scopeKey);
+    scopeKeyRef.current = scopeKey;
     const scopedTickets = cachedTickets.scopeKey === scopeKey ? cachedTickets.tickets : [];
 
     /**
@@ -80,6 +82,7 @@ export const useTicketCache = (options?: { audience?: AnswerlatticeCacheAudience
                     ? await getSupportTickets(true)
                     : await getStoresTickets();
 
+                if (scopeKeyRef.current !== scopeKey) return [];
                 setCachedTickets({
                     cachedOn: Timestamp.now(),
                     tickets,
@@ -124,6 +127,7 @@ export const useTicketCache = (options?: { audience?: AnswerlatticeCacheAudience
                 ? await getSupportTickets(true)
                 : await getStoresTickets();
 
+            if (scopeKeyRef.current !== scopeKey) return [];
             setCachedTickets({
                 cachedOn: Timestamp.now(),
                 tickets,

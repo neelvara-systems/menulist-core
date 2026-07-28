@@ -58,6 +58,15 @@ function hasAnyWorkingHours(workingHours: unknown): boolean {
     return Object.values(workingHours as Record<string, unknown>).some(hasText);
 }
 
+function isValidCoordinate(value: unknown, minimum: number, maximum: number): boolean {
+    const normalized = typeof value === 'number'
+        ? value
+        : typeof value === 'string' && value.trim() !== ''
+            ? Number(value)
+            : Number.NaN;
+    return Number.isFinite(normalized) && normalized >= minimum && normalized <= maximum;
+}
+
 function isStoreActiveForPublicTruth(store: Record<string, any>): boolean {
     return store.active !== false
         && store.deleted !== true
@@ -77,11 +86,14 @@ function hasPublicIdentity(store: Record<string, any>): boolean {
 }
 
 function hasLocationFact(store: Record<string, any>): boolean {
+    const hasCoordinates = isValidCoordinate(store.geo?.latitude, -90, 90)
+        && isValidCoordinate(store.geo?.longitude, -180, 180);
+
     return hasText(store.addressLine)
         || hasText(store.city)
         || hasText(store.area)
         || hasText(store.state)
-        || Boolean(store.geo?.latitude && store.geo?.longitude);
+        || hasCoordinates;
 }
 
 function hasContactFact(store: Record<string, any>): boolean {

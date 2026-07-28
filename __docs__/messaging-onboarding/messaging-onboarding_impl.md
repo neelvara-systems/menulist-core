@@ -9,6 +9,8 @@
 
 ### July 16, 2026 Provider Network Boundary
 
+Lifecycle notification delivery treats persisted store scope as a security boundary. Canonical and legacy tenant/store aliases must be exact and agree before owner/contact resolution; direct store reads also require the expected tenant. Ambiguous legacy rows fail without a provider call.
+
 All authenticated WhatsApp Graph API requests in `WhatsAppAdapter.ts` set `redirect: "manual"`. Media metadata and outbound sends use a 15-second abort boundary; media binary downloads use a 30-second abort boundary. Redirect responses fail as provider errors instead of forwarding the bearer token to another location, and stalled provider calls release the worker within a bounded interval. `scripts/verification/test-messaging-whatsapp-adapter.ts` exercises the request options and `npm run verify:menu-extraction-pipeline` source-gates them. This is a cost-neutral provider hardening change; the checked-in runtime gate remains disabled.
 
 ### July 13, 2026 Platform Monitor Data Contract
@@ -128,6 +130,12 @@ All authenticated WhatsApp Graph API requests in `WhatsAppAdapter.ts` set `redir
 │                                                                        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+Hourly snapshot documents are complete authoritative projections and use exact
+replacement. The control document remains a partial mutable lease/status record.
+Threshold alerts settle independently: a failed alert write is logged with its
+bounded alert key/severity and does not prevent later warning or critical alerts
+from being attempted.
 
 **June 29, 2026 handoff hardening; June 30 copy acknowledgement:** the post-publish success state in `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx` now catches Copy Link and WhatsApp browser failures, shows fixed owner copy, opens WhatsApp with `noopener,noreferrer`, and logs only session/link presence-length plus message/URL length metadata. Copy Link checks Clipboard API support, falls through from rejected Clipboard API writes to textarea fallback, uses the textarea fallback only when the document fallback exists, and sets copied state only after acknowledged browser handoff; failed copy diagnostics include clipboard/fallback support booleans. The same preview page now parses preview load, approve, and fix responses through `src/lib/messaging-onboarding/previewClientResponse.ts`, which caps response JSON at 2MB and requires the expected preview/publish/fix response envelopes before updating page state. The approve/fix API routes, publish transaction, cache revalidation, provider confirmation, Firestore rules/indexes, Cloud Functions, and Vercel deployment are unchanged.
 
@@ -553,8 +561,11 @@ interface MessagingOnboardingRateLimit {
   cooldownUntil: Timestamp | null;
   dayResetAt: Timestamp; // Midnight UTC of next day
   weekResetAt: Timestamp; // Monday midnight UTC
+  expiresAt?: Timestamp; // 90 days after the latest admitted session/quota/cooldown write; optional only for legacy rows
 }
 ```
+
+Every admitted session creation, extraction-quota consumption, or cooldown write refreshes `expiresAt`. The guarded MenuList Firestore TTL setup owns eventual deletion after 90 days of inactivity. TTL delay does not weaken rate enforcement because active callers continue to use the same transaction-current daily, weekly and cooldown fields; a deleted inactive row is equivalent to a user returning after all windows have expired.
 
 ### 3.3 Durable Inbound Message
 

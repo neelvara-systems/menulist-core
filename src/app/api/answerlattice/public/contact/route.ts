@@ -12,13 +12,13 @@ export const runtime = 'nodejs';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
+import { AnswerlatticePublicContactRequestSchema } from '@lib/answerlattice/publicContactContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import { admin } from '@lib/firebase/firebaseAdminCompat';
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import {
     checkPublicRateLimit,
     getClientIp,
@@ -28,21 +28,11 @@ import {
     verifyTurnstileToken,
 } from 'src/middleware/publicApi';
 
-const ContactTopicSchema = z.enum(['setup', 'demo', 'pricing', 'partnership', 'security', 'other']);
 const ANSWERLATTICE_PUBLIC_CONTACT_MAX_BODY_BYTES = 8 * 1024;
-
-const ContactRequestSchema = z.object({
-    name: z.string().trim().min(2).max(120),
-    workEmail: z.string().trim().email().max(180),
-    phoneNumber: z.string().trim().max(40).optional().nullable(),
-    productUrl: z.string().trim().max(240).optional().nullable(),
-    helpTopic: ContactTopicSchema,
-    message: z.string().trim().min(10).max(2000),
-    consent: z.boolean().refine((value) => value === true),
-    sourcePath: z.string().trim().max(240).optional().nullable(),
-    website: z.string().optional().nullable(),
-    captchaToken: z.string().max(2048).optional(),
-}).strict();
+const ANSWERLATTICE_PUBLIC_CONTACT_RESPONSE_HEADERS = {
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
 
 const getAnswerlatticeDb = () => {
     const db = answerlatticeFirestoreAdmin as any;
@@ -54,8 +44,15 @@ const clean = (value?: string | null, max = 500): string | null => {
     return sanitized ? sanitized.slice(0, max) : null;
 };
 
+const contactJson = (body: Record<string, unknown>, status = 200) => NextResponse.json(body, {
+    headers: ANSWERLATTICE_PUBLIC_CONTACT_RESPONSE_HEADERS,
+    status,
+});
+
 async function postAnswerlatticeContact(request: NextRequest) {
-    const rateLimitResponse = await checkPublicRateLimit(request, 'ANSWERLATTICE_CONTACT_FORM');
+    const rateLimitResponse = await checkPublicRateLimit(request, 'ANSWERLATTICE_CONTACT_FORM', {
+        failClosed: true,
+    });
     if (rateLimitResponse) return rateLimitResponse;
 
     const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_PUBLIC_CONTACT_MAX_BODY_BYTES, {
@@ -63,38 +60,38 @@ async function postAnswerlatticeContact(request: NextRequest) {
         tooLargeMessage: 'Request body too large.',
     });
     if (bodyResult.ok === false) {
-        return NextResponse.json(
+        return contactJson(
             {
                 accepted: false,
                 error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid request body.',
             },
-            { status: bodyResult.response.status },
+            bodyResult.response.status,
         );
     }
 
-    const validation = ContactRequestSchema.safeParse(bodyResult.data);
+    const validation = AnswerlatticePublicContactRequestSchema.safeParse(bodyResult.data);
     if (!validation.success) {
-        return NextResponse.json({ accepted: false, error: 'Please check the form and try again.' }, { status: 400 });
+        return contactJson({ accepted: false, error: 'Please check the form and try again.' }, 400);
     }
 
     const body = validation.data;
     if (!validateHoneypot(body.website || undefined)) {
-        return NextResponse.json({ accepted: true });
+        return contactJson({ accepted: true });
     }
 
     const captchaResult = await verifyTurnstileToken(body.captchaToken, request);
     if (!captchaResult.ok) {
-        return NextResponse.json(
+        return contactJson(
             { accepted: false, error: 'Could not verify request. Please try again.' },
-            { status: 403 },
+            403,
         );
     }
 
     const db = getAnswerlatticeDb();
     if (!db) {
-        return NextResponse.json(
+        return contactJson(
             { accepted: false, error: 'Contact form is unavailable. Please email hello@answerlattice.com.' },
-            { status: 503 },
+            503,
         );
     }
 
@@ -127,15 +124,15 @@ async function postAnswerlatticeContact(request: NextRequest) {
             hasProductUrl: Boolean(body.productUrl),
         });
 
-        return NextResponse.json({ accepted: true });
+        return contactJson({ accepted: true });
     } catch (error) {
         logRuntimeFailure('answerlattice_public_contact_submission_failed', error, {
             helpTopic: body.helpTopic,
             hasProductUrl: Boolean(body.productUrl),
         });
-        return NextResponse.json(
+        return contactJson(
             { accepted: false, error: 'Could not send right now. Please email hello@answerlattice.com.' },
-            { status: 500 },
+            500,
         );
     }
 }

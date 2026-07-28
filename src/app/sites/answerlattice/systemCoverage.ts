@@ -72,6 +72,10 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
                 detail: 'Features, plans, roles, workflows, states, integrations, and errors are mapped as support-relevant surfaces.',
             },
             {
+                title: 'Knowledge Map',
+                detail: 'Owners can inspect governed entity relationships, approved-answer coverage, drift, and review state from one compact summary instead of opening each record.',
+            },
+            {
                 title: 'Approved answers',
                 detail: 'Approved, scoped answers are served first; published owner answers can handle matching repeated questions before fallback.',
             },

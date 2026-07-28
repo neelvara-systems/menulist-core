@@ -36,6 +36,11 @@ const MAX_ATTEMPTS = 5;
 const OTP_LENGTH = 6;
 const GRAPH_TEMPLATE_LANGUAGE = 'en';
 const PHONE_OTP_CHALLENGE_ID_PATTERN = /^[A-Za-z0-9]{20}$/;
+const PHONE_OTP_LOGIN_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const PHONE_OTP_HASH_PATTERN = /^[a-f0-9]{64}$/;
+const PHONE_OTP_REQUEST_HASH_PATTERN = /^[a-f0-9]{32}$/;
+const PHONE_OTP_OPERATION_ID_PATTERN = /^[a-f0-9]{32}$/;
+const PHONE_OTP_PURPOSES = new Set<PhoneOtpPurpose>(['dashboard_login', 'create_menu', 'login']);
 
 export type PhoneOtpPurpose = 'dashboard_login' | 'create_menu' | 'login';
 
@@ -85,16 +90,125 @@ const timingSafeHashCompare = (left: string, right: string) => {
     return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 };
 
-const timestampToMillis = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value === 'number') return value;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.toDate === 'function') return value.toDate().getTime();
-    if (typeof value._seconds === 'number') {
-        return (value._seconds * 1000) + Math.floor((value._nanoseconds || 0) / 1_000_000);
-    }
-    return 0;
+const timestampToMillis = (value: unknown): number | null => {
+    if (!(value instanceof admin.firestore.Timestamp)) return null;
+    const milliseconds = value.toMillis();
+    return Number.isSafeInteger(milliseconds) && milliseconds > 0 ? milliseconds : null;
 };
+
+type PhoneOtpChallengeData = {
+    attempts: number;
+    countryCode: string;
+    dialCode: string;
+    expiresAtMs: number;
+    otpHash: string;
+    phoneE164: string;
+    phoneUsername: string;
+    status: 'expired' | 'pending' | 'too_many_attempts' | 'verifying';
+    verificationOperationId: string | null;
+    verificationReservedUntilMs: number | null;
+};
+
+type PhoneOtpLoginTokenData = {
+    email: string;
+    expiresAtMs: number;
+    userId: string;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    typeof value === 'object' && value !== null && !Array.isArray(value)
+);
+
+const readBoundedString = (value: unknown, maxLength: number): string | null => (
+    typeof value === 'string' && value.length > 0 && value.length <= maxLength
+        ? value
+        : null
+);
+
+const parsePhoneOtpChallengeData = (value: unknown): PhoneOtpChallengeData | null => {
+    if (!isRecord(value)) return null;
+    if (
+        value.status !== 'expired'
+        && value.status !== 'pending'
+        && value.status !== 'too_many_attempts'
+        && value.status !== 'verifying'
+    ) {
+        return null;
+    }
+    if (!Number.isSafeInteger(value.attempts) || (value.attempts as number) < 0 || (value.attempts as number) > MAX_ATTEMPTS) {
+        return null;
+    }
+
+    const expiresAtMs = timestampToMillis(value.expiresAt);
+    const phoneE164 = readBoundedString(value.phoneE164, 32);
+    const phoneUsername = readBoundedString(value.phoneUsername, 24);
+    const countryCode = typeof value.countryCode === 'string' && value.countryCode.length <= 8
+        ? value.countryCode
+        : '';
+    const dialCode = typeof value.dialCode === 'string' && value.dialCode.length <= 12
+        ? value.dialCode
+        : '';
+    const otpHash = typeof value.otpHash === 'string' && PHONE_OTP_HASH_PATTERN.test(value.otpHash)
+        ? value.otpHash
+        : null;
+    if (!expiresAtMs || !phoneE164 || !phoneUsername || !otpHash) return null;
+
+    if (value.status !== 'verifying') {
+        return {
+            attempts: value.attempts as number,
+            countryCode,
+            dialCode,
+            expiresAtMs,
+            otpHash,
+            phoneE164,
+            phoneUsername,
+            status: value.status,
+            verificationOperationId: null,
+            verificationReservedUntilMs: null,
+        };
+    }
+
+    const verificationOperationId = typeof value.verificationOperationId === 'string'
+        && PHONE_OTP_OPERATION_ID_PATTERN.test(value.verificationOperationId)
+        ? value.verificationOperationId
+        : null;
+    const verificationReservedUntilMs = timestampToMillis(value.verificationReservedUntil);
+    if (!verificationOperationId || !verificationReservedUntilMs) return null;
+
+    return {
+        attempts: value.attempts as number,
+        countryCode,
+        dialCode,
+        expiresAtMs,
+        otpHash,
+        phoneE164,
+        phoneUsername,
+        status: value.status,
+        verificationOperationId,
+        verificationReservedUntilMs,
+    };
+};
+
+const parsePhoneOtpLoginTokenData = (value: unknown): PhoneOtpLoginTokenData | null => {
+    if (!isRecord(value) || value.status !== 'active' || value.consumedAt != null) return null;
+    const expiresAtMs = timestampToMillis(value.expiresAt);
+    const userId = normalizePhoneOtpUserDocumentId(value.userId);
+    const email = typeof value.email === 'string' ? value.email.toLowerCase().trim() : '';
+    if (
+        !expiresAtMs
+        || !userId
+        || !email
+        || email.length > 320
+        || email !== value.email
+    ) {
+        return null;
+    }
+    return { email, expiresAtMs, userId };
+};
+
+const normalizeOptionalRequestHash = (value: unknown): string | null => (
+    typeof value === 'string' && PHONE_OTP_REQUEST_HASH_PATTERN.test(value) ? value : null
+);
 
 const getLocalPhoneCandidates = (phone: NormalizedPhoneOtpNumber) => {
     const dialDigits = normalizePhoneDigits(phone.dialCode);
@@ -181,6 +295,12 @@ export const normalizePhoneOtpUserDocumentId = (value: unknown): string | null =
         : null;
 };
 
+export const normalizePhoneOtpLoginToken = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const token = value.trim();
+    return token === value && PHONE_OTP_LOGIN_TOKEN_PATTERN.test(token) ? token : null;
+};
+
 const hashOtp = (params: { challengeId: string; code: string; phoneE164: string }) => (
     hmac(`otp:${params.challengeId}:${params.phoneE164}:${params.code}`)
 );
@@ -241,6 +361,9 @@ export async function createPhoneOtpChallenge(params: {
     if (!FEATURE_FLAGS.ENABLE_PHONE_OTP_AUTH) {
         throw new PhoneOtpError('disabled', 'Phone OTP auth is disabled.');
     }
+    if (!PHONE_OTP_PURPOSES.has(params.purpose)) {
+        throw new PhoneOtpError('invalid_phone', 'Enter a valid phone number.');
+    }
 
     const phone = normalizePhoneForOtp({
         countryCode: params.countryCode,
@@ -269,8 +392,8 @@ export async function createPhoneOtpChallenge(params: {
         maxAttempts: MAX_ATTEMPTS,
         createdAt: now,
         expiresAt,
-        requestIpHash: params.requestIpHash || null,
-        userAgentHash: params.userAgentHash || null,
+        requestIpHash: normalizeOptionalRequestHash(params.requestIpHash),
+        userAgentHash: normalizeOptionalRequestHash(params.userAgentHash),
         delivery: {
             channel: 'whatsapp',
             status: 'queued',
@@ -505,11 +628,13 @@ export async function verifyPhoneOtpChallenge(params: {
             return { outcome: 'invalid_code' as const };
         }
 
-        const data = snapshot.data() || {};
+        const data = parsePhoneOtpChallengeData(snapshot.data());
+        if (!data) {
+            return { outcome: 'invalid_code' as const };
+        }
         const nowMs = Date.now();
         const now = admin.firestore.Timestamp.fromMillis(nowMs);
-        const expiresAtMs = timestampToMillis(data.expiresAt);
-        if (!expiresAtMs || expiresAtMs <= nowMs) {
+        if (data.expiresAtMs <= nowMs) {
             transaction.update(challengeRef, {
                 status: 'expired',
                 updatedAt: now,
@@ -519,7 +644,7 @@ export async function verifyPhoneOtpChallenge(params: {
             return { outcome: 'expired' as const };
         }
 
-        const attempts = Number(data.attempts || 0);
+        const attempts = data.attempts;
         if (attempts >= MAX_ATTEMPTS) {
             transaction.update(challengeRef, {
                 status: 'too_many_attempts',
@@ -531,7 +656,8 @@ export async function verifyPhoneOtpChallenge(params: {
         }
 
         const isRecoveringExpiredReservation = data.status === 'verifying'
-            && timestampToMillis(data.verificationReservedUntil) <= nowMs;
+            && data.verificationReservedUntilMs !== null
+            && data.verificationReservedUntilMs <= nowMs;
         if (data.status !== 'pending' && !isRecoveringExpiredReservation) {
             return { outcome: 'invalid_code' as const };
         }
@@ -539,10 +665,9 @@ export async function verifyPhoneOtpChallenge(params: {
         const actualHash = hashOtp({
             challengeId,
             code,
-            phoneE164: String(data.phoneE164 || ''),
+            phoneE164: data.phoneE164,
         });
-        const expectedHash = String(data.otpHash || '');
-        if (!expectedHash || !timingSafeHashCompare(actualHash, expectedHash)) {
+        if (!timingSafeHashCompare(actualHash, data.otpHash)) {
             const nextAttempts = attempts + 1;
             const tooManyAttempts = nextAttempts >= MAX_ATTEMPTS;
             transaction.update(challengeRef, {
@@ -566,10 +691,10 @@ export async function verifyPhoneOtpChallenge(params: {
 
         return {
             outcome: 'reserved' as const,
-            countryCode: String(data.countryCode || ''),
-            dialCode: String(data.dialCode || ''),
-            phoneE164: String(data.phoneE164 || ''),
-            phoneUsername: String(data.phoneUsername || ''),
+            countryCode: data.countryCode,
+            dialCode: data.dialCode,
+            phoneE164: data.phoneE164,
+            phoneUsername: data.phoneUsername,
         };
     });
 
@@ -606,10 +731,11 @@ export async function verifyPhoneOtpChallenge(params: {
                 transaction.get(challengeRef),
                 transaction.get(userRef),
             ]);
-            const challengeData = challengeSnapshot.data() || {};
+            const challengeData = parsePhoneOtpChallengeData(challengeSnapshot.data());
             const userData = userSnapshot.data() || {};
             if (
                 !challengeSnapshot.exists
+                || !challengeData
                 || challengeData.status !== 'verifying'
                 || challengeData.verificationOperationId !== verificationOperationId
                 || !userSnapshot.exists
@@ -618,8 +744,7 @@ export async function verifyPhoneOtpChallenge(params: {
                 return { outcome: 'invalid_code' as const };
             }
 
-            const challengeExpiresAtMs = timestampToMillis(challengeData.expiresAt);
-            if (!challengeExpiresAtMs || challengeExpiresAtMs <= nowMs) {
+            if (challengeData.expiresAtMs <= nowMs) {
                 transaction.update(challengeRef, {
                     status: 'expired',
                     updatedAt: admin.firestore.Timestamp.fromMillis(nowMs),
@@ -669,13 +794,13 @@ export async function verifyPhoneOtpChallenge(params: {
         try {
             await firestoreAdmin.runTransaction(async (transaction) => {
                 const snapshot = await transaction.get(challengeRef);
-                const data = snapshot.data() || {};
-                if (!snapshot.exists || data.status !== 'verifying' || data.verificationOperationId !== verificationOperationId) {
+                const data = parsePhoneOtpChallengeData(snapshot.data());
+                if (!snapshot.exists || !data || data.status !== 'verifying' || data.verificationOperationId !== verificationOperationId) {
                     return;
                 }
                 const nowMs = Date.now();
                 transaction.update(challengeRef, {
-                    status: timestampToMillis(data.expiresAt) <= nowMs ? 'expired' : 'pending',
+                    status: data.expiresAtMs <= nowMs ? 'expired' : 'pending',
                     updatedAt: admin.firestore.Timestamp.fromMillis(nowMs),
                     verificationOperationId: admin.firestore.FieldValue.delete(),
                     verificationReservedUntil: admin.firestore.FieldValue.delete(),
@@ -699,8 +824,8 @@ export async function consumePhoneOtpLoginToken(params: {
         throw new PhoneOtpError('disabled', 'Phone OTP auth is disabled.');
     }
 
-    const token = String(params.token || '').trim();
-    if (token.length < 32) {
+    const token = normalizePhoneOtpLoginToken(params.token);
+    if (!token) {
         throw new PhoneOtpError('invalid_token', 'Invalid phone login token.');
     }
 
@@ -711,30 +836,28 @@ export async function consumePhoneOtpLoginToken(params: {
             return { outcome: 'invalid_token' as const, userId: '' };
         }
 
-        const data = snapshot.data() || {};
-        if (data.status !== 'active' || data.consumedAt) {
-            return { outcome: 'invalid_token' as const, userId: String(data.userId || '') };
+        const rawData = snapshot.data();
+        const data = parsePhoneOtpLoginTokenData(rawData);
+        if (!data) {
+            const malformedUserId = isRecord(rawData) && typeof rawData.userId === 'string' ? rawData.userId : '';
+            return { outcome: 'invalid_token' as const, userId: malformedUserId };
         }
 
-        const expiresAtMs = timestampToMillis(data.expiresAt);
-        if (!expiresAtMs || expiresAtMs <= Date.now()) {
+        if (data.expiresAtMs <= Date.now()) {
             transaction.update(tokenRef, {
                 status: 'expired',
                 updatedAt: admin.firestore.Timestamp.now(),
             });
-            return { outcome: 'expired' as const, userId: String(data.userId || '') };
+            return { outcome: 'expired' as const, userId: data.userId };
         }
 
-        const tokenUserId = normalizePhoneOtpUserDocumentId(data.userId);
-        if (!tokenUserId) {
-            return { outcome: 'user_not_found' as const, userId: String(data.userId || '') };
-        }
+        const tokenUserId = data.userId;
         const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(tokenUserId);
         const userSnapshot = await transaction.get(userRef);
         const dbUser = userSnapshot.data() || {};
         if (
             !userSnapshot.exists
-            || String(dbUser.email || '').toLowerCase().trim() !== String(data.email || '').toLowerCase().trim()
+            || String(dbUser.email || '').toLowerCase().trim() !== data.email
         ) {
             return { outcome: 'user_not_found' as const, userId: tokenUserId };
         }

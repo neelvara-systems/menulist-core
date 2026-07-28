@@ -32,6 +32,8 @@ Public menu external link normalization is Firebase-cost neutral. It normalizes 
 
 Menu cache revalidation rate-limit boundary: `/api/revalidate/menu` now applies the shared `MENU_CACHE_REVALIDATION` limiter before bounded body parsing, cache-tag validation, `revalidateTag()` calls, or Owner Business Assistant packet invalidation. Authenticated app callers are keyed by hashed session actor material; `x-revalidate-secret` callers are keyed by hashed caller-source material after the secret is validated. The limit is intentionally generous at 600 requests per minute per source so normal owner save bursts and Cloud Function public-cache invalidations continue to pass while runaway loops or leaked-secret churn are bounded. This adds no Firestore read/write/delete and does not change valid cache tags, store-access checks, explicit tag handling, screen-data invalidation, or assistant-cache invalidation behavior.
 
+Authenticated cache revalidation now derives one fail-closed session access projection before body parsing or cache work. Every present root/nested tenant and current-store alias must be canonical and equal; every present platform-role alias must agree before platform-only explicit tags are admitted. Additional multi-location store IDs remain allowed only when they are canonical members of the authenticated session list. Owner Business Assistant packet invalidation receives the exact reconciled tenant identity, never a preferred alias. Secret-authenticated server invalidation keeps its existing global per-store behavior.
+
 ---
 
 ## Firestore Operations

@@ -309,8 +309,8 @@ export async function settleProductTopupFromProvider(params: {
         if (answerlatticeStoreRef) {
             tx.set(answerlatticeStoreRef, {
                 answerlatticeSubscription: {
-                    id: subscription.id || subscription.providerSubscriptionId || null,
-                    providerSubscriptionId: subscription.providerSubscriptionId || subscription.id || null,
+                    id: currentSubscription.id || currentSubscription.providerSubscriptionId || null,
+                    providerSubscriptionId: currentSubscription.providerSubscriptionId || currentSubscription.id || null,
                     monthlyCreditsAllowance: currentSubscription.monthlyCreditsAllowance,
                     monthlyCredits: currentSubscription.monthlyCredits,
                     topUpCredits: newBalance,

@@ -3,6 +3,7 @@ import { DEFAULT_PRODUCT_ID } from '@constant/product';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { runStorePublicTruthPostCommitEffects } from '@lib/cache/storePublicTruthPostCommit';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
+import { normalizeMenuListPublicEntityIdentityAliases } from '@lib/publicTruth/entityEligibility';
 import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
 import { secureError } from '@lib/security/secureLogger';
 import type { FirestoreSubscriptionDoc, PaymentStatus } from '@type/razorpay';
@@ -74,6 +75,7 @@ export async function syncStorePlanEntitlementFromSubscription(
 
     const subscriptionsRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
     const subscriptionRef = subscriptionsRef.doc(subscriptionId);
+    const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(expectedStoreScope.documentId);
     const entitledSubscriptionsQuery = subscriptionsRef
         .where('pId', '==', DEFAULT_PRODUCT_ID)
         .where('productId', '==', DEFAULT_PRODUCT_ID)
@@ -86,11 +88,12 @@ export async function syncStorePlanEntitlementFromSubscription(
         .orderBy('cycleEndDate', 'desc')
         .limit(10);
     const syncResult = await firestoreAdmin.runTransaction(async (transaction) => {
-        const [subscriptionSnapshot, entitledSubscriptionsSnapshot] = await Promise.all([
+        const [subscriptionSnapshot, entitledSubscriptionsSnapshot, storeSnapshot] = await Promise.all([
             transaction.get(subscriptionRef),
             transaction.get(entitledSubscriptionsQuery),
+            transaction.get(storeRef),
         ]);
-        if (!subscriptionSnapshot.exists) return null;
+        if (!subscriptionSnapshot.exists || !storeSnapshot.exists) return null;
 
         const current = {
             ...(subscriptionSnapshot.data() as FirestoreSubscriptionDoc),
@@ -101,6 +104,22 @@ export async function syncStorePlanEntitlementFromSubscription(
             !currentScope
             || currentScope.tenantId !== expectedTenantScope.numericId
             || currentScope.storeId !== expectedStoreScope.numericId
+        ) {
+            return null;
+        }
+        const storeData = storeSnapshot.data() || {};
+        const storedTenantScope = normalizeMenuListPublicEntityIdentityAliases([
+            storeData.tenantId,
+            storeData.tId,
+        ]);
+        const storedStoreScope = normalizeMenuListPublicEntityIdentityAliases([
+            storeSnapshot.id,
+            storeData.storeId,
+            storeData.sId,
+        ]);
+        if (
+            storedTenantScope?.numericId !== expectedTenantScope.numericId
+            || storedStoreScope?.numericId !== expectedStoreScope.numericId
         ) {
             return null;
         }
@@ -130,7 +149,7 @@ export async function syncStorePlanEntitlementFromSubscription(
         const activeSubscriptionIdValue = entitledSubscription?.id || admin.firestore.FieldValue.delete();
         const syncedAt = admin.firestore.FieldValue.serverTimestamp();
 
-        transaction.set(firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(expectedStoreScope.documentId), {
+        transaction.set(storeRef, {
             activePlanType: entitlementValue,
             analyticsEntitlementUpdatedAt: syncedAt,
             billingSubscriptionId: activeSubscriptionIdValue,

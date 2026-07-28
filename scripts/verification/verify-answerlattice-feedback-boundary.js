@@ -35,6 +35,7 @@ const {
   getContentFeedbackStorageKey,
   normalizeContentFeedbackStorageEnvelope,
 } = require(path.join(ROOT, 'src/lib/contentFeedbackStorage/index.ts'));
+const nextServerOnlyTestRegister = read('scripts/verification/register-next-server-only.cjs');
 
 const general = normalizeAnswerlatticeFeedbackSubmission({
   type: 'general',
@@ -123,6 +124,17 @@ assert(normalizeContentFeedbackItem({
   ...contentFeedbackItem,
   createdOn: 'invalid',
 }) === null, 'invalid persisted content-feedback timestamps must fail closed');
+assert(normalizeContentFeedbackItem({
+  ...contentFeedbackItem,
+  sourceContext: {
+    uId: 'user-1',
+    name: 'Feedback User',
+    email: 'user@example.com',
+    get tId() {
+      throw new Error('source-context scope getter must be contained');
+    },
+  },
+}) === null, 'throwing persisted content-feedback source context must fail closed');
 
 const storageScope = { tId: 1, sId: 101 };
 const storageEnvelope = normalizeContentFeedbackStorageEnvelope({
@@ -194,6 +206,11 @@ assert(feedbackSubmissionRoute.includes("buildAnswerlatticeRateLimitKey('answerl
 assert(feedbackSubmissionRoute.includes('failClosedOnProviderError: true'), 'feedback submission cost controls must fail closed when the limiter is unavailable');
 assert(feedbackSubmissionServer.includes('await db.runTransaction(async (transaction) =>'), 'feedback submission identity and replay checks must be transactional');
 assert(feedbackSubmissionServer.includes('submissionFingerprint'), 'feedback submissions must persist an exact replay fingerprint');
+assert(feedbackSubmissionServer.includes('projectExistingFeedbackSubmission({'), 'feedback replays must return an allowlisted persisted-record projection');
+assert(feedbackSubmissionServer.includes('existing.tId !== scope.tId'), 'feedback replays must require exact persisted tenant scope');
+assert(feedbackSubmissionServer.includes('existing.sId !== scope.sId'), 'feedback replays must require exact persisted store scope');
+assert(!feedbackSubmissionServer.includes('Number(existing.tId)'), 'feedback replay tenant scope must not use numeric coercion');
+assert(!feedbackSubmissionServer.includes('Number(existing.sId)'), 'feedback replay store scope must not use numeric coercion');
 assert(feedbackSubmissionServer.includes('emitAnswerlatticeSignal({'), 'feedback submissions must emit the governed support signal on the server');
 assert(!feedbackSubmissionServer.includes('sourceContext: feedback.sourceContext'), 'derived feedback signals must not duplicate customer source context');
 assert(!feedbackSubmissionServer.includes('userId: feedback.uId'), 'derived feedback signals must not duplicate customer user identity');
@@ -219,14 +236,32 @@ assert(contentFeedbackServer.includes('currentSentiment === input.sentiment'), '
 assert(contentFeedbackServer.includes('transaction.set(stateRef'), 'content feedback must persist server-authoritative actor state');
 assert(contentFeedbackServer.includes("content.active !== true"), 'article and FAQ feedback must reject inactive content');
 assert(contentFeedbackServer.includes("content.status !== 'published'"), 'article and FAQ feedback must reject unpublished content');
+assert(contentFeedbackServer.includes('content.tId !== scope.tId'), 'content feedback must require exact persisted tenant scope');
+assert(contentFeedbackServer.includes('content.sId !== scope.sId'), 'content feedback must require exact persisted workspace scope');
+assert(contentFeedbackServer.includes('stateData.tId !== scope.tId'), 'content feedback actor state must require exact persisted tenant scope');
+assert(contentFeedbackServer.includes('stateData.sId !== scope.sId'), 'content feedback actor state must require exact persisted workspace scope');
+assert(!contentFeedbackServer.includes('Number(content.tId)'), 'content feedback must not coerce persisted content tenant scope');
+assert(!contentFeedbackServer.includes('Number(content.sId)'), 'content feedback must not coerce persisted content workspace scope');
+assert(!contentFeedbackServer.includes('Number(stateData.tId)'), 'content feedback must not coerce persisted actor-state tenant scope');
+assert(!contentFeedbackServer.includes('Number(stateData.sId)'), 'content feedback must not coerce persisted actor-state workspace scope');
 assert(contentFeedbackContracts.includes("z.enum(['article', 'changelog', 'faq'])"), 'content feedback contracts must admit FAQ feedback explicitly');
 assert(contentFeedbackServer.includes("getAnswerlatticeRetentionFields('contentFeedback')"), 'content feedback audit rows must carry explicit retention');
 assert(contentFeedbackServer.includes("doc(`content_feedback_${operationId}`)"), 'negative feedback signals must use a deterministic id');
 assert(!contentFeedbackServer.includes('modifiedBy: actor.id'), 'reactions must not change content-author freshness metadata');
 assert(contentFeedbackRoute.includes('readBoundedJsonBody(request, CONTENT_FEEDBACK_MAX_BODY_BYTES)'), 'content feedback requests must have a body cap');
 assert(contentFeedbackRoute.includes("buildAnswerlatticeRateLimitKey('answerlattice-content-feedback'"), 'content feedback requests must be rate limited per scoped actor');
+assert(contentFeedbackRoute.includes('failClosedOnProviderError: true'), 'content feedback mutation admission must fail closed when the limiter is unavailable');
+assert(contentFeedbackRoute.includes("rateLimit.reason === 'provider_unavailable'"), 'content feedback mutation admission must distinguish provider outage from quota exhaustion');
+assert(contentFeedbackRoute.includes('providerUnavailable ? 503 : 429'), 'content feedback provider outage must return retryable unavailable status');
+assert(contentFeedbackRoute.includes('headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS'), 'content feedback responses must use the shared private no-store/nosniff policy');
+assert(!contentFeedbackRoute.includes('const NO_STORE_HEADERS'), 'content feedback must not retain a weaker route-local response policy');
+assert(contentFeedbackServer.includes("actorId === 'unknown'"), 'content feedback mutations must reject missing authenticated actor identity before Firestore work');
+assert(contentFeedbackServer.indexOf("actorId === 'unknown'") < contentFeedbackServer.indexOf('const db = getDb()'), 'content feedback actor identity must fail before database access');
 assert(contentFeedbackDal.includes('.map(normalizeContentFeedbackItem)'), 'content feedback reads must normalize persisted audit items');
+assert(contentFeedbackDal.includes("typeof value === 'number' || typeof value === 'string'"), 'content feedback scope normalization must admit scalar values only');
+assert(!contentFeedbackDal.includes('const parsed = Number(value);'), 'content feedback scope normalization must not coerce unknown values');
 assert(!contentFeedbackDal.includes('export const addContentFeedback'), 'the split audit-only writer must stay removed');
+assert(!fs.existsSync(path.join(ROOT, 'src/database/changelog/feedback.ts')), 'the obsolete default-denied split changelog feedback writer must stay removed');
 assert(genericFeedbackDal.includes('updateContentFeedbackWithAudit'), 'generic article/changelog/FAQ helpers must use the coupled transaction');
 assert(genericFeedbackDal.includes("type: 'faq'"), 'generic FAQ reactions must use the authenticated feedback route');
 assert(faqView.includes('updateFaqFeedbackGeneric'), 'FAQ UI must use the generic audited feedback boundary');
@@ -262,6 +297,9 @@ assert(rules.includes('// Changelog page mutations and reactions are server-owne
 assert(packageJson.scripts['verify:answerlattice-feedback-boundary'] === 'node scripts/verification/verify-answerlattice-feedback-boundary.js', 'package must expose the feedback boundary verifier');
 assert(packageJson.scripts['test:answerlattice-feedback:rules']?.includes('test-answerlattice-feedback-rules.ts'), 'package must expose the feedback rules emulator test');
 assert(packageJson.scripts['test:answerlattice-feedback-submission:emulator']?.includes('test-answerlattice-feedback-submission-emulator.ts'), 'package must expose feedback-submission server emulator tests');
+assert(packageJson.scripts['test:answerlattice-feedback-submission:emulator']?.includes('-r ./scripts/verification/register-next-server-only.cjs'), 'feedback-submission emulator must resolve the Next server-only marker before loading server modules');
+assert(nextServerOnlyTestRegister.includes("if (request === 'server-only') return serverOnlyEmptyModule;"), 'server-only test register must scope its alias to the exact marker');
+assert(nextServerOnlyTestRegister.includes("'dist',\n  'compiled',\n  'server-only',\n  'empty.js'"), 'server-only test register must use Next server semantics rather than the throwing client marker');
 assert(packageJson.scripts['test:answerlattice-content-feedback-contracts']?.includes('test-answerlattice-content-feedback-contracts.ts'), 'package must expose content-feedback contract tests');
 assert(packageJson.scripts['test:answerlattice-content-feedback:emulator']?.includes('test-answerlattice-content-feedback-emulator.ts'), 'package must expose content-feedback server emulator tests');
 assert(packageJson.scripts['verify:answerlattice-feedback']?.includes('test:answerlattice-feedback-submission:emulator'), 'package must expose one focused feedback feature gate');

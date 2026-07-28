@@ -152,7 +152,7 @@ No default screen may subscribe to a raw collection with a real-time listener.
 | Collection | Purpose | UI rule |
 | --- | --- | --- |
 | `signaldeskSourceCandidates` | Imported raw candidate metadata after normalization | Not a dashboard source |
-| `signaldeskImportRows` | Import row status and validation errors | Import detail only |
+| `signaldeskImportRows` | Reserved import-row status/error namespace; no current importer or reader | None until separately activated |
 | `signaldeskEvidencePackets` | Full evidence and rejected facts | Target detail/debug only |
 | `signaldeskMessages` | Conversation messages | Conversation detail only |
 | `signaldeskMessageEvents` | Delivery/click/reply events | Never dashboard scan |
@@ -265,7 +265,7 @@ Firestore stores refs, hashes, timestamps, status, compact normalized fields, an
 | Schedule content draft | 1-2 reads | 4 writes | Requires approved content draft; writes draft schedule state, calendar item, audit, timeline, and cost summary. Does not publish. |
 | Record content performance | 1-2 reads | 4-5 writes | Writes compact performance summary; writes demand summary only when owner-quality signals exist. |
 | Reply capture | 2-6 reads | 3-8 writes | Update conversation summary and target summary. |
-| Outcome event | Transaction reads target, policy, evidence, source authority, summary, and optional route/demand/current summary event | 8 base writes; 9 with route update; optional separate activation-watch reconciliation adds 6 or 7 | Event, source-scoped summary, claim, touch, target, audit, control, and cost settle atomically; exact replay writes nothing. |
+| Outcome event | Transaction reads target, policy, evidence, source authority, summary, and optional route/demand/current summary event | 8 base writes; 9 with route update; optional separate change-aware activation-watch reconciliation adds 4–7 | Event, source-scoped summary, claim, touch, target, audit, control, and cost settle atomically; exact replay writes nothing. |
 | Dashboard load | 5-15 summary reads | 0 | No raw event/message reads. |
 | Provider budget check | 2-4 reads | 0-2 writes | Read provider account and budget policy; increment spend only after an approved run actually spends. |
 | Enrichment waterfall run | Transaction-current pause, target/detail, prior conversation, waterfall, source policy, claim/result, and bounded provider-account/budget reads | One claimed result, vendor summary, timeline, audit, and cost effect set | Requires an actor-bound operation key. Reuses an existing approved source value when available; otherwise records ready/blocked provider truth without external spend. Exact retries return the durable result and changed-input key reuse fails closed. |

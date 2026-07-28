@@ -48,6 +48,8 @@ import {
 import { resolveNotificationTemplate } from './templates';
 
 const NOTIFICATION_LOGS = 'notificationLogs';
+// @firestore-collection-evidence NOTIFICATION_LOGS operations=read/query|write|transaction/batch
+// @firestore-collection-evidence DB_COLLECTIONS.ANSWERLATTICE_NOTIFICATION_LOGS operations=read/query|write|transaction/batch
 const DEFAULT_FROM = SYSTEM_EMAIL_FROM;
 const MAX_PER_DAY_PER_RECIPIENT = 20;
 

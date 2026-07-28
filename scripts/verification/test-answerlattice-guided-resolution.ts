@@ -203,6 +203,7 @@ assert.equal(normalizeWidgetConfig({}).guidedResolutionEnabled, false);
 assert.equal(parseWidgetConfigSaveInput({
     config: { guidedResolutionEnabled: true },
     allowedOrigins: ['https://app.example.com'],
+    expectedConfigVersion: 0,
 }).config.guidedResolutionEnabled, true);
 
 const integrationSnippet = buildAnswerlatticeGuidedResolutionSnippet();

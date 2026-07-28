@@ -16,7 +16,7 @@ The browser sends a same-origin, no-store `POST`. The route resolves the session
 
 ## Read Model
 
-Seven bounded reads cover entities, canonical answers, product surfaces, KB articles, FAQs, releases, and the workspace changelog path. Ordinary collections use exact `AL`/tenant/workspace filters and explicit Firestore projections. Each collection reads cap-plus-one so overflow is detectable rather than silently truncated.
+Seven bounded reads cover entities, canonical answers, product surfaces, KB articles, FAQs, releases, and the workspace changelog path. Ordinary collections use exact `AL`/tenant/workspace filters and explicit Firestore projections. Each nested changelog page projects and independently corroborates exact `pId/tId/sId`; invalid scope fails the complete export. Each collection reads cap-plus-one so overflow is detectable rather than silently truncated.
 
 ## Projection
 
@@ -24,6 +24,8 @@ Seven bounded reads cover entities, canonical answers, product surfaces, KB arti
 - Canonical citations are rebuilt from `id`, `title`, normalized URL, and optional bounded `sourceId` only.
 - Article translations exclude reviewer identity and unreviewed AI output.
 - Changelog entries retain `entityChanges` and `releaseId` so release binding survives export.
+- Changelog inclusion uses the canonical published-entry predicate; missing publication state or a version without a valid release link is never approved truth.
+- Timestamp projection contains hostile provider/legacy members, and numeric projection accepts finite numbers without string/boolean coercion.
 - Sorting uses a stable code-point comparator instead of locale-sensitive ordering.
 
 ## Delivery And Failure
@@ -33,6 +35,7 @@ Seven bounded reads cover entities, canonical answers, product surfaces, KB arti
 - GET returns `405 METHOD_NOT_ALLOWED`; generation is POST-only because it creates audit state.
 - Audit failure returns a generic `500` and prevents delivery.
 - The browser reads the body through the shared 8 MiB bounded response helper and never calls unbounded `response.blob()`.
+- A synchronous browser guard admits one request at a time. Workspace transitions or unmount abort the request, and a response owned by the former workspace cannot create a download or success message.
 
 ## Remaining External Proof
 

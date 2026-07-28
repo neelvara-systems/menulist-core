@@ -1,9 +1,9 @@
 # Knowledge Intake Command Center — Firebase Cost & Operations Contract
 
 > **Status:** IMPLEMENTED — day-one cost-first contract
-> **Version:** 2.1.6
+> **Version:** 2.2.0
 > **Created:** 2026-05-31
-> **Last Updated:** 2026-07-18
+> **Last Updated:** 2026-07-26
 > **Audience:** Engineering / Firebase / Ops
 
 ---
@@ -105,7 +105,7 @@ Storage metadata:
 
 ## 4. Summary Documents
 
-Use summary documents as the primary read model. Owner dashboards, activation, scheduler repair, and ops monitoring must not discover intake state by scanning jobs, sources, or review items.
+Use summary documents as compact downstream/activation/ops read models. The owner command center uses the capped job-list API and one bounded active-job bundle API; it does not scan source or review collections directly. Scheduler and ops monitoring must not discover intake state through unbounded jobs, sources, or review-item scans.
 
 ### 4.1 Workspace Summary
 
@@ -127,19 +127,21 @@ Implemented day-one shape:
   activeJobTitle?: string | null,
   activeJobs?: number,
   recentJobs?: number,
+  sourceCount?: number,
   readySources?: number,
   reviewItems?: number,
   acceptedItems?: number,
   publishedItems?: number,
+  rejectedItems?: number,
   usageUnitsConsumed?: number,
-  latestJobStatus?: string,
+  lastJobStatus?: string,
   summaryHash?: string,
   lastPublishedAt?: Timestamp,
   lastUpdated: Timestamp
 }
 ```
 
-Activation and dashboard pages should read this one doc instead of scanning jobs/sources/review items.
+Activation and aggregate operational views may read this document. The owner command center intentionally uses the bounded job list plus selected active-job bundle because the summary does not contain source/review detail.
 
 ### 4.2 Nightly Intake Summary Refresh
 
@@ -256,7 +258,7 @@ Future rules if this is enabled:
 
 ### 4.4 Source Version Manifest
 
-Day-one publish uses the existing Answerlattice compiled context pattern directly: runtime output writes mark `kb`, `docsNav`, `surfaces`, or `releases` stale as applicable. Canonical mutation proposals are governance-only and do not mark `canonical`; that happens only when a canonical answer becomes active through the approval workflow.
+Day-one publish uses the existing Answerlattice compiled context pattern directly: articles/FAQs update KB freshness, articles mark `docsNav`, and product surfaces mark `surfaces`. Intake never marks `releases`. Canonical mutation proposals are governance-only and do not mark `canonical`; that happens only when a canonical answer becomes active through the approval workflow.
 
 Reserved intake-only counters may be added later, but they are not written day one:
 
@@ -284,7 +286,7 @@ Future rules if intake-only counters are added:
 - bump `knowledgeIntakeOutputs` when approved KB/FAQ/surface/runtime outputs are published
 - bump `knowledgeIntakeReadiness` when readiness changes
 - these intake-only fields may live on the same `sourceVersions_*` document for locality, but they must not be included in compiled context equality checks
-- approved runtime output must separately bump the existing compiled context keys: `kb`, `docsNav`, `canonical`, `surfaces`, `releases`, `entities`, and `entityRelations` as applicable
+- approved runtime output must separately bump only the existing compiled-context keys owned by its destination workflow. Current intake owns KB freshness/`docsNav` for articles, KB freshness for FAQs, and `surfaces` for product surfaces; canonical activation, releases, entities, and entity relations remain owned by their separate approval workflows
 - downstream bundle/context rebuilds compare runtime source versions and skip when unchanged
 
 ### 4.5 Summary Write Rules
@@ -292,9 +294,9 @@ Future rules if intake-only counters are added:
 Summary writes must be deterministic and sparse:
 
 - update summaries in the same API/function transaction as the state transition where possible
-- compute `summaryHash` from counters/readiness/active job/open preview
-- skip summary writes when the hash is unchanged
-- store only the top urgent review preview; full review lists stay paginated
+- normal job/source/review transitions write bounded counter and active-job patches in their owning server transactions
+- the nightly aggregate refresh computes `summaryHash` from bounded recent-job counters/status and skips its write when unchanged
+- do not embed review-item previews in the summary; the owner reads review detail only through the bounded active-job bundle
 - never rebuild summary by scanning all sources on dashboard load
 - nightly summary refresh may rebuild only the compact workspace summary from bounded job docs
 - no scheduler task may read source/review-item lists for intake analytics
@@ -406,9 +408,10 @@ Text-friendly sources do not call a provider during draft generation. Media file
 | Read job + selected review items | capped | 0 | 0 | 0 |
 | Read accepted review items and destination state | capped | 0 | 0 | 0 |
 | Write approved outputs | 0 | bounded by selected items | 0 | 0 |
+| Rebuild required product-surface context summary | bounded capped destination/source reads | 1 summary replacement | 0 | 0 |
 | Embedding for published KB article outputs | 0 | one update/article | 0 | embedding calls |
 | Update existing destination cache/source versions | 0 | bounded writes | 0 | 0 |
-| Update summary/readiness if changed | 0 | bounded writes | 0 | 0 |
+| Update aggregate intake/job summary | bounded transaction reads | bounded writes | 0 | 0 |
 
 ### 5.11 Runtime Destination Post-Write Cost
 
@@ -417,18 +420,18 @@ Approved output must pay the small deterministic write cost needed to make the o
 | Destination changed | Required low-cost follow-up | Cost control |
 | --- | --- | --- |
 | KB article body/title/category/section | Bump KB cache version, update `kb_categories`, mark `kb`/`docsNav`, enqueue/perform embedding, invalidate `kb`/`context` public cache. | Batch article/category writes; embed only changed article text hash; deterministic destination IDs prevent duplicate records on retry. |
-| FAQ/custom Q&A | Bump KB cache version, invalidate `faqs`/`kb`/`context`, mark surface summary stale. | Use existing FAQ cache pattern instead of adding a FAQ cache source; batch FAQ writes by publish selection. |
+| FAQ/custom Q&A | Require the batch product-surface summary rebuild, bump KB cache version, and invalidate `faqs`/`kb`/`context`. | Use the existing FAQ cache pattern instead of adding a FAQ cache source; deterministic destination IDs prevent duplicates. |
 | Canonical answer | Bump canonical cache version, mark `canonical`. | Only owner-approved active answers bump canonical runtime; drafts/proposals do not. |
-| Product surface | Mark `surfaces`, rebuild or mark stale `contextContent_{tId}_{sId}`. | Rebuild summary once per publish batch, not once per surface. |
+| Product surface | Require one batch rebuild of `contextContent_{tId}_{sId}`, then mark `surfaces` and invalidate `context`. | Rebuild summary once per publish batch, not once per surface. |
 | Release-note source context | No changelog or release-timeline writes from intake. Use release notes only to prepare support drafts. | Owner-managed changelog writes own the `changelog`/`context` invalidation and release activation path. |
 
-Product-surface summary rebuild is intentionally bounded by the existing caps for active surfaces, published articles, published FAQs, recent changelog pages, and recent tickets. The intake publisher should call it once after a publish batch that affects related content, or mark it stale for scheduler repair when immediate rebuild is not needed.
+Product-surface summary rebuild is intentionally bounded by the existing caps for active surfaces, published articles, published FAQs, recent changelog pages, and recent tickets. The intake publisher requires it once after staging a non-canonical publish batch and before cache/source/public freshness plus terminal review settlement. A failed rebuild rejects the attempt and leaves exact deterministic target markers retryable; there is no intake scheduler-repair fallback.
 
 ---
 
 ## 6. Plan Caps
 
-Exact values must be stored in plan config, but the implementation must support these fields:
+Current day-one limits are shared static Knowledge Intake constraints, not plan-configured per-tier fields. A future plan-specific allowance design may introduce fields such as:
 
 ```ts
 intakeLimits: {
@@ -447,7 +450,7 @@ intakeLimits: {
 }
 ```
 
-No job should continue hidden processing after a cap is reached. Day-one implementation rejects capped actions before they run; a future usage-allowance implementation may use `paused_limit` for resumable paid-processing jobs.
+These fields are reserved and are not current plan-schema claims. No job should continue hidden processing after a current shared cap is reached. Day-one implementation rejects capped actions before they run; a future usage-allowance implementation may use `paused_limit` for resumable paid-processing jobs.
 
 ---
 
@@ -479,7 +482,7 @@ Firestore rules:
 - require matching `tId` and `sId` access
 - disallow client writes for system-owned fields and expensive state transitions
 - allow owner/staff reads according to Answerlattice staff permission claims
-- high-risk approval writes require owner/admin role
+- review/governance mutations require the existing `MANAGE_KNOWLEDGE` permission; there is no separate intake-specific high-risk role matrix
 - lease/worker fields are server-write only
 - credit reservation/settlement fields are server-write only
 
@@ -531,9 +534,8 @@ Server-side URL fetch must:
 - cap response size
 - stream response bodies only up to the byte cap instead of buffering full pages
 - reject non-text content types
-- cap crawl depth
 - cap total fetch wall time
-- block credentialed dashboard crawling, login forms, admin paths, and URLs requiring cookies
+- reject credential-bearing URLs and never attach cookies or login credentials
 - strip common tracking parameters before dedupe
 - prefer starting page links, sitemap links, and owner-selected paths in the day-one implementation
 - store only owner-selected useful pages as Firestore sources
@@ -563,7 +565,7 @@ The expensive part is provider work and repeated destination writes, not raw-fil
 
 Scheduler/ops cost:
 
-- Workspace UI reads one workspace summary doc before bounded detail lists.
+- Owner command center reads the capped job list and selected active-job bundle; aggregate/activation/ops views may read the workspace summary.
 - Nightly analytics receives already-known tenant/store scope, reads bounded recent job docs, and writes only when the summary hash changes.
 - No scheduler collection scan of sources, discovered URLs, or review items.
 
@@ -593,12 +595,12 @@ If selected-link freshness checks are added for paid plans, they require a new a
 
 When implemented with this contract:
 
-- dashboard load reads one summary doc plus paginated lists only when opened
+- owner command-center load uses the capped job list and selected active-job bundle; it does not scan collections or open realtime listeners
 - intake scheduler analytics read the latest bounded job docs from already-discovered tenant scope
 - summary refresh skips writes when `summaryHash` is unchanged
-- source bodies do not inflate Firestore documents
+- source bodies are capped/redacted before Firestore persistence so document growth remains bounded
 - no realtime listener is needed for job/history/review lists
-- active progress can use polling or one short-lived active-job listener only
+- refresh remains explicit through the current owner flow; no active-job listener or background polling is implemented
 - no scheduler crawl runs by default
 - discovered-but-skipped website URLs are not persisted as Storage manifests or Firestore source documents
 - selected URL fetch bodies are streamed and capped before text normalization; non-streaming responses fail closed unless they declare a safe content length
@@ -633,3 +635,4 @@ Knowledge Intake route ID admission and shared service ref helper normalization 
 | 2026-05-31 | 1.5.0 | Added runtime fallback signal alignment and deterministic intake publish IDs to reduce duplicate writes and unresolved-signal repair work. |
 | 2026-07-18 | 2.1.5 | Reconciled cost/storage tables with the current no-manifest, no-raw-retention, bounded-Firestore runtime and marked deletion, cancellation, intake-specific source versions, and retained artifacts as reserved. |
 | 2026-07-18 | 2.1.6 | Corrected job creation, run leases, URL discovery/re-import, provider, Storage, and scheduler cost claims to the current implementation. |
+| 2026-07-26 | 2.2.0 | Reconciled owner versus aggregate read models, exact summary fields, current static caps/permissions, required publish-summary recovery, source-version keys and cost tables. |

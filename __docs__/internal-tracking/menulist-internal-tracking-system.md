@@ -295,30 +295,40 @@ MenuList has strict Firebase cost constraints. Cost spikes indicate:
 
 ### What to Track
 
-| Metric                 | Type   | Purpose                | Firestore Path            |
-| ---------------------- | ------ | ---------------------- | ------------------------- |
-| `reads_count`          | number | Firestore reads        | `telemetry/costs/{month}` |
-| `writes_count`         | number | Firestore writes       | `telemetry/costs/{month}` |
-| `storage_bytes`        | number | Storage usage          | `telemetry/costs/{month}` |
-| `function_invocations` | number | Cloud function calls   | `telemetry/costs/{month}` |
-| `estimated_cost_usd`   | number | Estimated monthly cost | `telemetry/costs/{month}` |
+| Metric | Type | Purpose | Current Firestore path |
+| --- | --- | --- | --- |
+| `readsCount` | number | Bounded Menu Drift Firestore reads | `systemTelemetry/mol_costs_{YYYY-MM-DD}` |
+| `writesCount` | number | Bounded Menu Drift Firestore writes | `systemTelemetry/mol_costs_{YYYY-MM-DD}` |
+| `executionMs` | number | Menu Drift execution time | `systemTelemetry/mol_costs_{YYYY-MM-DD}` |
+| `storesProcessed` | number | Scope completed by the run | `systemTelemetry/mol_costs_{YYYY-MM-DD}` |
+| `itemsProcessed` | number | Items projected by the run | `systemTelemetry/mol_costs_{YYYY-MM-DD}` |
+| `errors` | number | Store/project failures in the run | `systemTelemetry/mol_costs_{YYYY-MM-DD}` |
 
 ### Firestore Schema
 
 ```typescript
-// telemetry/costs/{month}
-interface CostTelemetry {
-  month: string; // "2026-01"
+// systemTelemetry/mol_costs_{YYYY-MM-DD}
+interface MenuDriftCostTelemetry {
+  type: "mol_cost_telemetry";
+  functionName: "menuDriftMetrics";
+  date: string;
   readsCount: number;
   writesCount: number;
-  storageBytes: number;
-  functionInvocations: number;
-  estimatedCostUsd: number;
-  alertThreshold: number; // Alert if exceeded
-  alertTriggered: boolean;
-  lastUpdated: Timestamp;
+  executionMs: number;
+  storesProcessed: number;
+  itemsProcessed: number;
+  errors: number;
+  timestamp: Timestamp;
+  expiresAt: Timestamp; // 90-day retention boundary
 }
 ```
+
+This is an operation-count sample, not Firebase billing data and not an
+estimated-cost ledger. The writer exact-replaces the latest daily sample,
+fails independently from the completed Menu Drift task, and shares no browser
+read surface. Firestore TTL must be enabled through
+`scripts/setup-firestore-ttl.sh`; source configuration alone is not evidence
+that the remote policy is active.
 
 ---
 

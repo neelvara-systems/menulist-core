@@ -36,7 +36,13 @@ import { generateStoragePath } from "@lib/storage/pathGenerator";
 import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
 import { ANSWERLATTICE_SIGNAL_TYPE } from "@type/answerlattice";
 import { UserUploadedFileType } from "@type/common";
-import { SUPPORT_TICKET_STATUS, SupportTicketType, TicketMessage } from "@type/supportTicket";
+import LoginUserType from "@type/loginUser";
+import {
+    SUPPORT_TICKET_STATUS,
+    SupportTicketType,
+    TicketMessage,
+    type SupportTicketDocument,
+} from "@type/supportTicket";
 import { addDoc } from "firebase/firestore";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { createRuntimeId, createTimestampedRuntimeId } from '@lib/runtime/randomId';
@@ -83,6 +89,11 @@ export type SupportTicketStatusUpdateResult = {
 type SupportTicketMutationScope = {
     tId?: number | string | null;
     sId?: number | string | null;
+};
+
+type SupportTicketMutationInput = SupportTicketMutationScope & {
+    id?: unknown;
+    [key: string]: unknown;
 };
 
 type NormalizedSupportTicketScope = {
@@ -138,7 +149,7 @@ const collectTicketAttachmentUrls = (
 ): string[] => {
     const urls = new Set<string>();
 
-    (ticket.documents || []).forEach((document: any) => {
+    (ticket.documents || []).forEach((document: SupportTicketDocument) => {
         if (typeof document?.url === 'string' && isOwnedTicketAttachmentUrl(document.url, scope)) {
             urls.add(document.url);
         }
@@ -186,7 +197,7 @@ const logAmbiguousTicketAttachmentRetention = (
     );
 };
 
-const isPlatformTicketSession = (session: any): boolean => {
+const isPlatformTicketSession = (session: LoginUserType | null): boolean => {
     const platformRole = String(
         session?.platformRole
         || session?.user?.platformRole
@@ -197,7 +208,7 @@ const isPlatformTicketSession = (session: any): boolean => {
     return platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
 };
 
-const isPlatformTicketAdminSession = (session: any): boolean => {
+const isPlatformTicketAdminSession = (session: LoginUserType | null): boolean => {
     const platformRole = String(
         session?.platformRole
         || session?.user?.platformRole
@@ -208,12 +219,12 @@ const isPlatformTicketAdminSession = (session: any): boolean => {
     return platformRole === ECOMSAI_PLATFORM_USER_ROLE;
 };
 
-const getSessionSupportTicketScope = (session: any): NormalizedSupportTicketScope | undefined => {
+const getSessionSupportTicketScope = (session: LoginUserType | null): NormalizedSupportTicketScope | undefined => {
     const scope = resolveAnswerlatticeSessionScope(session);
     return scope ? { tId: scope.tenantId, sId: scope.storeId } : undefined;
 };
 
-const getRequiredSessionSupportTicketScope = (session: any): NormalizedSupportTicketScope => {
+const getRequiredSessionSupportTicketScope = (session: LoginUserType | null): NormalizedSupportTicketScope => {
     const sessionScope = getSessionSupportTicketScope(session);
     if (!sessionScope) {
         throw new Error('Missing Answerlattice ticket scope');
@@ -225,8 +236,9 @@ const getRequiredSessionSupportTicketScope = (session: any): NormalizedSupportTi
 const requireSupportTicketMutationContext = async (
     scope: SupportTicketMutationScope | undefined,
     operationCode: string,
-): Promise<{ scope: NormalizedSupportTicketScope; session: any }> => {
+): Promise<{ scope: NormalizedSupportTicketScope; session: LoginUserType }> => {
     const session = await getActiveSession();
+    if (!session) throw new Error(`${operationCode}_session_missing`);
     const ticketScope = normalizeSupportTicketScope(scope);
 
     if (isPlatformTicketSession(session)) {
@@ -248,7 +260,7 @@ const requireSupportTicketMutationContext = async (
     return { scope: ticketScope, session };
 };
 
-const getRequiredTicketActor = (session: any) => {
+const getRequiredTicketActor = (session: LoginUserType) => {
     const id = String(session?.user?.id || session?.uId || '').trim();
     const name = String(session?.user?.name || session?.user?.email || '').trim();
     const email = String(session?.user?.email || '').trim().toLowerCase();
@@ -268,7 +280,7 @@ const requirePersistedTicket = (
     return ticket;
 };
 
-const getScopedTicketConstraints = (session: any): QueryConstraint[] => {
+const getScopedTicketConstraints = (session: LoginUserType | null): QueryConstraint[] => {
     if (isPlatformTicketSession(session)) return [where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)];
 
     const sessionScope = getRequiredSessionSupportTicketScope(session);
@@ -324,7 +336,6 @@ const uploadImage = async (
     stableId?: string,
 ) => {
 
-    let uploadedUrl: any = '';
     const docId = buildSupportTicketAttachmentFileId({
         attemptId: createRuntimeId('upload'),
         stableId,
@@ -340,15 +351,14 @@ const uploadImage = async (
     });
 
     // Upload to Firebase Storage
-    uploadedUrl = await uploadBase64ToStorage({
+    return await uploadBase64ToStorage({
         cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
         fileId: docId,
         storage: answerlatticeStorage,
         url: data.url,
         path,
-        type: data.type as UserUploadedFileType['type']
+        type: data.type,
     });
-    return uploadedUrl;
 }
 
 export const addTicket = async (data: SupportTicketType) => {
@@ -475,7 +485,7 @@ export function assertSupportTicketCreateSucceeded(
     }
 }
 
-export const updateTicket = async (data: any) => {
+export const updateTicket = async (data: SupportTicketMutationInput) => {
     return await apiCallComposer(
         async () => {
             const ticketId = normalizeAnswerlatticeSupportTicketId(data?.id);
@@ -496,7 +506,7 @@ export const updateTicket = async (data: any) => {
                     mutationContext.scope,
                 );
 
-                const updateData: Record<string, any> = {
+                const updateData: Record<string, unknown> = {
                     ...mutation,
                     pId: PRODUCT_IDS.ANSWERLATTICE,
                     tId: mutationContext.scope.tId,
@@ -625,7 +635,7 @@ export const addTicketMessage = async (
     ticketId: string,
     _currentMessages: TicketMessage[],
     message: TicketMessage,
-    attachments?: any[],
+    attachments?: readonly unknown[],
     scope?: SupportTicketMutationScope,
 ) => {
     return await apiCallComposer(
@@ -766,7 +776,7 @@ export const addTicketMessage = async (
 
 export const updateTicketStatus = async (
     ticketId: string,
-    _currentStatuses: any[],
+    _currentStatuses: readonly unknown[],
     newStatus: string,
     remark: string = '',
     _changedBy: { id: string, name: string, email: string },
@@ -799,7 +809,7 @@ export const updateTicketStatus = async (
     );
 }
 
-export const deleteTicket = async (data: any) => {
+export const deleteTicket = async (data: SupportTicketMutationInput) => {
     return await apiCallComposer(
         async () => {
             const ticketId = normalizeAnswerlatticeSupportTicketId(data?.id);
@@ -880,7 +890,7 @@ export const submitTicketSatisfaction = async (
     );
 };
 
-export const restoreTicket = async (data: any) => {
+export const restoreTicket = async (data: SupportTicketMutationInput) => {
     return await updateTicket({ ...data, deleted: false });
 }
 

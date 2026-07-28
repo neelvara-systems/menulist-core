@@ -12,6 +12,8 @@
 
 ## Governing Rule
 
+Reward issuance revalidates each transaction-current subscription with the exact dual-MenuList product and agreeing `tenantId`/`tId` plus `storeId`/`sId` contract before changing either wallet or creating payment-ledger evidence. Malformed or conflicting persisted identity remains payment-pending for operator review.
+
 Referral settlement has one product condition:
 
 > Two distinct MenuList business subscription wallets are verified paid, so issue 100 credits to the referrer and 50 credits to the referred business.
@@ -319,6 +321,8 @@ Create `src/lib/ownerReferral/ownerReferralAttributionServer.ts` with:
 - `setOwnerReferralAttributionBeforeSubscription(params)`.
 
 ### Attribution Rule
+
+Attribution admission treats persisted store and payment state as untrusted. The store document must expose exact positive safe-integer tenant/store identity consistent with its document path, and `totalPaymentsMadeCount` must be an exact nonnegative safe integer. String, fractional, unsafe or conflicting evidence fails closed and must not be converted with `Number(...)`.
 
 Bind only before the referred business's first successful MenuList subscription payment. This is the causal referral boundary and the only pre-payment eligibility check.
 

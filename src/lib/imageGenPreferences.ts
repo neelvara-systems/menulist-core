@@ -30,6 +30,70 @@ export interface ImageGenPreferences {
     savedAt?: string;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    typeof value === 'object'
+    && value !== null
+    && !Array.isArray(value)
+);
+
+const isOptionalString = (value: unknown): value is string | undefined => (
+    value === undefined || typeof value === 'string'
+);
+
+const isOptionalNullableString = (value: unknown): value is string | null | undefined => (
+    value === undefined || value === null || typeof value === 'string'
+);
+
+const isOptionalBoolean = (value: unknown): value is boolean | undefined => (
+    value === undefined || typeof value === 'boolean'
+);
+
+const isOptionalStringArray = (value: unknown): value is string[] | undefined => (
+    value === undefined
+    || (Array.isArray(value) && value.every((entry) => typeof entry === 'string'))
+);
+
+export function parseImageGenPreferences(value: unknown): ImageGenPreferences | null {
+    if (!isRecord(value) || typeof value.stylesCategory !== 'string' || value.stylesCategory.trim().length === 0) {
+        return null;
+    }
+
+    if (
+        !isOptionalString(value.aspectRatio)
+        || !isOptionalString(value.negativePrompt)
+        || !isOptionalString(value.savedAt)
+        || !isOptionalNullableString(value.backgroundColor)
+        || !isOptionalNullableString(value.foregroundColor)
+        || !isOptionalBoolean(value.transparentBg)
+        || !isOptionalBoolean(value.isMultiMode)
+        || !isOptionalStringArray(value.styles)
+        || !isOptionalStringArray(value.environments)
+        || !isOptionalStringArray(value.lighting)
+        || !isOptionalStringArray(value.colors)
+        || !isOptionalStringArray(value.moods)
+        || !isOptionalStringArray(value.compositions)
+    ) {
+        return null;
+    }
+
+    return {
+        stylesCategory: value.stylesCategory,
+        styles: value.styles,
+        aspectRatio: value.aspectRatio,
+        environments: value.environments,
+        lighting: value.lighting,
+        colors: value.colors,
+        moods: value.moods,
+        compositions: value.compositions,
+        backgroundColor: value.backgroundColor,
+        negativePrompt: value.negativePrompt,
+        transparentBg: value.transparentBg,
+        foregroundColor: value.foregroundColor,
+        isMultiMode: value.isMultiMode,
+        savedAt: value.savedAt,
+    };
+}
+
 function getStorageKey(tId: string | number, sId: string | number): string {
     return `${STORAGE_KEY_PREFIX}_${tId}_${sId}`;
 }
@@ -117,10 +181,7 @@ export function loadImageGenPreferences(
         storageKey = getStorageKey(tId, sId);
         rawPreferences = localStorage.getItem(storageKey);
         if (!rawPreferences) return null;
-        const data = JSON.parse(rawPreferences) as ImageGenPreferences;
-        // Basic validation — must have at least stylesCategory
-        if (!data.stylesCategory) return null;
-        return data;
+        return parseImageGenPreferences(JSON.parse(rawPreferences));
     } catch (error) {
         logHookFailure('image_generation_preferences_load_failed', error, {
             ...getPreferenceScopeLogContext(tId, sId, storageKey),

@@ -13,6 +13,8 @@ It stores capped saved history from the existing V1 owner readiness report and r
 
 ## Runtime Shape
 
+Legacy project reads accept a single supported scope alias or equal alias pairs only. Conflicting tenant or store aliases fail closed before private project truth enters the monitor output.
+
 ### Exact paid-subscription entitlement
 
 Public Truth Monitor paid access uses the shared MenuList persisted-subscription entitlement projector before status or plan evaluation. Both product aliases must be exact `ML`, both numeric tenant/store alias pairs must agree, and the subscription tenant must equal the normalized current session tenant. Cross-tenant, Answerlattice, incomplete, conflicting, or coercible persisted subscription shapes fail closed without an extra Firestore read.
@@ -92,6 +94,8 @@ Public Truth Monitor project and scope ID boundary: manual refresh requests vali
 Public Truth Monitor session scope boundary: `getPublicTruthMonitorSessionScope(...)` uses the shared store-permission resolver. Every supplied compact and nested tenant/store alias must normalize to the same positive canonical ID. A contradictory, whitespace-mutated, leading-zero, unsafe, zero, or missing alias set fails before protected Firestore work.
 
 Public Truth Monitor transaction-current authority boundary: summary reads use `readAuthorizedPublicTruthMonitorSummaryServer(...)`; summary writes use `updatePublicTruthMonitorSummaryServer(...)`. Both transactions read current `stores/{storeId}`, `tenants/{tenantId}`, and `platformSummary/publicTruthMonitor_{storeId}`. Store ownership, store/tenant active/deleted/platform-block state, and current `VIEW_ANALYTICS` permission must still pass in that transaction. Refresh also retains the exact admitted subscription document ID and re-reads that document in the final transaction; current product, tenant, status, billing window, and supported-plan entitlement must still pass. The updater then passes the current summary into `buildPublicTruthMonitorSummary(...)` and writes the merged capped summary through `transaction.set(...)`. Firestore may retry the callback under contention; successful callbacks perform no external side effect.
+
+Public Truth Monitor browser response and cache boundary: desktop and mobile pass the active tenant and store identities into the shared hook. Only canonical positive IDs form the SWR key `publicTruthMonitorSummary/{tenantId}/{storeId}`. The bounded JSON response is projected through the client runtime contract before settlement; entitlement, summary/history/module enumerations, source-boundary literals, bounded counters/URLs and exact returned `tId/sId` must validate. The refresh-only full readiness report and Firestore `updatedAt` representation are not retained in browser state.
 
 ## Remaining Runtime Boundary
 

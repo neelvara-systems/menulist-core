@@ -1,6 +1,7 @@
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, type VectorValue } from "firebase/firestore";
 import { LuBan, LuFile, LuFileCheck2, LuFileClock, LuFileCog, LuFileQuestion, LuFileX } from "react-icons/lu";
 import type { AnswerlatticeArticleTranslation } from "@type/answerlattice";
+import type { Content } from "@tiptap/core";
 
 export const INGESTION_JOB_STATUS = {
     PENDING: "pending",//This is when batch job is scheduled and added to google task queue
@@ -49,7 +50,7 @@ export interface KnowledgeBaseGeneratedFaq {
 export interface IngestionJobArticle {
     id: string;
     title: string;
-    content?: any;//tiptap json with provenance; omitted from compact review navigation
+    content?: Content;//tiptap json with provenance; omitted from compact review navigation
     active?: boolean;
     index?: number;
     url?: string;
@@ -75,7 +76,7 @@ export interface IngestionJobCategoriesMap {
     [key: string]: IngestionJobCategory;
 }
 
-export const FILE_TYPE: Record<string, string> = {
+export const FILE_TYPE = {
     PDF: "pdf",
     IMAGE: "image",
     VIDEO: "video",
@@ -85,14 +86,15 @@ export const FILE_TYPE: Record<string, string> = {
     YOUTUBE: "youtube",
     GOOGLE_DRIVE: "google_drive",
     COPIED_TEXT: "copied_text",
-}
+} as const;
 
 export type SourceFileType = typeof FILE_TYPE[keyof typeof FILE_TYPE];
 
 export interface IngestionJobSourceFile {
     storagePath: string;
     fileName: string;
-    type: SourceFileType | string;
+    /** Uploaded MIME type; semantic article provenance uses KnowledgeBaseArticleSource.type. */
+    type: string;
     gsUri: string;
     downloadURL: string;
 }
@@ -225,7 +227,7 @@ export interface KnowledgeBaseArticleSource {
     url: string; // The gs:// path
     name: string;
     timestamp?: string;
-    page?: any;//if its pdf then its page number / document page number 
+    page?: number;//if its pdf then its page number / document page number
 }
 
 export interface KnowledgeBaseArticleType {
@@ -239,8 +241,8 @@ export interface KnowledgeBaseArticleType {
     title: string;
     index: number;
     url: string;
-    content: any;//JSON (Tiptap editor format)
-    embedding?: any;
+    content: Content;//JSON (Tiptap editor format)
+    embedding?: VectorValue | null;
     embeddingStatus?: 'pending' | 'processing' | 'embedded' | 'failed';
     embeddingCacheVersion?: string;
     embeddingSourceHash?: string;
@@ -277,7 +279,7 @@ export interface KnowledgeBaseArticleType {
 
 export interface KnowledgeBaseArticleEmbeddingPayload {
     articleId: string;
-    content: any;
+    content: Content;
     categoryId: string;
     sectionId: string;
     articleTitle: string;
@@ -285,16 +287,30 @@ export interface KnowledgeBaseArticleEmbeddingPayload {
     sectionTitle: string;
 }
 
-export const getIngestionJobStatusData = (token: any = null) => {
-    token = token || {};
+type IngestionJobStatusColorToken = Partial<{
+    colorBgBase: string;
+    colorErrorBg: string;
+    colorInfoBg: string;
+    colorSuccessBg: string;
+    colorWarningBg: string;
+}>;
+
+export const getIngestionJobStatusData = (token: IngestionJobStatusColorToken = {}) => {
+    const colors = {
+        colorBgBase: token.colorBgBase ?? 'transparent',
+        colorErrorBg: token.colorErrorBg ?? 'transparent',
+        colorInfoBg: token.colorInfoBg ?? 'transparent',
+        colorSuccessBg: token.colorSuccessBg ?? 'transparent',
+        colorWarningBg: token.colorWarningBg ?? 'transparent',
+    };
     return {
-        [INGESTION_JOB_STATUS.PENDING]: { title: 'Job is Pending', color: 'default', icon: LuFile, label: 'Pending', gradient: `linear-gradient(135deg, ${token.colorBgBase} 0%, ${token.colorBgBase} 100%)` },
-        [INGESTION_JOB_STATUS.PROCESSING]: { title: 'Job is Processing', color: 'blue', icon: LuFileCog, label: 'Processing', gradient: `linear-gradient(135deg, ${token.colorInfoBg} 0%, ${token.colorBgBase} 100%)` },
-        [INGESTION_JOB_STATUS.NEEDS_REVIEW]: { title: 'Job Processing completed, Need Review', color: 'orange', icon: LuFileQuestion, label: 'Needs Review', gradient: `linear-gradient(135deg, ${token.colorWarningBg} 0%, ${token.colorBgBase} 100%)` },
-        [INGESTION_JOB_STATUS.PUBLISHING]: { title: 'Job is Publishing', color: 'blue', icon: LuFileClock, label: 'Publishing', gradient: `linear-gradient(135deg, ${token.colorInfoBg} 0%, ${token.colorBgBase} 100%)` },
-        [INGESTION_JOB_STATUS.PUBLISHED]: { title: 'Job Published Successfully', color: 'green', icon: LuFileCheck2, label: 'Published', gradient: `linear-gradient(135deg, ${token.colorSuccessBg} 0%, ${token.colorBgBase} 100%)` },
-        [INGESTION_JOB_STATUS.FAILED]: { title: 'Job Failed', color: 'red', icon: LuFileX, label: 'Failed', gradient: `linear-gradient(135deg, ${token.colorErrorBg} 0%, ${token.colorBgBase} 100%)` },
-        [INGESTION_JOB_STATUS.CANCELLED]: { title: 'Job Cancelled', color: 'gold', icon: LuBan, label: 'Cancelled', gradient: `linear-gradient(135deg, ${token.colorWarningBg} 0%, ${token.colorBgBase} 100%)` },
+        [INGESTION_JOB_STATUS.PENDING]: { title: 'Job is Pending', color: 'default', icon: LuFile, label: 'Pending', gradient: `linear-gradient(135deg, ${colors.colorBgBase} 0%, ${colors.colorBgBase} 100%)` },
+        [INGESTION_JOB_STATUS.PROCESSING]: { title: 'Job is Processing', color: 'blue', icon: LuFileCog, label: 'Processing', gradient: `linear-gradient(135deg, ${colors.colorInfoBg} 0%, ${colors.colorBgBase} 100%)` },
+        [INGESTION_JOB_STATUS.NEEDS_REVIEW]: { title: 'Job Processing completed, Need Review', color: 'orange', icon: LuFileQuestion, label: 'Needs Review', gradient: `linear-gradient(135deg, ${colors.colorWarningBg} 0%, ${colors.colorBgBase} 100%)` },
+        [INGESTION_JOB_STATUS.PUBLISHING]: { title: 'Job is Publishing', color: 'blue', icon: LuFileClock, label: 'Publishing', gradient: `linear-gradient(135deg, ${colors.colorInfoBg} 0%, ${colors.colorBgBase} 100%)` },
+        [INGESTION_JOB_STATUS.PUBLISHED]: { title: 'Job Published Successfully', color: 'green', icon: LuFileCheck2, label: 'Published', gradient: `linear-gradient(135deg, ${colors.colorSuccessBg} 0%, ${colors.colorBgBase} 100%)` },
+        [INGESTION_JOB_STATUS.FAILED]: { title: 'Job Failed', color: 'red', icon: LuFileX, label: 'Failed', gradient: `linear-gradient(135deg, ${colors.colorErrorBg} 0%, ${colors.colorBgBase} 100%)` },
+        [INGESTION_JOB_STATUS.CANCELLED]: { title: 'Job Cancelled', color: 'gold', icon: LuBan, label: 'Cancelled', gradient: `linear-gradient(135deg, ${colors.colorWarningBg} 0%, ${colors.colorBgBase} 100%)` },
     };
 }
 

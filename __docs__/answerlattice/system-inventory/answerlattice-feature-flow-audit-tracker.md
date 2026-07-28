@@ -1,7 +1,7 @@
 # Answerlattice Feature Flow Audit Tracker
 
 **Status:** Active strict-order ledger  
-**Last updated:** July 20, 2026  
+**Last updated:** July 26, 2026
 **Authority:** Current code, runtime contracts, maintained Answerlattice docs, Firebase configuration, and focused verifiers outrank historical guides and assumptions.
 
 This tracker freezes the agreed 44-feature audit order. Do not start a later item until the current item has completed its local code/docs verification. Provider, deployment, authenticated-browser, device, DNS, IAM, billing-console, and production evidence remains separate and must not be reported as source completion.
@@ -157,8 +157,8 @@ These contracts are audited across every relevant feature and receive a final sy
 
 ### Feature 3 — Knowledge Intake, source discovery, media, and repeated replies
 
-**Status:** Local source complete on July 18, 2026  
-**Dossier:** `__docs__/answerlattice/knowledge-intake-command-center/README.md`
+**Status:** Local source complete on July 18, 2026; Source Governance hardening overlay locally verified on July 26, 2026
+**Dossiers:** `__docs__/answerlattice/knowledge-intake-command-center/README.md`, `__docs__/answerlattice/source-governance/README.md`
 
 **Verified flow:** owner route and API admission -> job/source creation -> bounded URL discovery/fetch, browser file extraction, protected media extraction, and repeated-reply intake -> deterministic/launch-pack review generation -> evidence-preserving owner edit/accept/reject -> KB/FAQ/product-surface/canonical-proposal publish -> embedding/cache/source-summary updates -> usage ledger, scheduler summary, platform monitor, rules, docs, and focused verifiers.
 
@@ -173,10 +173,25 @@ These contracts are audited across every relevant feature and receive a final sy
 - aligned the maintained docs with the current no-manifest, no-raw-retention, deterministic-dedupe runtime and explicitly marked source deletion, cancellation, automatic authority/conflict resolution, product maps, topic readiness, and freshness polling as separate or reserved work;
 - expanded contract, emulator, and source-gate coverage for evidence backfill, owner-edit preservation, FAQ provenance/retrieval, privacy bounds, and URL admission.
 
+**Source Governance hardening overlay:**
+
+- added an optional governed-evidence map to existing source records for authority, ownership, approval, access, citation eligibility, effective/review dates, bounded applicability, same-job conflicts, reviewer, and review time;
+- kept authority human-declared and feature-gated off by default; support tickets, feedback, imported content, and repeated replies remain signals rather than automatic product truth;
+- made each save a server-owned, exact-workspace transaction with `MANAGE_KNOWLEDGE`, active-license, strict-body, exact job/source/conflict, idempotency-fingerprint, reciprocal conflict, and compact audit checks;
+- blocked canonical proposal acceptance and publication unless every linked source is approved and conflict-free, while leaving KB, FAQ, and product-surface review behavior unchanged;
+- preserved current rules and storage shape: browser source writes remain denied, no collection/index/listener/scheduler/provider call was added, and compact target/peer governance patches reconcile the loaded bundle without a reread;
+- prevented one-sided conflict truth by requiring reviewed peers and transactionally adding or removing reciprocal links, so either source remains ineligible evidence until resolution;
+- made committed reciprocal updates recoverable after a lost response: unchanged browser retries retain one bounded request identity, server replay rereads only audit-recorded peers without writing, stale responses cannot settle, and malformed or divergent patch bundles fail closed;
+- bounded common saves to 2-7 transaction reads/writes and worst-case five-to-five conflict replacement to 12 reads/writes, plus up to five direct evidence reads when accepting or publishing a canonical proposal;
+- added focused contract, emulator, dedicated/shared rule, runtime-source, strict TypeScript, lint, dependency-freeze, and documentation evidence without claiming hosted-browser or real-client rollout proof.
+
 **Verification passed:**
 
 - `npm run test:answerlattice-knowledge-intake-contracts`
 - `npm run test:answerlattice-knowledge-intake:emulator`
+- `npm run test:answerlattice-source-governance`
+- `npm run test:answerlattice-knowledge-intake:rules`
+- `npm run test:answerlattice-knowledge-intake:shared-rules`
 - `npm run typecheck:answerlattice`
 - focused ESLint on every changed Feature 3 TypeScript/TSX/verifier file
 - `npm run verify:answerlattice-runtime-truth`
@@ -184,8 +199,10 @@ These contracts are audited across every relevant feature and receive a final sy
 - `npm run verify:dependency-freeze`
 - `git diff --check`
 
+**Current-worktree verification note:** The concurrent Gemini/package migration is now reconciled. Root/Answerlattice TypeScript, focused and full lint, the updated dependency-freeze contract, source-governance emulator, runtime-truth verifier, documentation links, and diff integrity pass on the final worktree.
+
 **Deployment:** Not required. No Firestore rules, indexes, Storage rules, or Answerlattice Cloud Functions changed.  
-**External evidence:** Authenticated hosted desktop and narrow-width intake/review/media/publish smoke, configured provider OCR/transcription/launch-pack accounting and refund evidence, deployed embedding/cache invalidation evidence, and representative founder sources/questions remain pending and are not included in local source completion.
+**External evidence:** Authenticated hosted desktop and narrow-width intake/review/media/publish/source-governance smoke, one real SaaS workspace reviewing bounded evidence, measured review burden and blocked-proposal behavior, configured provider OCR/transcription/launch-pack accounting and refund evidence, deployed embedding/cache invalidation evidence, and representative founder sources/questions remain pending and are not included in local source completion.
 
 ### Feature 4 — KB generation, embedding jobs, review, and publishing
 
@@ -312,6 +329,14 @@ These contracts are audited across every relevant feature and receive a final sy
 - expanded bounded merge to rewrite FAQ and product-surface links, deduplicate/self-remove relation edges, merge aliases, rebuild a complete survivor search index, remove duplicate/merged indexes, audit transferred counts, and invalidate every affected source family;
 - exposed alias editing, relation maintenance, same-type merge, load retry, and accurate mutation completion in the governance dashboard;
 - made nightly graph rebuild detect entity/relation/answer overflow with cap-plus-one reads, require exact `AL` scope, and preserve the prior graph on invalid or truncated input;
+- added the day-one Knowledge Map: a compact governance view for entity relationships, answer coverage, drift, and review state, plus a public article topic map derived only from sanitized published headings and existing navigation data;
+- preserved incoming and outgoing direction for all six governed relation types while keeping the legacy bidirectional compatibility map, so the owner view distinguishes `Requires` from `Required by` without re-reading relation rows;
+- compared the graph's entity/relation/canonical source-version snapshot with current existing control-plane counters, exposed current/stale/unverified states, and linked directly to the existing Entity Candidates queue;
+- made nightly reconciliation write an empty graph after the final active entity is removed instead of preserving stale nodes indefinitely;
+- exposed current product version and textual approved, missing-answer, drift, and review states on every visible owner node, with a 44px accessible relationship disclosure on narrow screens;
+- hardened the graph-summary parser to require exact rebuild metadata, declared counts, known entity/relation/interaction types, complete graph references, bounded counters, and explicit field projection;
+- added dedicated and shared Firestore-rule evidence that only the exact authorized workspace can read the graph summary and that client mutation remains denied;
+- kept map cost bounded to two parallel governance point reads and zero incremental public reads, with one additional nightly source-version point read but no listener, map collection, collection query, mutation-time map write, AI call, embedding, vector query, or per-node fetch;
 - aligned the entity dossier, system inventory, public/commercial claim boundary, Firebase cost model, responsive assessment, changelog, and runtime source gate.
 
 **Verification passed:**
@@ -319,6 +344,9 @@ These contracts are audited across every relevant feature and receive a final sy
 - `npm run test:answerlattice-ontology-contracts`
 - `npm run test:answerlattice-entity-extraction-contracts`
 - `npm run test:answerlattice-governance-contracts`
+- `npm run verify:answerlattice-knowledge-map`
+- `npm run test:answerlattice-runtime-summary-contracts`
+- dedicated and shared platform-summary Firestore-rule emulators
 - `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-ontology:emulator`
 - `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-governance:emulator`
 - dedicated and shared ontology Firestore-rule emulators
@@ -330,9 +358,9 @@ These contracts are audited across every relevant feature and receive a final sy
 - `npm run verify:dependency-freeze`
 - `git diff --check`
 
-**Deployment:** Required and attempted for `answerlatticeNightly` in `answerlattice-qa` because the dedicated Answerlattice Function changed. The narrow deploy stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; authenticated deployment evidence remains separate from local source completion.  
+**Deployment:** Required and re-attempted on July 28 for `answerlatticeNightly` and `triggerAnswerlatticeNightly` in `answerlattice-qa` because the Knowledge Map adds fields to their shared graph-summary builder. The narrow deploy stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; authenticated deployment evidence remains separate from local source completion.
 **Monitored limit:** The governance dashboard reads at most 500 workspace relation rows and does not paginate. Add pagination or selected-entity loading before a workspace needs broader graph administration.  
-**External evidence:** Authenticated QA deployment, hosted entity create/edit/alias/relation/merge/deprecation smoke, and post-nightly graph-summary readback remain outside local source completion.
+**External evidence:** Authenticated QA deployment, hosted entity create/edit/alias/relation/merge/deprecation smoke, post-nightly graph-summary readback, and the maintained five-founder 90-second map-comprehension test remain outside local source completion.
 
 ### Feature 8 — Product surfaces, safe context, and applicability
 
@@ -559,7 +587,7 @@ These contracts are audited across every relevant feature and receive a final sy
 
 ### Feature 14 — Compiled context bundles, instant cache, and freshness
 
-**Status:** Local source complete on July 19, 2026
+**Status:** Local source complete on July 19, 2026; reserved-counter boundary reverified on July 26, 2026
 
 **Dossiers:** `__docs__/answerlattice/compiled-context-distribution/README.md` and `__docs__/answerlattice/instant-response-infrastructure/README.md`
 
@@ -578,6 +606,7 @@ These contracts are audited across every relevant feature and receive a final sy
 - moved canonical Redis keys to `canon:v5`, hashing normalized query, complete context and raw entity/plan/role/state segments, bypassing graph-aware selection until independently versioned, and validating untrusted IDs, version, timestamp, confidence, procedure, source versions, citations, and UTF-8 payload bytes before delivery;
 - limited Redis writes to active reviewer-cleared canonical truth, made invalid-entry cleanup observable, rejected non-canonical history without references, and enforced persisted search-history expiry;
 - disabled widget bundle bootstrap because the widget does not consume those files, while preserving rollout-gated Public API bundle preference and disabled-by-default MCP;
+- verified and source-gated `branding` and `mcpPolicy` as reserved invalidation counters only: their numeric values remain in private source-version metadata, but neither builder reads or serializes the rollout-gated advanced-branding profile or an MCP authorization policy, and private branding saves do not trigger bundle work;
 - removed unsupported latency, hit-rate, free-tier, cost-savings, zero-configuration, and zero-staleness claims from maintained dossiers and public website copy.
 
 **Verification passed:**
@@ -592,15 +621,17 @@ These contracts are audited across every relevant feature and receive a final sy
 - `npm run verify:dependency-freeze`
 - `git diff --check`
 
-**Deployment:** Required and attempted for the changed dedicated `answerlatticeNightly` Function in `answerlattice-qa`. The narrow deploy stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote revision changed.
+**July 26 reserved-counter cross-check:** `npm run test:answerlattice-context-bundle-version-boundary`, `node --check scripts/verification/verify-answerlattice-runtime-truth.js`, `node scripts/verification/verify-answerlattice-runtime-truth.js`, focused verifier ESLint, `npm run typecheck:answerlattice`, full `npm run lint`, `npm run docs:check-links`, `npm run verify:dependency-freeze`, and `git diff --check` passed. The documentation checker found zero broken links and retained 62 unrelated existing video-artifact naming warnings.
 
-**Monitored limits:** Public bootstrap/routes stop at 50 KB, other public objects at 512 KiB, private objects at 2 MiB, MCP output at 24 KB, manifest memory cache at 60 seconds, and bundle-object memory cache at 10 minutes. Builder source caps fail closed; partition before a workspace exceeds them. `branding` and `mcpPolicy` remain reserved source counters whose bundle serialization status requires verification.
+**Deployment:** The July 26 reserved-counter cross-check changes tests and documentation only, so it requires no deployment. The historical Feature 14 Functions hardening still requires the dedicated `answerlatticeNightly` QA deployment; its narrow attempt stopped before upload with `Error: Failed to authenticate, have you run firebase login?`, so no remote revision changed.
+
+**Monitored limits:** Public bootstrap/routes stop at 50 KB, other public objects at 512 KiB, private objects at 2 MiB, MCP output at 24 KB, manifest memory cache at 60 seconds, and bundle-object memory cache at 10 minutes. Builder source caps fail closed; partition before a workspace exceeds them. `branding` and `mcpPolicy` remain reserved invalidation counters whose numeric values appear only in private source-version metadata; compiled context does not serialize either feature payload.
 
 **External evidence:** Authenticated QA Function deployment and scheduled repair readback, configured Upstash `canon:v5` read/write plus query/context separation and latency/cost evidence, Storage/CDN/fallback metrics, rollout-gated Public API/MCP smoke, and any future widget bundle-consumption proof remain outside local source completion.
 
 ### Feature 15 — Widget configuration, keys, origins, access, and branding
 
-**Status:** Local source complete on July 19, 2026
+**Status:** Local source complete; concurrency, secret-retention, and shared-rules refresh completed July 26, 2026
 
 **Dossier:** `__docs__/answerlattice/help-widget/README.md`
 
@@ -618,6 +649,10 @@ These contracts are audited across every relevant feature and receive a final sy
 - aligned loader/server blocked-route semantics and removed loose prefix-wildcard matching;
 - retained only bounded public branding fields and raised key/origin/route mobile controls to the 44px touch contract;
 - corrected public/security language so exact origins are admission controls while blocked routes are presentation controls;
+- moved configuration saves into one exact-scope transaction with browser-held `configVersion`, exact retry/no-op acknowledgement, and `409` refusal for stale differing edits;
+- ordered the save limiter before permission, Firestore access, and body parsing;
+- stopped normalizing historical widget-key ciphertext back into current state, so the next legitimate key mutation removes legacy recoverable fields without a cleanup-only write;
+- protected widget config, origins, schema/version/update fields, runtime status, and credentials from direct browser create/update in maintained shared Firestore rules while retaining unrelated store updates;
 - rebuilt the complete help-widget dossier, synchronized inventories and changelog, and added focused source assertions.
 
 **Verification passed:**
@@ -625,6 +660,8 @@ These contracts are audited across every relevant feature and receive a final sy
 - `npm run test:answerlattice-widget-config-contracts`
 - `npm run test:answerlattice-widget-runtime-token`
 - `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-widget-key:emulator`
+- `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-public-api:rules`
+- `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-public-api:shared-rules`
 - `npm run typecheck:answerlattice`
 - focused ESLint on every changed Feature 15 app, public-site, runtime, and verifier file
 - `node scripts/verification/verify-answerlattice-runtime-truth.js`
@@ -632,7 +669,7 @@ These contracts are audited across every relevant feature and receive a final sy
 - `npm run verify:dependency-freeze`
 - `git diff --check`
 
-**Deployment:** Not required. Feature 15 changes no Firestore rule, index, Storage rule, or Answerlattice Cloud Function.
+**Deployment:** The July 26 refresh changes shared `firestore.rules` only. It adds no dedicated Answerlattice rule, index, Storage rule, Cloud Function, collection, or scheduler. The scoped `firebase deploy --only firestore:rules --project menulist-qa` attempt stopped before upload with `Failed to authenticate, have you run firebase login?`; no remote shared-rules revision changed.
 
 **Monitored limits:** At most 10 active widget keys and 30 retained key records; at most 25 exact origins and 50 blocked routes; config save body 32 KiB; key mutation body 4 KiB; runtime config process cache 500 entries and at most 15 seconds; public config/browser TTL 60 seconds; origin-bound runtime token 15 minutes. Partition or revise the contract before customers require materially larger installation policy sets.
 
@@ -1798,17 +1835,19 @@ The focused aggregate proves strict API credential/scope contracts, key rotation
 
 **External evidence:** real-client task completion, target mismatch, completion time, escalation, support workload, authorization usability, and reversible-action demand remain external. They do not justify autonomous browser or account-changing actions.
 
-## Final C1-C8 System Pass — July 20, 2026
+## Final C1-C8 System Pass — Refreshed July 26, 2026
 
 **Status:** Local source complete
 **Audit:** `__docs__/answerlattice/system-inventory/answerlattice-final-cross-cutting-audit.md`
 
-All 44 feature flows have completed the frozen local audit order. The final cross-cutting pass verified product separation, authorization and tenant isolation, dedicated/shared Firebase policy, retention and recovery contracts, scheduler/cost controls, AI/evidence safety, responsive/mobile source contracts, CI/dependency controls, feature flags, docs, and rollout claims.
+All 44 feature flows have completed the frozen local audit order. The final cross-cutting pass verified product separation, authorization and tenant isolation, dedicated/shared Firebase policy, retention and recovery contracts, scheduler/cost controls, AI/evidence safety, responsive/mobile source contracts, CI/dependency controls, feature flags, docs, and rollout claims. The July 26 refresh treats Source Governance as a Feature 3 hardening overlay, not Feature 45. The reviewed close/recover/legal-hold/erasure path is C3 lifecycle hardening, not a new numbered feature or customer self-service surface.
 
 The final Functions build found and fixed one compile regression: Slack/email coverage formatting still used the shared bounded ratio helper after its imports were removed with unrelated confidence output. The imports were restored without restoring opaque confidence percentages.
 
-**Final verification passed:** full Answerlattice runtime/emulator truth, final-readiness source gates, dependency/security policy, backup/recovery contracts, founder-support controls, Answerlattice and root strict TypeScript, Functions build, Answerlattice web SDK build, focused adapter contracts, documentation links, and diff integrity.
+The final July 26 C1 current-worktree recheck preserved the existing product-separation architecture and corrected one stale `verify:env-targets` assertion after the production-readiness checklist adopted the newer provider-resilience and Upstash preflight wording. No Answerlattice runtime, Firebase, cost, or deployment contract changed.
 
-**Deployment evidence:** dedicated QA rules plus `answerlatticeNightly`/`processIntegrationEvent`, and shared MenuList QA rules, were attempted after validation. Both stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote revision changed.
+**Final verification passed:** full Answerlattice runtime/emulator truth, final-readiness source gates, dependency/security policy, backup/recovery contracts, founder-support controls, Answerlattice and root strict TypeScript, Functions build, Answerlattice web SDK build, focused adapter contracts, documentation links, and diff integrity. The July 26 refresh additionally passed the Source Governance emulator, Knowledge Intake contract/rule tests, and the workspace-lifecycle contract, dedicated/shared Firestore, dedicated/shared Storage, and service-emulator gates. Dependency freeze also passes on the current worktree after the Gemini runtime migration was reconciled with the pinned dependency contract.
 
-**External release evidence still required:** successful remote CI, QA deploy/readback, managed backup plus isolated restore rehearsal, full workspace closure/erasure, first-client answer evaluation, browser/device/accessibility, live payment/email/provider/DNS journeys, production telemetry, and 1,000+ due-workspace scheduler load evidence.
+**Deployment evidence:** dedicated QA rules plus `answerlatticeNightly`/`processIntegrationEvent`, shared MenuList QA rules, and the final dedicated/shared Firestore-plus-Storage rule sets were attempted after validation. Every attempt stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote revision changed.
+
+**External release evidence still required:** successful remote CI, QA deploy/readback, managed backup plus isolated restore rehearsal, a disposable QA workspace close/recover/erase rehearsal including dedicated staff Auth and cross-service Storage rule permission, first-client answer evaluation, browser/device/accessibility, live payment/email/provider/DNS journeys, production telemetry, and 1,000+ due-workspace scheduler load evidence.

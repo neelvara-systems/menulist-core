@@ -15,6 +15,7 @@ import {
     updateDoc,
     where,
 } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const RULES_FILE = process.env.ANSWERLATTICE_RULES_FILE || 'firestore-answerlattice.rules';
@@ -75,6 +76,10 @@ async function run(): Promise<void> {
         }).firestore();
         const publicDb = testEnv.unauthenticatedContext().firestore();
         const sessionRef = doc(ownerDb, 'chatSessions', 'session-1');
+
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
+        });
 
         await assertSucceeds(setDoc(sessionRef, chatSession()));
         await assertSucceeds(getDoc(sessionRef));

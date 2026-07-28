@@ -8,6 +8,8 @@
  */
 
 import { CAMPAIGNCUE_PRODUCT_SLUG } from '@constant/campaigncue/product';
+import { NEELVARA_PRODUCT_SLUG } from '@constant/neelvara/product';
+import { SIGNALDESK_PRODUCT_SLUG } from '@constant/signaldesk/product';
 
 /**
  * Reserved project slugs — blocked at project creation/rename time.
@@ -92,7 +94,10 @@ export const RESERVED_SUBDOMAINS: readonly string[] = [
     'help', 'support', 'status', 'menu', 'screen', 'feedback',
     'auth', 'login', 'signup', 'webhook', 'health', 'cdn',
     'dev', 'staging', 'test', 'demo', 'docs', 'billing',
+    'answerlattice',
     CAMPAIGNCUE_PRODUCT_SLUG,
+    NEELVARA_PRODUCT_SLUG,
+    SIGNALDESK_PRODUCT_SLUG,
 ] as const;
 
 /**

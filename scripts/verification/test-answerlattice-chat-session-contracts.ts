@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
     ANSWERLATTICE_CHAT_SESSION_MESSAGE_LIMIT,
     getAnswerlatticeChatSessionActorScope,
@@ -192,5 +194,20 @@ assert.equal(isAnswerlatticeChatImageStoragePath(
     'supportTickets/documents/71/701/upload.png',
     { tId: 71, sId: 701 },
 ), false);
+
+const chatSessionDalSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/database/chatSessions/index.ts'),
+    'utf8',
+);
+assert.match(
+    chatSessionDalSource,
+    /const transactionResult = await runTransaction\(answerlatticeFirebaseClient,[\s\S]*?return \{ wrote: false, removedImageUrls: \[\] \};[\s\S]*?return \{ wrote: true, removedImageUrls \};/,
+    'append compaction outcome and media cleanup must come from the committed transaction attempt',
+);
+assert.doesNotMatch(
+    chatSessionDalSource,
+    /let wrote = false;/,
+    'append compaction must not retain a write flag from a transaction attempt that Firestore retries',
+);
 
 process.stdout.write('Answerlattice chat-session runtime contracts passed.\n');

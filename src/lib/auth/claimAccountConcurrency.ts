@@ -55,11 +55,21 @@ const normalizeClaimAccountScopeDocumentId = (value: unknown): string | null => 
         : null;
 };
 
+const normalizeClaimAccountScopeAliases = (values: readonly unknown[]): string | null => {
+    const present = values.filter((value) => value !== undefined && value !== null);
+    if (present.length === 0) return null;
+    const normalized = present.map(normalizeClaimAccountScopeDocumentId);
+    const expected = normalized[0];
+    return expected && normalized.every((value) => value === expected)
+        ? expected
+        : null;
+};
+
 export const normalizeClaimAccountScope = (
     data: FirebaseFirestore.DocumentData | undefined,
 ): ClaimAccountScope | null => {
-    const tenantDocumentId = normalizeClaimAccountScopeDocumentId(data?.tenantId);
-    const storeDocumentId = normalizeClaimAccountScopeDocumentId(data?.storeId);
+    const tenantDocumentId = normalizeClaimAccountScopeAliases([data?.tenantId, data?.tId]);
+    const storeDocumentId = normalizeClaimAccountScopeAliases([data?.storeId, data?.sId]);
     if (!tenantDocumentId || !storeDocumentId) return null;
     return {
         tenantDocumentId,
@@ -210,9 +220,20 @@ export const runClaimAccountTransaction = async ({
     const tenant = tenantSnapshot.data() || {};
     const store = storeSnapshot.data() || {};
     if (
-        normalizeClaimAccountScopeDocumentId(tenant.tenantId) !== scope.tenantDocumentId
-        || normalizeClaimAccountScopeDocumentId(store.tenantId) !== scope.tenantDocumentId
-        || normalizeClaimAccountScopeDocumentId(store.storeId) !== scope.storeDocumentId
+        normalizeClaimAccountScopeAliases([
+            tenantSnapshot.id,
+            tenant.tenantId,
+            tenant.tId,
+        ]) !== scope.tenantDocumentId
+        || normalizeClaimAccountScopeAliases([
+            store.tenantId,
+            store.tId,
+        ]) !== scope.tenantDocumentId
+        || normalizeClaimAccountScopeAliases([
+            storeSnapshot.id,
+            store.storeId,
+            store.sId,
+        ]) !== scope.storeDocumentId
         || tenant.active === false
         || tenant.blocked === true
         || tenant.deleted === true

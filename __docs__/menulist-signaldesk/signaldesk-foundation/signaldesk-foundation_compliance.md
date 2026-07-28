@@ -20,6 +20,8 @@ Internal team membership changes must be made through the private Settings flow 
 
 Every request also requires a current MenuList user record that remains active, unblocked, undeleted, auth-enabled, email-consistent, and newer than any session-revocation boundary. Cached session platform role is not authority. Human membership admits only founder admin, growth manager, operator, compliance reviewer, and read-only analyst; `system-worker` is reserved for server worker identity and cannot be created through the human team flow.
 
+Protected API requests apply the authenticated actor's route/action rate limit before current-user, membership, permission or governed audit Firestore work. Distributed limiter uncertainty fails closed with a bounded retryable service-unavailable response; it is not treated as quota abuse and does not permit degraded-mode datastore access.
+
 Member identity changes are transactional. Ambiguous user-ID/email matches, attempts to rebind an existing user ID, missing explicit records, and concurrent duplicate claims fail closed. Self-deactivation compares the stored member identity with the current actor so changing submitted email cannot bypass the guard.
 
 ## Contact Reveal

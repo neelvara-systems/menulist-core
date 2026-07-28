@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { DEFAULT_ROLE_IDS } from '@data/shared/defaultRoles';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import type { StoreRoleDataType } from '@type/platform/roles';
 import type { UserStoreMappingType } from '@type/platform/user';
@@ -82,6 +83,15 @@ type StaffAccessAssignment = {
     userId: string;
 };
 
+type StaffAccessState = {
+    assignments: StaffAccessAssignment[];
+    revision: number;
+};
+
+const MAX_STAFF_ACCESS_ASSIGNMENTS = 500;
+const MAX_STAFF_ROLE_ID_LENGTH = 128;
+const MAX_STAFF_USER_ID_LENGTH = 160;
+
 export type StaffAccessStateScope = {
     storeIds: number[];
     tenantId: number;
@@ -104,19 +114,63 @@ class StaffAccessGuardExpansionError extends Error {
     }
 }
 
-const getAccessStateId = (tenantId: number, storeId: number): string => `${tenantId}_${storeId}`;
+const getAccessStateId = (tenantId: number, storeId: number): string => {
+    if (
+        normalizeStaffScopeNumericId(tenantId) !== tenantId
+        || normalizeStaffScopeNumericId(storeId) !== storeId
+    ) {
+        throw new StaffConcurrencyError('FORBIDDEN');
+    }
+    return `${tenantId}_${storeId}`;
+};
 
 const normalizeAssignments = (value: unknown): StaffAccessAssignment[] => {
-    if (!Array.isArray(value)) return [];
+    if (!Array.isArray(value) || value.length > MAX_STAFF_ACCESS_ASSIGNMENTS) {
+        throw new StaffConcurrencyError('FORBIDDEN');
+    }
     const assignments = new Map<string, StaffAccessAssignment>();
     value.forEach((candidate) => {
-        if (!isStaffUnknownRecord(candidate)) return;
-        const userId = typeof candidate.userId === 'string' ? candidate.userId.trim() : '';
-        const role = typeof candidate.role === 'string' ? candidate.role.trim() : '';
-        if (!userId || !role) return;
+        if (!isStaffUnknownRecord(candidate)) throw new StaffConcurrencyError('FORBIDDEN');
+        const userId = typeof candidate.userId === 'string' ? candidate.userId : '';
+        const role = typeof candidate.role === 'string' ? candidate.role : '';
+        if (
+            !userId
+            || userId !== userId.trim()
+            || userId.length > MAX_STAFF_USER_ID_LENGTH
+            || !isValidFirestoreDocumentId(userId)
+            || !role
+            || role !== role.trim()
+            || role.length > MAX_STAFF_ROLE_ID_LENGTH
+            || assignments.has(userId)
+        ) {
+            throw new StaffConcurrencyError('FORBIDDEN');
+        }
         assignments.set(userId, { role, userId });
     });
     return Array.from(assignments.values()).sort((left, right) => left.userId.localeCompare(right.userId));
+};
+
+const parseAccessState = (
+    snapshot: FirebaseFirestore.DocumentSnapshot,
+    tenantId: number,
+    storeId: number,
+): StaffAccessState => {
+    if (!snapshot.exists) throw new StaffConcurrencyError('FORBIDDEN');
+    const data = snapshot.data();
+    if (
+        !data
+        || data.tenantId !== tenantId
+        || data.storeId !== storeId
+        || !Number.isSafeInteger(data.revision)
+        || data.revision < 0
+        || !(data.updatedAt instanceof Timestamp)
+    ) {
+        throw new StaffConcurrencyError('FORBIDDEN');
+    }
+    return {
+        assignments: normalizeAssignments(data.assignments),
+        revision: data.revision,
+    };
 };
 
 const mappingsChanged = (
@@ -134,18 +188,30 @@ const getUsersForStore = async (
     tenantId: number,
     storeId: number,
 ): Promise<FirebaseFirestore.QueryDocumentSnapshot[]> => {
-    const storeIdVariants: Array<number | string> = [storeId, String(storeId)];
-    const queries = [
-        ...storeIdVariants.map((value) => db.collection(DB_COLLECTIONS.USERS).where('storeIds', 'array-contains', value).get()),
-        ...storeIdVariants.map((value) => db.collection(DB_COLLECTIONS.USERS).where('storeId', '==', value).get()),
-    ];
+    const tenantIdVariants: Array<number | string> = [tenantId, String(tenantId)];
+    const queries = tenantIdVariants.map((value) => (
+        db.collection(DB_COLLECTIONS.USERS)
+            .where('tenantId', '==', value)
+            .limit(MAX_STAFF_ACCESS_ASSIGNMENTS + 1)
+            .get()
+    ));
     const snapshots = await Promise.all(queries);
+    if (snapshots.some((snapshot) => snapshot.size > MAX_STAFF_ACCESS_ASSIGNMENTS)) {
+        throw new StaffConcurrencyError('FORBIDDEN');
+    }
     const documents = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
     snapshots.forEach((snapshot) => snapshot.docs.forEach((document) => {
-        if (normalizeStaffScopeNumericId(document.data().tenantId) === tenantId) {
+        const data = document.data();
+        if (
+            normalizeStaffScopeNumericId(data.tenantId) === tenantId
+            && normalizePersistedStaffStoreMappings(data.stores).some((mapping) => mapping.storeId === storeId)
+        ) {
             documents.set(document.id, document);
         }
     }));
+    if (documents.size > MAX_STAFF_ACCESS_ASSIGNMENTS) {
+        throw new StaffConcurrencyError('FORBIDDEN');
+    }
     return Array.from(documents.values());
 };
 
@@ -230,16 +296,16 @@ export const writeStaffBlockedAccessStateInTransaction = (
         && currentData.isVerified !== false;
 
     states.forEach(({ ref, snapshot, storeId }) => {
-        if (!snapshot.exists) throw new StaffConcurrencyError('FORBIDDEN');
+        const state = parseAccessState(snapshot, scope.tenantId, storeId);
         const assignments = new Map(
-            normalizeAssignments(snapshot.data()?.assignments).map((assignment) => [assignment.userId, assignment]),
+            state.assignments.map((assignment) => [assignment.userId, assignment]),
         );
         assignments.delete(userId);
         const mapping = mappingByStoreId.get(storeId);
         if (canAssign && mapping) assignments.set(userId, { role: mapping.role, userId });
         transaction.set(ref, {
             assignments: Array.from(assignments.values()).sort((left, right) => left.userId.localeCompare(right.userId)),
-            revision: Number(snapshot.data()?.revision || 0) + 1,
+            revision: state.revision + 1,
             storeId,
             tenantId: scope.tenantId,
             updatedAt: Timestamp.now(),
@@ -308,24 +374,34 @@ export const createStaffUserDocumentTransaction = async (
         });
         const mappings = normalizeAndValidateMappings(params.tenantId, params.mappings, storesById);
         const assignmentMaps = new Map<number, Map<string, StaffAccessAssignment>>();
+        const accessStates = new Map<number, StaffAccessState>();
         stateSnapshots.forEach((snapshot, index) => {
-            if (!snapshot.exists) throw new StaffAccessGuardExpansionError([orderedStoreIds[index]]);
-            assignmentMaps.set(orderedStoreIds[index], new Map(
-                normalizeAssignments(snapshot.data()?.assignments).map((assignment) => [assignment.userId, assignment]),
+            const storeId = orderedStoreIds[index];
+            if (!snapshot.exists) throw new StaffAccessGuardExpansionError([storeId]);
+            const state = parseAccessState(snapshot, params.tenantId, storeId);
+            accessStates.set(storeId, state);
+            assignmentMaps.set(storeId, new Map(
+                state.assignments.map((assignment) => [assignment.userId, assignment]),
             ));
         });
         mappings.forEach((mapping) => assignmentMaps.get(mapping.storeId)?.set(params.userId, {
             role: mapping.role,
             userId: params.userId,
         }));
-        stateRefs.forEach((stateRef, index) => transaction.set(stateRef, {
-            assignments: Array.from(assignmentMaps.get(orderedStoreIds[index])?.values() || [])
-                .sort((left, right) => left.userId.localeCompare(right.userId)),
-            revision: Number(stateSnapshots[index].data()?.revision || 0) + 1,
-            storeId: orderedStoreIds[index],
-            tenantId: params.tenantId,
-            updatedAt: Timestamp.now(),
-        }));
+        stateRefs.forEach((stateRef, index) => {
+            const storeId = orderedStoreIds[index];
+            const state = accessStates.get(storeId);
+            const assignments = assignmentMaps.get(storeId);
+            if (!state || !assignments) throw new StaffConcurrencyError('FORBIDDEN');
+            transaction.set(stateRef, {
+                assignments: Array.from(assignments.values())
+                    .sort((left, right) => left.userId.localeCompare(right.userId)),
+                revision: state.revision + 1,
+                storeId,
+                tenantId: params.tenantId,
+                updatedAt: Timestamp.now(),
+            });
+        });
         const data = {
             ...params.data,
             storeId: mappings[0]?.storeId,
@@ -440,10 +516,14 @@ export const runStaffUserMutationTransaction = async (
                     ? mutation.verified
                     : currentData.isVerified !== false;
                 const assignmentMaps = new Map<number, Map<string, StaffAccessAssignment>>();
+                const accessStates = new Map<number, StaffAccessState>();
                 stateSnapshots.forEach((snapshot, index) => {
-                    if (!snapshot.exists) throw new StaffAccessGuardExpansionError([orderedStoreIds[index]]);
-                    assignmentMaps.set(orderedStoreIds[index], new Map(
-                        normalizeAssignments(snapshot.data()?.assignments).map((assignment) => [assignment.userId, assignment]),
+                    const storeId = orderedStoreIds[index];
+                    if (!snapshot.exists) throw new StaffAccessGuardExpansionError([storeId]);
+                    const state = parseAccessState(snapshot, params.tenantId, storeId);
+                    accessStates.set(storeId, state);
+                    assignmentMaps.set(storeId, new Map(
+                        state.assignments.map((assignment) => [assignment.userId, assignment]),
                     ));
                 });
                 assignmentMaps.forEach((assignments) => assignments.delete(params.userId));
@@ -473,14 +553,20 @@ export const runStaffUserMutationTransaction = async (
                     shouldDeactivate,
                 };
                 const update = params.buildUpdate(context);
-                stateRefs.forEach((stateRef, index) => transaction.set(stateRef, {
-                    assignments: Array.from(assignmentMaps.get(orderedStoreIds[index])?.values() || [])
-                        .sort((left, right) => left.userId.localeCompare(right.userId)),
-                    revision: Number(stateSnapshots[index].data()?.revision || 0) + 1,
-                    storeId: orderedStoreIds[index],
-                    tenantId: params.tenantId,
-                    updatedAt: Timestamp.now(),
-                }));
+                stateRefs.forEach((stateRef, index) => {
+                    const storeId = orderedStoreIds[index];
+                    const state = accessStates.get(storeId);
+                    const assignments = assignmentMaps.get(storeId);
+                    if (!state || !assignments) throw new StaffConcurrencyError('FORBIDDEN');
+                    transaction.set(stateRef, {
+                        assignments: Array.from(assignments.values())
+                            .sort((left, right) => left.userId.localeCompare(right.userId)),
+                        revision: state.revision + 1,
+                        storeId,
+                        tenantId: params.tenantId,
+                        updatedAt: Timestamp.now(),
+                    });
+                });
                 transaction.update(userRef, update);
                 return { ...context, updatedData: { ...currentData, ...update } };
             });
@@ -522,7 +608,8 @@ export const runStaffRoleMutationTransaction = async <Result>(
             throw new StaffConcurrencyError('STORE_NOT_FOUND');
         }
 
-        const assignments = normalizeAssignments(stateSnapshot.data()?.assignments);
+        const accessState = parseAccessState(stateSnapshot, params.tenantId, params.storeId);
+        const assignments = accessState.assignments;
         if (params.deactivatingRoleId && assignments.some(({ role }) => role === params.deactivatingRoleId)) {
             throw new StaffConcurrencyError('ROLE_IN_USE');
         }
@@ -530,7 +617,7 @@ export const runStaffRoleMutationTransaction = async <Result>(
         const { result, roles } = params.buildResult([...currentRoles]);
         transaction.set(stateRef, {
             assignments,
-            revision: Number(stateSnapshot.data()?.revision || 0) + 1,
+            revision: accessState.revision + 1,
             storeId: params.storeId,
             tenantId: params.tenantId,
             updatedAt: Timestamp.now(),

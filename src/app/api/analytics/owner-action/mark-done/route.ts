@@ -6,8 +6,12 @@ import { PERMISSIONS } from '@constant/permissions';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { markOwnerActionDoneTransaction } from '@lib/analytics/ownerActionReceiptTransaction';
-import { requireAnyStorePermission } from '@lib/permissions/server';
+import {
+    requireAnyStorePermission,
+    resolveStorePermissionSessionScope,
+} from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -60,12 +64,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     );
     if (permissionError) return permissionError;
 
-    const rawTenantId = session.tId || session.user?.tenantId || '';
-    const rawStoreId = session.sId || session.user?.storeId || '';
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    const rawTenantId = sessionScope?.tenantScope.documentId;
+    const rawStoreId = sessionScope?.storeScope.documentId;
     const tenantId = normalizeMarkDoneScopeDocumentId(rawTenantId);
     const storeId = normalizeMarkDoneScopeDocumentId(rawStoreId);
-    const userId = String(session.uId || session.user?.id || 'unknown');
-    if (!tenantId || !storeId) {
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!tenantId || !storeId || !userId) {
         logAnalyticsFailure('owner_action_mark_done_invalid_session_scope', undefined, {
             ...getBoundedAnalyticsStringContext('endpoint', '/api/analytics/owner-action/mark-done'),
             ...getBoundedAnalyticsStringContext('tenantId', rawTenantId),

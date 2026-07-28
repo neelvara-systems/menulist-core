@@ -13,6 +13,7 @@ import {
   getSanitizedMonitoringMessage,
   isSentryMonitoringEnabled,
 } from './sentryShared';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const isDev = process.env.NODE_ENV === 'development';
 const hasMonitoring = isSentryMonitoringEnabled;
@@ -54,7 +55,7 @@ const captureWithScope = (
     applyMonitoringContext(scope, context);
 
     if (error instanceof Error) {
-      scope.setFingerprint([safeMessage, error.name]);
+      scope.setFingerprint([safeMessage, getBoundedErrorName(error) || "Error"]);
       return Sentry.captureException(error);
     }
 

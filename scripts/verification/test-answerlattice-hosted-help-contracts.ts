@@ -15,7 +15,10 @@ import {
     resolveHostedHelpPublicRoute,
     resolveHostedHelpRequestDomain,
 } from '@lib/answerlattice/hostedHelpRequest';
-import { resolveAnswerlatticeHostedHelpRegistryScope } from '@lib/answerlattice/hostedHelpServer';
+import {
+    resolveAnswerlatticeHostedHelpRegistryScope,
+    shouldRemoveCompensatedHostedHelpProviderDomain,
+} from '@lib/answerlattice/hostedHelpServer';
 
 assert.equal(normalizeHostedHelpDomain('https://HELP.example.com/path'), 'help.example.com');
 assert.equal(normalizeHostedHelpDomain('help.example.com:443'), 'help.example.com');
@@ -42,6 +45,21 @@ assert.deepEqual(resolveAnswerlatticeHostedHelpRegistryScope({ pId: 'AL', tId: 1
 assert.equal(resolveAnswerlatticeHostedHelpRegistryScope({ pId: 'AL', productId: 'ML', tId: 11, sId: 22 }), null);
 assert.equal(resolveAnswerlatticeHostedHelpRegistryScope({ pId: 'AL', tId: 11, tenantId: 12, sId: 22 }), null);
 assert.equal(resolveAnswerlatticeHostedHelpRegistryScope({ pId: 'AL', tId: 11, sId: 22, storeId: 23 }), null);
+assert.equal(
+    shouldRemoveCompensatedHostedHelpProviderDomain(false),
+    true,
+    'provider compensation may remove an unclaimed domain',
+);
+assert.equal(
+    shouldRemoveCompensatedHostedHelpProviderDomain(true),
+    false,
+    'provider compensation must preserve a domain claimed by a concurrent winner',
+);
+assert.equal(
+    shouldRemoveCompensatedHostedHelpProviderDomain(undefined),
+    false,
+    'provider compensation must fail closed when registry existence is uncertain',
+);
 
 const saveConfig = parseHostedHelpConfigSaveInput({
     enabled: true,

@@ -1,7 +1,7 @@
 # Ops Alerting Delivery — Firebase Cost Analysis
 
 **Created:** February 20, 2026
-**Last Updated:** July 13, 2026
+**Last Updated:** July 28, 2026
 
 ---
 
@@ -30,6 +30,8 @@
 All ops read/action limiters fail closed before these Firebase business operations when the shared limiter provider is unavailable. Recent alert counts describe the same bounded window and do not grow with collection history.
 
 Note: The alert creation itself (writing to `systemAlerts` collection) is already accounted for in the existing alert framework. Email/WhatsApp delivery uses existing provider integrations and does not create an extra Firestore collection or retry queue.
+
+Functions alert creation with a positive cooldown transactionally reads the deterministic current and previous bucket documents (up to 2 document reads) and writes at most 1 current alert. A duplicate/retry performs the bounded reads and 0 writes/deliveries. Registry entries with an intentional zero cooldown perform 1 direct create. App/API alert creation remains 1 atomic create, and replay-sensitive callers supply a deterministic document ID. Current writers add `expiresAt`; daily leased cleanup handles legacy rows while the guarded TTL setup can enforce the same 90-day boundary after operator activation.
 
 Deployment note: WhatsApp outbound secrets are currently included in `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY`. SMTP and Telegram stay runtime-gated until their Secret Manager values are created in `menulist-qa`; adding them to the function `secrets:` option before the values exist blocks Firebase deploy validation.
 
@@ -63,7 +65,7 @@ The June 30 platform notification dashboard request-boundary hardening is browse
 | Operation | Count | Notes |
 |-----------|-------|-------|
 | `ops_config/system` write | 1 | SAFE_MODE state |
-| `systemAlerts` write | 1 | Platform notification event |
+| `systemAlerts` write | At most 1 | Platform notification event; Functions cooldown retries write 0 |
 | `ops_config/system` read | 1 | Alert mute check when alert delivery is enabled |
 
 SAFE_MODE toggles are rare emergency actions and are platform-role protected plus rate limited.
@@ -108,7 +110,7 @@ SAFE_MODE toggles are rare emergency actions and are platform-role protected plu
 
 - Feature flag: `ENABLE_OPS_ALERTS` — instant alert fan-out disable for ops alert paths
 - Feature flags: `ENABLE_PLATFORM_ALERT_EMAIL` and `ENABLE_PLATFORM_ALERT_WHATSAPP` — channel-specific disable
-- Alert cooldown in existing framework prevents spam
+- Transactional current/previous cooldown-bucket admission prevents concurrent/retry spam
 - Deploy mute window prevents false alarm writes
 - SAFE_MODE, mute-alerts, and platform notification action APIs keep platform-role gates and store only HMAC-hashed operator key material in rate-limit keys. SAFE_MODE and mute-alerts security events use bounded route metadata instead of raw session/request context, and SAFE_MODE reason text is summarized as presence/length in security logs. This changes no Firestore read/write count and adds no rules, indexes, provider calls, Cloud Function logic, or deploy requirement.
 - Fire-and-forget delivery — Telegram, Email, and WhatsApp failures do not cause retries

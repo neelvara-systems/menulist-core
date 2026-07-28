@@ -723,22 +723,15 @@ functions/
 // firestore.rules (additions)
 
 match /reviews/{tId}/{sId}/{reviewId} {
-  // Read: Authenticated users with matching tenant/store
-  allow read: if request.auth != null
-    && request.auth.token.tId == int(tId)
-    && request.auth.token.sId == int(sId);
-
-  // Write: Cloud Functions only (service account)
-  allow write: if false; // Frontend cannot write
+  // Dormant reserved namespace: no ingestion, DAL, schema-admitted reader,
+  // owner surface, or retention contract exists.
+  allow read, write: if false;
 }
 
 match /reviewsState/{docId} {
-  // Read: active rules authorize from embedded tenant/store identity
-  allow read: if isAuthenticated()
-    && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-
-  // Write: Cloud Functions only (no frontend writes - auto-expire handles state)
-  allow write: if false;
+  // Server-only. The authenticated API projects persisted state to two
+  // booleans and never exposes classifier or trigger metadata to browsers.
+  allow read, write: if false;
 }
 ```
 

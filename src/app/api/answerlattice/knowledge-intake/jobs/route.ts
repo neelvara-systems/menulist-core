@@ -16,6 +16,7 @@ import {
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
+import { isAnswerlatticeKnowledgeIntakeHttpUrl } from '@lib/answerlattice/knowledgeIntakeUrlContracts';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
@@ -24,8 +25,8 @@ import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
 const CreateJobSchema = z.object({
     title: z.string().trim().max(120).optional(),
     description: z.string().trim().max(500).optional(),
-    productWebsiteUrl: z.string().trim().max(300).url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)).optional(),
-    appUrl: z.string().trim().max(300).url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)).optional(),
+    productWebsiteUrl: z.string().trim().max(300).url().refine(isAnswerlatticeKnowledgeIntakeHttpUrl).optional(),
+    appUrl: z.string().trim().max(300).url().refine(isAnswerlatticeKnowledgeIntakeHttpUrl).optional(),
     targetAudience: z.string().trim().max(160).optional(),
 }).strict().optional();
 const KNOWLEDGE_INTAKE_CREATE_JOB_MAX_BODY_BYTES = 8 * 1024;

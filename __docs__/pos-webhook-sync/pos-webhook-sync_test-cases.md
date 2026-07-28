@@ -50,6 +50,8 @@ Expected cases:
 - owner cannot read/write `posSyncSecrets` directly;
 - staff cannot read/write `posSyncSecrets` directly;
 - platform client cannot read/write `posSyncSecrets` directly;
+- persisted secret rows with a contradictory product, tenant, or store identity fail closed;
+- identity-less legacy server rows are admitted only as rewrite-required compatibility input;
 - owner can update non-secret POS config while legacy secret remains unchanged;
 - owner cannot add, replace, or delete legacy `store.posSync.webhookSecret`;
 - owner can save a config with `secretVersion` and no raw secret.

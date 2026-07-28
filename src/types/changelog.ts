@@ -1,10 +1,11 @@
 import { Timestamp } from 'firebase/firestore';
+import type { JSONContent } from '@tiptap/core';
 import { UserUploadedFileType } from './common';
 
 export interface ChangelogEntry {
     id: string;
     title: string;
-    description: any; // Tiptap JSON content
+    description: JSONContent | string;
     tags: string[];
     releasedOn: Timestamp;
     createdOn: Timestamp;

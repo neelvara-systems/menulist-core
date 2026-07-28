@@ -48,6 +48,24 @@ assert.equal(resolveAnswerlatticeWorkspaceCacheScopeKey({
 assert.equal(resolveAnswerlatticeWorkspaceCacheScopeKey({
     productAccounts: { AL: { tenantId: '101 ', storeId: 202 } },
 }), null);
+assert.equal(resolveAnswerlatticeWorkspaceCacheScopeKey({
+    pId: 'ML',
+    productId: 'ML',
+    tId: 101,
+    sId: 202,
+    tenantId: 101,
+    storeId: 202,
+}), null);
+assert.equal(resolveAnswerlatticeWorkspaceCacheScopeKey({
+    tId: 101,
+    sId: 202,
+}), null);
+assert.equal(resolveAnswerlatticeWorkspaceCacheScopeKey({
+    pId: 'AL',
+    productId: 'AL',
+    tId: 101,
+    sId: 202,
+}), 'workspace:101:202');
 const serializedDraft = serializeAnswerlatticeHelpChatDraft('Need help with billing', 1_000_000);
 assert.ok(serializedDraft);
 assert.equal(parseAnswerlatticeHelpChatDraft(serializedDraft, 1_000_001), 'Need help with billing');

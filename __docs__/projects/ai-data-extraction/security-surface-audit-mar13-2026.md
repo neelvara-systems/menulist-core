@@ -146,9 +146,9 @@ The legacy `MenuListAi/project/files/{fileId}` path only checks `isAuthenticated
 3. The Cloud Function accesses files via the download URL embedded in the job document
 4. The Firestore rules now prevent reading other users' job documents (which contain file URLs)
 
-**Risk:** LOW — requires knowing the exact file path, and download URLs include access tokens.
+**Historical risk:** cross-tenant direct reads were possible for any authenticated user who knew an exact legacy path. Unpredictability is not authorization, and download-token behavior does not make the SDK path tenant-safe.
 
-**July 2026 hardening note:** active project fallback uploads now route through `generateStoragePath()` to `projects/files/{tId}/{sId}/{fileId}`. Legacy project Storage paths are read-only in `storage.rules`: older files may still be read by authenticated users for compatibility, but `MenuListAi/project/files/`, `generated/`, `edited/`, and `custom/` no longer accept new writes or deletes.
+**July 2026 deep-audit correction:** active project fallback uploads route through `generateStoragePath()` to `projects/files/{tId}/{sId}/{fileId}`. Legacy project paths contain no tenant/store identity, so `storage.rules` denies direct client reads, writes, and deletes for `MenuListAi/project/files/`, `generated/`, `edited/`, and `custom/`. Existing tokenized URLs remain independently revocable; future authenticated compatibility access must be server-mediated and ownership-checked.
 
 ---
 
@@ -269,7 +269,7 @@ allow create: if isAuthenticated()
 
 **Details:** The remaining advisory applies to legacy `MenuListAi/project/files/{fileId}` objects/rules, which only check `isAuthenticated()`. However, file paths are unpredictable (include timestamps + UIDs) and download URLs include access tokens.
 
-**July 2026 hardening note:** active project fallback uploads now route through `generateStoragePath()` to the tenant-scoped `projects/files/{tId}/{sId}/{fileId}` path. Legacy project Storage paths are read-only in `storage.rules`, so old references can still be read while new legacy writes/deletes are denied.
+**July 2026 deep-audit correction:** active project fallback uploads route through `generateStoragePath()` to the tenant-scoped `projects/files/{tId}/{sId}/{fileId}` path. Legacy project Storage paths deny all direct client access because old path shapes cannot prove tenant/store ownership.
 
 ### A2 — ADVISORY: Flat Collections Lack Tenant-Level Read Filtering
 

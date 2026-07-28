@@ -54,6 +54,15 @@ assert.equal(
 );
 assert.equal(localStorage.getItem('mobileSelectedProjectId:11:7'), '11-default-7');
 assert.equal(localStorage.getItem('mobileSelectedProjectId:22:7'), '22-default-7');
+assert.equal(sessionStorage.getItem('menulist_dashboard_project_id'), null);
+
+setStoredOwnerProjectId('unsafe-store-only', 7);
+assert.equal(
+    getStoredOwnerProjectId(7),
+    null,
+    'a store-scoped selection must fail closed when tenant identity is unavailable',
+);
+assert.equal(localStorage.getItem('mobileSelectedProjectId:7'), null);
 
 localStorage.setItem('mobileSelectedProjectId:7', 'legacy-foreign-project');
 assert.equal(

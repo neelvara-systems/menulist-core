@@ -50,9 +50,11 @@ const base64UrlToString = (value: string) => decoder.decode(base64UrlToBytes(val
 
 const getMyCodexSessionSecret = () => (
     process.env.MYCODEX_SESSION_SECRET?.trim()
-    || process.env.NEXTAUTH_SECRET?.trim()
-    || process.env.MYCODEX_BASIC_AUTH_PASSWORD?.trim()
     || ''
+);
+
+export const isMyCodexAccessConfigured = () => (
+    Boolean(getMyCodexExpectedCredentials() && getMyCodexSessionSecret())
 );
 
 const signSessionPayload = async (payloadPart: string) => {
@@ -103,11 +105,31 @@ export const isMyCodexAuthBypassPath = (pathname: string) => (
 
 export const sanitizeMyCodexReturnTo = (value: string | null | undefined) => {
     if (!value) return '/';
-    if (!value.startsWith('/') || value.startsWith('//')) return '/';
-    if (value.startsWith('/api/') || value.startsWith('/sites/')) return '/';
-    if (value === MYCODEX_LOGIN_PATH || value.startsWith(`${MYCODEX_LOGIN_PATH}?`)) return '/';
+    if (!value.startsWith('/') || value.startsWith('//') || /[\u0000-\u001f\u007f\\]/.test(value)) return '/';
 
-    return value.slice(0, 2048);
+    try {
+        const baseUrl = new URL('https://mycodex.invalid');
+        const parsed = new URL(value, baseUrl);
+        if (parsed.origin !== baseUrl.origin) return '/';
+
+        const decodedPathname = decodeURIComponent(parsed.pathname);
+        if (
+            decodedPathname.startsWith('//')
+            || decodedPathname.includes('\\')
+            || /[\u0000-\u001f\u007f]/.test(decodedPathname)
+            || decodedPathname === '/api'
+            || decodedPathname.startsWith('/api/')
+            || decodedPathname === '/sites'
+            || decodedPathname.startsWith('/sites/')
+            || decodedPathname === MYCODEX_LOGIN_PATH
+        ) {
+            return '/';
+        }
+
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`.slice(0, 2048);
+    } catch {
+        return '/';
+    }
 };
 
 export const validateMyCodexCredentials = (username: string, password: string) => {

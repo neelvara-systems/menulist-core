@@ -320,8 +320,8 @@ Current shortcuts are app actions inside the same store app.
 | Call | Phone exists and public call action enabled | Same-origin `/pwa/call` handoff with `lang` and source attribution |
 | Directions | Maps URL exists and public directions enabled | Same-origin `/pwa/directions` handoff with `lang` and source attribution |
 | WhatsApp | WhatsApp number exists and public WhatsApp enabled | Same-origin `/pwa/whatsapp` handoff with `lang` and source attribution |
-| Reservation | Reservation URL exists | Same-origin `/pwa/reservation` handoff with `lang` and source attribution |
-| Order | Order URL exists | Same-origin `/pwa/order` handoff with `lang` and source attribution |
+| Reservation | Reservation URL exists and the owner-visible reservation action is enabled | Same-origin `/pwa/reservation` handoff with `lang` and source attribution; hidden actions return not found |
+| Order | Order URL exists and the owner-visible order action is enabled | Same-origin `/pwa/order` handoff with `lang` and source attribution; hidden actions return not found |
 
 Shortcut URLs include source attribution for analytics. They do not imply separate installed apps.
 

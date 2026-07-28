@@ -32,10 +32,14 @@ Firestore rules allow:
 
 - read: authenticated Answerlattice support-control users
 - create: authenticated Answerlattice support-control users, allowed document shape, self actor, one initial status, no notes/resolution/scheduler fields, and not already resolved
-- update: authenticated Answerlattice support-control users with an allowed mutation set, stable ownership/source fields, prepend-only notes/history, status-resolution coupling, and one-way source-detail redaction
+- update: authenticated Answerlattice support-control users with an allowed mutation set, stable ownership/source fields, prepend-only notes/history, status-resolution coupling, one-way source-detail redaction, and note/status actor IDs that match the Firebase UID or canonical `uId` claim
 - delete: denied
 
 `relatedProposalId` changes additionally require `canManageGovernance` or platform-admin authority. Clients cannot forge `syncManaged` or other scheduler-owned fields.
+
+The actor binding is mirrored in `firestore-answerlattice.rules` and `firestore.rules`. `npm run test:answerlattice-support-board:rules` and `npm run test:answerlattice-support-board:shared-rules` prove valid self-attribution and reject forged note/status authors.
+
+The July 26 QA deploy attempt used `firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only firestore:rules --non-interactive` and stopped before upload with `Error: Failed to authenticate, have you run firebase login?`. The rule is therefore source/emulator verified but not deployed or live-certified.
 
 Support-control permission is `canManageSupport`. Default support staff can use the board without gaining governance, billing, team, or workspace access.
 

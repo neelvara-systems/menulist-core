@@ -4006,7 +4006,7 @@ Status: Fixed during the June 28 continuation audit.
 
 The pricing integrity path already kept MOL writes fire-and-forget and preserved the price-update transaction behavior. Its diagnostic breadcrumbs still logged raw project/item/attribute identifiers on successful price updates and PDF state updates, and `src/lib/pricing/molLogger.ts` passed raw project identifiers and caught exceptions into direct `secureLog()` / `secureError()` calls.
 
-`src/lib/pricing/pricingDiagnostics.ts` now centralizes bounded pricing diagnostics. `src/lib/pricing/molLogger.ts` logs `pricing_mol_event_logged` and `pricing_mol_event_log_failed` with event/entity type and bounded project metadata. `src/lib/pricing/integrityEngine.ts` logs `pricing_integrity_price_update_succeeded`, `pricing_integrity_price_update_failed`, `pricing_integrity_pdf_marked_fresh`, and `pricing_integrity_pdf_marked_failed` with bounded project, item, attribute, user, tenant, store, and failure-reason metadata plus source error name/code/status only. June 30 follow-up: `src/lib/pricing/pdfQueue.ts` now logs disabled-flag, debounce-reset, scheduled, and job-created breadcrumbs through `pricing_pdf_regen_*` diagnostics with bounded project/job metadata. `npm run verify:menulist-api-tenant-safety` now guards these pricing helpers against the old raw MOL/pricing/PDF queue secure logger strings.
+`src/lib/pricing/pricingDiagnostics.ts` now centralizes bounded pricing diagnostics. `src/lib/pricing/molLogger.ts` logs `pricing_mol_event_logged` and `pricing_mol_event_log_failed` with event/entity type and bounded project metadata. `src/lib/pricing/integrityEngine.ts` logs `pricing_integrity_price_update_succeeded`, `pricing_integrity_price_update_failed`, `pricing_integrity_pdf_marked_fresh`, and `pricing_integrity_pdf_marked_failed` with bounded project, item, attribute, user, tenant, store, and failure-reason metadata plus source error name/code/status only. July 27 audit follow-up: `src/lib/pricing/pdfQueue.ts` retains only the bounded `pricing_pdf_regen_disabled` no-effect breadcrumb. Its prior dormant writer had no worker or rules contract and constructed an invalid odd-segment Firestore document path, so it was removed instead of leaving a misleading latent activation path. `npm run verify:menulist-api-tenant-safety` guards these pricing helpers against the old raw MOL/pricing/PDF queue secure logger strings and against reintroducing persistence into the disabled boundary.
 
 Impact: existing price update transaction behavior, projectsData updates, projectsMetadata integrity updates, PDF stale marking, screen version bumping, MOL event writes, PDF regeneration queueing, thrown error behavior, and owner-facing behavior remain unchanged except for safer diagnostics. This changes app-side pricing helper source only. It adds no Firestore reads/writes/deletes beyond existing pricing integrity and MOL behavior, Storage operations, Firebase Auth operations, Cloud Function logic changes, extra Cloud Function calls, provider calls, cache invalidations, rules/indexes/schema/tenant-shape changes, permission-model changes, public routes, durable event streams, owner-facing settings, or Firebase deploy requirement.
 
@@ -4461,6 +4461,16 @@ Status: Fixed during the June 28 continuation audit.
 Daily chat aggregation failure alerts and the dormant negative-feedback alert both read the legacy `functions.config().slack.webhook_url` value and posted directly to it with `node-fetch`. The value is configuration-controlled rather than owner input, but it is still an outbound network target. A malformed or compromised config value could point the Function at localhost, private address space, link-local metadata-style hosts, or an unexpected DNS result before any target validation ran.
 
 `functions/src/aggregateDailyChatStats.ts` and `functions/src/negativeFeedbackAlert.ts` now validate the configured Slack webhook URL through `validateNetworkTargetUrl()` before importing `node-fetch` or sending the payload. Rejected targets log stable failure codes (`CHAT_DAILY_SLACK_TARGET_REJECTED` and `NEGATIVE_FEEDBACK_SLACK_TARGET_REJECTED`) with bounded address count and target-error metadata only. Valid Slack payload text, alert blocks, missing-webhook behavior, and fire-and-forget failure handling remain unchanged.
+
+July 28, 2026 retirement note: the negative-feedback trigger was never exported
+from the MenuList Functions entry point and was retained only as dormant
+pre-separation source. The exhaustive data-flow audit removed that executable
+source rather than preserving a TypeScript-disabled, non-idempotent legacy
+trigger that watched shared `chatSessions`. The explicit
+`negativeFeedbackAlerts` client-deny rule remains for historical containment;
+current support feedback and alerts belong to the dedicated Answerlattice
+runtime. The maintained auth/security verifier now rejects restoration of the
+source or an entry-point export.
 
 `scripts/verification/verify-auth-security-failure-matrix.js` now guards both Slack alert paths for shared target validation, stable rejection codes, fetching only `targetValidation.normalizedUrl`, and absence of direct `fetch(webhookUrl)` calls.
 
@@ -12819,7 +12829,7 @@ The pricing diagnostics sweep found the disabled background PDF queue still used
 Fixes:
 
 - `src/lib/pricing/pdfQueue.ts` now imports `logPricingDiagnostic()` and `getBoundedPricingStringContext()` from the shared pricing diagnostics helper.
-- Disabled-flag, debounce-reset, scheduled, and job-created breadcrumbs now use `pricing_pdf_regen_disabled`, `pricing_pdf_regen_debounce_reset`, `pricing_pdf_regen_scheduled`, and `pricing_pdf_regen_job_created`.
+- Disabled background PDF regeneration emits only the bounded `pricing_pdf_regen_disabled` breadcrumb and performs no Firestore write. A worker, valid collection contract, security rules, retry semantics, and cost evidence are required before activation.
 - Project and job identifiers are logged only as presence/length metadata; numeric debounce/version metadata remains available.
 - `scripts/verification/verify-menulist-api-tenant-safety.js` now guards the PDF queue diagnostic codes, bounded identifier metadata, and raw `secureLog("[PDF Queue] ...")` ban.
 - Pricing Integrity README, implementation, validation docs, system ledger, and changelog now document the PDF queue diagnostic boundary.

@@ -6,7 +6,10 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { appendAnswerlatticeCacheInvalidation } from "@lib/answerlattice/cacheVersionClient";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
-import { normalizeAnswerlatticeScopeDocumentId } from "@lib/answerlattice/sessionScope";
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+} from "@lib/answerlattice/sessionScope";
 import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import {
@@ -64,8 +67,16 @@ export const getKnowledgeBaseCategoriesDocId = (tId?: unknown, sId?: unknown) =>
 
 const getKnowledgeBaseCategoryScope = (source: unknown): KnowledgeBaseCategoryScope | null => {
     const record = source as any;
-    const tId = normalizeAnswerlatticeScopeDocumentId(record?.tId ?? record?.tenantId ?? record?.user?.tenantId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(record?.sId ?? record?.storeId ?? record?.user?.storeId);
+    const tId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        record?.tId,
+        record?.tenantId,
+        record?.user?.tenantId,
+    ]);
+    const sId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        record?.sId,
+        record?.storeId,
+        record?.user?.storeId,
+    ]);
     if (!tId || !sId) return null;
     return { tId, sId };
 };

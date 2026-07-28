@@ -21,7 +21,7 @@
 8. If Keep screen awake is enabled and supported, MyCodex requests `navigator.wakeLock.request('screen')` while playback is active.
 9. Pause, resume, and stop controls are available in settings and the mini-player.
 10. Wake lock is released on pause, stop, route change, unmount, and page-hidden transitions.
-11. On `/favorites` and `/queue`, Play all loads saved Markdown files from the protected same-origin MyCodex document route with `no-store`, same-origin credentials, manual redirect handling, a 4 MB JSON cap, and a typed `{ markdown, sourcePath? }` response guard before speaking them as one browser speech queue.
+11. On `/favorites` and `/queue`, Play all loads at most 12 saved Markdown files from the handler-authenticated same-origin MyCodex document route with `no-store`, same-origin credentials, manual redirect handling, a 5 MiB JSON response cap, and a typed `{ markdown, sourcePath? }` response guard before speaking them as one browser speech queue. The retained queue is capped at 250,000 normalized characters. The server resolves only canonical non-symlink Markdown under `__docs__` and caps each source at 4 MiB.
 
 ## Settings
 
@@ -37,7 +37,7 @@ Audio settings share the MyCodex reader hydration guard, so stored values are lo
 ## Safety Notes
 
 - The app does not call OpenAI, Google Cloud, or Firebase for audio.
-- Favorites playback uses only the protected MyCodex static document route to read Markdown already available under `__docs__`; malformed, oversized, redirected, or non-OK responses fail closed to the fixed favorite-load error state instead of rendering unvalidated Markdown.
+- Favorites playback uses only the handler-authenticated MyCodex static document route to read canonical, non-symlink Markdown already available under `__docs__`; malformed, oversized, redirected, unauthorized, or non-OK responses fail closed to the fixed favorite-load error state instead of rendering unvalidated Markdown.
 - The response guard logs only bounded favorite path/title metadata and response status. It does not log Markdown content or raw private source paths.
 - The actual synthesis engine is controlled by the browser/OS. Some installed voices may be local; some browser-managed voices may behave differently by platform.
 - The voice picker intentionally hides unrelated browser voices. Install Indian English, Hindi, or another India voice at the OS/browser level to make it selectable.

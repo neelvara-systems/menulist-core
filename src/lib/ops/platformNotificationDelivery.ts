@@ -22,7 +22,7 @@ type PlatformAlertPayload = {
   severity: 'info' | 'warning' | 'critical';
   tId?: string;
   sId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 };
 
 type PlatformDeliveryLogContext = Record<string, boolean | number | string | null | undefined>;

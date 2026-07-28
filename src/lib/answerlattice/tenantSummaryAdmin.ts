@@ -151,3 +151,31 @@ export async function upsertAnswerlatticeTenantSummaryAdmin(
     await batch.commit();
     return result;
 }
+
+export function removeAnswerlatticeTenantSummaryEntryAdmin(
+    writer: WriteBatch | Transaction,
+    params: { tId: number; sId: number },
+): { skipped: boolean } {
+    const scope = normalizeTenantStore(params.tId, params.sId);
+    if (!scope) {
+        throw new Error('Cannot remove Answerlattice tenant summary without valid tId and sId.');
+    }
+    const db = answerlatticeFirestoreAdmin as any;
+    if (!db || typeof db.collection !== 'function') {
+        return { skipped: true };
+    }
+
+    const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(
+        getAnswerlatticeTenantSummaryShardId(scope.tId, scope.sId),
+    );
+    const summaryUpdate = {
+        [`tenants.${scope.tId}_${scope.sId}`]: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if ('commit' in writer) {
+        writer.update(summaryRef, summaryUpdate);
+    } else {
+        writer.update(summaryRef, summaryUpdate);
+    }
+    return { skipped: false };
+}

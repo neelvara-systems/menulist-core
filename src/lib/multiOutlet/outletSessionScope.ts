@@ -24,9 +24,31 @@ function normalizeOutletSessionDocumentId(value: unknown): OutletSessionDocument
     return typedValue !== null && documentId ? { value: typedValue, documentId } : null;
 }
 
-export function getOutletSessionScope(session: any): OutletSessionScope | null {
-    const tenantId = normalizeOutletSessionDocumentId(session?.tId);
-    const storeId = normalizeOutletSessionDocumentId(session?.sId);
+function normalizeOutletSessionDocumentIdAliases(values: unknown[]): OutletSessionDocumentId | null {
+    const supplied = values.filter((value) => value !== undefined && value !== null);
+    if (supplied.length === 0) return null;
+    const normalized = supplied.map(normalizeOutletSessionDocumentId);
+    const [first] = normalized;
+    return first && normalized.every((value) => value?.documentId === first.documentId)
+        ? first
+        : null;
+}
+
+export function getOutletSessionScope(session: unknown): OutletSessionScope | null {
+    if (!session || typeof session !== "object" || Array.isArray(session)) return null;
+    const source = session as {
+        sId?: unknown;
+        tId?: unknown;
+        user?: { storeId?: unknown; tenantId?: unknown } | null;
+    };
+    const tenantId = normalizeOutletSessionDocumentIdAliases([
+        source.tId,
+        source.user?.tenantId,
+    ]);
+    const storeId = normalizeOutletSessionDocumentIdAliases([
+        source.sId,
+        source.user?.storeId,
+    ]);
     return tenantId && storeId
         ? {
             tenantId: tenantId.value,

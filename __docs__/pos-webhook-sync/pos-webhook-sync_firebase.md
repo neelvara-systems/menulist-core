@@ -14,6 +14,12 @@
 
 No Storage bucket, Firestore index, Cloud Function, scheduler, or delivery queue is added.
 
+Admin readers do not trust the deterministic path alone: the persisted row must
+agree on MenuList product, tenant, store, positive version, and bounded secret.
+Contradictory rows fail closed. Identity-less legacy server rows may be used
+only as compatibility input and are exact-rewritten to the canonical shape;
+rotation and migration do not merge-retain unknown secret-document fields.
+
 ## Store fields
 
 Active non-secret fields include:

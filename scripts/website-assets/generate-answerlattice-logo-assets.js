@@ -142,13 +142,22 @@ function writeIco(relativePath, pngBuffer, width, height) {
   console.log(`wrote ${relativePath}`);
 }
 
-function refreshOgSvg(sourceSvg) {
+function replaceEmbeddedLogo(existingOgSvg, sourceSvg) {
   const encodedLogo = Buffer.from(sourceSvg).toString('base64');
-  const ogSvg = fs.readFileSync(OG_SVG, 'utf8').replace(
-    /href="data:image\/svg\+xml;base64,[^"]+"/,
+  const embeddedLogoPattern = /href="data:image\/svg\+xml;base64,[^"]+"/g;
+  const embeddedLogos = existingOgSvg.match(embeddedLogoPattern) || [];
+  if (embeddedLogos.length !== 1) {
+    throw new Error(`Expected exactly one embedded Answerlattice logo; found ${embeddedLogos.length}`);
+  }
+  return existingOgSvg.replace(
+    embeddedLogoPattern,
     `href="data:image/svg+xml;base64,${encodedLogo}"`,
   );
+}
 
+function refreshOgSvg(sourceSvg) {
+  const existingOgSvg = fs.readFileSync(OG_SVG, 'utf8');
+  const ogSvg = replaceEmbeddedLogo(existingOgSvg, sourceSvg);
   fs.writeFileSync(OG_SVG, ogSvg);
   console.log('wrote public/answerlattice-og-image.svg');
   return ogSvg;
@@ -182,11 +191,17 @@ async function main() {
     }
   }
 
-  const refreshedOgSvg = refreshOgSvg(sourceSvg);
+  refreshOgSvg(sourceSvg);
   writePng('public/answerlattice-og-image.png', await renderOgBuffer(sourceBuffer));
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  replaceEmbeddedLogo,
+};

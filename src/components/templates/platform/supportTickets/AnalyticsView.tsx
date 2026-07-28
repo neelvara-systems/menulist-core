@@ -3,6 +3,7 @@
 import {
     calculateSupportTicketSLAStatus,
     getFirstSupportTicketResponse,
+    getSupportTicketTimestampMillis,
     SUPPORT_TICKET_PRIORITY,
     SUPPORT_TICKET_STATUS,
     SupportTicketType,
@@ -55,15 +56,18 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
             // Tickets over time (last 30 days)
             const now = Date.now();
             const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-            const ticketsLast30Days = tickets.filter(t =>
-                t.createdOn && t.createdOn.toMillis() >= thirtyDaysAgo
-            );
+            const ticketsLast30Days = tickets.filter((ticket) => {
+                const createdOnMillis = getSupportTicketTimestampMillis(ticket.createdOn);
+                return createdOnMillis !== null
+                    && createdOnMillis >= thirtyDaysAgo
+                    && createdOnMillis <= now;
+            });
 
             // Group by day
             const ticketsByDay = ticketsLast30Days.reduce((acc, ticket) => {
-                if (ticket.createdOn) {
-                    const date = new Date(ticket.createdOn.toMillis());
-                    const dayKey = `${date.getMonth() + 1}/${date.getDate()}`;
+                const createdOnMillis = getSupportTicketTimestampMillis(ticket.createdOn);
+                if (createdOnMillis !== null) {
+                    const dayKey = new Date(createdOnMillis).toISOString().slice(0, 10);
                     acc[dayKey] = (acc[dayKey] || 0) + 1;
                 }
                 return acc;
@@ -71,11 +75,7 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
 
             const timelineData = Object.entries(ticketsByDay)
                 .map(([date, count]) => ({ date, count }))
-                .sort((a, b) => {
-                    const [aMonth, aDay] = a.date.split('/').map(Number);
-                    const [bMonth, bDay] = b.date.split('/').map(Number);
-                    return (aMonth * 100 + aDay) - (bMonth * 100 + bDay);
-                });
+                .sort((a, b) => a.date.localeCompare(b.date));
 
             // Calculate average first response time (creation to first message from admin)
             const firstResponseTimes: number[] = [];
@@ -83,9 +83,14 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
                 if (ticket.messages && ticket.messages.length > 0) {
                     // Find first message that's not from the ticket creator
                     const firstAdminMessage = getFirstSupportTicketResponse(ticket);
-                    if (firstAdminMessage && ticket.createdOn) {
-                        const responseTime = firstAdminMessage.timestamp.toMillis() - ticket.createdOn.toMillis();
-                        firstResponseTimes.push(responseTime);
+                    const responseMillis = getSupportTicketTimestampMillis(firstAdminMessage?.timestamp);
+                    const createdOnMillis = getSupportTicketTimestampMillis(ticket.createdOn);
+                    if (
+                        responseMillis !== null
+                        && createdOnMillis !== null
+                        && responseMillis >= createdOnMillis
+                    ) {
+                        firstResponseTimes.push(responseMillis - createdOnMillis);
                     }
                 }
             });
@@ -101,9 +106,14 @@ function AnalyticsView({ tickets }: AnalyticsViewProps) {
                     const resolvedStatus = ticket.statuses?.find(
                         s => s.status === SUPPORT_TICKET_STATUS.RESOLVED || s.status === SUPPORT_TICKET_STATUS.CLOSED
                     );
-                    if (resolvedStatus && ticket.createdOn) {
-                        const resolutionTime = resolvedStatus.timestamp.seconds * 1000 - ticket.createdOn.toMillis();
-                        resolutionTimes.push(resolutionTime);
+                    const resolutionMillis = getSupportTicketTimestampMillis(resolvedStatus?.timestamp);
+                    const createdOnMillis = getSupportTicketTimestampMillis(ticket.createdOn);
+                    if (
+                        resolutionMillis !== null
+                        && createdOnMillis !== null
+                        && resolutionMillis >= createdOnMillis
+                    ) {
+                        resolutionTimes.push(resolutionMillis - createdOnMillis);
                     }
                 }
             });

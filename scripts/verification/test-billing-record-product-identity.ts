@@ -31,5 +31,33 @@ assert.deepEqual(
     classifyMenuListBillingRecordIdentityBackfill({ pId: 'ML', tenantId: '01', storeId: 101 }),
     { status: 'skip_invalid_scope' },
 );
+assert.deepEqual(
+    classifyMenuListBillingRecordIdentityBackfill({
+        pId: 'ML',
+        tenantId: 1,
+        tId: 2,
+        storeId: 101,
+        sId: 101,
+    }),
+    { status: 'skip_invalid_scope' },
+);
+assert.deepEqual(
+    classifyMenuListBillingRecordIdentityBackfill({
+        pId: 'ML',
+        tenantId: 1,
+        tId: '1',
+        storeId: 101,
+        sId: 102,
+    }),
+    { status: 'skip_invalid_scope' },
+);
+assert.deepEqual(
+    classifyMenuListBillingRecordIdentityBackfill({
+        pId: 'ML',
+        tId: '1',
+        sId: 101,
+    }),
+    { status: 'candidate', update: { pId: 'ML', productId: 'ML', tenantId: 1, storeId: 101 } },
+);
 
 process.stdout.write('Billing record product identity classifier passed.\n');

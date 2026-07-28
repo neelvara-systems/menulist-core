@@ -1,8 +1,11 @@
 import {
     ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS,
+    type AnswerlatticeCanonicalAnswer,
     type AnswerlatticePublicCitation,
     type AnswerlatticeScopeClarification,
 } from '@type/answerlattice';
+import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
+import { toAnswerlatticePublicIsoTimestamp } from '@lib/answerlattice/publicApiContracts';
 
 export const ANSWERLATTICE_PUBLIC_FALLBACK_REASONS = [
     'canonical_retrieval_unavailable',
@@ -12,6 +15,61 @@ export const ANSWERLATTICE_PUBLIC_FALLBACK_REASONS = [
 ] as const;
 
 export type AnswerlatticePublicFallbackReason = typeof ANSWERLATTICE_PUBLIC_FALLBACK_REASONS[number];
+
+export const serializeAnswerlatticePublicCanonicalAnswer = (
+    answer: AnswerlatticeCanonicalAnswer | undefined,
+    includeProcedure: boolean,
+) => {
+    if (!answer) return null;
+
+    let procedure = null;
+    if (includeProcedure && answer.answerType === 'procedure') {
+        try {
+            const parsed = AnswerlatticeProcedureSchema.safeParse(answer.content?.procedure);
+            procedure = parsed.success ? parsed.data : null;
+        } catch {
+            procedure = null;
+        }
+    }
+
+    return {
+        id: answer.id,
+        title: answer.title,
+        slug: answer.slug,
+        answerType: answer.answerType || 'explanation',
+        content: {
+            structuredSummary: answer.content.structuredSummary,
+            detailedExplanation: answer.content.detailedExplanation || '',
+            edgeCases: answer.content.edgeCases || null,
+            constraints: answer.content.constraints || null,
+            procedure,
+        },
+        scope: {
+            entityIds: answer.scope.entityIds,
+            planIds: answer.scope.planIds || [],
+            roleIds: answer.scope.roleIds || [],
+            stateIds: answer.scope.stateIds || [],
+        },
+        productBinding: {
+            introducedInVersion: answer.productBinding.introducedInVersion,
+            lastValidatedInVersion: answer.productBinding.lastValidatedInVersion,
+            applicableVersions: {
+                from: answer.productBinding.applicableVersions.from,
+                to: answer.productBinding.applicableVersions.to ?? null,
+            },
+        },
+        validation: {
+            confidenceScore: answer.validation.confidenceScore,
+            validationSource: answer.validation.validationSource,
+            lastValidatedOn: toAnswerlatticePublicIsoTimestamp(answer.validation.lastValidatedOn),
+        },
+        governance: {
+            driftFlag: answer.governance.driftFlag,
+            reviewRequired: answer.governance.reviewRequired,
+        },
+        modifiedOn: toAnswerlatticePublicIsoTimestamp(answer.modifiedOn),
+    };
+};
 
 const PUBLIC_FALLBACK_REASON_SET = new Set<string>(ANSWERLATTICE_PUBLIC_FALLBACK_REASONS);
 const SCOPE_CONTEXT_VALUES = new Set(['plan', 'role', 'state']);

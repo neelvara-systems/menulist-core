@@ -26,6 +26,11 @@ import {
 } from './configOwnership';
 import { sanitizeDeliveryError } from './safety';
 import { isClaimableIntegrationEventDocument, isOwnedProcessingIntegrationEventDocument } from './eventDeliveryState';
+import {
+    getBoundedFunctionsErrorCode,
+    getBoundedFunctionsErrorName,
+    getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
 
 function buildExpiry(days: number): Timestamp {
     return Timestamp.fromMillis(Date.now() + days * 24 * 60 * 60 * 1000);
@@ -54,19 +59,10 @@ function boundedDeliveryStringContext(label: string, value: unknown): Record<str
 }
 
 function getDeliveryLoggerErrorContext(error: unknown): Record<string, string | number | null> {
-    const source = error as { code?: unknown; status?: unknown; statusCode?: unknown };
-    const code = typeof source?.code === 'string' || typeof source?.code === 'number'
-        ? String(source.code).slice(0, 80)
-        : null;
-    const status = typeof source?.status === 'string' || typeof source?.status === 'number'
-        ? String(source.status).slice(0, 80)
-        : typeof source?.statusCode === 'string' || typeof source?.statusCode === 'number'
-            ? String(source.statusCode).slice(0, 80)
-            : null;
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: code,
-        sourceErrorStatus: status,
+        sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
+        sourceErrorCode: getBoundedFunctionsErrorCode(error) ?? null,
+        sourceErrorStatus: getBoundedFunctionsErrorStatus(error) ?? null,
     };
 }
 

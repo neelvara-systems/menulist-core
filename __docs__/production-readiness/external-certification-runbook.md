@@ -255,7 +255,7 @@ npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-store-te
 
 ## Gate 2A: Firebase Storage Rules Deployment
 
-**Goal:** Deploy the Storage rules cutover that keeps legacy `MenuListAi/project/...` objects authenticated-readable but denies new legacy writes/deletes. Active project uploads must continue to use tenant-scoped `projects/{fileType}/{tId}/{sId}/{fileId}` paths.
+**Goal:** Deploy the Storage rules cutover that denies direct client reads, writes, and deletes for unscoped legacy `MenuListAi/project/...` objects. Active project uploads must continue to use tenant-scoped `projects/{fileType}/{tId}/{sId}/{fileId}` paths.
 
 **Local Preflight**
 
@@ -264,7 +264,7 @@ npm run verify:storage-paths
 npm run verify:production-readiness-local
 ```
 
-Passing preflight proves active project fallback uploads use tenant-scoped paths, legacy project paths are read-only in `storage.rules`, and the local aggregate remains clean. It does not prove Firebase CLI authentication, project IAM, Storage rules upload, deployed rules propagation, or live bucket behavior.
+Passing preflight proves active project fallback uploads use tenant-scoped paths, legacy project paths deny direct client access in `storage.rules`, and the local aggregate remains clean. It does not prove Firebase CLI authentication, project IAM, Storage rules upload, deployed rules propagation, or live bucket behavior.
 
 Current blocker refreshed July 11, 2026: `npm run verify:storage-paths` passed, and `npm run verify:production-readiness-local` includes `verify:storage-paths` and passes with 98/98 checks. The latest scoped retry remains the July 9 command `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive`; it failed before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied.
 
@@ -290,14 +290,14 @@ firebase deploy --project menulist --config firebase.json --only storage --non-i
 
 - `npm run verify:storage-paths` passed.
 - QA Storage rules deploy completed.
-- Existing legacy project object read smoke still works for authenticated owners if a legacy fixture exists.
+- Direct SDK reads of a legacy project object fail for public, same-tenant, cross-tenant, and platform clients if a legacy fixture exists; separately test any explicitly retained tokenized compatibility URL.
 - New legacy write/delete attempts are denied, or the absence of legacy-write clients is documented.
 - Production deploy approval and evidence captured separately.
 
 **Stop Conditions**
 
 - Firebase deploy fails with Cloud Resource Manager, IAM, billing, or project access error.
-- Any active client still attempts legacy `MenuListAi/project/...` writes.
+- Any active client still attempts direct legacy `MenuListAi/project/...` reads or writes.
 - Rules deploy would target production before QA evidence and explicit production approval.
 
 ---

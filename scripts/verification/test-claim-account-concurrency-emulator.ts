@@ -119,6 +119,25 @@ const verifyOneReservationAndAtomicFinalize = async (): Promise<void> => {
     assert.equal(await canDeleteCreatedClaimAuthUser(firestoreAdmin, userRef, 'claim-auth-uid'), false);
 };
 
+const verifyConflictingClaimScopeAliasesFailClosed = async (): Promise<void> => {
+    const token = 'claim_account_conflicting_scope_token_0003';
+    const userRef = await seedClaimUser('claim-account-conflicting-scope', token, {
+        tId: 99999,
+    });
+    await assert.rejects(
+        reserveClaimAccountOperation({
+            claimToken: token,
+            db: firestoreAdmin,
+            messagingUserRef: userRef,
+            mode: 'email-password',
+            operationId: 'claim-operation-conflicting-scope',
+        }),
+        ClaimTokenUnavailableError,
+        'Conflicting messaging-user scope aliases must fail before external Auth work',
+    );
+    assert.equal((await userRef.get()).data()?.claimOperation, undefined);
+};
+
 const verifyFailedFinalizeRollsBackAndCanRelease = async (): Promise<void> => {
     const token = 'claim_account_failure_token_0000002';
     const userRef = await seedClaimUser('claim-account-failed-finalize', token);
@@ -309,6 +328,7 @@ const verifyGoogleTargetAdmission = (): void => {
 const run = async (): Promise<void> => {
     assert(process.env.FIRESTORE_EMULATOR_HOST, 'FIRESTORE_EMULATOR_HOST is required');
     await verifyOneReservationAndAtomicFinalize();
+    await verifyConflictingClaimScopeAliasesFailClosed();
     await verifyFailedFinalizeRollsBackAndCanRelease();
     await verifyEmailClaimCreatesCanonicalEmailUser();
     await verifyExpiredReservationAndEligibility();

@@ -120,6 +120,19 @@ async function run(): Promise<void> {
         transaction: offlineTransaction,
     });
     assert.equal(replay.replayed, true);
+    const offlineSubscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(offlineSubscriptionId);
+    await offlineSubscriptionRef.set({ tId: 999_999 }, { merge: true });
+    await assert.rejects(
+        createResellerOnboardingBillingServer({
+            profileId: profileRef.id,
+            subscription: subscription(offlineSubscriptionId, 'offline', 120_000),
+            subscriptionId: offlineSubscriptionId,
+            transaction: offlineTransaction,
+        }),
+        /operation id is already used by another action/,
+        'A replay must reject transaction-current conflicting subscription ownership',
+    );
+    await offlineSubscriptionRef.set({ tId: 31 }, { merge: true });
     let profile = (await profileRef.get()).data();
     assert.equal(profile?.currentActiveOfflineStores, 1);
     assert.equal(profile?.totalOfflineStores, 1);

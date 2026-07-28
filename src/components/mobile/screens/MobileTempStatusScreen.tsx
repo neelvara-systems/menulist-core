@@ -29,6 +29,7 @@ import {
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { type TempStatusAction, readTempStatusResponse } from '@lib/tempStatus/clientResponse';
 import { useActiveTempStatus } from '@hook/useActiveTempStatus';
+import { getBoundedErrorStatus, getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 
 interface MobileTempStatusScreenProps {
     onBack: () => void;
@@ -43,15 +44,11 @@ function buildMobileTempStatusLogContext(storeDetails: any, action: string, stat
 }
 
 function hasTempStatusResponseStatus(error: unknown): boolean {
-    if (!error || typeof error !== 'object' || !('status' in error)) return false;
-    return Number.isFinite(Number((error as { status?: unknown }).status));
+    return getBoundedErrorStatus(error) !== undefined;
 }
 
 function getTempStatusResponseCode(error: unknown): string | undefined {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 }
 
 function getMobileTempStatusFailureCode(

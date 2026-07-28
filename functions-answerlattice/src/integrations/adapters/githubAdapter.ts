@@ -27,6 +27,7 @@ import {
     isIntegrationProviderRecord,
     readIntegrationProviderJson,
 } from './providerJson';
+import { getBoundedFunctionsErrorName } from '../../utils/boundedErrorContext';
 
 const GITHUB_API_URL = 'https://api.github.com';
 const GITHUB_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9_.-]{1,100}$/;
@@ -204,7 +205,7 @@ export class GithubAdapter implements IIntegrationAdapter {
                 } catch (error) {
                     logger.warn('[Answerlattice Integration] GitHub success response unavailable', {
                         failureCode: GITHUB_SUCCESS_RESPONSE_PARSE_FAILED,
-                        sourceErrorName: error instanceof Error ? error.name.slice(0, 80) : typeof error,
+                        sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
                     });
                 }
                 const issueUrl = typeof data?.html_url === 'string' ? data.html_url : '';

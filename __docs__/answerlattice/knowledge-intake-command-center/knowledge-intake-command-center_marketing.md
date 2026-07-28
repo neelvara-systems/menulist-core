@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Marketing Notes
 
 > **Status:** READY — claims aligned to implemented day-one intake
-> **Version:** 1.4.0
+> **Version:** 1.5.0
 > **Created:** 2026-05-31
 > **Audience:** Website / Sales / Product
 
@@ -47,7 +47,7 @@ Use first:
 - launch decisions
 - approved answers
 - source-backed drafts
-- support readiness
+- support coverage
 - page-aware help
 - safe to approve
 - needs your confirmation
@@ -131,8 +131,8 @@ Answerlattice intake:
 - shows missing evidence before approval
 - drafts multiple support outputs
 - requires owner approval
-- publishes to widget/help/FAQ/approved answers
-- tracks readiness and source lineage
+- publishes owner-approved help articles, FAQs, and product-page help, while canonical drafts enter the separate Governance proposal flow
+- tracks aggregate intake progress and source lineage
 
 Sales boundary:
 
@@ -165,3 +165,4 @@ The first product moment should be:
 | 2026-05-31 | 1.2.0 | Added sales boundary for widget/search readiness after approved content publish. |
 | 2026-07-18 | 1.3.0 | Removed unverified product-map, source-authority ranking, and broad conflict-detection claims; aligned marketing to evidence review and current destinations. |
 | 2026-07-18 | 1.4.0 | Removed topic-readiness, conflict-display, and background freshness claims; aligned re-import messaging to deterministic source dedupe. |
+| 2026-07-26 | 1.5.0 | Removed residual readiness/direct-approved-answer implications and aligned canonical output to the separate proposal workflow. |

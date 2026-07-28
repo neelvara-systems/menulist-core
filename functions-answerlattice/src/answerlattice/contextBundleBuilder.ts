@@ -7,6 +7,7 @@ import {
     compiledSourceVersionsEqual,
     areAnswerlatticeCompiledSourceVersionsValid,
     getAnswerlatticeBundleBuildClaimDecision,
+    getExpectedAnswerlatticePublicBundleId,
     getAnswerlatticeBundleLockDocId,
     getAnswerlatticeBundleManifestDocId,
     getMissingAnswerlatticeBundleManifestBase,
@@ -21,6 +22,7 @@ import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBounda
 import { normalizeAnswerlatticeFunctionPublicCitations } from './publicCitationBoundary';
 import { parseExactAnswerlatticeScope } from './scopeBoundary';
 import { projectAnswerlatticeCompiledWorkspaceProduct } from './workspaceProfileBoundary';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 const SCHEMA_VERSION = 1;
 const BUNDLE_ROOT = 'answerlattice-context';
@@ -36,7 +38,7 @@ const MAX_PUBLIC_BOOTSTRAP_BYTES = 50_000;
 const MAX_PUBLIC_ROUTE_BYTES = 50_000;
 const MAX_PUBLIC_OBJECT_BYTES = 512 * 1024;
 const MAX_PRIVATE_OBJECT_BYTES = 2 * 1024 * 1024;
-const PUBLIC_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const PUBLIC_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 const PRIVATE_CACHE_CONTROL = 'private, max-age=300';
 const ANSWERLATTICE_CONTEXT_BUNDLE_CHANGELOG_LOAD_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE_CHANGELOG_LOAD_FAILED';
 const ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED = 'ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED';
@@ -78,15 +80,11 @@ function getContextBundleSourceErrorContext(error: unknown): {
     sourceErrorCode: string | number | null;
     sourceStatusCode: number | null;
 } {
-    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
-    const sourceStatusCode = typeof source.status === 'number'
-        ? source.status
-        : (typeof source.statusCode === 'number' ? source.statusCode : null);
-
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: typeof source.name === 'string' ? source.name : null,
-        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
-        sourceStatusCode,
+        sourceErrorName: context.sourceErrorName ?? null,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceStatusCode: context.sourceStatusCode ?? null,
     };
 }
 
@@ -178,12 +176,13 @@ const getPrivateBundlePath = (tId: number, sId: number, version: number, filePat
     `${BUNDLE_ROOT}/private/${Number(tId)}/${Number(sId)}/v${Number(version)}/${filePath.replace(/^\/+/, '')}`;
 
 const getPublicBundleId = (existing: any, tId: number, sId: number): string => {
-    if (typeof existing?.publicBundleId === 'string' && existing.publicBundleId.startsWith('pb_')) {
-        return existing.publicBundleId;
+    const expected = getExpectedAnswerlatticePublicBundleId(tId, sId);
+    if (!expected) throw new Error('ANSWERLATTICE_PUBLIC_BUNDLE_SALT_NOT_CONFIGURED');
+    const existingId = existing?.publicBundleId;
+    if (existingId !== undefined && existingId !== null && existingId !== '' && existingId !== expected) {
+        throw new Error('ANSWERLATTICE_PUBLIC_BUNDLE_ID_SCOPE_MISMATCH');
     }
-    const salt = process.env.ANSWERLATTICE_PUBLIC_BUNDLE_SALT || process.env.ANSWERLATTICE_MCP_SESSION_SECRET;
-    if (!salt) return `pb_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
-    return `pb_${createHash('sha256').update(`${tId}:${sId}:${salt}`).digest('base64url').slice(0, 24)}`;
+    return expected;
 };
 
 const loadDocs = async <T = any>(query: FirebaseFirestore.Query): Promise<T[]> => {

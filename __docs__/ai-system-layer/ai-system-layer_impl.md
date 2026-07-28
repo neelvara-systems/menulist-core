@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** Source-implemented and hardened — not current launch or deploy certification
-**Last Updated:** July 14, 2026
+**Last Updated:** July 26, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -83,7 +83,7 @@ The gateway is a transparent proxy with the same interface as `GoogleGenAI`.
 - `functions/src/services/gemini/feedbackAnalysis.ts`
 - `functions/src/services/gemini/ownerDashboardSummary.ts`
 - `functions/src/services/gemini/weeklyNarrative.ts`
-- `functions/src/services/gemini/kbQuality.ts`
+- Retired MenuList KB Quality worker/provider helper (source absent)
 - `functions/src/utils/aiUtils.ts`
 - `functions/src/messagingOnboarding/assetIntelligence.ts`
 
@@ -244,9 +244,9 @@ Adding more keys is a deployment config change, not a code change.
 
 ```typescript
 // functions/src/constants/ai.ts
-export const AI_MODEL = "gemini-2.5-flash";
-export const OWNER_ANALYTICS_AI_MODEL = "gemini-2.5-flash-lite";
-export const AI_ADVANCED_MODEL = "gemini-2.5-pro";
+export const AI_MODEL = "gemini-3.5-flash-lite";
+export const OWNER_ANALYTICS_AI_MODEL = "gemini-3.5-flash-lite";
+export const AI_ADVANCED_MODEL = "gemini-3.6-flash";
 export const ANSWERLATTICE_EMBEDDING_MODEL = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.model;
 export const EXTRACTION_PROMPT_VERSION = "parallel_v2";
 export const AI_OPERATIONS_COLLECTION = "MENULIST_AI_OPERATIONS";
@@ -263,6 +263,13 @@ Application routes use `src/constants/AI/models.ts`. Answerlattice app routes us
 `functions-answerlattice/src/constants/ai.ts`.
 
 Production model policy:
+
+- `src/data/shared/geminiRuntime.ts` is the root model and request-contract authority.
+- The MenuList and Answerlattice Functions mirrors remain byte-identical and verifier-guarded.
+- Each gateway compiles `generateContent` input before retry/provider execution.
+- Admitted Gemini 3.x requests do not send deprecated sampling fields, and Gemini 3.x requests do not send unsupported candidate-count fields.
+- Prefilled model turns, `thinkingBudget`, invalid `thinkingLevel`, incomplete function-response identity, unstable aliases, and unknown models fail before a paid call.
+- GenerateContent remains the mature transport for existing operations. Interactions adoption is workload-specific and requires separate state/tool-loop benchmarks.
 
 - Stable model ids only in production paths.
 - No `latest`, preview, experimental, or Gemini 2.0 Flash ids in active source.
@@ -481,4 +488,4 @@ functions/src/services/gemini/*.ts → All import genAIClient from ../genAiClien
 ---
 
 _Document Status: Source-implemented and hardened; not current launch or deploy certification._
-_Last Updated: July 10, 2026_
+_Last Updated: July 26, 2026_

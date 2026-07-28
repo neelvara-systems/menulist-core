@@ -19,7 +19,16 @@ The public/help-center timeline is responsive and useful on narrow screens. Full
 - Multi-select chips wrap without covering later fields.
 - YouTube and attachment previews do not exceed the viewport.
 - Save remains disabled/loading during the complete draft, activation, and publication sequence.
+- The later pre-activation preview stacks affected-answer rows, proof state, and
+  confirmation controls without requiring a wide impact matrix.
+- Back or cancel after preview keeps the versioned note private and the release
+  pending.
+- A stale-preview response returns to the review state and never continues
+  publication automatically.
 
 ## Non-goal
 
 Do not add a separate mobile release editor, direct Firestore mutation, or reduced publication safety path.
+
+Do not add a mobile release timeline, readiness dashboard, change-unit editor,
+or monitoring chart for the Feature 4 hardening.

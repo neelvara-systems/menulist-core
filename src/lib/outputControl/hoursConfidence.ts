@@ -14,7 +14,11 @@
  * @see __docs__/constitution/18-silent-correction-doctrine.md
  */
 
-import { getStoreStatus } from "@lib/hours/hoursEngine";
+import {
+    getStoreStatus,
+    normalizeWorkingHoursValue,
+    WORKING_HOURS_DAY_KEYS,
+} from "@lib/hours/hoursEngine";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import type {
     ConfidenceState,
@@ -146,28 +150,15 @@ function isHoursStructurallyValid(
     if (!workingHours || typeof workingHours !== "object") return false;
     if (Object.keys(workingHours).length === 0) return false;
 
-    const validDays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    let recognizedDayCount = 0;
 
     for (const [day, hours] of Object.entries(workingHours)) {
-        // Key must be a valid day
-        if (!validDays.includes(day)) continue; // Ignore unknown keys
-
-        // Value must be a non-empty string
-        if (typeof hours !== "string" || hours.trim() === "") continue;
-
-        // If it contains a dash, validate time format loosely
-        if (hours.includes("-")) {
-            const parts = hours.split("-").map((t) => t.trim());
-            if (parts.length !== 2) return false;
-
-            // Each part should be HH:mm format
-            for (const part of parts) {
-                if (!/^\d{1,2}:\d{2}$/.test(part)) return false;
-            }
-        }
+        if (!WORKING_HOURS_DAY_KEYS.includes(day as (typeof WORKING_HOURS_DAY_KEYS)[number])) continue;
+        recognizedDayCount += 1;
+        if (normalizeWorkingHoursValue(hours) === null) return false;
     }
 
-    return true;
+    return recognizedDayCount > 0;
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -79,6 +79,7 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
               <PublicTruthMonitorPanel
                 selectedProjectId={scopedProjectId}
                 storeId={storeDetails?.storeId}
+                tenantId={tenantDetails?.tenantId || storeDetails?.tenantId}
               />
               <BusinessHealthLocationSummary
                 enabled={hasMultipleStores}

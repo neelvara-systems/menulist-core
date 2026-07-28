@@ -9,6 +9,7 @@ import { useFeedback } from '@hook/useFeedback';
 import { useKBCategoriesCache } from '@hook/useKBCategoriesCache';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { renderPublicTiptapHtml } from '@lib/answerlattice/publicRichText';
+import { getTiptapDocumentNodes } from '@lib/tiptap';
 import { getStoredContentFeedback, removeStoredContentFeedback, storeContentFeedback } from '@lib/contentFeedbackStorage';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import ArticleViewModal from '@organisms/ArticleViewModal';
@@ -133,10 +134,11 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
         let hasSections = false;
         let fullHtml = '';
 
-        if (item.description && Array.isArray(item.description.content)) {
+        const descriptionNodes = getTiptapDocumentNodes(item.description);
+        if (descriptionNodes.length > 0) {
             let currentSection: 'improvements' | 'bugfixes' | null = null;
 
-            item.description.content.forEach(node => {
+            descriptionNodes.forEach(node => {
                 if (node.type === 'heading' && node.content) {
                     const text = String(node.content?.[0]?.text || '').toLowerCase();
                     if (text.includes('improvements') || text.includes('changes')) {

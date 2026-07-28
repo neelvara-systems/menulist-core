@@ -16,7 +16,7 @@ export type OwnerNotificationEventStatus =
     | 'failed'
     | 'skipped';
 
-export type OwnerNotificationDeliveryStatus = 'sent' | 'failed' | 'skipped' | 'rate_limited';
+export type OwnerNotificationDeliveryStatus = 'sending' | 'sent' | 'failed' | 'skipped' | 'rate_limited';
 
 export type OwnerNotificationRecipientHints = {
     email?: string;

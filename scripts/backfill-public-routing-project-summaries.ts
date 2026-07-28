@@ -10,58 +10,23 @@
  * - carries valid historical publish truth into both project summary and store
  *
  * Usage:
- *   FIREBASE_PROJECT_ID=menulist-qa npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts
- *   FIREBASE_PROJECT_ID=menulist-qa npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts --store-id 17 --write
+ *   npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts --project-id menulist-qa --store-id 17
+ *   npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts --project-id menulist-qa --store-id 17 --write --confirm-project menulist-qa
  */
 
-import * as admin from 'firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { buildSummaryProjectsBatchPayload } from '../src/lib/firestore/summaryProjectsWriter';
+import {
+    allocateProjectBackfillSlug,
+    deriveProjectBackfillBaseSlug,
+    isReservedProjectBackfillSlug,
+    slugifyProjectBackfillValue,
+} from './backfill-project-slugs';
 
-if (!admin.apps.length) {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
-    admin.initializeApp(projectId ? { projectId } : undefined);
-}
-
-const db = admin.firestore();
 const args = process.argv.slice(2);
-
-const RESERVED_PROJECT_SLUGS = [
-    'info',
-    'about',
-    'contact',
-    'reviews',
-    'photos',
-    'gallery',
-    'offers',
-    'updates',
-    'order',
-    'book',
-    'events',
-    'jobs',
-    'careers',
-    'screen',
-    'feedback',
-    'admin',
-    'api',
-    'settings',
-    'dashboard',
-    'login',
-    'signup',
-    'auth',
-    'webhook',
-    'health',
-    'status',
-    'sitemap',
-    'robots',
-    'manifest',
-    'sw',
-    '_next',
-    'client',
-    'customerapp',
-    'pwa',
-    'campaigncue',
-];
+const MAX_STORE_LIMIT = 1_500;
+let db: FirebaseFirestore.Firestore;
 
 function hasFlag(name: string): boolean {
     return args.includes(name);
@@ -73,17 +38,12 @@ function getArg(name: string): string | null {
     return args[index + 1] || null;
 }
 
-function slugify(value: unknown): string {
-    return String(value || '')
-        .toLowerCase()
-        .trim()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[\s_]+/g, '-')
-        .replace(/[^a-z0-9-]/g, '')
-        .replace(/-+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 80);
+function getRequiredProjectId(): string {
+    const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;
+    if (!projectId) {
+        throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running the public-routing summary backfill.');
+    }
+    return projectId;
 }
 
 function resolveText(value: unknown, fallback: string): string {
@@ -98,7 +58,7 @@ function resolveText(value: unknown, fallback: string): string {
     return fallback;
 }
 
-function normalizeTimestamp(value: unknown): FirebaseFirestore.Timestamp | null {
+function normalizeTimestamp(value: unknown): Timestamp | null {
     if (!value) return null;
     try {
         let millis: number | null = null;
@@ -119,26 +79,49 @@ function normalizeTimestamp(value: unknown): FirebaseFirestore.Timestamp | null 
             else if (typeof timestamp._seconds === 'number') millis = timestamp._seconds * 1000;
         }
         if (millis === null || !Number.isFinite(millis) || millis <= 0) return null;
-        return admin.firestore.Timestamp.fromMillis(millis);
+        return Timestamp.fromMillis(millis);
     } catch {
         return null;
     }
 }
 
-function makeSlug(projectId: string, data: Record<string, any>): string {
-    const existing = typeof data.slug === 'string' ? data.slug.trim().toLowerCase() : '';
-    if (existing) return existing;
+function makeSlug(
+    projectId: string,
+    data: Record<string, unknown>,
+    claimedSlugs: Set<string>,
+): string {
+    const rawExisting = typeof data.slug === 'string' ? data.slug.trim().toLowerCase() : '';
+    const normalizedExisting = slugifyProjectBackfillValue(rawExisting);
+    if (rawExisting) {
+        if (normalizedExisting !== rawExisting || isReservedProjectBackfillSlug(rawExisting)) {
+            throw new Error(`Canonical project ${projectId} has an invalid slug; repair canonical truth before rebuilding its summary.`);
+        }
+        if (claimedSlugs.has(rawExisting)) {
+            throw new Error(`Canonical project ${projectId} has a duplicate slug; repair canonical truth before rebuilding its summary.`);
+        }
+        claimedSlugs.add(rawExisting);
+        return rawExisting;
+    }
 
-    let slug = slugify(resolveText(data.name, projectId.includes('-default-') ? 'menu' : projectId));
-    if (!slug) slug = slugify(projectId) || 'menu';
-    if (RESERVED_PROJECT_SLUGS.includes(slug)) slug = `${slug}-menu`;
+    const base = deriveProjectBackfillBaseSlug(projectId, data);
+    const slug = allocateProjectBackfillSlug(base, projectId, claimedSlugs);
+    claimedSlugs.add(slug);
     return slug;
 }
 
-function buildSummary(projectId: string, data: Record<string, any>, markDefault: boolean): Record<string, any> {
+function buildSummary(
+    projectId: string,
+    data: Record<string, unknown>,
+    markDefault: boolean,
+    claimedSlugs: Set<string>,
+): Record<string, unknown> {
     const name = data.name || { en: projectId.includes('-default-') ? 'Menu' : resolveText(data.name, 'Menu') };
     const description = data.description;
-    const specialMenu = data._specialMenu && typeof data._specialMenu === 'object' ? data._specialMenu : null;
+    const specialMenu = data._specialMenu
+        && typeof data._specialMenu === 'object'
+        && !Array.isArray(data._specialMenu)
+        ? data._specialMenu as Record<string, unknown>
+        : null;
     const lastPublishedAt = normalizeTimestamp(data.lastPublishedAt);
     return Object.fromEntries(Object.entries({
         name,
@@ -149,7 +132,7 @@ function buildSummary(projectId: string, data: Record<string, any>, markDefault:
         ...(lastPublishedAt ? { lastPublishedAt } : {}),
         active: data.active !== false,
         isDefault: data.isDefault === true || markDefault,
-        slug: makeSlug(projectId, data),
+        slug: makeSlug(projectId, data, claimedSlugs),
         ...(Array.isArray(data.previousSlugs) ? { previousSlugs: data.previousSlugs } : {}),
         ...(specialMenu ? {
             isSpecialMenu: true,
@@ -163,27 +146,62 @@ function buildSummary(projectId: string, data: Record<string, any>, markDefault:
     }).filter(([, value]) => value !== undefined));
 }
 
-function isBlocked(value: Record<string, any>): boolean {
-    return value.blocked === true || value.tenantBlocked === true || value.blockDetails?.blocked === true;
+function isBlocked(value: Record<string, unknown>): boolean {
+    const blockDetails = value.blockDetails;
+    return value.blocked === true
+        || value.tenantBlocked === true
+        || (
+            blockDetails != null
+            && typeof blockDetails === 'object'
+            && !Array.isArray(blockDetails)
+            && (blockDetails as Record<string, unknown>).blocked === true
+        );
 }
 
 async function loadStores() {
     const storeId = getArg('--store-id');
     if (storeId) {
+        if (!/^[1-9]\d*$/.test(storeId)) throw new Error('--store-id must be a positive numeric document ID.');
         const snap = await db.collection('stores').doc(String(storeId)).get();
         return snap.exists ? [snap] : [];
     }
     let query: FirebaseFirestore.Query = db.collection('stores');
     const tenantId = getArg('--tenant-id');
-    if (tenantId) query = query.where('tenantId', '==', Number(tenantId));
-    const limit = getArg('--limit');
-    if (limit) query = query.limit(Number(limit));
+    if (tenantId) {
+        if (!/^[1-9]\d*$/.test(tenantId)) throw new Error('--tenant-id must be a positive numeric document ID.');
+        query = query.where('tenantId', '==', Number(tenantId));
+    }
+    const limitArg = getArg('--limit');
+    if (limitArg) {
+        const limit = Number(limitArg);
+        if (!Number.isSafeInteger(limit) || limit <= 0 || limit > MAX_STORE_LIMIT) {
+            throw new Error(`--limit must be a positive integer no greater than ${MAX_STORE_LIMIT}.`);
+        }
+        query = query.limit(limit);
+    }
     const snapshot = await query.get();
     return snapshot.docs;
 }
 
 async function main() {
+    const projectId = getRequiredProjectId();
     const write = hasFlag('--write');
+    const storeId = getArg('--store-id');
+    const tenantId = getArg('--tenant-id');
+    const allStores = hasFlag('--all-stores');
+    const scopeCount = Number(Boolean(storeId)) + Number(Boolean(tenantId)) + Number(allStores);
+    if (scopeCount !== 1) {
+        throw new Error('Pass exactly one of --store-id, --tenant-id, or --all-stores.');
+    }
+    if (write && getArg('--confirm-project') !== projectId) {
+        throw new Error(`Refusing write: pass --confirm-project ${projectId}.`);
+    }
+    if (write && hasFlag('--force') && !hasFlag('--confirm-force')) {
+        throw new Error('Refusing forced overwrite: pass --confirm-force after reviewing the target summaries.');
+    }
+    if (!getApps().length) initializeApp({ projectId });
+    db = getFirestore();
+
     const stores = await loadStores();
     let scannedStores = 0;
     let skippedNoProjects = 0;
@@ -233,9 +251,10 @@ async function main() {
         });
         const hasExplicitDefault = projectDocs.some((doc) => doc.data()?.isDefault === true);
         const fallbackDefaultId = activeRegular[0]?.id || projectDocs[0]?.id || '';
-        const summaries: Record<string, Record<string, any>> = {};
-        let latestPublishedAt: FirebaseFirestore.Timestamp | null = null;
-        for (const projectDoc of projectDocs) {
+        const summaries: Record<string, Record<string, unknown>> = {};
+        const claimedSlugs = new Set<string>();
+        let latestPublishedAt: Timestamp | null = null;
+        for (const projectDoc of [...projectDocs].sort((left, right) => left.id.localeCompare(right.id))) {
             const projectData = projectDoc.data() || {};
             const projectPublishedAt = projectData.active === false
                 ? null
@@ -247,6 +266,7 @@ async function main() {
                 projectDoc.id,
                 projectData,
                 !hasExplicitDefault && projectDoc.id === fallbackDefaultId,
+                claimedSlugs,
             );
         }
 
@@ -282,6 +302,7 @@ async function main() {
 }
 
 main().catch((error) => {
-    console.error(error);
+    const message = error instanceof Error ? error.message.slice(0, 240) : 'Public-routing summary backfill failed.';
+    console.error('public_routing_summary_backfill_failed', message);
     process.exit(1);
 });

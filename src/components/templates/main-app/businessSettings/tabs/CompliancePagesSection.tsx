@@ -3,6 +3,7 @@
 import { Alert, Button, Card, Input, Space, Tag, Typography, notification, theme } from 'antd';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getBoundedErrorNumberAtPath } from '@lib/monitoring/boundedLogContext';
 import { useEffect, useState } from 'react';
 import { LuExternalLink, LuFileText, LuLoader, LuRotateCcw } from 'react-icons/lu';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
@@ -24,10 +25,9 @@ type ComplianceLoadResponse = Partial<CompliancePagesState>;
 const DESKTOP_COMPLIANCE_MUTATION_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 const DESKTOP_COMPLIANCE_LOAD_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
 
-function getAxiosStatus(error: any): number | undefined {
-    const status = Number(error?.response?.status);
-    return Number.isFinite(status) ? status : undefined;
-}
+const getAxiosStatus = (error: unknown): number | undefined => (
+    getBoundedErrorNumberAtPath(error, ['response', 'status'])
+);
 
 function createComplianceStatusError(failureCode: string, status?: number): Error & { code: string; status?: number } {
     return Object.assign(new Error(failureCode), {

@@ -9,6 +9,7 @@ import {
     executeAnswerlatticeReleaseAction,
 } from '@lib/answerlattice/releaseServer';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { checkRateLimit } from '@lib/rateLimit';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -24,17 +25,26 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (!scope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400, headers: NO_STORE_HEADERS });
     }
-    const userId = String(session.uId || session.user?.id || 'unknown');
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: NO_STORE_HEADERS });
+    }
 
     try {
         const rateLimit = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey('answerlattice-releases', userId, scope.tenantId, scope.storeId),
             ...RELEASE_RATE_LIMIT,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             return NextResponse.json(
-                { error: 'Too many release actions. Please wait before trying again.' },
-                { status: 429, headers: NO_STORE_HEADERS },
+                {
+                    error: providerUnavailable
+                        ? 'Release actions are temporarily unavailable. Please try again later.'
+                        : 'Too many release actions. Please wait before trying again.',
+                },
+                { status: providerUnavailable ? 503 : 429, headers: NO_STORE_HEADERS },
             );
         }
 

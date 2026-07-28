@@ -1,16 +1,15 @@
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 
 type RuntimeLogContext = Record<string, boolean | number | string | null | undefined>;
 
 export const RUNTIME_CLIPBOARD_COPY_UNAVAILABLE = 'runtime_clipboard_copy_unavailable';
 export const RUNTIME_CLIPBOARD_COPY_FALLBACK_FAILED = 'runtime_clipboard_copy_fallback_failed';
-
-type RuntimeErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
 
 export const getBoundedRuntimeStringContext = (
     label: string,
@@ -70,25 +69,15 @@ export const copyRuntimeTextToClipboard = async (value: string): Promise<void> =
 };
 
 const getRuntimeErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getRuntimeErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as RuntimeErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getRuntimeErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as RuntimeErrorLike).status
-        : (error as RuntimeErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 const shouldSkipRuntimeLog = (options: { developmentOnly?: boolean }): boolean => (

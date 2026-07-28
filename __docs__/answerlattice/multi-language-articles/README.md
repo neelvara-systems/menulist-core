@@ -19,7 +19,7 @@ It is not a multilingual help-center runtime. Answerlattice currently has no ver
 - A changed source or existing locale translation blocks the write.
 - Translation drafts do not bump public KB/context versions.
 - Public content and Support Truth Export exclude drafts.
-- Model usage is accounted even when provider output or the final draft write is rejected.
+- Provider attempts are recorded with an explicit outcome even when the provider fails, its output is rejected, or the final draft write conflicts. The route awaits the failure-contained operation-log settlement before returning.
 - Human-reviewed publication and customer delivery require a separate docs-first implementation plus customer validation.
 
 ## Documents

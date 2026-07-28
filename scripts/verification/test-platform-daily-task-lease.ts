@@ -6,8 +6,8 @@ const {
     acquirePlatformDailyTaskLeaseForTest,
     completePlatformDailyTaskLeaseForTest,
     getPlatformDailyTaskDayKeyForTest,
-} = require('../../functions/lib/functions/src/decisionBlocksScoring.js');
-const { firestoreAdmin } = require('../../functions/lib/functions/src/firebaseAdmin.js');
+} = require('../../functions/lib/decisionBlocksScoring.js');
+const { firestoreAdmin } = require('../../functions/lib/firebaseAdmin.js');
 
 const STATE_COLLECTION = '_system';
 const STATE_DOCUMENT = 'decisionBlocksPlatformDaily';

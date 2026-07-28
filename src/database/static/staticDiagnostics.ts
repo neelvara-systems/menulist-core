@@ -1,13 +1,12 @@
 import { secureError, secureLog } from '@lib/security/secureLogger';
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 type StaticAssetLogContext = Record<string, boolean | number | string | null | undefined>;
-
-type StaticAssetErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
 
 export const getBoundedStaticAssetStringContext = (
     label: string,
@@ -29,25 +28,15 @@ export const getStaticAssetEntityLogContext = (
 });
 
 const getStaticAssetErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getStaticAssetErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as StaticAssetErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getStaticAssetErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as StaticAssetErrorLike).status
-        : (error as StaticAssetErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export const logStaticAssetDiagnostic = (

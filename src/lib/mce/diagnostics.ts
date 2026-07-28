@@ -1,25 +1,23 @@
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import type { CSRResult } from './types';
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 type MCELogContext = Record<string, boolean | number | string | null | undefined>;
 
 const getMCEErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getMCEErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getMCEErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object' || !('status' in error)) return undefined;
-    const status = Number((error as { status?: unknown }).status);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export const logMCEValidationResult = (result: CSRResult): void => {

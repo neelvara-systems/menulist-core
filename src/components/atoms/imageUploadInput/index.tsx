@@ -1,6 +1,7 @@
 import { IMAGE_COMPRESSION_LIMIT } from "@constant/common";
 import type { MediaImageType } from "@lib/media/imageProfiles";
 import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import { prepareMediaImage, toPreparedUploadName } from "@lib/media/prepareMediaImage";
 import { validateImageFile } from "@lib/security/magicBytesValidator";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
@@ -99,7 +100,7 @@ function ImageUploadInput({
             }
 
         } catch (error) {
-            if (error.name === 'AbortError') {
+            if (getBoundedErrorName(error) === 'AbortError') {
                 message.info('Upload cancelled');
             } else {
                 logRuntimeFailure('image_upload_batch_failed', error, {
@@ -237,7 +238,7 @@ function ImageUploadInput({
             return data;
 
         } catch (error) {
-            if (error.name === 'AbortError') {
+            if (getBoundedErrorName(error) === 'AbortError') {
                 throw error; // Re-throw abort errors
             }
             logRuntimeFailure('image_upload_file_process_failed', error, {

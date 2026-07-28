@@ -10,6 +10,7 @@ import {
     recordFounderSubscriptionNewMrr,
 } from '@lib/ops/founderRevenueReadModel';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
+import { rebuildFounderMonitorSnapshotLogic } from '../../functions/src/schedulers/founderMonitorSnapshot';
 
 const assert = (condition: unknown, message: string): void => {
     if (!condition) throw new Error(message);
@@ -28,6 +29,7 @@ const run = async (): Promise<void> => {
     const tooExpensiveMovementId = `growth-intelligence-churn-price-${suffix}`;
     const switchedProviderMovementId = `growth-intelligence-churn-switch-${suffix}`;
     const lifecycleSubscriptionId = `growth-intelligence-subscription-${suffix}`;
+    const malformedMovementId = `growth-intelligence-malformed-${suffix}`;
     const occurredAt = new Date();
     const growthSummaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('founderMonitorGrowth');
     const revenueSummaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('founderMonitorRevenue');
@@ -287,6 +289,30 @@ const run = async (): Promise<void> => {
     }
     assert(unscopedSubscriptionMovementRejected, 'Required subscription movement must carry exact workspace scope');
 
+    await firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(malformedMovementId).set({
+        amountPaise: '99900',
+        businessDayKey: getIndiaDayKey(occurredAt),
+        description: 'Malformed persisted movement.',
+        kind: 'cash_collected',
+        occurredAt,
+        pId: 'ML',
+        productId: 'ML',
+        sId: '202',
+        storeId: '202',
+        tId: '101',
+        tenantId: '101',
+    });
+    await rebuildFounderMonitorSnapshotLogic();
+    const reconciledDaily = (await dailySummaryRef.get()).data() || {};
+    const reconciledSnapshot = (
+        await firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('founderMonitorSnapshot').get()
+    ).data() || {};
+    assert(reconciledDaily.cashCollectedPaise === 0, 'Scheduler must exclude coercible persisted movement amounts');
+    assert(
+        reconciledSnapshot.dataGaps?.some((gap: { id?: unknown }) => gap.id === 'invalid-daily-revenue-movements'),
+        'Scheduler must expose excluded persisted movements as an operational data gap',
+    );
+
     const revenueSummary = (await revenueSummaryRef.get()).data() || {};
     assert(revenueSummary.churnReasons?.too_expensive === 1, 'Price churn reason must be preserved');
     assert(revenueSummary.churnReasons?.switched_provider === 1, 'Second churn reason must merge without replacing the first');
@@ -296,11 +322,13 @@ const run = async (): Promise<void> => {
         partnerDraftRef.delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(tooExpensiveMovementId).delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(switchedProviderMovementId).delete(),
+        firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(malformedMovementId).delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(`new_mrr:${lifecycleSubscriptionId}`).delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(`expansion_mrr:${lifecycleSubscriptionId}:quantity-change-${suffix}`).delete(),
         growthSummaryRef.delete(),
         revenueSummaryRef.delete(),
         dailySummaryRef.delete(),
+        firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('founderMonitorSnapshot').delete(),
     ]);
 
     console.log('Growth intelligence emulator verification passed.');

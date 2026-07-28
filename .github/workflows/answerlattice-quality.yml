@@ -47,7 +47,7 @@ jobs:
         run: npm --prefix functions-answerlattice ci
 
       - name: Install pinned Firebase CLI
-        run: npm install --global firebase-tools@14.15.1
+        run: npm install --global firebase-tools@15.24.0
 
       - name: Verify dependency freeze
         run: npm run verify:dependency-freeze

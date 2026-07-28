@@ -106,7 +106,7 @@ Server Component: src/app/client/compliance/CompliancePageContent.tsx
      │
      ├── Resolve store from headers (same pattern as OBP)
      ├── Generate system content from template (pure function, always)
-     ├── Check tagged 60-second compliancePages/{sId} cache for custom override
+     ├── Check server-only tenant/store-keyed tagged 60-second compliancePages/{sId} cache for custom override
      │     ├── If override exists → prepend override to required baseline
      │     └── If no override → use system content
      ├── Render static HTML page (SSR)
@@ -132,30 +132,32 @@ Only custom overrides are stored in Firestore. This eliminates:
 ### Collection: `compliancePages`
 
 **Document ID:** `{sId}` (storeId — one doc per store)
-**Document lifecycle:** normally created by the first override; a reset may retain a metadata-only document with no override fields. Rendering treats missing/empty override fields as baseline-only.
+**Document lifecycle:** created by the first override. Reset removes only the selected field from an existing exact-scope document and never creates a metadata-only orphan.
 
 ```typescript
 interface ComplianceOverrideDoc {
-  sId: string | number;
-  tId: string | number;
+  sId: string;
+  tId: string;
   privacyOverride?: string; // Custom privacy text (only if overridden)
   termsOverride?: string; // Custom terms text (only if overridden)
+  refundOverride?: string; // Custom refund/cancellation text (only if overridden)
   modifiedOn: Timestamp;
 }
 ```
+
+Every Admin read and transaction projects the persisted document against the expected tenant/store scope, timestamp and 15,000-character field bounds before it can feed owner or public output. Conflicting or malformed rows fail closed.
 
 ### Firestore Rules
 
 ```
 match /compliancePages/{docId} {
-  // Public read compatibility; verification bots consume the SSR route, not Firestore directly.
-  allow read: if true;
-  // Writes are server-owned. Owner mutations must use /api/compliance.
-  allow write: if false;
+  // Verification bots consume the SSR route. Direct reads would expose
+  // internal identity fields and permit collection-wide scraping.
+  allow read, write: if false;
 }
 ```
 
-The browser mutation DAL is intentionally absent. Authenticated Firebase clients cannot bypass `/api/compliance` granular permission checks, `DATA_WRITE` limiting, the 32KB body cap, Zod action/type validation, plain-text sanitization, or exact session/store admission. The route writes through `src/database/compliance/server.ts` with Firebase Admin after those controls pass.
+The browser mutation DAL is intentionally absent. Authenticated Firebase clients cannot bypass the SSR public projection or `/api/compliance` granular permission checks, `DATA_WRITE` limiting, the 32KB body cap, Zod action/type validation, plain-text sanitization, exact session/store admission, and transaction-current persisted scope validation. The route reads/writes through `src/database/compliance/server.ts` with Firebase Admin after those controls pass.
 
 ---
 
@@ -181,7 +183,7 @@ The browser mutation DAL is intentionally absent. Authenticated Firebase clients
 | `src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx` | Public menu policy links behind visibility settings |
 | `src/constants/database.ts`            | Add `COMPLIANCE_PAGES` to DB_COLLECTIONS                         |
 | `functions/src/constants/database.ts`  | Mirror `COMPLIANCE_PAGES` constant                               |
-| `firestore.rules`                      | Public read plus server-only write rule for compliancePages      |
+| `firestore.rules`                      | Direct browser read/write denial for compliancePages              |
 
 ---
 
@@ -377,7 +379,7 @@ System baseline content is always regenerated from the current resolved store re
 
 ## 11. Security Checklist
 
-- [x] Public read access (required for bots)
+- [x] Public SSR route access for bots; direct Firestore reads denied
 - [x] Write access via `withAuth()` only
 - [x] Zod validation on API inputs
 - [x] Content sanitization (XSS prevention)

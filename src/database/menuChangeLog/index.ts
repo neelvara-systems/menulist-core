@@ -360,9 +360,10 @@ const getValidDateTimestamp = (value: Date, field: string): Timestamp => {
     return Timestamp.fromDate(value);
 };
 
-const normalizeStoredMenuChange = (
+export const normalizeStoredMenuChange = (
     id: string,
     value: unknown,
+    expectedScope: MenuChangeScope,
 ): MenuChangeLogEntry | null => {
     if (!isRecord(value)
         || typeof value.projectId !== 'string'
@@ -374,34 +375,58 @@ const normalizeStoredMenuChange = (
         return null;
     }
 
+    const storedScope = normalizeMenuChangeLogScope({ tId: value.tId, sId: value.sId });
+    if (
+        !storedScope
+        || storedScope.tId !== expectedScope.tId
+        || storedScope.sId !== expectedScope.sId
+    ) return null;
+
+    let projectId: string;
+    let itemId: string | undefined;
+    let categoryId: string | undefined;
+    let userId: string | undefined;
+    try {
+        projectId = normalizeMenuChangeLogIdentifier(value.projectId, 'projectId');
+        itemId = value.itemId === undefined
+            ? undefined
+            : normalizeMenuChangeLogIdentifier(value.itemId, 'itemId');
+        categoryId = value.categoryId === undefined
+            ? undefined
+            : normalizeMenuChangeLogIdentifier(value.categoryId, 'categoryId');
+        userId = value.userId === undefined
+            ? undefined
+            : normalizeMenuChangeLogIdentifier(value.userId, 'userId');
+    } catch {
+        return null;
+    }
+
     const entry: MenuChangeLogEntry = {
         id,
-        projectId: value.projectId,
+        projectId,
         changeType: value.changeType,
         oldValue: value.oldValue,
         newValue: value.newValue,
         changedBy: value.changedBy,
         timestamp: value.timestamp,
+        tId: storedScope.tId,
+        sId: storedScope.sId,
     };
 
-    if (typeof value.itemId === 'string') entry.itemId = value.itemId;
-    if (typeof value.categoryId === 'string') entry.categoryId = value.categoryId;
-    if (typeof value.userId === 'string') entry.userId = value.userId;
+    if (itemId !== undefined) entry.itemId = itemId;
+    if (categoryId !== undefined) entry.categoryId = categoryId;
+    if (userId !== undefined) entry.userId = userId;
     if (isRecord(value.metadata)) entry.metadata = value.metadata;
-    const storedScope = normalizeMenuChangeLogScope({ tId: value.tId, sId: value.sId });
-    if (storedScope) {
-        entry.tId = storedScope.tId;
-        entry.sId = storedScope.sId;
-    }
     return entry;
 };
 
 const normalizeChangeSnapshot = (
     docs: ReadonlyArray<{ id: string; data: () => unknown }>,
+    expectedScope: MenuChangeScope,
 ): MenuChangeLogEntry[] => {
     const entries: MenuChangeLogEntry[] = [];
     for (const document of docs) {
-        const entry = normalizeStoredMenuChange(document.id, document.data());
+        const entry = normalizeStoredMenuChange(document.id, document.data(), expectedScope);
         if (entry) {
             entries.push(entry);
         } else {
@@ -466,7 +491,7 @@ const visitStoredMenuChanges = async (
         const snapshot = await getDocs(query(collectionRef, ...constraints));
         documentsScanned += snapshot.size;
         for (const document of snapshot.docs) {
-            const normalized = normalizeChangeSnapshot([document]);
+            const normalized = normalizeChangeSnapshot([document], options.scope);
             if (normalized[0] && !visitor(normalized[0])) return;
         }
 

@@ -17,7 +17,6 @@ import {
 import {
     ComparisonTable,
     DirectoryCards,
-    PagePrismPanel,
     PageShell,
     StructuredData,
 } from './content';
@@ -78,15 +77,9 @@ export default function NeelvaraHomePage() {
                             </a>
                         </div>
                     </div>
-                    <PagePrismPanel
-                        eyebrow="Company reference"
-                        title="Neelvara Systems"
-                        rows={[
-                            'MenuList and Answerlattice',
-                            NEELVARA_CONTACT_EMAIL,
-                            'India',
-                        ]}
-                    />
+                    <div className="nv-hero-symbol nv-reveal" aria-hidden="true">
+                        <span className="nv-hero-symbol-mark" />
+                    </div>
                 </div>
             </section>
 
@@ -103,26 +96,28 @@ export default function NeelvaraHomePage() {
                 </div>
             </section>
 
-            <section className="nv-section nv-reveal">
-                <div className="nv-wrap nv-section-intro">
-                    <span className="nv-eyebrow mono">Operating approach</span>
-                    <h2 className="serif">A focused company with clear responsibilities.</h2>
-                    <p>Neelvara keeps company information, product commitments, and contact routes easy to understand.</p>
-                </div>
-                <div className="nv-wrap nv-principle-grid">
-                    {OPERATING_PRINCIPLES.map((item) => {
-                        const Icon = item.icon;
+            <section className="nv-section nv-operating-section nv-reveal">
+                <div className="nv-wrap nv-operating-layout">
+                    <div className="nv-section-intro">
+                        <span className="nv-eyebrow mono">Operating approach</span>
+                        <h2 className="serif">A focused company with clear responsibilities.</h2>
+                        <p>Neelvara keeps company information, product commitments, and contact routes easy to understand.</p>
+                    </div>
+                    <div className="nv-principle-grid">
+                        {OPERATING_PRINCIPLES.map((item) => {
+                            const Icon = item.icon;
 
-                        return (
-                            <article className="nv-principle" key={item.title}>
-                                <span className="nv-card-icon">
-                                    <Icon aria-hidden="true" />
-                                </span>
-                                <h3>{item.title}</h3>
-                                <p>{item.body}</p>
-                            </article>
-                        );
-                    })}
+                            return (
+                                <article className="nv-principle" key={item.title}>
+                                    <span className="nv-card-icon">
+                                        <Icon aria-hidden="true" />
+                                    </span>
+                                    <h3>{item.title}</h3>
+                                    <p>{item.body}</p>
+                                </article>
+                            );
+                        })}
+                    </div>
                 </div>
             </section>
 

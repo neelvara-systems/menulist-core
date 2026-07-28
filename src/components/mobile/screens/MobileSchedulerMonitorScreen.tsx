@@ -5,7 +5,7 @@ import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOpt
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { normalizeSchedulerRecoveryResponse, normalizeSchedulerRecoveryRunLogId } from '@lib/ops/schedulerRecoveryResponse';
 import type { SchedulerHealthSummary, SchedulerRunLog, SchedulerSettlementSummary, SchedulerTaskResult } from '@lib/ops/schedulerTypes';
-import { formatDateTime, type IntlFormatter } from '@util/dateTime';
+import { formatDateTime, type DateLike, type IntlFormatter } from '@util/dateTime';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,7 +37,7 @@ const TASK_LABELS: Record<string, string> = {
     weekly_narrative: 'Weekly Narrative',
 };
 
-function formatTimestamp(value: any, formatter: IntlFormatter): string {
+function formatTimestamp(value: DateLike, formatter: IntlFormatter): string {
     if (!value) return '-';
     const label = formatDateTime(value, 'datetime', formatter);
     return label === 'N/A' ? '-' : label;

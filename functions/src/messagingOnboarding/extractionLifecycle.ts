@@ -21,7 +21,7 @@ import type {
   MessagingOnboardingState,
   SessionUpload,
 } from "../types/messagingOnboarding.types";
-import { PROCESSING, RATE_LIMITS, UPLOAD_LIMITS } from "./constants";
+import { PROCESSING, RATE_LIMITS, RETENTION, UPLOAD_LIMITS } from "./constants";
 
 const db = firestoreAdmin;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
@@ -853,6 +853,7 @@ export async function enqueueMessagingExtractionJob(params: {
     });
 
     const rateLimitUpdate: Record<string, unknown> = {
+      expiresAt: Timestamp.fromMillis(now.toMillis() + RETENTION.RATE_LIMIT_TTL_MS),
       lastSessionAt: now,
       processingRunsThisWeek: weekly.count + 1,
       userHash: getUserHash(session),

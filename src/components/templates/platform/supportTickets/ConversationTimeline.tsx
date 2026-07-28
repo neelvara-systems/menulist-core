@@ -3,7 +3,11 @@ import { addTicketMessage, assertSupportTicketMessageAddSucceeded } from '@datab
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { SupportTicketType, TicketMessage } from '@type/supportTicket';
+import {
+    getSupportTicketTimestampMillis,
+    SupportTicketType,
+    TicketMessage,
+} from '@type/supportTicket';
 import { Button, Card, Flex, Form, Input, Typography, message as antdMessage, theme } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useSession } from 'next-auth/react';
@@ -35,8 +39,8 @@ const ConversationTimeline: React.FC<ConversationTimelineProps> = ({ ticket, onR
         // Fallback: Convert old statuses with remarks to messages
         return ticket.statuses
             .filter(s => s.remark)
-            .map(s => ({
-                id: `${s.timestamp.seconds}-${s.createdBy.id}`,
+            .map((s, index) => ({
+                id: `${getSupportTicketTimestampMillis(s.timestamp) ?? `legacy-${index}`}-${s.createdBy.id}`,
                 text: s.remark,
                 sender: s.createdBy,
                 timestamp: s.timestamp

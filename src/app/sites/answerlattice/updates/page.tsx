@@ -25,6 +25,15 @@ async function getBasePath(): Promise<string> {
 
 const UPDATES = [
     {
+        date: 'July 28, 2026',
+        title: 'Knowledge Map makes governed support structure easier to review',
+        items: [
+            'Knowledge Governance now maps product entities, typed relationships, approved-answer coverage, drift, and review state from the existing bounded graph summary.',
+            'Published hosted-help articles include a topic map built only from sanitized article headings and existing published navigation; private ontology, source, and canonical-answer records do not enter the public payload.',
+            'The owner view uses one point read per load or manual refresh. Public topic maps add no Firestore read, listener, AI call, embedding, vector query, or map-specific write.',
+        ],
+    },
+    {
         date: 'July 16, 2026',
         title: 'First Trusted Answers turns launch support into one bounded workflow',
         items: [

@@ -1266,6 +1266,8 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [channelWindowSource, setChannelWindowSource] = useState("inbound");
     const [channelWindowStatus, setChannelWindowStatus] = useState("open");
     const [channelWindowRetry, setChannelWindowRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
+    const [providerRetentionRetry, setProviderRetentionRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
+    const [providerEvaluationRetry, setProviderEvaluationRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [selectedWaterfallId, setSelectedWaterfallId] = useState("");
     const [providerEvaluationProvider, setProviderEvaluationProvider] = useState("google-places");
     const [providerEvaluationUse, setProviderEvaluationUse] = useState("discovery");
@@ -1275,6 +1277,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [senderDomainRetry, setSenderDomainRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [connectorKind, setConnectorKind] = useState("email-smtp");
     const [connectorName, setConnectorName] = useState("MenuList email");
+    const [connectorRetry, setConnectorRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [connectorStatus, setConnectorStatus] = useState("hold");
     const [connectorSenderEmail, setConnectorSenderEmail] = useState("");
     const [connectorReplyToEmail, setConnectorReplyToEmail] = useState("");
@@ -2288,9 +2291,9 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         if (kind === "apify") setConnectorName("Apify source broker");
     };
 
-    const upsertConnectorSetting = (event: FormEvent) => {
+    const upsertConnectorSetting = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("upsert-connector-setting", {
+        const request = {
             appId: connectorAppId || undefined,
             connectorKind,
             displayName: connectorName,
@@ -2304,7 +2307,17 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             senderDomain: connectorSenderDomain || undefined,
             senderEmail: connectorSenderEmail || undefined,
             status: connectorStatus,
+        };
+        const requestKey = JSON.stringify(request);
+        const retry = connectorRetry?.requestKey === requestKey
+            ? connectorRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setConnectorRetry(retry);
+        const result = await runAction("upsert-connector-setting", {
+            ...request,
+            idempotencyKey: retry.idempotencyKey,
         });
+        if (result) setConnectorRetry(null);
     };
 
     const resetTeamMemberForm = () => {
@@ -2364,19 +2377,33 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         if (result) setChannelWindowRetry(null);
     };
 
-    const refreshProviderRetention = (providerSourceRetentionId: string) => {
-        void runAction("refresh-provider-source-retention", {
+    const refreshProviderRetention = async (providerSourceRetentionId: string) => {
+        const requestKey = JSON.stringify({ providerSourceRetentionId, status: "refreshed" });
+        const retry = providerRetentionRetry?.requestKey === requestKey
+            ? providerRetentionRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setProviderRetentionRetry(retry);
+        const result = await runAction("refresh-provider-source-retention", {
+            idempotencyKey: retry.idempotencyKey,
             notes: "Manual refresh state update from SignalDesk.",
             providerSourceRetentionId,
             status: "refreshed",
         });
+        if (result) setProviderRetentionRetry(null);
     };
 
-    const createProviderEvaluation = () => {
-        void runAction("create-provider-evaluation", {
+    const createProviderEvaluation = async () => {
+        const requestKey = `${providerEvaluationProvider}|${providerEvaluationUse}`;
+        const retry = providerEvaluationRetry?.requestKey === requestKey
+            ? providerEvaluationRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setProviderEvaluationRetry(retry);
+        const result = await runAction("create-provider-evaluation", {
+            idempotencyKey: retry.idempotencyKey,
             provider: providerEvaluationProvider,
             use: providerEvaluationUse,
         });
+        if (result) setProviderEvaluationRetry(null);
     };
 
     const upsertTrustPartnerProfile = async (event: FormEvent) => {

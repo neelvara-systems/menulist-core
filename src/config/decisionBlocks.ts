@@ -247,7 +247,7 @@ export function isQuickPickEligible(duration: number | undefined, businessType?:
     if (!enabledBlocks.includes('quickPick')) return false;
 
     const config = getDurationConfig(businessType, businessCategory);
-    const itemDuration = duration ?? config.default;
+    const itemDuration = getEffectiveDuration(duration, businessType, businessCategory);
     return itemDuration <= config.quickThreshold;
 }
 
@@ -255,7 +255,7 @@ export function isQuickPickEligible(duration: number | undefined, businessType?:
  * Get effective duration for an item (falls back to category default)
  */
 export function getEffectiveDuration(duration: number | undefined, businessType?: string, businessCategory?: string): number {
-    if (duration !== undefined && duration >= 0) {
+    if (typeof duration === 'number' && Number.isFinite(duration) && duration >= 0) {
         return duration;
     }
     return getDurationConfig(businessType, businessCategory).default;
@@ -266,15 +266,16 @@ export function getEffectiveDuration(duration: number | undefined, businessType?
  */
 export function formatDuration(duration: number, businessType?: string, businessCategory?: string): string {
     const config = getDurationConfig(businessType, businessCategory);
-    if (duration === 0) {
+    const normalizedDuration = getEffectiveDuration(duration, businessType, businessCategory);
+    if (normalizedDuration === 0) {
         return 'Instant';
     }
-    if (duration >= 60) {
-        const hours = Math.floor(duration / 60);
-        const mins = duration % 60;
+    if (normalizedDuration >= 60) {
+        const hours = Math.floor(normalizedDuration / 60);
+        const mins = normalizedDuration % 60;
         return mins > 0 ? `${hours}h ${mins}${config.unit}` : `${hours}h`;
     }
-    return `${duration} ${config.unit}`;
+    return `${normalizedDuration} ${config.unit}`;
 }
 
 // ============================================

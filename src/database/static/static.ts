@@ -1,8 +1,17 @@
 import { SUCCESS_RESPONSE } from "@constant/common";
-import { DB_COLLECTIONS } from "@constant/database";
+import { DB_COLLECTIONS, STATIC_ASSET_COLLECTIONS } from "@constant/database";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { addDoc, collection, doc, getDocs, runTransaction, updateDoc } from "@firebase/firestore";
+import {
+    addDoc,
+    collection,
+    doc,
+    getDocs,
+    limit as firestoreLimit,
+    query as firestoreQuery,
+    runTransaction,
+    updateDoc,
+} from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -14,6 +23,7 @@ import { getStaticAssetEntityLogContext, logStaticAssetDiagnostic, logStaticAsse
 
 const COLLECTION = `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/`;
 const MAX_ASSET_CHILDREN = 1000;
+const MAX_ASSET_DOCUMENTS = 1000;
 const FIREBASE_STORAGE_DOWNLOAD_HOSTS = new Set([
     "firebasestorage.googleapis.com",
     "storage.googleapis.com",
@@ -30,6 +40,14 @@ const ASSET_PREVIEW_TYPES = new Set<AssetsCategoryType['previewType']>([
     'svg',
     'webp',
 ]);
+const ASSET_COLLECTION_BY_TYPE: Record<CraftBuilderAssetsTypesType, string> = {
+    graphics: STATIC_ASSET_COLLECTIONS.GRAPHICS,
+    illustrations: STATIC_ASSET_COLLECTIONS.ILLUSTRATIONS,
+    images: STATIC_ASSET_COLLECTIONS.IMAGES,
+};
+// @firestore-collection-evidence STATIC_ASSET_COLLECTIONS.GRAPHICS operations=read/query|write|delete|transaction/batch
+// @firestore-collection-evidence STATIC_ASSET_COLLECTIONS.ILLUSTRATIONS operations=read/query|write|delete|transaction/batch
+// @firestore-collection-evidence STATIC_ASSET_COLLECTIONS.IMAGES operations=read/query|write|delete|transaction/batch
 
 type AssetMutationInput = Partial<AssetsCategoryType> & {
     newPreview?: string | null;
@@ -46,7 +64,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
 );
 
 const isAssetType = (value: unknown): value is CraftBuilderAssetsTypesType => (
-    value === 'illustrations' || value === 'images' || value === 'graphics'
+    typeof value === 'string'
+    && Object.prototype.hasOwnProperty.call(ASSET_COLLECTION_BY_TYPE, value)
 );
 
 const normalizeAssetEntityId = (value: unknown): string | number | undefined => {
@@ -167,7 +186,7 @@ const isFirebaseStorageReference = (value: unknown): value is string => {
 
 const getCollectionRef = (type: CraftBuilderAssetsTypesType) => {
     if (!isAssetType(type)) throw new Error('static_asset_type_invalid');
-    return collection(firebaseClient, `${COLLECTION}${type}`);
+    return collection(firebaseClient, `${COLLECTION}${ASSET_COLLECTION_BY_TYPE[type]}`);
 };
 
 const getDocRef = (type: CraftBuilderAssetsTypesType, docId: string | number) => {
@@ -176,7 +195,7 @@ const getDocRef = (type: CraftBuilderAssetsTypesType, docId: string | number) =>
     if (!isValidFirestoreDocumentId(normalizedDocId)) {
         throw new Error('static_asset_document_id_invalid');
     }
-    return doc(firebaseClient, `${COLLECTION}${type}`, normalizedDocId);
+    return doc(firebaseClient, `${COLLECTION}${ASSET_COLLECTION_BY_TYPE[type]}`, normalizedDocId);
 };
 
 const cleanupStorageReferences = async (
@@ -233,7 +252,7 @@ const prepareAssetPreview = async (
         cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
         fileId: id,
         url: newPreview,
-        path: `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/${type}/${id}`,
+        path: `${DB_COLLECTIONS.COMMON}/${DB_COLLECTIONS.ASSETS}/${ASSET_COLLECTION_BY_TYPE[type]}/${id}`,
         type: data.previewType,
     });
     if (!isFirebaseStorageReference(uploaded)) {
@@ -622,7 +641,21 @@ export const deleteAssetsItem = async (
 export async function getAllAssetsByType(type: CraftBuilderAssetsTypesType): Promise<AssetsCategoryType[]> {
     return await apiCallComposer(
         async () => {
-            const querySnapshot = await getDocs(getCollectionRef(type));
+            const querySnapshot = await getDocs(firestoreQuery(
+                getCollectionRef(type),
+                firestoreLimit(MAX_ASSET_DOCUMENTS + 1),
+            ));
+            if (querySnapshot.size > MAX_ASSET_DOCUMENTS) {
+                logStaticAssetDiagnostic(
+                    'static_asset_document_limit_exceeded',
+                    {
+                        ...getStaticAssetEntityLogContext(type),
+                        documentCount: querySnapshot.size,
+                        documentLimit: MAX_ASSET_DOCUMENTS,
+                    },
+                );
+                throw new Error('static_asset_document_limit_exceeded');
+            }
             return querySnapshot.docs.flatMap((assetDoc) => {
                 const normalized = normalizeAssetCategory(assetDoc.data(), assetDoc.id);
                 if (normalized) return [normalized];

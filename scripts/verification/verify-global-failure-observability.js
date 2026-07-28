@@ -65,7 +65,8 @@ includes(instrumentationClient, 'blockAllMedia: true', 'replay media blocking');
 includes(sentryShared, 'sanitizeMonitoringEvent', 'monitoring event sanitizer');
 includes(sentryShared, 'summarizeMonitoringString', 'monitoring string minimization');
 
-includes(ticketCache, 'return cachedTickets?.tickets || [];', 'failed refresh last-known ticket truth');
+includes(ticketCache, 'const scopedTickets = cachedTickets.scopeKey === scopeKey ? cachedTickets.tickets : [];', 'tenant-scoped last-known ticket truth');
+includes(ticketCache, 'return scopedTickets;', 'failed refresh tenant-scoped last-known ticket truth');
 assert(!ticketCache.includes('failed refresh as a confirmed empty inbox.\\n                return [];'), 'failed ticket refresh must not become a confirmed empty inbox');
 
 const routeRoot = path.join(ROOT, 'src/app/api');
@@ -80,12 +81,14 @@ const walk = (directory) => {
 walk(routeRoot);
 
 const rawMessageAllowlist = new Map([
+  ['src/app/api/answerlattice/public-api-key/route.ts', ['AnswerlatticePublicApiKeyStoreError']],
   ['src/app/api/helpCenter/search-kb/route.ts', ['AnswerlatticeSupportSearchCapacityError']],
   ['src/app/api/widget/search/route.ts', ['AnswerlatticeSupportSearchCapacityError']],
   ['src/app/api/answerlattice/answer-tests/run/route.ts', ['AnswerlatticeAnswerTestRunConflictError', 'AnswerlatticeAnswerTestCapacityError']],
   ['src/app/api/answerlattice/answer-tests/release-check/route.ts', ['AnswerlatticeAnswerTestRunConflictError', 'AnswerlatticeAnswerTestCapacityError']],
   ['src/app/api/answerlattice/answer-tests/route.ts', ['AnswerlatticeAnswerTestSummaryTooLargeError']],
   ['src/app/api/answerlattice/integrations/route.ts', ['IntegrationConfigInputError']],
+  ['src/app/api/projects/delete/route.ts', ['ProjectDeleteRejection']],
 ]);
 for (const absolute of routeFiles) {
   const content = fs.readFileSync(absolute, 'utf8');

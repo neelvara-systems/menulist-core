@@ -32,7 +32,7 @@ The Feedback System has server-owned private submission and published-content re
 | `src/app/api/answerlattice/feedback/route.ts` | — | `withAuth` Help Center submission route with exact workspace scope, 16KB body cap, strict request parsing, fail-closed 12/hour scoped-actor rate limit, and bounded response. |
 | `src/lib/answerlattice/feedbackSubmissionServer.ts` | — | Admin transaction that derives a deterministic document ID, persists an exact submission fingerprint, rejects changed replays, and retries the deterministic identity-minimized support signal on acknowledged replays. |
 | `src/database/contentFeedback/index.ts` | — | Article/changelog/FAQ reaction client and capped audit reader; it validates IDs/scope, reuses a bounded retry request ID, calls the protected API, validates the response, and exposes one-document owner reads. |
-| `src/app/api/answerlattice/content-feedback/route.ts` | — | `withAuth` route with exact workspace scope, actor snapshot, 16KB body cap, strict request parsing, and 30 mutations/minute scoped-actor rate limit. |
+| `src/app/api/answerlattice/content-feedback/route.ts` | — | `withAuth` route with exact workspace scope, stable actor snapshot, 16KB body cap, strict request parsing, and a fail-closed 30 mutations/minute scoped-actor rate limit. Limiter-provider uncertainty returns `503` before Firestore work. |
 | `src/lib/answerlattice/contentFeedbackServer.ts` | — | Admin transaction over the exact source, counters, bounded 5,000-actor active-state document, 20-operation replay window, 200-item actor audit, 365-day audit expiry, and deterministic dislike signal. |
 | `src/components/templates/platform/changelog/ChangelogPreview.tsx` | — | Owner preview modal can show recent identified changelog reaction activity without loading reaction logs during normal public/help browsing. |
 
@@ -64,7 +64,7 @@ Content reaction tracking updates the existing aggregate counter, an internal `s
 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
-| `updateContentFeedbackWithAudit(input)` | 0 direct Firestore | 0 direct Firestore | Client calls `/api/answerlattice/content-feedback`, validates the bounded response, and preserves a retry request ID. The server transaction performs 3 reads and up to 4 writes: source, active-actor state, audit when below cap, and deterministic signal for a newly added dislike. Duplicate fresh request IDs become acknowledged no-ops from actor state. |
+| `updateContentFeedbackWithAudit(input)` | 0 direct Firestore | 0 direct Firestore | Client calls `/api/answerlattice/content-feedback`, validates the bounded response, and preserves a retry request ID. The server requires a literal non-`unknown` authenticated actor ID before database access. Its transaction performs 3 reads and up to 4 writes: source, active-actor state, audit when below cap, and deterministic signal for a newly added dislike. Duplicate fresh request IDs become acknowledged no-ops from actor state. |
 
 ### 2.3 Types
 

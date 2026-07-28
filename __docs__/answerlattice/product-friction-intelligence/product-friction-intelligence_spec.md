@@ -4,6 +4,11 @@
 
 Show a founder which mapped product areas are generating the most support friction, what changed between two completed windows, and which evidence should be reviewed next without claiming that support volume proves a product defect.
 
+The owner-facing question is:
+
+> Which mapped product concepts are producing the most support evidence, what
+> kind of evidence is present, and what should I inspect next?
+
 ## Inputs
 
 - `answerlattice_signalEvents` for the current UTC day, scoped by `pId`, `tId`, and `sId`.
@@ -46,6 +51,11 @@ Friction-level thresholds use total weighted load across all admitted entities:
 
 These thresholds are operational triage labels. They are not accuracy, satisfaction, severity, defect, or product-health scores.
 
+Owner-facing copy must call the aggregate **support-evidence load** and expose
+the underlying counts. Internal legacy field names such as `queryCount`,
+`frictionScore`, and `frictionLevel` do not authorize the UI to describe every
+event as a question or every high total as a product defect.
+
 ## Outputs
 
 ### Daily rows
@@ -66,6 +76,17 @@ These thresholds are operational triage labels. They are not accuracy, satisfact
 - legacy daily-row count;
 - server last-updated timestamp.
 
+The next admitted schema revision should also project, for each retained top
+entity, the deterministic counts already stored in daily rows:
+
+- ticket evidence;
+- negative-feedback evidence;
+- escalation evidence;
+- canonical-miss or low-confidence evidence.
+
+This is a projection change over already-read history. It must not add raw
+signal reads to the owner page.
+
 ### Advisory insight
 
 `platformSummary/friction_{tId}_{sId}` may contain a bounded summary, allowlisted entity-specific suggested actions, emerging notes, source snapshot timestamp, friction level copied from the deterministic snapshot, and `advisory: true`.
@@ -81,6 +102,38 @@ The advisory producer must validate exact workspace scope and the complete sourc
 - keep the weekly summary visibly advisory;
 - keep refresh manual and read-only.
 - never render or return loaded snapshot/advisory state when its stored scope key differs from the current requested workspace.
+- call every total by its exact evidence meaning;
+- show a bounded evidence breakdown before an advisory explanation;
+- route the owner to the existing governance workflow when a safe destination
+  exists rather than adding repair state to the friction surface.
+
+## Customer Friction Map Proposal Decision
+
+| Proposal | Decision |
+|---|---|
+| Rank support evidence by product concept | Keep; this is the existing feature. |
+| Prefer workflow entities when evidence is actually mapped to a workflow | Keep through the existing entity type; do not guess a workflow. |
+| Show ticket, fallback, escalation, and negative-feedback counts | Admit as the next bounded projection using already-retained daily counts. |
+| Show a product journey tree | Validate first. Current ontology relations do not prove a canonical customer journey. |
+| Add eight automatic friction types | Reject as automatic truth. Product UX, bug, policy, and expectation claims require owner-confirmed evidence. |
+| Add root-cause percentages | Reject. The advisory model may summarize admitted evidence but cannot establish causal percentages. |
+| Add release-before/after attribution | Validate separately. Temporal correlation must not be presented as release causation. |
+| Add 7/30/90-day controls | Reject for now. The completed 7-day comparison is bounded and comparable. |
+| Add heatmap or giant tree | Reject. Ranked evidence is more legible for the founder ICP and mobile. |
+| Add suggested fixes | Keep only as advisory links to existing reviewed workflows. |
+| Ingest product analytics, abandonment, or mouse/session data | Reject. |
+
+## Validation Gates
+
+Workflow hierarchy or release comparison enters implementation only after:
+
+1. three real founder workspaces demonstrate that entity ranking is
+   insufficient for the same repeated decision;
+2. mapped workflow or release identifiers are complete enough to avoid guessed
+   attribution;
+3. the calculation can remain summary-first and bounded;
+4. the owner can inspect the evidence and mark the interpretation wrong;
+5. public claims use correlation language unless causal evidence exists.
 
 ## Limits and Failure Rules
 
@@ -102,3 +155,7 @@ Any saturated or invalid required source fails the tenant task. The prior valid 
 - a universal health score;
 - autonomous customer outreach;
 - treating every ticket or chat as verified truth.
+- automatic product-bug, UX, policy, or expectation classification;
+- product-journey reconstruction from raw conversation text;
+- release causation claims;
+- session replay, product analytics, funnels, abandonment, or mouse tracking.

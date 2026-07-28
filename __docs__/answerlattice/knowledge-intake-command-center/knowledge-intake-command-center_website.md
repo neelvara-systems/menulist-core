@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Website Content Plan
 
 > **Status:** IMPLEMENTED — public website copy includes day-one intake
-> **Version:** 1.5.0
+> **Version:** 1.6.0
 > **Created:** 2026-05-31
 > **Audience:** Website / Product / SEO
 
@@ -132,11 +132,11 @@ First-session checklist:
 
 **Can Answerlattice import my website?**
 
-Yes, after active Answerlattice beta/subscription setup and within plan limits. Answerlattice discovers candidate public pages, lets you choose support-relevant pages, and processes only the selected pages instead of crawling your entire site by default.
+Yes, after active Answerlattice beta/subscription setup and within the bounded per-job source cap. Answerlattice discovers candidate public pages, lets you choose support-relevant pages, and processes only the selected pages instead of crawling your entire site by default.
 
 **Does Answerlattice crawl my app after I paste the app URL?**
 
-No. The app URL helps with widget setup and page mapping. Answerlattice does not log in, use demo credentials, crawl private dashboards, or scan customer data.
+No. The app URL is stored as setup and page/surface context; it does not configure or verify a widget installation. Answerlattice does not log in, use demo credentials, crawl private dashboards, or scan customer data.
 
 **Can I start without docs?**
 
@@ -207,3 +207,4 @@ Do not say:
 | 2026-05-31 | 1.3.0 | Synced public-site copy plan with implemented dedicated page, pricing credit wording, get-started checklist, FAQ, resources, updates, and security/source-intake boundaries. |
 | 2026-07-18 | 1.4.0 | Corrected discovery persistence and source-deletion claims to current runtime truth. |
 | 2026-07-18 | 1.5.0 | Replaced topic-readiness, generic high-risk approval, and background reprocessing claims with current review and dedupe behavior. |
+| 2026-07-26 | 1.6.0 | Replaced unsupported plan-limit and widget-setup implications with the bounded per-job source and setup-context contracts. |

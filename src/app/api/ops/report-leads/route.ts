@@ -10,7 +10,10 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
 import { FEATURE_FLAGS } from '@config/features';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
+import {
+  getCurrentPlatformUser,
+  resolveCurrentSessionUserDocumentId,
+} from '@lib/auth/currentPlatformUser';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { normalizePublicContactSourcePath } from '@lib/publicContact/contactBoundary';
 import type {
@@ -49,8 +52,6 @@ const ReportLeadQuerySchema = z.object({
   toolId: z.string().trim().max(80).optional().default('all'),
   limit: z.coerce.number().int().min(5).max(60).default(30),
 });
-
-const getOperatorId = (session: any) => session?.uId || session?.user?.id || session?.user?.email || 'platform';
 
 function cleanOpsText(value: unknown, max = 260): string {
   return String(value || '')
@@ -198,9 +199,8 @@ function serializeLead(doc: FirebaseFirestore.QueryDocumentSnapshot): ReportLead
   };
 }
 
-async function checkReportLeadOpsRateLimit(session: any) {
+async function checkReportLeadOpsRateLimit(operatorId: string) {
   const rateLimitConfig = getRateLimitForFeature('DATA_READ');
-  const operatorId = getOperatorId(session);
   const operatorRateLimitHash = hashPublicRateLimitValue(operatorId);
 
   const rateLimit = await checkRateLimit({
@@ -259,7 +259,14 @@ export const GET = withAuth(async (request, session) => {
     return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 });
   }
 
-  const rateLimitResponse = await checkReportLeadOpsRateLimit(session);
+  const operatorId = resolveCurrentSessionUserDocumentId(session);
+  if (!operatorId) {
+    return NextResponse.json(
+      { error: 'Forbidden' },
+      { headers: { 'Cache-Control': 'no-store' }, status: 403 },
+    );
+  }
+  const rateLimitResponse = await checkReportLeadOpsRateLimit(operatorId);
   if (rateLimitResponse) return rateLimitResponse;
 
   const { reportStatus, toolId, limit } = query.data;
@@ -324,7 +331,7 @@ export const GET = withAuth(async (request, session) => {
     });
   } catch (error) {
     logOpsFailure('report_lead_ops_route_failed', error, {
-      ...getBoundedOpsStringContext('userId', getOperatorId(session)),
+      ...getBoundedOpsStringContext('userId', operatorId),
       ...getBoundedOpsStringContext('requestPath', request.nextUrl.pathname),
       ...getBoundedOpsStringContext('reportStatus', reportStatus),
       ...getBoundedOpsStringContext('toolId', toolId),

@@ -1,5 +1,6 @@
 import assert from 'assert';
 import {
+    isAnswerlatticeActivationSummaryForScope,
     isAnswerlatticeActivationSummaryResponse,
     isAnswerlatticeCompiledContextRebuildResponse,
     isAnswerlatticeNotificationTestResponse,
@@ -106,6 +107,28 @@ assert.ok(summary.readinessScore >= 85, 'setup score should demonstrate that a h
 assert.equal(summary.launchProof.ready, false, 'missing priority-answer proof must block launch proof');
 assert.notEqual(summary.stage, 'live', 'high setup readiness must not select the live stage');
 assert.equal(isAnswerlatticeActivationSummaryResponse({ summary }), true);
+assert.equal(
+    isAnswerlatticeActivationSummaryForScope(summary, { tenantId: 7, storeId: 9 }),
+    true,
+    'activation summary must be accepted for its exact browser workspace scope',
+);
+assert.equal(
+    isAnswerlatticeActivationSummaryForScope(summary, { tenantId: 70, storeId: 9 }),
+    false,
+    'activation summary must be rejected after a tenant switch',
+);
+assert.equal(
+    isAnswerlatticeActivationSummaryForScope(summary, { tenantId: 7, storeId: 90 }),
+    false,
+    'activation summary must be rejected after a store switch',
+);
+const objectStageSummary = JSON.parse(JSON.stringify(summary));
+objectStageSummary.stage = { toString: () => summary.stage };
+assert.equal(
+    isAnswerlatticeActivationSummaryResponse({ summary: objectStageSummary }),
+    false,
+    'object activation stages must not be coerced into trusted response values',
+);
 
 const exactSubscriptionScope = {
     pId: 'AL',
@@ -260,6 +283,14 @@ const invalidNestedStatus = cloneOperationsResponse();
 invalidNestedStatus.operations.latestRuns[0].tenantStatus = 'complete_enough';
 assert.equal(isAnswerlatticeOperationsStatusResponse(invalidNestedStatus), false, 'unknown nested statuses must fail closed');
 
+const objectWorkspaceStatus = cloneOperationsResponse();
+objectWorkspaceStatus.operations.workspace.status = { toString: () => 'completed' };
+assert.equal(
+    isAnswerlatticeOperationsStatusResponse(objectWorkspaceStatus),
+    false,
+    'object operation statuses must not be coerced into trusted response values',
+);
+
 const missingRequiredNestedField = cloneOperationsResponse();
 delete missingRequiredNestedField.operations.masterScheduler.governanceTask.lastRunId;
 assert.equal(isAnswerlatticeOperationsStatusResponse(missingRequiredNestedField), false, 'missing required nested fields must fail closed');
@@ -315,5 +346,48 @@ assert.equal(isAnswerlatticeCompiledContextRebuildResponse({
     ok: false,
     manifest: { status: 'failed', bundleVersion: 1.5 },
 }), false, 'bundle versions must be non-negative safe integers');
+assert.equal(isAnswerlatticeCompiledContextRebuildResponse({
+    ok: false,
+    manifest: {
+        status: { toString: () => 'failed' },
+        bundleVersion: 2,
+    },
+}), false, 'object statuses must not be coerced into trusted response values');
+assert.equal(isAnswerlatticeCompiledContextRebuildResponse({
+    ok: true,
+    manifest: { status: 'ready', bundleVersion: 2 },
+    internalStoragePath: 'private/workspaces/1/2/bundle.json',
+}), false, 'unexpected top-level fields must fail closed');
+assert.equal(isAnswerlatticeCompiledContextRebuildResponse({
+    ok: true,
+    manifest: {
+        status: 'ready',
+        bundleVersion: 2,
+        sourceVersions: { kb: 9 },
+    },
+}), false, 'unexpected manifest fields must fail closed');
+assert.equal(isAnswerlatticeCompiledContextRebuildResponse({
+    ok: true,
+    manifest: {
+        status: 'ready',
+        bundleVersion: 2,
+        stats: {
+            routes: 3,
+            privateStoragePath: 1,
+        },
+    },
+}), false, 'unexpected stats fields must fail closed');
+assert.doesNotThrow(() => {
+    const throwingResponse = new Proxy({}, {
+        ownKeys: () => {
+            throw new Error('ownKeys trap');
+        },
+    });
+    assert.equal(
+        isAnswerlatticeCompiledContextRebuildResponse(throwingResponse),
+        false,
+        'throwing response objects must be failure-contained',
+    );
+});
 
 console.log('Answerlattice activation readiness and dashboard response contracts passed.');

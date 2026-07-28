@@ -333,7 +333,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             try {
                 const { mceValidate } = await import("@lib/mce");
                 const mceResult = mceValidate({
-                    projectData: projectData as Record<string, any>,
+                    projectData,
                     isOutlet: !!projectData.masterProjectId,
                     masterProjectId: projectData.masterProjectId,
                 });

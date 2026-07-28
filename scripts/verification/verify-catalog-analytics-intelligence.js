@@ -204,9 +204,11 @@ function main() {
     const proEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: 'pro' });
     const freeEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: 'free' });
     const missingEntitlement = resolveAnalyticsAiEntitlement({});
+    const malformedEntitlement = resolveAnalyticsAiEntitlement({ activePlanType: { toString: () => 'pro' } });
     assert(proEntitlement.enabled === true, 'Expected Pro entitlement to enable menu intelligence');
     assert(freeEntitlement.enabled === false && freeEntitlement.reason === 'plan_not_eligible', 'Expected Free entitlement to be locked');
     assert(missingEntitlement.enabled === false && missingEntitlement.reason === 'missing_plan', 'Expected missing plan entitlement to fail closed');
+    assert(malformedEntitlement.enabled === false && malformedEntitlement.reason === 'missing_plan', 'Expected malformed plan entitlement to fail closed without coercion');
 
     const schedulerSource = fs.readFileSync(path.join(__dirname, '../../functions/src/decisionBlocksScoring.ts'), 'utf8');
     const aggregationSource = fs.readFileSync(path.join(__dirname, '../../functions/src/aggregateCustomerAnalytics.ts'), 'utf8');

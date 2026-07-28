@@ -1,5 +1,7 @@
 # Menu Extraction Pipeline — Implementation
 
+Owner extraction activity is persisted only for authenticated owner-upload or menu-link project jobs whose complete `tId`/`tenantId` and `sId`/`storeId` alias sets normalize and agree. Contradictory or malformed persisted aliases cannot create tenant/store-scoped owner history.
+
 **Status:** Implemented
 **Last Updated:** July 14, 2026
 

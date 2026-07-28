@@ -47,6 +47,7 @@ async function run(): Promise<void> {
     const firstSummary = await rotateAnswerlatticePublicApiKey(scope, actor, {
         apiKeyHash: hashApiKey(firstKey),
         keyPrefix: firstKey.slice(0, 7),
+        requestId: '11111111-1111-4111-8111-111111111111',
         scopes: ['public:read'],
         createdAt: '2026-07-19T00:00:00.000Z',
     });
@@ -69,6 +70,28 @@ async function run(): Promise<void> {
     assert.equal(JSON.stringify(audits[0]).includes(firstKey), false, 'audit must not store raw keys');
     assert.equal(JSON.stringify(audits[0]).includes(hashApiKey(firstKey)), false, 'audit must not store key hashes');
 
+    const replaySummary = await rotateAnswerlatticePublicApiKey(scope, actor, {
+        apiKeyHash: hashApiKey(firstKey),
+        keyPrefix: firstKey.slice(0, 7),
+        requestId: '11111111-1111-4111-8111-111111111111',
+        scopes: ['public:read'],
+        createdAt: '2026-07-19T00:00:30.000Z',
+    });
+    assert.deepEqual(replaySummary, firstSummary, 'exact retry must return committed credential summary');
+    assert.equal((await readPublicApiAudits()).length, 1, 'exact retry must not duplicate audit truth');
+    await assert.rejects(
+        () => rotateAnswerlatticePublicApiKey(scope, actor, {
+            apiKeyHash: hashApiKey(rawKey('z')),
+            keyPrefix: rawKey('z').slice(0, 7),
+            requestId: '11111111-1111-4111-8111-111111111111',
+            scopes: ['public:read'],
+            createdAt: '2026-07-19T00:00:30.000Z',
+        }),
+        (error: unknown) => typeof error === 'object'
+            && error !== null
+            && (error as { code?: unknown }).code === 'idempotency_conflict',
+    );
+
     const firstValidation = await validatePublicApiKey(firstKey, {
         allowLegacyRawFallback: false,
         cacheTtlMs: 0,
@@ -80,6 +103,7 @@ async function run(): Promise<void> {
     await rotateAnswerlatticePublicApiKey(scope, actor, {
         apiKeyHash: hashApiKey(secondKey),
         keyPrefix: secondKey.slice(0, 7),
+        requestId: '22222222-2222-4222-8222-222222222222',
         scopes: ['public:read', 'signals:write'],
         createdAt: '2026-07-19T00:01:00.000Z',
     });
@@ -109,6 +133,7 @@ async function run(): Promise<void> {
         () => rotateAnswerlatticePublicApiKey(scope, actor, {
             apiKeyHash: hashApiKey(rawKey('c')),
             keyPrefix: rawKey('c').slice(0, 7),
+            requestId: '33333333-3333-4333-8333-333333333333',
             scopes: ['public:read'],
             createdAt: '2026-07-19T00:02:00.000Z',
         }),

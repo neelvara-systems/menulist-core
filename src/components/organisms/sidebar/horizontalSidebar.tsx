@@ -8,7 +8,7 @@ import { getPermissionRequirementForPath, satisfiesPermissionRequirement } from 
 import { canManageLocationSettings } from '@lib/multiOutlet/locationAccess';
 import { hasStarterWorkspaceAccess, isStarterWorkspaceRoute } from '@lib/onboarding/starterActivation';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { getDarkModeState, getSidebarLayoutState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
+import { getDarkModeState, toggleAppSettingsPanel, toggleDarkMode } from '@reduxSlices/clientThemeConfig';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { Button, Flex, Menu, MenuProps, Popover, theme } from 'antd';
 import { motion } from 'framer-motion';
@@ -33,7 +33,6 @@ const HorizontalSidebarComponent = () => {
     const [activeNav, setActiveNav] = useState<any[]>([]);
     const [supportPopoverOpen, setSupportPopoverOpen] = useState(false);
     const isDarkMode = useAppSelector(getDarkModeState);
-    const currentLayout = useAppSelector(getSidebarLayoutState)
     const pathname = usePathname()
     const { data: session } = useSession();
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
@@ -287,11 +286,10 @@ const HorizontalSidebarComponent = () => {
 
     return (
         <motion.div
-            className={`${styles.sidebarContainer} ${styles[currentLayout]}`}
+            className={styles.sidebarContainer}
             style={{ backgroundColor: token.colorBgBase, top: "52px", zIndex: 99 }}>
             <Flex gap={10} justify="space-between" align="center" style={{ width: '100%' }}>
                 <Menu
-                    className={styles.sidebarMenu}
                     expandIcon={<LuArrowBigDown />}
                     style={{ flex: 1 }}
                     defaultSelectedKeys={activeNav}

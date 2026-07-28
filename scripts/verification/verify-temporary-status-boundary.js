@@ -174,7 +174,9 @@ forbidToken(route, 'await storeRef.update', 'Temporary Status route stale-author
 forbidToken(route, 'console.error', 'Temporary Status route diagnostics');
 
 [
-  'normalizeStorePermissionScopeDocumentId(store.tenantId ?? store.tId)',
+  'resolveStorePermissionScopeDocumentIdAliases([',
+  'store.tenantId,',
+  'store.tId,',
   'persistedTenantScope?.documentId === params.tenantDocumentId',
   '!isUnavailableEntity(store)',
   '!isUnavailableEntity(tenant)',

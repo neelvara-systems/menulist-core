@@ -189,9 +189,15 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
             };
             if (activeDetails.id) {
                 updatedData = await updateAssetsSubCategory(activeAssetsType, changedData, activeCategory)
-                const newCats = activeCategory.subCategories;
-                const subcategoryIndex = activeCategory.subCategories.findIndex(subcategory => subcategory.id === activeDetails.id);
-                newCats[subcategoryIndex] = { ...activeDetails, preview: updatedData?.preview || activeDetails.preview, previewType: updatedData?.previewType || activeDetails.previewType }
+                const newCats = activeCategory.subCategories.map((subcategory) => (
+                    subcategory.id === activeDetails.id
+                        ? {
+                            ...activeDetails,
+                            preview: updatedData?.preview || activeDetails.preview,
+                            previewType: updatedData?.previewType || activeDetails.previewType,
+                        }
+                        : subcategory
+                ));
                 onSubmit({ ...activeCategory, subCategories: newCats });
                 dispatch(showSuccessToast("Sub Category updated !"))
             } else {
@@ -228,12 +234,28 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
             if (activeDetails.id) {
                 updatedData = await updateAssetsItem(activeAssetsType, changedData, activeCategory, activeSubCategory)
                 if (Boolean(activeSubCategory?.id)) {
-                    const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
-                    const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
-                    activeCategoryCpy.subCategories[subcategoryIndex].items[iIndex] = { ...activeDetails, preview: updatedData?.preview || activeDetails.preview }
+                    activeCategoryCpy.subCategories = activeCategoryCpy.subCategories.map((subcategory) => (
+                        subcategory.id === activeSubCategory.id
+                            ? {
+                                ...subcategory,
+                                items: subcategory.items.map((item) => (
+                                    item.id == activeDetails.id
+                                        ? { ...activeDetails, preview: updatedData?.preview || activeDetails.preview }
+                                        : item
+                                )),
+                            }
+                            : subcategory
+                    ));
                 } else {
-                    const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
-                    activeCategoryCpy.items[iIndex] = { ...activeDetails, preview: updatedData?.preview || activeDetails.preview, previewType: updatedData?.previewType || activeDetails.previewType }
+                    activeCategoryCpy.items = activeCategoryCpy.items.map((item) => (
+                        item.id == activeDetails.id
+                            ? {
+                                ...activeDetails,
+                                preview: updatedData?.preview || activeDetails.preview,
+                                previewType: updatedData?.previewType || activeDetails.previewType,
+                            }
+                            : item
+                    ));
                 }
                 onSubmit({ ...activeCategoryCpy });
                 dispatch(showSuccessToast("Item updated !"))
@@ -244,10 +266,13 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                     previewType: normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType),
                 }, activeCategory, activeSubCategory)
                 if (Boolean(activeSubCategory?.id)) {
-                    const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
-                    activeCategoryCpy.subCategories[subcategoryIndex].items.push(updatedData)
+                    activeCategoryCpy.subCategories = activeCategoryCpy.subCategories.map((subcategory) => (
+                        subcategory.id === activeSubCategory.id
+                            ? { ...subcategory, items: [...subcategory.items, updatedData] }
+                            : subcategory
+                    ));
                 } else {
-                    activeCategoryCpy.items.push(updatedData)
+                    activeCategoryCpy.items = [...activeCategoryCpy.items, updatedData];
                 }
                 onSubmit({ ...activeCategoryCpy });
                 dispatch(showSuccessToast("Item added !"))
@@ -279,20 +304,22 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                 dispatch(showSuccessToast("Category deleted !"))
             } else if (modalData.type == 'Sub Category') {
                 await deleteAssetsSubCategory(activeAssetsType, activeDetails, activeCategory);
-                let scId = activeCategory.subCategories.findIndex(c => c.id == activeDetails.id);
-                activeCategory.subCategories.splice(scId, 1);
-                onSubmit({ ...activeCategory });
+                onSubmit({
+                    ...activeCategory,
+                    subCategories: activeCategory.subCategories.filter((category) => category.id != activeDetails.id),
+                });
                 dispatch(showSuccessToast("Category deleted !"))
             } else if (modalData.type == 'Item') {
                 await deleteAssetsItem(activeAssetsType, activeDetails, activeCategory, activeSubCategory);
                 const activeCategoryCpy = removeObjRef(activeCategory);
                 if (Boolean(activeSubCategory?.id)) {
-                    const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
-                    const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
-                    activeCategoryCpy.subCategories[subcategoryIndex].items.splice(iIndex, 1)
+                    activeCategoryCpy.subCategories = activeCategoryCpy.subCategories.map((subcategory) => (
+                        subcategory.id === activeSubCategory.id
+                            ? { ...subcategory, items: subcategory.items.filter((item) => item.id != activeDetails.id) }
+                            : subcategory
+                    ));
                 } else {
-                    const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
-                    activeCategoryCpy.items.splice(iIndex, 1)
+                    activeCategoryCpy.items = activeCategoryCpy.items.filter((item) => item.id != activeDetails.id);
                 }
                 onSubmit({ ...activeCategoryCpy });
                 dispatch(showSuccessToast("Item deleted !"))

@@ -1,5 +1,6 @@
 import { join } from 'path';
 import * as functions from 'firebase-functions';
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from './boundedErrorContext';
 
 const enableLocalLogs = process.env.NODE_ENV !== 'production';
 
@@ -32,25 +33,15 @@ const getLocalLogStringContext = (label: string, value: unknown) => {
 };
 
 const getLocalLogErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedFunctionsErrorName(error);
 };
 
 const getLocalLogErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedFunctionsErrorCode(error);
 };
 
 const getLocalLogErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as { status?: unknown }).status
-        : (error as { statusCode?: unknown }).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedFunctionsErrorStatus(error);
 };
 
 const MAX_LOCAL_LOG_OBJECT_KEYS = 24;

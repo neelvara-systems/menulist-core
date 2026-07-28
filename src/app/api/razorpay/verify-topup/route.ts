@@ -17,7 +17,11 @@ import {
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId, resolveProviderBillingProductId } from "@lib/billing/productBillingPlans";
-import { resolveCurrentTopupSubscriptionSettlement, resolveVerifiedTopupSettlement } from '@lib/billing/topupSettlement';
+import {
+    resolveCurrentTopupSubscriptionSettlement,
+    resolveVerifiedTopupSettlement,
+    type CurrentTopupSubscriptionSettlement,
+} from '@lib/billing/topupSettlement';
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -56,19 +60,17 @@ const verifyRazorpayOrderSignature = (
 const mirrorAnswerlatticeCreditSummary = async (
     billingDb: FirebaseFirestore.Firestore,
     storeDocumentId: string,
-    subscription: any,
-    topUpCredits?: number,
+    subscription: CurrentTopupSubscriptionSettlement,
 ) => {
-    if (!subscription) return;
     const serverNow = admin.firestore.FieldValue.serverTimestamp();
     await billingDb.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId).set({
         answerlatticeSubscription: {
             id: subscription.id || subscription.providerSubscriptionId || null,
             providerSubscriptionId: subscription.providerSubscriptionId || subscription.id || null,
-            monthlyCreditsAllowance: Number(subscription.monthlyCreditsAllowance ?? 0),
-            monthlyCredits: Number(subscription.monthlyCredits ?? 0),
-            topUpCredits: Number(topUpCredits ?? subscription.topUpCredits ?? 0),
-            creditsLastResetMonth: Number(subscription.creditsLastResetMonth ?? 0) || null,
+            monthlyCreditsAllowance: subscription.monthlyCreditsAllowance,
+            monthlyCredits: subscription.monthlyCredits,
+            topUpCredits: subscription.topUpCredits,
+            creditsLastResetMonth: subscription.creditsLastResetMonth,
             updatedAt: serverNow,
         },
         answerlatticeBillingUpdatedAt: serverNow,
@@ -351,7 +353,7 @@ export const POST = withAuth(async (request, session) => {
             }
             if (isAnswerlatticeProduct) {
                 try {
-                    await mirrorAnswerlatticeCreditSummary(billingDb, storeDocumentId, currentSub, currentTopupState.topUpCredits);
+                    await mirrorAnswerlatticeCreditSummary(billingDb, storeDocumentId, currentTopupState);
                 } catch (summaryError) {
                     logger.error('Answerlattice top-up summary mirror failed for already verified order', new Error('razorpay_topup_summary_mirror_failed'), {
                         ...getRazorpayFailureLogData('razorpay_topup_summary_mirror_failed', summaryError),
@@ -528,6 +530,7 @@ export const POST = withAuth(async (request, session) => {
                 return {
                     alreadyVerified: true,
                     newBalance: currentSubscription.topUpCredits,
+                    subscription: currentSubscription,
                 };
             }
 
@@ -612,8 +615,8 @@ export const POST = withAuth(async (request, session) => {
             if (answerlatticeStoreRef) {
                 tx.set(answerlatticeStoreRef, {
                     answerlatticeSubscription: {
-                        id: internalSub.id || internalSub.providerSubscriptionId || null,
-                        providerSubscriptionId: internalSub.providerSubscriptionId || internalSub.id || null,
+                        id: currentSubscription.id || currentSubscription.providerSubscriptionId || null,
+                        providerSubscriptionId: currentSubscription.providerSubscriptionId || currentSubscription.id || null,
                         monthlyCreditsAllowance: currentSubscription.monthlyCreditsAllowance,
                         monthlyCredits: currentSubscription.monthlyCredits,
                         topUpCredits: newBalance,
@@ -624,7 +627,15 @@ export const POST = withAuth(async (request, session) => {
                 }, { merge: true });
             }
 
-            return { alreadyVerified: false, newBalance, paymentMismatch: false };
+            return {
+                alreadyVerified: false,
+                newBalance,
+                paymentMismatch: false,
+                subscription: {
+                    ...currentSubscription,
+                    topUpCredits: newBalance,
+                },
+            };
         });
 
         if (transactionResult.paymentMismatch) {
@@ -667,7 +678,11 @@ export const POST = withAuth(async (request, session) => {
         if (transactionResult.alreadyVerified) {
             if (isAnswerlatticeProduct) {
                 try {
-                    await mirrorAnswerlatticeCreditSummary(billingDb, storeDocumentId, internalSub, transactionResult.newBalance);
+                    await mirrorAnswerlatticeCreditSummary(
+                        billingDb,
+                        storeDocumentId,
+                        transactionResult.subscription,
+                    );
                 } catch (summaryError) {
                     logger.error('Answerlattice top-up summary mirror failed for transaction retry', new Error('razorpay_topup_summary_mirror_failed'), {
                         ...getRazorpayFailureLogData('razorpay_topup_summary_mirror_failed', summaryError),

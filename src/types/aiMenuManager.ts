@@ -318,7 +318,7 @@ export interface AiMenuManagerReceipt {
     receiptId: string;
     proposalId: string;
     actionType: AiMenuManagerActionType;
-    status: "executed" | "failed" | "manual_task";
+    status: "executed" | "failed" | "manual_task" | "cancelled";
     title: string;
     message: string;
     projectId?: string;

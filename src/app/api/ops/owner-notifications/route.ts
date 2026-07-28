@@ -83,7 +83,7 @@ const EVENT_STATUSES: OwnerNotificationEventStatus[] = [
   'failed',
   'skipped',
 ];
-const DELIVERY_STATUSES: OwnerNotificationDeliveryStatus[] = ['sent', 'failed', 'skipped', 'rate_limited'];
+const DELIVERY_STATUSES: OwnerNotificationDeliveryStatus[] = ['sending', 'sent', 'failed', 'skipped', 'rate_limited'];
 const RECIPIENT_ROLES: OwnerNotificationRecipientRole[] = [
   'primary_owner',
   'billing_owner',

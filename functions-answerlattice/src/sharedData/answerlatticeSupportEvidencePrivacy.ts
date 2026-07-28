@@ -10,14 +10,23 @@ const LABELED_PHONE_PATTERN = /\b(phone|mobile|tel(?:ephone)?)\s*[:=]\s*\+?[\d\s
 export const redactAnswerlatticeSupportEvidenceText = (
     value: unknown,
     maxLength = 500,
-): string => String(value || '')
-    .replace(CONTROL_CHARACTER_PATTERN, ' ')
-    .replace(EMAIL_PATTERN, '[redacted email]')
-    .replace(BEARER_TOKEN_PATTERN, 'Bearer [redacted credential]')
-    .replace(JWT_PATTERN, '[redacted credential]')
-    .replace(PREFIXED_SECRET_PATTERN, '[redacted credential]')
-    .replace(LABELED_SECRET_PATTERN, (_match, label: string) => `${label}=[redacted credential]`)
-    .replace(LABELED_PHONE_PATTERN, (_match, label: string) => `${label}: [redacted phone]`)
-    .replace(WHITESPACE_PATTERN, ' ')
-    .trim()
-    .slice(0, Math.max(0, maxLength));
+): string => {
+    const text = typeof value === 'string'
+        ? value
+        : typeof value === 'number' && Number.isFinite(value)
+            ? String(value)
+            : typeof value === 'boolean'
+                ? String(value)
+                : '';
+    return text
+        .replace(CONTROL_CHARACTER_PATTERN, ' ')
+        .replace(EMAIL_PATTERN, '[redacted email]')
+        .replace(BEARER_TOKEN_PATTERN, 'Bearer [redacted credential]')
+        .replace(JWT_PATTERN, '[redacted credential]')
+        .replace(PREFIXED_SECRET_PATTERN, '[redacted credential]')
+        .replace(LABELED_SECRET_PATTERN, (_match, label: string) => `${label}=[redacted credential]`)
+        .replace(LABELED_PHONE_PATTERN, (_match, label: string) => `${label}: [redacted phone]`)
+        .replace(WHITESPACE_PATTERN, ' ')
+        .trim()
+        .slice(0, Math.max(0, maxLength));
+};

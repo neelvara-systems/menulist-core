@@ -16,6 +16,7 @@ import {
   getAnalyticsErrorContext,
   getAnalyticsIdContext,
 } from './analyticsDiagnostics';
+import { getBoundedFunctionsErrorCode } from '../utils/boundedErrorContext';
 
 const REALTIME_CHAT_COMPLETION_TRACKING_FAILED = 'REALTIME_CHAT_COMPLETION_TRACKING_FAILED';
 const REALTIME_FEEDBACK_TRACKING_FAILED = 'REALTIME_FEEDBACK_TRACKING_FAILED';
@@ -69,8 +70,8 @@ function readNonNegativeCount(value: unknown): number {
 
 function isAlreadyExistsError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
-  const code = (error as { code?: unknown }).code;
-  return code === 6 || code === '6' || code === 'already-exists';
+  const code = getBoundedFunctionsErrorCode(error);
+  return code === '6' || code === 'already-exists';
 }
 
 function getRealtimeScope(data: {

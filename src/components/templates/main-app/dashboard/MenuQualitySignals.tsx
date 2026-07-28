@@ -14,6 +14,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getProjectData } from '@database/projects';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { computeQualitySignals, getPrimaryQualitySignal, getVisibleSignals, isAllClear, isRepairMenuSignal, QualitySignal } from '@lib/mce/qualitySignals';
 import {
     getBoundedProjectPageStringContext,
@@ -34,6 +35,8 @@ interface MenuQualitySignalsProps {
     projectData?: (Project & Record<string, any>) | null;
     projectId: string | null;
     projectLoading?: boolean;
+    storeId?: string | number | null;
+    tenantId?: string | number | null;
 }
 
 const SIGNAL_ICONS: Record<string, React.ReactNode> = {
@@ -48,7 +51,13 @@ const SIGNAL_ICONS: Record<string, React.ReactNode> = {
 };
 const PENDING_QUALITY_ACTION_STORAGE_KEY = 'menulist:pendingQualityAction';
 
-const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectData, projectId, projectLoading = false }) => {
+const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({
+    projectData,
+    projectId,
+    projectLoading = false,
+    storeId,
+    tenantId,
+}) => {
     const router = useRouter();
     const { token } = useToken();
     const t = useTranslations('Dashboard.owner');
@@ -56,6 +65,11 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectData, pr
     const [allSignals, setAllSignals] = useState<QualitySignal[]>([]);
     const [checkedAt, setCheckedAt] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
+    const pendingQualityActionStorageKey = getTenantStoreStorageKey(
+        PENDING_QUALITY_ACTION_STORAGE_KEY,
+        tenantId,
+        storeId,
+    );
 
     useEffect(() => {
         if (projectData !== undefined) {
@@ -137,9 +151,9 @@ const MenuQualitySignals: React.FC<MenuQualitySignalsProps> = ({ projectData, pr
 
     const handleAction = (signal: QualitySignal) => {
         if (!signal.actionRoute) return;
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && pendingQualityActionStorageKey) {
             try {
-                window.sessionStorage.setItem(PENDING_QUALITY_ACTION_STORAGE_KEY, JSON.stringify({
+                window.sessionStorage.setItem(pendingQualityActionStorageKey, JSON.stringify({
                     action: signal.id,
                     createdAt: Date.now(),
                     projectId,

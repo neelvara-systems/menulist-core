@@ -10,6 +10,7 @@ import {
     getBoundedSecurityStringContext,
 } from "@lib/security/securityDiagnostics";
 import { verifyTenantAccess } from "@/middleware/auth";
+import { resolveCampaignCueSessionIdentity } from "@lib/campaigncue/workspaceScope";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
@@ -22,17 +23,15 @@ const CAMPAIGNCUE_JSON_BODY_MAX_BYTES = Math.max(
 );
 
 export const getCampaignCueSessionScope = (session: any) => {
-    const tId = session?.tId || session?.user?.tenantId;
-    const sId = session?.sId || session?.user?.storeId;
-    const userId = session?.uId || session?.user?.id;
+    const identity = resolveCampaignCueSessionIdentity(session);
     const email = session?.user?.email || session?.email;
     const name = session?.user?.name || session?.name;
     return {
         email: email ? String(email) : undefined,
         name: name ? String(name) : undefined,
-        sId: sId != null ? String(sId) : "",
-        tId: tId != null ? String(tId) : "",
-        userId: userId ? String(userId) : "",
+        sId: identity?.sId || "",
+        tId: identity?.tId || "",
+        userId: identity?.userId || "",
     };
 };
 

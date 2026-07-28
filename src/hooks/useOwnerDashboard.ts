@@ -45,6 +45,8 @@ import {
 } from '@template/main-app/projects/types';
 import { useCallback, useContext, useMemo, useState } from 'react';
 import useSWR from 'swr';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveOwnerBusinessAssistantClientScope } from '@lib/ownerBusinessAssistant/clientScope';
 
 interface UseOwnerDashboardOptions {
     projectId?: string;
@@ -147,12 +149,17 @@ function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number, da
 
 export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerDashboardReturn {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const session = useClientAuthSession();
     const projectId = options?.projectId;
     const loadHistorical = options?.loadHistorical ?? true;
     const [viewMode, setViewMode] = useState<OwnerDashboardViewMode>('today');
 
-    const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
-    const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
+    const scope = useMemo(
+        () => resolveOwnerBusinessAssistantClientScope(session, storeDetails?.storeId, storeDetails?.tenantId),
+        [session, storeDetails?.storeId, storeDetails?.tenantId],
+    );
+    const tId = scope?.tenantId || null;
+    const sId = scope?.storeId || null;
     const analyticsDayKey = useMemo(
         () => getBusinessAnalyticsDateKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
         [storeDetails?.timeZone, storeDetails?.businessDayEndTime],

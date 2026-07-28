@@ -54,6 +54,7 @@ const packageJson = read('package.json');
 const firestoreRules = read('firestore.rules');
 const pricingPlansDal = read('src/database/pricingPlans/index.ts');
 const pricingPlansUi = read('src/components/templates/platform/pricingPlans/index.tsx');
+const staticPlatformPlans = read('src/data/PlatformPlansList.ts');
 const projectsDatabase = read('src/database/projects/index.ts');
 const publicClientCache = read('src/lib/cache/publicClientCache.ts');
 const screenInvalidation = read('src/lib/screen/screenInvalidation.ts');
@@ -120,29 +121,74 @@ requireToken(
   'plan.features.length > PLAN_FEATURE_MAX_ITEMS',
   'export const normalizePricingPlan = (value: unknown, id: string): PricingPlan | null => {',
   'return { ...fields, id, version: Number(version) };',
+  'export const PRICING_PLAN_QUERY_MAX_RESULTS = 100;',
+  'limit(PRICING_PLAN_QUERY_MAX_RESULTS + 1)',
+  'assertPricingPlanQueryWithinLimit(querySnapshot.size)',
+  'where("publicSafe", "==", true)',
+  'publicSafe: true',
   'if (planType !== undefined && planType !== \'B2C\' && planType !== \'B2B\')',
   'return runTransaction(firebaseClient, async (transaction) => {',
   'currentPlan.version >= Number.MAX_SAFE_INTEGER',
-  'transaction.update(planRef, {',
+  'transaction.set(planRef, {',
+  '}, { merge: false });',
 ].forEach((token) => requireToken(pricingPlansDal, token, 'Pricing plan DAL public/version boundary'));
 [
   'requestBodyComposer',
   'return { ...plan, id }',
   'seedInitialPlans',
   'updateDoc(getDocRef',
+  'transaction.update(planRef, {',
 ].forEach((token) => forbidToken(pricingPlansDal, token, 'Pricing plan DAL public/version boundary'));
 requireToken(pricingPlansUi, 'PricingPlanMutationInput', 'Pricing plan editor typed mutation boundary');
 forbidToken(pricingPlansUi, 'handleSavePlan = async (values: any)', 'Pricing plan editor typed mutation boundary');
+[
+  'const getB2CPlansList = (): Plan[] => {',
+  'const getB2BPlansList = (): Plan[] => {',
+  'return { ...plan, featuresList: planFeaturesList };',
+].forEach((token) => requireToken(staticPlatformPlans, token, 'Static platform plan typed projection'));
+[
+  'removeObjRef',
+  'plan: any',
+  'CustomePlanForB2B: any',
+].forEach((token) => forbidToken(staticPlatformPlans, token, 'Static platform plan typed projection'));
 
 [
-  'allow read: if isPlatformAdmin() || isPublicPricingPlan(resource.data);',
-  'allow create, update: if isPlatformAdmin() && isPublicPricingPlan(request.resource.data);',
+  'allow get: if isPlatformAdmin()',
+  'isPublicPricingPlan(resource.data) && resource.data.active == true',
+  'allow list: if request.query.limit != null',
+  '&& request.query.limit <= 101',
+  '&& resource.data.publicSafe == true',
+  '&& request.resource.data.publicSafe == true',
   'allow delete: if false;',
   'function isPublicPricingPlan(data) {',
   "data.keys().hasOnly([",
   '&& data.price is int',
   '&& data.version is int',
 ].forEach((token) => requireToken(firestoreRules, token, 'Pricing plan public Firestore contract'));
+[
+  'match /projectsMetadata/{tId}/{sId}/{projectId} {',
+  '// Retired pricing-integrity scaffold only.',
+  'match /projectsData/{tId}/{sId}/{projectId} {',
+  '// Read-only compatibility. Browser writes would create a parallel menu',
+].forEach((token) => requireToken(firestoreRules, token, 'Retired pricing collection write boundary'));
+requireOccurrenceAtLeast(
+  firestoreRules.slice(
+    firestoreRules.indexOf('match /projectsMetadata/{tId}/{sId}/{projectId} {'),
+    firestoreRules.indexOf('// Legacy flat Projects Data'),
+  ) + firestoreRules.slice(
+    firestoreRules.indexOf('match /projectsData/{tId}/{sId}/{projectId} {'),
+    firestoreRules.indexOf('// Changelog Pages'),
+  ),
+  '&& belongsToStoreById(sId);',
+  2,
+  'Retired project aliases exact store read boundary',
+);
+requireOccurrenceAtLeast(
+  firestoreRules,
+  'allow write: if false;',
+  3,
+  'Retired project aliases and legacy flat project deny browser writes',
+);
 
 [
   'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");',
@@ -235,26 +281,17 @@ requireOrder(
   'failureReason,',
 ].forEach((token) => requireToken(pricingEngine, token, 'Dormant pricing engine scaffold'));
 forbidToken(pricingEngine, '"pricingIntegrity.pdf.lastFailureReason": error', 'Pricing PDF failure reason persistence');
+requireToken(readme, 'The retired `projectsMetadata` and `projectsData` aliases are authenticated', 'Pricing README retired alias boundary');
+requireToken(firebaseDoc, 'Browser writes to retired `projectsMetadata/{tId}/{sId}/{projectId}` and', 'Pricing Firebase retired alias boundary');
 
 [
   'const ENABLE_BACKGROUND_PDF_REGEN = false;',
-  'if (!ENABLE_BACKGROUND_PDF_REGEN) {',
   'logPricingDiagnostic("pricing_pdf_regen_disabled"',
-  'return;',
-  'await setDoc(jobRef, jobData);',
   'export function isBackgroundPDFRegenEnabled(): boolean',
 ].forEach((token) => requireToken(pricingPdfQueue, token, 'Pricing PDF queue'));
-requireOrder(
-  pricingPdfQueue,
-  [
-    'if (!ENABLE_BACKGROUND_PDF_REGEN) {',
-    'return;',
-    'const existingTimer = debounceTimers.get(key);',
-    'const timer = setTimeout(async () =>',
-    'await createRegenJob(params);',
-  ],
-  'Pricing PDF queue disabled-before-job order',
-);
+['firebase/firestore', 'createRegenJob', 'setDoc(', '"jobs"'].forEach((token) => (
+  forbidToken(pricingPdfQueue, token, 'Disabled background pricing PDF regeneration persistence')
+));
 forbidToken(pricingPdfQueue, 'const ENABLE_BACKGROUND_PDF_REGEN = true;', 'Pricing PDF queue');
 
 [

@@ -104,6 +104,32 @@ const verifyExpiryStatusCommits = async (): Promise<void> => {
     assert.equal((await ref.get()).data()?.status, 'expired');
 };
 
+const verifyMalformedChallengeStateFailsClosed = async (): Promise<void> => {
+    const negativeAttemptsId = 'OtpNegativeAttempts01';
+    const negativeAttemptsRef = await seedChallenge({
+        challengeId: negativeAttemptsId,
+        phoneE164: '+919700000006',
+    });
+    await negativeAttemptsRef.update({ attempts: -100 });
+    await expectPhoneOtpError(
+        verifyPhoneOtpChallenge({ challengeId: negativeAttemptsId, code: '246810' }),
+        'invalid_code',
+    );
+    assert.equal((await negativeAttemptsRef.get()).data()?.attempts, -100);
+
+    const stringAttemptsId = 'OtpStringAttempts0001';
+    const stringAttemptsRef = await seedChallenge({
+        challengeId: stringAttemptsId,
+        phoneE164: '+919700000007',
+    });
+    await stringAttemptsRef.update({ attempts: '0' });
+    await expectPhoneOtpError(
+        verifyPhoneOtpChallenge({ challengeId: stringAttemptsId, code: '246810' }),
+        'invalid_code',
+    );
+    assert.equal((await stringAttemptsRef.get()).data()?.status, 'pending');
+};
+
 const verifyConcurrentSuccessAndOneTimeConsumption = async (): Promise<void> => {
     const challengeId = 'OtpConcurrentValid01';
     const ref = await seedChallenge({ challengeId, phoneE164: '+919700000003' });
@@ -128,7 +154,7 @@ const verifyConcurrentSuccessAndOneTimeConsumption = async (): Promise<void> => 
 };
 
 const verifyExpiredLoginTokenCommits = async (): Promise<void> => {
-    const token = 'expired-phone-login-token-0000000000001';
+    const token = 'expired-phone-login-token-0000000000001xxxx';
     const tokenHash = hmac(`login-token:${token}`);
     const ref = firestoreAdmin
         .collection(DB_COLLECTIONS.AUTH_PHONE_OTP_LOGIN_TOKENS)
@@ -141,6 +167,34 @@ const verifyExpiredLoginTokenCommits = async (): Promise<void> => {
     });
     await expectPhoneOtpError(consumePhoneOtpLoginToken({ token }), 'expired');
     assert.equal((await ref.get()).data()?.status, 'expired');
+};
+
+const verifyMalformedLoginTokenFailsClosed = async (): Promise<void> => {
+    await expectPhoneOtpError(
+        consumePhoneOtpLoginToken({ token: 'x'.repeat(44) }),
+        'invalid_token',
+    );
+
+    const token = 'malformed-phone-login-token-000000000001xyz';
+    assert.equal(token.length, 43);
+    const tokenHash = hmac(`login-token:${token}`);
+    const userId = 'malformed-token-user';
+    const tokenRef = firestoreAdmin.collection(DB_COLLECTIONS.AUTH_PHONE_OTP_LOGIN_TOKENS).doc(tokenHash);
+    await Promise.all([
+        firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(userId).set({
+            active: true,
+            email: '',
+            isVerified: true,
+        }),
+        tokenRef.set({
+            expiresAt: Timestamp.fromMillis(Date.now() + 120_000),
+            status: 'active',
+            userId,
+        }),
+    ]);
+    await expectPhoneOtpError(consumePhoneOtpLoginToken({ token }), 'invalid_token');
+    assert.equal((await tokenRef.get()).data()?.status, 'active');
+    assert.equal((await tokenRef.get()).data()?.consumedAt, undefined);
 };
 
 const verifyAmbiguousAuthIdentitiesFailClosed = async (): Promise<void> => {
@@ -213,8 +267,10 @@ const run = async (): Promise<void> => {
     assert(process.env.FIRESTORE_EMULATOR_HOST, 'FIRESTORE_EMULATOR_HOST is required');
     await verifyInvalidAttemptsCommit();
     await verifyExpiryStatusCommits();
+    await verifyMalformedChallengeStateFailsClosed();
     await verifyConcurrentSuccessAndOneTimeConsumption();
     await verifyExpiredLoginTokenCommits();
+    await verifyMalformedLoginTokenFailsClosed();
     await verifyAmbiguousAuthIdentitiesFailClosed();
     await verifyLegacyPhoneOnlyUserGetsBoundLoginEmail();
     await verifyLegacyPhoneEmailConflictFailsClosed();

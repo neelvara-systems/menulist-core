@@ -8,6 +8,7 @@ import {
 import { requireAnswerlatticeOnboardingUserId } from '@lib/answerlattice/onboardingUserIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
+import { isAnswerlatticeWorkspaceBillingActivationAllowed } from '@lib/answerlattice/workspaceLifecycleContracts';
 import {
     ANSWERLATTICE_TENANT_SUMMARY_SHARD_TYPE,
     getAnswerlatticeTenantSummaryShardId,
@@ -94,6 +95,12 @@ export async function persistAnswerlatticePendingSubscription(params: {
     const userId = requireAnswerlatticeOnboardingUserId(params.scope.userId);
     const subscriptionId = normalizeAnswerlatticeSubscriptionId(params.subscriptionId);
     if (!subscriptionId) throw new Error('answerlattice_onboarding_subscription_id_invalid');
+    if (!isAnswerlatticeSubscriptionInScope(params.subscriptionPayload, {
+        tId: tenantId,
+        sId: storeId,
+    })) {
+        throw new Error('answerlattice_onboarding_subscription_payload_scope_conflict');
+    }
 
     await params.db.runTransaction(async (transaction) => {
         const tenantRef = params.db.collection(DB_COLLECTIONS.TENANTS).doc(String(tenantId));
@@ -112,6 +119,9 @@ export async function persistAnswerlatticePendingSubscription(params: {
         }
         assertProvisioningOwnership(tenantSnap.data() || {}, params.scope, 'tenant');
         assertProvisioningOwnership(storeSnap.data() || {}, params.scope, 'store');
+        if (!isAnswerlatticeWorkspaceBillingActivationAllowed(storeSnap.data())) {
+            throw new Error('answerlattice_onboarding_workspace_activation_not_allowed');
+        }
         assertProvisioningOwnership(userSnap.data() || {}, params.scope, 'user');
 
         if (subscriptionSnap.exists) {
@@ -135,7 +145,9 @@ export async function persistAnswerlatticePendingSubscription(params: {
             pId: PRODUCT_IDS.ANSWERLATTICE,
             productId: PRODUCT_IDS.ANSWERLATTICE,
             tId: tenantId,
+            tenantId,
             sId: storeId,
+            storeId,
             uId: userId,
             role: 'owner',
             createdOn: subscriptionSnap.exists ? subscriptionSnap.data()?.createdOn || now : now,

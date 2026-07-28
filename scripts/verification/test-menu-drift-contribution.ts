@@ -46,6 +46,8 @@ const compactSummary = readMenuDriftContributions({
             { itemId: 'item-2', priceChanges: 2, availabilityChanges: 0 },
             { itemId: 'item-3', priceChanges: 0, availabilityChanges: 0 },
             { itemId: 'bad/id', priceChanges: 1, availabilityChanges: 0 },
+            { itemId: '.', priceChanges: 1, availabilityChanges: 0 },
+            { itemId: '..', priceChanges: 1, availabilityChanges: 0 },
         ],
     },
 });

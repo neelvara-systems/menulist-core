@@ -2,7 +2,11 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { getAnswerTestProofSummary } from '@lib/answerlattice/answerTestEvaluation';
 import {
     loadAnswerlatticeAnswerTestSummary,
@@ -28,6 +32,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
 
 const PROPOSAL_IMPACT_MAX_BODY_BYTES = 40 * 1024;
+const PRIVATE_NO_STORE_HEADERS = ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS;
+
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(PRIVATE_NO_STORE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (
@@ -36,17 +48,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     ) {
         return NextResponse.json(
             { error: 'Answer tests are not enabled.' },
-            { status: 403, headers: { 'Cache-Control': 'private, no-store' } },
+            { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
         );
     }
     const sessionScope = resolveAnswerlatticeSessionScope(session);
     if (!sessionScope) {
         return NextResponse.json(
             { error: 'Not onboarded' },
-            { status: 400, headers: { 'Cache-Control': 'private, no-store' } },
+            { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
         );
     }
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json(
+            { error: 'Forbidden' },
+            { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
+        );
+    }
 
     try {
         const rateLimit = await checkRateLimit({
@@ -73,7 +91,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 {
                     status: providerUnavailable ? 503 : 429,
                     headers: {
-                        'Cache-Control': 'private, no-store',
+                        ...PRIVATE_NO_STORE_HEADERS,
                         'Retry-After': String(retryAfter),
                     },
                 },
@@ -86,13 +104,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
         );
         if (permission.response) {
-            permission.response.headers.set('Cache-Control', 'private, no-store');
-            return permission.response;
+            return withPrivateHeaders(permission.response);
         }
         if (!permission.access) {
             return NextResponse.json(
                 { error: 'Forbidden' },
-                { status: 403, headers: { 'Cache-Control': 'private, no-store' } },
+                { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
 
@@ -103,14 +120,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         if (bodyResult.ok === false) {
             return NextResponse.json(
                 { error: 'Invalid proposal impact request.' },
-                { status: bodyResult.response.status, headers: { 'Cache-Control': 'private, no-store' } },
+                { status: bodyResult.response.status, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
         const parsed = AnswerlatticeProposalImpactRequestSchema.safeParse(bodyResult.data);
         if (!parsed.success) {
             return NextResponse.json(
                 { error: 'Invalid proposal impact request.' },
-                { status: 400, headers: { 'Cache-Control': 'private, no-store' } },
+                { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
 
@@ -178,13 +195,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
 
         return NextResponse.json(response, {
-            headers: { 'Cache-Control': 'private, no-store' },
+            headers: PRIVATE_NO_STORE_HEADERS,
         });
     } catch (error) {
         if (error instanceof AnswerlatticeGovernanceError) {
             return NextResponse.json(
                 { error: error.publicMessage },
-                { status: error.status, headers: { 'Cache-Control': 'private, no-store' } },
+                { status: error.status, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
         logRuntimeFailure('answerlattice_proposal_impact_failed', error, {
@@ -193,7 +210,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         return NextResponse.json(
             { error: 'Could not check the proposed answer.' },
-            { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
+            { status: 500, headers: PRIVATE_NO_STORE_HEADERS },
         );
     }
 });

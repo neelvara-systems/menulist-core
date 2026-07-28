@@ -6,29 +6,48 @@ import {
     getOwnerReferralShareTitle,
     type OwnerReferralOwnerResponse,
 } from '@lib/ownerReferral/ownerReferralClient';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { useLocale } from 'next-intl';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export const useOwnerReferral = () => {
     const locale = useLocale();
+    const session = useClientAuthSession();
+    const scopeKey = getTenantStoreStorageKey('owner-referral-scope', session?.tId, session?.sId);
+    const scopeKeyRef = useRef(scopeKey);
+    const loadInFlightRef = useRef(false);
+    scopeKeyRef.current = scopeKey;
     const [data, setData] = useState<OwnerReferralOwnerResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
+    useEffect(() => {
+        setData(null);
+        setError(null);
+        setIsLoading(false);
+    }, [scopeKey]);
+
     const load = useCallback(async () => {
+        const requestScopeKey = scopeKeyRef.current;
+        if (!requestScopeKey || loadInFlightRef.current) return null;
+        loadInFlightRef.current = true;
         setIsLoading(true);
         setError(null);
         try {
             const next = await fetchOwnerReferral();
+            if (scopeKeyRef.current !== requestScopeKey) return null;
             setData(next);
             return next;
         } catch (loadError) {
+            if (scopeKeyRef.current !== requestScopeKey) return null;
             const code = loadError instanceof Error ? loadError.message : 'owner_referral_load_failed';
             setError(code);
             setData(null);
             return null;
         } finally {
-            setIsLoading(false);
+            loadInFlightRef.current = false;
+            if (scopeKeyRef.current === requestScopeKey) setIsLoading(false);
         }
     }, []);
 

@@ -780,7 +780,11 @@ function verifyEnvironmentTargets() {
     'Root build:verify must guard the Next deployment configuration before typecheck and flat-config lint',
   );
   assert(rootTsconfig.compilerOptions?.tsBuildInfoFile === '.next/cache/tsconfig.tsbuildinfo', 'Root TypeScript build-info cache must stay under ignored .next/cache');
-  assert(rootPackageJson.scripts['verify:mycodex-pwa-assets'] === 'node scripts/verification/verify-mycodex-pwa-assets.js', 'Root package must expose the MyCodex PWA static verifier');
+  assert(
+    rootPackageJson.scripts['verify:mycodex-pwa-assets']
+      === 'node scripts/verification/verify-mycodex-pwa-assets.js && npm run test:mycodex-auth-boundary',
+    'Root package must expose the MyCodex PWA static and auth boundary verifier',
+  );
   assert(rootPackageJson.scripts['verify:signaldesk-security-rules'] === 'node scripts/verification/verify-signaldesk-security-rules.js', 'Root package must expose the SignalDesk security rules static verifier');
   const recycleBinVerifier = read('scripts/verification/verify-recycle-bin.js');
   const verificationReadme = read('scripts/verification/README.md');
@@ -873,7 +877,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(productionReadinessReadme, '| 1.54 | July 9, 2026 | Added the current external certification snapshot:', 'Production readiness checklist current snapshot version history');
   assertIncludes(productionReadinessReadme, '| CDN caching active for public pages | ☐ | Source cache headers and Vercel-compatible cache policy exist; Gate 8 must verify production response headers, cache hits, invalidation, and CDN behavior. |', 'Production readiness checklist CDN external evidence boundary');
   assertIncludes(productionReadinessReadme, '| SSL auto-renewal | ☐ | Vercel-managed certificates are expected only after the production custom domain is active; Gate 8 must verify the certificate chain and renewal state. |', 'Production readiness checklist TLS renewal external evidence boundary');
-  assertIncludes(productionReadinessReadme, '| Rate limiting active (Upstash) | ☐ | `ENABLE_RATE_LIMITING: true` and protected public flows fail closed in source, but target credentials, live Upstash behavior, limits, and outage handling still need non-production verification. |', 'Production readiness checklist Upstash external evidence boundary');
+  assertIncludes(productionReadinessReadme, '| Rate limiting active (Upstash) | ☐ | Atomic sliding-window logic, bounded timeout/circuit breaker, and fail-closed expensive/mutation paths are source-gated by `npm run verify:provider-resilience`. Run `npm run verify:upstash-readiness` with target credentials and confirm Marketplace origin in the Upstash console. |', 'Production readiness checklist Upstash external evidence boundary');
   assertIncludes(productionReadinessReadme, '| Sentry configured (prod project) | ☐ | Source integration and production env templates exist; the production DSN, release/source-map association, and captured test event still need target verification. |', 'Production readiness checklist Sentry external evidence boundary');
   assertIncludes(productionReadinessReadme, '| HTTPS enforced | ☐ | Middleware configures HSTS for production responses, but Gate 8 must verify production HTTP-to-HTTPS behavior, TLS, and the delivered HSTS header. |', 'Production readiness checklist HTTPS external evidence boundary');
   assertIncludes(productionReadinessReadme, '| Customer app shows an offline fallback without cached menu content | ☐ | A July 11 local loopback smoke manually registered the development worker, severed the harness proxy upstream, rendered `/offline`, and found no cached menu content. Production registration/install and physical-device airplane-mode evidence still need Gate 3/Gate 8 verification. |', 'Production readiness checklist offline PWA external evidence boundary');
@@ -2511,6 +2515,20 @@ function verifyEnvironmentTargets() {
   }
   assertIncludes(functionsEnvSetup, 'Messaging onboarding processing is disabled by default in those files.', 'Functions env setup messaging onboarding fail-closed docs');
   assertIncludes(functionsEnvSetup, 'ENABLE_MESSAGING_ONBOARDING=false', 'Functions env setup messaging onboarding disabled default');
+  [
+    'ANSWERLATTICE_CRON_SECRET',
+    'ANSWERLATTICE_GEMINI_AI_KEY',
+    'ANSWERLATTICE_GEMINI_AI_KEY_2',
+    'ANSWERLATTICE_GEMINI_AI_KEY_3',
+    'ANSWERLATTICE_GEMINI_AI_KEY_4',
+    'ANSWERLATTICE_PUBLIC_BUNDLE_SALT',
+    'ANSWERLATTICE_SMTP_HOST',
+    'ANSWERLATTICE_SMTP_PORT',
+    'ANSWERLATTICE_SMTP_USER',
+    'ANSWERLATTICE_SMTP_PASS',
+  ].forEach((secretName) => {
+    assertIncludes(functionsEnvSetup, secretName, `Functions env setup Answerlattice secret ${secretName}`);
+  });
   assertIncludes(productSetupDoc, 'Keep `ENABLE_MESSAGING_ONBOARDING=false` until real WhatsApp secrets', 'Product setup doc messaging onboarding fail-closed setup');
   assertIncludes(productSetupDoc, 'Set `ENABLE_MESSAGING_ONBOARDING=true` only for the target being smoked', 'Product setup doc messaging onboarding targeted enable step');
   assertIncludes(messagingOnboardingReadme, '**Status:** Source-implemented, provider-disabled — not a current launch or deploy certification', 'Messaging onboarding README status fail-closed wording');
@@ -3411,6 +3429,24 @@ function verifyAnswerlatticeInstallContract() {
 }
 
 function main() {
+  const retiredMcpConfig = JSON.parse(read('.windsurf/mcp-config.json'));
+  const serwistRoute = read('src/app/serwist/[path]/route.ts');
+  assert(
+    retiredMcpConfig
+      && typeof retiredMcpConfig === 'object'
+      && !Array.isArray(retiredMcpConfig)
+      && Object.keys(retiredMcpConfig.mcpServers || {}).length === 0,
+    'Windsurf MCP config must not execute unpinned remote npx packages',
+  );
+  assert(!exists('package-old.json'), 'retired alternate package manifest must not remain at the repository root');
+  assert(exists('__docs__/_archive/package-old.json'), 'retired alternate package manifest must remain preserved in the documentation archive');
+  assert(!exists('projectSampleData_oldway.json'), 'retired alternate project sample must not remain at the repository root');
+  assert(exists('__docs__/_archive/project-sample-data-oldway.json'), 'retired alternate project sample must remain preserved in the documentation archive');
+  assert(!exists('windsurfTheme.json'), 'retired JSONC Windsurf theme must not masquerade as root JSON');
+  assert(exists('__docs__/_archive/windsurf-theme-retired.jsonc'), 'retired Windsurf theme must remain preserved with its JSONC format explicit');
+  assert(!exists('public/platform.webmanifest'), 'retired cross-product platform manifest must not remain publicly addressable');
+  assert(exists('__docs__/_archive/platform.webmanifest'), 'retired platform manifest must remain preserved in the documentation archive');
+  assertNotIncludes(serwistRoute, 'public/platform.webmanifest', 'MenuList owner service-worker precache product separation');
   verifyEnvironmentTargets();
   if (process.argv.includes('--env-targets-only')) {
     console.log('Environment target matrix verified');

@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { collection, getDoc, getDocs, query, where } from "@firebase/firestore";
+import { collection, getDoc, getDocs, limit, query, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -10,9 +10,17 @@ import { createRuntimeId } from "@lib/runtime/randomId";
 import { logRuntimeDiagnostic, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { getStorageReplacementCleanupTargets, type StorageReplacementCommitState } from "@lib/storage/replacementUploadBoundary";
+import {
+    assertBlogQueryWithinLimit,
+    BLOG_QUERY_MAX_RESULTS,
+    normalizeBlogDocumentId,
+    normalizeBlogImageUrl,
+    normalizeBlogStoreId,
+} from "@lib/blogs/blogBoundary";
 import { doc, setDoc, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.BLOGS;
+// @firestore-collection-evidence DB_COLLECTIONS.BLOGS operations=read/query|write
 
 const cleanupBlogImageReplacement = async ({
     blogId,
@@ -65,15 +73,24 @@ const getCollectionRef = () => {
     return collection(firebaseClient, COLLECTION)
 }
 
-const getDocRef = (docId: any) => {
-    return doc(firebaseClient, `${COLLECTION}`, docId)
+type BlogMutationInput = Record<string, unknown> & {
+    id?: string | number;
+    imageToUpdate?: unknown;
+};
+
+const getDocRef = (docId: unknown) => {
+    return doc(firebaseClient, COLLECTION, normalizeBlogDocumentId(docId))
 }
 
 export const getAllBlogs = async () => {
     return await apiCallComposer(
         async () => {
-            const querySnapshot = await getDocs(await getCollectionRef());
-            const list = [];
+            const querySnapshot = await getDocs(query(
+                getCollectionRef(),
+                limit(BLOG_QUERY_MAX_RESULTS + 1),
+            ));
+            assertBlogQueryWithinLimit(querySnapshot.size);
+            const list: Array<Record<string, unknown> & { id: string }> = [];
             querySnapshot.forEach((doc) => {
                 list.push({ ...doc.data(), id: doc.id })
             });
@@ -83,15 +100,21 @@ export const getAllBlogs = async () => {
     );
 }
 
-export const getBlogsByStoreId = async (storeId) => {
+export const getBlogsByStoreId = async (storeId: string | number) => {
     return await apiCallComposer(
         async () => {
-            const ref = query(await getCollectionRef(), where("storeId", "==", storeId));
+            const normalizedStoreId = normalizeBlogStoreId(storeId);
+            const ref = query(
+                getCollectionRef(),
+                where("storeId", "==", normalizedStoreId),
+                limit(BLOG_QUERY_MAX_RESULTS + 1),
+            );
             const querySnapshot = await getDocs(ref);
+            assertBlogQueryWithinLimit(querySnapshot.size);
             if (querySnapshot.empty) {
                 return ([]);
             } else {
-                const list: any = [];
+                const list: Array<Record<string, unknown> & { id: string }> = [];
                 querySnapshot.forEach((doc) => {
                     list.push({ ...doc.data(), id: doc.id })
                 });
@@ -103,13 +126,13 @@ export const getBlogsByStoreId = async (storeId) => {
     );
 }
 
-export const getBlogById = async (id: number) => {
+export const getBlogById = async (id: string | number) => {
     return await apiCallComposer(
         async () => {
             const collectionDocRef = await getDocRef(id);
             const docSnap = await getDoc(collectionDocRef);
             if (docSnap.exists()) {
-                return docSnap.data();
+                return { ...docSnap.data(), id: docSnap.id };
             } else {
                 return null
             }
@@ -119,7 +142,7 @@ export const getBlogById = async (id: number) => {
     );
 }
 
-export const addBlog = async (data: any) => {
+export const addBlog = async (data: BlogMutationInput) => {
     return await apiCallComposer(
         async () => {
             const blogRef = doc(getCollectionRef());
@@ -134,8 +157,9 @@ export const addBlog = async (data: any) => {
                 if (isDataUrl(imageToUpdate)) {
                     uploadedUrl = await uploadBlogImage(imageToUpdate);
                     nextData.profileImage = uploadedUrl;
-                } else if (typeof imageToUpdate === 'string' && imageToUpdate.trim()) {
-                    nextData.profileImage = imageToUpdate.trim();
+                } else {
+                    const imageUrl = normalizeBlogImageUrl(imageToUpdate);
+                    if (imageUrl !== undefined) nextData.profileImage = imageUrl;
                 }
                 const composedData = await requestBodyComposer(nextData, { isNew: true });
                 persistenceAttempted = true;
@@ -155,7 +179,7 @@ export const addBlog = async (data: any) => {
     );
 }
 
-export const updateBlog = async (data: any) => {
+export const updateBlog = async (data: BlogMutationInput & { id: string | number }) => {
     return await apiCallComposer(
         async () => {
             const blogRef = getDocRef(data.id);
@@ -176,8 +200,9 @@ export const updateBlog = async (data: any) => {
                 if (isDataUrl(imageToUpdate)) {
                     uploadedUrl = await uploadBlogImage(imageToUpdate);
                     nextData.profileImage = uploadedUrl;
-                } else if (typeof imageToUpdate === 'string' && imageToUpdate.trim()) {
-                    nextData.profileImage = imageToUpdate.trim();
+                } else {
+                    const imageUrl = normalizeBlogImageUrl(imageToUpdate);
+                    if (imageUrl !== undefined) nextData.profileImage = imageUrl;
                 }
                 const composedData = await requestBodyComposer(nextData, { isNew: false });
                 persistenceAttempted = true;

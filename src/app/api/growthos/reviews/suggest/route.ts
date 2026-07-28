@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
 import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { guardGrowthOSReviewReply } from "@lib/growthos/reviewGuard";
+import { getGrowthOSRateLimitFailureDecision } from "@lib/growthos/rateLimitPolicy";
 import { evaluateGrowthOSServerEntitlement } from "@lib/growthos/serverEntitlements";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -25,13 +26,31 @@ export const POST = withAuth(async (request, session) => {
 
         const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");
         const tenantRateLimitHash = hashPublicRateLimitValue(session.tId || "unknown");
+        const storeRateLimitHash = hashPublicRateLimitValue(session.sId || "unknown");
         const rateLimit = await checkRateLimit({
-            key: `growthos-review:${userRateLimitHash}:${tenantRateLimitHash}`,
+            failClosedOnProviderError: true,
+            key: `growthos-review:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
             limit: 10,
             window: 60,
         });
         if (!rateLimit.allowed) {
-            return NextResponse.json({ error: "Rate limit exceeded. Please try again in a minute." }, { status: 429 });
+            const decision = getGrowthOSRateLimitFailureDecision(rateLimit);
+            return NextResponse.json({
+                error: decision.providerUnavailable
+                    ? "Request protection is temporarily unavailable. Please try again shortly."
+                    : "Rate limit exceeded. Please try again in a minute.",
+                code: decision.code,
+                retryAfter: decision.retryAfter,
+            }, {
+                status: decision.status,
+                headers: {
+                    "Retry-After": String(decision.retryAfter),
+                    ...(decision.providerUnavailable ? {} : {
+                        "X-RateLimit-Remaining": String(rateLimit.remaining),
+                        "X-RateLimit-Reset": String(rateLimit.resetAt),
+                    }),
+                },
+            });
         }
 
         const jsonBody = await parseGrowthOSJsonBody(request);

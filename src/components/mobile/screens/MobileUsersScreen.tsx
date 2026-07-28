@@ -5,6 +5,7 @@ import { DEFAULT_ROLE_IDS } from '@data/shared/defaultRoles';
 import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
 import { canManageStaffTarget } from '@lib/staffManagement/scopeBoundary';
 import { OWNER_ACCESS_NOT_TRANSFER_COPY } from '@lib/staffManagement/ownershipTransferBoundary';
+import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import type { StaffStoreOption, StaffUserSummary } from '@lib/staffManagement/types';
 import {
     buildStaffLoginDetailsText,
@@ -391,7 +392,7 @@ function MobileUsersScreenContent({ onBack }: MobileUsersScreenProps) {
                 ROLE_ASSIGNMENT_FORBIDDEN: 'You cannot assign this role',
                 STAFF_LOGIN_COLLISION: 'Could not reserve a Staff ID. Try again.',
             };
-            const errorCode = err && typeof err === 'object' && 'code' in err ? String((err as { code?: unknown }).code || '') : '';
+            const errorCode = getBoundedErrorCode(err) || '';
             logStaffClientFailure('mobile_staff_create_user_failed', err, buildMobileStaffLogContext('create_staff', {
                 hasName: Boolean(submittedName),
                 hasEmail: Boolean(submittedEmail),

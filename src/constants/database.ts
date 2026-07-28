@@ -57,10 +57,10 @@ export const DB_COLLECTIONS = {
     FAQ_FEEDBACK: "faq_feedback",
 
     //apps collections
-    TODOS: "todos",
-    TODOS_METADATA: "todosMetadata",
-    NOTES: "notes",
-    NOTES_METADATA: "notesMetadata",
+    TODOS: "todos", // Retired read-only compatibility collection.
+    TODOS_METADATA: "todosMetadata", // Retired read-only compatibility collection.
+    NOTES: "notes", // Retired read-only compatibility collection.
+    NOTES_METADATA: "notesMetadata", // Retired read-only compatibility collection.
 
     PROJECTS: "projects",
     MENU_INTELLIGENCE: "menuIntelligence", // Continuous Menu Intelligence state (per-project, nightly)
@@ -165,6 +165,7 @@ export const DB_COLLECTIONS = {
     OPS_CONFIG: "ops_config",              // System config (SAFE_MODE, deploy mute)
     SYSTEM_ALERTS: "systemAlerts",         // Alert notifications
     SYSTEM_HEALTH: "systemHealth",         // Hourly subsystem health snapshots
+    AUTH_SECURITY_EVENTS: "authSecurityEvents", // Server-only login/lockout security event log
 
     // Lifecycle Messaging (Operational Messaging Infrastructure)
     // @see __docs__/lifecycle-messaging/
@@ -214,6 +215,11 @@ export const DB_COLLECTIONS = {
 };
 
 export const FONT_PRESET_ASSET_COLLECTION = "fontPreset";
+export const STATIC_ASSET_COLLECTIONS = {
+    GRAPHICS: "graphics",
+    ILLUSTRATIONS: "illustrations",
+    IMAGES: "images",
+} as const;
 
 export const AI_OPERATIONS_COLLECTIONS = {
     BACKGROUND_REMOVAL: "backgroundRemovals",

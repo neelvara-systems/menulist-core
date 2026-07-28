@@ -3,6 +3,9 @@ import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { resolveCurrentSessionUserDocumentId } from './sessionUserDocumentId';
+
+export { resolveCurrentSessionUserDocumentId } from './sessionUserDocumentId';
 
 const CANONICAL_ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
@@ -31,20 +34,6 @@ const normalizeCurrentPlatformUserDocumentId = (value: unknown): string | null =
     const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
     const documentId = raw.trim();
     return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
-};
-
-export const resolveCurrentSessionUserDocumentId = (session: unknown): string | null => {
-    if (!isUnknownRecord(session)) return null;
-    const sessionUser = isUnknownRecord(session.user) ? session.user : {};
-    const supplied = [session.uId, sessionUser.id]
-        .filter((value) => value !== undefined && value !== null);
-    if (supplied.length === 0) return null;
-
-    const normalized = supplied.map(normalizeCurrentPlatformUserDocumentId);
-    const [first] = normalized;
-    return first && normalized.every((documentId) => documentId === first)
-        ? first
-        : null;
 };
 
 const normalizeCurrentPlatformEmail = (value: unknown): string | null => {

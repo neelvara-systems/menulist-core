@@ -20,6 +20,7 @@ import {
     type MasterJobStatusResponse,
 } from '@lib/multiOutlet/masterJobStatusResponse';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import { useEffect, useState } from 'react';
 
 export interface MasterJobStatus {
@@ -42,6 +43,12 @@ const MASTER_JOB_STATUS_REQUEST_POLICY: RequestInit = {
     credentials: 'same-origin',
     redirect: 'manual',
 };
+
+const unavailableMasterJobStatus = (): MasterJobStatus => ({
+    isMasterJobActive: true,
+    blockingMessage: 'Could not verify the master menu status. Try again before editing.',
+    isLoading: false,
+});
 
 const getMasterJobStatusHookLogContext = (
     masterProjectId: string | null,
@@ -133,7 +140,7 @@ export function useMasterJobStatus(
                 const data = await readMasterJobStatusResponse(response, logContext);
                 if (cancelled) return;
                 if (!data) {
-                    setStatus({ isMasterJobActive: false, isLoading: false });
+                    setStatus(unavailableMasterJobStatus());
                     hasLoaded = true;
                     return;
                 }
@@ -152,12 +159,11 @@ export function useMasterJobStatus(
                     isLoading: false,
                 });
                 hasLoaded = true;
-            } catch (error: any) {
-                if (cancelled || error?.name === 'AbortError') return;
+            } catch (error: unknown) {
+                if (cancelled || getBoundedErrorName(error) === 'AbortError') return;
 
                 logHookFailure('master_job_status_check_failed', error, logContext);
-                // On error, don't block - fail open
-                setStatus({ isMasterJobActive: false, isLoading: false });
+                setStatus(unavailableMasterJobStatus());
                 hasLoaded = true;
             }
         };

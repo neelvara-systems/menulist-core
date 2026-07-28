@@ -12,6 +12,7 @@ npm run verify:platform-founder-monitor-boundary
 
 - Founder revenue movement IDs pass through `src/lib/firebase/firestoreDocumentId.ts` before `founderRevenueMovements/{movementId}` refs.
 - Payment-to-live transition store IDs pass through the same document-ID guard before `founderOnboardingTransitions/{storeId}` refs.
+- Completion re-reads selected transition rows in one transaction, rejects conflicting current scope, preserves current timestamps, and treats capped/unavailable query absence as unknown rather than safe-to-overwrite state.
 - Valid Razorpay-driven cash, failed-payment, new-MRR, churn, refund, expansion, and downgrade movements keep the same deterministic summary-write behavior.
 
 ### Not Run
@@ -107,3 +108,13 @@ Error: Request to https://cloudresourcemanager.googleapis.com/v1/projects/menuli
 ```
 
 Live scheduler behavior remains blocked until `menulist-qa` Cloud Resource Manager access is available.
+
+The July 27 persisted-reconciliation repair used the same scoped target after all local gates. It exited before upload:
+
+```text
+Error: Failed to authenticate, have you run firebase login?
+```
+
+No QA revision changed; current Firebase authentication is the deployment blocker.
+- `npm run test:founder-monitor-persisted-boundary` covers valid movement projection, coercible amount rejection, conflicting product/day/scope rejection, arbitrary timestamp-string rejection and fail-visible summary-counter admission.
+- `npm run test:growth-intelligence:emulator` seeds a malformed persisted movement, runs the real snapshot reconciler and proves it cannot alter daily cash truth while the operational data gap remains visible.

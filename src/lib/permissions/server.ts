@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
@@ -14,6 +15,7 @@ import type { PermissionKey } from "@constant/permissions";
 import { getPermissionsForRole } from "./hasPermission";
 import type { StoreRoleDataType } from "@type/platform/roles";
 import {
+    isStorePermissionDataInScope,
     normalizeStorePermissionScopeDocumentId,
     resolveStorePermissionSessionScope,
 } from "./scopeDocumentId";
@@ -25,12 +27,8 @@ export {
     type StorePermissionSessionScope,
 } from "./scopeDocumentId";
 
-const getRawSessionStoreId = (session: any) => session?.sId ?? session?.user?.storeId;
-const getRawSessionTenantId = (session: any) => session?.tId ?? session?.user?.tenantId;
-
 const isPlatformSession = (session: any) => (
-    session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-    || session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
 );
 
 const isStorePermissionTargetBlocked = (storeData: any): boolean => (
@@ -59,7 +57,7 @@ export async function requireAnyStorePermission(
         .get();
 
     const storeData = storeDoc.data();
-    if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantScope.numericId || isStorePermissionTargetBlocked(storeData)) {
+    if (!storeDoc.exists || !isStorePermissionDataInScope(storeData, storeScope, tenantScope) || isStorePermissionTargetBlocked(storeData)) {
         logger.security("Authorization Failed - Permission Store Missing", {
             ...getBoundedSecurityRouteContext(session, request),
             ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
@@ -87,11 +85,21 @@ export async function requireAnyStorePermissionForStore(
     permissions: PermissionKey[],
     label: string,
     storeId: string | number,
-    tenantId: string | number = getRawSessionTenantId(session),
+    tenantId?: string | number,
 ) {
+    const sessionScope = resolveStorePermissionSessionScope(session);
     const storeScope = normalizeStorePermissionScopeDocumentId(storeId);
-    const tenantScope = normalizeStorePermissionScopeDocumentId(tenantId);
-    if (!storeScope || !tenantScope) {
+    const tenantScope = normalizeStorePermissionScopeDocumentId(
+        tenantId ?? sessionScope?.tenantScope.documentId,
+    );
+    if (
+        !storeScope
+        || !tenantScope
+        || (!isPlatformSession(session) && (
+            !sessionScope
+            || sessionScope.tenantScope.numericId !== tenantScope.numericId
+        ))
+    ) {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
 
@@ -101,7 +109,7 @@ export async function requireAnyStorePermissionForStore(
         .get();
 
     const storeData = storeDoc.data();
-    if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantScope.numericId || isStorePermissionTargetBlocked(storeData)) {
+    if (!storeDoc.exists || !isStorePermissionDataInScope(storeData, storeScope, tenantScope) || isStorePermissionTargetBlocked(storeData)) {
         logger.security("Authorization Failed - Permission Store Missing", {
             ...getBoundedSecurityRouteContext(session, request),
             ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
@@ -131,15 +139,27 @@ export function requireAnyStorePermissionForStoreData(
     storeData: any,
     permissions: PermissionKey[],
     label: string,
-    storeId: string | number = getRawSessionStoreId(session),
-    tenantId: string | number = getRawSessionTenantId(session),
+    storeId?: string | number,
+    tenantId?: string | number,
 ) {
     if (isPlatformSession(session)) return null;
 
-    const storeScope = normalizeStorePermissionScopeDocumentId(storeId);
-    const tenantScope = normalizeStorePermissionScopeDocumentId(tenantId);
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    const storeScope = normalizeStorePermissionScopeDocumentId(
+        storeId ?? sessionScope?.storeScope.documentId,
+    );
+    const tenantScope = normalizeStorePermissionScopeDocumentId(
+        tenantId ?? sessionScope?.tenantScope.documentId,
+    );
 
-    if (!storeScope || !tenantScope || !storeData || Number(storeData?.tenantId) !== tenantScope.numericId || isStorePermissionTargetBlocked(storeData)) {
+    if (
+        !sessionScope
+        || !storeScope
+        || !tenantScope
+        || sessionScope.tenantScope.numericId !== tenantScope.numericId
+        || !isStorePermissionDataInScope(storeData, storeScope, tenantScope)
+        || isStorePermissionTargetBlocked(storeData)
+    ) {
         logger.security("Authorization Failed - Permission Store Missing", {
             ...getBoundedSecurityRouteContext(session, request),
             ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),

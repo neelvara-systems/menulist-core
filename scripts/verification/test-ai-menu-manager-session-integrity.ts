@@ -218,6 +218,23 @@ assert.equal(boundedReceipt.title.length, 160);
 assert.equal(boundedReceipt.message.length, 500);
 assert.equal(new Date(boundedReceipt.executedAt).toISOString(), boundedReceipt.executedAt);
 assert.ok(boundedReceipt.receiptId.startsWith('operation-2:executed:'));
+const cancelledReceipt = buildAiMenuManagerReceipt({
+    proposalId: 'operation-3',
+    actionType: 'menu_special_note_update',
+    projectId,
+    status: 'cancelled',
+    title: 'Update cancelled',
+    message: 'No MenuList action was taken.',
+    executedAt: createdAt,
+});
+assert.equal(
+    normalizeAiMenuManagerSessionSnapshot({
+        ...validSession(),
+        recentReceiptSummaries: [cancelledReceipt],
+    })?.recentReceiptSummaries[0]?.status,
+    'cancelled',
+    'compact-session normalization must preserve canonical cancellation evidence for retry recovery',
+);
 assert.throws(() => buildAiMenuManagerReceipt({
     proposalId: ' operation-2 ',
     actionType: 'menu_special_note_update',

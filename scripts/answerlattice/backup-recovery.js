@@ -28,6 +28,12 @@ function assertApplyEnabled() {
   }
 }
 
+function assertProjectConfirmation(projectId, confirmation) {
+  if (confirmation !== projectId) {
+    fail(`Cloud changes require --confirm-project ${projectId}`);
+  }
+}
+
 function assertBackupResource(projectId, backupResource) {
   const pattern = new RegExp(
     `^projects/${projectId}/locations/[a-z0-9-]+/backups/[A-Za-z0-9_-]+$`,
@@ -123,9 +129,10 @@ function preflight(stage) {
   listBackups(projectId);
 }
 
-function ensureDailyBackup(stage) {
+function ensureDailyBackup(stage, confirmation) {
   const projectId = resolveStage(stage);
   assertApplyEnabled();
+  assertProjectConfirmation(projectId, confirmation);
   assertOperatorAccess(projectId);
 
   const rawSchedules = listSchedules(projectId, 'json');
@@ -164,9 +171,10 @@ function ensureDailyBackup(stage) {
   listSchedules(projectId);
 }
 
-function restoreRehearsal(stage, backupResource, destinationDatabase) {
+function restoreRehearsal(stage, backupResource, destinationDatabase, confirmation) {
   const projectId = resolveStage(stage);
   assertApplyEnabled();
+  assertProjectConfirmation(projectId, confirmation);
   assertBackupResource(projectId, backupResource);
   assertRestoreDatabase(destinationDatabase);
   assertOperatorAccess(projectId);
@@ -206,18 +214,43 @@ function restoreRehearsal(stage, backupResource, destinationDatabase) {
 function printUsage() {
   console.log(`Usage:
   node scripts/answerlattice/backup-recovery.js preflight <qa|prod>
-  ${APPLY_ENV}=1 node scripts/answerlattice/backup-recovery.js ensure-daily <qa|prod>
-  ${APPLY_ENV}=1 node scripts/answerlattice/backup-recovery.js restore-rehearsal <qa|prod> <backup-resource> <answerlattice-recovery-* database>`);
+  ${APPLY_ENV}=1 node scripts/answerlattice/backup-recovery.js ensure-daily <qa|prod> --confirm-project <project-id>
+  ${APPLY_ENV}=1 node scripts/answerlattice/backup-recovery.js restore-rehearsal <qa|prod> <backup-resource> <answerlattice-recovery-* database> --confirm-project <project-id>`);
 }
 
 function main(argv) {
-  const [command, stage, backupResource, destinationDatabase] = argv;
+  const positional = [];
+  let confirmation;
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index];
+    if (value === '--confirm-project') {
+      if (confirmation !== undefined || index + 1 >= argv.length) {
+        fail('--confirm-project must be supplied exactly once with a project ID');
+      }
+      confirmation = argv[index + 1];
+      index += 1;
+      continue;
+    }
+    if (value.startsWith('-')) {
+      fail(`Unsupported option: ${value}`);
+    }
+    positional.push(value);
+  }
+
+  const [command, stage, backupResource, destinationDatabase, extra] = positional;
+  if (extra) {
+    printUsage();
+    fail('Invalid backup/recovery command');
+  }
   if (command === 'preflight' && stage && !backupResource) {
+    if (confirmation !== undefined) {
+      fail('--confirm-project is accepted only for cloud changes');
+    }
     preflight(stage);
     return;
   }
   if (command === 'ensure-daily' && stage && !backupResource) {
-    ensureDailyBackup(stage);
+    ensureDailyBackup(stage, confirmation);
     return;
   }
   if (
@@ -226,7 +259,7 @@ function main(argv) {
     && backupResource
     && destinationDatabase
   ) {
-    restoreRehearsal(stage, backupResource, destinationDatabase);
+    restoreRehearsal(stage, backupResource, destinationDatabase, confirmation);
     return;
   }
   printUsage();
@@ -249,6 +282,7 @@ module.exports = {
   PROJECTS,
   RESTORE_DATABASE_PATTERN,
   assertBackupResource,
+  assertProjectConfirmation,
   assertRestoreDatabase,
   isExpectedDailySchedule,
   resolveStage,

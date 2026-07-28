@@ -336,17 +336,21 @@ The nightly Cloud Function MUST log cost metrics:
 
 ```typescript
 // At end of Cloud Function execution
-await logCostTelemetry({
-  functionName: "computeMenuDriftMetrics",
+await logMenuDriftCostTelemetry({
   readsCount: totalReads,
   writesCount: totalWrites,
   executionMs: Date.now() - startTime,
   storesProcessed: storeCount,
-  timestamp: Timestamp.now(),
+  itemsProcessed: itemCount,
+  errors: errorCount,
 });
 ```
 
-**Alert Threshold**: If monthly Firebase cost delta > 10% → investigate
+The telemetry write is best-effort so a monitoring outage cannot retry already
+completed drift work. It exact-replaces `systemTelemetry/mol_costs_{YYYY-MM-DD}`,
+carries a 90-day `expiresAt`, and records operation counts rather than Firebase
+billing or an estimated USD amount. Remote TTL policy activation remains an
+operator verification step.
 
 ---
 

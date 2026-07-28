@@ -6,7 +6,12 @@ import { AppState } from "@reduxStore/index";
 // const HYDRATE_ACTION = createAction(HYDRATE)
 
 export interface Toast {
-    toast: { type: string, title: string, message: string, time: number };
+    toast: {
+        type: '' | 'error' | 'info' | 'success' | 'warning';
+        title: string;
+        message: string;
+        time: number;
+    };
 }
 
 const initialState: Toast = {

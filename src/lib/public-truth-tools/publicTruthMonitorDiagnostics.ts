@@ -1,35 +1,24 @@
 import { logger } from "@lib/monitoring/logger";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import type { NextRequest } from "next/server";
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 type DiagnosticContext = Record<string, boolean | number | string | null | undefined>;
 
-type SourceErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
-
 const getSourceErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || "Error";
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getSourceErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== "object" || !("code" in error)) return undefined;
-    const code = (error as SourceErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getSourceErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== "object") return undefined;
-    const statusValue = "status" in error
-        ? (error as SourceErrorLike).status
-        : (error as SourceErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export const getPublicTruthMonitorBoundedStringContext = (

@@ -29,7 +29,7 @@ export function buildAiMenuManagerReceipt(params: {
     proposalId: string;
     actionType: AiMenuManagerActionType;
     projectId?: string;
-    status: 'executed' | 'failed' | 'manual_task';
+    status: AiMenuManagerReceipt['status'];
     title: string;
     message: string;
     undoAvailable?: boolean;

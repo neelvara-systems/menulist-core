@@ -104,15 +104,24 @@ Tracks all authentication security events:
   email: string;                 // Normalized (lowercase)
   eventType: 'login_success' | 'login_failed' | 'account_locked' | 'account_unlocked';
   timestamp: Timestamp;
-  ip?: string;                   // Client IP address
-  userAgent?: string;            // Browser information
-  reason?: string;               // e.g., 'invalid_password', 'invalid_account'
+  expiresAt: Timestamp;          // 90-day Firestore TTL field
+  source: string | null;         // Bounded login source
+  ip: string | null;             // Bounded client IP
+  userAgent: string | null;      // Bounded browser information
+  reason: string | null;         // e.g., 'invalid_password', 'invalid_account'
 }
 ```
 
 **Indexes Required**:
-- `email` + `timestamp` (descending) - For lockout checks
-- `eventType` + `timestamp` (descending) - For admin dashboard
+- `email` + `eventType` + `timestamp` (descending) - For exact lockout/failure queries
+- Single-field `timestamp` ordering - For the bounded security summary
+
+**Current runtime boundary (July 28, 2026)**:
+- Lock checks and failed-attempt persistence fail closed with `AuthSecurityUnavailableError` when Firestore, index, or persisted event validation is unavailable.
+- Failed-attempt transactions read at most five rows and return a monitoring decision; Sentry/log effects run only after a successful commit, so transaction retries do not duplicate alerts.
+- Persisted timestamps must be Admin Firestore `Timestamp` instances. Email, source, reason, IP, and user-agent fields are normalized/bounded before writes; malformed lock/failure rows are not treated as valid auth state.
+- Security summaries clamp lookback to the 90-day retention window, probe at 1,001 rows, admit at most 1,000 exact-shaped events, and fail visibly on malformed/overflow/provider state rather than returning false zeroes.
+- Browser access is denied for anonymous, owner, and platform clients. `scripts/setup-firestore-ttl.sh` owns the repeatable `expiresAt` policy setup; remote policy activation must still be confirmed per Firebase project.
 
 ---
 

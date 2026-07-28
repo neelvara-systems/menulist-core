@@ -12,11 +12,13 @@ import {
 } from "@database/reseller/server";
 import { getSubscriptionById } from "@database/subscriptions/server";
 import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
+import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { getBoundedResellerApiStringContext, getResellerApiFailureLogData, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
+import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import { logger } from "@lib/monitoring/logger";
 import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensateFailedOnboarding";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
@@ -72,8 +74,7 @@ const removeUndefinedFields = (data: Record<string, unknown>) => sanitizeForFire
 });
 
 const getFirebaseAuthErrorCode = (error: unknown): string | null => {
-    if (!error || typeof error !== "object" || !("code" in error)) return null;
-    return typeof error.code === "string" ? error.code : null;
+    return getBoundedErrorCode(error) || null;
 };
 
 async function getAuthUserByEmail(email: string) {
@@ -121,9 +122,12 @@ async function prepareOwnerAuthUser(params: {
     existingOwnerDocId?: string;
     password: string;
 }) {
-    const existingAuthId = params.existingOwnerData?.firebaseUid || params.existingOwnerDocId;
+    const storedFirebaseUid = typeof params.existingOwnerData?.firebaseUid === 'string'
+        ? params.existingOwnerData.firebaseUid.trim()
+        : '';
+    const existingAuthId = storedFirebaseUid || params.existingOwnerDocId;
     let authUser = existingAuthId
-        ? await authAdmin.getUser(String(existingAuthId)).catch((error: unknown) => {
+        ? await authAdmin.getUser(existingAuthId).catch((error: unknown) => {
             if (getFirebaseAuthErrorCode(error) === 'auth/user-not-found') return null;
             throw error;
         })
@@ -215,7 +219,7 @@ async function compensateResellerOnboardingFailure(params: {
  */
 export const POST = withAuth(async (request, session) => {
     const resellerId = session.user.id;
-    const isPlatformUser = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
+    const isPlatformUser = resolveExactSessionPlatformRole(session) === 'PLATFORM';
 
     try {
         // 0. Feature flag check

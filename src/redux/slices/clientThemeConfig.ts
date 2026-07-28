@@ -1,10 +1,23 @@
 import { DEFAULT_DARK_COLOR, DEFAULT_LIGHT_COLOR } from "@constant/common";
-import { createSlice } from "@reduxjs/toolkit";
-import { AppState } from "@reduxStore/index";
-import { ReactNode } from "react";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { AppState } from "@reduxStore/index";
+import type { ReactNode } from "react";
+import type { IconType } from "react-icons";
 
-export type BreadcrumbType = { key: number, icon: any, route: string, label: string | ReactNode, onClick: any, subNav: BreadcrumbSubpathsType[] }
-export type BreadcrumbSubpathsType = { key: number, icon: any, route: string, label: string | ReactNode, onClick: any, active: boolean }
+export type BreadcrumbType = {
+    key: string | number;
+    icon: IconType;
+    route: string;
+    label: string;
+    subNav: BreadcrumbSubpathsType[];
+};
+export type BreadcrumbSubpathsType = {
+    key: string | number;
+    icon: ReactNode;
+    route: string;
+    label: string;
+    active?: boolean;
+};
 
 export type ClientThemeConfigType = {
     darkMode: boolean;
@@ -42,43 +55,43 @@ export const clientThemeConfig = createSlice({
     name: "clientThemeConfig",
     initialState,
     reducers: {
-        toggleDarkMode(state, action) {
+        toggleDarkMode(state, action: PayloadAction<boolean>) {
             state.darkMode = action.payload;
         },
-        updateLightThemeColor(state, action) {
+        updateLightThemeColor(state, action: PayloadAction<string>) {
             state.lightColor = action.payload;
         },
-        updateDarkThemeColor(state, action) {
+        updateDarkThemeColor(state, action: PayloadAction<string>) {
             state.darkColor = action.payload;
         },
-        toggleSidbar(state, action) {
+        toggleSidbar(state, action: PayloadAction<boolean>) {
             state.collapsedSidebar = action.payload;
         },
-        toggleHeaderPosition(state, action) {
+        toggleHeaderPosition(state, action: PayloadAction<boolean>) {
             state.stickyHeader = action.payload;
         },
-        toggleHeaderBgBlur(state, action) {
+        toggleHeaderBgBlur(state, action: PayloadAction<boolean>) {
             state.headerBgBlur = action.payload;
         },
-        toggleAppSettingsPanel(state, action) {
+        toggleAppSettingsPanel(state, action: PayloadAction<boolean>) {
             state.showSettingsPanel = action.payload;
         },
-        toggleRTLDirection(state, action) {
+        toggleRTLDirection(state, action: PayloadAction<boolean>) {
             state.isRTLDirection = action.payload;
         },
-        toggleShowDateInHeader(state, action) {
+        toggleShowDateInHeader(state, action: PayloadAction<boolean>) {
             state.showDateInHeader = action.payload;
         },
-        toggleShowUserDetailsInHeader(state, action) {
+        toggleShowUserDetailsInHeader(state, action: PayloadAction<boolean>) {
             state.showUserDetailsInHeader = action.payload;
         },
-        toggleFullscreenMode(state, action) {
+        toggleFullscreenMode(state, action: PayloadAction<boolean>) {
             state.fullscreenMode = action.payload;
         },
-        toggleSidebarLayout(state, action) {
+        toggleSidebarLayout(state, action: PayloadAction<boolean>) {
             state.verticalSidebarLayout = action.payload;
         },
-        toggleBreadcrumbLayout(state, action) {
+        toggleBreadcrumbLayout(state, action: PayloadAction<boolean>) {
             state.verticalBreadcrumbLayout = action.payload;
         },
     }
@@ -100,4 +113,3 @@ const getShowUserDetailsInHeaderState = (state: AppState) => state.clientThemeCo
 const getFullscreenModeState = (state: AppState) => state.clientThemeConfig?.fullscreenMode;
 
 export { getAppSettingsPanelStatus, getBreadcrumbLayoutState, getDarkColorState, getDarkModeState, getFullscreenModeState, getHeaderBgBlurState, getHeaderPositionState, getLightColorState, getRTLDirectionState, getShowDateInHeaderState, getShowUserDetailsInHeaderState, getSidebarLayoutState, getSidebarState, toggleAppSettingsPanel, toggleBreadcrumbLayout, toggleDarkMode, toggleFullscreenMode, toggleHeaderBgBlur, toggleHeaderPosition, toggleRTLDirection, toggleShowDateInHeader, toggleShowUserDetailsInHeader, toggleSidbar, toggleSidebarLayout, updateDarkThemeColor, updateLightThemeColor };
-

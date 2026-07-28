@@ -1,4 +1,7 @@
-import type { Timestamp } from "firebase/firestore";
+export type GrowthOSTimestampLike = string | {
+    toDate(): Date;
+    toMillis(): number;
+};
 
 export type GrowthOSAccessMode = "disabled" | "pilot" | "paid";
 
@@ -119,7 +122,7 @@ export interface GrowthOSStaffBriefOutput extends GrowthOSOutput {
     avoidLines?: string[];
     menuLinkLine?: string;
     counterPrompt?: string;
-    expiresAt?: Timestamp | string | null;
+    expiresAt?: GrowthOSTimestampLike | null;
 }
 
 export interface GrowthOSKitSummary {
@@ -130,8 +133,8 @@ export interface GrowthOSKitSummary {
     outputs: GrowthOSOutput[];
     sourceFactsHash: string;
     status: GrowthOSKitStatus;
-    createdAt?: Timestamp | string | null;
-    expiresAt?: Timestamp | string | null;
+    createdAt?: GrowthOSTimestampLike | null;
+    expiresAt?: GrowthOSTimestampLike | null;
     isStale?: boolean;
 }
 
@@ -140,17 +143,18 @@ export interface GrowthOSKit extends GrowthOSKitSummary {
     sId: string;
     projectId?: string;
     actionId?: string;
+    operationId: string;
     destinationSet: GrowthOSDestination[];
     sourceFactsSummary: GrowthOSSourceFactsSummary;
     aiOperationIds?: string[];
-    updatedAt?: Timestamp | string | null;
+    updatedAt?: GrowthOSTimestampLike | null;
 }
 
 export interface GrowthOSSummaryDocument {
     tId: string;
     sId: string;
     date: string;
-    lastUpdated?: Timestamp | string | null;
+    lastUpdated?: GrowthOSTimestampLike | null;
     sourceFactsHash?: string;
     eligible: boolean;
     reason?: GrowthOSSummaryReason;
@@ -167,7 +171,12 @@ export interface GrowthOSExport {
     kitId: string;
     destination: GrowthOSDestination;
     method: GrowthOSExportMethod;
-    exportedAt?: Timestamp | string | null;
+    operationId: string;
+    outputId?: string;
+    status?: GrowthOSKitStatus | null;
+    isStale: boolean;
+    uId: string;
+    exportedAt?: GrowthOSTimestampLike | null;
 }
 
 export type GrowthOSReviewTone = "calm" | "apology" | "clarification" | "thank_you";

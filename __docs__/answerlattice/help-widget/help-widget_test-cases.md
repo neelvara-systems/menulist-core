@@ -1,12 +1,14 @@
 # Answerlattice Help Widget - Test Cases
 
-> **Updated:** July 18, 2026
+> **Updated:** July 26, 2026
 
 ## Automated Gates
 
 - `npm run test:answerlattice-widget-config-contracts`
 - `npm run test:answerlattice-widget-runtime-token`
 - `npm run test:answerlattice-widget-key:emulator`
+- `npm run test:answerlattice-public-api:rules`
+- `npm run test:answerlattice-public-api:shared-rules`
 - `npm run typecheck:answerlattice`
 - `node scripts/verification/verify-answerlattice-runtime-truth.js`
 - `npm run verify:dependency-freeze`
@@ -19,6 +21,9 @@
 4. Accept `*`, exact paths, and descendant `/*` route rules.
 5. Reject loose wildcard rules such as `/billing*`.
 6. Confirm an unchanged normalized save creates no store write.
+7. Start two saves from the same config version and confirm exactly one commits while the other returns a stale conflict.
+8. Retry the committed values with the old version and confirm the exact replay returns unchanged without another write.
+9. Confirm the dashboard sends the loaded config version, retains the draft on `409`, and requires reload/review before another save.
 
 ## Key Lifecycle
 
@@ -31,6 +36,7 @@
 7. Confirm a revoked key fails public config admission after the bounded auth cache expires.
 8. Confirm runtime-token creation/verification rejects whitespace-mutated keys plus stringified tenant, store, clock, and TTL values.
 9. Confirm a managed record with unknown status, foreign product, wrong purpose, missing/unknown/duplicate scopes is rejected and cannot be resurrected through its mirrored top-level hash; confirm a true top-level-only legacy hash remains supported.
+10. Seed legacy recoverable ciphertext metadata, mutate the key, and confirm the persisted bounded state no longer contains `encryptedKey` or `encryptionVersion`.
 
 ## Loader And Iframe
 
@@ -51,6 +57,7 @@
 4. Confirm branding output is limited to the public schema.
 5. Confirm management responses are private no-store.
 6. Confirm mobile key/origin/route controls meet the 44px touch contract.
+7. Confirm dedicated rules deny all direct store writes and shared rules deny browser create/update of widget credentials, config, origins, schema/version fields, update time, and runtime status while allowing an unrelated ordinary store update.
 
 ## Recent Widget Activity
 

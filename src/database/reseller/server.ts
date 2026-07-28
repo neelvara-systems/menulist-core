@@ -5,6 +5,7 @@ import { composeInitialSubscriptionPayloadServer } from "@database/subscriptions
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
+import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import {
     addNonNegativeSafeIntegers,
     isNonNegativeSafeInteger,
@@ -273,15 +274,23 @@ export const createResellerOnboardingBillingServer = async (params: {
         if (operationSnapshot.exists) {
             const operation = operationSnapshot.data() || {};
             const existingSubscription = subscriptionSnapshot.exists ? subscriptionSnapshot.data() || {} : {};
+            const existingScope = getMenuListSubscriptionEntitlementScope(existingSubscription);
             if (
                 operation.operationId !== params.transaction.operationId
                 || operation.operationFingerprint !== params.transaction.operationFingerprint
                 || operation.action !== 'ONBOARD'
                 || operation.resellerId !== params.transaction.resellerId
                 || operation.subscriptionId !== params.subscriptionId
+                || operation.tenantId !== params.transaction.tenantId
+                || operation.storeId !== params.transaction.storeId
+                || operation.amountExpected !== params.transaction.amountExpected
+                || operation.paymentMode !== params.transaction.paymentMode
                 || !subscriptionSnapshot.exists
-                || existingSubscription.pId !== DEFAULT_PRODUCT_ID
-                || existingSubscription.productId !== DEFAULT_PRODUCT_ID
+                || existingScope?.tenantId !== params.transaction.tenantId
+                || existingScope.storeId !== params.transaction.storeId
+                || existingSubscription.providerSubscriptionId !== params.subscriptionId
+                || existingSubscription.resellerId !== params.transaction.resellerId
+                || existingSubscription.resellerProfileId !== params.transaction.resellerProfileId
             ) {
                 throw new Error('Reseller onboarding operation id is already used by another action.');
             }

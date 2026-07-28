@@ -7,6 +7,8 @@ import {
     buildCreativeEditorTemplateFileName,
     isOwnedCreativeEditorTemplateStoragePath,
 } from "../../src/lib/creative-editor/templateRegistryStorageBoundary";
+import { resolveCreativeEditorTemplateScopeBoundary } from "../../src/lib/creative-editor/templateRegistryScopeBoundary";
+import { creativeEditorDocumentSchema } from "../../src/lib/validation/creativeEditorTemplateSchemas";
 
 type RecordShape = {
     assetTypeId?: string;
@@ -158,5 +160,100 @@ assert.equal(isOwnedCreativeEditorTemplateStoragePath(
     platformOwnership,
     "preview",
 ), false);
+
+assert.deepEqual(resolveCreativeEditorTemplateScopeBoundary({
+    session: {
+        sId: "101",
+        tId: "1",
+        user: { storeId: 101, tenantId: 1 },
+    },
+}), { sId: "101", tId: "1" });
+assert.equal(resolveCreativeEditorTemplateScopeBoundary({
+    session: {
+        sId: "101",
+        tId: "1",
+        user: { storeId: "102", tenantId: "1" },
+    },
+}), null);
+assert.equal(resolveCreativeEditorTemplateScopeBoundary({
+    session: {
+        sId: "101",
+        tId: "1",
+    },
+    storeDetails: {
+        sId: "101",
+        storeId: "102",
+        tId: "1",
+    },
+}), null);
+assert.deepEqual(resolveCreativeEditorTemplateScopeBoundary({
+    session: {
+        sId: "101",
+        tId: "1",
+    },
+    storeDetails: {
+        sId: "102",
+        storeId: 102,
+        tId: "1",
+        tenantId: 1,
+    },
+}), { sId: "102", tId: "1" });
+assert.equal(resolveCreativeEditorTemplateScopeBoundary({
+    storeDetails: {
+        sId: "101/../../102",
+        tId: "1",
+    },
+}), null);
+
+const validDocument = {
+    canvas: {
+        backgroundColor: "#ffffff",
+        height: 1080,
+        width: 1080,
+    },
+    elements: [{
+        fill: "#111111",
+        height: 100,
+        id: "element_1",
+        name: "Panel",
+        type: "rect",
+        width: 100,
+        x: 0,
+        y: 0,
+    }],
+    id: "document_1",
+    productContext: {
+        productId: "menulist",
+        sourceSurface: "printable-asset-templates",
+    },
+    schemaVersion: "creative-editor.v1",
+    title: "Valid document",
+};
+
+assert.equal(creativeEditorDocumentSchema.safeParse(validDocument).success, true);
+assert.equal(creativeEditorDocumentSchema.safeParse({
+    ...validDocument,
+    elements: [{
+        height: 100,
+        id: "element_1",
+        name: "Malformed text",
+        type: "text",
+        width: 100,
+        x: 0,
+        y: 0,
+    }],
+}).success, false, "text elements must include text, color, and font size");
+assert.equal(creativeEditorDocumentSchema.safeParse({
+    ...validDocument,
+    elements: [{
+        height: 100,
+        id: "element_1",
+        name: "Unknown element",
+        type: "script",
+        width: 100,
+        x: 0,
+        y: 0,
+    }],
+}).success, false, "unknown persisted element types must be rejected");
 
 process.stdout.write("Creative Editor template registry boundary tests passed.\n");

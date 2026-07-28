@@ -95,8 +95,8 @@ interface RawItemFromAI {
     category?: string | number;
     categoryId?: string | number;
     description?: Record<string, string> | string; // AI may return plain string
-    price?: string | number; // AI may return number (e.g., 300) or string (e.g., "300")
-    attributes?: Array<{ id: string | number; name: Record<string, string> | string; price?: string | number; active?: boolean }> | Record<string, any>;
+    price?: string | number | null; // AI may return number (e.g., 300), string (e.g., "300"), or null
+    attributes?: Array<{ id: string | number; name: Record<string, string> | string; price?: string | number | null; active?: boolean }> | Record<string, unknown>;
     tags?: string[] | Record<string, string>;
     dietaryTags?: string[];
     spiceLevel?: string;
@@ -172,21 +172,45 @@ function sanitizeMultilingualObject(
 function normalizeTags(tags: string[] | Record<string, string> | undefined): string[] | undefined {
     if (!tags) return undefined;
 
+    const sanitizeTagValue = (value: string): string | undefined => {
+        const cleaned = stripHtml(value).trim().replace(/\s+/g, ' ');
+        if (!cleaned || /^\d+(\.\d+)?$/.test(cleaned)) return undefined;
+        return cleaned;
+    };
+    const uniqueTags = (values: Array<string | undefined>): string[] | undefined => {
+        const seen = new Set<string>();
+        const normalized = values.filter((value): value is string => {
+            if (!value) return false;
+            const key = value.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        return normalized.length > 0 ? normalized : undefined;
+    };
+
     if (Array.isArray(tags)) {
-        // Defensive: AI may return non-string values in tag arrays
-        return tags
-            .map(tag => typeof tag === 'string' ? stripHtml(tag) : String(tag))
-            .filter(tag => tag.length > 0);
+        return uniqueTags(tags.map((tag) => typeof tag === 'string' ? sanitizeTagValue(tag) : undefined));
     }
 
     if (typeof tags !== 'object') return undefined;
 
     // It's a multilingual object - extract values and split by comma
-    return Object.values(tags)
+    return uniqueTags(Object.values(tags)
         .filter((v): v is string => typeof v === 'string')
-        .flatMap((tagString) => tagString.split(',').map(tag => tag.trim()))
-        .filter(tag => tag.length > 0)
-        .map(tag => stripHtml(tag));
+        .flatMap((tagString) => tagString.split(',').map(sanitizeTagValue)));
+}
+
+function resolveRawItemCategory(item: RawItemFromAI): string | undefined {
+    for (const value of [item.category, item.categoryId]) {
+        if (typeof value === 'string') {
+            const normalized = value.trim();
+            if (normalized && normalized !== 'undefined') return normalized;
+        } else if (typeof value === 'number' && Number.isFinite(value)) {
+            return String(value);
+        }
+    }
+    return undefined;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -222,10 +246,10 @@ export function redistributeExtractedData(
     });
 
     // Create a map of categoryId -> sourceFileIndex for items that reference categories
-    const categoryToFileIndex = new Map<number | string, number>();
+    const categoryToFileIndex = new Map<string, number>();
     categories.forEach((cat) => {
         if (cat.sourceFileIndex !== undefined) {
-            categoryToFileIndex.set(cat.id, cat.sourceFileIndex);
+            categoryToFileIndex.set(String(cat.id), cat.sourceFileIndex);
         }
     });
 
@@ -257,17 +281,15 @@ export function redistributeExtractedData(
                     return item.sourceFileIndex === index;
                 }
                 // Fallback: check if item's category or categoryId belongs to this file
-                const categoryRef = item.category || item.categoryId;
-                const catFileIndex = categoryToFileIndex.get(categoryRef as string | number);
+                const categoryRef = resolveRawItemCategory(item);
+                const catFileIndex = categoryRef ? categoryToFileIndex.get(categoryRef) : undefined;
                 return catFileIndex === index;
             })
             .map(item => {
                 const { sourceFileIndex, tags, categoryId, attributes: rawAttributes, price: rawPrice, ...rest } = item;
 
                 // Use category if valid, otherwise fall back to categoryId
-                const resolvedCategory = (rest.category && rest.category !== 'undefined' && rest.category !== undefined)
-                    ? rest.category
-                    : categoryId;
+                const resolvedCategory = resolveRawItemCategory({ ...rest, categoryId });
 
                 // Normalize attributes: only keep if it's a non-empty array
                 const normalizedAttributes = Array.isArray(rawAttributes) && rawAttributes.length > 0
@@ -288,7 +310,7 @@ export function redistributeExtractedData(
                 return {
                     ...rest,
                     id: String(rest.id),
-                    category: String(resolvedCategory || ''),
+                    category: resolvedCategory || '',
                     name: sanitizeMultilingualObject(rest.name),
                     description: rest.description ? sanitizeMultilingualObject(rest.description) : undefined,
                     price: normalizedPrice,
@@ -328,6 +350,7 @@ export function redistributeExtractedData(
         filesProcessed: fileMappings.length,
         distribution: fileMappings.map(({ uid, index }) => ({
             fileIndex: index,
+            fileUidLength: uid.length,
             categories: result.get(uid)?.data?.categories?.length || 0,
             items: result.get(uid)?.data?.items?.length || 0
         }))
@@ -481,7 +504,7 @@ export function hasSourceFileIndex(response: CombinedAIResponse): boolean {
  */
 export function processParallelResponse(
     combinedResponse: CombinedAIResponse,
-    files: Array<{ uid: string;[key: string]: any }>,
+    files: Array<{ uid: string; [key: string]: unknown }>,
     existingCategories?: Map<string, string>
 ): Map<string, ExtractedData> {
     const categories = combinedResponse?.data?.categories || [];

@@ -34,6 +34,11 @@ assertIncludes(ui, 'Remove source details', 'source identity redaction UI');
 assertIncludes(hook, 'answerlattice_support_board_proposal_note_add_failed', 'proposal note partial-failure diagnostic');
 assertIncludes(hook, 'Answer proposal created; private board note was not added', 'truthful proposal partial-success copy');
 assertIncludes(hook, 'status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.DRAFT_READY', 'proposal moves card to draft-ready review');
+assertIncludes(hook, 'const scopeKeyRef = useRef(scopeKey);', 'workspace-owned browser settlement');
+assertIncludes(hook, 'const latestRefreshRef = useRef(0);', 'latest refresh ownership');
+assertIncludes(hook, 'scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId', 'stale refresh rejection');
+assertIncludes(hook, 'const savingInFlightRef = useRef(false);', 'synchronous mutation duplicate guard');
+assertIncludes(hook, 'const syncingInFlightRef = useRef(false);', 'synchronous sync duplicate guard');
 
 assertIncludes(functionsIndex, 'answerlatticeSupportBoardSummaryOnWrite', 'live summary trigger export');
 assertIncludes(summary, 'loadAnswerlatticeSupportBoardCoreCounts', 'exact live board counts');

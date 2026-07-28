@@ -10,6 +10,8 @@
 
 ## 1. Implementation Objective
 
+Knowledge Intake accounting accepts only exact safe-integer credit, byte, token, reservation, charge and refund evidence. Persisted numeric strings, fractions, unsafe integers, invalid billing periods and arithmetic overflow fail before provider work or settlement; no `Number(...)` compatibility coercion is part of the billing contract.
+
 Replace the current upload-first KB-generation experience with an Answerlattice-owned intake command center while preserving Answerlattice's existing KB, FAQ, product-surface, and canonical-governance runtime paths. Changelog remains an owner-managed release-note workflow that intake can read as source context but cannot publish into.
 
 The legacy `/answerlattice/kb-generation` route redirects for compatibility, while `/answerlattice/knowledge-intake` is the Answerlattice-owned naming and contract:
@@ -37,10 +39,13 @@ Duplicate-candidate persistence remains compact: `articlesToReview` and article 
 | Jobs | `src/app/api/answerlattice/knowledge-intake/jobs/route.ts` |
 | Job bundle | `src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/route.ts` |
 | Sources | `src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/sources/route.ts` |
+| Source governance | `src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/sources/[sourceId]/governance/route.ts` |
 | Analyze | `src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/analyze/route.ts` |
+| Product-specific starter pack | `src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/launch-pack/route.ts` |
 | Review item update | `src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/review-items/[itemId]/route.ts` |
 | Publish | `src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/publish/route.ts` |
 | URL discovery/fetch | `src/app/api/answerlattice/knowledge-intake/discover/route.ts` |
+| Product entity search | `src/app/api/answerlattice/knowledge-intake/entities/route.ts` |
 | Screenshot/media extraction | `src/app/api/answerlattice/knowledge-intake/jobs/[jobId]/media/route.ts` |
 | Platform intake monitor | `src/app/(main)/platform/answerlattice-intake/page.tsx` |
 | Platform intake monitor API | `src/app/api/platform/answerlattice-intake/route.ts` |
@@ -105,6 +110,8 @@ ENABLE_ANSWERLATTICE_INTAKE_URL_DISCOVERY: true,
 ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS: false,
 ENABLE_ANSWERLATTICE_INTAKE_MEDIA_EXTRACTION: true,
 ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR: true,
+ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT: true,
+ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE: false,
 ```
 
 The current server flag in `functions-answerlattice/src/constants/features.ts` is:
@@ -114,6 +121,8 @@ ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE_SCHEDULER: true,
 ```
 
 `ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS` is a reserved app-side placeholder with no runtime consumer. There is intentionally no matching Functions flag, connector route, OAuth callback, credential store, provider adapter, or sync worker. Adding a mirrored server flag before a real docs-first implementation would create false capability evidence.
+
+`ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT` enables the focused repeated-question/reusable-reply input. `ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE` is default-off controlled rollout for manual evidence governance; missing governance remains readable as unreviewed evidence, and disabling the flag removes the governance mutation/UI without changing stored source compatibility.
 
 The scheduler flag is true for summary-only analytics: it reads the latest bounded intake job docs and writes `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` only when changed. It does not retry failed jobs, crawl URLs, call AI providers, or publish review items.
 
@@ -129,7 +138,7 @@ The manual retry API now resolves the configured `triggerAnswerlatticeNightly` t
 
 ### 4.1 AnswerlatticeKnowledgeSource
 
-Current Firestore source docs keep capped extracted text because browser extraction and protected media extraction avoid raw-file Storage retention. Source authority tiers, effective dates, retained-artifact paths, and source-version records are separate governance work and are not fields on the current intake source object.
+Current Firestore source docs keep capped extracted text because browser extraction and protected media extraction avoid raw-file Storage retention. They may also carry the controlled-rollout manual `governance` map shown below. Automatic authority ranking, conflict discovery/resolution, retained-artifact paths, and intake-specific source-version records remain separate work.
 
 ```ts
 export interface AnswerlatticeKnowledgeSource {
@@ -151,6 +160,26 @@ export interface AnswerlatticeKnowledgeSource {
   contextKeys?: string[];
   entityIds?: string[];
   metadata?: Record<string, unknown>;
+  governance?: {
+    authority: AnswerlatticeSourceAuthority;
+    owner?: string | null;
+    approvalStatus: AnswerlatticeSourceApprovalStatus;
+    accessScope: AnswerlatticeSourceAccessScope;
+    citationEligibility: AnswerlatticeSourceCitationEligibility;
+    effectiveDate?: string | null;
+    reviewDate?: string | null;
+    applicability: {
+      products: string[];
+      plans: string[];
+      roles: string[];
+      regions: string[];
+      versions: string[];
+    };
+    conflictSourceIds: string[];
+    notes?: string | null;
+    reviewedBy: string;
+    reviewedOn: unknown;
+  };
   processingRun?: {
     id: string;
     status: 'processing' | 'completed' | 'failed';
@@ -294,7 +323,7 @@ export interface AnswerlatticeIntakeReviewItem {
 
 ### 4.5 AnswerlatticeKnowledgeIntakeSummary
 
-`platformSummary/knowledgeIntakeSummary_{tId}_{sId}` is the primary UI read model.
+`platformSummary/knowledgeIntakeSummary_{tId}_{sId}` is the compact downstream/ops read model. The owner command center intentionally uses the bounded job list and active-job bundle APIs; it does not scan source/review collections directly.
 
 ```ts
 export interface AnswerlatticeKnowledgeIntakeSummary {
@@ -354,7 +383,7 @@ intakeReviewItemId?: string;
 intakeSourceIds?: string[];
 ```
 
-These fields apply to `kb_articles`, `answerlattice_faqs`, and `answerlattice_productSurfaces`. Canonical proposal lineage is stored on `answerlattice_mutationProposals` through `signalMetrics.exampleReferences` and `suggestedChange.proposedEvidence.sourceIds`.
+These fields apply to `kb_articles`, `answerlattice_faqs`, and `answerlattice_productSurfaces`. Canonical proposal lineage is stored on `answerlattice_mutationProposals` through `signalSummary.exampleReferences` and `suggestedChange.proposedEvidence.sourceIds`.
 
 Public citations remain a separate reviewer-approved contract. Private intake source IDs are not citation URLs.
 
@@ -470,7 +499,7 @@ The pipeline is one engine with adapters:
 
 3. **Owner source selection**
    - owner chooses support-worthy website/docs pages
-   - selected pages count against plan URL caps
+   - selected pages count against the bounded per-job source cap
    - selected pages become source records only after the protected fetch and source admission checks pass
 
 4. **Source registration**
@@ -505,12 +534,12 @@ The pipeline is one engine with adapters:
    - merge duplicate drafts without overwriting the owner's existing status or edited content
 
 9. **Publish**
-   - verify decisions and high-risk approvals
+   - verify accepted review state and destination-specific admission, including related entities and approved conflict-free evidence for canonical proposals when source governance is enabled
    - enforce destination limits
    - write approved outputs to existing collections
    - attach destination-native intake job/review/source lineage
    - bump existing destination cache/source versions where required
-   - update compact intake/readiness summaries
+   - update compact aggregate intake and destination summaries
 
 10. **Summary update**
    - write `knowledgeIntakeSummary_{tId}_{sId}` with compact counters
@@ -524,7 +553,7 @@ The pipeline is one engine with adapters:
 
 | Adapter | Required behavior |
 | --- | --- |
-| Product context | Stores bounded owner-provided product notes as review evidence; intake does not assign an automatic authority tier. |
+| Product context | Stores bounded owner-provided product notes as review evidence. A reviewer may record manual source governance when enabled; intake does not assign an automatic authority tier. |
 | Website link pack | Discovers a bounded set of same-origin public pages from the submitted page and sitemap hints. Candidates stay in the response; Firestore source docs are created only for owner-selected pages. |
 | URL/docs | SSRF-safe public fetch, redirect/private-IP/content-type/response-size guards, normalized final URL, capped extracted text, and deterministic source dedupe. |
 | File upload | Browser-side supported-file validation and bounded text extraction; no raw intake Storage upload. |
@@ -588,14 +617,15 @@ Rules:
 - existing destination cache/source-version fields let runtime bundle/context rebuilds skip work when approved output is unchanged
 - direct client writes are never required for summary or version fields
 
-Implementation helpers:
+Implementation helpers and destination primitives:
 
 - `getKnowledgeIntakeSummaryDocId(tId, sId)`
 - `buildSummaryPatch(scope, patch)`
 - `refreshJobCounters(scope, jobId)`
 - existing compiled-source-version helpers for destination runtime freshness
-- `markKnowledgeIntakeOutputChanged(db, scope, metadata)`
-- `repairKnowledgeIntakeSummary(db, scope)`
+- `markAnswerlatticeCompiledContextSourceChangedAdmin(...)`
+- `revalidateAnswerlatticePublicCache(...)`
+- `rebuildProductSurfaceContentSummaryServer(...)`
 
 ---
 
@@ -604,6 +634,8 @@ Implementation helpers:
 The current route and navigation contract uses the existing `MANAGE_KNOWLEDGE` permission for viewing jobs, adding sources, running analysis, editing review items, and publishing accepted items. Every protected API additionally verifies the session tenant/store scope; mutating or provider-backed operations can require an active Answerlattice license and rate limit.
 
 There is no current intake-specific low-risk/high-risk reviewer-role matrix or source-delete permission. More granular approval separation must be introduced only with a verified role model and matching route, navigation, rule, and test changes.
+
+Source-governance mutation is separately feature-flagged, uses the existing `MANAGE_KNOWLEDGE` mutation admission, requires one UUID request identifier, validates the complete bounded governance object, and transactionally updates reciprocal conflict links only among reviewed sources in the same job and exact workspace. Idempotent replay returns the prior bounded patch; reuse of a request ID for different input fails closed.
 
 ---
 
@@ -792,6 +824,8 @@ The owner review card now resolves up to three linked sources from the already-l
 - Nested source/usage metadata is bounded and recursively redacted before persistence, and public URL admission rejects credentials, sensitive query keys, and local/private/reserved destinations even when source text is supplied directly.
 - Intake-published FAQs use the declared `knowledge_intake` source and remain eligible for normal FAQ retrieval.
 - Runtime destination post-write actions are implemented for KB articles, FAQs, product surfaces, public content cache, compiled context source versions, article embeddings, and product-surface summaries. Canonical mutation proposals remain governance-only until approved through the canonical-answer workflow, and changelog publishing remains owner-managed outside intake.
+- Article, FAQ and product-surface destination writes keep the review item accepted with its deterministic target marker until the required product-surface context summary rebuild, cache/source-version effects, and public-cache revalidation succeed. A failed or lost post-write attempt therefore resumes the exact target and cannot settle the review item as published while required derived/public freshness work is stale.
+- Publish selection has distinct semantics: omitted `itemIds` means all accepted items, while an explicitly supplied list must be non-empty, unique, valid and within the publish cap. The route and service both reject `[]`; it can never fall through to publish-all.
 - Intake-published KB articles and canonical mutation proposals use deterministic destination IDs from the review item, so retry or double-click publish cannot create duplicate destination records for the same approved intake item.
 - Non-canonical runtime search history now carries canonical miss context (`matchedEntityIds`, confidence, and fallback reason) into FAQ/RAG/empty results, so recurring fallback, trust metrics, and mutation signals can connect misses back to product entities without extra runtime reads.
 - Canonical proposal review items require at least one related product entity before they can be accepted or published into the governance queue.
@@ -805,6 +839,13 @@ The owner review card now resolves up to three linked sources from the already-l
 - No intake scheduler crawls, failed-job retries, provider calls, or publish retries are added.
 - Existing KB generation still works or redirects safely.
 - Docs, website, help docs, and changelog updated from code truth before launch.
+- Browser jobs, bundles, active selection, entity options and pending governance attempts are owned by the active Answerlattice tenant/workspace key. Scope transitions clear former state and invalidate in-flight reads; only the latest exact-scope response settles. Concurrent job/bundle reads and mutations retain accurate loading/saving state.
+- Component-local URL discovery, entity results, pasted/repeated-reply forms, source-governance snapshots and review-edit snapshots are also owned by the active workspace and job. Transitions clear them and invalidate late discovery/entity settlement.
+- Browser PDF extraction loads the pinned local PDF.js main module and its version-matched worker handler together on demand; it does not rely on the removed `disableWorker` option or an external CDN.
+- Server runtime scope accepts positive safe-integer numbers only; string, boolean, fractional and nonfinite values cannot be coerced into tenant/workspace authority. Persisted timestamp-like values are read through one failure-contained normalizer, so malformed legacy getters or conversions cannot crash lease admission or be mistaken for an active lease.
+- The required product-surface summary uses its shared failure-contained timestamp projector for article, FAQ, changelog and ticket ordering; malformed legacy/provider timestamp members degrade to unavailable ordering instead of blocking publication recovery.
+- URL discovery resolves relative links against the fetched page URL while retaining the original allowed origin and public-URL safety boundary. API serialization converts timestamp-like values through the same failure-contained contract and contains hostile getters, invalid conversions and cycles.
+- DOCX expansion safety requires exact nonnegative safe-integer archive metadata; coercible strings/booleans and throwing getters fail closed. Metadata persistence converts invalid Dates/non-finite numbers to `null`, contains hostile objects, and diagnostic counters accept finite numbers only.
 
 ---
 
@@ -829,3 +870,10 @@ The owner review card now resolves up to three linked sources from the already-l
 | 2026-07-17 | 2.0.8 | Added bounded linked-source evidence and applicability to owner review decisions without additional reads. |
 | 2026-07-18 | 2.0.9 | Hardened evidence union, destination lineage, privacy, URL admission, and FAQ retrieval; corrected cancellation, manifest, retained-artifact, and lease completion claims. |
 | 2026-07-18 | 2.1.0 | Replaced speculative source/job/review contracts and product-map/freshness/permission claims with current bounded runtime behavior. |
+| 2026-07-26 | 2.1.1 | Added exact workspace-owned browser state, latest-request settlement, cache cleanup and concurrent loading/saving accounting. |
+| 2026-07-26 | 2.1.2 | Added strict server scope admission and failure-contained persisted timestamp/lease normalization. |
+| 2026-07-26 | 2.1.3 | Made destination publication resumable until required context-summary, cache/source-version, public-cache and final review settlement complete. |
+| 2026-07-26 | 2.1.4 | Corrected page-relative discovery resolution and failure-contained intake response serialization. |
+| 2026-07-26 | 2.1.5 | Prevented explicit empty or duplicate publish selections from becoming publish-all or silently truncated work. |
+| 2026-07-26 | 2.1.6 | Tightened DOCX archive metadata, persisted metadata scalars and diagnostic metric normalization. |
+| 2026-07-26 | 2.1.7 | Contained malformed persisted timestamp values used by the required product-surface summary ordering path. |

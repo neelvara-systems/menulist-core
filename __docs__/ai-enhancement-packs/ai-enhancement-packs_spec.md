@@ -762,8 +762,8 @@ The codebase already has a fully functional pricing, billing, and credit system.
 | B2C  | Starter     | ₹499                | $29                 | 75                    | 100                   | Month/Year |
 | B2C  | Pro         | ₹1,499              | $79                 | 200                   | 400                   | Month/Year |
 | B2C  | Premium     | ₹3,999              | $149                | 600                   | 1000                  | Month/Year |
-| B2B  | Starter API | ₹4,999              | $149                | 200                   | 500                   | Month/Year |
-| B2B  | Pro API     | ₹18,999             | $499                | 1000                  | 2000                  | Month/Year |
+| B2B  | Starter API | ₹4,999              | $69                 | 200                   | 200                   | Month/Year |
+| B2B  | Pro API     | ₹18,999             | $249                | 1000                  | 1000                  | Month/Year |
 
 #### Credit Pack (One-Time Top-up, `aiEnhancementPacksList` in same file)
 

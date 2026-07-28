@@ -29,6 +29,11 @@ import {
 } from './types';
 import { sanitizeIntegrationPayload } from './safety';
 import { buildIntegrationEventDocumentId, buildIntegrationEventFingerprint } from './eventIdentity';
+import {
+    getBoundedFunctionsErrorCode,
+    getBoundedFunctionsErrorName,
+    getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
 
 // Track events emitted in current nightly run to enforce per-tenant cap
 const nightlyEventCounts = new Map<string, number>();
@@ -47,20 +52,10 @@ function getIntegrationEventScopeContext(params: { tId: number; sId: number }): 
 }
 
 function getIntegrationEventErrorContext(error: unknown): Record<string, string | number | null> {
-    const source = error as { code?: unknown; status?: unknown; statusCode?: unknown };
-    const code = typeof source?.code === 'string' || typeof source?.code === 'number'
-        ? String(source.code).slice(0, 80)
-        : null;
-    const status = typeof source?.status === 'string' || typeof source?.status === 'number'
-        ? String(source.status).slice(0, 80)
-        : typeof source?.statusCode === 'string' || typeof source?.statusCode === 'number'
-            ? String(source.statusCode).slice(0, 80)
-            : null;
-
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: code,
-        sourceErrorStatus: status,
+        sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
+        sourceErrorCode: getBoundedFunctionsErrorCode(error) ?? null,
+        sourceErrorStatus: getBoundedFunctionsErrorStatus(error) ?? null,
     };
 }
 

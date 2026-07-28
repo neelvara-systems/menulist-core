@@ -78,12 +78,6 @@ export const CSP_ALLOWLIST = {
         'https://vercel.live',
         'wss://*.firebaseio.com', // Firebase Realtime Database WebSocket
         'https://*.upstash.io', // Upstash Redis for rate limiting
-        'http://127.0.0.1:5001', // Firebase Functions Emulator (dev only)
-        'http://localhost:5001', // Firebase Functions Emulator (alternative)
-        'http://127.0.0.1:8080', // Firebase Firestore Emulator (dev only)
-        'http://localhost:8080', // Firebase Firestore Emulator (alternative)
-        'http://127.0.0.1:9199', // Firebase Storage Emulator (dev only)
-        'http://localhost:9199', // Firebase Storage Emulator (alternative)
         'https://*.clarity.ms', // Microsoft Clarity analytics reporting
         'https://plausible.io', // Plausible Cloud event endpoint
         'https://*.plausible.io', // Plausible site-specific event endpoints
@@ -139,6 +133,18 @@ export const CSP_ALLOWLIST = {
  * These are ONLY used in development mode
  */
 export const CSP_DEV_SETTINGS = {
+    /**
+     * Local emulator connections must never be admitted to a production CSP.
+     */
+    connectSources: [
+        'http://127.0.0.1:5001',
+        'http://localhost:5001',
+        'http://127.0.0.1:8080',
+        'http://localhost:8080',
+        'http://127.0.0.1:9199',
+        'http://localhost:9199',
+    ],
+
     /**
      * Allow 'unsafe-inline' for styles in dev
      * (Next.js dev mode needs this for CSS injection)

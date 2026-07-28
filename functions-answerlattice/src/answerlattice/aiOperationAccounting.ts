@@ -5,6 +5,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { answerlatticeGenAIClient } from '../genAiClient';
 import { sanitizeForFirestore as sanitizeFirestoreValue } from '../lib/sanitizeForFirestore';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 export const ANSWERLATTICE_AI_ACTIONS = {
     KB_GENERATION: 'answerlattice_kb_generation',
@@ -303,7 +304,7 @@ function getAiAccountingErrorContext(error: unknown): {
     }
 
     return {
-        sourceErrorName: error instanceof Error ? error.name.slice(0, 80) : typeof error,
+        sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
         sourceErrorCode,
         sourceStatusCode,
     };

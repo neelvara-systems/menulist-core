@@ -55,6 +55,7 @@ import { dispatchPublishingEmbeddingTasks, finalizePublishingJob } from './logic
 import { publishApprovedJobLogic } from './logic/publishApprovedJob';
 import { regenerateEmbeddingLogic } from './logic/regenerateEmbedding';
 import { EmbedArticleType, INGESTION_JOB_STATUS, IngestionJob, IngestionJobCategoriesMap } from './types';
+import { getBoundedFunctionsErrorName } from './utils/boundedErrorContext';
 
 const ANSWERLATTICE_AI_OPTIONS = {
     region: 'us-central1' as const,
@@ -163,14 +164,14 @@ export const backfillChatAnalytics = onCall(
             logger.error('[Answerlattice Chat Analytics] Backfill failed', {
                 failureCode: 'answerlattice_chat_backfill_failed',
                 days: input.days,
-                sourceErrorName: error instanceof Error ? error.name : typeof error,
+                sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
             });
             try {
                 await releaseChatAnalyticsBackfillLease(input.tId, input.sId, leaseId);
             } catch (releaseError) {
                 logger.error('[Answerlattice Chat Analytics] Failed to release backfill lease after aggregation failure', {
                     failureCode: 'answerlattice_chat_backfill_failure_lease_release_failed',
-                    sourceErrorName: releaseError instanceof Error ? releaseError.name : typeof releaseError,
+                    sourceErrorName: getBoundedFunctionsErrorName(releaseError) || typeof releaseError,
                 });
             }
             throw new HttpsError('internal', 'Chat analytics backfill failed.');
@@ -180,7 +181,7 @@ export const backfillChatAnalytics = onCall(
         } catch (error) {
             logger.error('[Answerlattice Chat Analytics] Failed to release completed backfill lease', {
                 failureCode: 'answerlattice_chat_backfill_success_lease_release_failed',
-                sourceErrorName: error instanceof Error ? error.name : typeof error,
+                sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
             });
         }
         return result;
@@ -291,7 +292,7 @@ export const answerlatticeNightly = onSchedule(
         timeoutSeconds: 540,
         memory: '512MiB',
         maxInstances: 1,
-        secrets: ANSWERLATTICE_SECRET_GROUPS.AI,
+        secrets: ANSWERLATTICE_SECRET_GROUPS.NIGHTLY_WITH_AI,
     },
     async () => {
         logger.info('[Answerlattice Scheduler] Starting master scheduler tick...');
@@ -424,7 +425,7 @@ export const processIntegrationEvent = onDocumentCreated(
                 failureCode: 'answerlattice_integration_processor_invocation_failed',
                 eventType: event.eventType,
                 ...getAnswerlatticeIndexStringContext('eventId', eventId),
-                sourceErrorName: error instanceof Error ? error.name.slice(0, 80) : typeof error,
+                sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
                 statusUpdated,
             });
             throw error;

@@ -1,6 +1,4 @@
-import { LuActivity, LuBarChart3, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDollarSign, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLayoutTemplate, LuMapPin, LuMessageSquare, LuPrinter, LuQrCode, LuReceipt, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
-import { MdOutlineManageHistory } from 'react-icons/md';
-import { TbSettingsHeart } from 'react-icons/tb';
+import { LuActivity, LuBarChart3, LuBookOpen, LuBuilding2, LuCalendarCheck2, LuClock3, LuCreditCard, LuDollarSign, LuFolderHeart, LuHeartHandshake, LuHotel, LuLayoutDashboard, LuLayoutTemplate, LuMapPin, LuMessageSquare, LuPrinter, LuQrCode, LuReceipt, LuSettings, LuShare2, LuShieldCheck, LuShieldOff, LuSparkles, LuTicket, LuUsers } from 'react-icons/lu';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from './user';
 
 
@@ -109,11 +107,11 @@ export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
     {
         label: 'Platform',
         route: NAVIGARIONS_ROUTINGS.PLATFORM,
-        icon: TbSettingsHeart,
+        icon: LuSettings,
         sectionLabel: 'Internal tools',
         allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE],
         subNav: [
-            { label: 'Home', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: MdOutlineManageHistory },
+            { label: 'Home', route: NAVIGARIONS_ROUTINGS.PLATFORM, icon: LuLayoutDashboard },
             { label: 'Founder Monitor', route: NAVIGARIONS_ROUTINGS.PLATFORM_FOUNDER_MONITOR, icon: LuBarChart3, allowedPlatformRoles: [ECOMSAI_PLATFORM_USER_ROLE] },
             { label: 'Ops Control Room', route: NAVIGARIONS_ROUTINGS.OPS_CONTROL_ROOM, icon: LuActivity },
             { label: 'Scheduler Monitor', route: NAVIGARIONS_ROUTINGS.OPS_SCHEDULER_MONITOR, icon: LuClock3 },

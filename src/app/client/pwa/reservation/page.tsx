@@ -34,6 +34,7 @@ export default async function PwaReservationHandoffPage(
             : null;
 
     if (!store) return notFound();
+    if (store.publicPresence?.showReservation === false) return notFound();
 
     const reservationUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.reservationUrl);
     if (!reservationUrl) return notFound();

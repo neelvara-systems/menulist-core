@@ -112,10 +112,16 @@ On Vercel serverless, module-level variables persist across invocations within t
 | 6 | `src/database/changelog/index.ts` | :23 |
 | 7 | `src/database/changelog/feedback.ts` | :8 |
 | 8 | `src/database/tickets/index.ts` | :16 |
-| 9 | `src/database/todos/index.ts` | :24 |
+| 9 | `src/database/todos/index.ts` | Retired July 28, 2026 after repository-wide import tracing confirmed no active consumer; historical rows are read-only compatibility data |
 | 10 | `src/database/guestFeedback/index.ts` | :34 |
 
 **Fix:** Replace `let session: any = null` with fresh `await getActiveSession()` in each helper function. Remove the module-level caching entirely.
+
+**Current retirement note:** the generic Notes and Todos DALs were later removed
+after complete import tracing confirmed that no owner surface, hook, reducer,
+route, job, or barrel consumed them. Their open-schema Firestore collections
+remain scoped read-only compatibility paths; browser create, update, and delete
+are denied so dormant utilities cannot become parallel owner truth.
 
 **Correct pattern:**
 ```typescript

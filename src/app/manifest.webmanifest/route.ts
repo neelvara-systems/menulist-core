@@ -33,13 +33,13 @@ import { normalizePublicProjectSlug } from '@lib/publicRouting/pathSegments';
 import { secureError } from '@lib/security/secureLogger';
 import { unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const MAX_MANIFEST_START_URL_DIAGNOSTICS = 25;
 const reportedManifestStartUrlFailures = new Set<string>();
 
 function getManifestStartUrlSourceErrorName(error: unknown): string {
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error) || typeof error;
 }
 
 function logManifestStartUrlLookupFailure(error: unknown, storeId: string | number): void {
@@ -129,7 +129,7 @@ const buildManifestFailureLogContext = (
         hasCustomDomain: Boolean(domain?.customDomain),
         storeIdPresent: Boolean(normalizedStoreId),
         storeIdLength: normalizedStoreId.length,
-        errorName: error instanceof Error ? error.name : typeof error,
+        errorName: getBoundedErrorName(error) || typeof error,
     };
 };
 
@@ -198,8 +198,9 @@ export async function GET() {
         const showCall = store.publicPresence?.showCall !== false;
         const showDirections = store.publicPresence?.showDirections !== false;
         const showWhatsApp = store.publicPresence?.showWhatsApp !== false;
+        const showReservation = store.publicPresence?.showReservation !== false;
+        const showOrder = store.publicPresence?.showOrder !== false;
 
-        // Reservation + Order have no explicit toggle — presence of URL implies intent.
         const mapsUrl = normalizeOBPGoogleMapsUrl(store.publicPresence?.googleMapsUrl);
         const reservationUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.reservationUrl);
         const orderUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.orderUrl);
@@ -245,8 +246,8 @@ export async function GET() {
                 phone: showCall ? phoneForTel || null : null,
                 mapsUrl: showDirections ? mapsUrl : null,
                 whatsappNumber: showWhatsApp ? store.publicPresence?.whatsappNumber || null : null,
-                reservationUrl: reservationUrl || null,
-                orderUrl: orderUrl || null,
+                reservationUrl: showReservation ? reservationUrl || null : null,
+                orderUrl: showOrder ? orderUrl || null : null,
             },
         });
 

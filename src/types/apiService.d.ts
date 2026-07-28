@@ -1,7 +1,7 @@
 
-interface AXIOS_API_RESPONSE_TYPE {
+interface AXIOS_API_RESPONSE_TYPE<TData = unknown> {
     status: number;
-    data: any;
+    data: TData;
     message: string;
     apiStatus: boolean;
 }

@@ -4,6 +4,7 @@ import {
     answerlatticeProviderSubscriptionMatchesAttempt,
     buildAnswerlatticeOnboardingRequestFingerprint,
     findAnswerlatticeProviderSubscriptionForAttempt,
+    getAnswerlatticeOnboardingPositiveInteger,
     getAnswerlatticeOnboardingTimestampMillis,
     isAnswerlatticeTerminalProviderSubscriptionStatus,
     shouldHoldAnswerlatticeOnboardingProviderRecovery,
@@ -48,6 +49,31 @@ assert.equal(
 );
 assert.equal(getAnswerlatticeOnboardingTimestampMillis({ toMillis: () => 1234 }), 1234);
 assert.equal(getAnswerlatticeOnboardingTimestampMillis({ seconds: 'invalid' }), 0);
+assert.equal(getAnswerlatticeOnboardingTimestampMillis({ seconds: '1700000000', nanoseconds: 0 }), 0);
+assert.equal(getAnswerlatticeOnboardingTimestampMillis({ toMillis: () => '1234' }), 0);
+assert.equal(getAnswerlatticeOnboardingTimestampMillis({ seconds: 1, nanoseconds: 1_000_000_000 }), 0);
+assert.doesNotThrow(() => {
+    assert.equal(getAnswerlatticeOnboardingTimestampMillis({
+        get toMillis() {
+            throw new Error('hostile timestamp getter');
+        },
+    }), 0);
+});
+assert.doesNotThrow(() => {
+    assert.equal(getAnswerlatticeOnboardingTimestampMillis({
+        toMillis() {
+            throw new Error('hostile timestamp conversion');
+        },
+    }), 0);
+});
+assert.equal(getAnswerlatticeOnboardingPositiveInteger(36), 36);
+for (const invalidPositiveInteger of ['36', true, 0, -1, 1.5, Number.POSITIVE_INFINITY]) {
+    assert.equal(
+        getAnswerlatticeOnboardingPositiveInteger(invalidPositiveInteger),
+        null,
+        'billing and provider counts must not coerce malformed scalars',
+    );
+}
 
 const matchingNotes = {
     onboardingAttemptId: 'alo_attempt',

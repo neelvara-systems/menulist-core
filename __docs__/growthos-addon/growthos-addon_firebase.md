@@ -32,8 +32,8 @@ GrowthOS must follow existing MenuList cost discipline:
 | Open Growth Kits home | 1 read | `platformSummary/growthos_{sId}`. |
 | Open from Today with existing Today data | 0-1 additional reads | Today may already have `platformSummary/campaigns_{sId}` through `useTodayCampaigns`. |
 | Refresh action queue | 2-4 reads | Store entitlement context, current project/menu data, and current summary. |
-| Generate kit | 2-4 reads | Store entitlement context, current project/menu data, and current summary before generation. |
-| Copy/share/download kit | 3-5 reads | Server revalidates entitlement, kit, summary, and current source hash before recording use. |
+| Generate kit | 5-7 reads | Store entitlement/context reads plus transaction reads for replay, summary, store, scoped project, and legacy fallback. Firestore may retry the transaction on contention. |
+| Copy/share/download kit | 7-10 reads | Server validates entitlement/output and transactionally revalidates replay, kit, summary, store, scoped project, and legacy fallback. Firestore may retry on contention. |
 | Review reply draft | 0-1 reads | Owner-pasted text can avoid review collection reads. |
 | Staff Brief generation | 0 additional reads when source facts are already loaded | Deterministic V1 output from same source facts. |
 | Latest kit mobile fallback | 0 additional server reads after failed refresh | Uses last successfully loaded kit payload on device. |
@@ -46,9 +46,9 @@ GrowthOS must follow existing MenuList cost discipline:
 | Flow | Expected writes | Notes |
 | --- | ---: | --- |
 | Refresh action queue | 0-1 write | Update `platformSummary/growthos_{sId}` only when hash, date, ranked actions, readiness, or latest-kit stale state changes. |
-| Generate text kit | 2-4 writes | Kit document, summary update, AI operation log, subscription credit update when paid AI is used. |
+| Generate text kit | 2 writes | Deterministic V1 creates the kit and updates the summary in one transaction. No AI operation or credit write. |
 | Generate image | Existing image pipeline costs | Reuse current image generation accounting and Storage path. |
-| Copy/share/download/print | 1-3 writes | Export row plus optional kit status update and summary latest-kit status/stale update only when changed. |
+| Copy/share/download/print | 1-3 writes | One deterministic export document plus optional kit and latest-summary status updates in one transaction. |
 | Mark stale | 1 write | Only when a stale check is run and critical facts changed. |
 | Staff Brief copied/shared | 1 export write | Execution signal only. |
 | Mark used | 1 export write or kit status update | No ROI or customer attribution. |
@@ -152,11 +152,8 @@ Do not add these indexes until queries are final and the used-history UI flag is
 Implemented rules enforce:
 
 - default deny
-- authenticated tenant/store access only
-- owner/support roles can read/write scoped GrowthOS data
-- users cannot read other stores' kits or exports
-- clients cannot set `tId`/`sId` outside their session scope
-- client writes to GrowthOS kit/export documents are blocked; authenticated APIs write through server Admin SDK after entitlement, output, and stale checks
+- browser reads and writes for `growthosKits` and `growthosExports` are denied; tenant membership, support access, or a platform claim cannot bypass the Pro/Premium entitlement boundary
+- authenticated APIs read and write kit/export documents through the server Admin SDK after tenant, entitlement, output, and stale checks
 - generated kit writes are routed through authenticated API routes in V1; admin SDK writes bypass rules but routes enforce tenant access and entitlement
 - source project reads use scoped project paths first; legacy fallback requires matching tenant/store identity or MenuList tenant-store project ID shape
 
@@ -178,6 +175,9 @@ Implemented V1 optimizations:
 - client request policy pins no-store cache, same-origin credentials, and manual redirect handling before existing bounded response parsing
 - client response parsing is bounded to 64 KB and logs diagnostics only; it adds no Firebase reads/writes/deletes
 - deterministic dry-run coverage is available through `npm run verify:growthos`
+- summary/project browser cache keys partition by tenant and store
+- UUID operation identities make one ambiguous generate/export transport retry replay-safe
+- synchronous owner-surface guards suppress duplicate same-action submissions before loading state renders
 
 ## 9. AI Provider Cost
 
@@ -257,17 +257,24 @@ Cost impact: this changes route security-log metadata only. It adds no Firestore
 
 GrowthOS project/kit/scope ID admission is cost-neutral: refresh/generate request schemas and `readGrowthOSProjectDataServer()` validate and normalize `projectId` through the shared Firestore document-ID guard before scoped or legacy project reads. Export request schema and `readGrowthOSKitServer()` validate and normalize `kitId` before kit reads. Server helpers also validate session-derived tenant/store scope IDs before store reads, summary reads/writes, scoped project reads, kit reads/writes, export status writes, or entitlement subscription reads. This adds no Firestore reads/writes/deletes for valid requests, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action. Explicit pre-onboarding `null`, zero, exponent-like, whitespace, decimal, leading-zero, unsafe, or otherwise malformed scope IDs now stop before Firestore refs; in particular, they no longer cause the entitlement helper to read `stores/0` or query subscriptions under tenant/store zero.
 
-## 16. Atomic Generated-Kit Projection
+## 16. Transactional Source And Idempotency Boundary
 
-Kit generation writes the new kit document and the one-read latest-kit summary
-in one Firestore batch. The valid path remains two writes; there is no added
-read, transaction retry, coordination document, index, listener, scheduler, or
-provider call.
+Kit generation remains two writes, but they now settle in a Firestore
+transaction with replay, source-facts, tenant/store, and latest-kit identity
+checks. The transaction adds bounded reads and can retry on contention; it adds
+no coordination document, index, listener, scheduler, or provider call.
 
-Tenant, store, and latest-kit identity must match between both payloads before
-the batch is created, so an internal caller cannot atomically persist
-cross-scope or cross-kit projection data.
+Export settlement uses deterministic `growthos_export_{operationId}` documents.
+Its transaction rechecks the current source documents before creating the
+execution signal, and updates the kit plus latest-summary status atomically.
+An ambiguous browser transport is retried once with the same UUID and therefore
+cannot create a second kit or export row.
 
-The UUID-backed kit ID avoids same-millisecond document collisions without a
-Firestore sequence. This is both safer under concurrency and cheaper than a
-distributed counter.
+Refresh also uses transaction-current source documents and current summary
+state. This prevents a stale refresh request from overwriting a newer generated
+kit or accepting a source snapshot that changed between route reads and commit.
+
+The emulator suite in `npm run test:growthos:transactions` proves concurrent
+same-operation replay, one-document settlement, atomic status projection,
+stale-source rejection, latest-kit preservation, and server-side tenant
+corroboration.

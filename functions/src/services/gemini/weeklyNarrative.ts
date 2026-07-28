@@ -7,7 +7,7 @@
 import { AI_MODEL } from '../../constants/ai';
 import { genAIClient } from '../../genAiClient';
 import { geminiLogger, getGeminiErrorContext } from './geminiDiagnostics';
-import { weeklyNarrativePrompt } from './prompts/v1/weeklyNarrative.prompt';
+import { weeklyNarrativePrompt, type WeeklyNarrativeMetrics } from './prompts/v1/weeklyNarrative.prompt';
 
 const GEMINI_WEEKLY_NARRATIVE_EMPTY_RESPONSE = 'GEMINI_WEEKLY_NARRATIVE_EMPTY_RESPONSE';
 const GEMINI_WEEKLY_NARRATIVE_FAILED = 'GEMINI_WEEKLY_NARRATIVE_FAILED';
@@ -37,7 +37,7 @@ export interface WeeklyNarrativeResult {
  * Generate weekly narrative using Gemini
  */
 export async function generateWeeklyNarrative(
-  metrics: any
+  metrics: WeeklyNarrativeMetrics,
 ): Promise<WeeklyNarrativeResult> {
   try {
     geminiLogger.info('[Gemini] Generating weekly narrative', {
@@ -129,17 +129,34 @@ function parseGeminiResponse(text: string): Omit<WeeklyNarrativeResult, 'keyMetr
       cleanText = cleanText.replace(/```\n?/, '').replace(/```\n?$/, '');
     }
 
-    const parsed = JSON.parse(cleanText);
+    const parsed: unknown = JSON.parse(cleanText);
+    const record = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
 
     // Validate structure
-    if (!parsed.narrative || typeof parsed.narrative !== 'string') {
+    if (!record || typeof record.narrative !== 'string') {
       throw new Error(GEMINI_WEEKLY_NARRATIVE_INVALID_RESPONSE);
     }
 
+    const normalizeText = (value: unknown, maxLength: number) => (
+      typeof value === 'string'
+        ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength)
+        : ''
+    );
+    const normalizeTextArray = (value: unknown) => (
+      Array.isArray(value)
+        ? value
+          .filter((entry): entry is string => typeof entry === 'string')
+          .map((entry) => normalizeText(entry, 500))
+          .filter(Boolean)
+          .slice(0, 5)
+        : []
+    );
     return {
-      narrative: parsed.narrative,
-      highlights: parsed.highlights || [],
-      recommendations: parsed.recommendations || [],
+      narrative: normalizeText(record.narrative, 2000),
+      highlights: normalizeTextArray(record.highlights),
+      recommendations: normalizeTextArray(record.recommendations),
     };
 
   } catch (error) {

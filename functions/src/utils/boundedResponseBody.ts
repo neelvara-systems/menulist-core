@@ -1,3 +1,5 @@
+import { getBoundedFunctionsErrorCode } from './boundedErrorContext';
+
 export class ResponseBodyTooLargeError extends Error {
   readonly code = "RESPONSE_BODY_TOO_LARGE";
   readonly maxBytes: number;
@@ -13,7 +15,7 @@ export class ResponseBodyTooLargeError extends Error {
 
 export function isResponseBodyTooLargeError(error: unknown): error is ResponseBodyTooLargeError {
   return error instanceof ResponseBodyTooLargeError
-    || Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === "RESPONSE_BODY_TOO_LARGE");
+    || getBoundedFunctionsErrorCode(error) === "RESPONSE_BODY_TOO_LARGE";
 }
 
 function assertValidResponseBodyLimit(maxBytes: number): void {

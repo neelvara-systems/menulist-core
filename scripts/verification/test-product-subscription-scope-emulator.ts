@@ -10,12 +10,14 @@ import {
     applyProductSubscriptionWebhookEvent,
     createProductInitialSubscription,
     getProductSubscriptionById,
+    syncAnswerlatticeSubscriptionEntitlementFromSubscription,
     updateProductSubscription,
 } from '../../src/lib/billing/productBillingServer';
 import { composeInitialSubscriptionPayloadServer } from '../../src/database/subscriptions/server';
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { persistPendingProductTopupSnapshot } from '../../src/lib/billing/topupSettlementServer';
+import { syncStorePlanEntitlementFromSubscription } from '../../src/lib/billing/subscriptionEntitlementSync';
 
 const baseSubscription = (overrides: Record<string, unknown> = {}) => ({
     amount: 49_900,
@@ -201,6 +203,15 @@ async function run(): Promise<void> {
         /tenant\/store identity is invalid/,
         'new Answerlattice payloads must reject conflicting duplicate scope aliases',
     );
+    await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc('202').set({
+        active: true,
+        pId: 'AL',
+        productId: 'AL',
+        sId: 202,
+        storeId: 202,
+        tId: 101,
+        tenantId: 101,
+    });
     await createProductInitialSubscription(
         PRODUCT_IDS.ANSWERLATTICE,
         'sub_AnswerlatticeExactScope123',
@@ -213,6 +224,28 @@ async function run(): Promise<void> {
     assert.equal(
         (await getProductSubscriptionById(PRODUCT_IDS.ANSWERLATTICE, 'sub_AnswerlatticeExactScope123'))?.productId,
         'AL',
+    );
+    const exactAnswerlatticeSubscription = await getProductSubscriptionById(
+        PRODUCT_IDS.ANSWERLATTICE,
+        'sub_AnswerlatticeExactScope123',
+    );
+    assert.ok(exactAnswerlatticeSubscription);
+    await syncAnswerlatticeSubscriptionEntitlementFromSubscription({
+        ...exactAnswerlatticeSubscription,
+        tId: 999,
+    }, 'conflicting_entry_scope_must_not_sync');
+    const answerlatticeStoreAfterConflictingSync = (
+        await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc('202').get()
+    ).data();
+    assert.equal(
+        answerlatticeStoreAfterConflictingSync?.answerlatticeSubscription,
+        undefined,
+        'a conflicting input subscription alias must not write Answerlattice store entitlement',
+    );
+    assert.equal(
+        (await readSubscription('sub_AnswerlatticeExactScope123')).analyticsEntitlement,
+        undefined,
+        'a conflicting input subscription alias must not acknowledge entitlement sync',
     );
     await assert.rejects(
         createProductInitialSubscription(
@@ -308,6 +341,38 @@ async function run(): Promise<void> {
     assert.equal((await readSubscription('sub_ExactScope123')).status, 'cancelled');
     await updateProductSubscription(PRODUCT_IDS.MENULIST, 'sub_ExactScope123', { status: 'paused' });
     assert.equal((await readSubscription('sub_ExactScope123')).status, 'paused');
+
+    const futureCycleEnd = Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000);
+    await writeSubscription('sub_EntitlementStoreRace123', baseSubscription({
+        cycleEndDate: futureCycleEnd,
+        planId: 'growth',
+        providerSubscriptionId: 'sub_EntitlementStoreRace123',
+    }));
+    const reassignedStoreRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc('202');
+    await reassignedStoreRef.set({
+        activePlanType: 'foreign-plan',
+        sId: 202,
+        storeId: 202,
+        tId: 999,
+        tenantId: 999,
+    });
+    await syncStorePlanEntitlementFromSubscription({
+        id: 'sub_EntitlementStoreRace123',
+        planId: 'growth',
+        status: 'active',
+        storeId: 202,
+        tenantId: 101,
+    }, 'emulator:store-reassignment-race');
+    assert.equal(
+        (await reassignedStoreRef.get()).data()?.activePlanType,
+        'foreign-plan',
+        'A stale subscription must not overwrite a store that now belongs to another tenant',
+    );
+    assert.equal(
+        (await readSubscription('sub_EntitlementStoreRace123')).analyticsEntitlement,
+        undefined,
+        'A store-scope mismatch must leave the subscription entitlement retryable',
+    );
 
     console.log('Product subscription scope emulator tests passed.');
 }

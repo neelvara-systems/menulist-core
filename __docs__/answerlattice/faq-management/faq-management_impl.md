@@ -54,7 +54,7 @@ Article edit modal now has an explicit `Refresh FAQ suggestions` action. It read
 
 The article modal validates the FAQ refresh response through a 64 KB bounded response reader before adding generated FAQ options, linking generated FAQ IDs, or showing FAQ refresh success/info copy. Malformed, oversized, rejected, or wrong-shape responses log fixed `answerlattice_article_modal_response_*` diagnostics and keep `Failed to refresh FAQ suggestions.` as the owner-facing failure copy.
 
-The FAQ refresh API resolves Answerlattice scope, checks safe mode, and applies the route-specific generation limit before permission, body parsing, article/FAQ reads, or provider calls. Completion breadcrumbs, unexpected route failures, and operation-log failures use fixed-code bounded diagnostics.
+The FAQ refresh API resolves Answerlattice scope, checks safe mode, and applies the route-specific generation limit before permission, body parsing, article/FAQ reads, or provider calls. Provider text above the 32 KiB character boundary is rejected before parsing; a truncated prefix is never accepted as complete output. The failure-contained AI-operation log write is awaited before success returns. Completion breadcrumbs, unexpected route failures, and operation-log failures use fixed-code bounded diagnostics.
 
 Article save continues to do only low-cost automatic maintenance: content edits mark linked FAQs as `needs_review` and refresh the search embedding. FAQ generation stays owner-triggered so routine edits do not create surprise AI calls or overwrite reviewed answers.
 

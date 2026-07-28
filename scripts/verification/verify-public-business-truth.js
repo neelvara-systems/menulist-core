@@ -548,6 +548,22 @@ function verifyHoursDoNotInventOpenState() {
   });
   assert(invalidSerializedFreshness.confidenceState === 'BROKEN', 'Output control must treat invalid serialized freshness as broken');
   assert(invalidSerializedFreshness.statusText === 'Check with store', 'Output control must not trust invalid serialized freshness');
+
+  const unknownDayOnly = resolveHoursOutput({
+    workingHours: { someday: '09:00-17:00' },
+    hoursLastUpdatedAt: Date.now(),
+    timeZone: 'UTC',
+  });
+  assert(unknownDayOnly.confidenceState === 'BROKEN', 'Output control must reject hours with no canonical weekday');
+
+  for (const invalidHours of ['25:00-26:00', '09:00-09:00', 'arbitrary']) {
+    const invalidStructure = resolveHoursOutput({
+      workingHours: { mon: invalidHours },
+      hoursLastUpdatedAt: Date.now(),
+      timeZone: 'UTC',
+    });
+    assert(invalidStructure.confidenceState === 'BROKEN', `Output control must reject invalid hours ${invalidHours}`);
+  }
 }
 
 function verifyTimedCategoriesUseStoreTruth() {
@@ -750,7 +766,7 @@ function verifyPublicClientCacheLoggingIsBounded() {
   assertIncludes(helper, "redirect: 'manual'", 'Public client cache revalidation handoff does not follow redirects');
   assertIncludes(helper, 'storeIdLength: storeId.length', 'Public client cache bounded store-id context');
   assertIncludes(helper, 'responseStatus: response.status', 'Public client cache bounded response status context');
-  assertIncludes(helper, "errorName: error instanceof Error ? error.name : typeof error", 'Public client cache bounded error context');
+  assertIncludes(helper, 'errorName: getBoundedErrorName(error) || typeof error', 'Public client cache bounded error context');
   assertIncludes(helper, 'type PendingPublicCacheRevalidation', 'Public client cache pending entry contract');
   assertIncludes(helper, 'const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();', 'Public client cache pending map keeps rerun state');
   assertIncludes(helper, 'pending.rerunRequested = true;', 'Public client cache same-store trailing revalidation marker');
@@ -766,6 +782,8 @@ function verifyPublicStoreLookupUsesCurrentTenantLifecycleState() {
   const helper = read('src/lib/firestore/clientStoreLookup.ts');
   const route = read('src/app/api/platform/entity-blocks/route.ts');
   const backfill = read('scripts/backfill-store-tenant-block-state.ts');
+  assertIncludes(backfill, 'resolveTenantBlockBackfillStoreIdentity(storeDoc.id, store)', 'Tenant-block backfill exact persisted store/tenant identity projector');
+  assertNotIncludes(backfill, 'store.tenantId ?? store.tId', 'Tenant-block backfill must not prefer one persisted tenant alias');
 
   assertIncludes(helper, 'async function isStoreOrTenantIneligible', 'Public store lookup shared lifecycle guard');
   assertIncludes(helper, 'if (!isMenuListPublicEntityEligible(store)) return true;', 'Public store lookup direct lifecycle/block guard');
@@ -817,18 +835,17 @@ function verifyPublicStoreLookupUsesCurrentTenantLifecycleState() {
   assertIncludes(backfill, "const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;", 'Tenant-block backfill requires explicit project target');
   assertIncludes(backfill, "throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running tenant-block backfill.');", 'Tenant-block backfill refuses ambient default project');
   assertIncludes(backfill, 'function initializeFirestore(projectId: string): FirebaseFirestore.Firestore', 'Tenant-block backfill initializes Firestore after project validation');
-  assertIncludes(backfill, 'admin.initializeApp({ projectId });', 'Tenant-block backfill initializes with explicit project id');
+  assertIncludes(backfill, 'initializeApp({ projectId })', 'Tenant-block backfill initializes with explicit project id');
   assertIncludes(backfill, 'const write = hasFlag(\'--write\');', 'Tenant-block backfill explicit write flag');
   assertIncludes(backfill, "const confirmedProjectId = getArg('--confirm-project');", 'Tenant-block backfill write confirmation argument');
   assertIncludes(backfill, 'if (write && confirmedProjectId !== projectId)', 'Tenant-block backfill requires matching write confirmation');
   assertIncludes(backfill, 'Refusing write: pass --confirm-project ${projectId}', 'Tenant-block backfill write refusal copy');
-  assertIncludes(backfill, 'function hasExplicitWriteScope(): boolean', 'Tenant-block backfill write scope helper');
-  assertIncludes(backfill, "return Boolean(getArg('--tenant-id') || getArg('--store-id') || hasFlag('--all-stores'));", 'Tenant-block backfill requires scoped write or all-stores acknowledgement');
-  assertIncludes(backfill, 'if (write && !hasExplicitWriteScope())', 'Tenant-block backfill refuses unscoped writes');
-  assertIncludes(backfill, 'Refusing write: pass --tenant-id, --store-id, or --all-stores', 'Tenant-block backfill unscoped write refusal copy');
+  assertIncludes(backfill, 'const scopeCount = Number(Boolean(tenantScope)) + Number(Boolean(storeScope)) + Number(allStores);', 'Tenant-block backfill computes mutually exclusive scope');
+  assertIncludes(backfill, 'if (scopeCount !== 1)', 'Tenant-block backfill refuses missing or conflicting scope');
+  assertIncludes(backfill, 'Pass exactly one of --tenant-id, --store-id, or --all-stores.', 'Tenant-block backfill scope refusal copy');
   assertIncludes(backfill, 'db = initializeFirestore(projectId);', 'Tenant-block backfill initializes Firestore only after write confirmation');
   assertOrder(backfill, 'if (write && confirmedProjectId !== projectId)', 'db = initializeFirestore(projectId);', 'Tenant-block backfill confirms write target before Firebase initialization');
-  assertOrder(backfill, 'if (write && !hasExplicitWriteScope())', 'db = initializeFirestore(projectId);', 'Tenant-block backfill confirms write scope before Firebase initialization');
+  assertOrder(backfill, 'if (scopeCount !== 1)', 'db = initializeFirestore(projectId);', 'Tenant-block backfill confirms exact scope before Firebase initialization');
   assertIncludes(backfill, 'console.log(`Project: ${projectId}`);', 'Tenant-block backfill project banner');
   assertIncludes(backfill, "console.log(`Mode: ${write ? 'WRITE' : 'DRY RUN'}`);", 'Tenant-block backfill dry-run mode banner');
   assertIncludes(backfill, 'const storeDocs = await loadStoreDocs();', 'Tenant-block backfill loads store docs after project/mode banner');
@@ -838,7 +855,9 @@ function verifyPublicStoreLookupUsesCurrentTenantLifecycleState() {
   assertIncludes(backfill, 'tenantBlockedSyncedAt: FieldValue.serverTimestamp()', 'Tenant-block backfill timestamp');
   assertIncludes(backfill, 'tenant_block_backfill_failed', 'Tenant-block backfill stable failure code');
   assertIncludes(backfill, 'getBackfillErrorSummary(error)', 'Tenant-block backfill bounded failure summary');
-  assertIncludes(backfill, 'message: getBoundedErrorString(error?.message)', 'Tenant-block backfill bounded error message');
+  assertIncludes(backfill, 'message: getBoundedErrorString(source.message)', 'Tenant-block backfill bounded error message');
+  assertIncludes(backfill, 'normalizePositiveNumericDocumentIdAliases([', 'Tenant-block backfill exact all-alias tenant identity projection');
+  assertNotIncludes(backfill, 'store.tenantId ?? store.tId', 'Tenant-block backfill conflicting tenant alias exclusion');
   assertNotIncludes(backfill, 'console.error(error);', 'Tenant-block backfill raw stack logging');
 }
 
@@ -868,7 +887,7 @@ function verifyFunctionsPublicCacheRevalidationLoggingIsBounded() {
   assertOrder(helper, "if (!appBaseUrl || !revalidationSecret) {", "if (options.touchDigitalScreen === true) {", 'Functions screen touch remains independent of cache configuration');
   assertIncludes(helper, 'storeIdLength: normalizedStoreId.length', 'Functions public cache bounded store context');
   assertIncludes(helper, 'contextLength: context.length', 'Functions public cache bounded context metadata');
-  assertIncludes(helper, 'sourceErrorName: error instanceof Error ? (error.name ||', 'Functions public cache source error name');
+  assertIncludes(helper, 'sourceErrorName: context.sourceErrorName || typeof error', 'Functions public cache source error name');
   assertIncludes(helper, 'status: response.status', 'Functions public cache bounded response status');
   assertIncludes(networkTarget, "import { lookup } from 'dns/promises';", 'Functions shared network target helper resolves DNS');
   assertIncludes(networkTarget, 'export async function validateNetworkTargetUrl', 'Functions shared network target validator exported');
@@ -927,6 +946,9 @@ function verifyMenuRevalidationRouteLoggingIsBounded() {
   assertIncludes(route, 'function getStoreIdFromCacheTag', 'Menu revalidation route explicit tag store-id parser');
   assertIncludes(route, 'function deriveSingleStoreIdFromTags', 'Menu revalidation route single-store explicit tag derivation');
   assertIncludes(route, 'requestedStoreId = deriveSingleStoreIdFromTags(tags);', 'Menu revalidation route must clear assistant packet cache for single-store explicit tag arrays');
+  assertIncludes(route, 'resolveMenuRevalidationSessionAccess(session)', 'Menu revalidation route exact session projection');
+  assertIncludes(route, 'canMenuRevalidationSessionAccessStore(sessionAccess, storeId)', 'Menu revalidation route exact store admission');
+  assertIncludes(route, 'tId: sessionAccess?.tenantId', 'Menu revalidation route exact assistant-cache tenant scope');
   assertIncludes(rateLimitConfigs, 'MENU_CACHE_REVALIDATION', 'Menu revalidation route-specific rate-limit profile');
   assertIncludes(route, "const MENU_REVALIDATE_RATE_LIMIT_KEY = 'menu-cache-revalidate';", 'Menu revalidation route stable limiter namespace');
   assertIncludes(route, 'function getMenuRevalidationRateLimitIdentity', 'Menu revalidation route bounded limiter identity helper');
@@ -948,6 +970,8 @@ function verifyMenuRevalidationRouteLoggingIsBounded() {
   assertNotIncludes(route, 'secureError(', 'Menu revalidation route must not pass raw exceptions to secureError');
   assertNotIncludes(route, 'key: `menu-cache-revalidate:${session', 'Menu revalidation route raw session limiter key');
   assertNotIncludes(route, 'key: `menu-cache-revalidate:${request', 'Menu revalidation route raw request limiter key');
+  assertNotIncludes(route, "session?.user?.platformRole === 'PLATFORM' || session?.platformRole === 'PLATFORM'", 'Menu revalidation route conflicting platform-role elevation');
+  assertNotIncludes(route, '(session as any)?.tId || (session as any)?.user?.tenantId', 'Menu revalidation route preferred tenant alias');
 }
 
 function verifyPublicTruthWritesInvalidateScreenData() {
@@ -1056,7 +1080,7 @@ function verifyPublicMenuResolutionLoggingIsBounded() {
   assertIncludes(page, 'storeIdLength: storeId.length', 'Public menu resolution bounded store context');
   assertIncludes(page, 'slugLength: slug.length', 'Public menu resolution bounded slug context');
   assertIncludes(page, 'canonicalUrlLength: canonicalUrl.length', 'Public menu resolution bounded canonical URL context');
-  assertIncludes(page, 'errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error', 'Public menu resolution bounded error context');
+  assertIncludes(page, 'errorName: getBoundedErrorName(metadata.error) || typeof metadata.error', 'Public menu resolution bounded error context');
   assertIncludes(page, "new Error(`public_menu_resolution_${failureType}`)", 'Public menu resolution normalized error code');
   assertIncludes(page, 'canonical_url_parse_failed', 'Public menu stored canonical URL parse diagnostics');
   assertIncludes(page, "logPublicMenuResolutionFailure('canonical_url_parse_failed'", 'Public menu stored canonical URL parse failure type');
@@ -1103,7 +1127,7 @@ function verifyOBPAnalyticsLoggingIsBounded() {
   assertIncludes(component, 'previousLanguageLength: previousLanguage.length', 'OBP analytics bounded previous-language context');
   assertIncludes(component, 'storageOperation: metadata.storageOperation', 'OBP analytics bounded language storage operation context');
   assertIncludes(component, 'storageKeyLength: storageKey.length', 'OBP analytics bounded language storage key context');
-  assertIncludes(component, 'errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error', 'OBP analytics bounded error context');
+  assertIncludes(component, 'errorName: getBoundedErrorName(metadata.error) || typeof metadata.error', 'OBP analytics bounded error context');
   assertIncludes(component, "new Error(`obp_analytics_${failureType}`)", 'OBP analytics normalized error code');
   assertIncludes(component, "}).catch((error) => {", 'OBP language adoption rejection handling');
   assertIncludes(component, "logOBPAnalyticsFailure('language_storage'", 'OBP language storage diagnostics');
@@ -1137,7 +1161,7 @@ function verifyOBPThemeStorageLoggingIsBounded() {
   assertIncludes(component, 'new Error(`obp_theme_storage_${operation}_failed`)', 'OBP theme normalized storage failure code');
   assertIncludes(component, 'storageKeyLength: storageKey.length', 'OBP theme bounded storage-key context');
   assertIncludes(component, 'themeLength: themeValue.length', 'OBP theme bounded theme context');
-  assertIncludes(component, 'errorName: error instanceof Error ? error.name : typeof error', 'OBP theme bounded error context');
+  assertIncludes(component, 'errorName: getBoundedErrorName(error) || typeof error', 'OBP theme bounded error context');
   assertIncludes(component, "logOBPThemeStorageFailure('read', error)", 'OBP theme read-failure diagnostics');
   assertIncludes(component, "logOBPThemeStorageFailure('write', error, nextTheme)", 'OBP theme write-failure diagnostics');
   assertNotIncludes(component, '} catch {\n        return null;\n    }', 'OBP theme read must not silently return null');
@@ -1826,7 +1850,7 @@ function verifyClientMenuErrorBoundaryLoggingIsBounded() {
   assertIncludes(component, 'secureError(', 'Client menu error boundary secure logging');
   assertIncludes(component, 'buildClientMenuErrorLogContext', 'Client menu error boundary bounded context helper');
   assertIncludes(component, 'new Error("client_menu_error_boundary")', 'Client menu error boundary normalized error code');
-  assertIncludes(component, '(error.name || "Error").slice(0, 80)', 'Client menu error boundary capped error name');
+  assertIncludes(component, '(getBoundedErrorName(error) || "Error").slice(0, 80)', 'Client menu error boundary capped error name');
   assertIncludes(component, 'hasDigest: Boolean(digest)', 'Client menu error boundary digest presence context');
   assertIncludes(component, 'digestLength: digest.length', 'Client menu error boundary bounded digest context');
   assertNotIncludes(component, 'console.error', 'Client menu error boundary direct error logging');
@@ -2724,6 +2748,9 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
 
   assertIncludes(indexBuilder, 'Pure functions — no Firebase calls, no side effects.', 'Business entity index builder pure-function boundary');
   assertIncludes(indexBuilder, 'active while ENABLE_INFRASTRUCTURE_DISCOVERY_INDEX remains false.', 'Business entity index no active writer boundary');
+  assertIncludes(indexBuilder, 'const containsDangerousKey = (value: unknown): boolean =>', 'Business entity index recursive safety boundary');
+  assertIncludes(indexBuilder, 'if (visited.has(value)) return true;', 'Business entity index cyclic-object refusal');
+  assertIncludes(indexBuilder, 'catch {\n            return true;', 'Business entity index hostile-object refusal');
   assertIncludes(taxonomyAdapter, 'Reserved: AI extraction pipeline suggestions after separate audit', 'Taxonomy adapter conditional extraction boundary');
   assertIncludes(menuPage, 'export async function generateMetadata', 'Client menu metadata source');
   assertIncludes(menuPage, 'buildGeoCoordinates(storeData)', 'Client menu GeoCoordinates schema source');
@@ -2794,6 +2821,8 @@ function verifyDiscoveryInfrastructureDocsMatchRuntime() {
   assertIncludes(docs.discoveryReadme, 'tenant_sitemap_outlets_lookup_failed', 'Discovery README outlet sitemap diagnostic');
   assertIncludes(docs.discoveryReadme, 'add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement', 'Discovery README tenant sitemap no-side-effect boundary');
   assertIncludes(docs.businessEntityIndex, 'Builder and types exist; the scheduler writer and query API are not active.', 'Business entity index doc disabled writer/query boundary');
+  assertIncludes(docs.businessEntityIndex, 'root default deny blocks every browser read and write', 'Business entity index current default-deny boundary');
+  assertIncludes(docs.businessEntityIndex, 'Activation requires a separate runtime schema', 'Business entity index future activation gates');
   assertIncludes(docs.dataConsumers, 'No real-time API for AI agents to query beyond the gated Public API v1 pull endpoints', 'Data consumers doc API v1 boundary');
   assertIncludes(docs.dataConsumers, 'Conditional Work (Only With Scoped Approval)', 'Data consumers doc conditional-work boundary');
   assertIncludes(docs.gapAnalysis, 'Conditional Gap Register', 'Infrastructure gap analysis conditional register');
@@ -3151,6 +3180,8 @@ function verifyMenuChangeLogDiagnosticsAreBounded() {
   assertNotIncludes(menuDriftMetrics, 'batch.set(metricsRef.doc(itemId), metrics, { merge: true })', 'Menu drift must not retain unknown or retired derived fields');
   assertIncludes(menuDriftMetrics, '_priceStaleStatus', 'Menu drift explicit unavailable staleness provenance');
   assertIncludes(menuDriftBoundary, 'MENU_DRIFT_SUMMARY_MAX_ITEMS = 1000', 'Menu drift compact contribution bound');
+  assertIncludes(menuDriftBoundary, "value !== '.'", 'Menu drift rejects reserved single-dot document IDs');
+  assertIncludes(menuDriftBoundary, "value !== '..'", 'Menu drift rejects reserved double-dot document IDs');
   assertIncludes(projectDal, 'itemDriftChangesOverflowCount', 'Menu drift summary overflow preservation');
   assertIncludes(projectDal, 'const operationScope = normalizeMenuChangeLogScope(operationSession);', 'Project writes capture one immutable operation scope');
   assertIncludes(projectDal, 'composeRequestBody(data, operationSession, { isNew: false })', 'Project update metadata uses the captured operation session');
@@ -3772,6 +3803,12 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertNotIncludes(mobileSeoAnalytics, 'update.analytics = { ...storeDetails.analytics', 'Mobile analytics stale full-map write');
   assertNotIncludes(mobileOfficialPage, 'updateStore(payload as any)', 'Mobile official-page stale full-map write');
   assertIncludes(storesDal, "throw new Error(rejectionCode);", 'Store update rejected acknowledgement code');
+  assertNotIncludes(storesDal, 'addStore = async (data: any', 'Store create must preserve its typed mutation boundary');
+  assertNotIncludes(storesDal, 'updateStore = async (data: any', 'Store update must preserve its typed mutation boundary');
+  assertNotIncludes(storesDal, 'const updateLogoImage = async (data)', 'Store logo upload must preserve its typed prepared-media boundary');
+  assertIncludes(storesDal, 'if (Number.isSafeInteger(storeId) && isStoreDataType(value, storeId))', 'Platform store lists must validate persisted rows before returning typed data');
+  assertIncludes(storesDal, "throw new Error('store_list_tenant_scope_invalid');", 'Platform store lists must reject non-canonical tenant scope');
+  assertIncludes(storesDal, "'store_list_document_shape_invalid'", 'Malformed platform store rows must emit bounded diagnostics');
   assertIncludes(tenantsDal, 'export function assertTenantUpdateSucceeded', 'Tenant update acknowledgement guard');
   assertIncludes(tenantsDal, "throw new Error(rejectionCode);", 'Tenant update rejected acknowledgement code');
   assertIncludes(usersDal, 'export function assertUserUpdateSucceeded', 'User update acknowledgement guard');
@@ -5513,7 +5550,8 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(diagnostics, 'sourceStatusCode: getBusinessSettingsErrorStatus(error)', 'Business settings diagnostics source error status');
   assertIncludes(complianceRenderer, 'function normalizePublicComplianceStoreDocumentId(value: unknown): string | null', 'Public compliance store document ID normalizer');
   assertIncludes(complianceRenderer, 'const complianceStoreDocumentId = normalizePublicComplianceStoreDocumentId(sId);', 'Public compliance normalizes store document ID before override read');
-  assertIncludes(complianceRenderer, 'getCachedComplianceOverridesServer(complianceStoreDocumentId)', 'Public compliance uses normalized cached override document ID');
+  assertIncludes(complianceRenderer, 'getCachedComplianceOverridesServer(', 'Public compliance uses normalized cached override document ID');
+  assertIncludes(complianceRenderer, 'complianceTenantDocumentId,', 'Public compliance proves expected tenant scope');
   assertIncludes(complianceRenderer, 'public_compliance_invalid_store_scope', 'Public compliance invalid store scope diagnostic');
   assertIncludes(complianceRenderer, 'public_compliance_override_read_failed', 'Public compliance override read diagnostics');
   assertIncludes(complianceRenderer, "getBoundedRuntimeStringContext('storeId', context.storeId)", 'Public compliance bounded store context');
@@ -5812,14 +5850,14 @@ function verifyTodayCampaignDiagnosticsAreBounded() {
   assertIncludes(mobileHoursScreen, 'assertCampaignSkipSucceeded(result, {', 'Mobile Today campaign skip must require a shaped acknowledgement.');
   assertIncludes(campaignsDal, 'export type CampaignCompleteResult', 'Campaign DAL must expose a shaped completion result.');
   assertIncludes(campaignsDal, 'export type CampaignSkipResult', 'Campaign DAL must expose a shaped skip result.');
-  assertIncludes(campaignsDal, 'function isCampaignTodayState', 'Campaign DAL must guard returned Today summary shape.');
+  assertIncludes(campaignsDal, 'isCampaignTodayState,', 'Campaign DAL must import the shared Today summary shape guard.');
   assertIncludes(campaignsDal, 'export function assertCampaignCompleteSucceeded', 'Campaign DAL must expose completion acknowledgement assertion.');
   assertIncludes(campaignsDal, 'export function assertCampaignSkipSucceeded', 'Campaign DAL must expose skip acknowledgement assertion.');
   assertIncludes(campaignsDal, "status: 'completed'", 'Campaign completion acknowledgement must include completed status.');
   assertIncludes(campaignsDal, 'data.exportEvent?.id === data.exportId', 'Campaign completion acknowledgement must tie export event to export id.');
   assertIncludes(campaignsDal, 'skipCount: nextSkipCount', 'Campaign skip acknowledgement must include the resulting skip count.');
   assertIncludes(campaignsDal, 'runTransaction(firebaseClient', 'Campaign complete/skip mutations must use Firestore transactions.');
-  assertIncludes(campaignsDal, 'const exportId = `complete_${campaignId}`;', 'Campaign completion must use a deterministic export id.');
+  assertIncludes(campaignsDal, 'const exportId = `complete_${normalizedCampaignId}`;', 'Campaign completion must use the validated campaign id for its deterministic export id.');
   assertIncludes(campaignsDal, "campaign.status === 'completed'", 'Campaign completion must expose an idempotent completed-state branch.');
   assertIncludes(campaignsDal, "campaign.status === 'skipped' || campaign.status === 'suppressed'", 'Campaign skip must expose an idempotent resolved-state branch.');
   assertIncludes(campaignsDal, "throw new Error('campaign_action_identity_mismatch')", 'Campaign action must verify persisted identity against the active scope and request.');
@@ -5830,11 +5868,25 @@ function verifyTodayCampaignDiagnosticsAreBounded() {
   assertIncludes(campaignActionStateSource, 'buildCampaignCompletionState', 'Campaign completion summary transition helper.');
   assertIncludes(campaignActionStateSource, 'buildCampaignSkipState', 'Campaign skip summary transition helper.');
 
+  const campaignSummaryFixture = (campaignId) => ({
+    campaignId,
+    projectId: 'project-1',
+    type: 'meal_push',
+    kind: 'active',
+    subject: {},
+    intent: 'broadcast_attention',
+    primarySurface: 'whatsapp_status',
+    status: 'suggested',
+    confidence: 0.8,
+  });
   const fixtureSummary = {
     today: {
       date: '2026-07-10',
-      primary: { campaignId: 'campaign-a' },
-      operational: [{ campaignId: 'campaign-b' }, { campaignId: 'campaign-a' }],
+      primary: campaignSummaryFixture('campaign-a'),
+      operational: [
+        campaignSummaryFixture('campaign-b'),
+        campaignSummaryFixture('campaign-a'),
+      ],
       isEmpty: false,
     },
     stats: {

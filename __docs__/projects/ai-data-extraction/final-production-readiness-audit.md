@@ -182,7 +182,7 @@ Full pipeline verified:
 | DS-2 | Job `result.combinedData` can be large (400+ item menus) | ⚠️ MEDIUM | 🔧 PARTIAL — completed first-extraction project jobs are pruned after downstream consumption; public, messaging, and review jobs intentionally retain payloads |
 | CG-1 | `MENULIST_AI_OPERATIONS` / `menulistAiOperations` ledger growth | ⚠️ MEDIUM | ✅ RESOLVED IN CODE — compact-not-delete retention keeps accounting/audit and owner transaction-history rows while avoiding indefinite raw provider/output detail retention; detailed-mode cleanup still needs the updated maintenance scheduler deployed for live effect |
 | SG-1 | Legacy extraction upload lifecycle artifact | ⚠️ MEDIUM-HIGH | ✅ RESOLVED IN CODE — `COLDLINE` bucket lifecycle config pending QA-first apply |
-| SG-2 | Active project fallback uploads are tenant-scoped; legacy project Storage paths are read-only | ⚠️ LOW | ✅ RESOLVED IN CODE — active writes use scoped paths and legacy project writes/deletes are denied in `storage.rules`; pending scoped Storage rules deploy for live effect |
+| SG-2 | Active project fallback uploads are tenant-scoped; legacy project Storage paths deny direct client access | ⚠️ MEDIUM until deployed | ✅ RESOLVED IN SOURCE — active writes use scoped paths and legacy direct reads/writes/deletes are denied in `storage.rules`; pending scoped Storage rules deploy for live effect |
 | QP-1 | Monitoring dashboard duplicate-load read cost | ⚠️ LOW | ✅ RESOLVED IN CODE — SWR 5-minute dedupe; cache miss or explicit Refresh remains bounded |
 
 ### Not-Yet-Implemented Items (Non-Blocking)

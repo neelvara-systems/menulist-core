@@ -3,7 +3,7 @@ import ErrorPageThemeWrapper from "@atoms/ErrorPageThemeWrapper";
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { Button, Flex, Result, Typography } from "antd";
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LuHelpCircle, LuRefreshCw } from "react-icons/lu";
 const { Paragraph } = Typography
 
@@ -16,6 +16,7 @@ export default function Error({ error, reset }: {
     error: Error & { digest?: string }, reset: () => void
 }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const refreshFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         logRuntimeFailure(APP_ERROR_BOUNDARY_RENDERED, error, {
@@ -26,13 +27,21 @@ export default function Error({ error, reset }: {
         });
     }, [error])
 
+    useEffect(() => () => {
+        if (refreshFallbackTimerRef.current) {
+            clearTimeout(refreshFallbackTimerRef.current);
+            refreshFallbackTimerRef.current = null;
+        }
+    }, []);
+
     const handleRefresh = () => {
         setIsRefreshing(true);
-        reset();
-        // Fallback: Hard refresh if reset doesn't work
-        setTimeout(() => {
+        // Schedule before reset so a successful boundary unmount can cancel it.
+        refreshFallbackTimerRef.current = setTimeout(() => {
+            refreshFallbackTimerRef.current = null;
             window.location.reload();
         }, 100);
+        reset();
     };
 
     const handleGetHelp = () => {

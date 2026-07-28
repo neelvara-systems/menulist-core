@@ -4,6 +4,7 @@ import { getPreviousIngestionJobs } from '@database/kb-generation/jobs';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { useIngestionJobsListener } from '@hook/useIngestionJobsListener';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ARTICLE_RECONCILIATION_STATUS, INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
@@ -35,13 +36,12 @@ function KBGenerationTemplate() {
     const dispatch = useAppDispatch()
     const [isHistoryfetched, setisHistoryfetched] = useState(false)
     const scope = useMemo(() => {
-        const tId = Number(session?.tId ?? storeDetails?.tenantId);
-        const sId = Number(session?.sId ?? storeDetails?.storeId);
+        const sessionScope = resolveAnswerlatticeSessionScope(session);
         return {
-            tId: Number.isFinite(tId) && tId > 0 ? tId : 0,
-            sId: Number.isFinite(sId) && sId > 0 ? sId : 0,
+            tId: sessionScope?.tenantId || 0,
+            sId: sessionScope?.storeId || 0,
         };
-    }, [session?.sId, session?.tId, storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [session]);
     const { activeJob } = useIngestionJobsListener(scope);
     const hasScope = scope.tId > 0 && scope.sId > 0;
 

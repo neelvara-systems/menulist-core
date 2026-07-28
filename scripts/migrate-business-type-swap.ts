@@ -24,8 +24,10 @@
  * @see __docs__/business-type-data-model/README.md
  */
 
-import * as admin from 'firebase-admin';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { FieldPath, getFirestore } from 'firebase-admin/firestore';
 import { getBusinessCategory as getBusinessCategoryFromSharedData } from '../src/data/shared/businessTypes';
+import { parsePlatformStoreSummary } from '../src/data/shared/storeSummaryBoundary';
 
 const args = process.argv.slice(2);
 const DRY_RUN = !args.includes('--write');
@@ -50,10 +52,8 @@ function getRequiredProjectId(): string {
 }
 
 function initializeFirestore(projectId: string): FirebaseFirestore.Firestore {
-    if (!admin.apps.length) {
-        admin.initializeApp({ projectId });
-    }
-    return admin.firestore();
+    if (!getApps().length) initializeApp({ projectId });
+    return getFirestore();
 }
 
 // Known plan types that indicate the bug
@@ -63,6 +63,35 @@ function getBusinessCategory(businessType: string): string {
     return getBusinessCategoryFromSharedData(businessType) || 'specialty';
 }
 
+type BusinessTypeSwap = {
+    businessType: string;
+    businessIndustry: 'B2C' | 'B2B';
+    businessCategory: string;
+};
+
+function normalizeBusinessClassification(value: unknown): string {
+    if (typeof value !== 'string') return '';
+    return value.trim().replace(/\s+/g, ' ').slice(0, 120);
+}
+
+export function buildBusinessTypeSwap(data: unknown): BusinessTypeSwap | null {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    const source = data as Record<string, unknown>;
+    const currentBusinessType = normalizeBusinessClassification(source.businessType);
+    const currentBusinessIndustry = normalizeBusinessClassification(source.businessIndustry);
+    if (
+        !PLAN_TYPES.has(currentBusinessType)
+        || !currentBusinessIndustry
+        || PLAN_TYPES.has(currentBusinessIndustry)
+    ) return null;
+
+    return {
+        businessType: currentBusinessIndustry,
+        businessIndustry: currentBusinessType as 'B2C' | 'B2B',
+        businessCategory: getBusinessCategory(currentBusinessIndustry),
+    };
+}
+
 interface MigrationResult {
     collection: string;
     total: number;
@@ -70,6 +99,8 @@ interface MigrationResult {
     skipped: number;
     alreadyCorrect: number;
     errors: number;
+    summarySynced: number;
+    summaryMissing: number;
     details: Array<{
         docId: string;
         action: string;
@@ -86,101 +117,104 @@ async function migrateCollection(db: FirebaseFirestore.Firestore, collectionName
         skipped: 0,
         alreadyCorrect: 0,
         errors: 0,
+        summarySynced: 0,
+        summaryMissing: 0,
         details: [],
     };
 
-    const snapshot = await db.collection(collectionName).get();
-    result.total = snapshot.size;
+    const storesSummaryRef = collectionName === 'stores'
+        ? db.collection('platformSummary').doc('storesSummary')
+        : null;
+    const storesSummarySnapshot = storesSummaryRef ? await storesSummaryRef.get() : null;
+    const storesSummary = parsePlatformStoreSummary(
+        storesSummarySnapshot?.exists ? storesSummarySnapshot.data() : undefined,
+    );
+    let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    do {
+        let query: FirebaseFirestore.Query = db.collection(collectionName)
+            .orderBy(FieldPath.documentId())
+            .limit(WRITE_BATCH_LIMIT);
+        if (cursor) query = query.startAfter(cursor);
+        const snapshot = await query.get();
+        if (snapshot.empty) break;
+        result.total += snapshot.size;
+        const batch = db.batch();
+        let batchCount = 0;
+        const summaryPatch: Record<string, Record<string, unknown>> = Object.create(null);
 
-    let batch = db.batch();
-    let batchCount = 0;
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            const currentBusinessType = normalizeBusinessClassification(data.businessType);
+            const currentBusinessIndustry = normalizeBusinessClassification(data.businessIndustry);
+            const swap = buildBusinessTypeSwap(data);
 
-    for (const doc of snapshot.docs) {
-        const data = doc.data();
-        const currentBusinessType = data.businessType || '';
-        const currentBusinessIndustry = data.businessIndustry || '';
-
-        // Case 1: businessType is 'B2C' or 'B2B' — THIS IS THE BUG
-        if (PLAN_TYPES.has(currentBusinessType)) {
+            // Case 1: businessType is 'B2C' or 'B2B' — THIS IS THE BUG
+            if (PLAN_TYPES.has(currentBusinessType)) {
             // And businessIndustry has an actual type
-            if (currentBusinessIndustry && !PLAN_TYPES.has(currentBusinessIndustry)) {
-                const newBusinessType = currentBusinessIndustry;
-                const newBusinessIndustry = currentBusinessType;
-                const newBusinessCategory = getBusinessCategory(newBusinessType);
+                if (swap) {
 
-                result.details.push({
-                    docId: doc.id,
-                    action: 'SWAP',
-                    before: {
-                        businessType: currentBusinessType,
-                        businessIndustry: currentBusinessIndustry,
-                        businessCategory: data.businessCategory,
-                    },
-                    after: {
-                        businessType: newBusinessType,
-                        businessIndustry: newBusinessIndustry,
-                        businessCategory: newBusinessCategory,
-                    },
-                });
-
-                if (!DRY_RUN) {
-                    batch.update(doc.ref, {
-                        businessType: newBusinessType,
-                        businessIndustry: newBusinessIndustry,
-                        businessCategory: newBusinessCategory,
-                    });
-                    batchCount++;
-
-                    if (batchCount >= WRITE_BATCH_LIMIT) {
-                        await batch.commit();
-                        batch = db.batch();
-                        batchCount = 0;
+                    if (result.details.length < 5) {
+                        result.details.push({
+                            docId: doc.id,
+                            action: 'SWAP',
+                            before: {
+                                businessType: currentBusinessType,
+                                businessIndustry: currentBusinessIndustry,
+                                businessCategory: normalizeBusinessClassification(data.businessCategory) || undefined,
+                            },
+                            after: swap,
+                        });
                     }
-                }
 
-                result.swapped++;
-            } else {
+                    if (!DRY_RUN) {
+                        batch.update(doc.ref, swap);
+                        batchCount++;
+                    }
+                    if (storesSummaryRef) {
+                        const existingSummary = storesSummary[doc.id];
+                        if (existingSummary) {
+                            summaryPatch[doc.id] = {
+                                ...existingSummary,
+                                businessType: swap.businessType,
+                                businessCategory: swap.businessCategory,
+                            };
+                            storesSummary[doc.id] = {
+                                ...existingSummary,
+                                businessType: swap.businessType,
+                                businessCategory: swap.businessCategory,
+                            };
+                            result.summarySynced++;
+                        } else {
+                            result.summaryMissing++;
+                        }
+                    }
+
+                    result.swapped++;
+                } else {
                 // businessType is B2C/B2B but businessIndustry is empty or also B2C/B2B
                 // Can't determine actual type — skip
-                result.details.push({
-                    docId: doc.id,
-                    action: 'SKIP_NO_ACTUAL_TYPE',
-                    before: {
-                        businessType: currentBusinessType,
-                        businessIndustry: currentBusinessIndustry,
-                    },
-                });
+                    result.skipped++;
+                }
+            } else if (currentBusinessType) {
+            // businessType is already an actual type (owner corrected, or new store)
+                result.alreadyCorrect++;
+            } else {
                 result.skipped++;
             }
-        } else if (!PLAN_TYPES.has(currentBusinessType) && currentBusinessType) {
-            // businessType is already an actual type (owner corrected, or new store)
-            result.details.push({
-                docId: doc.id,
-                action: 'ALREADY_CORRECT',
-                before: {
-                    businessType: currentBusinessType,
-                    businessIndustry: currentBusinessIndustry,
-                    businessCategory: data.businessCategory,
-                },
-            });
-            result.alreadyCorrect++;
-        } else {
-            result.details.push({
-                docId: doc.id,
-                action: 'SKIP_EMPTY',
-                before: {
-                    businessType: currentBusinessType,
-                    businessIndustry: currentBusinessIndustry,
-                },
-            });
-            result.skipped++;
         }
-    }
 
-    // Commit remaining batch
-    if (!DRY_RUN && batchCount > 0) {
-        await batch.commit();
-    }
+        if (!DRY_RUN && batchCount > 0) {
+            if (storesSummaryRef && Object.keys(summaryPatch).length > 0) {
+                batch.set(storesSummaryRef, {
+                    stores: summaryPatch,
+                }, { merge: true });
+            }
+            await batch.commit();
+        }
+        cursor = snapshot.docs.length === WRITE_BATCH_LIMIT
+            ? snapshot.docs[snapshot.docs.length - 1]
+            : null;
+    } while (cursor);
 
     return result;
 }
@@ -230,6 +264,9 @@ async function main() {
 
 function printResult(result: MigrationResult) {
     console.log(`  Total: ${result.total} | Swapped: ${result.swapped} | Already correct: ${result.alreadyCorrect} | Skipped: ${result.skipped}`);
+    if (result.collection === 'stores') {
+        console.log(`  Store summaries synced: ${result.summarySynced} | Missing summary entries: ${result.summaryMissing}`);
+    }
 
     // Print first few swap details
     const swaps = result.details.filter(d => d.action === 'SWAP');
@@ -244,7 +281,10 @@ function printResult(result: MigrationResult) {
     }
 }
 
-main().catch(err => {
-    console.error('Migration failed:', err);
-    process.exit(1);
-});
+if (require.main === module) {
+    main().catch((error) => {
+        const message = error instanceof Error ? error.message.slice(0, 240) : 'Business-type migration failed.';
+        console.error('business_type_swap_migration_failed', message);
+        process.exitCode = 1;
+    });
+}

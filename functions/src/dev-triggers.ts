@@ -5,19 +5,10 @@ import { dispatchPublishingEmbeddingTasks, finalizePublishingJob } from './logic
 import { processMenuImagesJobLogic } from './logic/processMenuImagesJob';
 import { startGenerationLogic } from "./logic/startGeneration";
 import { IngestionJob, MenuImageProcessingJob } from "./types";
+import { getBoundedFunctionsErrorContext } from './utils/boundedErrorContext';
 
 const DEV_TRIGGER_FAILED_CODE = 'DEV_TRIGGER_FAILED';
 const DEV_TRIGGER_MISSING_DATA_CODE = 'DEV_TRIGGER_MISSING_DATA';
-
-function boundedDiagnosticValue(value: unknown): string | number | boolean | null {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        return trimmed ? trimmed.slice(0, 80) : null;
-    }
-    return null;
-}
 
 function getDevTriggerRequestContext(data: unknown, triggerName: string): Record<string, string | number | boolean | null> {
     const requestData = data && typeof data === 'object' ? data as Record<string, unknown> : {};
@@ -33,11 +24,11 @@ function getDevTriggerRequestContext(data: unknown, triggerName: string): Record
 }
 
 function getDevTriggerErrorContext(error: unknown): Record<string, string | number | boolean | null> {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
-        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+        sourceErrorName: context.sourceErrorName || typeof error,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceErrorStatus: context.sourceStatusCode ?? null,
     };
 }
 

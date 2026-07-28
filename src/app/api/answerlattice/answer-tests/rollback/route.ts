@@ -4,30 +4,47 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
-import { AnswerlatticeAnswerTestRollbackSchema } from '@lib/answerlattice/answerTestContracts';
-import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import {
-    normalizeAnswerlatticeScopeDocumentId,
-    resolveAnswerlatticeSessionScope,
-} from '@lib/answerlattice/sessionScope';
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
+import {
+    AnswerlatticeAnswerTestRollbackResponseSchema,
+    AnswerlatticeAnswerTestRollbackSchema,
+    isAnswerlatticeAnswerTestRollbackAuthorityInScope,
+} from '@lib/answerlattice/answerTestContracts';
+import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import {
     normalizeAnswerlatticeCanonicalAnswerId,
     normalizeAnswerlatticeMutationProposalId,
     normalizeAnswerlatticeResolvedEntityIds,
 } from '@lib/answerlattice/governanceIdBoundary';
-import { validateProcedure } from '@lib/answerlattice/procedureValidation';
+import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
-import type { AnswerlatticeAnswerType, AnswerlatticeProcedure } from '@type/answerlattice';
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
 const ROLLBACK_REQUEST_MAX_BODY_BYTES = 8 * 1024;
+const PRIVATE_NO_STORE_HEADERS = ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS;
+const RollbackStatusSchema = z.enum(['pending_review', 'approved', 'rejected', 'implemented']);
+const AnswerTypeSchema = z.enum(['explanation', 'navigation', 'procedure']);
+
+class AnswerlatticeRollbackProposalError extends Error {
+    constructor(
+        readonly publicMessage: string,
+        readonly status: number,
+    ) {
+        super(publicMessage);
+        this.name = 'AnswerlatticeRollbackProposalError';
+    }
+}
 const RestorableContentSchema = z.object({
     structuredSummary: z.string().trim().min(1).max(2000),
     detailedExplanation: z.string().trim().min(1).max(24000),
@@ -42,16 +59,25 @@ const RestorableSnapshotSchema = z.object({
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS) {
-        return NextResponse.json({ error: 'Answer tests are not enabled.' }, { status: 403 });
+        return NextResponse.json(
+            { error: 'Answer tests are not enabled.' },
+            { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
+        );
     }
     const sessionScope = resolveAnswerlatticeSessionScope(session);
     if (!sessionScope) {
         return NextResponse.json(
             { error: 'Not onboarded' },
-            { status: 400, headers: { 'Cache-Control': 'private, no-store' } },
+            { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
         );
     }
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json(
+            { error: 'Forbidden' },
+            { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
+        );
+    }
 
     try {
         const rateLimit = await checkRateLimit({
@@ -63,11 +89,24 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ),
             limit: 10,
             window: 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+            const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
             return NextResponse.json(
-                { error: 'Too many rollback proposals. Please wait before trying again.' },
-                { status: 429, headers: { 'Cache-Control': 'private, no-store' } },
+                {
+                    error: providerUnavailable
+                        ? 'Rollback proposals are temporarily unavailable. Please try again shortly.'
+                        : 'Too many rollback proposals. Please wait before trying again.',
+                },
+                {
+                    status: providerUnavailable ? 503 : 429,
+                    headers: {
+                        ...PRIVATE_NO_STORE_HEADERS,
+                        'Retry-After': String(retryAfter),
+                    },
+                },
             );
         }
 
@@ -76,108 +115,126 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             session,
             ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
         );
-        if (permission.response) return permission.response;
+        if (permission.response) {
+            permission.response.headers.set('Cache-Control', PRIVATE_NO_STORE_HEADERS['Cache-Control']);
+            permission.response.headers.set('X-Content-Type-Options', PRIVATE_NO_STORE_HEADERS['X-Content-Type-Options']);
+            return permission.response;
+        }
         const access = permission.access;
-        if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        if (!access) {
+            return NextResponse.json(
+                { error: 'Forbidden' },
+                { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
+            );
+        }
 
         const bodyResult = await readBoundedJsonBody(request, ROLLBACK_REQUEST_MAX_BODY_BYTES);
         if (bodyResult.ok === false) {
-            return NextResponse.json({ error: 'Invalid rollback proposal request.' }, { status: bodyResult.response.status });
+            return NextResponse.json(
+                { error: 'Invalid rollback proposal request.' },
+                { status: bodyResult.response.status, headers: PRIVATE_NO_STORE_HEADERS },
+            );
         }
         const parsed = AnswerlatticeAnswerTestRollbackSchema.safeParse(bodyResult.data);
         if (!parsed.success) {
-            return NextResponse.json({ error: 'Invalid rollback proposal request.' }, { status: 400 });
+            return NextResponse.json(
+                { error: 'Invalid rollback proposal request.' },
+                { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+            );
         }
         const answerId = normalizeAnswerlatticeCanonicalAnswerId(parsed.data.answerId);
         const auditLogId = normalizeAnswerlatticeMutationProposalId(parsed.data.auditLogId);
         if (!answerId || !auditLogId) {
-            return NextResponse.json({ error: 'Invalid rollback proposal request.' }, { status: 400 });
+            return NextResponse.json(
+                { error: 'Invalid rollback proposal request.' },
+                { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+            );
         }
 
         const db = answerlatticeFirestoreAdmin;
-        const [answerSnapshot, auditSnapshot] = await Promise.all([
-            db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(answerId).get(),
-            db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(auditLogId).get(),
-        ]);
-        if (!answerSnapshot.exists || !auditSnapshot.exists) {
-            return NextResponse.json({ error: 'Answer version not found.' }, { status: 404 });
-        }
-        const answer = answerSnapshot.data() || {};
-        const audit = auditSnapshot.data() || {};
-        const inScope = answer.pId === PRODUCT_IDS.ANSWERLATTICE
-            && audit.pId === PRODUCT_IDS.ANSWERLATTICE
-            && normalizeAnswerlatticeScopeDocumentId(answer.tId) === access.scope.tenantId
-            && normalizeAnswerlatticeScopeDocumentId(answer.sId) === access.scope.storeId
-            && normalizeAnswerlatticeScopeDocumentId(audit.tId) === access.scope.tenantId
-            && normalizeAnswerlatticeScopeDocumentId(audit.sId) === access.scope.storeId;
-        if (!inScope || audit.entityType !== 'canonicalAnswer' || audit.entityId !== answerId) {
-            return NextResponse.json({ error: 'Answer version not found.' }, { status: 404 });
-        }
-        if (audit.action !== 'canonical_answer_updated') {
-            return NextResponse.json({ error: 'This history entry cannot be used for a rollback proposal.' }, { status: 409 });
-        }
-
-        const restorable = RestorableSnapshotSchema.safeParse(audit.previousState?.answerSnapshot);
-        if (!restorable.success) {
-            return NextResponse.json(
-                { error: 'This older history entry does not contain a restorable answer snapshot.' },
-                { status: 409 },
-            );
-        }
-        const relatedEntityIds = normalizeAnswerlatticeResolvedEntityIds(answer.scope?.entityIds, 25);
-        if (relatedEntityIds.length === 0) {
-            return NextResponse.json({ error: 'The answer is not bound to a valid product entity.' }, { status: 409 });
-        }
-
-        const answerType = (restorable.data.answerType || answer.answerType || 'explanation') as AnswerlatticeAnswerType;
-        const suggestedChange: Record<string, unknown> = {
-            structuredSummary: restorable.data.content.structuredSummary,
-            detailedExplanation: restorable.data.content.detailedExplanation,
-            ...(restorable.data.content.edgeCases ? { edgeCases: restorable.data.content.edgeCases } : {}),
-            ...(restorable.data.content.constraints ? { constraints: restorable.data.content.constraints } : {}),
-            reviewReason: parsed.data.reason,
-            rollbackAuditLogId: auditLogId,
-        };
-        if (answerType === 'procedure' && restorable.data.content.procedure) {
-            const procedure = restorable.data.content.procedure as AnswerlatticeProcedure;
-            const procedureValidation = validateProcedure(answerType, procedure);
-            if (!procedureValidation.valid) {
-                return NextResponse.json({ error: 'The saved procedure version is no longer valid.' }, { status: 409 });
-            }
-            suggestedChange.procedure = procedure;
-        }
-
+        const answerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS).doc(answerId);
+        const auditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(auditLogId);
         const proposalId = `rollback_${auditLogId}`;
         const proposalRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS).doc(proposalId);
         const proposalAuditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc(`rollback_proposal_${auditLogId}`);
         const actor = String(access.user.email || access.user.name || access.user.id || 'unknown').slice(0, 180);
         const result = await db.runTransaction(async transaction => {
+            const answerSnapshot = await transaction.get(answerRef);
+            const auditSnapshot = await transaction.get(auditRef);
             const existing = await transaction.get(proposalRef);
             const existingAudit = await transaction.get(proposalAuditRef);
+            if (!answerSnapshot.exists || !auditSnapshot.exists) {
+                throw new AnswerlatticeRollbackProposalError('Answer version not found.', 404);
+            }
+            const answer = answerSnapshot.data() || {};
+            const audit = auditSnapshot.data() || {};
+            const expectedScope = { tId: access.scope.tenantId, sId: access.scope.storeId };
+            const inScope = isAnswerlatticeAnswerTestRollbackAuthorityInScope(answer, expectedScope)
+                && isAnswerlatticeAnswerTestRollbackAuthorityInScope(audit, expectedScope);
+            if (!inScope || audit.entityType !== 'canonicalAnswer' || audit.entityId !== answerId) {
+                throw new AnswerlatticeRollbackProposalError('Answer version not found.', 404);
+            }
+            if (audit.action !== 'canonical_answer_updated') {
+                throw new AnswerlatticeRollbackProposalError(
+                    'This history entry cannot be used for a rollback proposal.',
+                    409,
+                );
+            }
+            const restorable = RestorableSnapshotSchema.safeParse(audit.previousState?.answerSnapshot);
+            if (!restorable.success) {
+                throw new AnswerlatticeRollbackProposalError(
+                    'This older history entry does not contain a restorable answer snapshot.',
+                    409,
+                );
+            }
+            const relatedEntityIds = normalizeAnswerlatticeResolvedEntityIds(answer.scope?.entityIds, 25);
+            if (relatedEntityIds.length === 0) {
+                throw new AnswerlatticeRollbackProposalError(
+                    'The answer is not bound to a valid product entity.',
+                    409,
+                );
+            }
+            const currentAnswerType = AnswerTypeSchema.safeParse(answer.answerType);
+            const answerType = restorable.data.answerType
+                || (currentAnswerType.success ? currentAnswerType.data : 'explanation');
+            const suggestedChange: Record<string, unknown> = {
+                structuredSummary: restorable.data.content.structuredSummary,
+                detailedExplanation: restorable.data.content.detailedExplanation,
+                ...(restorable.data.content.edgeCases ? { edgeCases: restorable.data.content.edgeCases } : {}),
+                ...(restorable.data.content.constraints ? { constraints: restorable.data.content.constraints } : {}),
+                reviewReason: parsed.data.reason,
+                rollbackAuditLogId: auditLogId,
+            };
+            if (answerType === 'procedure') {
+                const procedure = AnswerlatticeProcedureSchema.safeParse(restorable.data.content.procedure);
+                if (!procedure.success) {
+                    throw new AnswerlatticeRollbackProposalError(
+                        'The saved procedure version is no longer valid.',
+                        409,
+                    );
+                }
+                suggestedChange.procedure = procedure.data;
+            }
             if (existing.exists) {
                 const data = existing.data() || {};
                 if (
-                    data.pId !== PRODUCT_IDS.ANSWERLATTICE
-                    || normalizeAnswerlatticeScopeDocumentId(data.tId) !== access.scope.tenantId
-                    || normalizeAnswerlatticeScopeDocumentId(data.sId) !== access.scope.storeId
+                    !isAnswerlatticeAnswerTestRollbackAuthorityInScope(data, expectedScope)
                     || data.targetAnswerId !== answerId
                     || data.mutationType !== 'version_update'
                     || data.suggestedChange?.rollbackAuditLogId !== auditLogId
                 ) {
-                    throw new Error('rollback_proposal_scope_conflict');
+                    throw new AnswerlatticeRollbackProposalError('Rollback proposal conflict.', 409);
                 }
             }
             if (existingAudit.exists) {
                 const data = existingAudit.data() || {};
                 if (
-                    data.pId !== PRODUCT_IDS.ANSWERLATTICE
-                    || normalizeAnswerlatticeScopeDocumentId(data.tId) !== access.scope.tenantId
-                    || normalizeAnswerlatticeScopeDocumentId(data.sId) !== access.scope.storeId
+                    !isAnswerlatticeAnswerTestRollbackAuthorityInScope(data, expectedScope)
                     || data.action !== 'answer_rollback_proposed'
                     || data.entityType !== 'mutationProposal'
                     || data.entityId !== proposalId
                 ) {
-                    throw new Error('rollback_proposal_scope_conflict');
+                    throw new AnswerlatticeRollbackProposalError('Rollback proposal conflict.', 409);
                 }
             }
 
@@ -220,27 +277,39 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     createdOn: timestamp,
                 });
             }
-            const existingStatus = existing.exists ? String(existing.data()?.status || '') : 'pending_review';
+            const existingStatus = existing.exists
+                ? RollbackStatusSchema.safeParse(existing.data()?.status)
+                : RollbackStatusSchema.safeParse('pending_review');
+            if (!existingStatus.success) {
+                throw new AnswerlatticeRollbackProposalError('Rollback proposal conflict.', 409);
+            }
             return {
                 id: proposalId,
                 created: !existing.exists,
-                status: existingStatus || 'pending_review',
+                status: existingStatus.data,
             };
         });
 
-        return NextResponse.json({
+        const response = AnswerlatticeAnswerTestRollbackResponseSchema.parse({
             proposalId: result.id,
             created: result.created,
             status: result.status,
-        }, { headers: { 'Cache-Control': 'private, no-store' } });
+        });
+        return NextResponse.json(response, { headers: PRIVATE_NO_STORE_HEADERS });
     } catch (error) {
-        if (error instanceof Error && error.message === 'rollback_proposal_scope_conflict') {
-            return NextResponse.json({ error: 'Rollback proposal conflict.' }, { status: 409 });
+        if (error instanceof AnswerlatticeRollbackProposalError) {
+            return NextResponse.json(
+                { error: error.publicMessage },
+                { status: error.status, headers: PRIVATE_NO_STORE_HEADERS },
+            );
         }
         logRuntimeFailure('answerlattice_answer_rollback_proposal_failed', error, {
             ...getBoundedRuntimeStringContext('tenantId', sessionScope.tenantId),
             ...getBoundedRuntimeStringContext('storeId', sessionScope.storeId),
         });
-        return NextResponse.json({ error: 'Could not create the rollback proposal.' }, { status: 500 });
+        return NextResponse.json(
+            { error: 'Could not create the rollback proposal.' },
+            { status: 500, headers: PRIVATE_NO_STORE_HEADERS },
+        );
     }
 });

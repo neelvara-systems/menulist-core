@@ -20,9 +20,10 @@ import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScop
 import { normalizeBillingSubscriptionScopeDocumentId } from '@lib/billing/subscriptionDocumentIdBoundary';
 import { getMenuListSessionProviderScopeKey } from '@lib/multiOutlet/sessionProviderScopeBoundary';
 import { useSession } from 'next-auth/react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { getBoundedPaymentStringContext, getPaymentFlowLogContext, logPaymentFailure } from './paymentDiagnostics';
 import useRazorpayScript from './useRazorpayScript';
+import { isRazorpayCheckoutConfigurationReady } from '@lib/billing/razorpayScriptBoundary';
 
 declare global {
     interface Window {
@@ -115,10 +116,15 @@ const hasPaymentResponseError = (value: unknown): boolean => (
     isRecord(value) && 'error' in value && value.error !== undefined && value.error !== null
 );
 
-const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {}) => {
+type PaymentLoaderDispatch = (
+    action: ReturnType<typeof startLoader> | ReturnType<typeof stopLoader>,
+) => unknown;
+
+const usePaymentHandler = (dispatcher: PaymentLoaderDispatch, options: PaymentHandlerOptions = {}) => {
     const [pendingPlan, setPendingPlan] = useState<{ plan: Plan; currency: Currency } | null>(null);
     const { data: session, update } = useSession();
     const isScriptLoaded = useRazorpayScript();
+    const checkoutInFlightRef = useRef(false);
     const productId = options.productId || PRODUCT_IDS.MENULIST;
     const productName = options.productName || 'MenuList.ai';
     const subscriptionCheckoutName = options.subscriptionCheckoutName || `${productName} Subscription`;
@@ -205,6 +211,12 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         quantity: number = 1,
         replacementForSubscriptionId?: string,
     ): Promise<SubscriptionCheckoutResult> => {
+        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
+            throw createPaymentStatusError(
+                'Razorpay checkout is not available.',
+                'payment_checkout_unavailable',
+            );
+        }
         const subscriptionQuantity = normalizeSubscriptionQuantity(quantity);
         let subscriptionId: string;
 
@@ -312,6 +324,13 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 'payment_checkout_unavailable',
             );
         }
+        if (checkoutInFlightRef.current) {
+            throw createPaymentStatusError(
+                'A checkout is already in progress.',
+                'payment_checkout_in_progress',
+            );
+        }
+        checkoutInFlightRef.current = true;
         try {
             return await createSubscription(plan, currency, quantity);
         } catch (error) {
@@ -324,6 +343,8 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 }));
             }
             throw error;
+        } finally {
+            checkoutInFlightRef.current = false;
         }
     };
 
@@ -455,6 +476,13 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 'payment_checkout_unavailable',
             );
         }
+        if (checkoutInFlightRef.current) {
+            throw createPaymentStatusError(
+                'A checkout is already in progress.',
+                'payment_checkout_in_progress',
+            );
+        }
+        checkoutInFlightRef.current = true;
         const targetQuantity = normalizeSubscriptionQuantity(quantity ?? currentPlan.quantity ?? 1);
         try {
             const paymentResponse = await createSubscription(
@@ -474,15 +502,28 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 }));
             }
             throw error;
+        } finally {
+            checkoutInFlightRef.current = false;
         }
     };
 
     const handleTopupPurchase = async (pack: AIEnhancementPack, currency: Currency): Promise<TopupCheckoutResult> => {
         const loaderLabel = "Processing Topup Payment";
-        if (!isScriptLoaded) {
-            throw new Error('Razorpay checkout is not available.');
+        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
+            throw createPaymentStatusError(
+                'Razorpay checkout is not available.',
+                'payment_checkout_unavailable',
+            );
         }
+        if (checkoutInFlightRef.current) {
+            throw createPaymentStatusError(
+                'A checkout is already in progress.',
+                'payment_checkout_in_progress',
+            );
+        }
+        checkoutInFlightRef.current = true;
 
+        try {
         let orderId: string;
         dispatcher(startLoader(loaderLabel));
         try {
@@ -525,7 +566,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
             dispatcher(stopLoader(loaderLabel));
         }
 
-        return new Promise<TopupCheckoutResult>((resolve, reject) => {
+        return await new Promise<TopupCheckoutResult>((resolve, reject) => {
             const options: RazorpayCheckoutOptions = {
                 key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
                 order_id: orderId,
@@ -591,10 +632,27 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 reject(error);
             }
         });
+        } finally {
+            checkoutInFlightRef.current = false;
+        }
     };
 
     const executePostOnboarding = useCallback(async (purchaseIntent: PurchaseIntent) => {
-        return new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
+        if (!isRazorpayCheckoutConfigurationReady(isScriptLoaded, process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID)) {
+            throw createPaymentStatusError(
+                'Razorpay checkout is not available.',
+                'payment_checkout_unavailable',
+            );
+        }
+        if (checkoutInFlightRef.current) {
+            throw createPaymentStatusError(
+                'A checkout is already in progress.',
+                'payment_checkout_in_progress',
+            );
+        }
+        checkoutInFlightRef.current = true;
+        try {
+        return await new Promise<SubscriptionCheckoutResult>((resolve, reject) => {
             void (async () => {
             try {
                 const { businessName, businessIndustry, currency, plan, timeZone, businessDayEndTime } = purchaseIntent;
@@ -712,8 +770,11 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                 logPaymentFailure('payment_post_onboarding_executor_failed', error, buildPaymentLogContext('post_onboarding'));
                 reject(error);
             });
-        })
-    }, [buildPaymentLogContext, dispatcher, session, update]); // Add dependencies used inside the function
+        });
+        } finally {
+            checkoutInFlightRef.current = false;
+        }
+    }, [buildPaymentLogContext, dispatcher, isScriptLoaded, session, update]); // Add dependencies used inside the function
 
     const verifySubscriptionPaymentResponse = async (paymentResponse: unknown): Promise<RazorpayPaymentResponse> => {
         if (!isRazorpayPaymentResponse(paymentResponse, 'subscription')) {

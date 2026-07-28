@@ -1,18 +1,22 @@
 import { getRateLimitForFeature, type RateLimitFeature } from '@lib/rateLimit/configs';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { checkRateLimit } from '@lib/rateLimit';
 import { logger } from '@lib/monitoring/logger';
 import { canUserAccessStore } from '@lib/multiOutlet/storeSwitchAccess';
 import { getBoundedSecurityRouteContext, getBoundedSecurityStringContext } from '@lib/security/securityDiagnostics';
 import { verifyTenantAccess } from '@/middleware/auth';
+import { resolveStorePermissionSessionScope } from '@lib/permissions/scopeDocumentId';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { normalizeAiMenuManagerScopeDocumentId } from './routeIds';
 
 export const getAiMenuManagerSessionScope = (session: any) => {
-    const tenantScope = normalizeAiMenuManagerScopeDocumentId(session?.tId || session?.user?.tenantId);
-    const storeScope = normalizeAiMenuManagerScopeDocumentId(session?.sId || session?.user?.storeId);
-    const userId = session?.uId || session?.user?.id;
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    const tenantScope = normalizeAiMenuManagerScopeDocumentId(sessionScope?.tenantScope.documentId);
+    const storeScope = normalizeAiMenuManagerScopeDocumentId(sessionScope?.storeScope.documentId);
+    const userId = resolveCurrentSessionUserDocumentId(session);
     return {
         tId: tenantScope?.documentId || null,
         sId: storeScope?.documentId || null,
@@ -22,7 +26,7 @@ export const getAiMenuManagerSessionScope = (session: any) => {
 
 const buildSessionUserForStoreAccess = (session: any, fallbackStoreId: string | number) => ({
     ...(session?.user || {}),
-    platformRole: session?.platformRole || session?.user?.platformRole,
+    platformRole: resolveExactSessionPlatformRole(session) || undefined,
     storeId: session?.user?.storeId || session?.sId || fallbackStoreId,
     storeIds: session?.user?.storeIds || session?.storeIds,
     stores: session?.user?.stores || session?.stores,
@@ -84,7 +88,13 @@ export const ensureAiMenuManagerTenantAccess = (
         return NextResponse.json({ error: 'User not onboarded' }, { status: 400 });
     }
 
-    if (!verifyTenantAccess(session, tenantScope.documentId, storeScope.documentId, request)) {
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    if (
+        !sessionScope
+        || sessionScope.tenantScope.numericId !== tenantScope.numericId
+        || sessionScope.storeScope.numericId !== storeScope.numericId
+        || !verifyTenantAccess(session, tenantScope.documentId, storeScope.documentId, request)
+    ) {
         logger.security('Tenant Access Violation - AI Menu Manager', {
             ...getBoundedSecurityRouteContext(session, request),
             endpoint: request.nextUrl.pathname,

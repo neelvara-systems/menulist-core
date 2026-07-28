@@ -94,14 +94,23 @@ const RELOAD_GUARD_MS = 30000; // Minimum 30s between reloads
  * Throttles reloads to prevent rapid consecutive refreshes from multiple triggers
  * @param componentName - Unique name for localStorage key scoping (e.g. 'screen', 'menuboard')
  */
-export function guardedReload(componentName: string): void {
-    const guardKey = `menulist-${componentName}-last-reload`;
+export function getScreenReloadGuardKey(componentName: string, screenToken: string): string | null {
+    const component = componentName.trim();
+    const token = screenToken.trim();
+    if (!/^[a-z][a-z0-9-]{0,31}$/i.test(component) || !isValidScreenToken(token)) return null;
+    return `menulist-${component}-${token}-last-reload`;
+}
+
+export function guardedReload(componentName: string, screenToken: string): void {
+    const guardKey = getScreenReloadGuardKey(componentName, screenToken);
     try {
-        const lastReload = parseInt(localStorage.getItem(guardKey) || '0', 10);
-        if (Date.now() - lastReload < RELOAD_GUARD_MS) {
-            return;
+        if (guardKey) {
+            const lastReload = parseInt(localStorage.getItem(guardKey) || '0', 10);
+            if (Date.now() - lastReload < RELOAD_GUARD_MS) {
+                return;
+            }
+            localStorage.setItem(guardKey, String(Date.now()));
         }
-        localStorage.setItem(guardKey, String(Date.now()));
     } catch (error) {
         logScreenDisplayFailure("screen_guarded_reload_storage_failed", error, {
             ...getBoundedScreenStringContext("componentName", componentName),
@@ -117,7 +126,7 @@ export function guardedReload(componentName: string): void {
  * simultaneously causing SSR/Firestore spikes. Random jitter smooths the load.
  * Used for content-version-triggered reloads only (not 6-hour health refreshes).
  */
-export function guardedReloadWithJitter(componentName: string): void {
+export function guardedReloadWithJitter(componentName: string, screenToken: string): void {
     const jitterMs = Math.floor(Math.random() * 60000); // 0-60 seconds
-    setTimeout(() => guardedReload(componentName), jitterMs);
+    setTimeout(() => guardedReload(componentName, screenToken), jitterMs);
 }

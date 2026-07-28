@@ -24,10 +24,9 @@ import PageProofStrip from './components/PageProofStrip';
 import PricingPreviewSection from './components/PricingPreviewSection';
 import SectionHeader from './components/SectionHeader';
 import SupportSurfaceStoryNav from './components/SupportSurfaceStoryNav';
-import { AnswerlatticeDiagramCore, AnswerlatticeLoopDiagram } from './components/AnswerlatticeFlowDiagram';
+import { AnswerlatticeDiagramCore } from './components/AnswerlatticeFlowDiagram';
 import AnswerlatticeMotionAsset from './components/AnswerlatticeMotionAsset';
 import {
-    ANSWERLATTICE_AUTHORITY_TRANSFER_MOTION,
     ANSWERLATTICE_FEATURE_ASSETS,
     ANSWERLATTICE_DEMO_SURFACE_ASSETS,
     ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION,
@@ -59,13 +58,8 @@ async function getBasePath(): Promise<string> {
 
 const HERO_CHIPS = [
     'Approved answers first',
-    'Pre-release answer checks',
-    'Fallback when missing',
-    'Owner review loop',
-    'In-app widget',
-    'Hosted help center',
-    'FAQ and changelog',
-    'Safe page context',
+    'Safe fallback when missing',
+    'Founder review before publish',
 ];
 
 const HERO_TITLE_LINES = [
@@ -436,39 +430,6 @@ const SETUP_STEPS = [
     },
 ];
 
-const SUPPORT_LOOP = [
-    {
-        title: 'User asks in your product',
-        detail: 'Billing, onboarding, settings, releases, integrations, and errors can each carry safe context.',
-        meta: 'User',
-    },
-    {
-        title: 'Known help is served',
-        detail: 'Approved answers, FAQ, hosted help, and changelog content are checked before fallback.',
-        meta: 'Support',
-    },
-    {
-        title: 'Missing help opens fallback',
-        detail: 'The user can create a ticket instead of hitting a dead end.',
-        meta: 'Fallback',
-    },
-    {
-        title: 'The gap becomes visible',
-        detail: 'Repeated tickets, low ratings, and missing answers show what support needs next.',
-        meta: 'Gap',
-    },
-    {
-        title: 'You approve the improvement',
-        detail: 'The next user gets better official support without you repeating the same reply.',
-        meta: 'Review',
-    },
-    {
-        title: 'Every surface stays current',
-        detail: 'The widget, hosted help, FAQ, changelog, and fallback path use the same reviewed support truth.',
-        meta: 'Surfaces',
-    },
-];
-
 const TRUST_CARDS = [
     {
         title: 'AI can draft. You decide what is official.',
@@ -569,7 +530,7 @@ function HomepageHero({ basePath }: { basePath: string }) {
                         ))}
                     </h1>
                     <p className="al-home-hero__subtitle mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-[#a0a0c0] sm:text-xl">
-                        AnswerLattice turns scattered docs, tickets, releases, product context, screenshots, recordings, notes, and repeated replies into approved answers for your help widget, help center, and future AI agents.
+                        Answer repeated product questions from approved sources, fall back safely when coverage is missing, and turn unresolved questions into founder review work.
                     </p>
                     <div className="al-home-hero__actions mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -1256,28 +1217,124 @@ function TrustAndFallbackSection() {
     );
 }
 
-function ConnectedLoopSection() {
+function ConnectedLoopSection({ basePath }: { basePath: string }) {
+    const resolutionSteps = [
+        {
+            label: 'Known question',
+            title: 'A user asks why they cannot change their plan.',
+            detail: 'Safe page context says Billing settings, Starter plan, and Account owner.',
+        },
+        {
+            label: 'Approved answer',
+            title: 'AnswerLattice serves the reviewed billing answer.',
+            detail: 'The response includes the supporting source and the scope where the answer applies.',
+        },
+        {
+            label: 'Missing coverage',
+            title: 'The user asks whether a subscription can be paused.',
+            detail: 'No approved evidence supports an answer, so the widget opens the configured fallback.',
+        },
+        {
+            label: 'Founder review',
+            title: 'The repeated gap becomes one review task.',
+            detail: 'The founder can inspect linked questions and evidence, edit the draft, and approve or reject it.',
+        },
+        {
+            label: 'Tested improvement',
+            title: 'The approved answer is checked before reuse.',
+            detail: 'After its Answer Test passes, the answer can be used by the widget and hosted help.',
+        },
+    ];
+
     return (
         <section
-            className="px-4 py-20 sm:px-6"
-            data-answerlattice-visual-slot="home.support-loop.diagram"
+            className="border-y border-white/[0.06] bg-white/[0.012] px-4 py-20 sm:px-6"
+            data-answerlattice-visual-slot="home.support-loop.trusted-answer"
         >
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Shared support truth"
-                    title="Keep every support surface aligned."
-                    description="When an answer is missing, fallback becomes review work. When the fix is approved, the next user gets better support."
+                    eyebrow="The support loop"
+                    title="Answer what is known. Catch what is missing. Improve it once."
+                    description="A repeated support question should end in either a source-backed answer or a visible review task, never a confident guess."
                 />
-                <div className="mx-auto mb-8 max-w-5xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/25 sm:p-3" data-answerlattice-reveal>
-                    <AnswerlatticeMotionAsset
-                        asset={ANSWERLATTICE_AUTHORITY_TRANSFER_MOTION}
-                        assetSlotId="answerlattice.home.section.authority-transfer"
-                        assetRole="home-authority-transfer-motion"
-                        className="rounded-[1.5rem] border border-white/[0.08]"
-                    />
-                </div>
-                <div className="rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-4 shadow-2xl shadow-black/30 sm:p-6" data-answerlattice-reveal>
-                    <AnswerlatticeLoopDiagram idPrefix="al-home-support-loop" items={SUPPORT_LOOP} />
+
+                <div className="mt-10 grid gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.92fr)]">
+                    <div className="space-y-3">
+                        {resolutionSteps.map((step, index) => (
+                            <article
+                                key={step.label}
+                                className="grid gap-3 rounded-2xl border border-white/[0.08] bg-[#09091a] p-5 sm:grid-cols-[3rem_minmax(0,1fr)]"
+                                data-answerlattice-reveal-item
+                            >
+                                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-teal-200/15 bg-teal-300/[0.08] text-sm font-semibold text-teal-200">
+                                    {String(index + 1).padStart(2, '0')}
+                                </span>
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-widest text-teal-300">{step.label}</p>
+                                    <h3 className="mt-2 text-lg font-semibold text-white">{step.title}</h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{step.detail}</p>
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+
+                    <aside className="self-start rounded-[1.5rem] border border-teal-300/20 bg-[#09091a] p-5 shadow-2xl shadow-black/25 sm:p-6" aria-label="Sample trusted answer">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-teal-300">Seeded product example</p>
+                                <h3 className="mt-2 text-xl font-semibold text-white">Why this answer is trusted</h3>
+                            </div>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-teal-300/20 bg-teal-300/[0.08] px-3 py-1.5 text-xs font-semibold text-teal-100">
+                                <LuShieldCheck aria-hidden size={15} />
+                                Approved
+                            </span>
+                        </div>
+
+                        <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5">
+                            <p className="text-xs text-[#737391]">Question</p>
+                            <p className="mt-2 text-base font-semibold text-white">Why can&apos;t I change my plan?</p>
+                            <p className="mt-4 text-sm leading-6 text-[#d6d6ef]">
+                                Only an account owner can change the workspace plan. Open Billing settings while signed in with the owner role.
+                            </p>
+                        </div>
+
+                        <dl className="mt-5 divide-y divide-white/[0.07] text-sm">
+                            {[
+                                ['Supporting source', 'Billing policy, section 4'],
+                                ['Applies to', 'Starter plan · Account owner'],
+                                ['Product context', 'Billing settings'],
+                                ['Review state', 'Approved before publication'],
+                                ['Answer Test', 'Passed for this sample'],
+                            ].map(([label, value]) => (
+                                <div key={label} className="grid gap-1 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)]">
+                                    <dt className="text-[#737391]">{label}</dt>
+                                    <dd className="font-medium text-[#d6d6ef]">{value}</dd>
+                                </div>
+                            ))}
+                        </dl>
+
+                        <div className="mt-5 rounded-xl border border-amber-300/20 bg-amber-200/[0.05] p-4 text-sm leading-6 text-[#d8d8e8]">
+                            If plan, role, or approved evidence is missing, AnswerLattice asks for clarification or opens the configured fallback.
+                        </div>
+
+                        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/demo"
+                                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+                            >
+                                See support-loop demo
+                                <LuArrowRight aria-hidden size={16} />
+                            </AnswerlatticeLink>
+                            <AnswerlatticeLink
+                                basePath={basePath}
+                                href="/product/knowledge-governance"
+                                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-white/[0.1] bg-white/[0.03] px-4 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-white/[0.2] hover:text-white"
+                            >
+                                Review answer controls
+                            </AnswerlatticeLink>
+                        </div>
+                    </aside>
                 </div>
             </div>
         </section>
@@ -1361,10 +1418,15 @@ export default async function AnswerlatticeHomePage() {
             <main className="al-home-flow">
                 <HomepageHero basePath={basePath} />
                 <FirstTrustedAnswersSection basePath={basePath} />
-                <SupportSuiteSection basePath={basePath} />
-                <SupportSurfaceStorySection />
-                <ProductOverviewSection basePath={basePath} />
-                <ConnectedLoopSection />
+                {/*
+                 * Deferred homepage sections retained for one-line reactivation.
+                 * Keep these mounts commented until the longer homepage sequence is intentionally restored.
+                 *
+                 * <SupportSuiteSection basePath={basePath} />
+                 * <SupportSurfaceStorySection />
+                 * <ProductOverviewSection basePath={basePath} />
+                 */}
+                <ConnectedLoopSection basePath={basePath} />
                 <InstallSurfaceSection basePath={basePath} />
                 <FounderFitBoundarySection />
                 <PricingPreviewSection basePath={basePath} />

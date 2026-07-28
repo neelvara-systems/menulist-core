@@ -24,6 +24,7 @@ import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { normalizeOBPExternalHttpsUrl } from '@lib/obp/publicLinks';
+import { normalizeStarterActivationTimestamp } from '@lib/onboarding/starterActivation';
 import {
     buildAddress,
     buildAmenityFeatures,
@@ -92,6 +93,7 @@ export function generateOBPSchema(
 
     const reservationUrl = normalizeOBPExternalHttpsUrl(storeData?.publicPresence?.reservationUrl);
     const orderUrl = normalizeOBPExternalHttpsUrl(storeData?.publicPresence?.orderUrl);
+    const dateModified = normalizeOBPSchemaModifiedOn(storeData?.modifiedOn);
 
     return {
         '@context': 'https://schema.org',
@@ -135,11 +137,7 @@ export function generateOBPSchema(
             reservationUrl,
             orderUrl,
         ),
-        ...(storeData?.modifiedOn && {
-            dateModified: typeof storeData.modifiedOn === 'string'
-                ? storeData.modifiedOn
-                : storeData.modifiedOn?.toDate?.()?.toISOString?.() || undefined,
-        }),
+        ...(dateModified && { dateModified }),
         ...(storeData?.cuisineTypes?.length && { servesCuisine: storeData.cuisineTypes }),
         ...(storeData?.publicPresence?.establishedYear && {
             foundingDate: String(storeData.publicPresence.establishedYear),
@@ -157,6 +155,10 @@ export function generateOBPSchema(
             url: 'https://www.menulist.ai',
         },
     };
+}
+
+export function normalizeOBPSchemaModifiedOn(value: unknown): string | undefined {
+    return normalizeStarterActivationTimestamp(value) || undefined;
 }
 
 function buildMenuUrl(canonicalUrl: string): string {

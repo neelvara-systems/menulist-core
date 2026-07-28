@@ -30,7 +30,7 @@ const getProviderErrorIndicators = (value: unknown, depth = 0): string[] => {
         .map(([, entry]) => String(entry));
 
     return [
-        ...(value instanceof Error ? [value.name] : []),
+        ...(value instanceof Error ? [getBoundedErrorName(value) || 'Error'] : []),
         ...indicators,
         ...getProviderErrorIndicators(record.error, depth + 1),
         ...getProviderErrorIndicators(record.errorDetails, depth + 1),
@@ -91,3 +91,4 @@ export const isAIProviderRateLimitError = (error: any): boolean => {
         indicators.includes('rate_limit') ||
         indicators.includes('too_many_requests');
 };
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';

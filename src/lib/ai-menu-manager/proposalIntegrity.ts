@@ -280,9 +280,11 @@ export function normalizeAiMenuManagerProposalSnapshot(
         receipt.proposalId !== proposalId
         || receipt.actionType !== actionType
         || receipt.projectId !== projectId
-        || (status === 'executed' && receipt.status !== 'executed')
-        || (status === 'failed' && receipt.status !== 'failed')
-        || (status === 'manual_task' && receipt.status !== 'manual_task')
+        || !(
+            (status === 'executed' && receipt.status === 'executed')
+            || (status === 'failed' && receipt.status === 'failed')
+            || (status === 'manual_task' && receipt.status === 'manual_task')
+        )
     )) return null;
     if (['executed', 'failed'].includes(status) && !receipt) return null;
 

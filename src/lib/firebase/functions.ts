@@ -1,6 +1,11 @@
 'use client';
 
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { secureError } from '@lib/security/secureLogger';
 import type { IngestionJobCategoriesMap } from '@type/knowledgeBase';
@@ -19,24 +24,17 @@ const getBoundedFirebaseCallableStringContext = (
 };
 
 const getFirebaseCallableErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getFirebaseCallableErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-
-    const normalized = String(code).slice(0, 64);
+    const normalized = getBoundedErrorCode(error);
+    if (normalized === undefined) return undefined;
     return /^[a-zA-Z0-9._:/-]+$/.test(normalized) ? normalized : 'non_standard_code';
 };
 
 const getFirebaseCallableErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object' || !('status' in error)) return undefined;
-    const status = Number((error as { status?: unknown }).status);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 const logVerifyMenuPublishFailure = (

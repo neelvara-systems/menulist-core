@@ -1621,7 +1621,10 @@ const revenueControlProjector: WorkspaceCollectionProjector = {
     publicFields: publicFieldsForSchema(revenueControlSchema),
     project: (raw, documentId) => {
         const record = productIdentity(raw, documentId, "revenueControlSummaryId", SIGNALDESK_SUMMARY_DOCS.REVENUE);
-        return parseWorkspaceProjection(revenueControlSchema, record);
+        const projected = parseWorkspaceProjection(revenueControlSchema, record) as WorkspaceItem<"revenueControlSummaries">;
+        return projected.pipelineValueMinor === 0 && projected.pipelineCurrency
+            ? { ...projected, pipelineCurrency: null }
+            : projected;
     },
 };
 

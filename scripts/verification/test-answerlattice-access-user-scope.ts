@@ -24,6 +24,16 @@ assert.equal(
     'the exact tenant and store candidate must be selected',
 );
 assert.equal(
+    selectAnswerlatticeAccessUserCandidate([canonical], 11, 22, 'different-session-user'),
+    null,
+    'an email-matching workspace identity must not replace the exact authenticated user document',
+);
+assert.equal(
+    selectAnswerlatticeAccessUserCandidate([canonical], 11, 22, canonical.id)?.id,
+    canonical.id,
+    'the exact authenticated user document remains admissible',
+);
+assert.equal(
     selectAnswerlatticeAccessUserCandidate([canonical], 12, 22),
     null,
     'a cross-tenant candidate must be rejected',

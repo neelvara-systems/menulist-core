@@ -11,7 +11,7 @@
  * @see __docs__/discovery-infrastructure/taxonomy-system.md
  */
 
-import type { TaxonomyMatchResult, DietaryMatchResult } from './types';
+import type { TaxonomyMatchResult } from './types';
 import {
     matchCategoryToTaxonomy,
     matchAllCategories,
@@ -38,7 +38,7 @@ import {
  * @param primaryLanguage - Primary language code (default: 'en')
  */
 export function extractTaxonomyFromProject(
-    projectFiles: any[],
+    projectFiles: unknown[],
     businessCategory: string,
     primaryLanguage: string = 'en',
 ): ProjectTaxonomyResult {
@@ -57,27 +57,42 @@ export function extractTaxonomyFromProject(
     const allCategories: Array<{ id: string; name: Record<string, string> }> = [];
     const allItems: Array<{ name: Record<string, string>; tags?: string[]; price?: string; category: string }> = [];
 
-    for (const file of projectFiles) {
+    for (const rawFile of projectFiles) {
+        if (!isRecord(rawFile)) continue;
+        const file = rawFile;
         if (file.active === false || file.deleted) continue;
-        const data = file.extractedData?.data;
+        const extractedData = isRecord(file.extractedData) ? file.extractedData : null;
+        const data = extractedData && isRecord(extractedData.data) ? extractedData.data : null;
         if (!data) continue;
 
         if (Array.isArray(data.categories)) {
-            for (const cat of data.categories) {
+            for (const rawCategory of data.categories) {
+                if (!isRecord(rawCategory)) continue;
+                const cat = rawCategory;
                 if (cat.active !== false) {
-                    allCategories.push({ id: cat.id, name: cat.name || {} });
+                    const id = normalizeText(cat.id);
+                    const name = normalizeLocalizedText(cat.name);
+                    if (id && Object.keys(name).length > 0) {
+                        allCategories.push({ id, name });
+                    }
                 }
             }
         }
 
         if (Array.isArray(data.items)) {
-            for (const item of data.items) {
+            for (const rawItem of data.items) {
+                if (!isRecord(rawItem)) continue;
+                const item = rawItem;
                 if (item.active !== false) {
+                    const name = normalizeLocalizedText(item.name);
+                    if (Object.keys(name).length === 0) continue;
                     allItems.push({
-                        name: item.name || {},
-                        tags: item.tags,
-                        price: item.price,
-                        category: item.category,
+                        name,
+                        tags: Array.isArray(item.tags)
+                            ? item.tags.map(normalizeText).filter(Boolean)
+                            : undefined,
+                        price: normalizePrice(item.price),
+                        category: normalizeText(item.category),
                     });
                 }
             }
@@ -115,6 +130,32 @@ export function extractTaxonomyFromProject(
         totalCategories: allCategories.length,
     };
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const normalizeText = (value: unknown): string => (
+    typeof value === 'string' ? value.trim() : ''
+);
+
+const normalizeLocalizedText = (value: unknown): Record<string, string> => {
+    if (typeof value === 'string') {
+        const text = value.trim();
+        return text ? { en: text } : {};
+    }
+    if (!isRecord(value)) return {};
+    return Object.fromEntries(
+        Object.entries(value)
+            .map(([language, text]) => [language.trim(), normalizeText(text)] as const)
+            .filter(([language, text]) => Boolean(language && text)),
+    );
+};
+
+const normalizePrice = (value: unknown): string | undefined => {
+    if (typeof value === 'string') return value.trim() || undefined;
+    return typeof value === 'number' && Number.isFinite(value) ? String(value) : undefined;
+};
 
 // ═══════════════════════════════════════════════════════════════
 // RESULT TYPE

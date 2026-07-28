@@ -8,6 +8,7 @@ import {
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, increment, runTransaction, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 import {
     getAnswerlatticeMissingBundleManifestBase,
     getAnswerlatticeMissingSourceVersionsBase,
@@ -42,6 +43,7 @@ async function run(): Promise<void> {
 
         await testEnv.withSecurityRulesDisabled(async (context) => {
             const adminDb = context.firestore();
+            await seedActiveAnswerlatticeRuleWorkspace(adminDb);
             await setDoc(doc(adminDb, 'platformSummary', 'coverage_1_101'), scoped({
                 coverage: { date: '2026-07-11', hits: 1, misses: 0, rate: 100, total: 1 },
                 lastUpdated: NOW,
@@ -49,6 +51,13 @@ async function run(): Promise<void> {
             await setDoc(doc(adminDb, 'platformSummary', 'knowledgeIntakeSummary_1_101'), scoped({
                 activeJobs: 0,
                 updatedAt: NOW,
+            }));
+            await setDoc(doc(adminDb, 'platformSummary', 'entityGraphIndex_1_101'), scoped({
+                entityCount: 0,
+                graph: {},
+                lastRebuiltAt: NOW,
+                relationCount: 0,
+                version: 1,
             }));
             await setDoc(doc(adminDb, 'platformSummary', 'answerTests_1_101'), scoped({
                 id: 'answerTests_1_101',
@@ -64,6 +73,8 @@ async function run(): Promise<void> {
 
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'coverage_1_101')));
         await assertFails(getDoc(doc(otherDb, 'platformSummary', 'coverage_1_101')));
+        await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'entityGraphIndex_1_101')));
+        await assertFails(getDoc(doc(otherDb, 'platformSummary', 'entityGraphIndex_1_101')));
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_1_101')));
         await assertSucceeds(getDoc(doc(ownerDb, 'platformSummary', 'bundleManifest_1_101')));
         await assertFails(getDoc(doc(ownerDb, 'platformSummary', 'sourceVersions_2_202')));

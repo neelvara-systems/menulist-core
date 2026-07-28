@@ -10,6 +10,7 @@ import { isOwnedWorkspaceTemplateStoragePath } from "./workspaceTemplateIndexBou
 
 const SAFE_ARTIFACT_NAME = /^(?:pack-template|editor-document)(?:-[a-f0-9]{16,64})?\.json$|^preview(?:-[a-f0-9]{16,64})?\.(?:png|jpeg|webp)$/;
 const SAFE_WORKSPACE_ARTIFACT_PATH = /^(?:versions\/[A-Za-z0-9_-]{3,160}\/)?(?:pack-template\.json|editor-document\.json|preview\.(?:png|jpeg|webp))$/;
+const PLATFORM_PAYLOAD_HASH_PATH = /\/pack-template-([a-f0-9]{16,64})\.json$/;
 
 const isSafePath = (path: string) => (
     Boolean(path)
@@ -63,6 +64,30 @@ function assertPlatformSummaryScope(
                 throw new Error("Platform template artifact path is invalid.");
             }
         });
+    getCampaignCuePlatformPayloadHashPrefix(summary);
+}
+
+export function getCampaignCuePlatformPayloadHashPrefix(
+    summary: CampaignCuePackTemplateSummary,
+): string {
+    if (summary.templateType !== "platform") {
+        throw new Error("Platform template payload hash requires a platform summary.");
+    }
+    const match = summary.payloadPath.match(PLATFORM_PAYLOAD_HASH_PATH);
+    if (!match) {
+        throw new Error("Platform template payload path is not content-addressed.");
+    }
+    return match[1];
+}
+
+export function assertCampaignCuePlatformPayloadHash(
+    summary: CampaignCuePackTemplateSummary,
+    actualSha256: string,
+): void {
+    const expectedPrefix = getCampaignCuePlatformPayloadHashPrefix(summary);
+    if (!/^[a-f0-9]{64}$/.test(actualSha256) || !actualSha256.startsWith(expectedPrefix)) {
+        throw new Error("Platform template payload content hash does not match its catalog summary.");
+    }
 }
 
 function assertWorkspaceSummaryScope(summary: CampaignCuePackTemplateSummary, workspaceId: string) {

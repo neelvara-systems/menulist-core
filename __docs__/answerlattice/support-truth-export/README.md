@@ -33,6 +33,8 @@ authorized Settings action
 - published changelog entries with entity/release linkage;
 - active release records.
 
+Nested changelog pages are independently corroborated as exact `AL`/tenant/workspace records, and an entry is included only when the canonical changelog publication contract returns true. Missing publication state and unlinked versioned entries are excluded.
+
 ## Excluded
 
 - tickets, conversations, feedback, embeddings, secrets, raw source bodies, audit-log history, user identifiers, draft/review-required content, and unreviewed AI translations;
@@ -66,3 +68,4 @@ The current source is locally complete. Dedicated and shared rules must be deplo
 | Date | Version | Change |
 | --- | --- | --- |
 | 2026-07-20 | 1.0.0 | Completed the feature-flow audit and hardened product scope, reviewed translations, canonical citations, changelog linkage, POST-only generation, audit reservation, docs, and tests. |
+| 2026-07-26 | 1.1.0 | Added exact nested changelog scope/publication admission, failure-contained timestamps, non-coercing numeric projection, and workspace-owned duplicate-safe browser settlement. |

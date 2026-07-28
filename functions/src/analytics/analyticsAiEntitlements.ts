@@ -16,11 +16,11 @@ export interface AnalyticsAiEntitlement {
 const ANALYTICS_AI_PLAN_TYPES = new Set(['pro', 'premium']);
 
 function normalizePlanType(value: unknown): string | null {
-    const normalized = String(value || '').trim().toLowerCase();
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
     return normalized || null;
 }
 
-export function resolveAnalyticsAiEntitlement(storeSummary?: Record<string, any> | null): AnalyticsAiEntitlement {
+export function resolveAnalyticsAiEntitlement(storeSummary?: Record<string, unknown> | null): AnalyticsAiEntitlement {
     const activePlanType = normalizePlanType(storeSummary?.activePlanType);
 
     if (!ANALYTICS_FEATURE_FLAGS.ENABLE_OWNER_ANALYTICS_AI_SUMMARIES) {

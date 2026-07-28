@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { getRateLimitForFeature, type RateLimitFeature } from '@lib/rateLimit/configs';
 import { checkRateLimit } from '@lib/rateLimit';
 import { logger } from '@lib/monitoring/logger';
@@ -19,7 +20,7 @@ export const getOwnerAssistantSessionScope = (session: any) => {
 
 const buildSessionUserForStoreAccess = (session: any, fallbackStoreId: string | number) => ({
   ...(session?.user || {}),
-  platformRole: session?.platformRole || session?.user?.platformRole,
+  platformRole: resolveExactSessionPlatformRole(session) || undefined,
   storeId: session?.user?.storeId || session?.sId || fallbackStoreId,
   storeIds: session?.user?.storeIds || session?.storeIds,
   stores: session?.user?.stores || session?.stores,

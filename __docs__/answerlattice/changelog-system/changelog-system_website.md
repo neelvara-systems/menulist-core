@@ -8,6 +8,10 @@ Recommended concise copy:
 
 > Ship a release note, identify the approved answers it may affect, and publish only after the governed release check completes.
 
+Do not publish pre-activation review wording until the preventive preview and
+stale-fingerprint enforcement pass source, emulator, and hosted owner-flow
+verification.
+
 ## Demonstration sequence
 
 1. Founder drafts version `2.4.1` and selects Billing and Permissions.
@@ -23,6 +27,11 @@ Recommended concise copy:
 - public incident management;
 - support-ticket truth becoming approved automatically;
 - release-note publication without human-selected changed product areas.
+- a complete support-readiness gate;
+- scheduled canonical-answer activation;
+- automatic suppression or rollback;
+- article, procedure, product-surface, or post-release causal coverage that has
+  not been implemented.
 
 ## Evidence status
 

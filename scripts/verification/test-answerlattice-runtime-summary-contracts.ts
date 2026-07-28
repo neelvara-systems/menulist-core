@@ -4,6 +4,7 @@ import {
     parseAnswerlatticePredictiveTriggerIndex,
 } from '@lib/answerlattice/runtimeSummaryContracts';
 import {
+    getAnswerlatticeProductSurfaceTimestampMillis,
     getContextContentSummaryDocId,
     normalizeAnswerlatticeSurfaceContentSummary,
     normalizeStoredAnswerlatticeProductSurface,
@@ -15,6 +16,21 @@ import { AnswerlatticeContextSchema } from '@lib/validation/contextSchema';
 import { validateAnswerlatticePageContext } from '../../packages/answerlattice-web/src';
 
 const scope = { tId: 7, sId: 9 };
+assert.equal(getAnswerlatticeProductSurfaceTimestampMillis('2026-07-26T00:00:00.000Z'), 1785024000000);
+assert.equal(getAnswerlatticeProductSurfaceTimestampMillis({ seconds: 1, nanoseconds: 500_000_000 }), 1500);
+assert.equal(getAnswerlatticeProductSurfaceTimestampMillis({ seconds: '1', nanoseconds: 0 }), null);
+assert.equal(getAnswerlatticeProductSurfaceTimestampMillis({ seconds: 1, nanoseconds: 1_000_000_000 }), null);
+assert.equal(getAnswerlatticeProductSurfaceTimestampMillis({ toMillis: () => Number.POSITIVE_INFINITY }), null);
+assert.equal(getAnswerlatticeProductSurfaceTimestampMillis({
+    get toMillis() {
+        throw new Error('hostile timestamp getter');
+    },
+}), null);
+assert.equal(getAnswerlatticeProductSurfaceTimestampMillis({
+    toDate() {
+        throw new Error('hostile timestamp conversion');
+    },
+}), null);
 const trigger = {
     pId: 'AL',
     ...scope,
@@ -67,22 +83,45 @@ assert.equal(parseAnswerlatticePredictiveTriggerIndex({
     triggerCount: 2, activeTriggerCount: 1, triggers: { 'trigger-1': trigger },
 }, scope), null);
 
+const relatedEntityIds = Array.from({ length: 30 }, (_, index) => `entity-${index}`);
+const relatedGraphNodes = Object.fromEntries(relatedEntityIds.map(entityId => [
+    entityId,
+    {
+        name: entityId,
+        type: 'state',
+        related: ['billing'],
+        relationTypes: { requires: ['billing'] },
+        answerCount: 0,
+    },
+]));
 const graph = parseAnswerlatticeEntityGraphIndex({
     pId: 'AL',
     ...scope,
+    lastRebuiltAt: new Date('2026-07-23T00:00:00.000Z'),
+    version: 2,
+    entityCount: 31,
+    relationCount: 30,
     graph: {
         billing: {
             name: 'Billing',
             type: 'feature',
-            related: Array.from({ length: 30 }, (_, index) => `entity-${index}`),
-            relationTypes: { depends_on: ['entity-1', 'entity-2'] },
+            related: relatedEntityIds,
+            relationTypes: { requires: relatedEntityIds },
             answerCount: 2,
+            currentVersion: 2_004_001,
+            driftedAnswerCount: 1,
+            reviewRequiredAnswerCount: 1,
         },
+        ...relatedGraphNodes,
     },
     interactionRules: [],
 }, scope);
 assert.ok(graph);
 assert.equal(graph?.graph.billing.related.length, 20);
+assert.equal(graph?.graph.billing.relationTypes.requires.length, 20);
+assert.equal(graph?.graph.billing.currentVersion, 2_004_001);
+assert.equal(graph?.graph.billing.driftedAnswerCount, 1);
+assert.equal(graph?.graph.billing.reviewRequiredAnswerCount, 1);
 assert.equal(parseAnswerlatticeEntityGraphIndex({ pId: 'ML', ...scope, graph: {} }, scope), null);
 assert.equal(parseAnswerlatticeEntityGraphIndex({ pId: 'AL', ...scope, tId: 8, graph: {} }, scope), null);
 

@@ -2,9 +2,29 @@
 
 **Status:** Validated; pending owner/legal launch review
 **Implementation date:** June 20, 2026
-**Last cross-check:** July 11, 2026
+**Last cross-check:** July 26, 2026
 **Runtime:** Shared Next.js/Vercel app under `src/app/sites/neelvara/`
 **Local QA URL:** `http://localhost:3000/__neelvara`
+
+---
+
+## July 26, 2026 Supplied SVG Identity Replacement
+
+- Corrected the foreground contrast after the saturated logo-palette adoption: solid CTAs, their visited/icon states, active segmented controls, and the static 404 primary action now use white text over the darker supplied blue/indigo/violet stops.
+- Added a persistent blue active state to the primary header navigation so Products, About, and Contact visibly identify their current page on desktop and mobile.
+- Removed the redundant homepage company-reference card because it repeated the company, product, email, and country facts already presented in the ledger directly below; the hero now prioritizes one clear company statement and action group.
+- Used Mailmodo only as a structural reference for stronger landing-page rhythm: added an unframed source-logo hero visual, converted the operating principles from a generic three-column row into an asymmetric editorial chapter, and introduced one controlled high-contrast product band while preserving Neelvara's company-reference boundary.
+- Replaced the former three-panel glass mark with the owner-supplied continuous loop-and-arrow SVG.
+- Preserved `public/neelvara-logo.svg` byte-for-byte from the uploaded file; its SHA-256 is `c62797f5332e11abfb7b8fdea41618a77ae2a532deffb35ed985c856d2dad98a`.
+- Preserved the supplied `0 0 1135 686` canvas, single compound path, and exact gradient colors `#2384FF`, `#1457D9`, `#2737C8`, and `#6542E8`.
+- Regenerated the transparent compatibility PNG, favicon SVG/PNGs, Apple touch icon, manifest icons, generic app icon, and Open Graph image from the new source.
+- Updated the generator and verifier for the new one-path source. The verifier now locks the source hash, rejects raster embedding and transforms, compares the favicon path with the master path, validates exact colors, and checks transparency, dimensions, optical balance, metadata, structured data, header/footer, and 404 references.
+- Adjusted only the website display box to `54x34px` so the heavier new mark is clear beside the wordmark without changing the artwork.
+- Replaced the static 404 recovery panel and dormant bento visual's old three-panel imitations with the exact master SVG, then removed the retired pastel palette from both the shared site stylesheet and static 404.
+- `npm run verify:neelvara-logo-assets`, generator/verifier syntax checks, scoped diff integrity, all seven public route checks, the true 404 check, and all ten public identity-asset HTTP checks pass.
+- Rendered desktop and mobile checks confirm the source SVG in header, reference panels, footer, and 404; there are no broken images, horizontal overflow, browser warnings/errors, or retired visual reconstructions.
+- Full TypeScript and full root lint now pass after the unrelated Public API revoke acknowledgement and lineage-specific brace-expansion resolution repairs. These repository-wide closures do not change the Neelvara website behavior validated here.
+- The July 11 three-panel logo notes below remain historical implementation evidence and are superseded by this replacement.
 
 ---
 
@@ -190,7 +210,7 @@ Applied changes:
 - Removed repeated final CTA eyebrow labels from Home, Products, Contact, About, Legal, Privacy, and Terms so closing sections read as direct company guidance instead of another labeled content block.
 - Added consistent hover, focus, and active states for glass CTAs, product rows, product architecture cards, contact routing cards, support product links, footer links, and checklist links.
 - Added paragraph `text-wrap: pretty` handling to reduce awkward final-line breaks in public copy.
-- Adjusted the active reference tab to dark text over the parent-logo gradient for better contrast.
+- Adjusted the active reference tab to white text over the darker parent-logo gradient stops for accessible contrast.
 - Added reduced-motion and reduced-transparency handling for the glass interface without changing the logo geometry, product routing, legal copy, or static-site boundary.
 - Applied the repo-local Taste pre-flight: the Home product lineup now stays in the same light/frosted page theme instead of switching to a dark band, and Neelvara viewport-height guards now use `100dvh`.
 - Added a self-hosted Akshar wordmark font for the header brand, footer brandline, and Home brand H1 only. Body copy, nav labels, legal text, product descriptions, routes, and logo geometry remained unchanged in that pass.
@@ -481,7 +501,7 @@ Screenshots captured:
 | Product links | Pass | Home and Products page link only to `https://menulist.ai` and `https://answerlattice.com` |
 | Product logos | Pass | Home product cards render the MenuList and canonical Answerlattice logo marks from existing repo components |
 | Product link affordance | Pass | Linked product cards show a named visit action and external-link icon on desktop and mobile |
-| Product section visual strength | Pass | Home uses a full-width light product band with an unframed section header, two equal product cards, logo-color accents, and direct product links |
+| Product section visual strength | Pass | Home uses one full-width dark contrast band with an unframed section header, two equal light product cards, logo-color accents, and direct product links |
 | Reference presentation depth | Pass | Home page uses the company-routing hero mock, entity ledger, bento grid, spotlight cards, quote, product band, and contact-routing cards |
 | Viewport reveal motion | Pass | Section-level `nv-reveal` blocks appear once through a local IntersectionObserver, with reduced-motion fallback and no global smooth-scroll layer |
 | Internal alias scope | Pass | `/nv` is documented as private alias context only, not a canonical Neelvara URL or product-code alias |

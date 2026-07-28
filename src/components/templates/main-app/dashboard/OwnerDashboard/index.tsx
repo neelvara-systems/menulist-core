@@ -149,13 +149,17 @@ const OwnerDashboard: React.FC = () => {
     const obpDashboard = useOBPDashboard({ loadHistorical: showHistorical });
     const shouldLoadDashboardProject = Boolean(
         activeProjectId
+        && storeDetails?.tenantId
+        && storeDetails?.storeId
         && (FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS || FEATURE_FLAGS.ENABLE_MENU_QUALITY_SIGNALS)
     );
     const {
         data: dashboardProjectData,
         isLoading: dashboardProjectLoading,
     } = useSWR(
-        shouldLoadDashboardProject ? ['ownerDashboardProjectSetup', activeProjectId] : null,
+        shouldLoadDashboardProject
+            ? ['ownerDashboardProjectSetup', storeDetails?.tenantId, storeDetails?.storeId, activeProjectId]
+            : null,
         async () => {
             try {
                 return await getProjectData(activeProjectId as string);
@@ -290,6 +294,8 @@ const OwnerDashboard: React.FC = () => {
                                     projectData={dashboardProjectForChildren}
                                     projectId={activeProjectId}
                                     projectLoading={dashboardProjectLoading}
+                                    storeId={storeDetails?.storeId}
+                                    tenantId={storeDetails?.tenantId}
                                 />
                             )}
                             projectId={activeProjectId}

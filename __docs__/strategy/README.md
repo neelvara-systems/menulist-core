@@ -22,6 +22,7 @@
 | [authority-control-stack.md](./authority-control-stack.md)                                     | Mar 2026 | 5-layer commercial chain control stack mapped to existing systems                       |
 | [infrastructure-strength-score.md](./infrastructure-strength-score.md)                         | Mar 2026 | ISS (0-100) composite score measuring infrastructure authority vs tool status           |
 | [authority-metrics-and-expansion-readiness.md](./authority-metrics-and-expansion-readiness.md) | Mar 2026 | Founder KPIs, system validation, expansion criteria, failure modes, pricing evolution   |
+| [product-portfolio-distribution-insight-ledger.md](./product-portfolio-distribution-insight-ledger.md) | Jul 2026 | Product-by-product review of external distribution advice, channel fit, activation gates, and rejected tactics |
 
 ---
 

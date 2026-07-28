@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { logger } from '@lib/monitoring/logger';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedTextBody } from '@lib/security/boundedRequestBody';
@@ -121,7 +122,7 @@ const getCspReportJsonParseFailureContext = (
         bodyShapeKind: getBodyShapeKind(trimmedBody),
         cappedShapeGuard: MAX_CSP_REPORT_JSON_PARSE_DIAGNOSTICS,
         fallbackPolicy: 'ignore_malformed_report',
-        sourceErrorName: parseError instanceof Error ? parseError.name || 'Error' : typeof parseError,
+        sourceErrorName: getBoundedErrorName(parseError) || typeof parseError,
         trimmedBodyLength: trimmedBody.length,
         ...getBoundedSecurityStringContext('contentType', request.headers.get('content-type')),
         ...getBoundedSecurityStringContext('reportUrl', request.headers.get('referer')),

@@ -286,14 +286,14 @@ export const RATE_LIMIT_CONFIGS = {
      *
      * Why 180/min:
      * - A normal widget boot reads a small fixed set of JSON bundle files.
-     * - In-memory proxy caching absorbs hot paths.
-     * - Cache misses still need a bot-cost brake before repeated random paths
-     *   can force Storage existence checks/download attempts.
+     * - In-memory payload caching absorbs repeated downloads, while each request
+     *   still revalidates Storage existence so workspace closure can revoke it.
+     * - The limiter brakes repeated existence checks and random-path download attempts.
      */
     ANSWERLATTICE_PUBLIC_BUNDLE: {
         limit: 180,
         window: 60,
-        description: 'Answerlattice public context bundles - 180 cache-miss reads per minute per IP'
+        description: 'Answerlattice public context bundles - 180 revalidated reads per minute per IP'
     },
 
     /**

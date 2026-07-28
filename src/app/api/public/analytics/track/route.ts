@@ -13,6 +13,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { normalizeMenuListPublicEntityIdentityAliases } from '@lib/publicTruth/entityEligibility';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import { unstable_cache } from 'next/cache';
@@ -76,14 +77,31 @@ async function validateAnalyticsTargetUncached(
     if (!storeSnap.exists) return null;
 
     const store = storeSnap.data() || {};
-    const storeTenantId = String(store.tenantId ?? store.tId ?? '');
-    if (storeTenantId !== tenantId) return null;
+    const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([
+        store.tenantId,
+        store.tId,
+    ]);
+    const storeIdentityAliases = [store.storeId, store.sId]
+        .filter((value) => value !== undefined && value !== null);
+    if (
+        storeTenantScope?.documentId !== tenantId
+        || (
+            storeIdentityAliases.length > 0
+            && normalizeMenuListPublicEntityIdentityAliases(storeIdentityAliases)?.documentId !== storeId
+        )
+    ) return null;
     if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) return null;
 
     const tenantSnap = await firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantId).get();
     const tenant = tenantSnap.data();
+    const tenantIdentityAliases = [tenant?.tenantId, tenant?.tId]
+        .filter((value) => value !== undefined && value !== null);
     if (
         !tenantSnap.exists
+        || (
+            tenantIdentityAliases.length > 0
+            && normalizeMenuListPublicEntityIdentityAliases(tenantIdentityAliases)?.documentId !== tenantId
+        )
         || tenant?.active === false
         || tenant?.deleted === true
         || isPlatformEntityBlocked(tenant)

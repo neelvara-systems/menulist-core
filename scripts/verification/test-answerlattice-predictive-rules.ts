@@ -15,6 +15,7 @@ import {
     updateDoc,
     writeBatch,
 } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-predictive-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -72,6 +73,10 @@ async function run(): Promise<void> {
             tenantId: '2',
             uId: 'owner-2',
         }).firestore();
+
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
+        });
 
         await assertSucceeds(setDoc(
             doc(ownerDb, 'answerlattice_predictiveTriggers', 'valid_active'),

@@ -29,6 +29,11 @@ import {
 import { genrateEmbedding } from '../utils/aiUtils';
 import { tiptapToText } from '../utils/tiptapUtils';
 import { getAnswerlatticeEmbeddingInput } from './embeddingSourceBoundary';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
+import {
+    hasExactStoredAnswerlatticeProductAliases,
+    parseStoredAnswerlatticeScopeAliases,
+} from '../answerlattice/scopeBoundary';
 
 const PRODUCT_ID = 'AL';
 const MAX_SOURCE_FILES = 8;
@@ -91,14 +96,6 @@ function normalizeDocumentId(value: unknown): string | null {
     const id = value.trim();
     if (id !== value || !id || id.length > 180 || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) return null;
     return id;
-}
-
-function normalizeScopeId(value: unknown): number | null {
-    if (typeof value !== 'string' && typeof value !== 'number') return null;
-    const raw = String(value);
-    if (!/^[1-9]\d*$/.test(raw)) return null;
-    const id = Number(raw);
-    return Number.isSafeInteger(id) && id > 0 && String(id) === raw ? id : null;
 }
 
 function normalizeMapId(value: unknown, fallback: string): string {
@@ -505,12 +502,10 @@ export async function startGenerationLogic(jobIdInput: string, runIdInput?: stri
             const snapshot = await transaction.get(jobRef);
             if (!snapshot.exists) throw new Error('Knowledge generation job is not available.');
             const data = snapshot.data() || {};
-            const tId = normalizeScopeId(data.tId ?? data.tenantId);
-            const sId = normalizeScopeId(data.sId ?? data.storeId);
+            const scope = parseStoredAnswerlatticeScopeAliases(data);
             if (
-                (data.pId ?? data.productId) !== PRODUCT_ID
-                || !tId
-                || !sId
+                !hasExactStoredAnswerlatticeProductAliases(data)
+                || !scope
                 || data.status !== INGESTION_JOB_STATUS.PENDING
             ) {
                 return null;
@@ -528,7 +523,7 @@ export async function startGenerationLogic(jobIdInput: string, runIdInput?: stri
                 },
                 modifiedOn: startedAt,
             }, { merge: true });
-            return { data, scope: { tId, sId } };
+            return { data, scope };
         });
         if (!claimedJob) return { skipped: true };
         scope = claimedJob.scope;
@@ -681,7 +676,7 @@ export async function startGenerationLogic(jobIdInput: string, runIdInput?: stri
             logger.error('[Answerlattice KB] Failed to persist generation failure state', {
                 failureCode: 'answerlattice_kb_generation_failure_state_write_failed',
                 jobIdLength: jobId.length,
-                sourceErrorName: stateError instanceof Error ? stateError.name : typeof stateError,
+                sourceErrorName: getBoundedFunctionsErrorName(stateError) || typeof stateError,
             });
         });
         logger.error('[Answerlattice KB] Knowledge generation failed', {
@@ -689,7 +684,7 @@ export async function startGenerationLogic(jobIdInput: string, runIdInput?: stri
             jobIdLength: jobId.length,
             sourceFileCount: sourceFiles.length,
             hasScope: Boolean(scope),
-            sourceErrorName: error instanceof Error ? error.name : typeof error,
+            sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
         });
         return { skipped: false, failed: true };
     }

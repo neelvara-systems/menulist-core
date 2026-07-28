@@ -47,8 +47,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Invalid SignalDesk target cursor" }, { status: 400 });
     }
 
-    const accessResult = await requireSignalDeskAccess(request, session, "signaldesk.view");
-    if ("response" in accessResult) return accessResult.response;
     if (section === "control-room" && !FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_CONTROL_ROOM) {
         return NextResponse.json({ error: "SignalDesk Control Room is disabled" }, { status: 404 });
     }
@@ -64,10 +62,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (section === "revenue" && !FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_REVENUE_OPERATING_LAYER) {
         return NextResponse.json({ error: "SignalDesk Revenue Operating Layer is disabled" }, { status: 404 });
     }
-    if (!hasSignalDeskWorkspaceSectionAccess(accessResult.access, section)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const mobileReadonly = isSignalDeskMobileRequest(request);
     if (mobileReadonly && !canServeSignalDeskMobileWorkspaceSection(section)) {
         return NextResponse.json({ error: "SignalDesk mobile workspace is dashboard-only" }, { status: 403 });
@@ -80,6 +74,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         session,
     });
     if (rateLimit) return rateLimit;
+
+    const accessResult = await requireSignalDeskAccess(request, session, "signaldesk.view");
+    if ("response" in accessResult) return accessResult.response;
+    if (!hasSignalDeskWorkspaceSectionAccess(accessResult.access, section)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     try {
         const workspace = mobileReadonly

@@ -1,10 +1,22 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.3.3
-> **Last Updated:** 2026-07-19
+> **Version:** 1.3.6
+> **Last Updated:** 2026-07-28
 > **Audience:** Developers
 
 ---
+
+## July 28, 2026 Buyer-Path Compression
+
+- The homepage now leads from founder pain to first trusted answers, one concrete known-answer/fallback/review loop, installation, fit, pricing, objections, and signup. Three overlapping feature-inventory bands remain available through their dedicated product routes and are no longer rendered; their mounts remain explicitly commented in `page.tsx` for intentional one-line reactivation.
+- The hero keeps the founder-support outcome while reducing eight horizontal capability chips to three trust signals that wrap on small screens.
+- The support-loop proof shows the exact sample evidence behind an approved answer: source, applicability, product context, review state, Answer Test status, and clarification/fallback behavior when evidence is incomplete.
+- `/get-started` renders the real Google/workspace activation form before proof, pre-onboarding preparation, and fit criteria. The longer input and first-session guidance remains below the activation action.
+- `/demo` now starts with a deterministic six-stage support-resolution simulation: known question, approved answer, missing evidence, safe fallback, founder review, and tested improvement. The existing source-conflict and release-drift simulation remains as secondary governance proof.
+- `/product/page-aware-widget` now describes Guided Resolution only as an opt-in, client-instrumented capability. The public boundary states that AnswerLattice can highlight declared targets and wait for verified events, but cannot click controls or change product data.
+- Product and site descriptions no longer lead with broad suite inventory or future-agent expansion. The maintained category remains a governed support layer for founder-led SaaS.
+- The website source gate now enforces activation order, both deterministic demo contracts, homepage compression, deferred-mount retention, the trusted-answer proof, and the bounded Guided Resolution claim.
+- These changes add no Firebase reads, writes, scheduled work, dependencies, or new public routes.
 
 ## July 19, 2026 Public-Flow Hardening
 
@@ -27,7 +39,7 @@ No Firestore rule, index, Storage rule, Cloud Function, collection, listener, pr
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js 16.2.11 (App Router) |
 | Styling | Tailwind CSS (shared app pipeline) |
 | Routing | Middleware hostname-based rewrite (multi-product) |
 | Components | React Server Components by default; client islands only where interaction needs state |
@@ -121,8 +133,9 @@ src/app/sites/answerlattice/
 ├── page-aware-support-widget/page.tsx      # SEO page for page-aware widget search intent
 ├── hosted-help-center-for-saas/page.tsx    # SEO page for hosted help-center search intent
 ├── support-widget-for-solo-founders/page.tsx # SEO page for solo-founder support intent
-├── demo/page.tsx                  # Interactive governance proof page
-├── demo/AnswerlatticePublicDemo.tsx    # No sign-in required page-aware support demo
+├── demo/page.tsx                  # Interactive support-loop and governance proof page
+├── demo/AnswerlatticeSupportLoopDemo.tsx # No sign-in required support-resolution simulation
+├── demo/AnswerlatticePublicDemo.tsx    # No sign-in required source-conflict and drift simulation
 ├── install/page.tsx               # Agent install overview generated from AnswerLattice Widget Contract v1
 ├── install/InstallContractPage.tsx # Shared install/contract/framework page renderer
 ├── install/markdownRoute.ts       # Shared Markdown response helper for install .md mirrors
@@ -225,11 +238,11 @@ src/content/answerlatticePublic/
 
 Related AnswerLattice route constants live in `src/constants/answerlattice/routes.ts`. `src/constants/answerlattice/navigations.ts` re-exports those constants for existing dashboard imports while keeping icon-heavy sidebar metadata out of lightweight public client islands such as `/get-started`.
 
-Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM`, caps JSON bodies at 8KB before Zod validation, ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together. Public contact browser submissions use same-origin credentials, no-store cache, manual redirect handling, and an 8KB bounded JSON response parser before accepting `{ accepted: true }`. `/get-started` uses a 16KB bounded response parser, plan/currency billing validation, and resumable provisioning states before success. Public contact, `/get-started` onboarding, and the hosted widget use fixed failure copy in the browser and must not display API response text, provider text, or local exception messages.
+Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM` with fail-closed provider behavior, caps JSON bodies at 8KB, and then applies one strict normalization contract before any persistence work. Required text is stripped and revalidated after markup removal, optional text becomes `null` when empty, email is normalized to lowercase, and an optional product URL must use HTTP or HTTPS. The route ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together. Public contact browser submissions use same-origin credentials, no-store cache, manual redirect handling, and an 8KB bounded JSON response parser before accepting `{ accepted: true }`. `/get-started` uses a 16KB bounded response parser, plan/currency billing validation, and resumable provisioning states before success. Public contact, `/get-started` onboarding, and the hosted widget use fixed failure copy in the browser and must not display API response text, provider text, or local exception messages.
 
 Pricing renders INR and USD amounts from `src/data/answerlattice/plans.ts` and sends the selected plan in the Get Started URL. `get-started/page.tsx` admits only the three current plan IDs and INR/USD currency values before passing defaults into `OnboardingForm.tsx`. The form submits the selected monthly plan and currency to the existing paid onboarding route and confirms the server-returned billing amount/currency.
 
-`demo/AnswerlatticePublicDemo.tsx` is a deterministic client-only state machine with six governance stages. It does not read Firebase or call an AI provider. Its outer grid, stage navigation, and content pane use explicit `min-w-0` boundaries so the desktop two-column layout collapses without min-content overflow on a 390px viewport. Stage and reset actions keep 44px minimum targets. `trust/page.tsx` is a server-rendered factual page sourced from current runtime/provider/retention contracts; it explicitly separates operational facts from certifications, DPA/subprocessor terms, residency commitments, and deletion claims. The page states that QA uses a separate project while the production target remains deployment/certification pending; it does not imply two currently certified live environments.
+`demo/AnswerlatticeSupportLoopDemo.tsx` and `demo/AnswerlatticePublicDemo.tsx` are deterministic client-only state machines with six stages each. Neither reads Firebase nor calls an AI provider. Their outer grids, stage navigation, and content panes use explicit `min-w-0` boundaries so the desktop two-column layouts collapse without min-content overflow on a 390px viewport. Stage and reset actions keep 44px minimum targets. `trust/page.tsx` is a server-rendered factual page sourced from current runtime/provider/retention contracts; it explicitly separates operational facts from certifications, DPA/subprocessor terms, residency commitments, and deletion claims. The page states that QA uses a separate project while the production target remains deployment/certification pending; it does not imply two currently certified live environments.
 
 ## Self-Sellable Positioning Pass
 
@@ -511,6 +524,8 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-28 | 1.3.5 | Retained the three deferred homepage section mounts as an explicit commented block and guarded them against silent deletion. |
+| 2026-07-28 | 1.3.4 | Compressed the homepage buyer path, moved workspace activation before supporting content, added the primary support-resolution demo, bounded Guided Resolution copy, and extended website source gates without adding public routes or Firebase cost. |
 | 2026-07-19 | 1.3.3 | Aligned public credit, retention, AI-provider, operating-trade-name, cancellation, deletion, and category claims with runtime sources; strengthened the public verifier; and moved root mail delivery to the compatible Nodemailer 9 runtime alias. |
 | 2026-07-11 | 1.3.1 | Closed the 390px governance-demo min-content overflow, normalized public action touch targets, and bounded the Trust page environment claim to current QA/deployment evidence. |
 | 2026-07-13 | 1.3.2 | Hardened the public Product and Resources dropdowns with hover-bridge, Escape close, and viewport scroll containment; upgraded the mobile drawer to full-width phone behavior with internal scroll containment, safe-area CTA padding, and high overlay stacking |
@@ -626,3 +641,4 @@ Conversion analytics is client-side only:
 | 2026-07-05 | 1.2.63 | Added the Answerlattice onboarding user ID boundary on `/api/answerlattice/onboard` so `/get-started` cannot pass malformed session user IDs into user document refs while preserving the valid onboarding browser flow |
 | 2026-06-30 | 1.2.62 | Hardened the `/get-started` onboarding browser response boundary with same-origin credentials, no-store cache, manual redirect handling, a 16KB bounded response parser, onboarding-result shape validation, and bounded diagnostics before success state |
 | 2026-07-16 | 1.2.64 | Added `FirstTrustedAnswersSection`, the Founder Launch Kit route, tool-specific pre-onboarding Markdown routes, proof-evidence registry rendering, resource/site registry entries, and aligned public updates |
+| 2026-07-28 | 1.3.6 | Added Knowledge Map parity to the existing governance and hosted-help product truth without presenting AnswerLattice as a generic mind-map builder or claiming that visualization proves correctness |

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FEATURE_FLAGS } from '@config/features';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import { OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY } from '@lib/ownerBusinessAssistant/clientResponses';
 import { normalizeOwnerBusinessAssistantThreadId } from '@lib/ownerBusinessAssistant/threadIdBoundary';
@@ -10,6 +11,10 @@ import type {
   OwnerBusinessAssistantClientContext,
 } from '@lib/ownerBusinessAssistant/types';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+  resolveOwnerBusinessAssistantClientScope,
+  type OwnerBusinessAssistantClientScope,
+} from '@lib/ownerBusinessAssistant/clientScope';
 
 const OWNER_BUSINESS_ASSISTANT_SAFE_ERROR = 'Business Health could not answer that.';
 const OWNER_BUSINESS_ASSISTANT_SAFE_ERROR_CODE = 'OWNER_BUSINESS_ASSISTANT_SAFE_ERROR';
@@ -41,13 +46,26 @@ const isOwnerBusinessAssistantSafeError = (error: unknown): error is OwnerBusine
   )
 );
 
-const buildThreadStorageKey = (projectId?: string, storeScopeKey?: string | number) =>
-  `ownerBusinessAssistant-thread:${storeScopeKey || 'store'}:${projectId || 'all'}`;
+const buildThreadStorageKey = (
+  projectId: string | undefined,
+  scope: OwnerBusinessAssistantClientScope,
+) => `ownerBusinessAssistant-thread:${scope.cacheScope}:${projectId || 'all'}`;
 
 const createThreadId = () => createRuntimeId('oba');
-const readStoredThreadId = (storageKey: string): string | undefined => (
-  normalizeOwnerBusinessAssistantThreadId(window.localStorage.getItem(storageKey)) || undefined
-);
+const readStoredThreadId = (storageKey: string): string | undefined => {
+  try {
+    return normalizeOwnerBusinessAssistantThreadId(window.localStorage.getItem(storageKey)) || undefined;
+  } catch {
+    return undefined;
+  }
+};
+const writeStoredThreadId = (storageKey: string, threadId: string): void => {
+  try {
+    window.localStorage.setItem(storageKey, threadId);
+  } catch {
+    // The in-memory thread remains usable when browser storage is unavailable.
+  }
+};
 
 const readOwnerBusinessAssistantAnswerResponseJson = async (
   response: Response,
@@ -74,6 +92,11 @@ export function useOwnerBusinessAssistantAnswer(
   clientContext?: OwnerBusinessAssistantClientContext,
   storeScopeKey?: string | number,
 ) {
+  const session = useClientAuthSession();
+  const clientScope = useMemo(
+    () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
+    [session?.sId, session?.tId, storeScopeKey],
+  );
   const [answer, setAnswer] = useState<OwnerBusinessAssistantAnswer | null>(null);
   const [threadId, setThreadId] = useState<string | undefined>(undefined);
   const [lastQuestion, setLastQuestion] = useState<{
@@ -83,42 +106,67 @@ export function useOwnerBusinessAssistantAnswer(
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const requestGenerationRef = useRef(0);
 
   useEffect(() => {
-    if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS || typeof window === 'undefined') {
+    requestGenerationRef.current += 1;
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+
+    if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS || typeof window === 'undefined' || !clientScope) {
       setThreadId(undefined);
-      return;
+      setAnswer(null);
+      setLastQuestion(null);
+      setError(null);
+      setIsLoading(false);
+      return () => {
+        requestGenerationRef.current += 1;
+        requestControllerRef.current?.abort();
+      };
     }
 
-    const storageKey = buildThreadStorageKey(projectId, storeScopeKey);
+    const storageKey = buildThreadStorageKey(projectId, clientScope);
     const existing = readStoredThreadId(storageKey);
     const nextThreadId = existing || createThreadId();
-    if (!existing) window.localStorage.setItem(storageKey, nextThreadId);
+    if (!existing) writeStoredThreadId(storageKey, nextThreadId);
     setThreadId(nextThreadId);
     setAnswer(null);
     setLastQuestion(null);
     setError(null);
-  }, [projectId, storeScopeKey]);
+    setIsLoading(false);
+    return () => {
+      requestGenerationRef.current += 1;
+      requestControllerRef.current?.abort();
+    };
+  }, [clientScope, projectId]);
 
   const ensureThreadId = useCallback(() => {
-    if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS || typeof window === 'undefined') {
+    if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS || typeof window === 'undefined' || !clientScope) {
       return undefined;
     }
 
-    const storageKey = buildThreadStorageKey(projectId, storeScopeKey);
+    const storageKey = buildThreadStorageKey(projectId, clientScope);
     const nextThreadId = normalizeOwnerBusinessAssistantThreadId(threadId)
       || readStoredThreadId(storageKey)
       || createThreadId();
-    if (window.localStorage.getItem(storageKey) !== nextThreadId) {
-      window.localStorage.setItem(storageKey, nextThreadId);
-    }
+    if (readStoredThreadId(storageKey) !== nextThreadId) writeStoredThreadId(storageKey, nextThreadId);
     if (threadId !== nextThreadId) {
       setThreadId(nextThreadId);
     }
     return nextThreadId;
-  }, [projectId, storeScopeKey, threadId]);
+  }, [clientScope, projectId, threadId]);
 
   const ask = useCallback(async (question: string, suggestedQuestionId?: string) => {
+    if (!clientScope) throw new OwnerBusinessAssistantSafeError();
+    requestControllerRef.current?.abort();
+    const requestController = new AbortController();
+    requestControllerRef.current = requestController;
+    const requestGeneration = ++requestGenerationRef.current;
+    const requestIsCurrent = () => (
+      requestGenerationRef.current === requestGeneration
+      && requestControllerRef.current === requestController
+    );
     const nextThreadId = ensureThreadId();
     const logContext = {
       ...getBoundedRuntimeStringContext('projectId', projectId),
@@ -139,17 +187,19 @@ export function useOwnerBusinessAssistantAnswer(
       const response = await fetch(OWNER_BUSINESS_ASSISTANT_ENDPOINTS.answer, {
         ...OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
         method: 'POST',
+        signal: requestController.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question,
           projectId,
-          storeId: storeScopeKey ? String(storeScopeKey) : undefined,
+          storeId: clientScope.storeId,
           suggestedQuestionId,
           threadId: nextThreadId,
           clientContext,
         }),
       });
       const payload = await readOwnerBusinessAssistantAnswerResponseJson(response, logContext);
+      if (!requestIsCurrent()) throw new OwnerBusinessAssistantSafeError();
       if (!response.ok) {
         logRuntimeFailure('owner_business_assistant_answer_rejected', new Error('owner_business_assistant_answer_rejected'), {
           ...logContext,
@@ -167,13 +217,17 @@ export function useOwnerBusinessAssistantAnswer(
       }
       const normalizedAnswerThreadId = normalizeOwnerBusinessAssistantThreadId(answerData.threadId);
       if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && normalizedAnswerThreadId && typeof window !== 'undefined') {
-        window.localStorage.setItem(buildThreadStorageKey(projectId, storeScopeKey), normalizedAnswerThreadId);
+        writeStoredThreadId(buildThreadStorageKey(projectId, clientScope), normalizedAnswerThreadId);
         setThreadId(normalizedAnswerThreadId);
         setLastQuestion((current) => current ? { ...current, threadId: normalizedAnswerThreadId } : current);
       }
+      if (!requestIsCurrent()) throw new OwnerBusinessAssistantSafeError();
       setAnswer(answerData);
       return answerData as OwnerBusinessAssistantAnswer;
     } catch (err) {
+      if (!requestIsCurrent()) {
+        throw new OwnerBusinessAssistantSafeError();
+      }
       if (!isOwnerBusinessAssistantSafeError(err)) {
         logRuntimeFailure('owner_business_assistant_answer_failed', err, logContext);
       }
@@ -182,9 +236,12 @@ export function useOwnerBusinessAssistantAnswer(
       setError(normalized);
       throw normalized;
     } finally {
-      setIsLoading(false);
+      if (requestIsCurrent()) {
+        requestControllerRef.current = null;
+        setIsLoading(false);
+      }
     }
-  }, [clientContext, ensureThreadId, projectId, storeScopeKey]);
+  }, [clientContext, clientScope, ensureThreadId, projectId, storeScopeKey]);
 
   return {
     answer,

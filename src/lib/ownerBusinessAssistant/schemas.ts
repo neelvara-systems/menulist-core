@@ -56,7 +56,7 @@ const OwnerBusinessAssistantAnswerIdSchema = z.string()
   .refine((value) => value === value.trim() && isValidFirestoreDocumentId(value), 'Invalid answer ID');
 
 export const OwnerBusinessAssistantAnswerRequestSchema = z.object({
-  question: z.string().min(1).max(800),
+  question: z.string().trim().min(1).max(800),
   projectId: OwnerBusinessAssistantProjectIdSchema,
   storeId: OwnerBusinessAssistantStoreIdSchema,
   packetSignature: z.string().max(240).optional(),
@@ -69,8 +69,8 @@ export const OwnerBusinessAssistantFeedbackRequestSchema = z.object({
   answerId: OwnerBusinessAssistantAnswerIdSchema,
   storeId: OwnerBusinessAssistantStoreIdSchema,
   rating: z.enum(['helpful', 'not_helpful']),
-  reason: z.string().max(800).optional(),
-  question: z.string().max(800).optional(),
+  reason: z.string().trim().min(1).max(800).optional(),
+  question: z.string().trim().min(1).max(800).optional(),
 }).strict();
 
 export const OwnerBusinessAssistantThreadParamsSchema = z.object({

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { buildAnswerlatticeActorSnapshot } from '@lib/answerlattice/customerIdentity';
+import { resolveExactSessionStoreRole } from '@lib/auth/sessionPlatformRole';
 import { parseAnswerlatticeFeedbackSubmitRequest } from '@lib/answerlattice/feedbackBoundary';
 import {
     AnswerlatticeFeedbackSubmissionError,
@@ -63,7 +64,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             {
                 id: actor.uId,
                 name: actor.userName,
-                role: String(session?.role || session?.user?.role || 'CUSTOMER'),
+                role: resolveExactSessionStoreRole(session) || 'CUSTOMER',
                 sourceContext: actor.userEmail ? actor.sourceContext : null,
             },
         );

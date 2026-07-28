@@ -7,6 +7,7 @@ import type {
     AnswerlatticeFeedbackSubmission,
     AnswerlatticeFeedbackSubmitRequest,
 } from './feedbackBoundary';
+import { normalizeAnswerlatticeFeedbackSubmission } from './feedbackBoundary';
 import type { SourceContext } from '@type/multiProduct';
 import { Timestamp } from 'firebase-admin/firestore';
 
@@ -116,6 +117,61 @@ const normalizeActorText = (value: unknown, maxLength: number, fallback: string)
     return (normalized || fallback).slice(0, maxLength);
 };
 
+const isValidFeedbackTimestamp = (value: unknown): value is Timestamp => {
+    if (!value || typeof value !== 'object') return false;
+    const toMillis = (value as { toMillis?: unknown }).toMillis;
+    if (typeof toMillis !== 'function') return false;
+    try {
+        const millis = toMillis.call(value);
+        return Number.isSafeInteger(millis) && millis > 0;
+    } catch {
+        return false;
+    }
+};
+
+const projectExistingFeedbackSubmission = (params: {
+    actor: AnswerlatticeFeedbackSubmissionActor;
+    actorId: string;
+    existing: Record<string, unknown>;
+    fingerprint: string;
+    input: AnswerlatticeFeedbackSubmitRequest;
+    scope: { tId: number; sId: number };
+}) => {
+    const { actor, actorId, existing, fingerprint, input, scope } = params;
+    const submission = normalizeAnswerlatticeFeedbackSubmission(existing);
+    if (
+        existing.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || existing.tId !== scope.tId
+        || existing.sId !== scope.sId
+        || existing.uId !== actorId
+        || existing.requestId !== input.requestId
+        || existing.submissionFingerprint !== fingerprint
+        || !submission
+        || sha(JSON.stringify(submission)) !== fingerprint
+        || !isValidFeedbackTimestamp(existing.createdOn)
+        || !isValidFeedbackTimestamp(existing.modifiedOn)
+    ) {
+        throw new AnswerlatticeFeedbackSubmissionError(409, 'This feedback request was already used with different details.');
+    }
+
+    return {
+        ...submission,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        tId: scope.tId,
+        sId: scope.sId,
+        uId: actorId,
+        role: normalizeActorText(existing.role, 80, 'CUSTOMER'),
+        sourceContext: actor.sourceContext || null,
+        traceId: input.requestId,
+        requestId: input.requestId,
+        submissionFingerprint: fingerprint,
+        modifiedBy: normalizeActorText(existing.modifiedBy, 200, actorId),
+        modifiedOn: existing.modifiedOn,
+        createdBy: normalizeActorText(existing.createdBy, 200, actorId),
+        createdOn: existing.createdOn,
+    };
+};
+
 export const executeAnswerlatticeFeedbackSubmission = async (
     input: AnswerlatticeFeedbackSubmitRequest,
     scope: { tId: number; sId: number },
@@ -131,27 +187,24 @@ export const executeAnswerlatticeFeedbackSubmission = async (
     const feedbackRef = db.collection(DB_COLLECTIONS.FEEDBACK).doc(documentId);
     const actorName = normalizeActorText(actor.name, 200, actorId);
     const actorRole = normalizeActorText(actor.role, 80, 'CUSTOMER');
-    let record: Record<string, any> | null = null;
-    let created = false;
-
-    await db.runTransaction(async (transaction) => {
+    const transactionResult = await db.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(feedbackRef);
         if (snapshot.exists) {
-            const existing = snapshot.data() as Record<string, any>;
-            if (existing.pId !== PRODUCT_IDS.ANSWERLATTICE
-                || Number(existing.tId) !== scope.tId
-                || Number(existing.sId) !== scope.sId
-                || String(existing.uId) !== actorId
-                || existing.requestId !== input.requestId
-                || existing.submissionFingerprint !== fingerprint) {
-                throw new AnswerlatticeFeedbackSubmissionError(409, 'This feedback request was already used with different details.');
-            }
-            record = existing;
-            return;
+            return {
+                record: projectExistingFeedbackSubmission({
+                    actor,
+                    actorId,
+                    existing: snapshot.data() || {},
+                    fingerprint,
+                    input,
+                    scope,
+                }),
+                created: false,
+            };
         }
 
         const now = Timestamp.now();
-        record = {
+        const record = {
             ...input.submission,
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: scope.tId,
@@ -168,10 +221,11 @@ export const executeAnswerlatticeFeedbackSubmission = async (
             createdOn: now,
         };
         transaction.create(feedbackRef, record);
-        created = true;
+        return { record, created: true };
     });
 
-    if (!record) throw new AnswerlatticeFeedbackSubmissionError(500, 'Feedback could not be saved.');
+    if (!transactionResult?.record) throw new AnswerlatticeFeedbackSubmissionError(500, 'Feedback could not be saved.');
+    const { record, created } = transactionResult;
     await emitAnswerlatticeSignal({
         type: 'feedback',
         entityId: 'unresolved',

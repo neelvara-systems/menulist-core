@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
+import { getExpectedAnswerlatticePublicBundleId } from '@lib/answerlattice/publicBundleIdentityServer';
 import { normalizeAnswerlatticePublicCitations } from '@lib/answerlattice/publicAnswerContracts';
 import { normalizeAnswerlatticeActiveTriggerCount } from '@lib/answerlattice/predictiveSupportContracts';
 import {
@@ -65,7 +66,7 @@ const MAX_CHANGELOG_PAGES_FOR_BUNDLE = 5;
 const MAX_BUNDLE_CACHE_ENTRIES = 200;
 const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
 const MANIFEST_CACHE_TTL_MS = 60 * 1000;
-const PUBLIC_BUNDLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const PUBLIC_BUNDLE_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 const PRIVATE_BUNDLE_CACHE_CONTROL = 'private, max-age=300';
 const ANSWERLATTICE_CONTEXT_BUNDLE_MANIFEST_UPLOAD_FAILED = 'answerlattice_context_bundle_manifest_upload_failed';
 const ANSWERLATTICE_CONTEXT_BUNDLE_OBJECT_OVERSIZED = 'answerlattice_context_bundle_object_oversized';
@@ -192,14 +193,13 @@ const sanitizeSegment = (value: unknown, fallback: string): string => {
 };
 
 const getPublicBundleId = (existing: any, tId: number, sId: number): string => {
-    if (typeof existing?.publicBundleId === 'string' && existing.publicBundleId.startsWith('pb_')) {
-        return existing.publicBundleId;
+    const expected = getExpectedAnswerlatticePublicBundleId(tId, sId);
+    if (!expected) throw new Error('ANSWERLATTICE_PUBLIC_BUNDLE_SALT_NOT_CONFIGURED');
+    const existingId = existing?.publicBundleId;
+    if (existingId !== undefined && existingId !== null && existingId !== '' && existingId !== expected) {
+        throw new Error('ANSWERLATTICE_PUBLIC_BUNDLE_ID_SCOPE_MISMATCH');
     }
-    const salt = process.env.ANSWERLATTICE_PUBLIC_BUNDLE_SALT
-        || process.env.NEXTAUTH_SECRET
-        || process.env.ANSWERLATTICE_MCP_SESSION_SECRET;
-    if (!salt) return `pb_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
-    return `pb_${createHash('sha256').update(`${tId}:${sId}:${salt}`).digest('base64url').slice(0, 24)}`;
+    return expected;
 };
 
 const compactEntity = (entity: AnswerlatticeEntity) => ({

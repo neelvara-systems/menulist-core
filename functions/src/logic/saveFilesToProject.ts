@@ -19,6 +19,7 @@ import { getSuggestionValue } from '../sharedData/extractedBusinessProfile';
 import { selectNewMenuExtractionProjectFiles } from '../sharedData/menuExtractionIntegrity';
 import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from '../sharedData/menuExtractionProjectSize';
 import { ExtractedData, ExtractedDataItem, autoMergeItems } from "./redistributeUtils";
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 const PROJECTS_COLLECTION = DB_COLLECTIONS.PROJECTS;
 
@@ -66,14 +67,7 @@ function getBoundedSaveFilesStringContext(label: string, value: unknown): Record
 }
 
 function getSaveFilesErrorContext(error: unknown): Record<string, string | number | undefined> {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
-    const statusValue = sourceError?.status ?? sourceError?.statusCode;
-    const status = Number(statusValue);
-    return {
-        sourceErrorName: error instanceof Error ? error.name || 'Error' : typeof error,
-        sourceErrorCode: sourceError?.code === undefined || sourceError?.code === null ? undefined : String(sourceError.code).slice(0, 64),
-        sourceStatusCode: Number.isFinite(status) ? status : undefined,
-    };
+    return getBoundedFunctionsErrorContext(error);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

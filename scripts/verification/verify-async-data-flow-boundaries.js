@@ -41,6 +41,9 @@ assert(violations.length === 0, `Unsafe async data-flow patterns found:\n${viola
 const paymentHook = fs.readFileSync(path.join(ROOT, 'src/hooks/usePaymentHandler.ts'), 'utf8');
 assert((paymentHook.match(/ondismiss: \(\) => reject\(createCheckoutDismissedError\(\)\)/g) || []).length === 3, 'Every Razorpay checkout must settle on modal dismissal');
 assert(paymentHook.includes("readPaymentResponseJson<unknown>"), 'Payment provider responses must enter through unknown runtime shapes');
+assert(paymentHook.includes('const checkoutInFlightRef = useRef(false);'), 'Payment checkout must use a synchronous duplicate-operation guard');
+assert((paymentHook.match(/if \(checkoutInFlightRef\.current\)/g) || []).length === 4, 'Subscription, upgrade, top-up, and onboarding checkout entry points must reject same-tick duplicates');
+assert((paymentHook.match(/checkoutInFlightRef\.current = false;/g) || []).length === 4, 'Every guarded checkout path must release its duplicate-operation guard after settlement');
 
 const pdfUtility = fs.readFileSync(path.join(ROOT, 'src/components/templates/main-app/projects/utils/pdfUtils.ts'), 'utf8');
 assert(pdfUtility.includes('pdfjsLoadPromise = null;'), 'PDF loader failures must permit retry');

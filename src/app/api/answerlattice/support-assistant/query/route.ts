@@ -12,6 +12,7 @@ import {
 } from '@lib/answerlattice/ownerSupportAssistant';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -34,7 +35,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             { status: 400, headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS },
         );
     }
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json(
+            { error: 'Forbidden' },
+            { status: 403, headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS },
+        );
+    }
 
     try {
         const rateLimit = await checkRateLimit({
@@ -46,11 +53,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ),
             limit: 20,
             window: 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             return NextResponse.json(
-                { error: 'Too many questions. Please wait before trying again.' },
-                { status: 429, headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS },
+                {
+                    error: providerUnavailable
+                        ? 'Support assistant is temporarily unavailable. Please try again later.'
+                        : 'Too many questions. Please wait before trying again.',
+                },
+                { status: providerUnavailable ? 503 : 429, headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS },
             );
         }
 

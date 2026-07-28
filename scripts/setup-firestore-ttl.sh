@@ -1,124 +1,95 @@
-#!/bin/bash
-# ═══════════════════════════════════════════════════════════════
-# Firestore TTL Policy Setup
-# ═══════════════════════════════════════════════════════════════
+#!/usr/bin/env bash
+# Guarded one-time MenuList Firestore TTL policy setup.
 #
-# Run this script ONCE after deploying to set up automatic
-# document deletion for collections that accumulate over time.
+# Usage:
+#   bash scripts/setup-firestore-ttl.sh --project-id menulist-qa
+#   bash scripts/setup-firestore-ttl.sh --project-id menulist-qa --apply --confirm-project menulist-qa
 #
-# Prerequisites:
-#   - gcloud CLI installed and authenticated
-#   - Project set: gcloud config set project YOUR_PROJECT_ID
-#
-# How TTL works:
-#   - Documents with a timestamp field older than the TTL
-#     are automatically deleted by Firestore (free of charge).
-#   - Deletion happens in background, may take up to 24h.
-#   - Documents without the TTL field are NOT affected.
-#
-# @see https://firebase.google.com/docs/firestore/ttl
-# ═══════════════════════════════════════════════════════════════
+# Dry-run is the default. TTL deletions are asynchronous and are billable
+# Firestore document-delete operations; documents without a valid expiresAt
+# Timestamp are not eligible.
 
-set -e
+set -euo pipefail
 
-PROJECT_ID=$(gcloud config get-value project)
-echo "Setting up Firestore TTL policies for project: $PROJECT_ID"
+PROJECT_ID=""
+CONFIRMED_PROJECT_ID=""
+APPLY=false
+DATABASE_ID="(default)"
 
-# ─────────────────────────────────────────────────────────────
-# authSecurityEvents — Delete after 90 days
-# Login/auth events are only needed for recent security analysis
-# Field: timestamp (Firestore Timestamp)
-# ─────────────────────────────────────────────────────────────
-echo "→ authSecurityEvents: TTL on 'expiresAt' (90 days from creation)"
-gcloud firestore fields ttls update expiresAt \
-  --collection-group=authSecurityEvents \
-  --enable-ttl \
-  --async \
-  --project="$PROJECT_ID" \
-  --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --project-id)
+      PROJECT_ID="${2:-}"
+      shift 2
+      ;;
+    --confirm-project)
+      CONFIRMED_PROJECT_ID="${2:-}"
+      shift 2
+      ;;
+    --apply)
+      APPLY=true
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
 
-# ─────────────────────────────────────────────────────────────
-# applicationLogs — Delete after 30 days
-# Client-side app logs are for debugging, not long-term storage
-# Field: expiresAt (Firestore Timestamp)
-# ─────────────────────────────────────────────────────────────
-echo "→ applicationLogs: TTL on 'expiresAt' (30 days from creation)"
-gcloud firestore fields ttls update expiresAt \
-  --collection-group=applicationLogs \
-  --enable-ttl \
-  --async \
-  --project="$PROJECT_ID" \
-  --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
+if [[ "$PROJECT_ID" != "menulist-qa" && "$PROJECT_ID" != "menulist" ]]; then
+  echo "--project-id must be menulist-qa or menulist." >&2
+  exit 1
+fi
 
-# ─────────────────────────────────────────────────────────────
-# errorLogs — Delete after 30 days
-# Client-side error logs are for debugging, not long-term storage
-# Field: expiresAt (Firestore Timestamp)
-# ─────────────────────────────────────────────────────────────
-echo "→ errorLogs: TTL on 'expiresAt' (30 days from creation)"
-gcloud firestore fields ttls update expiresAt \
-  --collection-group=errorLogs \
-  --enable-ttl \
-  --async \
-  --project="$PROJECT_ID" \
-  --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
+if [[ "$APPLY" == true && "$CONFIRMED_PROJECT_ID" != "$PROJECT_ID" ]]; then
+  echo "Refusing apply: pass --confirm-project $PROJECT_ID." >&2
+  exit 1
+fi
 
-# ─────────────────────────────────────────────────────────────
-# systemErrors — Delete after 30 days
-# System errors are for monitoring, Sentry has long-term storage
-# Field: expiresAt (Firestore Timestamp)
-# ─────────────────────────────────────────────────────────────
-echo "→ systemErrors: TTL on 'expiresAt' (30 days from creation)"
-gcloud firestore fields ttls update expiresAt \
-  --collection-group=systemErrors \
-  --enable-ttl \
-  --async \
-  --project="$PROJECT_ID" \
-  --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
+command -v gcloud >/dev/null 2>&1 || {
+  echo "gcloud is required." >&2
+  exit 1
+}
 
-# ─────────────────────────────────────────────────────────────
-# systemHealth — Delete after 7 days
-# Health check snapshots are ephemeral
-# Field: expiresAt (Firestore Timestamp)
-# ─────────────────────────────────────────────────────────────
-echo "→ systemHealth: TTL on 'expiresAt' (7 days from creation)"
-gcloud firestore fields ttls update expiresAt \
-  --collection-group=systemHealth \
-  --enable-ttl \
-  --async \
-  --project="$PROJECT_ID" \
-  --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
+gcloud projects describe "$PROJECT_ID" --format='value(projectId)' >/dev/null
 
-# ─────────────────────────────────────────────────────────────
-# messagingOnboardingEvents — Delete after 30 days
-# Onboarding analytics events are for short-term debugging
-# Field: expiresAt (Firestore Timestamp)
-# ─────────────────────────────────────────────────────────────
-echo "→ messagingOnboardingEvents: TTL on 'expiresAt' (30 days from creation)"
-gcloud firestore fields ttls update expiresAt \
-  --collection-group=messagingOnboardingEvents \
-  --enable-ttl \
-  --async \
-  --project="$PROJECT_ID" \
-  --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
+TTL_COLLECTION_GROUPS=(
+  "authPhoneOtpChallenges"
+  "authPhoneOtpLoginTokens"
+  "authSecurityEvents"
+  "applicationLogs"
+  "errorLogs"
+  "systemErrors"
+  "systemAlerts"
+  "systemHealth"
+  "systemTelemetry"
+  "messagingOnboardingEvents"
+  "messagingOnboardingInboundMessages"
+  "messagingOnboardingRateLimits"
+)
 
-# ─────────────────────────────────────────────────────────────
-# messagingOnboardingInboundMessages — Delete after 30 days
-# Durable webhook queue docs are only needed for replay/dedup history
-# Field: expiresAt (Firestore Timestamp)
-# ─────────────────────────────────────────────────────────────
-echo "→ messagingOnboardingInboundMessages: TTL on 'expiresAt' (30 days from creation)"
-gcloud firestore fields ttls update expiresAt \
-  --collection-group=messagingOnboardingInboundMessages \
-  --enable-ttl \
-  --async \
-  --project="$PROJECT_ID" \
-  --quiet 2>/dev/null || echo "  (already exists or field not found — OK)"
+echo "Project: $PROJECT_ID"
+echo "Database: $DATABASE_ID"
+echo "Mode: $([[ "$APPLY" == true ]] && echo APPLY || echo 'DRY RUN')"
 
-echo ""
-echo "✅ TTL policies configured."
-echo ""
-echo "IMPORTANT: For TTL to work, documents must include an 'expiresAt' field"
-echo "with a Firestore Timestamp value set to the desired deletion time."
-echo ""
-echo "Example: { expiresAt: Timestamp.fromMillis(Date.now() + 90 * 24 * 60 * 60 * 1000) }"
+for collection_group in "${TTL_COLLECTION_GROUPS[@]}"; do
+  if [[ "$APPLY" == false ]]; then
+    echo "[dry] enable expiresAt TTL for collection group: $collection_group"
+    continue
+  fi
+
+  echo "[apply] enable expiresAt TTL for collection group: $collection_group"
+  gcloud firestore fields ttls update expiresAt \
+    --collection-group="$collection_group" \
+    --database="$DATABASE_ID" \
+    --enable-ttl \
+    --project="$PROJECT_ID" \
+    --quiet
+done
+
+if [[ "$APPLY" == true ]]; then
+  echo "TTL policy update commands completed successfully for $PROJECT_ID."
+else
+  echo "Dry run complete. No TTL policy was changed."
+fi

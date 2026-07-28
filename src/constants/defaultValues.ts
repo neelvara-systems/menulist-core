@@ -1,10 +1,16 @@
+import {
+    MENULIST_SITE_DESCRIPTION,
+    MENULIST_SITE_IMAGE,
+    MENULIST_SITE_TITLE,
+} from '@constant/menulist/website';
+
 export const DEFAULT_GROUP_TYPE = 'both'; //all/male/female
 export const DEFAULT_ALERT_TIME = 3000; //alert timeout timing
-export const DEFAULT_TITLE_METATAG = 'The Jawed Habib | Hair & Beauty Salon';
-export const DEFAULT_DESCRIPTION_METATAG = 'The Jawed Habib Hair & Beauty salon provides you a range of highly trendy hair cuts and styling, makeup, hair coloring, waxing services, spray tanning and facials.';
-export const DEFAULT_IMAGE_METATAG = 'images/nav-logo.png';
-export const DEFAULT_SITENAME_METATAG = 'Salon';
-export const DEFAULT_KEYWORD_METATAG = 'hair salon,kids haircuts,hairdresser,hair design,hair stylist,natural hair salon,kids hair salon,men’s hair salon';
+export const DEFAULT_TITLE_METATAG = MENULIST_SITE_TITLE;
+export const DEFAULT_DESCRIPTION_METATAG = MENULIST_SITE_DESCRIPTION;
+export const DEFAULT_IMAGE_METATAG = MENULIST_SITE_IMAGE;
+export const DEFAULT_SITENAME_METATAG = 'MenuList';
+export const DEFAULT_KEYWORD_METATAG = 'official menu,business menu,menu management,QR menu,official business page,multi-location menu';
 
 export const SITE_COLOR_VARIABLE = {
     COLOR_BG: 'colorBg',

@@ -59,7 +59,7 @@ This is not a generic upload widget. It is the entry point into Answerlattice's 
 - URL discovery returns bounded candidates to the owner; discovered-but-unselected URLs are not persisted as a manifest or as source documents.
 - Raw screenshot, audio, and video bytes are not retained after extraction.
 - Source-level deletion, cancellation APIs, retained-artifact policies, intake-specific source-version manifests, and automated per-record retention cleanup are not implemented in this feature. Those capabilities require a separate lifecycle/governance design rather than a partial delete button.
-- Source authority, ownership, effective dates, expiry, and audience applicability are not first-class intake-source fields. Current intake creates reviewable evidence; the broader source-governance contract is audited separately.
+- Source authority, ownership, approval, access, citation eligibility, effective/review dates, audience applicability, and reciprocal same-job conflict links are implemented as an additive, controlled-rollout source-governance map. Missing governance remains readable as unreviewed evidence. A conflict peer must be reviewed first; add/remove updates both source records atomically, and compact response patches reconcile the loaded bundle without a reread. Canonical proposal acceptance and publication require approved, conflict-free linked evidence when `ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE` is enabled. The system does not automatically detect a conflict or choose a winning source.
 
 ---
 
@@ -97,7 +97,7 @@ Accepted from the ChatGPT discussion:
 - Treat the main product website link as a discovery pack: discover candidate pages cheaply, return them for owner selection, and create source docs only for owner-selected pages.
 - Support multiple file families, screenshots/images, transcripts/media, helpdesk exports, changelog material, product surfaces, support macros, and policy answers.
 - Turn one repeated user question and one founder reply into focused FAQ and canonical proposal drafts without adding a helpdesk connector.
-- Preserve source evidence and keep authority/risk decisions human-governed; first-class authority/risk fields remain separate work.
+- Preserve source evidence and keep authority decisions human-governed through the controlled-rollout source-governance map. Automatic authority ranking, risk inference, conflict detection, and winner selection remain separate work.
 - Make a tiny review queue the owner UX, not a long governance dashboard.
 - Publish only after explicit owner approval.
 - Store capped extracted source text/metadata in Firestore for day one; raw/heavy Storage retention stays reserved for a future native-upload path.

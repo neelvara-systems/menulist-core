@@ -15,6 +15,7 @@ import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl
 import { buildAnswerlatticeAgentPacketJson, renderAnswerlatticeAgentPrompt } from '@lib/answerlattice/installContract/contract';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { normalizeAnswerlatticeWidgetApiState } from '@lib/answerlattice/widgetKeyManager';
 import { normalizeWidgetAllowedOrigins, normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -54,7 +55,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!scope?.tenantId || !scope?.storeId) {
         return packetJsonResponse({ error: 'Not onboarded' }, { status: 400 });
     }
-    const userId = String(session.uId || session.user?.id || 'unknown');
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return packetJsonResponse({ error: 'Forbidden' }, { status: 403 });
+    }
 
     try {
         const rateLimitResult = await checkRateLimit({
@@ -66,9 +70,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ),
             limit: 30,
             window: 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return packetJsonResponse({ error: 'Too many requests' }, { status: 429 });
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            return packetJsonResponse(
+                { error: providerUnavailable ? 'Agent packet is temporarily unavailable' : 'Too many requests' },
+                { status: providerUnavailable ? 503 : 429 },
+            );
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);

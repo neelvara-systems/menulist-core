@@ -19,6 +19,7 @@ const workspaceDoc = (tId: string, sId: string) => ({
     createdAt: NOW,
     defaultLocale: 'en-IN',
     defaultTimezone: 'Asia/Kolkata',
+    id: workspaceId(tId, sId),
     members: {
         [`owner-${tId}-${sId}`]: {
             joinedAt: NOW,
@@ -27,8 +28,8 @@ const workspaceDoc = (tId: string, sId: string) => ({
     },
     ownerEmail: `owner-${tId}-${sId}@example.test`,
     ownerName: `Owner ${tId}/${sId}`,
-    pId: 'CC',
     primaryColor: '#ec4899',
+    productId: 'CC',
     sId,
     status: 'active',
     tId,
@@ -91,12 +92,17 @@ async function run(): Promise<void> {
 
     const ownerWorkspaceId = workspaceId('1', '101');
     const otherWorkspaceId = workspaceId('2', '202');
+    const disabledWorkspaceId = workspaceId('3', '303');
 
     try {
         await testEnv.withSecurityRulesDisabled(async (context) => {
             const db = context.firestore();
             await setDoc(doc(db, 'campaigncueWorkspaces', ownerWorkspaceId), workspaceDoc('1', '101'));
             await setDoc(doc(db, 'campaigncueWorkspaces', otherWorkspaceId), workspaceDoc('2', '202'));
+            await setDoc(doc(db, 'campaigncueWorkspaces', disabledWorkspaceId), {
+                ...workspaceDoc('3', '303'),
+                status: 'disabled',
+            });
             await setDoc(doc(db, 'campaigncueWorkspaces', 'cc_null_null'), {
                 ...workspaceDoc('null', 'null'),
                 sId: null,
@@ -110,6 +116,10 @@ async function run(): Promise<void> {
             await setDoc(
                 doc(db, 'campaigncueWorkspaces', otherWorkspaceId, 'sourceInputs', 'source-2'),
                 sourceInputDoc('source-2', otherWorkspaceId),
+            );
+            await setDoc(
+                doc(db, 'campaigncueWorkspaces', disabledWorkspaceId, 'sourceInputs', 'source-disabled'),
+                sourceInputDoc('source-disabled', disabledWorkspaceId),
             );
             await setDoc(
                 doc(db, 'campaigncueWorkspaces', 'cc_null_null', 'sourceInputs', 'source-null'),
@@ -149,6 +159,18 @@ async function run(): Promise<void> {
             tenantId: '2',
             uId: 'owner-2-202',
         }).firestore();
+        const sameScopeNonmemberDb = testEnv.authenticatedContext('former-member-1-101', {
+            role: 'OWNER',
+            storeId: '101',
+            tenantId: '1',
+            uId: 'former-member-1-101',
+        }).firestore();
+        const disabledOwnerDb = testEnv.authenticatedContext('owner-3-303', {
+            role: 'OWNER',
+            storeId: '303',
+            tenantId: '3',
+            uId: 'owner-3-303',
+        }).firestore();
         const missingClaimsDb = testEnv.authenticatedContext('missing-scope', {
             role: 'OWNER',
             uId: 'missing-scope',
@@ -164,6 +186,10 @@ async function run(): Promise<void> {
         await assertSucceeds(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'campaigns', 'campaign-1')));
         await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', otherWorkspaceId)));
         await assertFails(getDoc(doc(otherDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'sourceInputs', 'source-1')));
+        await assertFails(getDoc(doc(sameScopeNonmemberDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
+        await assertFails(getDoc(doc(sameScopeNonmemberDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'sourceInputs', 'source-1')));
+        await assertFails(getDoc(doc(disabledOwnerDb, 'campaigncueWorkspaces', disabledWorkspaceId)));
+        await assertFails(getDoc(doc(disabledOwnerDb, 'campaigncueWorkspaces', disabledWorkspaceId, 'sourceInputs', 'source-disabled')));
         await assertFails(getDoc(doc(publicDb, 'campaigncueWorkspaces', ownerWorkspaceId)));
 
         await assertFails(getDoc(doc(missingClaimsDb, 'campaigncueWorkspaces', 'cc_null_null')));
@@ -183,6 +209,8 @@ async function run(): Promise<void> {
         await assertFails(getDoc(doc(ownerDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'cueLayerCostRecords', 'cost-1')));
 
         await assertSucceeds(getDoc(doc(ownerDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertFails(getDoc(doc(sameScopeNonmemberDb, 'campaigncuePlatformPackTemplates', 'food')));
+        await assertFails(getDoc(doc(disabledOwnerDb, 'campaigncuePlatformPackTemplates', 'food')));
         await assertFails(getDoc(doc(ownerDb, 'campaigncuePlatformPackTemplates', 'not_allowed')));
         await assertFails(setDoc(doc(ownerDb, 'campaigncuePlatformPackTemplates', 'food_2'), platformCatalog('food_2')));
         await assertSucceeds(setDoc(doc(platformDb, 'campaigncuePlatformPackTemplates', 'food_2'), platformCatalog('food_2')));
@@ -207,6 +235,14 @@ async function run(): Promise<void> {
         await assertFails(setDoc(
             doc(otherDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
             workspaceIndex(ownerWorkspaceId),
+        ));
+        await assertFails(setDoc(
+            doc(sameScopeNonmemberDb, 'campaigncueWorkspaces', ownerWorkspaceId, 'packTemplateIndexes', 'default'),
+            workspaceIndex(ownerWorkspaceId),
+        ));
+        await assertFails(setDoc(
+            doc(disabledOwnerDb, 'campaigncueWorkspaces', disabledWorkspaceId, 'packTemplateIndexes', 'default'),
+            workspaceIndex(disabledWorkspaceId),
         ));
     } finally {
         await testEnv.cleanup();

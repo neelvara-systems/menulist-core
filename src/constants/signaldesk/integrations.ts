@@ -33,6 +33,12 @@ export const SIGNALDESK_INTEGRATION_ENV = {
 
 export const SIGNALDESK_DEFAULT_AI_MODEL = GEMINI_MODELS.TEXT_GEN;
 export const SIGNALDESK_FAST_AI_MODEL = GEMINI_MODELS.TEXT_FAST;
+export const SIGNALDESK_COMPLEX_AI_MODEL = GEMINI_MODELS.TEXT_PRO;
+// Data migration input only. Never use these retired IDs for provider calls.
+export const SIGNALDESK_RETIRED_GEMINI_MODEL_ROUTES = {
+    DEFAULT: "gemini-2.5-flash",
+    FAST: "gemini-2.5-flash-lite",
+} as const;
 export const SIGNALDESK_APIFY_API_BASE = "https://api.apify.com";
 export const SIGNALDESK_FHRS_API_BASE = "https://api.ratings.food.gov.uk";
 export const SIGNALDESK_GOOGLE_PLACES_TEXT_SEARCH_ENDPOINT = "https://places.googleapis.com/v1/places:searchText";

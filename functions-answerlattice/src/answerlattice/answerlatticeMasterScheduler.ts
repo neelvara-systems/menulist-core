@@ -16,6 +16,7 @@ import {
 } from './schedulerTime';
 import { AnswerlatticeTenantStore, getAnswerlatticeTenantSummaryKey } from './tenantSummary';
 import { resolveAnswerlatticeTenantSettlementCompletionStatus } from './masterSchedulerState';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 const MINUTE_MS = 60 * 1000;
 const SCHEDULER_NAME = 'answerlatticeMasterScheduler';
@@ -96,15 +97,11 @@ function getAnswerlatticeMasterSchedulerSourceErrorContext(error: unknown): {
     sourceErrorCode: string | number | null;
     sourceStatusCode: number | null;
 } {
-    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
-    const sourceStatusCode = typeof source.status === 'number'
-        ? source.status
-        : (typeof source.statusCode === 'number' ? source.statusCode : null);
-
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: typeof source.name === 'string' ? source.name : null,
-        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
-        sourceStatusCode,
+        sourceErrorName: context.sourceErrorName ?? null,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceStatusCode: context.sourceStatusCode ?? null,
     };
 }
 

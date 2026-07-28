@@ -4,19 +4,19 @@ const {
     applyLateDailyCorrection,
     cleanupOldDocuments,
     updateSummaryDocument,
-} = require('../../functions/lib/functions/src/aggregateCustomerAnalytics.js');
-const { firestoreAdmin } = require('../../functions/lib/functions/src/firebaseAdmin.js');
+} = require('../../functions/lib/aggregateCustomerAnalytics.js');
+const { firestoreAdmin } = require('../../functions/lib/firebaseAdmin.js');
 const {
     normalizeDashboardAnalyticsIdentityForTest,
     normalizeDashboardAnalyticsRowForTest,
     normalizeDashboardAnalyticsSummaryForTest,
-} = require('../../functions/lib/functions/src/analytics/dashboardSummaryAggregation.js');
+} = require('../../functions/lib/analytics/dashboardSummaryAggregation.js');
 const {
     aggregateOBPAnalyticsForStoreDate,
     applyLateOBPCorrection,
     normalizeOBPDailyForTest,
     normalizeOBPDashboardIdentityForTest,
-} = require('../../functions/lib/functions/src/analytics/obpAnalyticsAggregation.js');
+} = require('../../functions/lib/analytics/obpAnalyticsAggregation.js');
 
 const T_ID = '1';
 const S_ID = '101';

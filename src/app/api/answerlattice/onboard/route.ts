@@ -30,6 +30,7 @@ import {
     answerlatticeProviderSubscriptionMatchesAttempt,
     buildAnswerlatticeOnboardingRequestFingerprint,
     findAnswerlatticeProviderSubscriptionForAttempt,
+    getAnswerlatticeOnboardingPositiveInteger,
     getAnswerlatticeOnboardingTimestampMillis,
     isAnswerlatticeTerminalProviderSubscriptionStatus,
     shouldHoldAnswerlatticeOnboardingProviderRecovery,
@@ -143,15 +144,14 @@ const parseAnswerlatticePendingOnboardingSummary = (
     const subscriptionId = normalizeAnswerlatticeSubscriptionId(raw.id);
     const providerSubscriptionId = normalizeAnswerlatticeSubscriptionId(raw.providerSubscriptionId);
     const currency = raw.currency === 'INR' || raw.currency === 'USD' ? raw.currency : null;
-    const amount = Number(raw.amount);
+    const amount = getAnswerlatticeOnboardingPositiveInteger(raw.amount);
     const planId = typeof raw.planId === 'string' ? raw.planId.trim() : '';
     const plan = getAnswerlatticePlanById(planId, 'MONTH');
     if (
         !subscriptionId
         || providerSubscriptionId !== subscriptionId
         || !currency
-        || !Number.isSafeInteger(amount)
-        || amount <= 0
+        || amount === null
         || !plan
         || raw.status !== 'pending'
         || raw.pId !== PRODUCT_IDS.ANSWERLATTICE
@@ -534,14 +534,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const rateLimitResult = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey('answerlattice-onboard', userId),
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
             const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
             return answerlatticeOnboardingJson({
-                code: 'ANSWERLATTICE_ONBOARDING_RATE_LIMITED',
-                error: 'Too many attempts. Please try again later.',
+                code: providerUnavailable
+                    ? 'ANSWERLATTICE_ONBOARDING_TEMPORARILY_UNAVAILABLE'
+                    : 'ANSWERLATTICE_ONBOARDING_RATE_LIMITED',
+                error: providerUnavailable
+                    ? 'Answerlattice onboarding is temporarily unavailable. Please try again later.'
+                    : 'Too many attempts. Please try again later.',
                 resetAt: rateLimitResult.resetAt,
-            }, { status: 429, headers: { 'Retry-After': String(retryAfter) } });
+            }, { status: providerUnavailable ? 503 : 429, headers: { 'Retry-After': String(retryAfter) } });
         }
 
         const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_ONBOARD_MAX_BODY_BYTES, {
@@ -976,6 +982,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             throw new Error('answerlattice_onboarding_provider_subscription_invalid');
         }
         razorpaySubscription = admittedProviderSubscription;
+        const providerTotalCount = razorpaySubscription.total_count === undefined
+            ? totalCount
+            : getAnswerlatticeOnboardingPositiveInteger(razorpaySubscription.total_count);
+        if (providerTotalCount === null) {
+            throw new Error('answerlattice_onboarding_provider_total_count_invalid');
+        }
         const shortUrl = normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url) || '';
         const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {
             paymentProvider: 'razorpay',
@@ -1002,7 +1014,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             subscriptionEndDate: null,
             subscriptionStartDate: null,
             pastDueSinceAt: null,
-            totalPaymentsNeededCount: Number(razorpaySubscription.total_count || totalCount),
+            totalPaymentsNeededCount: providerTotalCount,
             totalPaymentsMadeCount: 0,
             cycleEndDate: null,
             renewsOn: null,

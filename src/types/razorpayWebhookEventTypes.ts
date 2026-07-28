@@ -47,7 +47,7 @@ interface Payment {
     international: boolean;
     invoice_id: string;
     method: string;
-    notes: any[]; // The example shows an empty array
+    notes: unknown[];
     order_id: string;
     refund_status: null;
     status: string;

@@ -21,7 +21,7 @@ export const MENU_IMAGE_PROCESSING_JOBS_COLLECTION = DB_COLLECTIONS.MENU_IMAGE_P
 // FILE TYPES
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const FILE_TYPE: Record<string, string> = {
+export const FILE_TYPE = {
     PDF: "pdf",
     IMAGE: "image",
     VIDEO: "video",
@@ -31,6 +31,6 @@ export const FILE_TYPE: Record<string, string> = {
     YOUTUBE: "youtube",
     GOOGLE_DRIVE: "google_drive",
     COPIED_TEXT: "copied_text",
-}
+} as const;
 
 export type SourceFileType = typeof FILE_TYPE[keyof typeof FILE_TYPE];

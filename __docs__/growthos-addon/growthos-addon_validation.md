@@ -323,3 +323,31 @@ Firebase operation count remain unchanged.
 No Firebase rules, indexes, Storage rules, or Cloud Function source changed, so
 this GrowthOS fix has no Firebase deployment target. App/Vercel release remains
 owner-controlled.
+
+## July 26, 2026 Data-Flow Audit Repair
+
+The repository audit found and repaired browser scope leakage/staleness risk,
+rate-limit fail-open behavior, incomplete source hashes, unsafe persisted
+summary casts, duplicate mutation settlement, and refresh/generate/export
+source/concurrency races.
+
+Validation:
+
+```txt
+npm run verify:growthos
+```
+
+Result: passed 172 source/dry-run assertions, client runtime-contract tests, and
+the Firestore emulator transaction suite.
+
+```txt
+npm run test:growthos:transactions
+```
+
+Result: passed concurrent same-operation generation/export replay, one-kit and
+one-export persistence, atomic kit/summary status, transaction-current stale
+rejection, refresh latest-kit preservation, and tenant-mismatched summary
+rejection.
+
+The suite is now part of `verify:growthos`. No rules, indexes, Storage rules, or
+Cloud Function logic changed; no Firebase deployment target was created.

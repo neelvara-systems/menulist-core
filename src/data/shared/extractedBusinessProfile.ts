@@ -102,7 +102,10 @@ const CURRENCY_ALIASES: Record<string, string> = {
 };
 
 function cleanText(value: unknown, maxLength = 160): string | null {
-  if (typeof value !== "string" && typeof value !== "number") return null;
+  if (
+    typeof value !== "string"
+    && !(typeof value === "number" && Number.isFinite(value))
+  ) return null;
   const normalized = String(value).replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
   return normalized ? normalized.slice(0, maxLength) : null;
 }
@@ -127,7 +130,11 @@ function normalizeSource(value: unknown): ExtractedBusinessProfileSuggestionSour
 }
 
 function normalizeSourceFileIndex(value: unknown): number | undefined {
-  const index = typeof value === "number" ? value : Number(value);
+  const index = typeof value === "number" && Number.isFinite(value)
+    ? value
+    : typeof value === "string" && /^\d+$/.test(value.trim())
+      ? Number(value.trim())
+      : Number.NaN;
   return Number.isInteger(index) && index >= 0 ? index : undefined;
 }
 
@@ -266,10 +273,16 @@ export function hasExtractedBusinessProfile(
 
 export function normalizeExtractedBusinessProfile(raw: unknown): ExtractedBusinessProfile | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const container = raw as Record<string, any>;
-  const identityRaw = container.identity && typeof container.identity === "object" ? container.identity : {};
-  const visualRaw = container.visualBrand && typeof container.visualBrand === "object" ? container.visualBrand : {};
-  const projectRaw = container.project && typeof container.project === "object" ? container.project : {};
+  const container = raw as Record<string, unknown>;
+  const identityRaw = container.identity && typeof container.identity === "object" && !Array.isArray(container.identity)
+    ? container.identity as Record<string, unknown>
+    : {};
+  const visualRaw = container.visualBrand && typeof container.visualBrand === "object" && !Array.isArray(container.visualBrand)
+    ? container.visualBrand as Record<string, unknown>
+    : {};
+  const projectRaw = container.project && typeof container.project === "object" && !Array.isArray(container.project)
+    ? container.project as Record<string, unknown>
+    : {};
 
   const identity: ExtractedBusinessIdentityProfile = {
     businessName: normalizeSuggestion(identityRaw.businessName, "businessName", (value) => normalizeTextValue(value, 100)),

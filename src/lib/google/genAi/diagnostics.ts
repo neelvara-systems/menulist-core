@@ -1,5 +1,9 @@
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getBoundedSecurityStringContext } from '@lib/security/securityDiagnostics';
+import {
+    getBoundedErrorName,
+    getBoundedErrorStringField,
+} from '@lib/monitoring/boundedLogContext';
 
 type DiagnosticsErrorDetails = {
     code?: number | string | null;
@@ -227,16 +231,16 @@ export function getAIErrorDiagnostics(error: unknown) {
     return {
         code: sourceErrorCode,
         hasMessage: resolved instanceof Error
-            ? Boolean(resolved.message)
+            ? Boolean(getBoundedErrorStringField(resolved, 'message'))
             : typeof error === 'string' && error.length > 0,
         hasNestedMessage: typeof nestedError.message === 'string' && nestedError.message.length > 0,
-        hasStack: resolved instanceof Error && Boolean(resolved.stack),
-        name: resolved instanceof Error ? resolved.name : typeof error,
+        hasStack: resolved instanceof Error && Boolean(getBoundedErrorStringField(resolved, 'stack')),
+        name: getBoundedErrorName(resolved) || typeof error,
         nestedCode: getSafeDiagnosticValue(nestedError.code),
         nestedDetailCount: getDetailCount(nestedError.details),
         nestedStatus: getSafeDiagnosticValue(nestedError.status),
         sourceErrorCode,
-        sourceErrorName: resolved instanceof Error ? resolved.name : typeof error,
+        sourceErrorName: getBoundedErrorName(resolved) || typeof error,
         sourceStatus: getSafeDiagnosticValue(sourceStatus),
         sourceStatusCode: getStatusCode(sourceStatus),
         status: getStatusCode(sourceStatus) ?? getSafeDiagnosticValue(sourceStatus),

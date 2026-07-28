@@ -10,6 +10,8 @@ import {
 import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { getBoundedAuthStringContext, logAuthDiagnostic, logAuthFailure } from '@lib/auth/authDiagnostics';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import {
     findAnswerlatticeRole,
     normalizeAnswerlatticeRolesForStore,
@@ -284,8 +286,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
+        const sessionUserId = resolveCurrentSessionUserDocumentId(session);
+        if (!sessionUserId) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const rateLimitConfig = getRateLimitForFeature('AUTH_CLAIM_SYNC');
-        const setClaimsUserRateLimitHash = hashPublicRateLimitValue(session.uId || session.user.id || session.user.email);
+        const setClaimsUserRateLimitHash = hashPublicRateLimitValue(sessionUserId);
         const rateLimit = await checkRateLimit({
             key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${setClaimsUserRateLimitHash}`,
             ...rateLimitConfig,
@@ -355,9 +361,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const defaultDbUser = shouldUseAnswerlatticeUserContext
             ? await getAuthUserByEmail(session.user.email)
             : null;
-        const hasDefaultPlatformAccess = isPlatformSupportRole((defaultDbUser as any)?.platformRole)
-            || isPlatformSupportRole((session as any)?.platformRole)
-            || isPlatformSupportRole((session as any)?.user?.platformRole);
+        const sessionPlatformRole = resolveExactSessionPlatformRole(session);
+        const defaultPlatformRole = (defaultDbUser as any)?.platformRole;
+        const hasDefaultPlatformAccess = isPlatformSupportRole(sessionPlatformRole)
+            && isPlatformSupportRole(defaultPlatformRole);
 
         const answerlatticeDbUser = shouldUseAnswerlatticeUserContext
             ? await getAnswerlatticeAuthUserByEmail(session.user.email)
@@ -388,7 +395,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         let dbUser: any = shouldUseAnswerlatticeUserContext && hasDefaultPlatformAccess && answerlatticeUserMatchesRequestedStore
             ? {
                 ...answerlatticeDbUser,
-                platformRole: (defaultDbUser as any)?.platformRole || (answerlatticeDbUser as any)?.platformRole,
+                platformRole: defaultPlatformRole,
                 pId: PRODUCT_IDS.ANSWERLATTICE,
                 productId: PRODUCT_IDS.ANSWERLATTICE,
             }

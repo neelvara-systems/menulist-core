@@ -8,6 +8,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { buildAnswerlatticeHookScopeKey } from '@lib/answerlattice/hookScopeBoundary';
 import {
     addEntity,
     addEntityRelation,
@@ -22,7 +23,8 @@ import {
 } from '@database/answerlattice/entities';
 import { AnswerlatticeEntity, AnswerlatticeEntityRelation, AnswerlatticeEntitySearchIndex } from '@type/answerlattice';
 import { message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 
 const ANSWERLATTICE_ENTITIES_LOAD_FAILED = 'Could not load entities';
 const ANSWERLATTICE_ENTITY_CREATE_FAILED = 'Could not create entity';
@@ -60,17 +62,36 @@ export function useEntities(
     sId: number,
     loadMode: AnswerlatticeEntityLoadMode = 'full',
 ): UseEntitiesReturn {
+    const session = useClientAuthSession();
     const [entities, setEntities] = useState<AnswerlatticeEntity[]>([]);
     const [relations, setRelations] = useState<AnswerlatticeEntityRelation[]>([]);
     const [searchIndex, setSearchIndex] = useState<AnswerlatticeEntitySearchIndex[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedEntity, setSelectedEntity] = useState<AnswerlatticeEntity | null>(null);
+    const requestedScopeKey = buildAnswerlatticeHookScopeKey(tId, sId);
+    const sessionScopeKey = buildAnswerlatticeHookScopeKey(session?.tId, session?.sId);
+    const scopeKey = requestedScopeKey === sessionScopeKey ? requestedScopeKey : null;
+    const scopeKeyRef = useRef(scopeKey);
+    const latestRefreshRef = useRef(0);
+    const mutationInFlightRef = useRef(false);
+    scopeKeyRef.current = scopeKey;
     const shouldLoadRelations = loadMode === 'full';
     const shouldLoadSearchIndex = loadMode !== 'entities_only';
 
     const refresh = useCallback(async () => {
-        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI || !tId || !sId) return;
+        const requestScopeKey = scopeKey;
+        const requestId = latestRefreshRef.current + 1;
+        latestRefreshRef.current = requestId;
+        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI || !requestScopeKey) {
+            setEntities([]);
+            setRelations([]);
+            setSearchIndex([]);
+            setSelectedEntity(null);
+            setLoading(false);
+            setError(null);
+            return;
+        }
 
         setLoading(true);
         setError(null);
@@ -80,80 +101,116 @@ export function useEntities(
                 shouldLoadRelations ? getEntityRelations(tId, sId) : Promise.resolve([]),
                 shouldLoadSearchIndex ? getEntitySearchIndex(tId, sId) : Promise.resolve([]),
             ]);
+            if (scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId) return;
             setEntities(entitiesResult || []);
             setRelations(relationsResult || []);
             setSearchIndex(indexResult || []);
         } catch {
+            if (scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId) return;
             setError(ANSWERLATTICE_ENTITIES_LOAD_FAILED);
         } finally {
-            setLoading(false);
+            if (scopeKeyRef.current === requestScopeKey && latestRefreshRef.current === requestId) {
+                setLoading(false);
+            }
         }
-    }, [tId, sId, shouldLoadRelations, shouldLoadSearchIndex]);
+    }, [scopeKey, tId, sId, shouldLoadRelations, shouldLoadSearchIndex]);
 
     useEffect(() => {
         refresh();
     }, [refresh]);
 
     const create = useCallback(async (data: Omit<AnswerlatticeEntity, 'id'>): Promise<AnswerlatticeEntity | null> => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return null;
+        mutationInFlightRef.current = true;
         try {
             const result = await addEntity(data);
+            if (scopeKeyRef.current !== operationScopeKey) return null;
             if (result) {
                 message.success(`Entity "${data.name}" created`);
                 await refresh();
             }
             return result;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return null;
             message.error(ANSWERLATTICE_ENTITY_CREATE_FAILED);
             return null;
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [tId, sId, refresh]);
 
     const update = useCallback(async (data: Partial<AnswerlatticeEntity> & { id: string }) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return false;
+        mutationInFlightRef.current = true;
         try {
             const result = await updateEntity(data);
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             if (!result) throw new Error('Entity update returned no result');
             message.success('Entity updated');
             await refresh();
             return true;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             message.error(ANSWERLATTICE_ENTITY_UPDATE_FAILED);
             return false;
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [tId, sId, refresh]);
 
     const deprecateEntity_ = useCallback(async (entityId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return false;
+        mutationInFlightRef.current = true;
         try {
             const result = await deprecateEntity(entityId);
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             if (!result) throw new Error('Entity deprecation returned no result');
             message.success('Entity deprecated');
             await refresh();
             return true;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             message.error(ANSWERLATTICE_ENTITY_DEPRECATE_FAILED);
             return false;
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 
     const updateAliases_ = useCallback(async (entityId: string, aliases: string[]) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return false;
+        mutationInFlightRef.current = true;
         try {
             const cleaned = aliases
                 .map(a => a.toLowerCase().trim())
                 .filter(a => a.length >= 2);
             const unique = Array.from(new Set(cleaned)).slice(0, 20);
             const result = await updateEntity({ id: entityId, aliases: unique });
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             if (!result) throw new Error('Alias update returned no result');
             message.success('Aliases updated');
             await refresh();
             return true;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             message.error(ANSWERLATTICE_ENTITY_ALIASES_UPDATE_FAILED);
             return false;
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [tId, sId, refresh]);
 
     const merge_ = useCallback(async (survivorId: string, mergedId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return false;
+        mutationInFlightRef.current = true;
         try {
             const result = await mergeEntities(survivorId, mergedId, tId, sId);
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             if (result?.success) {
                 const transferred = Number(result.transferredAnswers || 0)
                     + Number(result.transferredArticles || 0)
@@ -166,47 +223,71 @@ export function useEntities(
             }
             return false;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             message.error(ANSWERLATTICE_ENTITY_MERGE_FAILED);
             return false;
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [tId, sId, refresh]);
 
     const addRelation_ = useCallback(async (data: Omit<AnswerlatticeEntityRelation, 'id'>) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return false;
+        mutationInFlightRef.current = true;
         try {
             const result = await addEntityRelation(data);
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             if (!result) throw new Error('Relation create returned no result');
             message.success('Relation added');
             await refresh();
             return true;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             message.error(ANSWERLATTICE_ENTITY_RELATION_ADD_FAILED);
             return false;
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 
     const removeRelation = useCallback(async (relationId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return false;
+        mutationInFlightRef.current = true;
         try {
             const result = await deleteEntityRelation(relationId);
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             if (!result) throw new Error('Relation removal returned no result');
             message.success('Relation removed');
             await refresh();
             return true;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             message.error(ANSWERLATTICE_ENTITY_RELATION_REMOVE_FAILED);
             return false;
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 
     const upsertSearchEntry = useCallback(async (data: Omit<AnswerlatticeEntitySearchIndex, 'id'> & { id?: string }) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return false;
+        mutationInFlightRef.current = true;
         try {
             const result = await upsertEntitySearchIndex(data);
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             if (!result) throw new Error('Search index update returned no result');
             message.success('Search index updated');
             await refresh();
             return true;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             message.error(ANSWERLATTICE_ENTITY_SEARCH_INDEX_UPDATE_FAILED);
             return false;
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 

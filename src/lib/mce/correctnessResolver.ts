@@ -41,6 +41,7 @@ interface ExtractedItem {
     active: boolean;
     available: boolean;
     fileIndex: number;
+    itemIndex: number;
 }
 
 interface ExtractedCategory {
@@ -48,27 +49,53 @@ interface ExtractedCategory {
     name: Record<string, string> | undefined;
     active: boolean;
     fileIndex: number;
+    categoryIndex: number;
 }
 
-function extractItems(projectData: Record<string, any>): ExtractedItem[] {
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord => (
+    typeof value === "object" && value !== null && !Array.isArray(value)
+);
+
+const getRecord = (value: unknown): UnknownRecord | undefined => (
+    isRecord(value) ? value : undefined
+);
+
+const getTranslatedText = (value: unknown): Record<string, string> | string | undefined => {
+    if (typeof value === "string") return value;
+    if (!isRecord(value)) return undefined;
+
+    return Object.fromEntries(
+        Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+    );
+};
+
+function extractItems(projectData: unknown): ExtractedItem[] {
     const items: ExtractedItem[] = [];
-    const files = projectData?.files;
+    const files = getRecord(projectData)?.files;
     if (!Array.isArray(files)) return items;
 
-    files.forEach((file: any, fileIndex: number) => {
+    files.forEach((rawFile, fileIndex: number) => {
+        const file = getRecord(rawFile);
+        if (!file) return;
         if (file.active === false || file.deleted) return;
-        const fileItems = file.extractedData?.data?.items;
+        const fileItems = getRecord(getRecord(file.extractedData)?.data)?.items;
         if (!Array.isArray(fileItems)) return;
 
-        fileItems.forEach((item: any) => {
+        fileItems.forEach((rawItem, itemIndex) => {
+            const item = getRecord(rawItem);
             items.push({
-                id: item.id || "",
-                name: item.name,
-                price: item.price,
-                category: item.category,
-                active: item.active !== false,
-                available: item.available !== false,
+                id: typeof item?.id === "string" ? item.id.trim() : "",
+                name: getTranslatedText(item?.name),
+                price: typeof item?.price === "string" || typeof item?.price === "number"
+                    ? item.price
+                    : undefined,
+                category: typeof item?.category === "string" ? item.category.trim() : undefined,
+                active: item?.active !== false,
+                available: item?.available !== false,
                 fileIndex,
+                itemIndex,
             });
         });
     });
@@ -76,22 +103,27 @@ function extractItems(projectData: Record<string, any>): ExtractedItem[] {
     return items;
 }
 
-function extractCategories(projectData: Record<string, any>): ExtractedCategory[] {
+function extractCategories(projectData: unknown): ExtractedCategory[] {
     const categories: ExtractedCategory[] = [];
-    const files = projectData?.files;
+    const files = getRecord(projectData)?.files;
     if (!Array.isArray(files)) return categories;
 
-    files.forEach((file: any, fileIndex: number) => {
+    files.forEach((rawFile, fileIndex: number) => {
+        const file = getRecord(rawFile);
+        if (!file) return;
         if (file.active === false || file.deleted) return;
-        const fileCats = file.extractedData?.data?.categories;
+        const fileCats = getRecord(getRecord(file.extractedData)?.data)?.categories;
         if (!Array.isArray(fileCats)) return;
 
-        fileCats.forEach((cat: any) => {
+        fileCats.forEach((rawCategory, categoryIndex) => {
+            const cat = getRecord(rawCategory);
+            const name = getTranslatedText(cat?.name);
             categories.push({
-                id: cat.id || "",
-                name: cat.name,
-                active: cat.active !== false,
+                id: typeof cat?.id === "string" ? cat.id.trim() : "",
+                name: typeof name === "string" ? undefined : name,
+                active: cat?.active !== false,
                 fileIndex,
+                categoryIndex,
             });
         });
     });
@@ -99,27 +131,37 @@ function extractCategories(projectData: Record<string, any>): ExtractedCategory[
     return categories;
 }
 
-function getActiveFiles(projectData: Record<string, any>): any[] {
-    const files = projectData?.files;
+function getActiveFiles(projectData: unknown): UnknownRecord[] {
+    const files = getRecord(projectData)?.files;
     if (!Array.isArray(files)) return [];
-    return files.filter((f: any) => f.active !== false && !f.deleted);
+    return files
+        .map(getRecord)
+        .filter((file): file is UnknownRecord => Boolean(file) && file.active !== false && !file.deleted);
 }
 
-function getPrimaryLanguage(projectData: Record<string, any>): string {
-    const declaredLanguages = Array.isArray(projectData?.languages)
-        ? projectData.languages.filter((value: unknown): value is string => (
+function getPrimaryLanguage(projectData: unknown): string {
+    const project = getRecord(projectData);
+    const declaredLanguages = Array.isArray(project?.languages)
+        ? project.languages.filter((value: unknown): value is string => (
             typeof value === "string" && Boolean(value.trim())
         ))
         : [];
     if (declaredLanguages.length > 0) return declaredLanguages[0];
 
-    const files = Array.isArray(projectData?.files) ? projectData.files : [];
-    for (const file of files) {
-        const languages = file?.extractedData?.data?.languages;
+    const files = Array.isArray(project?.files) ? project.files : [];
+    for (const rawFile of files) {
+        const file = getRecord(rawFile);
+        const languages = getRecord(getRecord(file?.extractedData)?.data)?.languages;
         if (!Array.isArray(languages)) continue;
-        const primary = languages.find((language: any) => language?.isPrimary && language?.code);
-        const fallback = languages.find((language: any) => language?.code);
-        if (primary?.code || fallback?.code) return String(primary?.code || fallback.code);
+        const languageRecords = languages
+            .map(getRecord)
+            .filter((value): value is UnknownRecord => Boolean(value));
+        const primary = languageRecords.find((language) => (
+            language.isPrimary === true && typeof language.code === "string"
+        ));
+        const fallback = languageRecords.find((language) => typeof language.code === "string");
+        const languageCode = primary?.code ?? fallback?.code;
+        if (typeof languageCode === "string" && languageCode.trim()) return languageCode;
     }
 
     for (const item of extractItems(projectData)) {
@@ -302,31 +344,45 @@ const DISABLED_ITEM_HIDDEN: ValidationRule = {
     severity: "high",
     blocksVerification: true,
     validate: (input: CSRInput): ValidationRuleResult => {
-        // Validates structural correctness of the active flag.
+        // Validates structural correctness of item availability flags.
         // Items with active: false should exist in data but be excluded
         // by sanitizeForClient() at read-time. The CSR validates that
-        // the flag is a proper boolean when present.
+        // the flags are proper booleans when present.
         const affected: string[] = [];
-        const rawFiles = input.projectData?.files;
+        const rawFiles = getRecord(input.projectData)?.files;
         if (!Array.isArray(rawFiles)) return { passed: true, affectedItems: [], message: "" };
 
-        for (const file of rawFiles) {
+        for (const rawFile of rawFiles) {
+            const file = getRecord(rawFile);
+            if (!file) continue;
             if (file.active === false || file.deleted) continue;
-            const rawItems = file?.extractedData?.data?.items;
+            const rawItems = getRecord(getRecord(file.extractedData)?.data)?.items;
             if (!Array.isArray(rawItems)) continue;
 
-            for (const rawItem of rawItems) {
-                if (rawItem.active !== undefined && typeof rawItem.active !== "boolean") {
-                    affected.push(rawItem.id || "unknown");
+            rawItems.forEach((rawItemValue, itemIndex) => {
+                const rawItem = getRecord(rawItemValue);
+                if (!rawItem) {
+                    affected.push(`item:${itemIndex}`);
+                    return;
                 }
-            }
+                const affectedId = typeof rawItem.id === "string" && rawItem.id.trim()
+                    ? rawItem.id
+                    : `item:${itemIndex}`;
+                if (rawItem.active !== undefined && typeof rawItem.active !== "boolean") {
+                    affected.push(affectedId);
+                }
+                if (rawItem.available !== undefined && typeof rawItem.available !== "boolean") {
+                    affected.push(affectedId);
+                }
+            });
         }
 
+        const uniqueAffected = Array.from(new Set(affected));
         return {
-            passed: affected.length === 0,
-            affectedItems: affected,
-            message: affected.length > 0
-                ? `${affected.length} item(s) have invalid active flag (must be boolean)`
+            passed: uniqueAffected.length === 0,
+            affectedItems: uniqueAffected,
+            message: uniqueAffected.length > 0
+                ? `${uniqueAffected.length} item(s) have invalid active or available flags (must be boolean)`
                 : "",
         };
     },
@@ -344,8 +400,8 @@ const OUTLET_AVAILABILITY_RESPECTED: ValidationRule = {
             return { passed: true, affectedItems: [], message: "" };
         }
 
-        const overrides = input.projectData?.overrides?.items;
-        if (!overrides || typeof overrides !== "object") {
+        const overrides = getRecord(getRecord(input.projectData)?.overrides)?.items;
+        if (!isRecord(overrides)) {
             return { passed: true, affectedItems: [], message: "" };
         }
 
@@ -353,7 +409,11 @@ const OUTLET_AVAILABILITY_RESPECTED: ValidationRule = {
 
         // Validate that override availability values are proper booleans
         for (const [itemId, override] of Object.entries(overrides)) {
-            const ov = override as Record<string, any>;
+            const ov = getRecord(override);
+            if (!ov) {
+                affected.push(itemId);
+                continue;
+            }
             if (ov.available !== undefined && typeof ov.available !== "boolean") {
                 affected.push(itemId);
             }
@@ -404,7 +464,10 @@ const FILE_HAS_DATA: ValidationRule = {
     validate: (input: CSRInput): ValidationRuleResult => {
         const activeFiles = getActiveFiles(input.projectData);
         const hasData = activeFiles.some(
-            (f: any) => f.extractedData?.data?.items?.length > 0,
+            (file) => {
+                const items = getRecord(getRecord(file.extractedData)?.data)?.items;
+                return Array.isArray(items) && items.length > 0;
+            },
         );
 
         return {
@@ -507,7 +570,7 @@ const CATEGORY_EXISTS: ValidationRule = {
 const NO_DUPLICATE_IDS: ValidationRule = {
     id: "NO_DUPLICATE_IDS",
     law: "DATA_COMPLETENESS",
-    description: "No duplicate item or category IDs within a project",
+    description: "Every item and category has a unique, non-empty ID",
     severity: "critical",
     blocksVerification: true,
     validate: (input: CSRInput): ValidationRuleResult => {
@@ -518,7 +581,10 @@ const NO_DUPLICATE_IDS: ValidationRule = {
         // Check item ID duplicates
         const itemIds = new Set<string>();
         for (const item of items) {
-            if (!item.id) continue;
+            if (!item.id) {
+                affected.push(`item:${item.fileIndex}:${item.itemIndex}`);
+                continue;
+            }
             if (itemIds.has(item.id)) {
                 affected.push(item.id);
             }
@@ -528,7 +594,10 @@ const NO_DUPLICATE_IDS: ValidationRule = {
         // Check category ID duplicates
         const catIds = new Set<string>();
         for (const cat of categories) {
-            if (!cat.id) continue;
+            if (!cat.id) {
+                affected.push(`category:${cat.fileIndex}:${cat.categoryIndex}`);
+                continue;
+            }
             if (catIds.has(cat.id)) {
                 affected.push(cat.id);
             }
@@ -539,9 +608,9 @@ const NO_DUPLICATE_IDS: ValidationRule = {
             passed: affected.length === 0,
             affectedItems: affected,
             message: affected.length > 0
-                ? `${affected.length} duplicate ID(s) found`
+                ? `${affected.length} missing or duplicate ID(s) found`
                 : "",
-            suggestedFix: "Remove duplicate items or categories with the same ID",
+            suggestedFix: "Add missing IDs and remove duplicate item or category IDs",
         };
     },
 };
@@ -554,8 +623,14 @@ const LANGUAGE_COMPLETE: ValidationRule = {
     blocksVerification: false, // Warning only
     validate: (input: CSRInput): ValidationRuleResult => {
         const items = extractItems(input.projectData);
-        const languages = input.projectData?.languages;
+        const languages = getRecord(input.projectData)?.languages;
         if (!Array.isArray(languages) || languages.length <= 1) {
+            return { passed: true, affectedItems: [], message: "" };
+        }
+        const normalizedLanguages = languages.filter((language): language is string => (
+            typeof language === "string" && Boolean(language.trim())
+        ));
+        if (normalizedLanguages.length <= 1) {
             return { passed: true, affectedItems: [], message: "" };
         }
         const primaryLanguage = getPrimaryLanguage(input.projectData);
@@ -564,7 +639,7 @@ const LANGUAGE_COMPLETE: ValidationRule = {
 
         for (const item of items) {
             if (!item.active) continue;
-            for (const lang of languages) {
+            for (const lang of normalizedLanguages) {
                 if (!getItemNameInLanguage(item, lang, primaryLanguage)) {
                     if (!affected.includes(item.id)) {
                         affected.push(item.id);
@@ -637,29 +712,41 @@ const OVERRIDE_PRESERVED: ValidationRule = {
         }
 
         // Validate that overrides structure is well-formed if present
-        const overrides = input.projectData?.overrides;
-        if (!overrides) {
+        const overridesValue = getRecord(input.projectData)?.overrides;
+        if (overridesValue === undefined || overridesValue === null) {
             return { passed: true, affectedItems: [], message: "" };
+        }
+        const overrides = getRecord(overridesValue);
+        if (!overrides) {
+            return {
+                passed: false,
+                affectedItems: ["overrides"],
+                message: "Outlet overrides have invalid structure",
+            };
         }
 
         const affected: string[] = [];
 
         // Validate items overrides structure
-        if (overrides.items && typeof overrides.items === "object") {
+        if (isRecord(overrides.items)) {
             for (const [itemId, override] of Object.entries(overrides.items)) {
-                if (!override || typeof override !== "object") {
+                if (!isRecord(override)) {
                     affected.push(itemId);
                 }
             }
+        } else if (overrides.items !== undefined) {
+            affected.push("items");
         }
 
         // Validate categories overrides structure
-        if (overrides.categories && typeof overrides.categories === "object") {
+        if (isRecord(overrides.categories)) {
             for (const [catId, override] of Object.entries(overrides.categories)) {
-                if (!override || typeof override !== "object") {
+                if (!isRecord(override)) {
                     affected.push(catId);
                 }
             }
+        } else if (overrides.categories !== undefined) {
+            affected.push("categories");
         }
 
         return {

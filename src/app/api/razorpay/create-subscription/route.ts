@@ -386,11 +386,49 @@ export const POST = withAuth(async (request, session) => {
                     { status: 409 },
                 );
             }
-            await pendingDoc.ref.set({
-                status: 'expired',
-                subscriptionEndDate: Timestamp.now(),
-                cycleEndDate: Timestamp.now(),
-            }, { merge: true });
+            const cleanupResult = await billingDb.runTransaction(async (transaction) => {
+                const currentSnapshot = await transaction.get(pendingDoc.ref);
+                if (!currentSnapshot.exists) return 'missing' as const;
+                const current = {
+                    ...currentSnapshot.data(),
+                    id: currentSnapshot.id,
+                } as FirestoreSubscriptionDoc;
+                const currentScope = getProductSubscriptionBillingScope(productId, current);
+                const currentReplacementEvidence = resolveSubscriptionReplacementEvidence(current);
+                const currentProviderId = getRazorpayManagedSubscriptionId(current);
+                const currentQuantity = current.quantity == null ? 1 : current.quantity;
+                const currentReplacementIntentMatches = replacementForSubscriptionId
+                    ? currentReplacementEvidence.outcome === 'replacement'
+                        && currentReplacementEvidence.subscriptionId === replacementForSubscriptionId
+                        && currentReplacementEvidence.previousMrrPaise === expectedReplacementMrrPaise
+                    : currentReplacementEvidence.outcome === 'none';
+                if (
+                    current.status !== 'pending'
+                    || currentProviderId !== pendingProviderId
+                    || currentScope?.tenantId !== Number(tenantId)
+                    || currentScope.storeId !== Number(storeId)
+                    || current.planId !== planId
+                    || current.planType !== interval
+                    || current.currency !== currency
+                    || currentQuantity !== quantity
+                    || !currentReplacementIntentMatches
+                ) {
+                    return 'changed' as const;
+                }
+                const expiredAt = Timestamp.now();
+                transaction.set(pendingDoc.ref, {
+                    status: 'expired',
+                    subscriptionEndDate: expiredAt,
+                    cycleEndDate: expiredAt,
+                }, { merge: true });
+                return 'expired' as const;
+            });
+            if (cleanupResult === 'changed') {
+                return NextResponse.json(
+                    { error: 'Subscription state changed while billing was checked. Refresh billing before trying again.' },
+                    { status: 409 },
+                );
+            }
         }
 
         checkoutLeaseIdentity = {

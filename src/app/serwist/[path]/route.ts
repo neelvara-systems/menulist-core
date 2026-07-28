@@ -22,7 +22,6 @@ export const {
         'public/icons/**/*.{ico,png,svg,webp}',
         'public/favicon.ico',
         'public/manifest.json',
-        'public/platform.webmanifest',
     ],
     maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
     swSrc: 'src/app/sw.ts',

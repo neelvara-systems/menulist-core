@@ -1,5 +1,6 @@
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { secureError } from '@lib/security/secureLogger';
+import { getBoundedErrorLogContext } from '@lib/monitoring/boundedLogContext';
 
 export const TEMP_STATUS_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 
@@ -59,13 +60,7 @@ const logTempStatusClientFailure = (
 ): void => {
     secureError('[Temp Status] Operation failed', new Error(failureCode), {
         ...context,
-        sourceErrorName: error instanceof Error ? error.name || 'Error' : typeof error,
-        sourceErrorCode: isRecord(error) && typeof error.code === 'string'
-            ? error.code.slice(0, 64)
-            : undefined,
-        sourceStatusCode: isRecord(error) && Number.isFinite(Number(error.status))
-            ? Number(error.status)
-            : undefined,
+        ...getBoundedErrorLogContext(error),
     });
 };
 

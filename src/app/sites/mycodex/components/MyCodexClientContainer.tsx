@@ -163,7 +163,7 @@ const MAX_READER_FONT_SIZE = 22;
 const DEFAULT_READER_AUDIO_RATE = 1;
 const MIN_READER_AUDIO_RATE = 0.75;
 const MAX_READER_AUDIO_RATE = 1.5;
-const MYCODEX_DOCUMENT_RESPONSE_JSON_MAX_BYTES = 4 * 1024 * 1024;
+const MYCODEX_DOCUMENT_RESPONSE_JSON_MAX_BYTES = 5 * 1024 * 1024;
 const SPEECH_CHUNK_MAX_LENGTH = 900;
 const INDIA_SPEECH_LANGUAGE_CODES = [
     'en-in',
@@ -201,6 +201,9 @@ const MAX_SCREENSHOT_HEIGHT = 14000;
 const MAX_RECENT_DOCS = 8;
 const MAX_FAVORITE_DOCS = 50;
 const MAX_QUEUE_DOCS = 50;
+const MAX_SCROLL_POSITION_DOCS = 200;
+const MAX_AUDIO_QUEUE_DOCUMENTS = 12;
+const MAX_AUDIO_QUEUE_CHARACTERS = 250_000;
 const SETTINGS_DRAWER_TRANSITION_MS = 300;
 
 type ReaderWidth = 'focus' | 'standard' | 'wide';
@@ -309,48 +312,119 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
     && !Array.isArray(value)
 );
 
+const isBoundedReaderString = (value: unknown, maxLength: number): value is string => (
+    typeof value === 'string' && value.length > 0 && value.length <= maxLength
+);
+
+const isReaderDocEntry = (value: unknown) => {
+    if (!isPlainRecord(value)) return false;
+    return isBoundedReaderString(value.path, 2048)
+        && isBoundedReaderString(value.title, 256)
+        && isBoundedReaderString(value.sourcePath, 4096);
+};
+
 const isReaderHistoryEntry = (value: unknown): value is ReaderHistoryEntry => {
-    if (!value || typeof value !== 'object') return false;
+    if (!isReaderDocEntry(value)) return false;
     const entry = value as Partial<ReaderHistoryEntry>;
-    return typeof entry.path === 'string'
-        && typeof entry.title === 'string'
-        && typeof entry.sourcePath === 'string'
-        && typeof entry.visitedAt === 'number';
+    return typeof entry.visitedAt === 'number'
+        && Number.isFinite(entry.visitedAt)
+        && entry.visitedAt >= 0;
 };
 
 const isFavoriteDocEntry = (value: unknown): value is FavoriteDocEntry => {
-    if (!value || typeof value !== 'object') return false;
+    if (!isReaderDocEntry(value)) return false;
     const entry = value as Partial<FavoriteDocEntry>;
-    return typeof entry.path === 'string'
-        && typeof entry.title === 'string'
-        && typeof entry.sourcePath === 'string'
-        && typeof entry.favoritedAt === 'number';
+    return typeof entry.favoritedAt === 'number'
+        && Number.isFinite(entry.favoritedAt)
+        && entry.favoritedAt >= 0;
 };
 
 const isQueueDocEntry = (value: unknown): value is QueueDocEntry => {
-    if (!value || typeof value !== 'object') return false;
+    if (!isReaderDocEntry(value)) return false;
     const entry = value as Partial<QueueDocEntry>;
-    return typeof entry.path === 'string'
-        && typeof entry.title === 'string'
-        && typeof entry.sourcePath === 'string'
-        && typeof entry.queuedAt === 'number';
+    return typeof entry.queuedAt === 'number'
+        && Number.isFinite(entry.queuedAt)
+        && entry.queuedAt >= 0;
 };
 
 const isScrollPositionRecord = (value: unknown): value is Record<string, ScrollPositionEntry> => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
 
-    return Object.values(value).every((entry) => {
+    const entries = Object.entries(value);
+    if (entries.length > MAX_SCROLL_POSITION_DOCS) return false;
+
+    return entries.every(([documentPath, entry]) => {
+        if (!isBoundedReaderString(documentPath, 2048)) return false;
         if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
         const position = entry as Partial<ScrollPositionEntry>;
         return typeof position.y === 'number'
+            && Number.isFinite(position.y)
+            && position.y >= 0
             && typeof position.progress === 'number'
-            && typeof position.updatedAt === 'number';
+            && Number.isFinite(position.progress)
+            && position.progress >= 0
+            && position.progress <= 100
+            && typeof position.updatedAt === 'number'
+            && Number.isFinite(position.updatedAt)
+            && position.updatedAt >= 0;
     });
 };
 
 const isExpandedFoldersRecord = (value: unknown): value is Record<string, boolean> => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    return Object.values(value).every((entry) => typeof entry === 'boolean');
+    const entries = Object.entries(value);
+    return entries.length <= 1000
+        && entries.every(([folderPath, entry]) => (
+            isBoundedReaderString(folderPath, 2048) && typeof entry === 'boolean'
+        ));
+};
+
+const getLocalStorageValue = (key: string) => {
+    try {
+        return window.localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+const setLocalStorageValue = (key: string, value: string) => {
+    try {
+        window.localStorage.setItem(key, value);
+    } catch {
+        // Reader settings are convenience state; never block reading.
+    }
+};
+
+const removeLocalStorageValue = (key: string) => {
+    try {
+        window.localStorage.removeItem(key);
+    } catch {
+        // Reader settings are convenience state; never block reading.
+    }
+};
+
+const getSessionStorageValue = (key: string) => {
+    try {
+        return window.sessionStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+const setSessionStorageValue = (key: string, value: string) => {
+    try {
+        window.sessionStorage.setItem(key, value);
+    } catch {
+        // Scroll resume is convenience state; never block navigation.
+    }
+};
+
+const removeSessionStorageValue = (key: string) => {
+    try {
+        window.sessionStorage.removeItem(key);
+    } catch {
+        // Scroll resume is convenience state; never block navigation.
+    }
 };
 
 const isMyCodexDocumentResponse = (value: unknown): value is MyCodexDocumentResponse => (
@@ -621,93 +695,95 @@ export default function MyCodexClientContainer({
 
     // Read theme from localStorage / system pref on mount
     useEffect(() => {
-        const stored = localStorage.getItem('theme');
+        const stored = getLocalStorageValue('theme');
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         setIsDark(stored ? stored === 'dark' : prefersDark);
 
-        const storedFontSize = Number(localStorage.getItem(READER_FONT_SIZE_STORAGE_KEY));
+        const storedFontSizeValue = getLocalStorageValue(READER_FONT_SIZE_STORAGE_KEY);
+        const storedFontSize = storedFontSizeValue === null ? Number.NaN : Number(storedFontSizeValue);
         if (Number.isFinite(storedFontSize)) {
             setReaderFontSize(clampReaderFontSize(storedFontSize));
         }
 
-        const storedWidth = localStorage.getItem(READER_WIDTH_STORAGE_KEY);
+        const storedWidth = getLocalStorageValue(READER_WIDTH_STORAGE_KEY);
         if (isReaderWidth(storedWidth)) {
             setReaderWidth(storedWidth);
         }
 
-        const storedSidebarPinned = localStorage.getItem(READER_NAV_STORAGE_KEY);
+        const storedSidebarPinned = getLocalStorageValue(READER_NAV_STORAGE_KEY);
         if (storedSidebarPinned === 'false') {
             setSidebarPinned(false);
         }
 
-        const storedVoiceURI = localStorage.getItem(READER_AUDIO_VOICE_STORAGE_KEY);
+        const storedVoiceURI = getLocalStorageValue(READER_AUDIO_VOICE_STORAGE_KEY);
         if (storedVoiceURI) {
             setSelectedVoiceURI(storedVoiceURI);
         }
 
-        const storedSpeechRate = Number(localStorage.getItem(READER_AUDIO_RATE_STORAGE_KEY));
+        const storedSpeechRateValue = getLocalStorageValue(READER_AUDIO_RATE_STORAGE_KEY);
+        const storedSpeechRate = storedSpeechRateValue === null ? Number.NaN : Number(storedSpeechRateValue);
         if (Number.isFinite(storedSpeechRate)) {
             setSpeechRate(clampSpeechRate(storedSpeechRate));
         }
 
-        const storedAutoScroll = localStorage.getItem(READER_AUDIO_AUTOSCROLL_STORAGE_KEY);
+        const storedAutoScroll = getLocalStorageValue(READER_AUDIO_AUTOSCROLL_STORAGE_KEY);
         if (storedAutoScroll === 'false') {
             setSpeechAutoScroll(false);
         }
 
-        const storedWakeLock = localStorage.getItem(READER_AUDIO_WAKE_LOCK_STORAGE_KEY);
+        const storedWakeLock = getLocalStorageValue(READER_AUDIO_WAKE_LOCK_STORAGE_KEY);
         if (storedWakeLock === 'false') {
             setKeepScreenAwake(false);
         }
 
         try {
-            const storedExpandedFolders = JSON.parse(localStorage.getItem(READER_EXPANDED_FOLDERS_STORAGE_KEY) || '{}');
+            const storedExpandedFolders = JSON.parse(getLocalStorageValue(READER_EXPANDED_FOLDERS_STORAGE_KEY) || '{}');
             if (isExpandedFoldersRecord(storedExpandedFolders)) {
                 setExpandedFolders(storedExpandedFolders);
             } else {
-                localStorage.removeItem(READER_EXPANDED_FOLDERS_STORAGE_KEY);
+                removeLocalStorageValue(READER_EXPANDED_FOLDERS_STORAGE_KEY);
             }
         } catch {
-            localStorage.removeItem(READER_EXPANDED_FOLDERS_STORAGE_KEY);
+            removeLocalStorageValue(READER_EXPANDED_FOLDERS_STORAGE_KEY);
         }
 
         try {
-            const storedRecentDocs = JSON.parse(localStorage.getItem(READER_RECENT_DOCS_STORAGE_KEY) || '[]');
+            const storedRecentDocs = JSON.parse(getLocalStorageValue(READER_RECENT_DOCS_STORAGE_KEY) || '[]');
             if (Array.isArray(storedRecentDocs)) {
                 setRecentDocs(storedRecentDocs.filter(isReaderHistoryEntry).slice(0, MAX_RECENT_DOCS));
             }
         } catch {
-            localStorage.removeItem(READER_RECENT_DOCS_STORAGE_KEY);
+            removeLocalStorageValue(READER_RECENT_DOCS_STORAGE_KEY);
         }
 
         try {
-            const storedFavoriteDocs = JSON.parse(localStorage.getItem(READER_FAVORITE_DOCS_STORAGE_KEY) || '[]');
+            const storedFavoriteDocs = JSON.parse(getLocalStorageValue(READER_FAVORITE_DOCS_STORAGE_KEY) || '[]');
             if (Array.isArray(storedFavoriteDocs)) {
                 setFavoriteDocs(storedFavoriteDocs.filter(isFavoriteDocEntry).slice(0, MAX_FAVORITE_DOCS));
             }
         } catch {
-            localStorage.removeItem(READER_FAVORITE_DOCS_STORAGE_KEY);
+            removeLocalStorageValue(READER_FAVORITE_DOCS_STORAGE_KEY);
         }
 
         try {
-            const storedQueueDocs = JSON.parse(localStorage.getItem(READER_QUEUE_DOCS_STORAGE_KEY) || '[]');
+            const storedQueueDocs = JSON.parse(getLocalStorageValue(READER_QUEUE_DOCS_STORAGE_KEY) || '[]');
             if (Array.isArray(storedQueueDocs)) {
                 setQueueDocs(storedQueueDocs.filter(isQueueDocEntry).slice(0, MAX_QUEUE_DOCS));
             }
         } catch {
-            localStorage.removeItem(READER_QUEUE_DOCS_STORAGE_KEY);
+            removeLocalStorageValue(READER_QUEUE_DOCS_STORAGE_KEY);
         }
 
         try {
-            const storedScrollPositions = JSON.parse(localStorage.getItem(READER_SCROLL_POSITIONS_STORAGE_KEY) || '{}');
+            const storedScrollPositions = JSON.parse(getLocalStorageValue(READER_SCROLL_POSITIONS_STORAGE_KEY) || '{}');
             if (isScrollPositionRecord(storedScrollPositions)) {
                 scrollPositionsRef.current = storedScrollPositions;
                 setScrollPositions(storedScrollPositions);
             } else {
-                localStorage.removeItem(READER_SCROLL_POSITIONS_STORAGE_KEY);
+                removeLocalStorageValue(READER_SCROLL_POSITIONS_STORAGE_KEY);
             }
         } catch {
-            localStorage.removeItem(READER_SCROLL_POSITIONS_STORAGE_KEY);
+            removeLocalStorageValue(READER_SCROLL_POSITIONS_STORAGE_KEY);
         }
 
         setReaderSettingsHydrated(true);
@@ -719,10 +795,10 @@ export default function MyCodexClientContainer({
         const root = document.documentElement;
         if (isDark) {
             root.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
+            setLocalStorageValue('theme', 'dark');
         } else {
             root.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
+            setLocalStorageValue('theme', 'light');
         }
     }, [isDark, readerSettingsHydrated]);
 
@@ -730,23 +806,23 @@ export default function MyCodexClientContainer({
 
     useEffect(() => {
         if (!readerSettingsHydrated) return;
-        localStorage.setItem(READER_FONT_SIZE_STORAGE_KEY, String(readerFontSize));
+        setLocalStorageValue(READER_FONT_SIZE_STORAGE_KEY, String(readerFontSize));
     }, [readerFontSize, readerSettingsHydrated]);
 
     useEffect(() => {
         if (!readerSettingsHydrated) return;
-        localStorage.setItem(READER_WIDTH_STORAGE_KEY, readerWidth);
+        setLocalStorageValue(READER_WIDTH_STORAGE_KEY, readerWidth);
     }, [readerSettingsHydrated, readerWidth]);
 
     useEffect(() => {
         if (!readerSettingsHydrated) return;
-        localStorage.setItem(READER_NAV_STORAGE_KEY, String(sidebarPinned));
+        setLocalStorageValue(READER_NAV_STORAGE_KEY, String(sidebarPinned));
     }, [readerSettingsHydrated, sidebarPinned]);
 
     useEffect(() => {
         if (!readerSettingsHydrated) return;
         try {
-            localStorage.setItem(READER_EXPANDED_FOLDERS_STORAGE_KEY, JSON.stringify(expandedFolders));
+            setLocalStorageValue(READER_EXPANDED_FOLDERS_STORAGE_KEY, JSON.stringify(expandedFolders));
         } catch {
             // Expanded folders are convenience state; never block reading.
         }
@@ -755,7 +831,7 @@ export default function MyCodexClientContainer({
     useEffect(() => {
         if (!readerSettingsHydrated) return;
         try {
-            localStorage.setItem(READER_FAVORITE_DOCS_STORAGE_KEY, JSON.stringify(favoriteDocs));
+            setLocalStorageValue(READER_FAVORITE_DOCS_STORAGE_KEY, JSON.stringify(favoriteDocs));
         } catch {
             // Favorites are convenience state; never block reading.
         }
@@ -764,7 +840,7 @@ export default function MyCodexClientContainer({
     useEffect(() => {
         if (!readerSettingsHydrated) return;
         try {
-            localStorage.setItem(READER_QUEUE_DOCS_STORAGE_KEY, JSON.stringify(queueDocs));
+            setLocalStorageValue(READER_QUEUE_DOCS_STORAGE_KEY, JSON.stringify(queueDocs));
         } catch {
             // Queue is convenience state; never block reading.
         }
@@ -773,22 +849,22 @@ export default function MyCodexClientContainer({
     useEffect(() => {
         if (!readerSettingsHydrated) return;
         if (!selectedVoiceURI) return;
-        localStorage.setItem(READER_AUDIO_VOICE_STORAGE_KEY, selectedVoiceURI);
+        setLocalStorageValue(READER_AUDIO_VOICE_STORAGE_KEY, selectedVoiceURI);
     }, [readerSettingsHydrated, selectedVoiceURI]);
 
     useEffect(() => {
         if (!readerSettingsHydrated) return;
-        localStorage.setItem(READER_AUDIO_RATE_STORAGE_KEY, String(speechRate));
+        setLocalStorageValue(READER_AUDIO_RATE_STORAGE_KEY, String(speechRate));
     }, [readerSettingsHydrated, speechRate]);
 
     useEffect(() => {
         if (!readerSettingsHydrated) return;
-        localStorage.setItem(READER_AUDIO_AUTOSCROLL_STORAGE_KEY, String(speechAutoScroll));
+        setLocalStorageValue(READER_AUDIO_AUTOSCROLL_STORAGE_KEY, String(speechAutoScroll));
     }, [readerSettingsHydrated, speechAutoScroll]);
 
     useEffect(() => {
         if (!readerSettingsHydrated) return;
-        localStorage.setItem(READER_AUDIO_WAKE_LOCK_STORAGE_KEY, String(keepScreenAwake));
+        setLocalStorageValue(READER_AUDIO_WAKE_LOCK_STORAGE_KEY, String(keepScreenAwake));
     }, [keepScreenAwake, readerSettingsHydrated]);
 
     useEffect(() => {
@@ -806,13 +882,13 @@ export default function MyCodexClientContainer({
                     return previousVoiceURI;
                 }
 
-                const storedVoiceURI = localStorage.getItem(READER_AUDIO_VOICE_STORAGE_KEY);
+                const storedVoiceURI = getLocalStorageValue(READER_AUDIO_VOICE_STORAGE_KEY);
                 if (storedVoiceURI && voices.some((voice) => voice.voiceURI === storedVoiceURI)) {
                     return storedVoiceURI;
                 }
 
                 if (storedVoiceURI) {
-                    localStorage.removeItem(READER_AUDIO_VOICE_STORAGE_KEY);
+                    removeLocalStorageValue(READER_AUDIO_VOICE_STORAGE_KEY);
                 }
 
                 return getDefaultIndiaSpeechVoice(voices)?.voiceURI || '';
@@ -1005,8 +1081,29 @@ export default function MyCodexClientContainer({
     // Build standard URL based on current routing prefix
     const buildUrl = useCallback((targetPath: string) => {
         const normalizedTargetPath = String(targetPath || '').trim();
-        const safeTargetPath = !normalizedTargetPath || normalizedTargetPath.startsWith('//') ? '/' : normalizedTargetPath;
-        const cleanPath = safeTargetPath.startsWith('/') ? safeTargetPath : '/' + safeTargetPath;
+        let cleanPath = '/';
+        if (
+            normalizedTargetPath
+            && normalizedTargetPath.startsWith('/')
+            && !normalizedTargetPath.startsWith('//')
+            && !/[\u0000-\u001f\u007f\\]/.test(normalizedTargetPath)
+        ) {
+            try {
+                const baseUrl = new URL('https://mycodex.invalid');
+                const parsed = new URL(normalizedTargetPath, baseUrl);
+                const decodedPathname = decodeURIComponent(parsed.pathname);
+                if (
+                    parsed.origin === baseUrl.origin
+                    && !decodedPathname.startsWith('//')
+                    && !decodedPathname.includes('\\')
+                    && !/[\u0000-\u001f\u007f]/.test(decodedPathname)
+                ) {
+                    cleanPath = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+                }
+            } catch {
+                cleanPath = '/';
+            }
+        }
         return isLocalDev ? `/__mycodex${cleanPath === '/' ? '' : cleanPath}` : cleanPath;
     }, [isLocalDev]);
 
@@ -1095,7 +1192,7 @@ export default function MyCodexClientContainer({
                 ...previous.filter((entry) => entry.path !== currentEntry.path),
             ].slice(0, MAX_RECENT_DOCS);
             try {
-                localStorage.setItem(READER_RECENT_DOCS_STORAGE_KEY, JSON.stringify(next));
+                setLocalStorageValue(READER_RECENT_DOCS_STORAGE_KEY, JSON.stringify(next));
             } catch {
                 // Recent docs are a convenience only; never block reading.
             }
@@ -1128,7 +1225,7 @@ export default function MyCodexClientContainer({
                 const nextPositions = scrollPositionsRef.current;
                 setScrollPositions(nextPositions);
                 try {
-                    localStorage.setItem(READER_SCROLL_POSITIONS_STORAGE_KEY, JSON.stringify(nextPositions));
+                    setLocalStorageValue(READER_SCROLL_POSITIONS_STORAGE_KEY, JSON.stringify(nextPositions));
                 } catch {
                     // Scroll resume is convenience state; never block reading.
                 }
@@ -1148,10 +1245,10 @@ export default function MyCodexClientContainer({
 
     useEffect(() => {
         if (!readerSettingsHydrated || !isDocumentRoute || !currentScrollPosition) return;
-        const pendingScrollPath = sessionStorage.getItem(READER_PENDING_SCROLL_STORAGE_KEY);
+        const pendingScrollPath = getSessionStorageValue(READER_PENDING_SCROLL_STORAGE_KEY);
         if (pendingScrollPath !== currentPath) return;
 
-        sessionStorage.removeItem(READER_PENDING_SCROLL_STORAGE_KEY);
+        removeSessionStorageValue(READER_PENDING_SCROLL_STORAGE_KEY);
         window.setTimeout(() => {
             window.scrollTo({ top: currentScrollPosition.y, behavior: 'smooth' });
         }, 250);
@@ -1174,7 +1271,7 @@ export default function MyCodexClientContainer({
     const openDocumentAtSavedPosition = useCallback((entry: ReaderDocEntry) => {
         const savedPosition = scrollPositionsRef.current[entry.path];
         if (savedPosition?.y && savedPosition.y > 120) {
-            sessionStorage.setItem(READER_PENDING_SCROLL_STORAGE_KEY, entry.path);
+            setSessionStorageValue(READER_PENDING_SCROLL_STORAGE_KEY, entry.path);
         }
         window.location.href = buildUrl(entry.path);
     }, [buildUrl]);
@@ -1473,7 +1570,15 @@ export default function MyCodexClientContainer({
             return;
         }
 
-        const cleanChunks = chunks.filter((chunk) => normalizeSpeechText(chunk.text).length > 0);
+        const cleanChunks: SpeechChunk[] = [];
+        let admittedCharacters = 0;
+        for (const chunk of chunks) {
+            const normalizedText = normalizeSpeechText(chunk.text);
+            if (!normalizedText) continue;
+            if (admittedCharacters + normalizedText.length > MAX_AUDIO_QUEUE_CHARACTERS) break;
+            cleanChunks.push({ ...chunk, text: normalizedText });
+            admittedCharacters += normalizedText.length;
+        }
         if (cleanChunks.length === 0) {
             showActionStatus(emptyMessage, 'info');
             return;
@@ -1552,13 +1657,22 @@ export default function MyCodexClientContainer({
 
         showActionStatus(`Preparing ${entries.length} favorite${entries.length === 1 ? '' : 's'}`, 'info');
 
+        const selectedEntries = entries.slice(0, MAX_AUDIO_QUEUE_DOCUMENTS);
         const allChunks: SpeechChunk[] = [];
-        let failedDocuments = 0;
+        let failedDocuments = entries.length - selectedEntries.length;
+        let queuedCharacters = 0;
 
-        for (const entry of entries) {
+        for (let entryIndex = 0; entryIndex < selectedEntries.length; entryIndex += 1) {
+            const entry = selectedEntries[entryIndex];
             try {
                 const chunks = await getSpeechChunksForFavoriteDocument(entry);
+                const documentCharacters = chunks.reduce((total, chunk) => total + chunk.text.length, 0);
+                if (queuedCharacters + documentCharacters > MAX_AUDIO_QUEUE_CHARACTERS) {
+                    failedDocuments += selectedEntries.length - entryIndex;
+                    break;
+                }
                 allChunks.push(...chunks);
+                queuedCharacters += documentCharacters;
             } catch {
                 failedDocuments += 1;
             }
@@ -1586,13 +1700,22 @@ export default function MyCodexClientContainer({
 
         showActionStatus(`Preparing ${entries.length} queued doc${entries.length === 1 ? '' : 's'}`, 'info');
 
+        const selectedEntries = entries.slice(0, MAX_AUDIO_QUEUE_DOCUMENTS);
         const allChunks: SpeechChunk[] = [];
-        let failedDocuments = 0;
+        let failedDocuments = entries.length - selectedEntries.length;
+        let queuedCharacters = 0;
 
-        for (const entry of entries) {
+        for (let entryIndex = 0; entryIndex < selectedEntries.length; entryIndex += 1) {
+            const entry = selectedEntries[entryIndex];
             try {
                 const chunks = await getSpeechChunksForFavoriteDocument(entry);
+                const documentCharacters = chunks.reduce((total, chunk) => total + chunk.text.length, 0);
+                if (queuedCharacters + documentCharacters > MAX_AUDIO_QUEUE_CHARACTERS) {
+                    failedDocuments += selectedEntries.length - entryIndex;
+                    break;
+                }
                 allChunks.push(...chunks);
+                queuedCharacters += documentCharacters;
             } catch {
                 failedDocuments += 1;
             }

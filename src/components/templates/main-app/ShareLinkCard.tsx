@@ -1,6 +1,10 @@
 'use client';
 
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { secureError } from '@lib/security/secureLogger';
 import { Button, Card, Flex, Typography, message, theme } from 'antd';
@@ -75,16 +79,11 @@ const getBoundedShareLinkStringContext = (label: string, value: unknown): ShareL
 };
 
 const getShareLinkErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getShareLinkErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const logShareLinkCardFailure = (

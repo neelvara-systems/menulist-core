@@ -7,14 +7,24 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import {
+    isCampaignExecutionSurface,
+    isCampaignExportMethod,
+    projectCampaignExportRecord,
+    projectCampaignRecord,
+    projectPhysicalSurfaceEligibility,
+    projectStaffPrompt,
+} from "@lib/campaigns/campaignClientBoundary";
 import {
     buildCampaignCompletionState,
     buildCampaignSkipState,
     campaignTodayContains,
     getCampaignTodayState,
+    isCampaignTodayState,
     removeCampaignFromToday,
 } from "@lib/campaigns/campaignActionState";
-import { normalizeOwnerSlideCaption } from "@lib/screen/screenContent";
+import { normalizeOwnerSlideCaption, normalizeScreenImageUrl } from "@lib/screen/screenContent";
 import { getPublicScreenStateDocRef, toPublicScreenState } from "@lib/screen/publicScreenState";
 import { filterExpiredSlides, generateScreenToken, getActiveScreenSlides, getOwnerUploadExpiry, isValidScreenToken } from "@lib/screen/utils";
 import { secureError } from "@lib/security/secureLogger";
@@ -33,16 +43,32 @@ import {
 } from "@type/campaigns";
 import { UserUploadedFileType } from "@type/common";
 import type LoginUserType from "@type/loginUser";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const CAMPAIGNS_COLLECTION = DB_COLLECTIONS.CAMPAIGNS;
 const EXPORTS_COLLECTION = DB_COLLECTIONS.CAMPAIGN_EXPORTS;
 const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
 const DIGITAL_SCREEN_MAX_UPLOADS = FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS;
 const DIGITAL_SCREEN_UPLOAD_EXPIRY_DAYS = FEATURE_FLAGS.DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS;
+const CAMPAIGN_HISTORY_MAX_RESULTS = 100;
 
-const getLogErrorName = (error: unknown): string => (
-    error instanceof Error ? error.name : typeof error
-);
+const getLogErrorName = (error: unknown): string => getBoundedErrorName(error) || typeof error;
+
+const requireCampaignDocumentId = (value: unknown, field: string): string => {
+    const normalized = typeof value === 'string' ? value.trim() : '';
+    if (!isValidFirestoreDocumentId(normalized) || normalized.length > 160) {
+        throw new Error(`campaign_${field}_invalid`);
+    }
+    return normalized;
+};
+
+const requireScreenSlideId = (value: unknown): string => {
+    const normalized = typeof value === 'string' ? value.trim() : '';
+    if (normalized !== value || normalized.length === 0 || normalized.length > 128) {
+        throw new Error('digital_screen_slide_id_invalid');
+    }
+    return normalized;
+};
 
 const logCampaignScreenFailure = (
     failureCode: string,
@@ -81,6 +107,7 @@ const isPinnedScreenSlide = (value: unknown): value is ScreenSlide => {
         && typeof slide.imageUrl === 'string'
         && slide.imageUrl.length > 0
         && slide.imageUrl.length <= 4096
+        && normalizeScreenImageUrl(slide.imageUrl) === slide.imageUrl
         && (slide.caption === undefined || (typeof slide.caption === 'string' && slide.caption.length <= 48))
         && typeof slide.confidenceScore === 'number'
         && Number.isFinite(slide.confidenceScore)
@@ -167,17 +194,6 @@ export type CampaignSkipResult = {
     status: Extract<CampaignStatus, 'skipped' | 'suppressed'>;
     today: CampaignTodayState;
 };
-
-function isCampaignTodayState(value: unknown): value is CampaignTodayState {
-    return Boolean(
-        value
-        && typeof value === 'object'
-        && !Array.isArray(value)
-        && typeof (value as CampaignTodayState).date === 'string'
-        && Array.isArray((value as CampaignTodayState).operational)
-        && typeof (value as CampaignTodayState).isEmpty === 'boolean',
-    );
-}
 
 export function isCampaignCompleteResult(
     result: unknown,
@@ -342,27 +358,37 @@ export const getTodayCampaigns = async (): Promise<TodayScreenData | null> => {
                 return null;
             }
 
-            const data = docSnap.data() as CampaignsSummaryDocument;
+            const data: unknown = docSnap.data();
             const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            const normalizedToday = getCampaignTodayState(data, today);
+            const storedTodayDate = (
+                data
+                && typeof data === 'object'
+                && !Array.isArray(data)
+                && (data as { today?: unknown }).today
+                && typeof (data as { today?: unknown }).today === 'object'
+                && !Array.isArray((data as { today?: unknown }).today)
+            )
+                ? ((data as { today: { date?: unknown } }).today.date)
+                : undefined;
 
             // Check if summary is for today
-            if (data.today?.date !== today) {
+            if (storedTodayDate !== today) {
                 // Summary is stale, return empty
                 return {
-                    today: {
-                        date: today,
-                        primary: undefined,
-                        operational: [],
-                        isEmpty: true
-                    },
+                    today: normalizedToday,
                     staffPrompt: undefined
                 };
             }
 
             return {
-                today: data.today,
-                staffPrompt: data.staffPrompt,
-                physicalSurfaces: data.physicalSurfaces
+                today: normalizedToday,
+                staffPrompt: projectStaffPrompt(
+                    (data as { staffPrompt?: unknown }).staffPrompt,
+                ),
+                physicalSurfaces: projectPhysicalSurfaceEligibility(
+                    (data as { physicalSurfaces?: unknown }).physicalSurfaces,
+                ),
             };
         },
         null,
@@ -381,14 +407,19 @@ export const getCampaign = async (campaignId: string): Promise<Campaign | null> 
     return await apiCallComposer(
         async () => {
             const session = requireCampaignSessionScope(await getActiveSession());
-            const docRef = getCampaignDocRef(session, campaignId);
+            const normalizedCampaignId = requireCampaignDocumentId(campaignId, 'id');
+            const docRef = getCampaignDocRef(session, normalizedCampaignId);
             const docSnap = await getDoc(docRef);
 
             if (!docSnap.exists()) {
                 return null;
             }
 
-            return docSnap.data() as Campaign;
+            return projectCampaignRecord(docSnap.data(), {
+                campaignId: normalizedCampaignId,
+                sId: session.sId,
+                tId: session.tId,
+            });
         },
         { campaignId },
         "getCampaign"
@@ -411,11 +442,17 @@ export const getCampaignHistory = async (
         async () => {
             try {
                 const session = requireCampaignSessionScope(await getActiveSession());
+                if (!Number.isSafeInteger(limitCount) || limitCount < 1 || limitCount > CAMPAIGN_HISTORY_MAX_RESULTS) {
+                    throw new Error('campaign_history_limit_invalid');
+                }
+                const normalizedProjectId = projectId
+                    ? requireCampaignDocumentId(projectId, 'project_id')
+                    : null;
                 const collectionRef = getCampaignsCollectionRef(session);
-                const q = projectId
+                const q = normalizedProjectId
                     ? query(
                         collectionRef,
-                        where("projectId", "==", projectId),
+                        where("projectId", "==", normalizedProjectId),
                         orderBy("updatedAt", "desc"),
                         limit(limitCount)
                     )
@@ -427,7 +464,12 @@ export const getCampaignHistory = async (
 
                 const snapshot = await getDocs(q);
                 return snapshot.docs
-                    .map(doc => doc.data() as Campaign)
+                    .map((campaignDoc) => projectCampaignRecord(campaignDoc.data(), {
+                        campaignId: campaignDoc.id,
+                        sId: session.sId,
+                        tId: session.tId,
+                    }))
+                    .filter((campaign): campaign is Campaign => campaign !== null)
                     .filter(campaign => ["completed", "skipped", "suggested"].includes(campaign.status));
             } catch (error) {
                 secureError(
@@ -470,23 +512,44 @@ export const completeCampaign = async (
     return await apiCallComposer(
         async () => {
             const session = requireCampaignSessionScope(await getActiveSession());
+            const normalizedCampaignId = requireCampaignDocumentId(campaignId, 'id');
+            const normalizedProjectId = requireCampaignDocumentId(projectId, 'project_id');
+            if (!isCampaignExecutionSurface(surface) || !isCampaignExportMethod(method)) {
+                throw new Error('campaign_completion_output_invalid');
+            }
+            if (
+                menuLinkWithTracking !== undefined
+                && (typeof menuLinkWithTracking !== 'string' || menuLinkWithTracking.length > 4096)
+            ) {
+                throw new Error('campaign_completion_tracking_link_invalid');
+            }
             const now = Timestamp.now();
             const today = new Date().toISOString().split('T')[0];
-            const campaignDocRef = getCampaignDocRef(session, campaignId);
+            const campaignDocRef = getCampaignDocRef(session, normalizedCampaignId);
             const campaignsSummaryRef = getCampaignsSummaryDocRef(session);
-            const exportId = `complete_${campaignId}`;
+            const exportId = `complete_${normalizedCampaignId}`;
             const exportRef = doc(getExportsCollectionRef(session), exportId);
-            const exportEvent = await requestBodyComposer({
+            const composedExportEvent = await requestBodyComposer({
                 id: exportId,
                 tId: session.tId,
                 sId: session.sId,
-                campaignId,
-                projectId,
+                campaignId: normalizedCampaignId,
+                projectId: normalizedProjectId,
                 surface,
                 method,
                 menuLinkWithTracking,
                 exportedAt: now,
-            }, { isNew: true }) as CampaignExport;
+            }, { isNew: true });
+            const exportEvent = projectCampaignExportRecord(composedExportEvent, {
+                campaignId: normalizedCampaignId,
+                exportId,
+                method,
+                projectId: normalizedProjectId,
+                sId: session.sId,
+                surface,
+                tId: session.tId,
+            });
+            if (!exportEvent) throw new Error('campaign_completion_export_invalid');
 
             return runTransaction(firebaseClient, async (transaction) => {
                 const campaignDocSnap = await transaction.get(campaignDocRef);
@@ -497,13 +560,15 @@ export const completeCampaign = async (
                     throw new Error('campaign_not_found');
                 }
 
-                const campaign = campaignDocSnap.data() as Campaign;
+                const campaign = projectCampaignRecord(campaignDocSnap.data(), {
+                    campaignId: normalizedCampaignId,
+                    sId: session.sId,
+                    tId: session.tId,
+                });
                 if (
-                    campaign.id !== campaignId
-                    || campaign.projectId !== projectId
+                    !campaign
+                    || campaign.projectId !== normalizedProjectId
                     || campaign.type !== campaignType
-                    || Number(campaign.tId) !== session.tId
-                    || Number(campaign.sId) !== session.sId
                 ) {
                     throw new Error('campaign_action_identity_mismatch');
                 }
@@ -523,21 +588,21 @@ export const completeCampaign = async (
                     if (!existingExportSnap.exists()) {
                         throw new Error('campaign_completion_marker_missing');
                     }
-                    const existingExport = existingExportSnap.data() as CampaignExport;
-                    if (
-                        existingExport.id !== exportId
-                        || existingExport.campaignId !== campaignId
-                        || existingExport.projectId !== projectId
-                        || existingExport.surface !== surface
-                        || existingExport.method !== method
-                        || Number(existingExport.tId) !== session.tId
-                        || Number(existingExport.sId) !== session.sId
-                    ) {
+                    const existingExport = projectCampaignExportRecord(existingExportSnap.data(), {
+                        campaignId: normalizedCampaignId,
+                        exportId,
+                        method,
+                        projectId: normalizedProjectId,
+                        sId: session.sId,
+                        surface,
+                        tId: session.tId,
+                    });
+                    if (!existingExport) {
                         throw new Error('campaign_completion_marker_mismatch');
                     }
 
-                    const idempotentToday = removeCampaignFromToday(currentToday, campaignId);
-                    if (campaignTodayContains(currentToday, campaignId)) {
+                    const idempotentToday = removeCampaignFromToday(currentToday, normalizedCampaignId);
+                    if (campaignTodayContains(currentToday, normalizedCampaignId)) {
                         transaction.set(campaignsSummaryRef, {
                             lastUpdated: serverTimestamp(),
                             today: {
@@ -548,12 +613,12 @@ export const completeCampaign = async (
                     }
 
                     return {
-                        campaignId,
+                        campaignId: normalizedCampaignId,
                         campaignType,
                         exportEvent: existingExport,
                         exportId,
                         method,
-                        projectId,
+                        projectId: normalizedProjectId,
                         status: 'completed',
                         success: true,
                         surface,
@@ -568,7 +633,7 @@ export const completeCampaign = async (
                     throw new Error('campaign_completion_marker_conflict');
                 }
 
-                const nextState = buildCampaignCompletionState(summaryData, today, campaignId);
+                const nextState = buildCampaignCompletionState(summaryData, today, normalizedCampaignId);
                 transaction.set(campaignDocRef, {
                     status: 'completed',
                     updatedAt: now,
@@ -585,12 +650,12 @@ export const completeCampaign = async (
                 }, { merge: true });
 
                 return {
-                    campaignId,
+                    campaignId: normalizedCampaignId,
                     campaignType,
                     exportEvent,
                     exportId,
                     method,
-                    projectId,
+                    projectId: normalizedProjectId,
                     status: 'completed',
                     success: true,
                     surface,
@@ -614,9 +679,10 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
     return await apiCallComposer(
         async () => {
             const session = requireCampaignSessionScope(await getActiveSession());
+            const normalizedCampaignId = requireCampaignDocumentId(campaignId, 'id');
             const now = Timestamp.now();
             const today = new Date().toISOString().split('T')[0];
-            const campaignDocRef = getCampaignDocRef(session, campaignId);
+            const campaignDocRef = getCampaignDocRef(session, normalizedCampaignId);
             const campaignsSummaryRef = getCampaignsSummaryDocRef(session);
 
             return runTransaction(firebaseClient, async (transaction) => {
@@ -627,12 +693,14 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
                     throw new Error('campaign_not_found');
                 }
 
-                const campaign = campaignDocSnap.data() as Campaign;
+                const campaign = projectCampaignRecord(campaignDocSnap.data(), {
+                    campaignId: normalizedCampaignId,
+                    sId: session.sId,
+                    tId: session.tId,
+                });
                 if (
-                    campaign.id !== campaignId
+                    !campaign
                     || campaign.type !== campaignType
-                    || Number(campaign.tId) !== session.tId
-                    || Number(campaign.sId) !== session.sId
                 ) {
                     throw new Error('campaign_action_identity_mismatch');
                 }
@@ -643,8 +711,8 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
                 const currentToday = getCampaignTodayState(summaryData, today);
 
                 if (campaign.status === 'skipped' || campaign.status === 'suppressed') {
-                    const idempotentToday = removeCampaignFromToday(currentToday, campaignId);
-                    if (campaignTodayContains(currentToday, campaignId)) {
+                    const idempotentToday = removeCampaignFromToday(currentToday, normalizedCampaignId);
+                    if (campaignTodayContains(currentToday, normalizedCampaignId)) {
                         transaction.set(campaignsSummaryRef, {
                             lastUpdated: serverTimestamp(),
                             today: {
@@ -654,7 +722,7 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
                         }, { merge: true });
                     }
                     return {
-                        campaignId,
+                        campaignId: normalizedCampaignId,
                         campaignType,
                         skipCount: Number.isSafeInteger(Number(campaign.skipCount)) && Number(campaign.skipCount) > 0
                             ? Number(campaign.skipCount)
@@ -689,7 +757,7 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
                 const nextState = buildCampaignSkipState(
                     summaryData,
                     today,
-                    campaignId,
+                    normalizedCampaignId,
                     campaignType,
                 );
 
@@ -704,7 +772,7 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
                 }, { merge: true });
 
                 return {
-                    campaignId,
+                    campaignId: normalizedCampaignId,
                     campaignType,
                     skipCount: nextSkipCount,
                     status,
@@ -908,6 +976,7 @@ export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenM
         async () => {
             const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
+            const normalizedSlideId = requireScreenSlideId(slideId);
             return runTransaction(firebaseClient, async (transaction) => {
                 const docSnap = await transaction.get(docRef);
                 const currentScreen = docSnap.exists()
@@ -916,7 +985,7 @@ export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenM
                 if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
                 const currentSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
-                if (!currentSlides.some((slide) => slide.id === slideId)) {
+                if (!currentSlides.some((slide) => slide.id === normalizedSlideId)) {
                     if (currentSlides.length !== currentScreen.pinnedSlides.length) {
                         const nextScreen: DigitalScreenState = {
                             ...currentScreen,
@@ -931,7 +1000,7 @@ export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenM
                 }
                 const nextScreen: DigitalScreenState = {
                     ...currentScreen,
-                    pinnedSlides: currentSlides.filter((slide) => slide.id !== slideId),
+                    pinnedSlides: currentSlides.filter((slide) => slide.id !== normalizedSlideId),
                     contentVersion: (currentScreen.contentVersion || 0) + 1,
                     lastContentChangeAt: Timestamp.now(),
                 };
@@ -952,6 +1021,7 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
         async () => {
             const session = requireCampaignSessionScope(await getActiveSession());
             const docRef = getCampaignsSummaryDocRef(session);
+            const normalizedSlideId = requireScreenSlideId(slideId);
             const nextCaption = normalizeOwnerSlideCaption(caption);
             return runTransaction(firebaseClient, async (transaction) => {
                 const docSnap = await transaction.get(docRef);
@@ -961,7 +1031,7 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
                 if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
                 const currentSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
-                const targetSlide = currentSlides.find((slide) => slide.id === slideId);
+                const targetSlide = currentSlides.find((slide) => slide.id === normalizedSlideId);
                 if (!targetSlide) throw new Error('digital_screen_slide_not_found');
                 if ((targetSlide.caption || '') === nextCaption) {
                     if (currentSlides.length !== currentScreen.pinnedSlides.length) {
@@ -980,7 +1050,7 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
                 const nextScreen: DigitalScreenState = {
                     ...currentScreen,
                     pinnedSlides: currentSlides.map((slide) => (
-                        slide.id === slideId
+                        slide.id === normalizedSlideId
                             ? { ...slide, caption: nextCaption }
                             : slide
                     )),

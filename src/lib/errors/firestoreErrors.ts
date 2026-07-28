@@ -8,6 +8,12 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@lib/monitoring/logger';
 import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics';
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedNestedErrorCode,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 export interface FirestoreError extends Error {
     code?: string;
@@ -24,35 +30,17 @@ type PaymentErrorContext = {
     [key: string]: any;
 };
 
-type PaymentErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-    error?: {
-        code?: unknown;
-        description?: unknown;
-    };
-};
-
 const getPaymentErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getPaymentErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const paymentError = error as PaymentErrorLike;
-    const code = paymentError.code ?? paymentError.error?.code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error)
+        ?? getBoundedNestedErrorCode(error, 'error');
 };
 
 const getPaymentErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const paymentError = error as PaymentErrorLike;
-    const status = Number(paymentError.status ?? paymentError.statusCode);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 const getPaymentHandlerLogContext = (

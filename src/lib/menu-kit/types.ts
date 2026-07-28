@@ -85,8 +85,8 @@ export function validateMenuUrl(url: string): string | null {
     if (!url) return null;
     try {
         const parsed = new URL(url);
-        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return null;
-        return url;
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return null;
+        return parsed.toString();
     } catch {
         return null;
     }

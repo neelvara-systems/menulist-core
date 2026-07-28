@@ -104,8 +104,11 @@ export function getImagePrompts(inputJson: GenerateImageViaApiPayloadType, model
     const moods = (config.moods ?? []).map(m => sanitizeAIPromptInput(m, 50));
     const compositions = (config.compositions ?? []).map(c => sanitizeAIPromptInput(c, 50));
     const referanceImage = config.referanceImage?.url;
-    const backgroundColor = config.backgroundColor; // Can be undefined
+    const backgroundColor = sanitizeAIPromptInput(config.backgroundColor ?? '', 30);
     const transparentBg = config.transparentBg ?? false; // Default to false
+    const aspectRatio = model === 'GEMINI'
+        ? ASPECT_RATIOS_LIST.find((ratio) => ratio.value === config.aspectRatio)
+        : undefined;
 
 
     let prompt = "";
@@ -126,9 +129,8 @@ export function getImagePrompts(inputJson: GenerateImageViaApiPayloadType, model
         }
         // If neither is true, no explicit background instruction is added.
 
-        if (model === "GEMINI") {
-            const ratio = ASPECT_RATIOS_LIST.find((ratio) => ratio.value === config.aspectRatio);
-            prompt += `Ensure the image has a ${ratio?.value} aspect ratio (${ratio?.title}). `;
+        if (aspectRatio) {
+            prompt += `Ensure the image has a ${aspectRatio.value} aspect ratio (${aspectRatio.title}). `;
         }
 
         // Description adds further context or specifics to the reference.
@@ -221,7 +223,7 @@ export function getImagePrompts(inputJson: GenerateImageViaApiPayloadType, model
         }
         if (foregroundColor?.length > 0) {
             // Clarify these are scene/subject colors
-            atmosphereParts.push(`the color ${config.foregroundColor} should be prominently featured in the subject or key visual elements`);
+            atmosphereParts.push(`the color ${foregroundColor} should be prominently featured in the subject or key visual elements`);
         }
         if (atmosphereParts?.length > 0) {
             prompt += `The scene is ${atmosphereParts.join(', ')}. `;
@@ -241,9 +243,8 @@ export function getImagePrompts(inputJson: GenerateImageViaApiPayloadType, model
         }
         // If neither is true, no explicit background instruction is added.
 
-        if (model === "GEMINI") {
-            const ratio = ASPECT_RATIOS_LIST.find((ratio) => ratio.value === config.aspectRatio);
-            prompt += `Ensure the image has a ${ratio?.value} aspect ratio (${ratio?.title}). `;
+        if (aspectRatio) {
+            prompt += `Ensure the image has a ${aspectRatio.value} aspect ratio (${aspectRatio.title}). `;
         }
 
         concludingSentence = `Emphasize the key characteristics of the ${itemName.toLowerCase()} according to the specified styles, mood, and overall ${styleCategory.toLowerCase()} aesthetic. Aim for high quality and detail appropriate for the chosen composition and background.`;

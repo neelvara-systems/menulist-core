@@ -108,15 +108,27 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
 
     try {
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-workspace-profile', scope.storeId),
+            key: buildAnswerlatticeRateLimitKey(
+                'answerlattice-workspace-profile',
+                session.uId,
+                scope.tenantId,
+                scope.storeId,
+            ),
             limit: 20,
             window: 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
             const retryAfter = Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000));
             return workspaceProfileJson(
-                { error: 'Too many requests', retryAfter },
-                429,
+                {
+                    error: providerUnavailable
+                        ? 'Workspace settings are temporarily unavailable'
+                        : 'Too many requests',
+                    retryAfter,
+                },
+                providerUnavailable ? 503 : 429,
                 { 'Retry-After': String(retryAfter) },
             );
         }

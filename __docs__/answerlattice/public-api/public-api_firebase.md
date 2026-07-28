@@ -1,13 +1,13 @@
 # Answerlattice Public API v1 - Firebase and Cost
 
 > **Status:** Implemented, locally audited, rollout-gated
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-07-26
 
 ## Data Ownership
 
 | Collection/object | Operation | Flow | Boundary |
 | --- | --- | --- | --- |
-| `stores/{sId}.publicApi` | Read/update/delete | Authentication and owner key lifecycle | Hash-only credential; exact AL product, purpose, scopes, prefix, and timestamp. |
+| `stores/{sId}.publicApi` | Read/update/delete | Authentication and owner key lifecycle | Hash-only credential; exact AL product, purpose, scopes, prefix, timestamp, and non-secret rotation request ID. |
 | `answerlattice_auditLogs` | Create | Rotate/revoke | Summary only; no raw key or hash. |
 | `answerlattice_entitySearchIndex` | Read | Answers | Tenant/workspace-scoped entity candidates. |
 | `answerlattice_releases` | Read | Answers | Latest applicable release when version is omitted. |
@@ -16,7 +16,7 @@
 | `answerlattice_entities` | Read | Entities fallback | Bounded tenant/workspace scan; active/beta public projection only. |
 | `answerlattice_signalEvents` | Create/read-on-replay | Signals | Append-only evidence with TTL and deterministic identity for idempotency. |
 
-Firestore browser rules do not grant raw Public API credential management. The authenticated Next.js management route uses Answerlattice Admin after session, scope, rate, and permission admission.
+Firestore browser rules do not grant raw Public API credential management. The authenticated Next.js management route uses Answerlattice Admin after session, scope, rate, permission, and initiating-workspace corroboration. The client-provided scope can only reject a request; the authenticated session remains authoritative.
 
 ## Normal Operation Cost
 
@@ -24,6 +24,7 @@ Firestore browser rules do not grant raw Public API credential management. The a
 | --- | ---: | ---: | --- |
 | Owner key status | 1 | 0 | Exact store read after permission admission. |
 | Create/rotate key | 1 transactional | 2 | Store credential update plus audit create. |
+| Exact create/rotate retry | 1 transactional | 0 | Matching operation ID, hash, and scopes return the committed summary. Changed replay returns `409` with no write. |
 | Revoke existing key | 1 transactional | 2 | Store field delete plus audit create. Revoking when no credential exists performs no writes. |
 | Public answer request | approximately 2-5 | 0 | Key lookup plus canonical entity/release/answer reads; no AI provider call. |
 | Public entity request, bundle ready | 1 key lookup plus Storage | 0 | Storage metadata/object work follows compiled-context limits. |
@@ -39,8 +40,9 @@ Permission admission and rate-limit provider operations are additional to the co
 - Per-key/endpoint limits protect valid credentials and expensive downstream work.
 - Rate-limit provider failure is fail-closed.
 - JSON body limits run before schema validation and retrieval/write work.
-- Entity fallback reads at most 201 rows and returns `truncated` rather than scanning the collection.
+- Entity fallback applies exact public status plus optional type predicates before reading at most 201 rows, and returns `truncated` rather than scanning the collection. Dedicated and shared index manifests include `pId + tId + sId + type + status`.
 - Signal metadata, keys, arrays, strings, and idempotency values are bounded.
+- Signal identity and persistence share the same sanitized finite metadata structure; malformed object/Proxy/date input cannot replace the controlled result or create a second identity.
 - No provider-heavy RAG generation occurs on Public API routes.
 - One active key per workspace bounds credential lookup and owner complexity.
 
@@ -58,6 +60,8 @@ Permission admission and rate-limit provider operations are additional to the co
 | --- | --- |
 | Main flag disabled | `404 FEATURE_DISABLED` externally; owner page/navigation hidden. |
 | Key-management cross-origin request | `403 Origin not allowed`. |
+| Key-management initiating scope differs from the current session | `409`; no credential read/write and stale browser state is not admitted. |
+| Key-management operation ID reused with changed key/scopes | `409`; existing credential remains active. |
 | Missing/invalid/revoked/wrong-purpose key | `401 INVALID_API_KEY`. |
 | Browser-origin external request | `403 BROWSER_ACCESS_NOT_SUPPORTED`. |
 | Rate provider unavailable | `503 RATE_LIMIT_UNAVAILABLE`; no retrieval/write. |
@@ -80,3 +84,5 @@ firebase deploy --only firestore:rules --project menulist-qa --config firebase.j
 ```
 
 Both stopped before upload with `Error: Failed to authenticate, have you run firebase login?`; no remote rules revision changed. App/runtime deployment remains subject to the explicit Vercel deploy opt-in rule and was not run.
+
+The July 26, 2026 data-flow audit also hardened the byte-identical support-evidence redactor used by the app and dedicated Functions runtime. After local lint/build, `firebase deploy --only functions:answerlattice --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` was attempted and stopped before upload with `Failed to authenticate, have you run firebase login?`; no remote Function changed. Re-authentication and the same scoped command remain required.

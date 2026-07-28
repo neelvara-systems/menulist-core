@@ -46,7 +46,7 @@ for (const token of [
   'setStoreDetails(null)',
   'setLoginStoreDetails(null)',
   'setUserPermissions(null)',
-  'setCachedTickets({ cachedOn: null, tickets: [] })',
+  'setCachedTickets({ cachedOn: null, tickets: [], scopeKey: null })',
   'window.sessionStorage.removeItem(DEPLOYMENT_IDENTITY_STORAGE_KEY)',
 ]) {
   includes(sessionProvider, token, 'in-memory session teardown');

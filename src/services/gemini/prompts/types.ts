@@ -16,10 +16,10 @@ export interface PromptConfig {
   topK?: number;
 }
 
-export interface GeminiPrompt {
+export interface GeminiPrompt<TInput = unknown> {
   version: PromptVersion;
   system: string;
-  user: (data: any) => string;
+  user: (data: TInput) => string;
   config: PromptConfig;
 }
 

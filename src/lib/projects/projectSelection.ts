@@ -23,14 +23,12 @@ function getOwnerProjectTenantScope(tenantId?: string | number | null) {
 function getOwnerProjectStorageKey(
     storeId?: string | number | null,
     tenantId?: string | number | null,
-) {
+): string | null {
     const storeScope = getOwnerProjectStoreScope(storeId);
     const tenantScope = getOwnerProjectTenantScope(tenantId);
-    return storeScope
-        ? tenantScope
-            ? `${OWNER_SELECTED_PROJECT_KEY}:${tenantScope}:${storeScope}`
-            : `${OWNER_SELECTED_PROJECT_KEY}:${storeScope}`
-        : OWNER_SELECTED_PROJECT_KEY;
+    return storeScope && tenantScope
+        ? `${OWNER_SELECTED_PROJECT_KEY}:${tenantScope}:${storeScope}`
+        : null;
 }
 
 export function getStoredOwnerProjectId(
@@ -38,16 +36,18 @@ export function getStoredOwnerProjectId(
     tenantId?: string | number | null,
 ) {
     if (typeof window === 'undefined') return null;
-    const hasStoreScope = Boolean(getOwnerProjectStoreScope(storeId));
+    const scopedKey = getOwnerProjectStorageKey(storeId, tenantId);
 
     try {
-        const scopedProjectId = window.localStorage.getItem(getOwnerProjectStorageKey(storeId, tenantId));
+        const scopedProjectId = scopedKey
+            ? window.localStorage.getItem(scopedKey)
+            : null;
         if (scopedProjectId) return scopedProjectId;
     } catch {
         // Ignore storage access failures; session storage fallback is only safe without a store scope.
     }
 
-    if (hasStoreScope) return null;
+    if (getOwnerProjectStoreScope(storeId) || getOwnerProjectTenantScope(tenantId)) return null;
 
     try {
         return window.sessionStorage.getItem(LEGACY_DASHBOARD_PROJECT_KEY);
@@ -65,9 +65,9 @@ export function setStoredOwnerProjectId(
 
     try {
         const key = getOwnerProjectStorageKey(storeId, tenantId);
-        if (projectId) {
+        if (projectId && key) {
             window.localStorage.setItem(key, projectId);
-        } else {
+        } else if (key) {
             window.localStorage.removeItem(key);
         }
     } catch {
@@ -75,7 +75,10 @@ export function setStoredOwnerProjectId(
     }
 
     try {
-        if (projectId) {
+        const hasScope = Boolean(getOwnerProjectStoreScope(storeId) || getOwnerProjectTenantScope(tenantId));
+        if (hasScope) {
+            window.sessionStorage.removeItem(LEGACY_DASHBOARD_PROJECT_KEY);
+        } else if (projectId) {
             window.sessionStorage.setItem(LEGACY_DASHBOARD_PROJECT_KEY, projectId);
         } else {
             window.sessionStorage.removeItem(LEGACY_DASHBOARD_PROJECT_KEY);

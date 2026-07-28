@@ -15,7 +15,7 @@ const REVIEW_STATE_PATH = path.join(AUDIT_DIR, 'data-flow-pipeline-deep-audit.re
 
 const TEXT_EXTENSIONS = new Set([
   '.cjs', '.css', '.csv', '.html', '.js', '.jsx', '.json', '.md', '.mjs',
-  '.rules', '.scss', '.sh', '.srt', '.ts', '.tsx', '.txt', '.vtt', '.webmanifest',
+  '.py', '.rules', '.scss', '.sh', '.srt', '.ts', '.tsx', '.txt', '.vtt', '.webmanifest',
   '.xml', '.yaml', '.yml',
 ]);
 
@@ -305,8 +305,7 @@ function csvCell(value) {
   return `"${stringValue.replaceAll('"', '""').replaceAll('\r', ' ').replaceAll('\n', ' ')}"`;
 }
 
-function fileDigest(file, content, size) {
-  if (!content && size > 5 * 1024 * 1024) return 'omitted-large-binary';
+function fileDigest(file, content) {
   const buffer = content ? Buffer.from(content, 'utf8') : readFileSync(path.join(ROOT, file));
   return createHash('sha256').update(buffer).digest('hex');
 }
@@ -337,13 +336,35 @@ function main() {
       const stats = statSync(absolutePath);
       const content = readText(file);
       const category = categoryFor(file);
-      const state = reviewState[file] || {};
+      const categoryDefaults = (
+        reviewState.$categoryDefaults
+        && typeof reviewState.$categoryDefaults === 'object'
+        && !Array.isArray(reviewState.$categoryDefaults)
+      )
+        ? reviewState.$categoryDefaults[category]
+        : null;
+      const exactState = reviewState[file];
+      const state = exactState || categoryDefaults || {};
       const lineCount = content ? content.split(/\r?\n/).length : 0;
       const tests = unique([...(state.tests || []), ...(testAssociations.get(file) || [])], 12);
       const imports = content ? extractImports(content) : [];
       const exports = content ? extractExports(content) : [];
       const sources = content ? detectDataSources(content, file) : [];
       const destinations = content ? detectDataDestinations(content, file) : [];
+      const sha256 = fileDigest(file, content);
+      const requestedReviewStatus = state.reviewStatus || 'inventory-only';
+      const hasCurrentReviewedFingerprint = (
+        requestedReviewStatus === 'reviewed'
+        && exactState
+        && typeof exactState.reviewedSha256 === 'string'
+        && exactState.reviewedSha256 === sha256
+      );
+      const reviewStatus = requestedReviewStatus === 'reviewed' && !hasCurrentReviewedFingerprint
+        ? (exactState ? 'in-progress' : 'inventory-only')
+        : requestedReviewStatus;
+      const staleReviewNote = requestedReviewStatus === 'reviewed' && !hasCurrentReviewedFingerprint
+        ? 'Review status reopened: no exact reviewedSha256 matches the current file content.'
+        : '';
 
       rows.push({
         file,
@@ -356,16 +377,16 @@ function main() {
         tenantSensitive: state.tenantSensitive || sensitivity(content, file, [/tenant/i, /\btId\b/, /multiTenant/, /domainResolver/, /middleware/]),
         persistenceSensitive: state.persistenceSensitive || sensitivity(content, file, [/firestore/i, /storage/i, /database/i, /redux/i, /persist/i, /cache/i, /billing/i, /subscription/i, /payment/i]),
         publicOutputSensitive: state.publicOutputSensitive || sensitivity(content, file, [/public/i, /client\//i, /website/i, /screen/i, /sitemap/i, /robots/i, /manifest/i, /metadata/i, /schema\.org/i]),
-        reviewStatus: state.reviewStatus || 'inventory-only',
+        reviewStatus,
         auditPass: state.auditPass ?? 0,
         reviewedFunctionsOrRanges: state.reviewedFunctionsOrRanges || '',
         findings: state.findings || [],
         tests,
         lineCount,
         bytes: stats.size,
-        sha256: fileDigest(file, content, stats.size),
+        sha256,
         reviewedAt: state.reviewedAt || '',
-        reviewNotes: state.reviewNotes || '',
+        reviewNotes: [state.reviewNotes || '', staleReviewNote].filter(Boolean).join(' '),
       });
     } catch (error) {
       if (!isMissingFileError(error)) throw error;
@@ -399,9 +420,14 @@ function main() {
 
   const byCategory = {};
   const byReviewStatus = {};
+  const byCategoryAndReviewStatus = {};
   for (const row of rows) {
     byCategory[row.category] = (byCategory[row.category] || 0) + 1;
     byReviewStatus[row.reviewStatus] = (byReviewStatus[row.reviewStatus] || 0) + 1;
+    byCategoryAndReviewStatus[row.category] ??= {};
+    byCategoryAndReviewStatus[row.category][row.reviewStatus] = (
+      byCategoryAndReviewStatus[row.category][row.reviewStatus] || 0
+    ) + 1;
   }
   const summary = {
     generatedAt: new Date().toISOString(),
@@ -412,6 +438,14 @@ function main() {
     excludedFiles: exclusions.length,
     byCategory: Object.fromEntries(Object.entries(byCategory).sort((a, b) => b[1] - a[1])),
     byReviewStatus: Object.fromEntries(Object.entries(byReviewStatus).sort((a, b) => b[1] - a[1])),
+    byCategoryAndReviewStatus: Object.fromEntries(
+      Object.entries(byCategoryAndReviewStatus)
+        .sort((a, b) => byCategory[b[0]] - byCategory[a[0]])
+        .map(([category, statuses]) => [
+          category,
+          Object.fromEntries(Object.entries(statuses).sort((a, b) => b[1] - a[1])),
+        ]),
+    ),
     manifest: path.relative(ROOT, MANIFEST_PATH),
     exclusions: path.relative(ROOT, EXCLUSIONS_PATH),
     reviewState: path.relative(ROOT, REVIEW_STATE_PATH),

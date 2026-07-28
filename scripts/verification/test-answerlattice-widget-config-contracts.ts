@@ -25,6 +25,7 @@ const valid = parseWidgetConfigSaveInput({
         'https://app.example.com',
         'http://localhost:3000',
     ],
+    expectedConfigVersion: 7,
 });
 
 assert.deepEqual(valid.allowedOrigins, [
@@ -32,6 +33,7 @@ assert.deepEqual(valid.allowedOrigins, [
     'http://localhost:3000',
 ]);
 assert.deepEqual(valid.config.blockedRoutes, ['/help-center', '/admin/*']);
+assert.equal(valid.expectedConfigVersion, 7);
 assert.equal(normalizeWidgetAllowedOrigin('https://example.com/path'), null);
 assert.equal(normalizeWidgetAllowedOrigin('https://user:secret@example.com'), null);
 assert.equal(normalizeWidgetAllowedOrigin('https://example.com?preview=1'), null);
@@ -46,17 +48,28 @@ for (const invalidVersion of ['7', 7.5, -1, Number.MAX_SAFE_INTEGER + 1, Number.
 assert.throws(() => parseWidgetConfigSaveInput({
     config: {},
     allowedOrigins: ['https://example.com/private'],
+    expectedConfigVersion: 0,
 }), /exact HTTP or HTTPS origin/i);
 
 assert.throws(() => parseWidgetConfigSaveInput({
     config: { blockedRoutes: ['/billing*'] },
     allowedOrigins: [],
+    expectedConfigVersion: 0,
 }), /descendant pattern/i);
 
 assert.throws(() => parseWidgetConfigSaveInput({
     config: { blockedRoutes: Array.from({ length: 51 }, (_, index) => `/route-${index}`) },
     allowedOrigins: [],
+    expectedConfigVersion: 0,
 }));
+
+for (const invalidExpectedVersion of [undefined, '0', -1, 1.5, Number.MAX_SAFE_INTEGER]) {
+    assert.throws(() => parseWidgetConfigSaveInput({
+        config: {},
+        allowedOrigins: [],
+        expectedConfigVersion: invalidExpectedVersion,
+    }));
+}
 
 const loader = read('public/widget/answerlattice-widget.js');
 const embedClient = read('src/app/widget/embed/WidgetEmbedClient.tsx');
@@ -109,6 +122,9 @@ assertPublicWidgetFetchHasNoReferrerPolicy('/api/widget/search');
 assertPublicWidgetFetchHasNoReferrerPolicy('/api/widget/feedback');
 assertPublicWidgetFetchHasNoReferrerPolicy('/api/widget/escalation');
 assert.ok(widgetConfigRoute.includes("response.headers.set('Cache-Control', 'private, no-store')"));
+assert.ok(widgetConfigRoute.includes('saveAnswerlatticeWidgetConfigAdmin({'));
+assert.ok(widgetConfigRoute.includes("code: 'ANSWERLATTICE_WIDGET_CONFIG_CONFLICT'"));
+assert.ok(widgetConfigRoute.indexOf('checkRateLimit({') < widgetConfigRoute.indexOf('requireAnswerlatticePermission(request, session'));
 assert.ok(widgetKeyRoute.includes("response.headers.set('Cache-Control', 'private, no-store')"));
 assert.ok(widgetKeyRoute.includes('Revoke an old key before creating another.'));
 assert.ok(!widgetKeyRoute.includes('Delete an old key before creating another.'));

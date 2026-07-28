@@ -12,8 +12,11 @@ import { windowRef } from './window';
  *
  * @returns {String}
  */
-export function getMobileOperatingSystem() {
-  var userAgent = windowRef()?.navigator?.userAgent || windowRef()?.navigator?.vendor || windowRef()?.opera;
+export function getMobileOperatingSystem(): "IOS" | "Android" | "Windows Phone" | "unknown" {
+  const browserWindow = windowRef();
+  const userAgent = browserWindow?.navigator.userAgent
+    || browserWindow?.navigator.vendor
+    || "";
 
   // Windows Phone must come first because its UA also contains "Android"
   if (/windows phone/i.test(userAgent)) {
@@ -25,7 +28,7 @@ export function getMobileOperatingSystem() {
   }
 
   // iOS detection from: http://stackoverflow.com/a/9039885/177710
-  if (/iPad|iPhone|iPod/.test(userAgent) && !windowRef().MSStream) {
+  if (/iPad|iPhone|iPod/.test(userAgent)) {
     return "IOS";
   }
 

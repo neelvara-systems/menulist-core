@@ -338,6 +338,10 @@ const publishTruthBackfill = read('scripts/backfill-public-routing-project-summa
   'lastPublishedAt: latestPublishedAt,',
   'await batch.commit();',
   "hasFlag('--force')",
+  "throw new Error('Pass exactly one of --store-id, --tenant-id, or --all-stores.');",
+  'Refusing write: pass --confirm-project',
+  'Refusing forced overwrite: pass --confirm-force',
+  'repair canonical truth before rebuilding its summary',
 ].forEach((token) => requireToken(publishTruthBackfill, token, 'historical publish truth backfill'));
 
 const desktopPublisher = read('src/components/templates/main-app/projects/b2cView/index.tsx');

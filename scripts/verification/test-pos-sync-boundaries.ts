@@ -9,6 +9,7 @@ import { parsePosDeliveryHistoryEntry } from '../../src/lib/posSync/deliveryHist
 import { buildMenuSnapshot } from '../../src/lib/posSync/payloadFormatter';
 import { createPosSyncPinnedLookup } from '../../src/lib/posSync/pinnedWebhookRequest';
 import { isPosSyncSecretScopeCurrent } from '../../src/lib/posSync/secretScope';
+import { projectPosSyncSecretDocument } from '../../src/lib/posSync/secretDocumentBoundary';
 import {
     isBlockedPosSyncNetworkTarget,
     validatePosSyncWebhookUrl,
@@ -52,7 +53,74 @@ assert.equal(isPosSyncSecretScopeCurrent({
     tenantDocumentId: '7',
 }), true);
 assert.equal(isPosSyncSecretScopeCurrent({
+    store: { active: true, tenantId: 7, tId: '7' },
+    tenant: { active: true },
+    tenantDocumentId: '7',
+}), true);
+assert.equal(isPosSyncSecretScopeCurrent({
+    store: { active: true, tId: 7 },
+    tenant: { active: true },
+    tenantDocumentId: '7',
+}), true);
+assert.equal(isPosSyncSecretScopeCurrent({
     store: { active: true, tenantId: 8 },
+    tenant: { active: true },
+    tenantDocumentId: '7',
+}), false);
+
+const projectedSecret = projectPosSyncSecretDocument({
+    createdBy: 'owner-1',
+    createdOn: { toMillis: () => 1_700_000_000_000 },
+    ignored: 'must not project',
+    pId: 'ML',
+    sId: 101,
+    secret: 'whsec_server',
+    tId: 1,
+    version: 3,
+}, 1, 101);
+assert.deepEqual(projectedSecret, {
+    createdBy: 'owner-1',
+    createdOn: { toMillis: projectedSecret?.createdOn && (projectedSecret.createdOn as { toMillis: () => number }).toMillis },
+    requiresRewrite: false,
+    secret: 'whsec_server',
+    version: 3,
+});
+assert.deepEqual(projectPosSyncSecretDocument({
+    secret: 'whsec_legacy_server',
+    version: 2,
+}, 1, 101), {
+    requiresRewrite: true,
+    secret: 'whsec_legacy_server',
+    version: 2,
+});
+assert.equal(projectPosSyncSecretDocument({
+    pId: 'ML',
+    sId: 102,
+    secret: 'whsec_server',
+    tId: 1,
+    version: 3,
+}, 1, 101), null);
+assert.equal(projectPosSyncSecretDocument({
+    pId: 'AL',
+    sId: 101,
+    secret: 'whsec_server',
+    tId: 1,
+    version: 3,
+}, 1, 101), null);
+assert.equal(projectPosSyncSecretDocument({
+    pId: 'ML',
+    sId: 101,
+    secret: 'whsec_server',
+    tId: 1,
+    version: '3',
+}, 1, 101), null);
+assert.equal(isPosSyncSecretScopeCurrent({
+    store: { active: true, tenantId: 7, tId: 8 },
+    tenant: { active: true },
+    tenantDocumentId: '7',
+}), false);
+assert.equal(isPosSyncSecretScopeCurrent({
+    store: { active: true, tenantId: 7, tId: 'invalid' },
     tenant: { active: true },
     tenantDocumentId: '7',
 }), false);

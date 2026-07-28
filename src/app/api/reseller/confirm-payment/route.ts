@@ -3,6 +3,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getResellerProfile } from "@database/reseller/server";
 import { confirmManualSubscriptionPayment } from "@database/subscriptions/server";
 import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
+import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { logger } from "@lib/monitoring/logger";
@@ -31,7 +32,7 @@ const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
  */
 export const POST = withAuth(async (request, session) => {
     const resellerId = session.user.id;
-    const isPlatformUser = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
+    const isPlatformUser = resolveExactSessionPlatformRole(session) === 'PLATFORM';
 
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {

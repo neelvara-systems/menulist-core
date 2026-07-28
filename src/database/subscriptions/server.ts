@@ -18,7 +18,10 @@ import { MinimalStoreDataType } from "@type/platform/store";
 import { getGracePeriodInfo } from "@util/razorpay";
 import { admitManualSubscriptionConfirmation } from "@lib/billing/manualSubscriptionConfirmation";
 import { appendBoundedBillingStatusHistory } from "@lib/billing/subscriptionStatusHistory";
-import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
+import {
+    getMenuListSubscriptionEntitlementScope,
+    isMenuListSubscriptionInExpectedEntitlementScope,
+} from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { getProductSubscriptionBillingScope } from "@lib/billing/productSubscriptionScopeBoundary";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
@@ -217,7 +220,7 @@ const getMasterStoreIdFromList = (storesList?: MinimalStoreDataType[]): number |
     const normalizedStores = storesList
         .map((store) => {
             const storeId = Number(store?.storeId);
-            return Number.isFinite(storeId) && storeId > 0
+            return Number.isSafeInteger(storeId) && storeId > 0
                 ? { store, storeId }
                 : null;
         })
@@ -264,7 +267,9 @@ const fetchSubscriptionRawServer = async (
         .where("status", "in", ["active", "past_due", "cancelled", "paused"])
         .where("cycleEndDate", ">=", now)
         .where("tenantId", "==", tenantScope.numericId)
+        .where("tId", "==", tenantScope.numericId)
         .where("storeId", "==", storeScope.numericId)
+        .where("sId", "==", storeScope.numericId)
         .orderBy("cycleEndDate", "desc")
         .limit(1)
         .get();
@@ -284,7 +289,9 @@ const fetchSubscriptionRawServer = async (
             .where("productId", "==", DEFAULT_PRODUCT_ID)
             .where("status", "==", status)
             .where("tenantId", "==", tenantScope.numericId)
+            .where("tId", "==", tenantScope.numericId)
             .where("storeId", "==", storeScope.numericId)
+            .where("sId", "==", storeScope.numericId)
             .limit(1)
             .get();
 
@@ -304,6 +311,8 @@ const fetchSubscriptionRawServer = async (
 const expireIfGracePeriodEndedServer = async (
     sub: FirestoreSubscriptionDoc,
 ): Promise<FirestoreSubscriptionDoc | null> => {
+    const expectedScope = getMenuListSubscriptionEntitlementScope(sub);
+    if (!expectedScope) return null;
     if (!sub.pastDueSinceAt) return sub;
 
     const initialGracePeriod = getGracePeriodInfo(sub.pastDueSinceAt);
@@ -324,7 +333,7 @@ const expireIfGracePeriodEndedServer = async (
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
-        if (!getMenuListSubscriptionEntitlementScope(current)) {
+        if (!isMenuListSubscriptionInExpectedEntitlementScope(current, expectedScope)) {
             return { expired: false, subscription: null };
         }
         if (current.status !== "past_due") {

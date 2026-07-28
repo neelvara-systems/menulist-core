@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import type {
     ReportLeadOpsSnapshot,
     ReportLeadReportStatus,
@@ -35,7 +36,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -124,8 +125,8 @@ export default function ReportLeadMonitor() {
     const formatter = useFormatter();
     const { token } = theme.useToken();
     const { data: session, status: sessionStatus } = useSession();
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
-    const isPlatform = platformRole === 'PLATFORM';
+    const isPlatform = resolveExactSessionPlatformRole(session) === 'PLATFORM';
+    const requestIdRef = useRef(0);
     const [loading, setLoading] = useState(true);
     const [snapshot, setSnapshot] = useState<ReportLeadOpsSnapshot | null>(null);
     const [reportStatus, setReportStatus] = useState<ReportLeadReportStatusFilter>('all');
@@ -137,8 +138,10 @@ export default function ReportLeadMonitor() {
     }
 
     const loadData = useCallback(async () => {
+        const requestId = requestIdRef.current + 1;
+        requestIdRef.current = requestId;
         if (!isPlatform) {
-            setLoading(false);
+            if (requestId === requestIdRef.current) setLoading(false);
             return;
         }
 
@@ -158,25 +161,32 @@ export default function ReportLeadMonitor() {
                 ...getBoundedRuntimeStringContext('reportStatus', reportStatus),
                 ...getBoundedRuntimeStringContext('toolId', toolId),
             });
+            if (requestId !== requestIdRef.current) return;
             if (!data) {
+                setSnapshot(null);
                 message.error('Failed to load report leads');
                 return;
             }
             setSnapshot(data);
         } catch (error) {
+            if (requestId !== requestIdRef.current) return;
+            setSnapshot(null);
             logRuntimeFailure('report_lead_monitor_load_failed', error, {
                 ...getBoundedRuntimeStringContext('reportStatus', reportStatus),
                 ...getBoundedRuntimeStringContext('toolId', toolId),
             });
             message.error('Failed to load report leads');
         } finally {
-            setLoading(false);
+            if (requestId === requestIdRef.current) setLoading(false);
         }
     }, [isPlatform, reportStatus, toolId]);
 
     useEffect(() => {
         if (sessionStatus === 'loading') return;
         void loadData();
+        return () => {
+            requestIdRef.current += 1;
+        };
     }, [loadData, sessionStatus]);
 
     const toolOptions = useMemo(() => {

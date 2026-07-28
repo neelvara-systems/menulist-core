@@ -31,7 +31,6 @@ import {
   useWebsiteBasePath,
   withoutWebsiteBasePath,
 } from "./shared/WebsiteProductPathProvider";
-import { signOutSession } from "@lib/auth/client";
 
 const navItemKeys = [
   { href: "/features", key: "features", icon: LuLayoutGrid },
@@ -77,6 +76,10 @@ export default function Header() {
 
   const closeDrawer = useCallback(() => {
     setIsOpen(false);
+  }, []);
+  const handleSignOut = useCallback(async () => {
+    const { signOutSession } = await import("@lib/auth/client");
+    await signOutSession("/");
   }, []);
 
   const handleDesktopDropdownKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -280,6 +283,7 @@ export default function Header() {
                       aria-label={t("Header.featuresMenuAria")}
                       aria-expanded={openDesktopMenu === "features"}
                       aria-controls="ws-desktop-features-panel"
+                      onClick={() => setOpenDesktopMenu("features")}
                       style={{
                         fontSize: "0.9375rem",
                         fontWeight: 500,
@@ -293,7 +297,14 @@ export default function Header() {
                       {t("Header.features")}
                       <LuChevronDown size={14} aria-hidden="true" />
                     </button>
-                    <div id="ws-desktop-features-panel" className="ws-header-feature-menu__panel" aria-label={t("Header.featuresMenuTitle")}>
+                    <div
+                      id="ws-desktop-features-panel"
+                      className="ws-header-feature-menu__panel"
+                      aria-label={t("Header.featuresMenuTitle")}
+                      aria-hidden={openDesktopMenu !== "features"}
+                      data-open={openDesktopMenu === "features" ? "true" : "false"}
+                      inert={openDesktopMenu !== "features" ? true : undefined}
+                    >
                       <Link href="/features" className="ws-header-feature-menu__overview">
                         <span>
                           <LuLayoutGrid size={18} aria-hidden="true" />
@@ -381,7 +392,14 @@ export default function Header() {
                       {t("Header.resources")}
                       <LuChevronDown size={14} aria-hidden="true" />
                     </Link>
-                    <div id="ws-desktop-resources-panel" className="ws-header-resource-menu__panel" aria-label={t("Header.resourcesMenuTitle")}>
+                    <div
+                      id="ws-desktop-resources-panel"
+                      className="ws-header-resource-menu__panel"
+                      aria-label={t("Header.resourcesMenuTitle")}
+                      aria-hidden={openDesktopMenu !== "resources"}
+                      data-open={openDesktopMenu === "resources" ? "true" : "false"}
+                      inert={openDesktopMenu !== "resources" ? true : undefined}
+                    >
                       {resourceDropdownLinks.map((resourceLink) => {
                         const ResourceIcon = resourceLink.icon;
                         return (
@@ -456,7 +474,7 @@ export default function Header() {
                 </Link>
                 <button
                   onClick={() => {
-                    void signOutSession("/").catch(() => undefined);
+                    void handleSignOut().catch(() => undefined);
                   }}
                   className="ws-btn ws-btn--secondary"
                   style={{
@@ -821,7 +839,7 @@ export default function Header() {
                   <button
                     onClick={() => {
                       closeDrawer();
-                      void signOutSession("/").catch(() => undefined);
+                      void handleSignOut().catch(() => undefined);
                     }}
                     style={{
                       display: "flex",

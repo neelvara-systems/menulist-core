@@ -691,7 +691,7 @@ The founder confirmed that falling AI inference cost should be used to accelerat
 
 1. Add a feature-flagged desktop AI Volume Mode for founder admins only.
 2. Bound each request to five targets, three approved internal tasks, three concurrent children, batch rate limiting, and USD 5 founder-estimated-cost authority.
-3. Use `gemini-2.5-flash-lite` for default generation and independent critique, with `gemini-2.5-flash` as the only executable stronger-model escalation.
+3. Use explicit stable `gemini-3.5-flash-lite` for default generation and independent critique, with `gemini-3.6-flash` as the only executable stronger-model escalation. Retired Gemini 2.5 IDs remain only as exact persisted-route migration inputs.
 4. Require strict typed output from both generation and critic passes; any retained rejected fact forces low-confidence founder review.
 5. Reuse existing AI worker, model-eval, provider-spend, audit, timeline, daily-cost, and decision-snapshot records; add no collection, index, rule, scheduler, or MenuList write path.
 6. Hash founder-scoped idempotency keys so paid retries return the original parent instead of repeating calls.

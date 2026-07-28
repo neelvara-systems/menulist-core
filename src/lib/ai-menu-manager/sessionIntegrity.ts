@@ -453,7 +453,7 @@ function parseReceipt(value: unknown, projectId: string): AiMenuManagerReceipt |
     const receiptId = boundedString(value.receiptId, 300);
     const proposalId = boundedString(value.proposalId, 200);
     const actionType = enumValue(value.actionType, ACTION_TYPES) as AiMenuManagerActionType | null;
-    const status = enumValue(value.status, new Set(['executed', 'failed', 'manual_task'] as const));
+    const status = enumValue(value.status, new Set(['executed', 'failed', 'manual_task', 'cancelled'] as const));
     const title = boundedString(value.title, 160);
     const message = boundedString(value.message, 500, true);
     const receiptProjectId = value.projectId === undefined

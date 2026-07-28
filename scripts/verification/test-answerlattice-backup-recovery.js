@@ -1,4 +1,6 @@
 const assert = require('assert');
+const path = require('path');
+const { spawnSync } = require('child_process');
 const {
   APPLY_ENV,
   DAILY_RETENTION_SECONDS,
@@ -6,6 +8,7 @@ const {
   PROJECTS,
   RESTORE_DATABASE_PATTERN,
   assertBackupResource,
+  assertProjectConfirmation,
   assertRestoreDatabase,
   isExpectedDailySchedule,
   resolveStage,
@@ -21,6 +24,15 @@ assert.strictEqual(DAILY_RETENTION_SECONDS, '8467200s');
 assert.strictEqual(resolveStage('qa'), 'answerlattice-qa');
 assert.strictEqual(resolveStage('prod'), 'answerlattice');
 assert.throws(() => resolveStage('production'), /Stage must be one of/);
+assert.doesNotThrow(() => assertProjectConfirmation('answerlattice-qa', 'answerlattice-qa'));
+assert.throws(
+  () => assertProjectConfirmation('answerlattice-qa', 'answerlattice'),
+  /--confirm-project answerlattice-qa/,
+);
+assert.throws(
+  () => assertProjectConfirmation('answerlattice', undefined),
+  /--confirm-project answerlattice/,
+);
 
 assert.doesNotThrow(() => assertBackupResource(
   'answerlattice-qa',
@@ -60,5 +72,21 @@ assert.strictEqual(isExpectedDailySchedule({
   retention: '604800s',
 }), false);
 assert.strictEqual(isExpectedDailySchedule(null), false);
+
+const toolPath = path.resolve(__dirname, '../answerlattice/backup-recovery.js');
+const missingConfirmation = spawnSync(
+  process.execPath,
+  [toolPath, 'ensure-daily', 'qa'],
+  {
+    encoding: 'utf8',
+    env: { ...process.env, [APPLY_ENV]: '1' },
+  },
+);
+assert.notStrictEqual(missingConfirmation.status, 0);
+assert.match(missingConfirmation.stderr, /--confirm-project answerlattice-qa/);
+assert.doesNotMatch(
+  `${missingConfirmation.stdout}\n${missingConfirmation.stderr}`,
+  /gcloud is required|No active gcloud account/,
+);
 
 console.log('Answerlattice backup/recovery contract tests passed');

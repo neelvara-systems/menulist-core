@@ -53,7 +53,7 @@ Use product-scoped paths such as:
 | `/api/campaigncue/locations` | `GET` | Bounded location list through a direct workspace-only collection read. |
 | `/api/campaigncue/locations` | `POST` | Add active/draft location record. |
 
-All current runtime endpoints use `withAuth`, CampaignCue tenant/store scope guards, Zod validation on writes, rate limiting, and the dedicated `campaigncueFirestoreAdmin` boundary. Standalone list/analytics endpoints do not call the full workspace overview loader.
+All current runtime endpoints use `withAuth`, exact agreeing numeric session aliases, current shared-store tenant/active-state verification, exact CampaignCue product/workspace membership, Zod validation on writes, rate limiting, and the dedicated `campaigncueFirestoreAdmin` boundary. Every campaign, campaign-action, CueLayers upload/autosave/repair/export mutation requires a bounded idempotency key. Standalone list/analytics endpoints do not call the full workspace overview loader, but they still revalidate shared-store and CampaignCue membership before product data access. Persisted campaign, source-input, source-snapshot, location, schedule, analytics-summary, asset, trust-report, workspace, Business Brain and CueLayers records are runtime-admitted before owner or mutation use.
 
 ## Runtime Error Contract
 
@@ -74,6 +74,8 @@ The workspace app must map `CAMPAIGNCUE_FIREBASE_UNAVAILABLE` to a setup-blocked
 Security events from the shared CampaignCue API guard use bounded route/session metadata. Tenant violations, rate-limit rejections, malformed JSON, and Design Cue validation failures log endpoint/method/scope/error presence-length fields instead of raw `buildSecurityContext()` output or raw validation messages.
 
 Browser callers must not treat HTTP success or a parsed object as acknowledgement by itself. The CampaignCue workspace app parses route responses through a 4 MB bounded reader and requires the documented `{ data }` envelope for workspace load, CueLayers boot/save/upload/repair/export, campaign create/action, business details, source input, location, asset registration, asset download, and editor-export flows before mutating local state. Parse, rejection, and invalid-shape failures log fixed CampaignCue workspace diagnostics and keep fixed product copy.
+
+For campaign create/action and CueLayers mutations, the browser binds one idempotency key to the exact request fingerprint and retires it only after an authoritative bounded response. A lost, truncated, or unparseable response therefore retries the same server claim rather than creating a second effect. Campaign creation also rereads the exact bounded workspace, Business Brain, source, asset, location, schedule, campaign-memory and analytics authority inside its final transaction; any concurrent change completes the retry record with a safe `409` and commits no campaign/trust/event/summary effect.
 
 ## Acceptance
 

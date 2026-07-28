@@ -4,13 +4,14 @@
 
 The runtime verifier source-gates these cases in addition to browser/API tests:
 
-- rate limiting precedes the Firestore-backed permission check on save, run, release-check, and rollback
+- rate limiting precedes the Firestore-backed permission check on save, run, release-check, rollback, and proposal impact; provider uncertainty fails closed with `503`
 - full-runtime SAFE_MODE precedes suite/preload reads and provider-capable execution
 - persisted summary uses exact ID/product/numeric scope/schema/revision/case admission; stored releases use the strict release schema; answer, audit, rollback proposal, and rollback audit ownership fail closed
 - run idempotency binds request ID to run kind, mode, suite revision, ordered selected case IDs, and release ID
 - release IDs are normalized before Firestore document reads
 - answer-test execution does not write search history or instant cache state
 - browser responses are bounded and owner actions preserve 44px targets
+- rollback source answer/audit authority and current entity bindings are transaction-current; missing/malformed procedure snapshots and malformed acknowledgements fail closed
 
 > **Status:** Acceptance matrix
 
@@ -25,32 +26,39 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 7. Two concurrent saves use revision checking so one cannot silently overwrite the other.
 8. Repeating the same provider-backed request/case definition returns the existing atomic settlement without a second credit debit; changing the case definition changes the accounting key.
 9. A retained-run write failure after provider execution keeps the reservation until expiry instead of immediately releasing it for another provider run.
-10. Version-1 cases load with `riskLevel = standard`, `citationPolicy = not_required`, and no expected references.
-11. A specific-source test is rejected unless it declares at least one expected reference ID.
-12. FAQ and RAG results pass evidence checks only when the required bounded reference IDs are present; unknown reference shapes are ignored.
-13. Required claims, forbidden claims, minimum confidence, expected answer/FAQ ID, source route, and evidence policy fail independently and produce explicit reasons.
-14. Any failed critical case produces `proofStatus = blocked`; standard-only failures produce `review`; all-passing results produce `ready`.
-15. Proof status never changes a release, deployment, canonical answer, article, FAQ, signal, or proposal automatically.
-16. A retained legacy run recomputes counts/status from valid result rows; malformed durations become zero and an all-invalid result array is omitted rather than reported ready.
-17. Editing any active First 10 case after a retained run marks the Activation proof stale until a new run completes.
-18. Changing canonical, KB/FAQ, docs-navigation, entity, entity-relation, or release source versions marks the retained proof stale until rerun.
-19. A legacy retained run without source-version evidence cannot satisfy launch readiness and requires one owner-triggered rerun.
-20. Activation reads current source versions from the exact-scoped compact summary, not the last compiled bundle snapshot, and returns no source-version counters to the browser.
-21. Missing, null, blank, negative, fractional, or unsafe retained source-version values fail closed and cannot satisfy current proof.
-22. Save ignores browser-authored case timestamps: changed/new definitions receive server time, unchanged definitions preserve stored time, and existing creation time is immutable.
-23. The launch screen labels the retained result as latest-run proof and separately renders current First 10 proof from the server projection.
-24. Editing a launch case or changing governed sources makes the current-proof banner stale while preserving the historical latest-run result for diagnosis.
-25. A source-version change during test execution prevents the post-run current-proof response from reporting the new run as current.
-26. Standard regression-suite load, save, and post-run responses omit the launch-proof projection and its extra source-version read; only exact `includeLaunchProof=1` requests opt in.
-27. Wrong product ID, deterministic document ID, loose string scope, future schema, loose revision, invalid case, or duplicate persisted case ID throws an integrity error instead of silently loading partial truth.
-28. Duplicate expected reference IDs, duplicate required/blocked phrases, and a phrase present in both required and blocked lists are rejected.
-29. Reusing a request ID with a different mode, selected case set, suite revision, run kind, or release ID returns a conflict; an exact retry returns the existing completed run.
-30. A suite edit between route load and reservation returns `suite_changed` before execution.
-31. Saving a retained run removes its reservation without incrementing the test-suite revision.
-32. A retained run whose `suiteRevision` differs from the current summary remains historical, is labelled stale, and cannot satisfy Activation proof.
-33. Legacy retained runs without suite revision remain visible but cannot be presented as current proof; legacy reservations without request fingerprints do not block new work.
-34. The deterministic evaluator remains provider-free and the UI states that its result is regression evidence rather than an independent factual-correctness guarantee.
-35. **Adopt current route and evidence** updates source, answer/FAQ IDs, confidence, and evidence while preserving required and blocked phrase checks.
+10. A limiter-provider outage admits no save, test run, release check, rollback proposal, or proposal-impact work and returns `503`.
+11. Version-1 cases load with `riskLevel = standard`, `citationPolicy = not_required`, and no expected references.
+12. A specific-source test is rejected unless it declares at least one expected reference ID.
+13. FAQ and RAG results pass evidence checks only when the required bounded reference IDs are present; unknown reference shapes are ignored.
+14. Required claims, forbidden claims, minimum confidence, expected answer/FAQ ID, source route, and evidence policy fail independently and produce explicit reasons.
+15. Any failed critical case produces `proofStatus = blocked`; standard-only failures produce `review`; all-passing results produce `ready`.
+16. Proof status never changes a release, deployment, canonical answer, article, FAQ, signal, or proposal automatically.
+17. A retained legacy run recomputes counts/status from valid result rows; malformed durations become zero and an all-invalid result array is omitted rather than reported ready.
+18. Editing any active First 10 case after a retained run marks the Activation proof stale until a new run completes.
+19. Changing canonical, KB/FAQ, docs-navigation, entity, entity-relation, or release source versions marks the retained proof stale until rerun.
+20. A legacy retained run without source-version evidence cannot satisfy launch readiness and requires one owner-triggered rerun.
+21. Activation reads current source versions from the exact-scoped compact summary, not the last compiled bundle snapshot, and returns no source-version counters to the browser.
+22. Missing, null, blank, negative, fractional, or unsafe retained source-version values fail closed and cannot satisfy current proof.
+23. Save ignores browser-authored case timestamps: changed/new definitions receive server time, unchanged definitions preserve stored time, and existing creation time is immutable.
+24. The launch screen labels the retained result as latest-run proof and separately renders current First 10 proof from the server projection.
+25. Editing a launch case or changing governed sources makes the current-proof banner stale while preserving the historical latest-run result for diagnosis.
+26. A source-version change during test execution prevents the post-run current-proof response from reporting the new run as current.
+27. Standard regression-suite load, save, and post-run responses omit the launch-proof projection and its extra source-version read; only exact `includeLaunchProof=1` requests opt in.
+28. Wrong product ID, deterministic document ID, loose string scope, future schema, loose revision, invalid case, or duplicate persisted case ID throws an integrity error instead of silently loading partial truth.
+29. Duplicate expected reference IDs, duplicate required/blocked phrases, and a phrase present in both required and blocked lists are rejected.
+30. Reusing a request ID with a different mode, selected case set, suite revision, run kind, or release ID returns a conflict; an exact retry returns the existing completed run.
+31. A suite edit between route load and reservation returns `suite_changed` before execution.
+32. Saving a retained run removes its reservation without incrementing the test-suite revision.
+33. A retained run whose `suiteRevision` differs from the current summary remains historical, is labelled stale, and cannot satisfy Activation proof.
+34. Legacy retained runs without suite revision remain visible but cannot be presented as current proof; legacy reservations without request fingerprints do not block new work.
+35. The deterministic evaluator remains provider-free and the UI states that its result is regression evidence rather than an independent factual-correctness guarantee.
+36. **Adopt current route and evidence** updates source, answer/FAQ IDs, confidence, and evidence while preserving required and blocked phrase checks.
+37. After Feature 5 hardening, a new or edited critical case cannot select `rag` as its expected route.
+38. A legacy persisted critical-RAG case continues to load, but an actual `rag` result fails with an explicit reason and produces `proofStatus = blocked`.
+39. A critical test may still run in full-runtime mode; canonical, published FAQ, explicitly expected escalation, and explicitly expected no-answer outcomes can pass when all configured assertions pass.
+40. The same critical-RAG rule applies to standard runs, First 10 proof, release checks, and proposal-impact current/proposed evaluation.
+41. Critical-RAG blocking adds no Firestore read/write, provider call, summary migration, analytics event, or retained artifact beyond the existing run contract.
+42. No test route creates multi-turn variants, scheduled suites, model-judge results, separate manifests, per-assertion documents, or Storage artifacts.
 
 ## Release Safety
 
@@ -61,6 +69,9 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 5. A release check retains its evidence and proof status using the same capped summary document and no additional collection read.
 6. A malformed, wrong-product, or cross-scope stored release is rejected before test selection.
 7. Repeating rollback validates the deterministic proposal and audit pair. A valid missing half is repaired; conflicting target answer, mutation type, source audit, product, scope, action, or entity identity fails closed.
+8. Deleting, rebinding, or changing scope/ownership of the answer or selected audit during proposal creation causes the transaction to retry against current truth or fail without a proposal/audit write.
+9. A procedure rollback requires a complete strict saved procedure; malformed or missing procedure content cannot create a partial rollback proposal.
+10. The browser accepts only the strict proposal ID, created flag, and known governance status acknowledgement.
 
 ## Proposal Impact Preview
 

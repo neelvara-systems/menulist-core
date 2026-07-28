@@ -11,6 +11,37 @@ Sell one bounded outcome to founder-led SaaS teams:
 
 Do not lead with the complete governance inventory. Lead with time to first trustworthy answer.
 
+## Channel Doctrine
+
+The July 28 portfolio review of the founder-supplied `distribution 101` article
+is recorded in the [Product Portfolio Distribution Insight
+Ledger](../../strategy/product-portfolio-distribution-insight-ledger.md).
+
+For Answerlattice, retain only these channel rules:
+
+- the exact audience is AI-built SaaS founders and small product studios that
+  already have real support questions and reviewable product truth;
+- founder/studio recruitment remains the primary path for the first five
+  workloads;
+- X may teach a specific support-correctness lesson to that same audience, but
+  it is not an algorithm-gaming or follower-growth program;
+- YouTube is the strongest durable education hypothesis after the first
+  workload is verified: demonstrate first-ten question preparation, canonical
+  checks, safe refusal, widget context, release drift, and the weekly review
+  loop;
+- short-form clips may be derived from a verified walkthrough or static demo;
+  they must not substitute for evidence;
+- every topic must solve a buyer sub-problem such as stale billing answers,
+  launch-question preparation, page-aware support, or release drift;
+- measure qualified founders, prepared question sets, useful test results,
+  widget verification, explicit outcomes, and return for a second weekly
+  review—not broad AI impressions or follower count.
+
+Do not expand posting volume or create partner amplification before the founder
+test passes. Do not use fake-US accounts, proxies, aged accounts, engagement
+groups, undisclosed affiliate arrangements, guaranteed growth, fixed algorithm
+thresholds, or manipulative engagement bait.
+
 ## Founder Test
 
 Recruit five founder-led SaaS products that have:

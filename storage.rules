@@ -49,6 +49,16 @@ service firebase.storage {
              );
     }
 
+    function isActiveAnswerlatticeWorkspace(tId, sId) {
+      let store = firestore.get(/databases/(default)/documents/stores/$(sId));
+      return store.data.pId == 'AL'
+             && string(store.data.tId) == string(tId)
+             && string(store.data.sId) == string(sId)
+             && store.data.get('active', false) == true
+             && store.data.deleted != true
+             && store.data.authDisabled != true;
+    }
+
     function isPlatformAdmin() {
       return isAuthenticated()
              && request.auth.token.get('platformRole', null) == 'PLATFORM';
@@ -82,9 +92,12 @@ service firebase.storage {
     }
 
     function canAccessAnswerlatticeSupportMedia(tId, sId) {
-      return isPlatformAdmin()
-             || isPlatformSupport()
-             || (belongsToStore(tId, sId) && hasAnswerlatticeSupportManagementPermission());
+      return isActiveAnswerlatticeWorkspace(tId, sId)
+             && (
+               isPlatformAdmin()
+               || isPlatformSupport()
+               || (belongsToStore(tId, sId) && hasAnswerlatticeSupportManagementPermission())
+             );
     }
 
     function hasValidAnswerlatticeKnowledgeSourceMetadata() {
@@ -235,11 +248,15 @@ service firebase.storage {
      * Path: changelog/files/{tId}/{sId}/{fileId}
      */
     match /changelog/files/{tId}/{sId}/{fileId} {
-      allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId)
+      allow read: if isActiveAnswerlatticeWorkspace(tId, sId)
+                  && belongsToStore(tId, sId);
+      allow write: if isActiveAnswerlatticeWorkspace(tId, sId)
+                   && belongsToStore(tId, sId)
                    && hasAnswerlatticeKnowledgeManagementPermission()
                    && isValidImageOrDocumentUpload();
-      allow delete: if belongsToStore(tId, sId) && hasAnswerlatticeKnowledgeManagementPermission();
+      allow delete: if isActiveAnswerlatticeWorkspace(tId, sId)
+                    && belongsToStore(tId, sId)
+                    && hasAnswerlatticeKnowledgeManagementPermission();
     }
 
     /**
@@ -273,7 +290,10 @@ service firebase.storage {
      */
     match /notes/documents/{tId}/{sId}/{noteId}/{fileId} {
       allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId) && isValidImageOrDocumentUpload();
+      // The generic Notes feature is retired. Historical owners retain scoped
+      // read/delete compatibility, but no browser may create or overwrite
+      // orphaned note attachments.
+      allow create, update: if false;
       allow delete: if belongsToStore(tId, sId);
     }
 
@@ -294,12 +314,15 @@ service firebase.storage {
      * Path: ingestion_source_files/{tId}/{sId}/{fileId}
      */
     match /ingestion_source_files/{tId}/{sId}/{fileId} {
-      allow read: if isPlatformAdmin() || belongsToStore(tId, sId);
-      allow write: if (isPlatformAdmin() || (belongsToStore(tId, sId) && hasAnswerlatticeKnowledgeManagementPermission()))
+      allow read: if isActiveAnswerlatticeWorkspace(tId, sId)
+                  && (isPlatformAdmin() || belongsToStore(tId, sId));
+      allow write: if isActiveAnswerlatticeWorkspace(tId, sId)
+                   && (isPlatformAdmin() || (belongsToStore(tId, sId) && hasAnswerlatticeKnowledgeManagementPermission()))
                    && isValidKnowledgeSourceType()
                    && request.resource.size <= 10 * 1024 * 1024
                    && hasValidAnswerlatticeKnowledgeSourceMetadata();
-      allow delete: if isPlatformAdmin() || (belongsToStore(tId, sId) && hasAnswerlatticeKnowledgeManagementPermission());
+      allow delete: if isActiveAnswerlatticeWorkspace(tId, sId)
+                    && (isPlatformAdmin() || (belongsToStore(tId, sId) && hasAnswerlatticeKnowledgeManagementPermission()));
     }
 
     /**
@@ -367,10 +390,12 @@ service firebase.storage {
     }
     
     // ═══════════════════════════════════════════════════════════
-    // LEGACY PROJECT STORAGE PATTERN (READ-ONLY CUTOVER)
+    // LEGACY PROJECT STORAGE PATTERN (SERVER-MEDIATED CUTOVER)
     // Path: MenuListAi/project/{type}/{fileId}
     // Active uploads now use tenant-scoped projects/{fileType}/{tId}/{sId}/{fileId}.
-    // Keep authenticated reads for existing objects, but block new writes/deletes.
+    // Paths do not contain tenant/store identity, so direct client access cannot
+    // be authorized safely. Existing download-token URLs remain independently
+    // revocable; any future authenticated access must be server-mediated.
     // ═══════════════════════════════════════════════════════════
     
     /**
@@ -378,8 +403,7 @@ service firebase.storage {
      * Path: MenuListAi/project/files/{fileId}
      */
     match /MenuListAi/project/files/{fileId} {
-      allow read: if isAuthenticated();
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
     
     /**
@@ -387,8 +411,7 @@ service firebase.storage {
      * Path: MenuListAi/project/generated/{projectId}/{fileId}
      */
     match /MenuListAi/project/generated/{projectId}/{fileId} {
-      allow read: if isAuthenticated();
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
     
     /**
@@ -396,8 +419,7 @@ service firebase.storage {
      * Path: MenuListAi/project/edited/{projectId}/{fileId}
      */
     match /MenuListAi/project/edited/{projectId}/{fileId} {
-      allow read: if isAuthenticated();
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
     
     /**
@@ -405,8 +427,7 @@ service firebase.storage {
      * Path: MenuListAi/project/custom/{projectId}/{fileId}
      */
     match /MenuListAi/project/custom/{projectId}/{fileId} {
-      allow read: if isAuthenticated();
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
     
     /**
@@ -418,6 +439,12 @@ service firebase.storage {
      *
      * @see __docs__/customer-app/customer-app_firebase.md §Storage
      */
+
+    match /answerlattice-context/public/{publicBundleId}/{version}/{filePath=**} {
+      // Public-safe payloads remain server-mediated so the proxy can enforce
+      // rate, size, observability, and workspace-lifecycle revocation controls.
+      allow read, write, delete: if false;
+    }
 
     // ═══════════════════════════════════════════════════════════
     // DEFAULT DENY (Security First)

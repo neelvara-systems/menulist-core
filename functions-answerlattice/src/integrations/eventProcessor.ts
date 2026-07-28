@@ -12,6 +12,7 @@
 
 import * as logger from 'firebase-functions/logger';
 import { parseExactAnswerlatticeScope } from '../answerlattice/scopeBoundary';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 import { EmailAdapter } from './adapters/emailAdapter';
 import { GithubAdapter } from './adapters/githubAdapter';
 import { LinearAdapter } from './adapters/linearAdapter';
@@ -88,16 +89,7 @@ function getEventProcessorScopeContext(event: Partial<IntegrationEvent>): Record
 type EventProcessorLogContext = Record<string, boolean | number | string | null | undefined>;
 
 function getEventProcessorSourceErrorContext(error: unknown): EventProcessorLogContext {
-    const source = error && typeof error === 'object'
-        ? error as { name?: unknown; code?: unknown; status?: unknown; statusCode?: unknown }
-        : null;
-    const status = Number(source?.status ?? source?.statusCode);
-
-    return {
-        sourceErrorName: typeof source?.name === 'string' ? source.name.slice(0, 80) : typeof error,
-        sourceErrorCode: source?.code === undefined || source?.code === null ? undefined : String(source.code).slice(0, 80),
-        sourceStatusCode: Number.isFinite(status) ? status : undefined,
-    };
+    return getBoundedFunctionsErrorContext(error);
 }
 
 function logEventProcessorFailure(

@@ -109,6 +109,7 @@ Auto-generated privacy, terms, and refund/cancellation pages served at fixed rou
 ### 5.1 Generation Trigger
 - System content is generated from current store identity data on each server render; only owner overrides are persisted.
 - The optional override read uses a tagged 60-second cache and save/reset invalidates `compliance-store-{sId}`.
+- Override persistence is server-only: direct Firestore reads/writes are denied, and every Admin read/mutation proves the expected tenant/store scope.
 - `"system"` means baseline only; `"custom"` means owner text first plus the non-removable baseline.
 - Effective/updated dates use the store modification timestamp when available, otherwise the versioned template effective date. They do not change merely because a visitor reloads the page.
 

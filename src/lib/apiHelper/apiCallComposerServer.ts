@@ -1,5 +1,6 @@
 import getActiveSession from "@lib/auth/getActiveSession";
 import { secureError } from "@lib/security/secureLogger";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 type DalOperation<T> = () => Promise<T> | T;
 
@@ -26,7 +27,7 @@ export const apiCallComposerServer = async <T>(fn: DalOperation<T>, ...args: unk
     } catch (sessionError) {
         secureError('[DAL Server] Session lookup failed', new Error('dal_server_session_lookup_failed'), {
             functionName,
-            errorName: sessionError instanceof Error ? sessionError.name : typeof sessionError,
+            errorName: getBoundedErrorName(sessionError) || typeof sessionError,
             params: summarizeDalArgs(args),
         });
         throw sessionError;
@@ -42,7 +43,7 @@ export const apiCallComposerServer = async <T>(fn: DalOperation<T>, ...args: unk
     } catch (error) {
         secureError('[DAL Server] API call failed', new Error('dal_server_call_failed'), {
             functionName,
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedErrorName(error) || typeof error,
             params: summarizeDalArgs(args),
         });
         throw error;

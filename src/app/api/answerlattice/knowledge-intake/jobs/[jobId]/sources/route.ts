@@ -16,6 +16,7 @@ import {
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
+import { isAnswerlatticeKnowledgeIntakeHttpUrl } from '@lib/answerlattice/knowledgeIntakeUrlContracts';
 import { ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE } from '@type/answerlattice';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -24,7 +25,7 @@ import { withAuth } from '@/middleware/auth';
 const SourceSchema = z.object({
     type: z.enum(Object.values(ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE) as [string, ...string[]]).optional(),
     title: z.string().trim().max(180).optional(),
-    originUrl: z.string().trim().max(500).url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)).optional(),
+    originUrl: z.string().trim().max(500).url().refine(isAnswerlatticeKnowledgeIntakeHttpUrl).optional(),
     fileName: z.string().trim().max(180).optional(),
     mimeType: z.string().trim().max(120).optional(),
     contentText: z.string().max(50_000).optional(),

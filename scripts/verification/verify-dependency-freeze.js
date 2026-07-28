@@ -10,7 +10,7 @@ const PACKAGE_PAIRS = [
     label: 'root app package',
     dir: '.',
     expectedCoreVersions: {
-      '@google/genai': '0.12.0',
+      '@google/genai': '2.13.0',
       '@reduxjs/toolkit': '2.12.0',
       '@serwist/turbopack': '9.5.12',
       '@swc/helpers': '0.5.23',
@@ -40,10 +40,11 @@ const PACKAGE_PAIRS = [
     label: 'MenuList Functions package',
     dir: 'functions',
     expectedCoreVersions: {
+      '@google/genai': '2.13.0',
       '@sentry/node': '10.68.0',
       '@upstash/redis': '1.35.7',
       'firebase-admin': '13.10.0',
-      'firebase-functions': '6.6.0',
+      'firebase-functions': '7.3.0',
       nodemailer: '9.0.3',
       razorpay: '2.9.8',
       typescript: '5.9.2',
@@ -53,8 +54,9 @@ const PACKAGE_PAIRS = [
     label: 'Answerlattice Functions package',
     dir: 'functions-answerlattice',
     expectedCoreVersions: {
+      '@google/genai': '2.13.0',
       'firebase-admin': '13.10.0',
-      'firebase-functions': '6.6.0',
+      'firebase-functions': '7.3.0',
       nodemailer: '9.0.3',
       typescript: '5.9.3',
     },
@@ -64,7 +66,7 @@ const PACKAGE_PAIRS = [
     dir: 'functions-signaldesk',
     expectedCoreVersions: {
       'firebase-admin': '13.10.0',
-      'firebase-functions': '6.6.0',
+      'firebase-functions': '7.3.0',
       typescript: '5.9.3',
     },
   },
@@ -222,6 +224,14 @@ function verifyRootRuntimeEnvironment() {
     'Root UUID security override must stay pinned to 11.1.1',
   );
   assert(
+    rootPackage.overrides?.exceljs?.archiver === '8.0.0'
+      && rootPackage.overrides?.exceljs?.unzipper === '0.12.5'
+      && rootPackage.overrides?.['google-gax']?.rimraf === '6.1.3'
+      && rootPackage.overrides?.sucrase?.glob === '13.0.6'
+      && rootPackage.devDependencies?.['brace-expansion'] === '1.1.16',
+    'Root brace-expansion advisory controls must keep production consumers on compatible patched chains',
+  );
+  assert(
     rootPackage.overrides?.next?.sharp === '0.35.3',
     'Next optional Sharp security override must stay pinned to 0.35.3',
   );
@@ -229,6 +239,7 @@ function verifyRootRuntimeEnvironment() {
     !rootPackage.devDependencies?.['@types/fabric'],
     '@types/fabric must remain removed because Fabric 7 ships its own types',
   );
+
 }
 
 function verifyDocsAndRegistry() {

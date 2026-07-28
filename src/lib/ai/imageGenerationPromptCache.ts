@@ -3,6 +3,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import {
     buildImagePromptCacheSourcePath,
     getReusableImagePromptCacheSource,
+    imagePromptCacheWriteCommitted,
     IMAGE_PROMPT_CACHE_KEY_VERSION,
     IMAGE_PROMPT_CACHE_STORAGE_PREFIX,
     isImagePromptCacheSourcePathForKey,
@@ -222,10 +223,13 @@ export async function writeImagePromptCacheSource(params: {
     prompt: string;
 }): Promise<string | null> {
     const cacheKey = getImagePromptCacheKey(params);
+    const cacheRef = getImagePromptCacheRef(cacheKey);
     const logContext = getPromptCacheLogContext({
         cacheKey,
         promptLength: params.prompt.length
     });
+    let stagedSourcePath = '';
+    let transactionAttempted = false;
 
     try {
         const dataUrl = normalizeImageDataUrl(params.image);
@@ -235,6 +239,7 @@ export async function writeImagePromptCacheSource(params: {
         const extension = getMediaFileExtension(prepared.mimeType);
         const sourcePath = buildImagePromptCacheSourcePath(cacheKey, randomUUID(), extension);
         if (!sourcePath) throw new Error('Image prompt cache source identity is invalid.');
+        stagedSourcePath = sourcePath;
         const now = admin.firestore.Timestamp.now();
 
         await storageAdmin.bucket().file(sourcePath).save(prepared.buffer, {
@@ -257,8 +262,8 @@ export async function writeImagePromptCacheSource(params: {
             resumable: false,
         });
 
-        const cacheRef = getImagePromptCacheRef(cacheKey);
         let previousSourcePath = '';
+        transactionAttempted = true;
         await firestoreAdmin.runTransaction(async (transaction) => {
             const current = await transaction.get(cacheRef);
             previousSourcePath = typeof current.data()?.sourcePath === 'string' ? current.data()!.sourcePath : '';
@@ -286,6 +291,26 @@ export async function writeImagePromptCacheSource(params: {
         logRuntimeDiagnostic("ai_image_prompt_cache_written", logContext);
         return cacheKey;
     } catch (error) {
+        if (stagedSourcePath) {
+            let shouldDeleteStagedSource = !transactionAttempted;
+            if (transactionAttempted) {
+                try {
+                    const current = await cacheRef.get();
+                    if (imagePromptCacheWriteCommitted(current.data(), stagedSourcePath)) {
+                        logRuntimeDiagnostic('ai_image_prompt_cache_write_acknowledgement_recovered', logContext);
+                        return cacheKey;
+                    }
+                    shouldDeleteStagedSource = true;
+                } catch (probeError) {
+                    logRuntimeFailure('ai_image_prompt_cache_write_recovery_probe_failed', probeError, logContext);
+                }
+            }
+            if (shouldDeleteStagedSource) {
+                await storageAdmin.bucket().file(stagedSourcePath).delete({ ignoreNotFound: true }).catch((cleanupError) => {
+                    logRuntimeFailure('ai_image_prompt_cache_staged_source_cleanup_failed', cleanupError, logContext);
+                });
+            }
+        }
         logRuntimeFailure("ai_image_prompt_cache_write_failed", error, logContext);
         return null;
     }

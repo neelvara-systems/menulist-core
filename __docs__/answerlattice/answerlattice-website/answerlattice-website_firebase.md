@@ -15,7 +15,7 @@ The public AnswerLattice site is hosted through the existing web application but
 | Run deterministic demo | Zero Firestore and zero AI-provider operations |
 | Read pricing | Zero Firestore operations; plan source is bundled code |
 | Accept/decline website analytics | Browser consent state; configured analytics only after acceptance |
-| Submit contact form | One AnswerLattice enquiry write after validation, rate limit, honeypot, and captcha admission |
+| Submit contact form | One AnswerLattice enquiry write after strict post-sanitization validation, fail-closed rate limit, honeypot, and captcha admission |
 | Start authenticated onboarding | Uses the Feature 28 provisioning transaction and Razorpay subscription flow |
 | Open payment checkout | Razorpay-hosted provider flow; provider confirmation owns paid state |
 
@@ -29,6 +29,8 @@ The public AnswerLattice site is hosted through the existing web application but
 - hashed client IP;
 - server timestamps;
 - the `contactEnquiries` retention policy.
+
+The public limiter fails closed: if its provider cannot determine admission, the route returns `503` before the enquiry write. Required name/message values are checked again after markup removal, and product URLs are limited to HTTP or HTTPS, so a syntactically present but empty or unsafe normalized value cannot enter the collection.
 
 The request body is capped at 8KB. The form response is capped at 8KB. Raw exception/provider text is not returned.
 

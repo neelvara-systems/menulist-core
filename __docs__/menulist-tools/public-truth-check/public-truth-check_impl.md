@@ -256,6 +256,13 @@ The first activation runs client-only, so no API route was added.
 
 Owner-authenticated mode reuses loaded store/project context where possible.
 
+The hook admits that context only when its tenant and store exactly match the
+current authenticated owner session. A session/workspace transition clears the
+report and suppresses reads until the provider has hydrated matching context.
+Menu freshness projection contains legacy `Date`, Firestore timestamp, epoch,
+and ISO inputs; malformed, coercive, out-of-range, or throwing timestamp values
+remain unavailable instead of crashing the owner surface or inventing an age.
+
 Build order:
 
 ```txt

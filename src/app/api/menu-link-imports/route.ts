@@ -61,7 +61,10 @@ function resolveTargetLanguages(projectData: any): Array<{ code: string; name: s
         ? projectData.languages
         : [projectData?.defaultLanguage || 'en'];
     const dedupedCodes: string[] = Array.from(
-        new Set(codes.map((code: unknown) => String(code || '').trim().toLowerCase()).filter(Boolean)),
+        new Set(codes
+            .filter((code: unknown): code is string => typeof code === 'string')
+            .map((code) => code.trim().toLowerCase())
+            .filter(Boolean)),
     );
     const languages = dedupedCodes
         .map((code) => GlobalLanguagesList.find((language) => language.code === code) || { code, name: code })
@@ -102,15 +105,35 @@ function buildDownloadUrl(bucketName: string, storagePath: string, token: string
 async function deleteMenuLinkImportStoragePath(
     storagePath: string,
     context: { cleanupReason: string; projectId: string },
-): Promise<void> {
+): Promise<boolean> {
     try {
         await storageAdmin.bucket().file(storagePath).delete({ ignoreNotFound: true });
+        return true;
     } catch (error) {
         logMenuProcessingFailure(MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED, error, {
             ...getMenuProcessingProjectLogContext(context.projectId),
             ...getBoundedMenuProcessingStringContext('storagePath', storagePath),
             cleanupReason: context.cleanupReason,
         });
+        return false;
+    }
+}
+
+async function persistMenuLinkImportCleanupRecord(
+    artifactRef: DocumentReference,
+    artifactData: Record<string, unknown>,
+    projectId: string,
+): Promise<boolean> {
+    try {
+        await artifactRef.create(artifactData);
+        return true;
+    } catch (error) {
+        logMenuProcessingFailure('menu_link_import_cleanup_record_failed', error, {
+            ...getMenuProcessingProjectLogContext(projectId),
+            ...getBoundedMenuProcessingStringContext('artifactId', artifactRef.id),
+            cleanupReason: 'storage_delete_failed',
+        });
+        return false;
     }
 }
 
@@ -172,6 +195,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     const createdStoragePaths: string[] = [];
     let artifactRef: DocumentReference | null = null;
+    let artifactData: Record<string, unknown> | null = null;
     let jobRef: DocumentReference | null = null;
     let persistenceAttempted = false;
 
@@ -227,7 +251,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const fileUid = `link-${artifactRef.id}`;
         const artifactUrl = buildDownloadUrl(bucket.name, storagePath, downloadToken);
 
-        const artifactData = {
+        artifactData = {
             artifactId: artifactRef.id,
             acquisitionProvider: 'direct-http',
             contentHash: acquisition.contentHash,
@@ -293,10 +317,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             projectId,
         });
         if (!jobCreation.created) {
-            await deleteMenuLinkImportStoragePath(storagePath, {
+            const storageDeleted = await deleteMenuLinkImportStoragePath(storagePath, {
                 cleanupReason: 'concurrent_active_job_reuse',
                 projectId,
             });
+            if (
+                !storageDeleted
+                && !(await persistMenuLinkImportCleanupRecord(artifactRef, artifactData, projectId))
+            ) {
+                throw new Error('menu_link_import_cleanup_untracked');
+            }
             createdStoragePaths.length = 0;
             if (String(jobCreation.match.data.uId || '') !== ids.uId) {
                 return NextResponse.json(
@@ -378,10 +408,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         if (!cleanupDeferred) {
-            await Promise.all(createdStoragePaths.map((path) => deleteMenuLinkImportStoragePath(path, {
-                cleanupReason: 'job_create_failed',
-                projectId,
-            })));
+            for (const path of createdStoragePaths) {
+                const storageDeleted = await deleteMenuLinkImportStoragePath(path, {
+                    cleanupReason: 'job_create_failed',
+                    projectId,
+                });
+                if (
+                    !storageDeleted
+                    && artifactRef
+                    && artifactData
+                ) {
+                    cleanupDeferred = await persistMenuLinkImportCleanupRecord(
+                        artifactRef,
+                        artifactData,
+                        projectId,
+                    );
+                }
+            }
         }
 
         logMenuProcessingFailure('menu_link_import_route_failed', error, {

@@ -25,6 +25,18 @@ Versioned public entries require an exact active release dependency. The changel
 - Claim transaction: one release read and one release write.
 - Completion transaction: release read, affected-answer query up to 201, answer/audit writes for drifted answers, release update, activation audit, source version, cache version when needed, and bundle manifest.
 
+### Release impact preview
+
+- Reads: one strict release point read, one affected-active-answer query capped
+  at 201, and the existing bounded Answer Tests summary only when current proof
+  is requested and permission permits.
+- Writes: 0.
+- Listeners: 0.
+- Provider calls: 0.
+
+Activation repeats authoritative reads by design. Preview results cannot replace
+transaction-current authorization or drift evaluation.
+
 ### Changelog create
 
 - Reads: entry index, latest page query, plus one release read only for direct linked publication.
@@ -44,6 +56,8 @@ Versioned public entries require an exact active release dependency. The changel
 - Images: four, each up to 5 MB, approved image MIME types only.
 - Public physical-page scan: 25 pages per request.
 - Entry-index deletion tombstone: 90 days.
+- Preview answer cap: the same 200-answer cap with cap-plus-one failure.
+- Preview response: bounded private projection with an explicit byte limit.
 
 ## Security
 
@@ -57,6 +71,16 @@ Versioned public entries require an exact active release dependency. The changel
 - Upload path generation uses the same initiating workspace that the later changelog/release actions must corroborate.
 
 The workspace fencing and acknowledgement fields add no Firestore or Storage operations and require no rule, index, Function, or schema migration.
+
+## Rejected Firebase Expansion
+
+Do not add `releaseGuard_*` summaries, release workspaces, change-unit
+collections, impact-item documents, accepted-risk records, activation groups,
+scheduled-answer versions, or release-monitoring rows for this hardening.
+
+The preview endpoint may add server reads only on an explicit owner request.
+It must not run on page load, mount a listener, scan raw support collections, or
+invoke an LLM.
 
 ## Deployment
 

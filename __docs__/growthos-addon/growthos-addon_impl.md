@@ -61,6 +61,8 @@ The legacy Social Content owner generator is deleted, not feature-flagged. Exist
 
 ## 3. Entitlement Gate
 
+Legacy project documents may supply one tenant/store alias or two equal aliases. Conflicting `tenantId`/`tId` or `storeId`/`sId` values are rejected before project truth is used to create an owner action or persisted kit.
+
 ### Exact paid-subscription entitlement
 
 GrowthOS paid access requires an exact current MenuList subscription: both `pId` and `productId` are `ML`; both numeric tenant aliases agree; both numeric store aliases agree; and the subscription tenant equals the current session/store tenant. Status/cycle and Pro/Premium plan checks run only after that identity projection. An Answerlattice, foreign-tenant, incomplete, conflicting, or coercible persisted subscription cannot unlock Growth Kits. Master-plan inheritance remains valid within the same tenant.
@@ -115,6 +117,7 @@ interface GrowthOSKit {
   tId: string;
   sId: string;
   projectId?: string;
+  operationId: string;
   actionType: GrowthOSActionType;
   destinationSet: GrowthOSDestination[];
   sourceFactsHash: string;
@@ -175,8 +178,13 @@ interface GrowthOSExport {
   tId: string;
   sId: string;
   kitId: string;
+  operationId: string;
   destination: GrowthOSDestination;
   method: "copy" | "share" | "download" | "print" | "mark_used";
+  outputId?: string;
+  status?: GrowthOSKitStatus;
+  isStale: boolean;
+  uId: string;
   exportedAt: Timestamp;
 }
 ```
@@ -252,6 +260,16 @@ Each route must:
 - log security-relevant failures through approved logger
 - avoid sensitive/raw payload logs
 
+Generate and export request schemas require a UUID `operationId`. The browser
+may retry one ambiguous transport failure with the exact same body and
+operation identity. The server derives deterministic kit/export document IDs
+from that identity, returns the exact prior result for a valid replay, and
+rejects a changed payload reusing the identity.
+
+The review-reply route uses a hashed user/tenant/store limiter key and
+`failClosedOnProviderError: true`. Provider uncertainty returns bounded `503`
+retry guidance; exhausted quota returns `429`.
+
 ## 7. AI Action Accounting
 
 Implemented V1 launch accounting:
@@ -317,8 +335,9 @@ Today integration:
 
 Use mobile-native patterns:
 
-- antd-mobile components
-- Tailwind mobile styling
+- existing mobile `../antd` wrapper components
+- current Tailwind-driven mobile-shell styling
+- no new `antd-mobile` dependency without an explicit freeze decision
 - 44px minimum action targets
 - copy/share/download first
 - no dense editing surface
@@ -382,7 +401,10 @@ If any critical fact changes after kit generation:
 
 Critical facts:
 
+- business and menu names
+- business type and currency
 - item name
+- item category, image, bestseller, and new-item markers used by ranking/output
 - price
 - availability
 - store status
@@ -412,7 +434,7 @@ Security-sensitive implementation requirements:
 
 - tenant isolation is mandatory on every API route and write
 - Starter/base plan users cannot call paid generation APIs directly
-- client Firestore writes to GrowthOS kit/export documents are not allowed; authenticated APIs write through server Admin SDK after entitlement and stale checks
+- client Firestore reads and writes to GrowthOS kit/export documents are not allowed; authenticated APIs read and write through the server Admin SDK after tenant, entitlement, output, and stale checks
 - output must not include hidden prompts, provider text, or raw model responses
 - review text must not be logged raw
 - generated public copy must pass forbidden phrase and safety guards
@@ -451,17 +473,24 @@ Do not implement pilot extensions until pilot evidence exists.
 | Advanced Low-Data Access | Mobile use is high and refresh failures are observed. | Latest kit only; strict stale/entitlement policy. |
 | Owner-Confirmed Offer Builder | Founder approves new offer truth governance. | Separate offer facts with validity, terms, expiry, and store scope. |
 
-## 15. Concurrent Generation Persistence
+## 15. Transactional Mutation And Cache Contract
 
-Generated kit IDs use a UUID in the existing tenant/store-prefixed document ID.
-This prevents two same-millisecond requests from targeting the same kit document
-without introducing a counter, coordination document, or extra read.
+Generated kit IDs use the caller UUID in the existing tenant/store-prefixed
+document ID. `writeGrowthOSKitAndSummaryServer()` uses a create-only Firestore
+transaction that reads any replay, recomputes the current source-facts hash,
+creates the kit, and updates `platformSummary/growthos_{sId}` atomically. A
+same-operation retry returns the persisted kit; a changed replay conflicts.
 
-The generated kit and `platformSummary/growthos_{sId}` latest-kit projection are
-committed in one Firestore batch through
-`writeGrowthOSKitAndSummaryServer()`. A failed commit therefore leaves neither a
-visible orphan kit nor a summary pointing at a kit that was not persisted.
-The helper proves that tenant, store, and latest-kit identity agree before
-queuing either write.
-Successful generation still performs the same two writes and returns the same
-owner response shape.
+`recordGrowthOSExportServer()` derives `growthos_export_{operationId}`, then
+atomically reads any replay, revalidates the current kit and source documents,
+creates the export, and updates kit/latest-summary status. Stale non-terminal
+exports fail before any write.
+
+Refresh uses a transaction to re-read source truth and the current summary.
+It preserves a concurrently generated latest kit and derives that kit's stale
+state from the transaction-current source hash. The retired direct summary
+writer is not available as an alternate lost-update path.
+
+Browser summary and project-list SWR keys include tenant and store. Persisted
+summary payloads are runtime-validated and must match the active scope before
+use. Desktop selected-project state resets when that scope changes.

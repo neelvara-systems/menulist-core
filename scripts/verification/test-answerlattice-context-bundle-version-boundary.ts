@@ -8,6 +8,25 @@ import { buildCacheKey, normalizeCachedCanonicalAnswer } from '../../src/lib/ans
 import * as functionsBoundary from '../../functions-answerlattice/src/answerlattice/compiledContextVersions';
 import { normalizeAnswerlatticeFunctionPublicCitations } from '../../functions-answerlattice/src/answerlattice/publicCitationBoundary';
 import * as sharedFunctionsBoundary from '../../functions/src/answerlattice/compiledContextVersions';
+import {
+    getExpectedAnswerlatticePublicBundleId as getExpectedAppPublicBundleId,
+    isExpectedAnswerlatticePublicBundleId as isExpectedAppPublicBundleId,
+} from '../../src/lib/answerlattice/publicBundleIdentityServer';
+
+const publicBundleSalt = 'answerlattice-public-bundle-test-salt-2026';
+const expectedPublicBundleId = getExpectedAppPublicBundleId(10, 20, publicBundleSalt);
+assert.ok(expectedPublicBundleId);
+assert.equal(isExpectedAppPublicBundleId(expectedPublicBundleId, 10, 20, publicBundleSalt), true);
+assert.equal(isExpectedAppPublicBundleId(expectedPublicBundleId, 10, 21, publicBundleSalt), false);
+assert.equal(getExpectedAppPublicBundleId(10, 20, 'short'), null);
+assert.equal(
+    functionsBoundary.getExpectedAnswerlatticePublicBundleId(10, 20, publicBundleSalt),
+    expectedPublicBundleId,
+);
+assert.equal(
+    sharedFunctionsBoundary.getExpectedAnswerlatticePublicBundleId(10, 20, publicBundleSalt),
+    expectedPublicBundleId,
+);
 
 for (const boundary of [appBoundary, functionsBoundary, sharedFunctionsBoundary]) {
     assert.equal(boundary.normalizeAnswerlatticeStoredBundleVersion(0), 0);
@@ -67,8 +86,28 @@ for (const boundary of [appBoundary, functionsBoundary, sharedFunctionsBoundary]
     assert.equal(boundary.areAnswerlatticeCompiledSourceVersionsValid({ kb: 3, canonical: '4' }), true);
     assert.equal(boundary.areAnswerlatticeCompiledSourceVersionsValid({ kb: '03' }), false);
     assert.equal(boundary.areAnswerlatticeCompiledSourceVersionsValid({ kb: 3.5 }), false);
+    assert.equal(
+        boundary.normalizeCompiledSourceVersions({ branding: 2, mcpPolicy: 3 }).branding,
+        2,
+        'reserved branding counters must remain part of the normalized invalidation snapshot',
+    );
+    assert.equal(
+        boundary.normalizeCompiledSourceVersions({ branding: 2, mcpPolicy: 3 }).mcpPolicy,
+        3,
+        'reserved MCP-policy counters must remain part of the normalized invalidation snapshot',
+    );
     assert.equal(Reflect.apply(boundary.compiledSourceVersionsEqual, null, [{ kb: '3' }, { kb: 3 }]), true);
     assert.equal(Reflect.apply(boundary.compiledSourceVersionsEqual, null, [{ kb: '03' }, { kb: 3 }]), false);
+    assert.equal(
+        Reflect.apply(boundary.compiledSourceVersionsEqual, null, [{ branding: 1 }, { branding: 2 }]),
+        false,
+        'reserved branding counter changes must supersede a concurrent bundle build',
+    );
+    assert.equal(
+        Reflect.apply(boundary.compiledSourceVersionsEqual, null, [{ mcpPolicy: 1 }, { mcpPolicy: 2 }]),
+        false,
+        'reserved MCP-policy counter changes must supersede a concurrent bundle build',
+    );
 }
 
 assert.equal(normalizeCacheVersion(1), 1);
@@ -190,6 +229,7 @@ assert.deepEqual(normalizeAnswerlatticeFunctionPublicCitations([{
 const repoRoot = path.resolve(__dirname, '../..');
 const appBuilderSource = readFileSync(path.join(repoRoot, 'src/lib/answerlattice/contextBundleBuilderServer.ts'), 'utf8');
 const functionsBuilderSource = readFileSync(path.join(repoRoot, 'functions-answerlattice/src/answerlattice/contextBundleBuilder.ts'), 'utf8');
+const advancedBrandingDalSource = readFileSync(path.join(repoRoot, 'src/database/answerlattice/branding.ts'), 'utf8');
 const initializationSource = readFileSync(path.join(repoRoot, 'src/lib/answerlattice/compiledSourceVersionsAdmin.ts'), 'utf8');
 const appInvalidationSource = readFileSync(path.join(repoRoot, 'src/lib/answerlattice/invalidationOwnership.ts'), 'utf8');
 const dedicatedInvalidationSource = readFileSync(path.join(repoRoot, 'functions-answerlattice/src/answerlattice/compiledContextVersions.ts'), 'utf8');
@@ -203,7 +243,17 @@ for (const source of [appBuilderSource, functionsBuilderSource]) {
     assert.ok(source.includes('publicManifest'), 'builder must publish a public manifest projection');
     assert.ok(source.includes('loadBoundedDocs'), 'builder must fail instead of silently truncating governed source data');
     assert.ok(source.includes('deleteFiles'), 'failed bundle versions must be cleaned up best effort');
+    assert.ok(source.includes('sourceVersions,'), 'private product summary must retain the complete invalidation snapshot');
+    assert.equal(source.includes('branding_${tId}_${sId}'), false, 'bundle builders must not read the rollout-gated advanced branding profile');
+    assert.equal(source.includes('mcpPolicy_${tId}_${sId}'), false, 'bundle builders must not read an MCP authorization policy document');
+    assert.equal(source.includes("'branding.json'"), false, 'bundle builders must not serialize an advanced branding payload');
+    assert.equal(source.includes("'mcp/policy.json'"), false, 'bundle builders must not serialize an MCP authorization policy payload');
 }
+assert.equal(
+    advancedBrandingDalSource.includes('markAnswerlatticeCompiledContextSourceChanged'),
+    false,
+    'saving the non-delivered advanced branding profile must not stale or rebuild compiled context',
+);
 assert.ok(appBuilderSource.includes('getAnswerlatticeContextBundleObjectMaxBytes'), 'app builder must enforce object caps');
 assert.ok(functionsBuilderSource.includes('maxPublicObjectBytes'), 'Functions builder must persist the general public object cap');
 assert.ok(initializationSource.includes('transaction.create(sourceRef'), 'control-plane initialization must create missing source state only');

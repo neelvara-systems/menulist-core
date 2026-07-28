@@ -11,6 +11,8 @@ import type { StoreDataType } from '@type/platform/store';
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import { FEATURE_FLAGS } from '@config/features';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveOwnerBusinessAssistantClientScope } from '@lib/ownerBusinessAssistant/clientScope';
 
 type UseOwnerPublicTruthReadinessOptions = {
   enabled?: boolean;
@@ -42,9 +44,19 @@ export function useOwnerPublicTruthReadiness({
   selectedProjectId,
   storeDetails,
 }: UseOwnerPublicTruthReadinessOptions) {
-  const storeId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
-  const tenantId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
-  const isEnabled = Boolean(enabled && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_OWNER_CHECK && storeId && tenantId);
+  const session = useClientAuthSession();
+  const scope = useMemo(
+    () => resolveOwnerBusinessAssistantClientScope(
+      session,
+      storeDetails?.storeId,
+      storeDetails?.tenantId,
+    ),
+    [session, storeDetails?.storeId, storeDetails?.tenantId],
+  );
+  const storeId = scope?.storeId || null;
+  const tenantId = scope?.tenantId || null;
+  const scopedStoreDetails = scope ? storeDetails : null;
+  const isEnabled = Boolean(enabled && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_OWNER_CHECK && scope);
   const shouldLoadProjectSummaries = isEnabled && !projectSummaries;
   const summariesRequest = useSWR(
     shouldLoadProjectSummaries ? ['businessHealthProjectScope', tenantId, storeId] : null,
@@ -78,14 +90,14 @@ export function useOwnerPublicTruthReadiness({
   const projectData = providedProjectData || projectRequest.data || null;
 
   const report: OwnerPublicTruthReadinessReport | null = useMemo(() => {
-    if (!isEnabled || !storeDetails) return null;
+    if (!isEnabled || !scopedStoreDetails) return null;
     return buildOwnerPublicTruthReadinessReport({
       projectData,
       projectSummaries: resolvedProjectSummaries,
       selectedProjectId,
-      store: storeDetails,
+      store: scopedStoreDetails,
     });
-  }, [isEnabled, projectData, resolvedProjectSummaries, selectedProjectId, storeDetails]);
+  }, [isEnabled, projectData, resolvedProjectSummaries, selectedProjectId, scopedStoreDetails]);
 
   return {
     error: summariesRequest.error || projectRequest.error,

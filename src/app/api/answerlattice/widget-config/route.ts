@@ -27,11 +27,11 @@ import {
     normalizeWidgetAllowedOrigins,
     normalizeWidgetConfig,
 } from '@lib/answerlattice/widgetConfig';
+import { saveAnswerlatticeWidgetConfigAdmin } from '@lib/answerlattice/widgetConfigStore';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
-import { admin } from '@lib/firebase/firebaseAdminCompat';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
@@ -72,18 +72,6 @@ const buildConfigResponse = (storeData: Record<string, any>) => ({
     configVersion: normalizeAnswerlatticeWidgetConfigVersion(storeData.widgetConfigVersion),
     runtimeStatus: getWidgetRuntimeStatusFromStoreData(storeData),
 });
-
-const widgetConfigEquals = (
-    left: Record<string, any>,
-    right: Record<string, any>,
-): boolean => JSON.stringify(normalizeWidgetConfig(left)) === JSON.stringify(normalizeWidgetConfig(right));
-
-const allowedOriginsEqual = (left: string[], right: string[]): boolean => {
-    if (left.length !== right.length) return false;
-    const leftSorted = [...left].sort();
-    const rightSorted = [...right].sort();
-    return leftSorted.every((origin, index) => origin === rightSorted[index]);
-};
 
 export const GET = withAuth(async (_request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
@@ -130,30 +118,24 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_WIDGET) {
         return widgetConfigJsonResponse({ error: 'Answerlattice widget is not enabled.' }, { status: 403 });
     }
-    const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-    if (permission.response) return withPrivateNoStore(permission.response);
 
     const scope = resolveSessionScope(session);
     if (!scope) {
         return widgetConfigJsonResponse({ error: 'Not onboarded' }, { status: 400 });
     }
-    const db = getAnswerlatticeDb();
-    if (!db) {
-        return widgetConfigJsonResponse({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
-    }
-
     try {
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-widget-config', scope.storeId),
+            key: buildAnswerlatticeRateLimitKey(
+                'answerlattice-widget-config',
+                session.uId,
+                scope.tenantId,
+                scope.storeId,
+            ),
             limit: 20,
             window: 60,
+            failClosedOnProviderError: true,
         });
-        if (
-            rateLimitResult.allowed
-            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
-            && rateLimitResult.current === 0
-            && rateLimitResult.remaining === 20
-        ) {
+        if (!rateLimitResult.allowed && rateLimitResult.reason === 'provider_unavailable') {
             return widgetConfigJsonResponse({ error: 'Widget settings are temporarily unavailable' }, {
                 status: 503,
                 headers: { 'Cache-Control': 'no-store' },
@@ -164,6 +146,14 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
                 status: 429,
                 headers: { 'Cache-Control': 'no-store' },
             });
+        }
+
+        const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
+        if (permission.response) return withPrivateNoStore(permission.response);
+
+        const db = getAnswerlatticeDb();
+        if (!db) {
+            return widgetConfigJsonResponse({ error: 'Answerlattice Firebase is not configured' }, { status: 503 });
         }
 
         const bodyResult = await readBoundedJsonBody(request, WIDGET_CONFIG_SAVE_MAX_BODY_BYTES, {
@@ -178,63 +168,51 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         }
 
         const body = bodyResult.data;
-        const { config, allowedOrigins } = parseWidgetConfigSaveInput(body);
+        const { config, allowedOrigins, expectedConfigVersion } = parseWidgetConfigSaveInput(body);
+        const saveResult = await saveAnswerlatticeWidgetConfigAdmin({
+            allowedOrigins,
+            config,
+            db,
+            expectedConfigVersion,
+            storeId: scope.storeId,
+            tenantId: scope.tenantId,
+        });
 
-        const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
-        const storeSnap = await storeRef.get();
-        if (!storeSnap.exists) {
+        if (saveResult.status === 'not_found') {
             return widgetConfigJsonResponse({ error: 'Store not found' }, { status: 404 });
         }
-
-        const storeData = storeSnap.data() || {};
-        if (!isAnswerlatticeStoreInScope(storeData, scope, storeSnap.id)) {
+        if (saveResult.status === 'forbidden') {
             return widgetConfigJsonResponse({ error: 'Forbidden' }, { status: 403 });
         }
-
-        const existingConfig = normalizeWidgetConfig(storeData.widgetConfig);
-        const existingOrigins = normalizeWidgetAllowedOrigins(storeData.widgetAllowedOrigins);
-        if (
-            widgetConfigEquals(existingConfig, config)
-            && allowedOriginsEqual(existingOrigins, allowedOrigins)
-        ) {
-            return widgetConfigJsonResponse(buildConfigResponse(storeData));
+        if (saveResult.status === 'conflict') {
+            return widgetConfigJsonResponse({
+                code: 'ANSWERLATTICE_WIDGET_CONFIG_CONFLICT',
+                configVersion: saveResult.configVersion,
+                error: 'Widget settings changed in another session. Reload and review the latest settings.',
+            }, { status: 409 });
         }
 
-        await storeRef.set({
-            widgetConfig: config,
-            widgetAllowedOrigins: allowedOrigins,
-            widgetConfigSchemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
-            widgetConfigUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            widgetConfigVersion: admin.firestore.FieldValue.increment(1),
-        }, { merge: true });
-        await markAnswerlatticeCompiledContextSourceChangedAdmin('widgetConfig', scope.tenantId, scope.storeId, {
-            reason: 'widget_config_update',
-            sourceType: 'stores',
-            sourceId: String(scope.storeId),
-        }).catch((sourceVersionError) => {
-            logRuntimeFailure('answerlattice_widget_config_compiled_context_stale_mark_failed', sourceVersionError, {
+        if (saveResult.status === 'saved') {
+            await markAnswerlatticeCompiledContextSourceChangedAdmin('widgetConfig', scope.tenantId, scope.storeId, {
+                reason: 'widget_config_update',
+                sourceType: 'stores',
+                sourceId: String(scope.storeId),
+            }).catch((sourceVersionError) => {
+                logRuntimeFailure('answerlattice_widget_config_compiled_context_stale_mark_failed', sourceVersionError, {
+                    ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
+                    ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+                });
+            });
+
+            logRuntimeDiagnostic('answerlattice_widget_config_saved', {
                 ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
                 ...getBoundedRuntimeStringContext('storeId', scope.storeId),
+                originsCount: allowedOrigins.length,
+                configVersion: saveResult.configVersion,
             });
-        });
+        }
 
-        logRuntimeDiagnostic('answerlattice_widget_config_saved', {
-            ...getBoundedRuntimeStringContext('tenantId', scope.tenantId),
-            ...getBoundedRuntimeStringContext('storeId', scope.storeId),
-            originsCount: allowedOrigins.length,
-        });
-
-        return widgetConfigJsonResponse({
-            schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
-            config,
-            allowedOrigins,
-            keyPrefix: normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyPrefix || null,
-            hasWidgetKey: normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi).keyHashes.length > 0,
-            keys: buildAnswerlatticeWidgetKeySummaries(storeData.answerlatticeWidgetApi),
-            keyLimit: ANSWERLATTICE_WIDGET_KEY_LIMIT,
-            encryptionConfigured: false,
-            configVersion: normalizeAnswerlatticeWidgetConfigVersion(storeData.widgetConfigVersion) + 1,
-        });
+        return widgetConfigJsonResponse(buildConfigResponse(saveResult.storeData));
     } catch (error) {
         if (error instanceof ZodError) {
             return widgetConfigJsonResponse({ error: 'Invalid widget settings' }, { status: 400 });

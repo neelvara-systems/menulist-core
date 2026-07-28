@@ -68,6 +68,21 @@ $spacing-xl: 32px;
   }
 }
 
+.obpCard {
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  background: $background-card;
+  box-shadow: $shadow-sm;
+
+  :global(.ant-card-body) {
+    padding: $spacing-lg;
+
+    @media (max-width: 576px) {
+      padding: $spacing-md;
+    }
+  }
+}
+
 // View Mode Tabs - Primary action area
 .viewModeTabs {
   margin-bottom: $spacing-md;

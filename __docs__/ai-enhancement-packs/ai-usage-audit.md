@@ -97,7 +97,7 @@ Rows below this status section are retained as February audit evidence. Any `COM
 | 21  | `aiUtils.ts`               | `generateArticleEmbedding` (Vertex)  | `text-embedding-004`             | KB article embedding (Vertex)      | Article text                                        | Vector (768 dimensions)                       | ❌ ZERO TRACKING                               |
 | 22  | `feedbackAnalysis.ts`      | `generateFeedbackAnalysis`           | `gemini-2.5-flash` | Feedback intelligence              | Negative feedback messages                          | JSON (themes, severity, recommendations)      | DORMANT — not exported or scheduled            |
 | 23  | `weeklyNarrative.ts`       | `generateWeeklyNarrative`            | `gemini-2.5-flash` | Weekly narrative generation        | Aggregated weekly metrics                           | JSON (narrative, highlights, recommendations) | DORMANT — not exported or scheduled            |
-| 24  | `kbQuality.ts`             | `analyzeKBArticleQuality`            | `gemini-2.5-flash` | KB quality analysis                | Article + low-confidence queries + feedback         | JSON (qualityScore, issues, suggestions)      | DORMANT — not exported or scheduled            |
+| 24  | Retired KB Quality source  | —                                    | —                  | Historical KB quality analysis     | —                                                   | —                                             | RETIRED — worker and provider helper absent     |
 | 25  | `ownerDashboardSummary.ts` | `generateOwnerDashboardSummary`      | `gemini-2.5-flash` | Weekly owner summary               | Weekly menu analytics metrics                       | JSON (bulletPoints)                           | ❌ ZERO TRACKING                               |
 | 26  | `ownerDashboardSummary.ts` | `generateDailyAISummary`             | `gemini-2.5-flash` | Daily owner summary                | Daily menu analytics metrics                        | JSON (bulletPoints)                           | ❌ ZERO TRACKING                               |
 | 27  | `ownerDashboardSummary.ts` | `generateMonthlyAISummary`           | `gemini-2.5-flash` | Monthly owner summary              | Monthly menu analytics metrics                      | JSON (bulletPoints)                           | ❌ ZERO TRACKING                               |
@@ -353,7 +353,7 @@ These consume tokens but serve the platform (help center, analytics intelligence
 | 13  | KB Generation from Source         | `functions/src/utils/aiUtils.ts`                         | No token tracking. Uses Pro model.                               |
 | 14  | Feedback Intelligence             | `functions/src/services/gemini/feedbackAnalysis.ts`      | Dormant compatibility source; no active provider or tracking path. |
 | 15  | Weekly Narrative                  | `functions/src/services/gemini/weeklyNarrative.ts`       | Dormant compatibility source; no active provider or tracking path. |
-| 16  | KB Quality Analysis               | `functions/src/services/gemini/kbQuality.ts`             | Dormant compatibility source; no active provider or tracking path. |
+| 16  | KB Quality Analysis               | Retired MenuList source                                  | Worker and provider helper absent; current truth is Answerlattice-owned. |
 | 17  | Owner Dashboard Summary (daily)   | `functions/src/services/gemini/ownerDashboardSummary.ts` | No token tracking. Scheduled.                                    |
 | 18  | Owner Dashboard Summary (weekly)  | Same file                                                | No token tracking. Scheduled.                                    |
 | 19  | Owner Dashboard Summary (monthly) | Same file                                                | No token tracking. Scheduled.                                    |
@@ -591,7 +591,7 @@ This keeps pricing logic **completely isolated** from feature logic. Features ca
 | `functions/src/utils/aiUtils.ts`                         | KB generation + embedding utilities                                           |
 | `functions/src/services/gemini/feedbackAnalysis.ts`      | Feedback intelligence AI service                                              |
 | `functions/src/services/gemini/weeklyNarrative.ts`       | Weekly narrative AI service                                                   |
-| `functions/src/services/gemini/kbQuality.ts`             | KB quality analysis AI service                                                |
+| Retired MenuList KB Quality source                       | Historical KB quality worker/provider helper are absent                       |
 | `functions/src/services/gemini/ownerDashboardSummary.ts` | Owner dashboard AI summaries (daily/weekly/monthly)                           |
 | `functions/src/schedulers/masterScheduler.ts`            | Daily scheduler (2 AM UTC)                                                    |
 | `functions/src/aggregateCustomerAnalytics.ts`            | Analytics aggregation + AI summaries (3 AM UTC)                               |

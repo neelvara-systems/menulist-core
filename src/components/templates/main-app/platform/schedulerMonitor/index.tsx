@@ -5,7 +5,7 @@ import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOpt
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { normalizeSchedulerRecoveryResponse, normalizeSchedulerRecoveryRunLogId } from '@lib/ops/schedulerRecoveryResponse';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
-import { formatDateTime, type IntlFormatter } from '@util/dateTime';
+import { formatDateTime, type DateLike, type IntlFormatter } from '@util/dateTime';
 import { Alert, Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
@@ -79,7 +79,7 @@ const HEALTH_CONFIG: Record<string, { tone: 'success' | 'warning' | 'error' | 'd
 // HELPERS
 // ================================================================
 
-function formatTimestamp(ts: any, formatter: IntlFormatter): string {
+function formatTimestamp(ts: DateLike, formatter: IntlFormatter): string {
     if (!ts) return '-';
     const label = formatDateTime(ts, 'datetime', formatter);
     return label === 'N/A' ? '-' : label;
@@ -119,7 +119,7 @@ function formatTaskError(value: unknown): string {
     return formatStoredSchedulerError(value);
 }
 
-function flattenDetails(details: Record<string, any> | undefined): string {
+function flattenDetails(details: Record<string, unknown> | undefined): string {
     if (!details) return '-';
     return Object.entries(details)
         .map(([key, value], index) => `${formatDetailKey(key, index)}: ${formatDetailValue(value)}`)
@@ -695,7 +695,7 @@ function SchedulerMonitor() {
                         title: 'Started At',
                         dataIndex: 'startedAt',
                         width: 180,
-                        render: (ts: any) => <Text style={{ fontSize: 12 }}>{formatTimestamp(ts, formatter)}</Text>,
+                        render: (ts: DateLike) => <Text style={{ fontSize: 12 }}>{formatTimestamp(ts, formatter)}</Text>,
                     },
                     {
                         title: 'Duration',
@@ -718,7 +718,7 @@ function SchedulerMonitor() {
                     {
                         title: 'OK / Fail',
                         width: 90,
-                        render: (_: any, record: SchedulerRunLog) => (
+                        render: (_: unknown, record: SchedulerRunLog) => (
                             <span>
                                 <Text style={{ color: token.colorSuccess }}>{record.successCount}</Text>
                                 {' / '}
@@ -732,7 +732,7 @@ function SchedulerMonitor() {
                         title: 'Errors',
                         width: 70,
                         align: 'center' as const,
-                        render: (_: any, record: SchedulerRunLog) => (
+                        render: (_: unknown, record: SchedulerRunLog) => (
                             record.errors?.length > 0 ? (
                                 <Tag color="red">{record.errors.length}</Tag>
                             ) : <Text type="secondary">0</Text>

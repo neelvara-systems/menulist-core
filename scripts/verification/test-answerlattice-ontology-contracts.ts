@@ -66,6 +66,10 @@ const invalidationOwnershipSource = fs.readFileSync(
     path.join(root, 'src/lib/answerlattice/invalidationOwnership.ts'),
     'utf8',
 );
+const invalidationControlPlaneSource = fs.readFileSync(
+    path.join(root, 'src/lib/answerlattice/invalidationControlPlane.ts'),
+    'utf8',
+);
 assert.match(
     invalidationOwnershipSource,
     /sourceVersionsSnapshot\.exists[\s\S]*data\.pId !== PRODUCT_IDS\.ANSWERLATTICE[\s\S]*data\.tId !== scope\.tId[\s\S]*data\.sId !== scope\.sId/,
@@ -78,6 +82,11 @@ assert.match(
 );
 assert.match(
     invalidationOwnershipSource,
+    /export \{[\s\S]*getAnswerlatticeMissingBundleManifestBase[\s\S]*\} from '\.\/invalidationControlPlane'/,
+    'invalidation ownership must expose the shared complete manifest constructor',
+);
+assert.match(
+    invalidationControlPlaneSource,
     /getAnswerlatticeMissingBundleManifestBase[\s\S]*sourceVersions: normalizeCompiledSourceVersions\(\{\}\)[\s\S]*stats: EMPTY_BUNDLE_STATS/,
     'first invalidation must materialize a complete valid manifest base instead of a partial stale row',
 );

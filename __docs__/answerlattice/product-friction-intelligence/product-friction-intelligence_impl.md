@@ -4,6 +4,39 @@
 
 `src/data/shared/answerlatticeSupportMetrics.ts` and its byte-identical Functions mirror define schema version 2, source caps, UTC windows, weighted-load calculation, trend thresholds, and friction-level thresholds. Changes must update both copies and preserve the mirror verifier.
 
+## Feature 3 Validation Result
+
+The Customer Friction Map proposal resolves to this existing feature. It does
+not justify a second map, event pipeline, or analytics store.
+
+### Current implementation
+
+- bounded support signals and canonical misses;
+- exact-scope entity mapping;
+- deterministic per-day rows;
+- complete 7-day versus previous-7-day comparison;
+- top ten entities and emerging topics;
+- optional source-current advisory summary;
+- two-read owner surface.
+
+### Bounded later code scope
+
+1. Extend the next summary schema with top-entity `ticketCount`,
+   `chatNegativeCount`, `escalationCount`, and
+   `canonicalMissCount`/`lowConfidenceCount` totals already present in the
+   normalized daily rows.
+2. Update the shared root/Functions contracts byte-for-byte.
+3. Update strict server and browser parsers, summary byte guards, and retained
+   legacy compatibility.
+4. Replace owner-visible `questions` wording with `support-evidence events`.
+5. Rename the aggregate UI label to `Support evidence load` while preserving
+   the documented calculation.
+6. Add explicit contract tests proving that component counts do not exceed the
+   admitted evidence total.
+
+No workflow tree, release overlay, root-cause percentages, or classification
+write is admitted in this code scope.
+
 ## Nightly Aggregation
 
 `aggregateFrictionStats(tId, sId)` runs inside `answerlatticeNightly` when the feature flag is enabled.
@@ -61,3 +94,8 @@ Every completed provider response is written to the scoped AI-operation ledger b
 The owner view uses at most two compact Firestore reads. Nightly cost depends on admitted signal, miss, entity, and history counts plus daily writes. Provider cost is recorded through the existing AI operations accounting path. Do not maintain static currency estimates in this dossier.
 
 Raise limits only with a partitioning, scheduler-duration, and Firebase-cost decision. Do not increase a cap only to suppress saturation failures.
+
+The bounded evidence-breakdown projection uses rows the 14-day aggregation
+already reads. It may enlarge one daily row and one compact summary within
+existing byte guards, but it adds no query, owner read, listener, provider
+call, or new document family.

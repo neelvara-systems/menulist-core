@@ -1,7 +1,7 @@
 # Internal Ops Control Room And Platform Monitoring
 
 **Status:** Item 29 locally source complete; deployment/browser evidence pending
-**Last updated:** July 16, 2026
+**Last updated:** July 28, 2026
 **Audience:** MenuList platform operators and maintainers
 **Public/owner surface:** None
 
@@ -40,6 +40,8 @@ Control Room, Scheduler and Extraction snapshots reject when a source cannot be 
 Scheduler monitor filters and refreshes are latest-request-owned on desktop and mobile. Manual recovery is additionally protected by one synchronous action guard per mounted surface and the server's tenant/store lease shared with the hourly scheduler. Recovery callable responses require a valid status/count/run-log envelope; duplicate current work is rejected before scheduler side effects.
 
 Stored Control Room alert text is projected as presence/length summaries. Scheduler run and settlement rows are normalized, bounded and control-character-cleaned before rendering. Recovery callable responses require a valid status/count/run-log envelope; `partial` is warning copy and `failed` is error copy.
+
+The scheduler task projector includes every current nightly and maintenance task name, so maintenance activity/failures are not silently removed from the latest-run breakdown. Maintenance run status is `failed` when every attempted task failed and `partial` only when attempted work has mixed outcomes. “Runs (7d)” comes from one exact bounded count aggregation rather than the ten-row health sample.
 
 ## SAFE_MODE scope
 

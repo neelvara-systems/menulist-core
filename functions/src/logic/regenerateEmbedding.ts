@@ -7,26 +7,19 @@ import {
     embedStoredAnswerlatticeArticle,
     PermanentArticleEmbeddingError,
 } from './articleEmbedding';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 const REGENERATE_EMBEDDING_FAILED_CODE = 'ANSWERLATTICE_REGENERATE_EMBEDDING_FAILED';
 const REGENERATE_EMBEDDING_ARTICLE_NOT_FOUND_CODE = 'ANSWERLATTICE_REGENERATE_EMBEDDING_ARTICLE_NOT_FOUND';
 const REGENERATE_EMBEDDING_IN_PROGRESS_CODE = 'ANSWERLATTICE_REGENERATE_EMBEDDING_IN_PROGRESS';
 
-function boundedDiagnosticValue(value: unknown): string | number | null {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') return value.slice(0, 120);
-    return null;
-}
-
 function getRegenerateEmbeddingErrorContext(articleId: string, error: unknown) {
-    const sourceError = error as { code?: unknown; status?: unknown };
-    const sourceErrorCode = boundedDiagnosticValue(sourceError?.code);
-    const sourceStatusCode = boundedDiagnosticValue(sourceError?.status);
+    const context = getBoundedFunctionsErrorContext(error);
     return {
         articleIdLength: articleId.length,
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        ...(sourceErrorCode ? { sourceErrorCode } : {}),
-        ...(sourceStatusCode ? { sourceStatusCode } : {}),
+        sourceErrorName: context.sourceErrorName || typeof error,
+        ...(context.sourceErrorCode ? { sourceErrorCode: context.sourceErrorCode } : {}),
+        ...(context.sourceStatusCode !== undefined ? { sourceStatusCode: context.sourceStatusCode } : {}),
     };
 }
 

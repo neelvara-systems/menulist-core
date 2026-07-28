@@ -6,25 +6,17 @@ import {
     buildAnswerlatticeEmbeddingRequest,
 } from '../sharedData/answerlatticeEmbedding';
 import { tiptapToText } from './tiptapUtils';
+import { getBoundedFunctionsErrorContext } from './boundedErrorContext';
 
 const ANSWERLATTICE_EMBEDDING_FAILED_CODE = 'ANSWERLATTICE_ARTICLE_EMBEDDING_FAILED';
 const ANSWERLATTICE_EMBEDDING_FAILED_MESSAGE = 'Embedding generation failed';
 
-function boundedDiagnosticValue(value: unknown): string | number | null {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        return trimmed ? trimmed.slice(0, 80) : null;
-    }
-    return null;
-}
-
 function getEmbeddingErrorContext(error: unknown): Record<string, string | number | null> {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
-        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+        sourceErrorName: context.sourceErrorName || typeof error,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceErrorStatus: context.sourceStatusCode ?? null,
     };
 }
 

@@ -19,12 +19,13 @@ import {
 import { secureError } from "@lib/security/secureLogger";
 import { useEffect, useState } from "react";
 import { LuTriangle } from "react-icons/lu";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const buildClientMenuErrorLogContext = (error: Error & { digest?: string }) => {
     const digest = String(error.digest ?? "").trim();
 
     return {
-        errorName: (error.name || "Error").slice(0, 80),
+        errorName: (getBoundedErrorName(error) || "Error").slice(0, 80),
         hasDigest: Boolean(digest),
         digestLength: digest.length,
     };

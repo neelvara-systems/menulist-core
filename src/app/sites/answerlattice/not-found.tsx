@@ -1,4 +1,23 @@
-export default function AnswerlatticeNotFound() {
+import { headers } from 'next/headers';
+
+async function getBasePath(): Promise<string> {
+    try {
+        const h = await headers();
+        const aliasBasePath = h.get('x-product-base-path') || '';
+        if (aliasBasePath) return aliasBasePath;
+
+        const host = h.get('host') || '';
+        return h.get('x-product-id') && (host.startsWith('localhost') || host.startsWith('127.0.0.1'))
+            ? '/__answerlattice'
+            : '';
+    } catch {
+        return '';
+    }
+}
+
+export default async function AnswerlatticeNotFound() {
+    const basePath = await getBasePath();
+
     return (
         <main style={{
             minHeight: '100vh',
@@ -31,7 +50,7 @@ export default function AnswerlatticeNotFound() {
                     This page does not exist.
                 </p>
                 <a
-                    href="/"
+                    href={basePath ? `${basePath}/` : '/'}
                     style={{
                         padding: '0.75rem 1.5rem',
                         background: 'var(--al-primary)',

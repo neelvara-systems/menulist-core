@@ -7,6 +7,7 @@ import {
     assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
+import { deleteField, doc, setDoc } from 'firebase/firestore';
 import { deleteObject, getBytes, ref, uploadBytes } from 'firebase/storage';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-storage-rules';
@@ -14,6 +15,9 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const RULES_FILE = process.env.ANSWERLATTICE_STORAGE_RULES_FILE === 'storage.rules'
     ? 'storage.rules'
     : 'storage-answerlattice.rules';
+const FIRESTORE_RULES_FILE = RULES_FILE === 'storage.rules'
+    ? 'firestore.rules'
+    : 'firestore-answerlattice.rules';
 const sourceMetadata = {
     contentType: 'text/plain',
     customMetadata: {
@@ -29,12 +33,27 @@ async function run(): Promise<void> {
     }
 
     const testEnv = await initializeTestEnvironment({
+        firestore: { rules: fs.readFileSync(path.join(ROOT, FIRESTORE_RULES_FILE), 'utf8') },
         projectId: PROJECT_ID,
         storage: { rules: fs.readFileSync(path.join(ROOT, RULES_FILE), 'utf8') },
     });
 
     try {
+        await testEnv.clearFirestore();
         await testEnv.clearStorage();
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'stores', '101'), {
+                active: true,
+                authDisabled: false,
+                deleted: false,
+                pId: 'AL',
+                productId: 'AL',
+                sId: 101,
+                storeId: 101,
+                tId: 1,
+                tenantId: 1,
+            });
+        });
         const owner = testEnv.authenticatedContext('owner-1', {
             role: 'OWNER', storeId: '101', tenantId: '1', uId: 'owner-1',
         }).storage();
@@ -55,6 +74,21 @@ async function run(): Promise<void> {
         }).storage();
         const publicStorage = testEnv.unauthenticatedContext().storage();
         const sourcePath = 'ingestion_source_files/1/101/source.txt';
+        const compiledPublicPath = 'answerlattice-context/public/pb_storage_rules_test/v1/widget-bootstrap.json';
+
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await uploadBytes(
+                ref(context.storage(), compiledPublicPath),
+                new TextEncoder().encode('{"schemaVersion":1}'),
+                {
+                    cacheControl: 'public, max-age=0, must-revalidate',
+                    contentType: 'application/json',
+                },
+            );
+        });
+        await assertFails(getBytes(ref(publicStorage, compiledPublicPath)));
+        await assertFails(getBytes(ref(owner, compiledPublicPath)));
+        await assertFails(getBytes(ref(platform, compiledPublicPath)));
 
         await assertSucceeds(uploadBytes(ref(owner, sourcePath), new TextEncoder().encode('source'), sourceMetadata));
         await assertSucceeds(getBytes(ref(owner, sourcePath)));
@@ -130,6 +164,39 @@ async function run(): Promise<void> {
             new TextEncoder().encode('release'),
             { contentType: 'text/plain' },
         ));
+
+        const closedWorkspacePath = 'supportTickets/documents/1/101/closed.txt';
+        await assertSucceeds(uploadBytes(
+            ref(owner, closedWorkspacePath),
+            new TextEncoder().encode('closed workspace'),
+            { contentType: 'text/plain' },
+        ));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'stores', '101'), {
+                active: false,
+                authDisabled: true,
+                deleted: true,
+            }, { merge: true });
+        });
+        await assertFails(getBytes(ref(owner, closedWorkspacePath)));
+        await assertFails(getBytes(ref(platform, closedWorkspacePath)));
+        await assertFails(getBytes(ref(platformSupport, closedWorkspacePath)));
+        await assertFails(uploadBytes(
+            ref(owner, 'ingestion_source_files/1/101/closed-source.txt'),
+            new TextEncoder().encode('source'),
+            sourceMetadata,
+        ));
+        await assertFails(deleteObject(ref(owner, closedWorkspacePath)));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'stores', '101'), {
+                active: deleteField(),
+                authDisabled: false,
+                deleted: false,
+            }, { merge: true });
+        });
+        await assertFails(getBytes(ref(owner, closedWorkspacePath)));
+        await assertFails(getBytes(ref(platform, closedWorkspacePath)));
+        await assertFails(getBytes(ref(platformSupport, closedWorkspacePath)));
     } finally {
         await testEnv.cleanup();
     }

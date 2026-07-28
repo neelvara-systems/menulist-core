@@ -1,10 +1,12 @@
 # Answerlattice Compiled Context Distribution
 
-**Status:** Implemented and Feature 14 source-hardened on July 18, 2026
+**Status:** Implemented and Feature 14 source-hardened; reserved-counter boundary reverified on July 26, 2026
 
 **Role:** Read distribution for approved support context; Firestore remains the governed source of truth.
 
-Answerlattice compiles selected approved, read-heavy context into immutable versioned JSON objects in Firebase Storage. The active Firestore manifest selects one exact version. Public and private consumers may use those objects only after product, tenant, workspace, version, path, hash, and byte-limit validation.
+Answerlattice compiles selected approved, read-heavy context into content-immutable versioned JSON objects in Firebase Storage. The active Firestore manifest selects one exact version. Public transport is server-mediated through the bounded proxy and must revalidate object existence so workspace closure can revoke an otherwise valid versioned URL; client Storage rules deny direct reads. Private transport remains authenticated and short cached. Public and private consumers may use those objects only after product, tenant, workspace, version, path, hash, and byte-limit validation.
+
+The public prefix is deterministic ownership data, not a bearer-selected path. Every server writer/deleter derives the exact expected ID from tenant, workspace, and `ANSWERLATTICE_PUBLIC_BUNDLE_SALT`; a missing salt or mismatched manifest stops for operator review. Nightly retention advances a durable, bounded exact-version cursor so large kept/old prefixes cannot starve later cleanup.
 
 ## Current runtime truth
 
@@ -14,7 +16,7 @@ Answerlattice compiles selected approved, read-heavy context into immutable vers
 - Public API bundle reads are implemented behind their existing rollout flags.
 - MCP is implemented but disabled by default.
 - Widget bundle bootstrap is disabled because the current widget does not consume the returned bundle files. Widget search continues through the governed server path.
-- `branding` and `mcpPolicy` source keys are reserved counters; current bundle serialization for those keys requires verification before any product claim.
+- `branding` and `mcpPolicy` remain reserved invalidation counters. Their numeric values appear only in the complete source-version snapshot stored in Firestore control state and private `mcp/product-summary.json` metadata. The app and Functions builders do not read the private advanced-branding profile or an MCP authorization-policy document, and compiled context does not serialize either payload.
 
 ## Safety invariants
 

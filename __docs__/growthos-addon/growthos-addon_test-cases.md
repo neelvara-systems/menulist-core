@@ -72,6 +72,7 @@
 | Invalid body | Zod validation rejects. |
 | Malformed JSON body | Route returns `400 Invalid JSON` and logs a security event instead of generic `500`. |
 | Rate limit exceeded | Route rejects before expensive work. |
+| Rate-limit provider unavailable on review guard | Route fails closed with `503` and bounded retry guidance. |
 | Safe Mode on | Provider calls are blocked. |
 | Insufficient AI capacity | Provider call is not made. |
 | Raw review text causes API error | Raw text is not logged. |
@@ -92,6 +93,10 @@
 | Previously used stale pack exists | Mobile Today renders `Today's Sales Pack` with update-first controls. |
 | Copy output | One export write plus changed-only kit/summary status updates. |
 | Repeat refresh with unchanged facts/actions | No summary write. |
+| Refresh races with a newly generated kit | Transaction preserves the newer latest-kit projection. |
+| Same generate UUID is submitted concurrently | One kit is created and the second request replays the persisted result. |
+| Same export UUID is submitted concurrently | One export is created and both requests receive the same result. |
+| Source changes between route read and transaction | Generate/export fails with `409` and performs no partial mutation. |
 | Copy/share unchanged latest-kit status | No summary status write. |
 | Mark used | Execution signal only; no ROI/order/customer field written. |
 | View history | Paginated query only. |
@@ -105,6 +110,7 @@
 | No eligible action | Shows calm empty state, not suggestions theater. |
 | Long item name | Text wraps without layout overlap. |
 | Copy action | Clipboard copy succeeds and records export. |
+| Fast double click before loading render | Only one pending generate/refresh/export mutation starts. |
 | Clipboard API blocked or slow | Copy falls back to textarea copy and still records export when the output is valid. |
 | Stale kit | Copy action blocked or warning requires regeneration. |
 | Blocked preflight output | Copy/share/download is blocked until the output is regenerated or reviewed. |
@@ -123,6 +129,7 @@
 | Sales Pack is visible on mobile Today | Older `No today action yet` / `Generate Today Action` empty prompt is hidden. |
 | Mobile Today has no GrowthOS trigger and no prepared campaigns | The surface stays quiet; no old generation card appears. |
 | Copy/share buttons | Minimum 44px target and instant feedback. |
+| Fast double tap before loading render | Only one pending generate/refresh/export mutation starts. |
 | Clipboard API blocked or slow | Copy falls back to textarea copy instead of leaving the owner without feedback. |
 | Long text | Wraps without overlapping buttons. |
 | Kit detail sheet | All outputs are reachable without dense desktop UI. |

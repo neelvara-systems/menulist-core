@@ -33,7 +33,11 @@ const { isSignalDeskMobileRequest } = require("@lib/signaldesk/apiGuards");
 const { getSignalDeskAccessContext } = require("@lib/signaldesk/access");
 const { parseSignalDeskDailyCostDocument } = require("@lib/signaldesk/accountingContracts");
 const { signalDeskOutcomeSummaryIdFor } = require("@lib/signaldesk/outcomeContracts");
-const { recordSignalDeskMobileActionBlockedServer } = require("@lib/signaldesk/server");
+const {
+  projectSignalDeskControlRoomDocument,
+  projectSignalDeskQueueDocument,
+  recordSignalDeskMobileActionBlockedServer,
+} = require("@lib/signaldesk/server");
 const {
   canApplySignalDeskWebhookInboundToTarget,
   parseSignalDeskWebhookTargetLifecycleState,
@@ -109,9 +113,14 @@ const {
   sendSignalDeskOwnedSequenceStepServer,
   createSignalDeskSourceQualitySnapshotServer,
   upsertSignalDeskChannelWindowStateServer,
+  upsertSignalDeskAudienceSegmentServer,
   upsertSignalDeskBudgetPolicyServer,
+  upsertSignalDeskEnrichmentWaterfallServer,
+  upsertSignalDeskModelRouteServer,
+  upsertSignalDeskProviderAccountServer,
   upsertSignalDeskCommercialOfferServer,
   upsertSignalDeskCommercialOpportunityServer,
+  upsertSignalDeskConnectorSettingServer,
   upsertSignalDeskContentSourceServer,
   upsertSignalDeskProofPermissionServer,
   upsertSignalDeskSelfServiceCtaServer,
@@ -129,6 +138,22 @@ const { assertSignalDeskWorkspaceDocument } = require("@lib/signaldesk/workspace
 
 const db = signaldeskFirestoreAdmin;
 const timestampNow = () => admin.firestore.Timestamp.now();
+const activeKillSwitchFixture = (scope, reason = `Active ${scope} E2E safety pause.`) => {
+  const timestamp = timestampNow();
+  return {
+    activatedAt: timestamp,
+    activatedBy: access.userId,
+    deactivatedAt: null,
+    deactivatedBy: null,
+    killSwitchId: `scope_${scope}`,
+    pId: SIGNALDESK_PRODUCT_CODE,
+    reason,
+    scope,
+    status: "active",
+    updatedAt: timestamp,
+    updatedBy: access.userId,
+  };
+};
 const hashValue = (value) => crypto.createHash("sha256").update(String(value)).digest("hex");
 const senderDomainIdFor = (domain) => `sender_${hashValue(domain).slice(0, 18)}`;
 const contentFixtureCtaId = "cta_private_preview_v1";
@@ -408,6 +433,11 @@ async function seedAccessAndReadiness() {
   assert(repairedDailyCost?.pId === "SD" && repairedDailyCost?.day === dailyCostRef.id, "Daily-cost writer did not restore canonical identity fields");
   const seedAuditCountAfterConvergence = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "seed_defaults");
   assert(seedAuditCountAfterConvergence === seedAuditCountBeforeConvergence + 1, "Concurrent missing-row convergence emitted duplicate seed side effects");
+  await templateRef.set({ stalePrivateField: "must-be-removed" }, { merge: true });
+  await seedSignalDeskDefaultsServer(access);
+  assert((await templateRef.get()).data()?.stalePrivateField === undefined, "Default template refresh retained stale fields");
+  const seedAuditCountAfterTemplateRepair = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "seed_defaults");
+  assert(seedAuditCountAfterTemplateRepair === seedAuditCountAfterConvergence + 1, "Template shape repair did not emit one seed settlement");
   const seedTimelineRef = db.collection(SIGNALDESK_COLLECTIONS.RUN_TIMELINES).doc("market-pod_defaults");
   const seedTimelineBeforeCleanReplay = (await seedTimelineRef.get()).data()?.updatedAt?.toMillis?.();
   const seedCostBeforeCleanReplay = (await dailyCostRef.get()).data()?.firestoreWriteEstimate;
@@ -416,7 +446,7 @@ async function seedAccessAndReadiness() {
     seedSignalDeskDefaultsServer(access),
   ]);
   const seedAuditCountAfterCleanReplay = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "seed_defaults");
-  assert(seedAuditCountAfterCleanReplay === seedAuditCountAfterConvergence, "Clean concurrent seed replay emitted a seed audit side effect");
+  assert(seedAuditCountAfterCleanReplay === seedAuditCountAfterTemplateRepair, "Clean concurrent seed replay emitted a seed audit side effect");
   assert((await seedTimelineRef.get()).data()?.updatedAt?.toMillis?.() === seedTimelineBeforeCleanReplay, "Clean concurrent seed replay rewrote the seed timeline");
   assert((await dailyCostRef.get()).data()?.firestoreWriteEstimate === seedCostBeforeCleanReplay, "Clean concurrent seed replay inflated the Firestore write estimate");
   const previewIdentityReplayAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => String(data.action || "").startsWith("preview_cta_identity_"));
@@ -503,8 +533,8 @@ async function seedAccessAndReadiness() {
   });
   await seedSignalDeskDefaultsServer(access);
   const migratedScoreRoute = (await legacyScoreRouteRef.get()).data();
-  assert(migratedScoreRoute?.defaultModel === "gemini-2.5-flash-lite", "Exact legacy score route was not migrated to the current fast model");
-  assert(migratedScoreRoute?.escalationProvider === "gemini" && migratedScoreRoute?.escalationModel === "gemini-2.5-flash", "Exact legacy score route retained stale cross-provider escalation");
+  assert(migratedScoreRoute?.defaultModel === "gemini-3.5-flash-lite", "Exact legacy score route was not migrated to the current fast model");
+  assert(migratedScoreRoute?.escalationProvider === "gemini" && migratedScoreRoute?.escalationModel === "gemini-3.6-flash", "Exact legacy score route retained stale cross-provider escalation");
   assert(migratedScoreRoute?.createdAt?.toMillis?.() === legacyScoreCreatedAt.toMillis(), "Exact legacy score migration rewrote creation ownership");
   const legacyEvidenceRouteRef = db.collection(SIGNALDESK_COLLECTIONS.MODEL_ROUTES).doc("model_route_evidence");
   const nearLegacyEvidenceRoute = {
@@ -529,7 +559,7 @@ async function seedAccessAndReadiness() {
   assert(preservedNearLegacyEvidenceRoute?.defaultModel === "gemini-2.5-flash" && preservedNearLegacyEvidenceRoute?.ownerMarker === "founder-preserve-route", "Near-match model route was mistaken for an exact legacy seed");
   await legacyEvidenceRouteRef.delete();
   await seedSignalDeskDefaultsServer(access);
-  assert((await legacyEvidenceRouteRef.get()).data()?.defaultModel === "gemini-2.5-flash-lite", "Missing evidence route did not converge to the current default");
+  assert((await legacyEvidenceRouteRef.get()).data()?.defaultModel === "gemini-3.5-flash-lite", "Missing evidence route did not converge to the current default");
   const firstPodSnap = await db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc("market_pod_first_local_v1").get();
   assert(firstPodSnap.data()?.status === "hold", "Recommended first pod bypassed founder approval");
   assert(firstPodSnap.data()?.city === "Bengaluru - Indiranagar and Koramangala", "Recommended first pod drifted from the Bengaluru trial boundary");
@@ -540,7 +570,7 @@ async function seedAccessAndReadiness() {
   const preservedLastAssetAt = admin.firestore.Timestamp.fromMillis(Date.now() - 120_000);
   await defaultContentSourceRef.delete();
   const contentPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_content-distribution");
-  await contentPauseRef.set({ status: "active", updatedAt: timestampNow() });
+  await contentPauseRef.set(activeKillSwitchFixture("content-distribution"));
   await seedSignalDeskDefaultsServer(access);
   assert(!(await defaultContentSourceRef.get()).exists, "Default seeding created a content source while distribution was paused");
   await contentPauseRef.delete();
@@ -694,6 +724,19 @@ async function seedAccessAndReadiness() {
     assert(strategistMemo.summary.startsWith("0 targets, 0 demand signals, 0 outcomes."), "Malformed decision rows influenced the weekly strategist memo");
     assert(strategistMemo.recommendedMarketPodId === firstPodSnap.id, "Malformed newest pod hid older valid founder-approved pod authority");
     assert(!strategistMemo.providerQualitySummary.includes("google-places"), "Malformed provider evaluation influenced the weekly strategist memo");
+    assert(!Object.prototype.hasOwnProperty.call(strategistMemo, "pId") && !Object.prototype.hasOwnProperty.call(strategistMemo, "updatedBy"), "Weekly strategist memo response leaked internal fields");
+    const strategistAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+      data.action === "weekly_strategist_memo_create" && data.entityId === strategistMemo.strategistMemoId
+    ));
+    const strategistMemoReplay = await createSignalDeskWeeklyStrategistMemoServer(access, {});
+    assert(strategistMemoReplay.updatedAt === strategistMemo.updatedAt, "Weekly strategist memo exact replay rewrote durable truth");
+    assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+      data.action === "weekly_strategist_memo_create" && data.entityId === strategistMemo.strategistMemoId
+    )) === strategistAuditCount, "Weekly strategist memo exact replay repeated audit/cost effects");
+    const strategistMemoRef = db.collection(SIGNALDESK_COLLECTIONS.STRATEGIST_MEMOS).doc(strategistMemo.strategistMemoId);
+    await strategistMemoRef.set({ stalePrivateField: "must-be-removed" }, { merge: true });
+    await createSignalDeskWeeklyStrategistMemoServer(access, {});
+    assert((await strategistMemoRef.get()).data()?.stalePrivateField === undefined, "Weekly strategist memo refresh retained stale fields");
   } finally {
     const invalidDecisionInputCleanup = db.batch();
     invalidDecisionInputRefs.forEach((reference) => invalidDecisionInputCleanup.delete(reference));
@@ -1872,6 +1915,9 @@ async function assertHappyPath() {
     retentionDays: 30,
     sourcePolicyId: sourcePolicy.sourcePolicyId,
     status: "active",
+    stopCondition: "first-candidate",
+    updatedAt: admin.firestore.Timestamp.now(),
+    verificationRequired: false,
     waterfallId,
   });
   const waterfallInput = { idempotencyKey: `waterfall-happy-${targetId}`, targetId, waterfallId };
@@ -1883,11 +1929,12 @@ async function assertHappyPath() {
   checkpoint("enrichment-waterfall:complete");
   assert(waterfallResult.enrichmentResultId === waterfallReplay.enrichmentResultId, "Concurrent enrichment waterfall retry did not converge");
   assert(waterfallResult.status === "verified" && waterfallResult.provider === "manual", "Existing approved enrichment value was not reused");
+  assert(!Object.prototype.hasOwnProperty.call(waterfallResult, "pId") && !Object.prototype.hasOwnProperty.call(waterfallResult, "updatedBy"), "Enrichment waterfall returned private persisted fields");
   await expectRejects("Conflicting enrichment-waterfall key reuse", () => runSignalDeskEnrichmentWaterfallServer(access, { ...waterfallInput, waterfallId: "waterfall_changed" }), "ENRICHMENT_WATERFALL_IDEMPOTENCY_CONFLICT");
   const waterfallVendorCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.VENDOR_RUNS, (data) => data.waterfallId === waterfallId && data.targetId === targetId);
   assert(waterfallVendorCount === 1, "Concurrent enrichment waterfall retry duplicated vendor truth");
   const sourceProviderPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_source-provider");
-  await sourceProviderPauseRef.set({ status: "active" }, { merge: true });
+  await sourceProviderPauseRef.set(activeKillSwitchFixture("source-provider"));
   await expectRejects("Paused enrichment-waterfall settlement", () => runSignalDeskEnrichmentWaterfallServer(access, { ...waterfallInput, idempotencyKey: `waterfall-paused-${targetId}` }), "SignalDesk source providers are paused");
   await sourceProviderPauseRef.delete();
 
@@ -2003,6 +2050,10 @@ async function assertHappyPath() {
   assert(draftResult.approvalPacket.evidenceSummary === evidence.summary, "Approval packet did not snapshot the evidence summary");
   assert(draftResult.approvalPacket.currentMenuPresence?.diagnosticVersion === "current-menu-presence-v1", "Approval packet lost the current-menu diagnostic");
   assert(draftResult.approvalPacket.unsupportedClaims.length === 0, "Approval packet did not preserve the unsupported-claim result");
+  await replayPacketRef.set({
+    legacyPrivate: "remove-on-authoritative-refresh",
+    riskSummary: "Poisoned packet summary requiring authoritative refresh.",
+  }, { merge: true });
   const [refreshedPacket, duplicateRefreshedPacket] = await Promise.all([
     createSignalDeskApprovalPacketServer(access, { approvalId: draftResult.approval.approvalId }),
     createSignalDeskApprovalPacketServer(access, { approvalId: draftResult.approval.approvalId }),
@@ -2011,6 +2062,7 @@ async function assertHappyPath() {
   assert(duplicateRefreshedPacket.approvalPacketId === refreshedPacket.approvalPacketId, "Concurrent identical approval packet refresh created duplicate packet identity");
   const refreshedApprovalPacketCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.APPROVAL_PACKETS, (data) => data.targetId === targetId);
   assert(refreshedApprovalPacketCount === 1, "Concurrent identical approval packet refresh wrote duplicate packet truth");
+  assert(!Object.prototype.hasOwnProperty.call((await replayPacketRef.get()).data() || {}, "legacyPrivate"), "Approval packet authoritative refresh preserved a stale private field");
 
   await db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES).doc(draftResult.draft.draftId).set({
     body: `${draftResult.draft.body} Changed after founder packet preparation.`,
@@ -2219,6 +2271,7 @@ async function assertHappyPath() {
     upsertSignalDeskChannelWindowStateServer(access, channelWindowInput),
   ]);
   assert(channelWindow.channelWindowId === channelWindowReplay.channelWindowId, "Concurrent channel-window retry did not converge");
+  assert((await db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES).doc("whatsapp").get()).data()?.pId === SIGNALDESK_PRODUCT_CODE, "Channel-window health projection omitted SignalDesk product identity");
   await expectRejects("Conflicting channel-window key reuse", () => upsertSignalDeskChannelWindowStateServer(access, {
     ...channelWindowInput,
     status: "closed",
@@ -2261,6 +2314,35 @@ async function assertHappyPath() {
     updatedAt: timestampNow(),
     updatedBy: access.userId,
   });
+  const trustDemandRef = db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES)
+    .doc(`trust_partner_${trustPartnerId}_${new Date().toISOString().slice(0, 10)}`);
+  await trustDemandRef.set({
+    count: 1,
+    day: new Date().toISOString().slice(0, 10),
+    demandSignalId: trustDemandRef.id,
+    pId: "ML",
+    signalType: "referral",
+    sourceSurface: "manual",
+    targetId: null,
+    targetName: null,
+    updatedAt: timestampNow(),
+  });
+  const trustCollisionKey = `trust-metrics-collision-${targetId}`;
+  await expectRejects("Trust metrics merged wrong-product demand summary", () => recordSignalDeskTrustPartnerMetricsServer(access, {
+    activations: 0,
+    commentQuality: "medium",
+    comments: 0,
+    currentListSubmissions: 0,
+    deliverableId: trustDeliverableId,
+    idempotencyKey: trustCollisionKey,
+    ownerLeads: 1,
+    partnerId: trustPartnerId,
+    views: 1,
+  }), "DEMAND_SIGNAL_SUMMARY_INVALID");
+  assert((await trustDemandRef.get()).data()?.pId === "ML", "Trust metrics overwrote wrong-product demand authority");
+  const rejectedTrustMetricId = `partner_metric_${hashValue(`${access.userId}|${trustCollisionKey}`).slice(0, 32)}`;
+  assert(!(await db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_METRICS).doc(rejectedTrustMetricId).get()).exists, "Rejected trust demand collision wrote partial metric truth");
+  await trustDemandRef.delete();
   const trustMetricInput = { activations: 0, commentQuality: "medium", comments: 2, currentListSubmissions: 0, deliverableId: trustDeliverableId, idempotencyKey: `trust-metrics-${targetId}`, ownerLeads: 1, partnerId: trustPartnerId, views: 20 };
   const [trustMetric, trustMetricReplay] = await Promise.all([
     recordSignalDeskTrustPartnerMetricsServer(access, trustMetricInput),
@@ -2269,9 +2351,22 @@ async function assertHappyPath() {
   assert(trustMetric.metricsId === trustMetricReplay.metricsId, "Concurrent trust metrics did not converge");
   await expectRejects("Conflicting trust-metrics key reuse", () => recordSignalDeskTrustPartnerMetricsServer(access, { ...trustMetricInput, views: 21 }), "TRUST_PARTNER_METRICS_IDEMPOTENCY_CONFLICT");
   await expectRejects("Unknown trust-metrics deliverable", () => recordSignalDeskTrustPartnerMetricsServer(access, { ...trustMetricInput, deliverableId: "deliverable_missing", idempotencyKey: `trust-metrics-missing-${targetId}` }), "Trust partner deliverable not found");
+  const validTrustDemandSummary = (await trustDemandRef.get()).data();
+  assert(validTrustDemandSummary, "Trust metrics did not create valid demand authority");
+  await trustDemandRef.set({ legacyPrivate: "reject-malformed-authority" }, { merge: true });
+  const malformedTrustKey = `trust-metrics-malformed-${targetId}`;
+  await expectRejects("Trust metrics accepted malformed demand summary", () => recordSignalDeskTrustPartnerMetricsServer(access, {
+    ...trustMetricInput,
+    idempotencyKey: malformedTrustKey,
+    ownerLeads: 2,
+  }), "DEMAND_SIGNAL_SUMMARY_INVALID");
+  const rejectedMalformedTrustMetricId = `partner_metric_${hashValue(`${access.userId}|${malformedTrustKey}`).slice(0, 32)}`;
+  assert(!(await db.collection(SIGNALDESK_COLLECTIONS.TRUST_PARTNER_METRICS).doc(rejectedMalformedTrustMetricId).get()).exists, "Malformed trust demand authority caused a partial metric write");
+  await trustDemandRef.set(validTrustDemandSummary);
   await recordSignalDeskTrustPartnerMetricsServer(access, { ...trustMetricInput, idempotencyKey: `trust-metrics-second-${targetId}`, ownerLeads: 2 });
-  const trustDemandSnap = await db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(`trust_partner_${trustPartnerId}_${new Date().toISOString().slice(0, 10)}`).get();
+  const trustDemandSnap = await trustDemandRef.get();
   assert(trustDemandSnap.data()?.count === 3, "Trust metrics demand summary overwrote incremental observations");
+  assert(trustDemandSnap.data()?.pId === "SD", "Trust metrics demand summary lost SignalDesk product ownership");
   const contentAssetId = `asset_performance_${hashValue(targetId).slice(0, 12)}`;
   const contentDraftId = `draft_performance_${hashValue(targetId).slice(0, 12)}`;
   const contentCalendarItemId = `content_calendar_${contentDraftId}`;
@@ -2302,22 +2397,57 @@ async function assertHappyPath() {
     scheduledFor: performanceScheduledFor,
   }));
   const performanceInput = { activations: 0, channel: "linkedin", clicks: 2, contentAssetId, contentDraftId, currentListSubmissions: 0, engagementQuality: "medium", idempotencyKey: `content-performance-${targetId}`, ownerLeads: 1, publicationUrl: `https://example.invalid/published/${contentDraftId}`, publishedAt: new Date().toISOString(), views: 30 };
+  const contentDemandRef = db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES)
+    .doc(`content_${contentAssetId}_${new Date().toISOString().slice(0, 10)}`);
+  await contentDemandRef.set({
+    count: 1,
+    day: new Date().toISOString().slice(0, 10),
+    demandSignalId: contentDemandRef.id,
+    pId: "ML",
+    signalType: "referral",
+    sourceSurface: "manual",
+    targetId: null,
+    targetName: null,
+    updatedAt: timestampNow(),
+  });
+  const contentCollisionKey = `content-performance-collision-${targetId}`;
+  await expectRejects("Content performance merged wrong-product demand summary", () => recordSignalDeskContentPerformanceServer(access, {
+    ...performanceInput,
+    idempotencyKey: contentCollisionKey,
+  }), "DEMAND_SIGNAL_SUMMARY_INVALID");
+  assert((await contentDemandRef.get()).data()?.pId === "ML", "Content performance overwrote wrong-product demand authority");
+  const rejectedContentPerformanceId = `content_performance_${hashValue(`${access.userId}|${contentCollisionKey}`).slice(0, 32)}`;
+  assert(!(await db.collection(SIGNALDESK_COLLECTIONS.CONTENT_PERFORMANCE_SUMMARIES).doc(rejectedContentPerformanceId).get()).exists, "Rejected content demand collision wrote partial performance truth");
+  await contentDemandRef.delete();
   const [performance, performanceReplay] = await Promise.all([
     recordSignalDeskContentPerformanceServer(access, performanceInput),
     recordSignalDeskContentPerformanceServer(access, performanceInput),
   ]);
   assert(performance.contentPerformanceId === performanceReplay.contentPerformanceId, "Concurrent content performance did not converge");
   await expectRejects("Mismatched content-performance draft", () => recordSignalDeskContentPerformanceServer(access, { ...performanceInput, channel: "instagram", idempotencyKey: `content-performance-mismatch-${targetId}` }), "CONTENT_PERFORMANCE_DRAFT_MISMATCH");
+  const validContentDemandSummary = (await contentDemandRef.get()).data();
+  assert(validContentDemandSummary, "Content performance did not create valid demand authority");
+  await contentDemandRef.set({ legacyPrivate: "reject-malformed-authority" }, { merge: true });
+  const malformedContentKey = `content-performance-malformed-${targetId}`;
+  await expectRejects("Content performance accepted malformed demand summary", () => recordSignalDeskContentPerformanceServer(access, {
+    ...performanceInput,
+    idempotencyKey: malformedContentKey,
+    ownerLeads: 2,
+  }), "DEMAND_SIGNAL_SUMMARY_INVALID");
+  const rejectedMalformedContentPerformanceId = `content_performance_${hashValue(`${access.userId}|${malformedContentKey}`).slice(0, 32)}`;
+  assert(!(await db.collection(SIGNALDESK_COLLECTIONS.CONTENT_PERFORMANCE_SUMMARIES).doc(rejectedMalformedContentPerformanceId).get()).exists, "Malformed content demand authority caused a partial performance write");
+  await contentDemandRef.set(validContentDemandSummary);
   await recordSignalDeskContentPerformanceServer(access, { ...performanceInput, idempotencyKey: `content-performance-second-${targetId}`, ownerLeads: 2 });
-  const contentDemandSnap = await db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(`content_${contentAssetId}_${new Date().toISOString().slice(0, 10)}`).get();
+  const contentDemandSnap = await contentDemandRef.get();
   assert(contentDemandSnap.data()?.count === 3, "Content performance demand summary overwrote incremental observations");
+  assert(contentDemandSnap.data()?.pId === "SD", "Content performance demand summary lost SignalDesk product ownership");
   const publishedPerformanceDraftSnap = await db.collection(SIGNALDESK_COLLECTIONS.CONTENT_DISTRIBUTION_DRAFTS).doc(contentDraftId).get();
   const publishedPerformanceCalendarSnap = await db.collection(SIGNALDESK_COLLECTIONS.CONTENT_CALENDAR_ITEMS).doc(contentCalendarItemId).get();
   assert(publishedPerformanceDraftSnap.data()?.status === "published", "Content performance fixture did not mark its approved draft published");
   assert(publishedPerformanceCalendarSnap.data()?.status === "published", "Content performance fixture did not mark its matching calendar item published");
   assert(publishedPerformanceCalendarSnap.data()?.publicationUrl === performanceInput.publicationUrl, "Content performance fixture lost publication URL evidence");
   const contentPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_content-distribution");
-  await contentPauseRef.set({ status: "active" }, { merge: true });
+  await contentPauseRef.set(activeKillSwitchFixture("content-distribution"));
   await expectRejects("Paused content-performance settlement", () => recordSignalDeskContentPerformanceServer(access, { ...performanceInput, idempotencyKey: `content-performance-paused-${targetId}` }), "Content distribution is paused");
   await contentPauseRef.delete();
 
@@ -2415,6 +2545,21 @@ async function assertRevenueOperatingLayer() {
   ));
   assert(offerReplay.updatedAt === offer.updatedAt, "Exact commercial-offer replay rewrote offer truth");
   assert(offerAuditCountBeforeReplay === 1 && offerAuditCountAfterReplay === 1, "Exact commercial-offer replay repeated audit/cost effects");
+  const offerRef = db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OFFERS).doc(offer.commercialOfferId);
+  await offerRef.set({ legacyPrivate: "remove-on-authoritative-refresh" }, { merge: true });
+  await upsertSignalDeskCommercialOfferServer(access, {
+    allowedDiscountBps: 0,
+    billingCadence: "monthly",
+    contents: ["Current official menu link", "Owner review before publishing", "QR and share support"],
+    currency: "INR",
+    eligibilitySummary: "Standard single-location MenuList path with no custom terms.",
+    founderApprovalConditions: ["Any discount", "Custom terms", "Multi-location commercial request"],
+    name: "MenuList standard package",
+    priceMinor: 49900,
+    status: "active",
+    version: 1,
+  });
+  assert(!Object.prototype.hasOwnProperty.call((await offerRef.get()).data() || {}, "legacyPrivate"), "Commercial-offer authoritative refresh preserved a stale private field");
   await expectRejects("Duplicate commercial offer terms", () => upsertSignalDeskCommercialOfferServer(access, {
     allowedDiscountBps: 0,
     billingCadence: "monthly",
@@ -2799,6 +2944,44 @@ async function assertRevenueOperatingLayer() {
   assert(watchAuditCountAfterReplay === watchAuditCountBeforeReplay, "Exact activation-watch recheck repeated audit/cost effects");
   const wonOpportunitySnap = await db.collection(SIGNALDESK_COLLECTIONS.COMMERCIAL_OPPORTUNITIES).doc(qualification.opportunity.opportunityId).get();
   assert(wonOpportunitySnap.data()?.status === "won" && wonOpportunitySnap.data()?.stage === "won", "Two-surface activation did not close the commercial opportunity");
+  const clearedActivationSummary = (await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES)
+    .doc(SIGNALDESK_SUMMARY_DOCS.REVENUE)
+    .get()).data();
+  assert(clearedActivationSummary?.pipelineValueMinor === 0 && clearedActivationSummary?.pipelineCurrency === null, "Activation close retained currency on an empty pipeline");
+
+  const currencySwitchTargetId = await importOne(sourcePolicy.sourcePolicyId, "RevenueCurrencySwitch", { currentListUrl: "" });
+  await scoreSignalDeskTargetServer(access, currencySwitchTargetId);
+  await createSignalDeskEvidenceServer(access, currencySwitchTargetId);
+  const currencySwitchQualification = await qualifySignalDeskRevenueAccountServer(access, {
+    locationType: "single-location",
+    targetId: currencySwitchTargetId,
+  });
+  const usdOpportunityInput = {
+    commercialOfferId: usdOffer.commercialOfferId,
+    founderAttentionMinutes: 0,
+    nextAction: "Confirm the USD offer decision.",
+    opportunityId: currencySwitchQualification.opportunity.opportunityId,
+    probabilityPercent: 50,
+    stage: "offer",
+    status: "open",
+    valueMinor: 999,
+  };
+  await upsertSignalDeskCommercialOpportunityServer(access, usdOpportunityInput);
+  const usdPipelineSummary = (await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES)
+    .doc(SIGNALDESK_SUMMARY_DOCS.REVENUE)
+    .get()).data();
+  assert(usdPipelineSummary?.pipelineValueMinor === 999 && usdPipelineSummary?.pipelineCurrency === "USD", "Empty pipeline could not adopt a new currency");
+  await upsertSignalDeskCommercialOpportunityServer(access, {
+    ...usdOpportunityInput,
+    probabilityPercent: 0,
+    stage: "lost",
+    status: "lost",
+    winLossReason: "Currency-switch regression fixture closed.",
+  });
+  const closedUsdPipelineSummary = (await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES)
+    .doc(SIGNALDESK_SUMMARY_DOCS.REVENUE)
+    .get()).data();
+  assert(closedUsdPipelineSummary?.pipelineValueMinor === 0 && closedUsdPipelineSummary?.pipelineCurrency === null, "Manual close retained currency on an empty pipeline");
 
   const suppressedTargetId = await importOne(sourcePolicy.sourcePolicyId, "RevenueSuppressed", { currentListUrl: "" });
   await scoreSignalDeskTargetServer(access, suppressedTargetId);
@@ -2823,6 +3006,16 @@ async function assertRevenueOperatingLayer() {
     targetId: demotedTargetId,
   });
   assert(initialDemotionQualification.opportunity?.status === "open", "Authority-demotion fixture did not start with an open opportunity");
+  await upsertSignalDeskCommercialOpportunityServer(access, {
+    commercialOfferId: offer.commercialOfferId,
+    founderAttentionMinutes: 0,
+    nextAction: "Wait for current authority.",
+    opportunityId: initialDemotionQualification.opportunity.opportunityId,
+    probabilityPercent: 25,
+    stage: "discovery",
+    status: "open",
+    valueMinor: 49900,
+  });
   await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(demotedTargetId).set({
     suppressionStatus: "suppressed",
     updatedAt: timestampNow(),
@@ -2834,6 +3027,10 @@ async function assertRevenueOperatingLayer() {
   assert(demotedQualification.qualified === false, "Withdrawn current authority remained commercially qualified");
   assert(demotedQualification.account.automationState === "paused", "Withdrawn current authority did not pause the account");
   assert(demotedQualification.opportunity?.status === "nurture" && demotedQualification.opportunity?.stage === "nurture", "Withdrawn current authority did not demote the open opportunity");
+  const demotedPipelineSummary = (await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES)
+    .doc(SIGNALDESK_SUMMARY_DOCS.REVENUE)
+    .get()).data();
+  assert(demotedPipelineSummary?.pipelineValueMinor === 0 && demotedPipelineSummary?.pipelineCurrency === null, "Qualification demotion retained currency on an empty pipeline");
 
   const publishedTargetId = await importOne(sourcePolicy.sourcePolicyId, "RevenuePublishedOnly", { currentListUrl: "" });
   await scoreSignalDeskTargetServer(access, publishedTargetId);
@@ -2900,9 +3097,9 @@ async function assertRevenueOperatingLayer() {
   assert(workspace.workspace.operatingEnvelopes.some((item) => item.operatingEnvelopeId === approvedEnvelope.operatingEnvelopeId && item.status === "expired" && item.executionState === "held"), "Revenue workspace did not hold expired operating envelope");
   assert(workspace.workspace.activationWatches.some((watch) => watch.status === "activated" && watch.targetId === targetId), "Revenue workspace did not load activation watch");
   const summary = workspace.workspace.revenueControlSummaries[0];
-  assert(summary.revenueAccountCount === Number(baselineSummary.revenueAccountCount || 0) + 5, "Revenue summary did not count the five feature-local revenue accounts exactly");
+  assert(summary.revenueAccountCount === Number(baselineSummary.revenueAccountCount || 0) + 6, "Revenue summary did not count the six feature-local revenue accounts exactly");
   assert(summary.openOpportunityCount === Number(baselineSummary.openOpportunityCount || 0) + 1, "Published-only opportunity was not preserved as the only feature-local open opportunity");
-  assert(summary.pipelineCurrency === "INR", "Revenue summary did not preserve pipeline currency");
+  assert(summary.pipelineCurrency === null, "Empty revenue pipeline retained a stale currency");
   assert(summary.pipelineValueMinor === 0, "Activated opportunity remained in pipeline value");
   assert(summary.weightedPipelineValueMinor === 0, "Activated opportunity remained in weighted pipeline value");
   assert(summary.activatedAccountCount === Number(baselineSummary.activatedAccountCount || 0) + 2, "Revenue summary did not count the qualified and pre-converted activations exactly");
@@ -3036,11 +3233,22 @@ async function assertOperatingLayerContracts() {
     sourcePolicyId: policy.sourcePolicyId,
   });
   const sourceRunId = imported.run.sourceRunId;
+  const unrelatedPolicy = await createPolicy("Operating layer unrelated activation");
+  const unrelatedTargetId = await importOne(unrelatedPolicy.sourcePolicyId, "OperatingLayerUnrelatedActivation", { currentListUrl: "" });
+  await createSignalDeskEvidenceServer(access, unrelatedTargetId);
+  await recordSignalDeskOutcomeServer(access, {
+    ...activationFixture(unrelatedTargetId, "operating-layer-unrelated"),
+    channel: "manual",
+    outcomeType: "two_surface_activation",
+    source: "manual",
+    targetId: unrelatedTargetId,
+  });
   const snapshot = await createSignalDeskSourceQualitySnapshotServer(access, {
     sourcePolicyId: policy.sourcePolicyId,
     sourceRunId,
   });
   assert(snapshot.sourcePolicyId === policy.sourcePolicyId && snapshot.sourceRunId === sourceRunId, "Source-quality snapshot lost source authority");
+  assert(snapshot.activationRate === 0, "Source-quality snapshot attributed another source's activation");
   const snapshotAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
     data.action === "source_quality_snapshot_create" && data.entityId === snapshot.sourceQualitySnapshotId
   ));
@@ -3052,6 +3260,34 @@ async function assertOperatingLayerContracts() {
   assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
     data.action === "source_quality_snapshot_create" && data.entityId === snapshot.sourceQualitySnapshotId
   )) === snapshotAuditCount, "Exact source-quality replay repeated audit/cost effects");
+  const sourceQualitySnapshotRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_QUALITY_SNAPSHOTS).doc(snapshot.sourceQualitySnapshotId);
+  await sourceQualitySnapshotRef.set({ stalePrivateField: "must-be-removed" }, { merge: true });
+  await createSignalDeskSourceQualitySnapshotServer(access, {
+    sourcePolicyId: policy.sourcePolicyId,
+    sourceRunId,
+  });
+  assert((await sourceQualitySnapshotRef.get()).data()?.stalePrivateField === undefined, "Source-quality snapshot refresh retained stale fields");
+  const relatedTargetId = imported.targets[0].targetId;
+  await createSignalDeskEvidenceServer(access, relatedTargetId);
+  await recordSignalDeskOutcomeServer(access, {
+    ...activationFixture(relatedTargetId, "operating-layer-related-one"),
+    channel: "manual",
+    outcomeType: "two_surface_activation",
+    source: "manual",
+    targetId: relatedTargetId,
+  });
+  await recordSignalDeskOutcomeServer(access, {
+    ...activationFixture(relatedTargetId, "operating-layer-related-two"),
+    channel: "email",
+    outcomeType: "two_surface_activation",
+    source: "manual",
+    targetId: relatedTargetId,
+  });
+  const multiOutcomeSnapshot = await createSignalDeskSourceQualitySnapshotServer(access, {
+    sourcePolicyId: policy.sourcePolicyId,
+    sourceRunId,
+  });
+  assert(multiOutcomeSnapshot.activationRate === 1, "Source-quality snapshot counted repeated outcomes instead of distinct activated targets");
   const otherPolicy = await createPolicy("Operating layer mismatch");
   await expectRejects("Source-quality policy/run mismatch", () => createSignalDeskSourceQualitySnapshotServer(access, {
     sourcePolicyId: otherPolicy.sourcePolicyId,
@@ -3079,6 +3315,10 @@ async function assertOperatingLayerContracts() {
   assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
     data.action === "reply_playbook_upsert" && data.entityId === playbook.playbookId
   )) === playbookAuditCount, "Exact reply-playbook replay repeated audit/cost effects");
+  const playbookRef = db.collection(SIGNALDESK_COLLECTIONS.REPLY_PLAYBOOKS).doc(playbook.playbookId);
+  await playbookRef.set({ stalePrivateField: "must-be-removed" }, { merge: true });
+  await upsertSignalDeskReplyPlaybookServer(access, playbookInput);
+  assert((await playbookRef.get()).data()?.stalePrivateField === undefined, "Reply-playbook refresh retained stale fields");
   await expectRejects("Unsafe stop reply playbook", () => upsertSignalDeskReplyPlaybookServer(access, {
     ...playbookInput,
     approvedReply: "Stop confirmed. No more outreach will be sent.",
@@ -3101,6 +3341,366 @@ async function assertOperatingLayerContracts() {
   const workspace = await loadSignalDeskWorkspaceServer(access, "mission");
   assert(workspace.workspace.replyPlaybooks.some((item) => item.playbookId === playbook.playbookId), "Mission workspace omitted the valid reply playbook");
   assert(workspace.workspace.sourceQualitySnapshots.some((item) => item.sourceQualitySnapshotId === snapshot.sourceQualitySnapshotId), "Mission workspace omitted the valid source-quality snapshot");
+}
+
+async function assertAudienceSegmentContracts() {
+  const segmentInput = {
+    criteriaSummary: "Current owned or verified demand signals.",
+    idempotencyKey: "audience-segment-current-signals",
+    marketPodId: "market_pod_first_local_v1",
+    name: "Current verified demand",
+    sourcePolicyId: "policy_public_business_research_v1",
+    status: "hold",
+    triggerType: "demand-signal",
+  };
+  const [first, replay] = await Promise.all([
+    upsertSignalDeskAudienceSegmentServer(access, segmentInput),
+    upsertSignalDeskAudienceSegmentServer(access, segmentInput),
+  ]);
+  assert(first.audienceSegmentId === replay.audienceSegmentId, "Concurrent audience-segment replay created divergent identities");
+  const storedRows = await db.collection(SIGNALDESK_COLLECTIONS.AUDIENCE_SEGMENTS)
+    .where("name", "==", segmentInput.name)
+    .get();
+  assert(storedRows.size === 1, "Concurrent audience-segment replay created duplicate rows");
+  assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.action === "audience_segment_upsert" && data.entityId === first.audienceSegmentId
+  )) === 1, "Audience-segment replay duplicated audit or cost effects");
+  await expectRejects("Changed audience-segment idempotency payload", () => upsertSignalDeskAudienceSegmentServer(access, {
+    ...segmentInput,
+    criteriaSummary: "Changed criteria cannot reuse the original operation key.",
+  }), "AUDIENCE_SEGMENT_IDEMPOTENCY_CONFLICT");
+  await expectRejects("Missing audience-segment market pod", () => upsertSignalDeskAudienceSegmentServer(access, {
+    ...segmentInput,
+    idempotencyKey: "audience-segment-missing-pod",
+    marketPodId: "missing_audience_segment_pod",
+  }), "AUDIENCE_SEGMENT_MARKET_POD_NOT_FOUND");
+  const wrongProductPodRef = db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc("audience_segment_wrong_product_pod");
+  await wrongProductPodRef.set({
+    marketPodId: wrongProductPodRef.id,
+    pId: "ML",
+  });
+  await expectRejects("Wrong-product audience-segment market pod", () => upsertSignalDeskAudienceSegmentServer(access, {
+    ...segmentInput,
+    idempotencyKey: "audience-segment-wrong-product-pod",
+    marketPodId: wrongProductPodRef.id,
+  }), "AUDIENCE_SEGMENT_MARKET_POD_INVALID");
+  await expectRejects("Missing audience-segment source policy", () => upsertSignalDeskAudienceSegmentServer(access, {
+    ...segmentInput,
+    idempotencyKey: "audience-segment-missing-policy",
+    sourcePolicyId: "missing_audience_segment_policy",
+  }), "AUDIENCE_SEGMENT_SOURCE_POLICY_NOT_FOUND");
+  const wrongProductPolicyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc("audience_segment_wrong_product_policy");
+  await wrongProductPolicyRef.set({
+    pId: "ML",
+    sourcePolicyId: wrongProductPolicyRef.id,
+  });
+  await expectRejects("Wrong-product audience-segment source policy", () => upsertSignalDeskAudienceSegmentServer(access, {
+    ...segmentInput,
+    idempotencyKey: "audience-segment-wrong-product-policy",
+    sourcePolicyId: wrongProductPolicyRef.id,
+  }), "AUDIENCE_SEGMENT_SOURCE_POLICY_INVALID");
+}
+
+async function assertEnrichmentWaterfallConfigurationContracts() {
+  const waterfallInput = {
+    idempotencyKey: "enrichment-waterfall-config-email",
+    maxCostUsd: 2,
+    maxCredits: 3,
+    name: "Verified email configuration",
+    providerOrder: ["hunter", "zerobounce", "apollo"],
+    requestedField: "email",
+    retentionDays: 30,
+    sourcePolicyId: "policy_public_business_research_v1",
+    status: "hold",
+    stopCondition: "first-verified",
+    verificationRequired: true,
+  };
+  const [first, replay] = await Promise.all([
+    upsertSignalDeskEnrichmentWaterfallServer(access, waterfallInput),
+    upsertSignalDeskEnrichmentWaterfallServer(access, waterfallInput),
+  ]);
+  assert(first.waterfallId === replay.waterfallId, "Concurrent enrichment-waterfall configuration replay created divergent identities");
+  const storedRows = await db.collection(SIGNALDESK_COLLECTIONS.ENRICHMENT_WATERFALLS)
+    .where("name", "==", waterfallInput.name)
+    .get();
+  assert(storedRows.size === 1, "Concurrent enrichment-waterfall configuration replay created duplicate rows");
+  assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.action === "enrichment_waterfall_upsert" && data.entityId === first.waterfallId
+  )) === 1, "Enrichment-waterfall configuration replay duplicated audit or cost effects");
+  await expectRejects("Changed enrichment-waterfall configuration idempotency payload", () => upsertSignalDeskEnrichmentWaterfallServer(access, {
+    ...waterfallInput,
+    maxCredits: 4,
+  }), "ENRICHMENT_WATERFALL_CONFIG_IDEMPOTENCY_CONFLICT");
+  await expectRejects("Duplicate enrichment-waterfall providers", () => upsertSignalDeskEnrichmentWaterfallServer(access, {
+    ...waterfallInput,
+    idempotencyKey: "enrichment-waterfall-duplicate-provider",
+    providerOrder: ["hunter", "hunter"],
+  }), "ENRICHMENT_WATERFALL_CONFIG_SHAPE_INVALID");
+  await expectRejects("Unverified first-verified enrichment waterfall", () => upsertSignalDeskEnrichmentWaterfallServer(access, {
+    ...waterfallInput,
+    idempotencyKey: "enrichment-waterfall-invalid-verification",
+    verificationRequired: false,
+  }), "ENRICHMENT_WATERFALL_CONFIG_SHAPE_INVALID");
+  await expectRejects("Missing enrichment-waterfall source policy", () => upsertSignalDeskEnrichmentWaterfallServer(access, {
+    ...waterfallInput,
+    idempotencyKey: "enrichment-waterfall-missing-policy",
+    sourcePolicyId: "missing_enrichment_waterfall_policy",
+  }), "ENRICHMENT_WATERFALL_CONFIG_SOURCE_POLICY_NOT_FOUND");
+  const wrongProductPolicyRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc("enrichment_waterfall_wrong_product_policy");
+  await wrongProductPolicyRef.set({
+    pId: "ML",
+    sourcePolicyId: wrongProductPolicyRef.id,
+  });
+  await expectRejects("Wrong-product enrichment-waterfall source policy", () => upsertSignalDeskEnrichmentWaterfallServer(access, {
+    ...waterfallInput,
+    idempotencyKey: "enrichment-waterfall-wrong-product-policy",
+    sourcePolicyId: wrongProductPolicyRef.id,
+  }), "ENRICHMENT_WATERFALL_CONFIG_SOURCE_POLICY_INVALID");
+
+  const runPolicy = await createPolicy("Waterfall configuration authority");
+  const targetId = await importOne(runPolicy.sourcePolicyId, "Waterfall configuration authority");
+  const wrongProductWaterfallRef = db.collection(SIGNALDESK_COLLECTIONS.ENRICHMENT_WATERFALLS)
+    .doc("waterfall_wrong_product_run_authority");
+  await wrongProductWaterfallRef.set({
+    maxCostUsd: 0,
+    maxCredits: 1,
+    name: "Wrong product waterfall",
+    pId: "ML",
+    providerOrder: ["hunter"],
+    requestedField: "website",
+    retentionDays: 30,
+    sourcePolicyId: runPolicy.sourcePolicyId,
+    status: "active",
+    stopCondition: "first-candidate",
+    updatedAt: admin.firestore.Timestamp.now(),
+    verificationRequired: false,
+    waterfallId: wrongProductWaterfallRef.id,
+  });
+  await expectRejects("Wrong-product enrichment-waterfall run authority", () => runSignalDeskEnrichmentWaterfallServer(access, {
+    idempotencyKey: "enrichment-waterfall-wrong-product-run",
+    targetId,
+    waterfallId: wrongProductWaterfallRef.id,
+  }), "ENRICHMENT_WATERFALL_SHAPE_INVALID");
+}
+
+async function assertModelRouteConfigurationContracts() {
+  const routeRef = db.collection(SIGNALDESK_COLLECTIONS.MODEL_ROUTES).doc("model_route_quality-critic");
+  await routeRef.set({ legacyPrivate: "remove-on-authoritative-write" }, { merge: true });
+  const current = (await routeRef.get()).data();
+  const routeInput = {
+    confidenceThreshold: current.confidenceThreshold,
+    defaultModel: current.defaultModel,
+    defaultProvider: current.defaultProvider,
+    idempotencyKey: "model-route-quality-critic-current",
+    maxCostUsd: current.maxCostUsd,
+    status: current.status,
+    task: "quality-critic",
+  };
+  const [first, replay] = await Promise.all([
+    upsertSignalDeskModelRouteServer(access, routeInput),
+    upsertSignalDeskModelRouteServer(access, routeInput),
+  ]);
+  assert(first.modelRouteId === replay.modelRouteId, "Concurrent model-route replay created divergent results");
+  assert(!Object.prototype.hasOwnProperty.call(first, "pId") && !Object.prototype.hasOwnProperty.call(first, "updatedBy"), "Model-route mutation returned private persisted fields");
+  const stored = (await routeRef.get()).data();
+  assert(!Object.prototype.hasOwnProperty.call(stored || {}, "legacyPrivate"), "Model-route authoritative replacement preserved a stale unknown field");
+  assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.action === "model_route_upsert" && data.entityId === routeRef.id
+  )) === 1, "Model-route replay duplicated audit or cost effects");
+  await expectRejects("Changed model-route idempotency payload", () => upsertSignalDeskModelRouteServer(access, {
+    ...routeInput,
+    maxCostUsd: routeInput.maxCostUsd + 0.01,
+  }), "MODEL_ROUTE_IDEMPOTENCY_CONFLICT");
+  await expectRejects("Unpaired model-route escalation", () => upsertSignalDeskModelRouteServer(access, {
+    ...routeInput,
+    escalationProvider: "gemini",
+    idempotencyKey: "model-route-unpaired-escalation",
+  }), "MODEL_ROUTE_SHAPE_INVALID");
+
+  await routeRef.set({ ...stored, pId: "ML" });
+  await expectRejects("Wrong-product current model-route overwrite", () => upsertSignalDeskModelRouteServer(access, {
+    ...routeInput,
+    idempotencyKey: "model-route-wrong-product-overwrite",
+  }), "MODEL_ROUTE_CURRENT_SHAPE_INVALID");
+  const runPolicy = await createPolicy("Model route execution authority");
+  const targetId = await importOne(runPolicy.sourcePolicyId, "Model route execution authority");
+  await expectRejects("Wrong-product model-route execution authority", () => runSignalDeskAiAssistServer(access, {
+    idempotencyKey: "model-route-wrong-product-execution",
+    targetId,
+    task: "quality-critic",
+  }), "SignalDesk AI route is not active");
+}
+
+async function assertProviderBudgetConfigurationContracts() {
+  const providerRef = db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS).doc("provider_gemini_ai");
+  const providerCurrent = (await providerRef.get()).data();
+  const providerInput = {
+    credentialState: providerCurrent.credentialState,
+    dailyBudgetUsd: providerCurrent.dailyBudgetUsd,
+    disabledReason: providerCurrent.disabledReason || undefined,
+    idempotencyKey: "provider-account-gemini-ai-current",
+    monthlyBudgetUsd: providerCurrent.monthlyBudgetUsd,
+    ownerApproved: providerCurrent.ownerApproved,
+    perRunBudgetUsd: providerCurrent.perRunBudgetUsd,
+    provider: "gemini",
+    status: providerCurrent.status,
+    use: "ai",
+  };
+  const [providerFirst, providerReplay] = await Promise.all([
+    upsertSignalDeskProviderAccountServer(access, providerInput),
+    upsertSignalDeskProviderAccountServer(access, providerInput),
+  ]);
+  assert(providerFirst.providerAccountId === providerReplay.providerAccountId, "Concurrent provider-account replay created divergent results");
+  assert(!Object.prototype.hasOwnProperty.call(providerFirst, "pId") && !Object.prototype.hasOwnProperty.call(providerFirst, "updatedBy"), "Provider-account mutation returned private persisted fields");
+  assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.action === "provider_account_upsert" && data.entityId === providerRef.id
+  )) === 1, "Provider-account replay duplicated audit or cost effects");
+  await expectRejects("Changed provider-account idempotency payload", () => upsertSignalDeskProviderAccountServer(access, {
+    ...providerInput,
+    dailyBudgetUsd: providerInput.dailyBudgetUsd + 1,
+  }), "PROVIDER_ACCOUNT_IDEMPOTENCY_CONFLICT");
+  await expectRejects("Invalid provider-account budget hierarchy", () => upsertSignalDeskProviderAccountServer(access, {
+    ...providerInput,
+    dailyBudgetUsd: 1,
+    idempotencyKey: "provider-account-invalid-budget",
+    perRunBudgetUsd: 2,
+  }), "SIGNALDESK_PROVIDER_ACCOUNT_BUDGET_INVALID");
+
+  const budgetRef = db.collection(SIGNALDESK_COLLECTIONS.BUDGET_POLICIES).doc("budget_provider_gemini_default");
+  const budgetCurrent = (await budgetRef.get()).data();
+  const budgetInput = {
+    dailyBudgetUsd: budgetCurrent.dailyBudgetUsd,
+    idempotencyKey: "budget-policy-gemini-provider-current",
+    monthlyBudgetUsd: budgetCurrent.monthlyBudgetUsd,
+    name: budgetCurrent.name,
+    perRunBudgetUsd: budgetCurrent.perRunBudgetUsd,
+    provider: "gemini",
+    scope: "provider",
+    status: budgetCurrent.status,
+  };
+  const [budgetFirst, budgetReplay] = await Promise.all([
+    upsertSignalDeskBudgetPolicyServer(access, budgetInput),
+    upsertSignalDeskBudgetPolicyServer(access, budgetInput),
+  ]);
+  assert(budgetFirst.budgetPolicyId === budgetReplay.budgetPolicyId, "Concurrent budget-policy replay created divergent results");
+  assert(!Object.prototype.hasOwnProperty.call(budgetFirst, "pId") && !Object.prototype.hasOwnProperty.call(budgetFirst, "updatedBy"), "Budget-policy mutation returned private persisted fields");
+  assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.action === "budget_policy_upsert" && data.entityId === budgetRef.id
+  )) === 1, "Budget-policy replay duplicated audit or cost effects");
+  await expectRejects("Changed budget-policy idempotency payload", () => upsertSignalDeskBudgetPolicyServer(access, {
+    ...budgetInput,
+    monthlyBudgetUsd: budgetInput.monthlyBudgetUsd + 1,
+  }), "BUDGET_POLICY_IDEMPOTENCY_CONFLICT");
+  await expectRejects("Invalid budget-policy hierarchy", () => upsertSignalDeskBudgetPolicyServer(access, {
+    ...budgetInput,
+    dailyBudgetUsd: 1,
+    idempotencyKey: "budget-policy-invalid-hierarchy",
+    perRunBudgetUsd: 2,
+  }), "SIGNALDESK_BUDGET_POLICY_BUDGET_INVALID");
+}
+
+async function assertConnectorSettingConfigurationContracts() {
+  const connectorInput = {
+    connectorKind: "email-smtp",
+    displayName: "Audit connector email",
+    fromName: "MenuList",
+    idempotencyKey: "connector-setting-email-current",
+    notes: "Founder-controlled connector readiness.",
+    replyToEmail: "reply@example.invalid",
+    senderDomain: "example.invalid",
+    senderEmail: "hello@example.invalid",
+    status: "hold",
+  };
+  const connectorId = `connector_${connectorInput.connectorKind}_${hashValue([
+    connectorInput.connectorKind,
+    connectorInput.senderEmail,
+    connectorInput.displayName.toLowerCase(),
+  ].join("|")).slice(0, 18)}`;
+  const connectorRef = db.collection(SIGNALDESK_COLLECTIONS.CONNECTOR_SETTINGS).doc(connectorId);
+  await upsertSignalDeskConnectorSettingServer(access, {
+    ...connectorInput,
+    idempotencyKey: "connector-setting-email-initial",
+  });
+  const channelHealthRef = db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES).doc("email");
+  await connectorRef.set({ legacyPrivate: "remove-on-authoritative-write" }, { merge: true });
+  await channelHealthRef.set({ legacyPrivate: "remove-on-authoritative-write" }, { merge: true });
+  const auditCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.action === "connector_setting_upsert" && data.entityId === connectorRef.id
+  ));
+  const [first, replay] = await Promise.all([
+    upsertSignalDeskConnectorSettingServer(access, connectorInput),
+    upsertSignalDeskConnectorSettingServer(access, connectorInput),
+  ]);
+  assert(first.connectorId === replay.connectorId, "Concurrent connector-setting replay created divergent results");
+  assert(first.connectorId === connectorId, "Connector-setting identity did not match its normalized authority key");
+  assert(!Object.prototype.hasOwnProperty.call(first, "pId") && !Object.prototype.hasOwnProperty.call(first, "updatedBy"), "Connector-setting mutation returned private persisted fields");
+  const stored = (await connectorRef.get()).data();
+  assert(!Object.prototype.hasOwnProperty.call(stored || {}, "legacyPrivate"), "Connector-setting authoritative replacement preserved a stale unknown field");
+  assert(await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
+    data.action === "connector_setting_upsert" && data.entityId === connectorRef.id
+  )) === auditCountBefore + 1, "Connector-setting replay duplicated audit or cost effects");
+  const storedChannelHealth = (await channelHealthRef.get()).data();
+  assert(storedChannelHealth?.pId === SIGNALDESK_PRODUCT_CODE, "Connector-setting health projection omitted SignalDesk product identity");
+  assert(!Object.prototype.hasOwnProperty.call(storedChannelHealth || {}, "legacyPrivate"), "Connector-setting health replacement preserved a stale unknown field");
+  const settingsWorkspace = await loadSignalDeskWorkspaceServer(access, "settings");
+  assert(settingsWorkspace.workspace.channelHealth.some((health) => health.channel === "email"), "Connector-setting health projection was invisible to settings consumers");
+  await expectRejects("Changed connector-setting idempotency payload", () => upsertSignalDeskConnectorSettingServer(access, {
+    ...connectorInput,
+    notes: "Changed input cannot reuse the settled operation key.",
+  }), "CONNECTOR_SETTING_IDEMPOTENCY_CONFLICT");
+
+  await channelHealthRef.set({ ...storedChannelHealth, pId: "ML" });
+  await expectRejects("Wrong-product current connector health overwrite", () => upsertSignalDeskConnectorSettingServer(access, {
+    ...connectorInput,
+    idempotencyKey: "connector-setting-wrong-product-health",
+  }), "CHANNEL_HEALTH_CURRENT_SHAPE_INVALID");
+  assert((await channelHealthRef.get()).data()?.pId === "ML", "Wrong-product connector health authority was overwritten");
+  await channelHealthRef.set({ ...storedChannelHealth, pId: SIGNALDESK_PRODUCT_CODE });
+  await upsertSignalDeskChannelWindowStateServer(access, {
+    channel: "whatsapp",
+    idempotencyKey: "connector-health-global-whatsapp-window",
+    source: "inbound",
+    status: "open",
+  });
+  const whatsappChannelHealthRef = db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES).doc("whatsapp");
+  const storedWhatsappChannelHealth = (await whatsappChannelHealthRef.get()).data();
+  assert(storedWhatsappChannelHealth?.pId === SIGNALDESK_PRODUCT_CODE, "Channel-window health projection omitted SignalDesk product identity");
+  const whatsappWindowRef = db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_WINDOW_STATES).doc("window_whatsapp_global");
+  const storedWhatsappWindow = (await whatsappWindowRef.get()).data();
+  assert(storedWhatsappWindow?.pId === SIGNALDESK_PRODUCT_CODE, "Channel-window mutation omitted SignalDesk product identity");
+  await whatsappWindowRef.set({ ...storedWhatsappWindow, pId: "ML" });
+  await expectRejects("Wrong-product current channel-window overwrite", () => upsertSignalDeskChannelWindowStateServer(access, {
+    channel: "whatsapp",
+    idempotencyKey: "connector-window-wrong-product-whatsapp",
+    source: "inbound",
+    status: "closed",
+  }), "CHANNEL_WINDOW_CURRENT_SHAPE_INVALID");
+  assert((await whatsappWindowRef.get()).data()?.pId === "ML", "Wrong-product channel-window authority was overwritten");
+  await whatsappWindowRef.set({ ...storedWhatsappWindow, pId: SIGNALDESK_PRODUCT_CODE });
+  await whatsappWindowRef.set({ targetId: "target_wrong_lineage" }, { merge: true });
+  await expectRejects("Mismatched current channel-window lineage", () => upsertSignalDeskChannelWindowStateServer(access, {
+    channel: "whatsapp",
+    idempotencyKey: "connector-window-mismatched-lineage",
+    source: "inbound",
+    status: "closed",
+  }), "CHANNEL_WINDOW_CURRENT_SHAPE_INVALID");
+  await whatsappWindowRef.set(storedWhatsappWindow);
+  await whatsappChannelHealthRef.set({ ...storedWhatsappChannelHealth, pId: "ML" });
+  await expectRejects("Wrong-product current channel-window health overwrite", () => upsertSignalDeskChannelWindowStateServer(access, {
+    channel: "whatsapp",
+    idempotencyKey: "connector-health-wrong-product-whatsapp-window",
+    source: "inbound",
+    status: "closed",
+  }), "CHANNEL_HEALTH_CURRENT_SHAPE_INVALID");
+  assert((await whatsappChannelHealthRef.get()).data()?.pId === "ML", "Wrong-product channel-window health authority was overwritten");
+  await whatsappChannelHealthRef.set({ ...storedWhatsappChannelHealth, pId: SIGNALDESK_PRODUCT_CODE });
+
+  await connectorRef.set({ ...stored, pId: "ML" });
+  await expectRejects("Wrong-product current connector-setting overwrite", () => upsertSignalDeskConnectorSettingServer(access, {
+    ...connectorInput,
+    idempotencyKey: "connector-setting-wrong-product",
+  }), "CONNECTOR_SETTING_CURRENT_SHAPE_INVALID");
+  assert((await connectorRef.get()).data()?.pId === "ML", "Wrong-product connector-setting authority was overwritten");
 }
 
 async function assertTeamAccessManagement() {
@@ -3875,16 +4475,33 @@ async function assertFhrsFhisSourceProvider() {
     assert(retentionDocument, "FHRS/FHIS provider retention fixture was not readable");
     const retentionBeforeRefresh = retentionDocument.data();
     const refreshDueBefore = retentionBeforeRefresh.refreshDueAt?.toMillis?.();
-    const refreshedRetention = await refreshSignalDeskProviderSourceRetentionServer(access, {
+    const retentionRefreshInput = {
+      idempotencyKey: `provider-retention-refresh-${retentionDocument.id}`,
       notes: "Provider record rechecked in the focused retention contract.",
       providerSourceRetentionId: retentionDocument.id,
       status: "refreshed",
-    });
+    };
+    const refreshedRetention = await refreshSignalDeskProviderSourceRetentionServer(access, retentionRefreshInput);
+    const replayedRetention = await refreshSignalDeskProviderSourceRetentionServer(access, retentionRefreshInput);
+    assert(
+      JSON.stringify(replayedRetention) === JSON.stringify(refreshedRetention),
+      "Provider retention exact retry returned divergent authority",
+    );
     assert(refreshedRetention.status === "refreshed" && refreshedRetention.lastRefreshedAt, "Provider retention refresh did not return refreshed authority");
+    await expectRejects("Provider retention changed-input retry", () => refreshSignalDeskProviderSourceRetentionServer(access, {
+      ...retentionRefreshInput,
+      status: "blocked",
+    }), "PROVIDER_SOURCE_RETENTION_IDEMPOTENCY_CONFLICT");
     const retentionAfterRefresh = (await retentionDocument.ref.get()).data();
     assert(typeof retentionAfterRefresh.lastRefreshedAt?.toMillis === "function", "Provider retention refresh stored lastRefreshedAt as a non-Timestamp");
     assert(typeof retentionAfterRefresh.retentionExpiresAt?.toMillis === "function", "Provider retention refresh stored retentionExpiresAt as a non-Timestamp");
     assert(retentionAfterRefresh.refreshDueAt?.toMillis?.() === refreshDueBefore, "Provider retention refresh rewrote an untouched refreshDueAt timestamp");
+    await retentionDocument.ref.set({ sourceDataLifecycleState: "completed" }, { merge: true });
+    await expectRejects("Provider retention refresh after lifecycle completion", () => refreshSignalDeskProviderSourceRetentionServer(access, {
+      ...retentionRefreshInput,
+      idempotencyKey: `${retentionRefreshInput.idempotencyKey}-completed`,
+    }), "PROVIDER_SOURCE_RETENTION_LIFECYCLE_COMPLETED");
+    await retentionDocument.ref.set({ sourceDataLifecycleState: admin.firestore.FieldValue.delete() }, { merge: true });
     const foreignRetentionRef = db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_SOURCE_RETENTION).doc("retention_foreign_product_fixture");
     await foreignRetentionRef.set({
       ...retentionAfterRefresh,
@@ -3894,6 +4511,7 @@ async function assertFhrsFhisSourceProvider() {
       updatedAt: timestampNow(),
     });
     await expectRejects("Foreign provider retention refresh", () => refreshSignalDeskProviderSourceRetentionServer(access, {
+      idempotencyKey: "provider-retention-foreign-refresh",
       providerSourceRetentionId: foreignRetentionRef.id,
       status: "refreshed",
     }), "PROVIDER_SOURCE_RETENTION_SHAPE_INVALID");
@@ -3911,6 +4529,16 @@ async function assertFhrsFhisSourceProvider() {
     assert(JSON.stringify(Object.keys(replay.run).sort()) === JSON.stringify(Object.keys(result.run).sort()), "Source-provider replay run DTO keyset drifted");
     assert(JSON.stringify(Object.keys(replay.targets[0]).sort()) === JSON.stringify(Object.keys(result.targets[0]).sort()), "Source-provider replay target DTO keyset drifted");
     assert(!("pId" in replay.run) && !("updatedBy" in replay.run) && !("pId" in replay.targets[0]), "Source-provider replay leaked persistence fields");
+    const completedSourceProviderClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+      .doc(`source_provider_${hashValue(`${access.userId}|source-provider-fhrs-e2e`)}`);
+    const completedSourceProviderClaim = (await completedSourceProviderClaimRef.get()).data();
+    await completedSourceProviderClaimRef.set({ ...completedSourceProviderClaim, entityId: "provider_redirected" });
+    await expectRejects("Source provider replay with redirected claim entity", () => runSignalDeskSourceProviderServer(access, {
+      city: "Leeds", country: "UK", idempotencyKey: "source-provider-fhrs-e2e", maxResults: 2,
+      provider: "fhrs-fhis", query: "restaurant", sourcePolicyId: policy.sourcePolicyId,
+    }), "Source provider idempotency conflict");
+    assert(providerRequestCount === 1, "Redirected source-provider claim repeated provider work");
+    await completedSourceProviderClaimRef.set(completedSourceProviderClaim);
     await expectRejects("Source provider changed-input idempotency conflict", () => runSignalDeskSourceProviderServer(access, {
       city: "Leeds", country: "UK", idempotencyKey: "source-provider-fhrs-e2e", maxResults: 1,
       provider: "fhrs-fhis", query: "cafes", sourcePolicyId: policy.sourcePolicyId,
@@ -4019,10 +4647,24 @@ async function assertProviderBudgetReservation() {
 async function assertProviderEvaluationAndTrustPartnerAccounting() {
   const currentDay = new Date().toISOString().slice(0, 10);
   const currentMonth = currentDay.slice(0, 7);
-  const initialEvaluation = await createSignalDeskProviderEvaluationServer(access, {
+  const [initialEvaluation, replayedEvaluation] = await Promise.all([
+    createSignalDeskProviderEvaluationServer(access, {
+      idempotencyKey: "provider-evaluation-accounting-v1",
+      provider: "apify",
+      use: "discovery",
+    }),
+    createSignalDeskProviderEvaluationServer(access, {
+      idempotencyKey: "provider-evaluation-accounting-v1",
+      provider: "apify",
+      use: "discovery",
+    }),
+  ]);
+  assert(JSON.stringify(replayedEvaluation) === JSON.stringify(initialEvaluation), "Provider evaluation exact retry did not replay its first result");
+  await expectRejects("Provider evaluation changed-input retry", () => createSignalDeskProviderEvaluationServer(access, {
+    idempotencyKey: "provider-evaluation-accounting-v1",
     provider: "apify",
-    use: "discovery",
-  });
+    use: "research",
+  }), "PROVIDER_EVALUATION_IDEMPOTENCY_CONFLICT");
   assert(initialEvaluation.accountingMonth === currentMonth, "Provider evaluation lost its accounting period");
   assert(initialEvaluation.sampleSize === 1, "Provider evaluation did not use the exact provider/use/month population");
   assert(initialEvaluation.populationTruncated === false, "Bounded provider evaluation falsely reported truncation");
@@ -4037,11 +4679,26 @@ async function assertProviderEvaluationAndTrustPartnerAccounting() {
     unrelatedVendorRefs[2].set({ accountingMonth: "2000-01", provider: "apify", providerUse: "discovery" }),
   ]);
   const isolatedEvaluation = await createSignalDeskProviderEvaluationServer(access, {
+    idempotencyKey: "provider-evaluation-accounting-v2",
     provider: "apify",
     use: "discovery",
   });
   assert(isolatedEvaluation.sampleSize === 1, "Provider evaluation mixed another provider, use, or accounting month");
   await Promise.all(unrelatedVendorRefs.map((ref) => ref.delete()));
+  const evaluationRef = db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_EVALUATIONS).doc("provider_eval_apify_discovery");
+  await evaluationRef.set({ stalePrivateField: "must-be-removed" }, { merge: true });
+  await createSignalDeskProviderEvaluationServer(access, {
+    idempotencyKey: "provider-evaluation-accounting-v3",
+    provider: "apify",
+    use: "discovery",
+  });
+  assert((await evaluationRef.get()).data()?.stalePrivateField === undefined, "Provider evaluation refresh retained stale authoritative fields");
+  await evaluationRef.set({ pId: "ML" }, { merge: true });
+  await expectRejects("Foreign provider evaluation refresh", () => createSignalDeskProviderEvaluationServer(access, {
+    idempotencyKey: "provider-evaluation-accounting-v4",
+    provider: "apify",
+    use: "discovery",
+  }), "PROVIDER_EVALUATION_CURRENT_SHAPE_INVALID");
 
   const partner = await upsertSignalDeskTrustPartnerProfileServer(access, {
     audienceFitScore: 90,
@@ -4262,7 +4919,7 @@ async function assertProviderEvaluationAndTrustPartnerAccounting() {
   }), "TRUST_PARTNER_RENEWAL_RECOMMENDATION_MISMATCH");
 
   const trustPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_trust-partner");
-  await trustPauseRef.set({ killSwitchId: trustPauseRef.id, pId: SIGNALDESK_PRODUCT_CODE, scope: "trust-partner", status: "active" });
+  await trustPauseRef.set(activeKillSwitchFixture("trust-partner"));
   await expectRejects("Paused trust-partner profile admission", () => upsertSignalDeskTrustPartnerProfileServer(access, {
     audienceFitScore: 80,
     baselineReachScore: 80,
@@ -4413,6 +5070,21 @@ async function assertResearchAgentTable() {
     assert(JSON.stringify(Object.keys(duplicate.run).sort()) === JSON.stringify(Object.keys(result.run).sort()), "Research replay run DTO keyset drifted");
     assert(JSON.stringify(Object.keys(duplicate.rows[0]).sort()) === JSON.stringify(Object.keys(result.rows[0]).sort()), "Research replay row DTO keyset drifted");
     assert(!("pId" in duplicate.run) && !("updatedBy" in duplicate.run) && !("pId" in duplicate.rows[0]), "Research replay leaked persistence fields");
+    const researchClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+      .doc(`research_${hashValue("research-agent-e2e-fhrs")}`);
+    const completedResearchClaim = (await researchClaimRef.get()).data();
+    await researchClaimRef.set({ ...completedResearchClaim, entityId: "research_redirected" });
+    await expectRejects("Research replay with redirected claim entity", () => createSignalDeskResearchAgentRunServer(access, {
+      city: "Leeds",
+      country: "UK",
+      idempotencyKey: "research-agent-e2e-fhrs",
+      maxResults: 2,
+      prompt: "Find cafes in Leeds with weak menu presence",
+      provider: "fhrs-fhis",
+      researchType: "market-map",
+      sourcePolicyId: policy.sourcePolicyId,
+    }), "RESEARCH_IDEMPOTENCY_CONFLICT");
+    await researchClaimRef.set(completedResearchClaim);
     const afterDuplicateRows = await expectCollectionCount(SIGNALDESK_COLLECTIONS.RESEARCH_TABLE_ROWS, (data) => data.researchRunId === result.run.researchRunId);
     assert(afterDuplicateRows === rowCount, "Duplicate research run created extra rows");
     const independentResearch = await createSignalDeskResearchAgentRunServer(access, {
@@ -5292,9 +5964,60 @@ async function assertAiShadowReviewLearning() {
     createdAt: timestamp,
   });
   await db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE).set({
+    activatedAccountCount: 0,
     founderAttentionMinutes: 10,
+    lostOpportunityCount: 0,
+    openOpportunityCount: 0,
+    pId: SIGNALDESK_PRODUCT_CODE,
+    pipelineCurrency: null,
+    pipelineValueMinor: 0,
+    revenueAccountCount: 0,
+    revenueControlSummaryId: SIGNALDESK_SUMMARY_DOCS.REVENUE,
+    stalledActivationCount: 0,
     updatedAt: timestamp,
-  }, { merge: true });
+    weightedPipelineValueMinor: 0,
+    wonOpportunityCount: 0,
+  });
+
+  const wrongProductRunId = `${aiRunId}_wrong_product`;
+  const validRunData = (await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(aiRunId).get()).data();
+  assert(validRunData, "AI shadow fixture did not create its provider run");
+  await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(wrongProductRunId).set({
+    ...validRunData,
+    aiRunId: wrongProductRunId,
+    pId: "ML",
+  });
+  const evalBeforeWrongProductRun = (await db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc(modelEvalId).get()).data();
+  await expectRejects("Wrong-product AI shadow run review", () => reviewSignalDeskAiShadowRunServer(access, {
+    aiRunId: wrongProductRunId,
+    decision: "accepted",
+    founderAttentionMinutes: 1,
+  }), "AI_WORKER_RUN_SHAPE_INVALID");
+  assert(JSON.stringify((await db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc(modelEvalId).get()).data()) === JSON.stringify(evalBeforeWrongProductRun), "Wrong-product AI run changed model-evaluation truth");
+
+  const evalRef = db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc(modelEvalId);
+  const validEvalData = (await evalRef.get()).data();
+  assert(validEvalData, "AI shadow fixture did not create model-evaluation authority");
+  await evalRef.set({ pId: "ML" }, { merge: true });
+  await expectRejects("Wrong-product AI model-evaluation review", () => reviewSignalDeskAiShadowRunServer(access, {
+    aiRunId,
+    decision: "accepted",
+    founderAttentionMinutes: 1,
+  }), "MODEL_EVAL_SHAPE_INVALID");
+  assert((await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(aiRunId).get()).data()?.reviewDecision === undefined, "Wrong-product model evaluation caused a partial run review");
+  await evalRef.set(validEvalData);
+
+  const revenueRef = db.collection(SIGNALDESK_COLLECTIONS.REVENUE_CONTROL_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.REVENUE);
+  const validRevenueData = (await revenueRef.get()).data();
+  assert(validRevenueData, "AI shadow fixture did not create revenue-summary authority");
+  await revenueRef.set({ pId: "ML" }, { merge: true });
+  await expectRejects("Wrong-product AI review revenue summary", () => reviewSignalDeskAiShadowRunServer(access, {
+    aiRunId,
+    decision: "accepted",
+    founderAttentionMinutes: 1,
+  }), "REVENUE_CONTROL_SUMMARY_SHAPE_INVALID");
+  assert((await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(aiRunId).get()).data()?.reviewDecision === undefined, "Wrong-product revenue summary caused a partial run review");
+  await revenueRef.set(validRevenueData);
 
   await expectRejects("Non-founder AI shadow review", () => reviewSignalDeskAiShadowRunServer({
     ...access,
@@ -5634,6 +6357,33 @@ async function assertAiVolumeMode() {
   };
 
   try {
+    const scoreEvalRef = db.collection(SIGNALDESK_COLLECTIONS.MODEL_EVALS).doc("model_eval_score_gemini");
+    await scoreEvalRef.set({
+      editRate: 0,
+      model: "gemini-3.5-flash-lite",
+      modelEvalId: scoreEvalRef.id,
+      modelRouteId: "model_route_score",
+      pId: "ML",
+      passRate: 1,
+      provider: "gemini",
+      rejectedFactRate: 0,
+      sampleSize: 1,
+      status: "passed",
+      task: "score",
+      updatedAt: timestampNow(),
+    });
+    const collisionClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+      .doc(`ai_assist_${hashValue(`${access.userId}|ai-assist-model-eval-collision`)}`);
+    await expectRejects("Wrong-product model-evaluation AI admission", () => runSignalDeskAiAssistServer(access, {
+      idempotencyKey: "ai-assist-model-eval-collision",
+      instruction: "This request must stop before provider work.",
+      targetId,
+      task: "score",
+    }), "MODEL_EVAL_SHAPE_INVALID");
+    assert(assistCallCount === 0 && criticCallCount === 0, "Wrong-product model evaluation reached the AI provider");
+    assert(!(await collisionClaimRef.get()).exists, "Wrong-product model evaluation reserved a durable AI claim");
+    await scoreEvalRef.delete();
+
     await db.collection(SIGNALDESK_COLLECTIONS.PROVIDER_ACCOUNTS).doc("provider_gemini_ai").set({ dailyBudgetUsd: 0.05, perRunBudgetUsd: 0.05, spentMonthUsd: 0, spentTodayUsd: 0 }, { merge: true });
     await db.collection(SIGNALDESK_COLLECTIONS.BUDGET_POLICIES).doc("budget_provider_gemini_default").set({ dailyBudgetUsd: 0.05, perRunBudgetUsd: 0.05, spentMonthUsd: 0, spentTodayUsd: 0 }, { merge: true });
     const directBudgetRace = await Promise.allSettled([
@@ -5661,6 +6411,7 @@ async function assertAiVolumeMode() {
     assert(accountAfterMissingBudget.data()?.spentTodayUsd === 0.05, "AI finalization lost provider-account spend without an optional budget policy");
     await upsertSignalDeskBudgetPolicyServer(access, {
       dailyBudgetUsd: 5,
+      idempotencyKey: "ai-assist-gemini-provider-budget",
       monthlyBudgetUsd: 100,
       name: "Gemini provider budget",
       perRunBudgetUsd: 5,
@@ -5748,6 +6499,13 @@ async function assertAiVolumeMode() {
     const directReplay = await runSignalDeskAiAssistServer(access, directAssistInput);
     assert(Boolean(directReplay.aiRunId), "Completed direct AI assist did not replay its durable run");
     assert(assistCallCount === 1 && criticCallCount === 0, "Completed direct AI assist replay repeated paid model calls");
+    const directAssistClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+      .doc(`ai_assist_${hashValue(`${access.userId}|${directAssistInput.idempotencyKey}`)}`);
+    const completedDirectAssistClaim = (await directAssistClaimRef.get()).data();
+    await directAssistClaimRef.set({ ...completedDirectAssistClaim, operation: "ai_assist_score" });
+    await expectRejects("Direct AI assist replay with changed claim operation", () => runSignalDeskAiAssistServer(access, directAssistInput), "AI assist idempotency conflict");
+    assert(assistCallCount === 1 && criticCallCount === 0, "Changed AI assist claim operation repeated paid model calls");
+    await directAssistClaimRef.set(completedDirectAssistClaim);
     await expectRejects("Direct AI assist changed-input idempotency conflict", () => runSignalDeskAiAssistServer(access, {
       ...directAssistInput,
       instruction: "Prepare different internal evidence.",
@@ -5900,7 +6658,7 @@ async function assertAiVolumeMode() {
     const blockedEscalationChild = await db.collection(SIGNALDESK_COLLECTIONS.AI_WORKER_RUNS).doc(blockedEscalation.childRunIds[0]).get();
     assert(blockedEscalation.status === "completed", "Unavailable escalation incorrectly failed the internal child record");
     assert(blockedEscalationChild.data()?.escalationBlocked === true && blockedEscalationChild.data()?.confidence === "low", "Unavailable non-Gemini escalation did not remain review-required");
-    await scoreRouteRef.set({ escalationModel: "gemini-2.5-flash", escalationProvider: "gemini", updatedAt: timestampNow() }, { merge: true });
+    await scoreRouteRef.set({ escalationModel: "gemini-3.6-flash", escalationProvider: "gemini", updatedAt: timestampNow() }, { merge: true });
 
     signalDeskAiProvider.runSignalDeskAiAssist = async (input) => ({
       confidence: "high",
@@ -6643,6 +7401,18 @@ async function assertOutcomeIntegrityAndProofPermissions() {
   );
   assert(contentSource.contentSourceId === contentSourceReplay.contentSourceId, "Concurrent content-source update did not converge");
   assert(contentSource.sourceUrl === "https://menulist.ai/", "Content source URL was not canonicalized safely");
+  const contentSourceClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`content_source_${hashValue(`${access.userId}|${contentSourceInput.idempotencyKey}`)}`);
+  const contentSourceClaim = (await contentSourceClaimRef.get()).data();
+  assert(contentSourceClaim, "Content-source replay claim was not persisted");
+  await contentSourceClaimRef.set({ operation: "proof_permission_upsert" }, { merge: true });
+  await expectRejects("Wrong-operation content-source claim", () => upsertSignalDeskContentSourceServer(access, contentSourceInput), "CONTENT_SOURCE_IDEMPOTENCY_CONFLICT");
+  await contentSourceClaimRef.set(contentSourceClaim);
+  await contentSourceClaimRef.set({
+    resultSnapshot: { ...(contentSourceClaim.resultSnapshot || {}), pId: "ML" },
+  }, { merge: true });
+  await expectRejects("Wrong-product content-source replay snapshot", () => upsertSignalDeskContentSourceServer(access, contentSourceInput), "CONTENT_SOURCE_REPLAY_MISSING");
+  await contentSourceClaimRef.set(contentSourceClaim);
   await expectRejects("Conflicting content-source key reuse", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, title: "Changed content source" }), "CONTENT_SOURCE_IDEMPOTENCY_CONFLICT");
   await expectRejects("Mutable content-source URL", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, idempotencyKey: `content-source-url-${targetId}`, sourceUrl: "https://menulist.ai/other" }), "CONTENT_SOURCE_PROVENANCE_IMMUTABLE");
   await expectRejects("Malformed content-source URL", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, contentSourceId: undefined, idempotencyKey: `content-source-url-invalid-${targetId}`, sourceUrl: "javascript:alert(1)" }), "Content URL must be a valid credential-free HTTP(S) URL");
@@ -6719,6 +7489,13 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     upsertSignalDeskSelfServiceCtaServer(access, contentAssetCtaInput),
   ]);
   assert(contentAssetCta.ctaId === contentAssetCtaReplay.ctaId, "Concurrent content-asset CTA creation did not converge");
+  const contentCtaClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`content_cta_${hashValue(`${access.userId}|${contentAssetCtaInput.idempotencyKey}`)}`);
+  const contentCtaClaim = (await contentCtaClaimRef.get()).data();
+  assert(contentCtaClaim, "Content-CTA replay claim was not persisted");
+  await contentCtaClaimRef.set({ actorId: "other-signaldesk-actor" }, { merge: true });
+  await expectRejects("Wrong-actor content-CTA claim", () => upsertSignalDeskSelfServiceCtaServer(access, contentAssetCtaInput), "CONTENT_CTA_IDEMPOTENCY_CONFLICT");
+  await contentCtaClaimRef.set(contentCtaClaim);
 
   await expectRejects("Customer proof without permission", () => createSignalDeskContentAssetServer(access, {
     canonicalMessage: "An owner-approved proof message for the local activation cohort.",
@@ -6750,6 +7527,13 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     "Concurrent proof-permission upsert did not report its exact four-write effect set once",
   );
   assert(permission.proofPermissionId === permissionReplay.proofPermissionId, "Concurrent proof permission did not converge");
+  const proofPermissionClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`proof_permission_${hashValue(`${access.userId}|${proofPermissionInput.idempotencyKey}`)}`);
+  const proofPermissionClaim = (await proofPermissionClaimRef.get()).data();
+  assert(proofPermissionClaim, "Proof-permission replay claim was not persisted");
+  await proofPermissionClaimRef.set({ pId: "ML" }, { merge: true });
+  await expectRejects("Wrong-product proof-permission claim", () => upsertSignalDeskProofPermissionServer(access, proofPermissionInput), "PROOF_PERMISSION_IDEMPOTENCY_CONFLICT");
+  await proofPermissionClaimRef.set(proofPermissionClaim);
   await expectRejects("Conflicting proof-permission key reuse", () => upsertSignalDeskProofPermissionServer(access, { ...proofPermissionInput, status: "hold" }), "PROOF_PERMISSION_IDEMPOTENCY_CONFLICT");
   await expectRejects("Unknown proof-permission target", () => upsertSignalDeskProofPermissionServer(access, { ...proofPermissionInput, idempotencyKey: `proof-permission-missing-${targetId}`, targetId: "target_missing" }), "Target not found");
   const contentAssetInput = {
@@ -6777,6 +7561,24 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     "Concurrent source-backed content-asset creation did not report its exact six-write effect set once",
   );
   assert(asset.contentAssetId === assetReplay.contentAssetId, "Concurrent content asset creation did not converge");
+  const contentAssetClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`content_asset_${hashValue(`${access.userId}|${contentAssetInput.idempotencyKey}`)}`);
+  const contentAssetClaim = (await contentAssetClaimRef.get()).data();
+  assert(contentAssetClaim, "Content-asset replay claim was not persisted");
+  await contentAssetClaimRef.set({ pId: "ML" }, { merge: true });
+  await expectRejects("Wrong-product content-asset replay claim", () => createSignalDeskContentAssetServer(access, contentAssetInput), "CONTENT_ASSET_IDEMPOTENCY_CONFLICT");
+  await contentAssetClaimRef.set(contentAssetClaim);
+  await contentAssetClaimRef.set({ actorId: "other-signaldesk-actor" }, { merge: true });
+  await expectRejects("Wrong-actor content-asset replay claim", () => createSignalDeskContentAssetServer(access, contentAssetInput), "CONTENT_ASSET_IDEMPOTENCY_CONFLICT");
+  await contentAssetClaimRef.set(contentAssetClaim);
+  const redirectedContentAssetId = `content_asset_redirect_${hashValue(targetId).slice(0, 16)}`;
+  await db.collection(SIGNALDESK_COLLECTIONS.CONTENT_ASSETS).doc(redirectedContentAssetId).set(contentAssetFixture(redirectedContentAssetId, {
+    canonicalMessage: "A different valid asset must not satisfy the original replay claim.",
+    title: "Redirected content-asset replay fixture",
+  }));
+  await contentAssetClaimRef.set({ entityId: redirectedContentAssetId }, { merge: true });
+  await expectRejects("Redirected content-asset replay claim", () => createSignalDeskContentAssetServer(access, contentAssetInput), "CONTENT_ASSET_IDEMPOTENCY_CONFLICT");
+  await contentAssetClaimRef.set(contentAssetClaim);
   await expectRejects("Referenced content-source audience mutation", () => upsertSignalDeskContentSourceServer(access, {
     ...contentSourceInput,
     defaultAudience: "general",
@@ -6852,6 +7654,7 @@ async function assertOutcomeIntegrityAndProofPermissions() {
   }));
   await db.collection(SIGNALDESK_COLLECTIONS.CONTENT_ASSETS).doc(historicalAssetId).set(contentAssetFixture(historicalAssetId, {
     canonicalMessage: historicalAssetInput.canonicalMessage,
+    ctaId: historicalAssetInput.ctaId,
     primaryAudience: historicalAssetInput.primaryAudience,
     proofLevel: historicalAssetInput.proofLevel,
     proofScopes: historicalAssetInput.proofScopes,
@@ -7045,6 +7848,16 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     reviewSignalDeskContentAssetServer(access, assetReadyReviewInput),
   ]);
   assert(founderReadyAsset.status === "ready" && founderReadyAssetReplay.status === "ready", "Concurrent founder content-asset readiness did not converge");
+  const contentAssetReviewClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`content_asset_review_${hashValue(`${access.userId}|${assetReadyReviewInput.idempotencyKey}`)}`);
+  const contentAssetReviewClaim = (await contentAssetReviewClaimRef.get()).data();
+  assert(contentAssetReviewClaim, "Content-asset review replay claim was not persisted");
+  await contentAssetReviewClaimRef.set({ pId: "ML" }, { merge: true });
+  await expectRejects("Wrong-product content-asset review claim", () => reviewSignalDeskContentAssetServer(access, assetReadyReviewInput), "CONTENT_ASSET_REVIEW_IDEMPOTENCY_CONFLICT");
+  await contentAssetReviewClaimRef.set(contentAssetReviewClaim);
+  await contentAssetReviewClaimRef.set({ entityId: asset.contentAssetId }, { merge: true });
+  await expectRejects("Redirected content-asset review claim", () => reviewSignalDeskContentAssetServer(access, assetReadyReviewInput), "CONTENT_ASSET_REVIEW_IDEMPOTENCY_CONFLICT");
+  await contentAssetReviewClaimRef.set(contentAssetReviewClaim);
   await expectRejects("Conflicting content-asset review key reuse", () => reviewSignalDeskContentAssetServer(access, {
     ...assetReadyReviewInput,
     reason: "Changed founder review reason.",
@@ -7106,6 +7919,16 @@ async function assertOutcomeIntegrityAndProofPermissions() {
   );
   assert(drafts.length === 1, "Permissioned proof did not generate one review-gated draft");
   assert(drafts[0].contentDraftId === draftReplay[0].contentDraftId, "Concurrent content draft generation did not converge");
+  const contentDraftGenerationClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`content_draft_generation_${hashValue(`${access.userId}|${draftGenerationInput.idempotencyKey}`)}`);
+  const contentDraftGenerationClaim = (await contentDraftGenerationClaimRef.get()).data();
+  assert(contentDraftGenerationClaim, "Content-draft generation replay claim was not persisted");
+  await contentDraftGenerationClaimRef.set({ pId: "ML" }, { merge: true });
+  await expectRejects("Wrong-product content-draft generation claim", () => generateSignalDeskContentDistributionDraftsServer(access, draftGenerationInput), "CONTENT_DRAFT_GENERATION_IDEMPOTENCY_CONFLICT");
+  await contentDraftGenerationClaimRef.set(contentDraftGenerationClaim);
+  await contentDraftGenerationClaimRef.set({ entityId: urlLessAssetA.contentAssetId }, { merge: true });
+  await expectRejects("Redirected content-draft generation claim", () => generateSignalDeskContentDistributionDraftsServer(access, draftGenerationInput), "CONTENT_DRAFT_GENERATION_IDEMPOTENCY_CONFLICT");
+  await contentDraftGenerationClaimRef.set(contentDraftGenerationClaim);
   await expectRejects("Conflicting content draft generation key reuse", () => generateSignalDeskContentDistributionDraftsServer(access, { ...draftGenerationInput, channels: ["email"] }), "CONTENT_DRAFT_GENERATION_IDEMPOTENCY_CONFLICT");
   await expectRejects("Content draft regeneration under a new key", () => generateSignalDeskContentDistributionDraftsServer(access, {
     ...draftGenerationInput,
@@ -7263,9 +8086,15 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     idempotencyKey: `content-review-${targetId}`,
     reviewReason: "Approved for deterministic schedule testing.",
   };
+  const contentReviewQueueRef = db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES)
+    .doc(SIGNALDESK_SUMMARY_DOCS.QUEUES);
+  await contentReviewQueueRef.delete();
   const queueBeforeContentReview = await db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.QUEUES).get();
   const humanReviewBeforeContentReview = Number(queueBeforeContentReview.data()?.humanReview || 0);
   const contentReviewCostBefore = await readContentWriteEstimate();
+  const contentReviewDraftRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_DISTRIBUTION_DRAFTS)
+    .doc(contentReviewInput.contentDraftId);
+  await contentReviewDraftRef.set({ legacyPrivate: "remove-on-authoritative-review" }, { merge: true });
   const [reviewedDraft, reviewedDraftReplay] = await Promise.all([
     reviewSignalDeskContentDistributionDraftServer(access, contentReviewInput),
     reviewSignalDeskContentDistributionDraftServer(access, contentReviewInput),
@@ -7275,8 +8104,24 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     "Concurrent content-draft review did not report its exact six-write effect set once",
   );
   assert(reviewedDraft.contentDraftId === reviewedDraftReplay.contentDraftId, "Concurrent content review did not converge");
+  const reviewedDraftPersistence = (await contentReviewDraftRef.get()).data();
+  assert(!Object.prototype.hasOwnProperty.call(reviewedDraftPersistence || {}, "legacyPrivate"), "Content review retained a stale private draft field");
+  assert(reviewedDraftPersistence?.createdAt?.toDate, "Content review converted persisted draft creation time away from Firestore Timestamp");
+  assert(reviewedDraftPersistence?.latestContentDraftId === contentReviewInput.contentDraftId, "Content review lost validated draft-head identity");
+  const contentReviewClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`content_review_${hashValue(`${access.userId}|${contentReviewInput.idempotencyKey}`)}`);
+  const contentReviewClaim = (await contentReviewClaimRef.get()).data();
+  assert(contentReviewClaim, "Content-review replay claim was not persisted");
+  await contentReviewClaimRef.set({ operation: "content_distribution_draft_schedule" }, { merge: true });
+  await expectRejects("Wrong-operation content-review claim", () => reviewSignalDeskContentDistributionDraftServer(access, contentReviewInput), "CONTENT_REVIEW_IDEMPOTENCY_CONFLICT");
+  await contentReviewClaimRef.set(contentReviewClaim);
+  await contentReviewClaimRef.set({ entityId: scheduleRevocationDrafts[0].contentDraftId }, { merge: true });
+  await expectRejects("Redirected content-review claim", () => reviewSignalDeskContentDistributionDraftServer(access, contentReviewInput), "CONTENT_REVIEW_IDEMPOTENCY_CONFLICT");
+  await contentReviewClaimRef.set(contentReviewClaim);
   const queueAfterContentReview = await db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.QUEUES).get();
   assert(Number(queueAfterContentReview.data()?.humanReview || 0) === humanReviewBeforeContentReview - 1, "Concurrent content review did not settle the human-review queue exactly once");
+  assert(queueAfterContentReview.data()?.queueSummaryId === SIGNALDESK_SUMMARY_DOCS.QUEUES, "Content review recreated queue truth without canonical identity");
+  assert(projectSignalDeskQueueDocument(queueAfterContentReview.data(), queueAfterContentReview.id), "Content-review-created queue truth was unreadable by the overview projector");
   await expectRejects("Conflicting content review key reuse", () => reviewSignalDeskContentDistributionDraftServer(access, { ...contentReviewInput, approvalStatus: "rejected" }), "CONTENT_REVIEW_IDEMPOTENCY_CONFLICT");
   const contentReviewAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "content_distribution_draft_review" && data.entityId === drafts[0].contentDraftId);
   assert(contentReviewAuditCount === 1, "Concurrent content review duplicated audit effects");
@@ -7296,14 +8141,35 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     "Concurrent content scheduling did not report its exact six-write effect set once",
   );
   assert(calendarItem.contentCalendarItemId === calendarReplay.contentCalendarItemId, "Concurrent content scheduling did not converge");
+  const contentScheduleClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`content_schedule_${hashValue(`${access.userId}|${scheduleInput.idempotencyKey}`)}`);
+  const contentScheduleClaim = (await contentScheduleClaimRef.get()).data();
+  assert(contentScheduleClaim, "Content-schedule replay claim was not persisted");
+  await contentScheduleClaimRef.set({ actorId: "other-signaldesk-actor" }, { merge: true });
+  await expectRejects("Wrong-actor content-schedule claim", () => scheduleSignalDeskContentDistributionDraftServer(access, scheduleInput), "CONTENT_SCHEDULE_IDEMPOTENCY_CONFLICT");
+  await contentScheduleClaimRef.set(contentScheduleClaim);
+  await contentScheduleClaimRef.set({ entityId: "content_calendar_other_valid_entity" }, { merge: true });
+  await expectRejects("Redirected content-schedule claim", () => scheduleSignalDeskContentDistributionDraftServer(access, scheduleInput), "CONTENT_SCHEDULE_IDEMPOTENCY_CONFLICT");
+  await contentScheduleClaimRef.set(contentScheduleClaim);
+  const contentScheduleAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "content_distribution_draft_schedule" && data.entityId === drafts[0].contentDraftId);
+  assert(contentScheduleAuditCount === 1, "Concurrent content scheduling duplicated audit effects");
+  const contentCalendarRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_CALENDAR_ITEMS)
+    .doc(calendarItem.contentCalendarItemId);
+  await contentCalendarRef.set({ legacyPrivate: "remove-on-authoritative-reschedule" }, { merge: true });
+  await scheduleSignalDeskContentDistributionDraftServer(access, {
+    ...scheduleInput,
+    idempotencyKey: `content-schedule-normalize-${targetId}`,
+    scheduledFor: futureIso(3),
+  });
+  const normalizedCalendarPersistence = (await contentCalendarRef.get()).data();
+  assert(!Object.prototype.hasOwnProperty.call(normalizedCalendarPersistence || {}, "legacyPrivate"), "Content scheduling retained a stale private calendar field");
+  assert(normalizedCalendarPersistence?.createdAt?.toDate, "Content scheduling converted persisted calendar creation time away from Firestore Timestamp");
   await expectRejects("Conflicting content schedule key reuse", () => scheduleSignalDeskContentDistributionDraftServer(access, { ...scheduleInput, status: "hold" }), "CONTENT_SCHEDULE_IDEMPOTENCY_CONFLICT");
   await expectRejects("Queued content draft regeneration", () => generateSignalDeskContentDistributionDraftsServer(access, {
     channels: [drafts[0].channel],
     contentAssetId: asset.contentAssetId,
     idempotencyKey: `content-drafts-queued-regeneration-${targetId}`,
   }), "CONTENT_DRAFT_ALREADY_EXISTS");
-  const contentScheduleAuditCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => data.action === "content_distribution_draft_schedule" && data.entityId === drafts[0].contentDraftId);
-  assert(contentScheduleAuditCount === 1, "Concurrent content scheduling duplicated audit effects");
   await expectRejects("Held content asset performance", () => recordSignalDeskContentPerformanceServer(access, {
     activations: 0,
     channel: "blog",
@@ -7458,7 +8324,7 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     publishedAt: pastIso(),
     views: 1,
   }), "CONTENT_PERFORMANCE_PREDATES_AUTHORITY");
-  const approvedDraftPerformance = await recordSignalDeskContentPerformanceServer(access, {
+  const approvedDraftPerformanceInput = {
     activations: 0,
     channel: drafts[0].channel,
     clicks: 2,
@@ -7471,9 +8337,24 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     publicationUrl: performancePublicationUrl,
     publishedAt: performancePublishedAt,
     views: 30,
-  });
+  };
+  const approvedDraftPerformance = await recordSignalDeskContentPerformanceServer(access, approvedDraftPerformanceInput);
   assert(approvedDraftPerformance.contentPerformanceId, "Approved content draft performance was not recorded");
   assert(approvedDraftPerformance.publicationUrl === performancePublicationUrl, "Approved content draft performance lost publication provenance");
+  const contentPerformanceClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS)
+    .doc(`content_performance_${hashValue(`${access.userId}|${approvedDraftPerformanceInput.idempotencyKey}`)}`);
+  const contentPerformanceClaim = (await contentPerformanceClaimRef.get()).data();
+  assert(contentPerformanceClaim, "Content-performance replay claim was not persisted");
+  await contentPerformanceClaimRef.set({ pId: "ML" }, { merge: true });
+  await expectRejects("Wrong-product content-performance claim", () => recordSignalDeskContentPerformanceServer(access, approvedDraftPerformanceInput), "CONTENT_PERFORMANCE_IDEMPOTENCY_CONFLICT");
+  await contentPerformanceClaimRef.set(contentPerformanceClaim);
+  const contentPerformanceRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_PERFORMANCE_SUMMARIES)
+    .doc(approvedDraftPerformance.contentPerformanceId);
+  const contentPerformanceSnapshot = (await contentPerformanceRef.get()).data();
+  assert(contentPerformanceSnapshot, "Content-performance replay result was not persisted");
+  await contentPerformanceRef.set({ views: approvedDraftPerformanceInput.views + 1 }, { merge: true });
+  await expectRejects("Request-inconsistent content-performance replay result", () => recordSignalDeskContentPerformanceServer(access, approvedDraftPerformanceInput), "CONTENT_PERFORMANCE_IDEMPOTENCY_CONFLICT");
+  await contentPerformanceRef.set(contentPerformanceSnapshot);
   const distributedAssetSnap = await db.collection(SIGNALDESK_COLLECTIONS.CONTENT_ASSETS).doc(asset.contentAssetId).get();
   assert(distributedAssetSnap.data()?.status === "distributed", "Approved content draft performance did not mark the asset distributed");
   const publishedDraftSnap = await db.collection(SIGNALDESK_COLLECTIONS.CONTENT_DISTRIBUTION_DRAFTS).doc(drafts[0].contentDraftId).get();
@@ -7546,7 +8427,7 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     reviewReason: "Approved before the pause fixture so a conservative schedule hold remains available.",
   });
   const contentPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_content-distribution");
-  await contentPauseRef.set({ status: "active" }, { merge: true });
+  await contentPauseRef.set(activeKillSwitchFixture("content-distribution"));
   const activeContentPauseSnap = await contentPauseRef.get();
   assert(activeContentPauseSnap.data()?.status === "active", "Content pause fixture was not active before settlement");
   const queueBeforePausedDraftSafety = await db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.QUEUES).get();
@@ -7858,6 +8739,7 @@ async function assertContentAuthorityPublishedRemovalReconciliation() {
       status: "published",
     })),
   ]);
+  await controlRef.delete();
   const firstCounts = await controlCounts();
   const firstHoldInput = sourceInput(source, "published-removal-1", "hold");
   await upsertSignalDeskContentSourceServer(access, firstHoldInput);
@@ -7887,6 +8769,9 @@ async function assertContentAuthorityPublishedRemovalReconciliation() {
   const afterFirstCounts = await controlCounts();
   assert(afterFirstCounts.incidentCount === firstCounts.incidentCount + 3, "Published authority incident total was not exact");
   assert(afterFirstCounts.openIncidentCount === firstCounts.openIncidentCount + 3, "Published authority open count was not exact");
+  const recreatedControlSnap = await controlRef.get();
+  assert(recreatedControlSnap.data()?.controlRoomSummaryId === SIGNALDESK_SUMMARY_DOCS.CONTROL_ROOM, "Incident writer recreated control-room truth without canonical identity");
+  assert(projectSignalDeskControlRoomDocument(recreatedControlSnap.data(), recreatedControlSnap.id), "Incident-created control-room truth was unreadable by the overview projector");
 
   await upsertSignalDeskContentSourceServer(access, firstHoldInput);
   const replayCounts = await controlCounts();
@@ -8516,6 +9401,38 @@ async function assertProviderSendClaimAndRecovery() {
       providerCallCount += 1;
       assert(providerInput.senderDomain === "menulist.test", "Provider send did not receive the approved sender domain");
       await new Promise((resolve) => setTimeout(resolve, 25));
+      const inboundAt = timestampNow();
+      const replyRaceConversationId = `conv_${ready.targetId}`;
+      const replyRaceTarget = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(ready.targetId).get();
+      assert(typeof replyRaceTarget.data()?.displayName === "string", "Provider reply-race target name is missing");
+      await Promise.all([
+        db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(replyRaceConversationId).set({
+          channel: "email",
+          conversationId: replyRaceConversationId,
+          lastInboundAt: inboundAt,
+          lastInboundOccurredAt: inboundAt,
+          lastMessagePreview: "Yes, please send the details.",
+          pId: SIGNALDESK_PRODUCT_CODE,
+          state: "interested",
+          targetId: ready.targetId,
+          targetName: replyRaceTarget.data()?.displayName,
+          updatedAt: inboundAt,
+        }),
+        replyRaceTarget.ref.set({
+          latestConversationId: replyRaceConversationId,
+          nextAction: "outcome",
+          status: "replied",
+          updatedAt: inboundAt,
+        }, { merge: true }),
+        db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES).doc("email").set({
+          channel: "email",
+          configured: true,
+          lastError: "Inbound complaint paused this channel.",
+          pId: SIGNALDESK_PRODUCT_CODE,
+          status: "paused",
+          updatedAt: inboundAt,
+        }),
+      ]);
       return { provider: "smtp", providerMessageId: "provider-message-e2e", status: "sent" };
     };
     const providerOperationHash = hashValue(`${ready.approvalId}|email|provider-send-v1`).slice(0, 32);
@@ -8538,6 +9455,45 @@ async function assertProviderSendClaimAndRecovery() {
     ));
     assert(providerPreflightAuditCount === 0, "Deterministic provider preflight failure wrote a send-start audit");
     process.env.MENULIST_SIGNALDESK_SMTP_PORT = "587";
+    const malformedGlobalPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_global-outbound");
+    await malformedGlobalPauseRef.set({
+      killSwitchId: malformedGlobalPauseRef.id,
+      pId: "ML",
+      reason: "Foreign inactive row must not bypass strict SignalDesk pause authority.",
+      scope: "global-outbound",
+      status: "inactive",
+      updatedAt: timestampNow(),
+    });
+    await expectRejects("Provider send with malformed inactive kill-switch authority", () => sendSignalDeskApprovedMessageServer(access, {
+      approvalId: ready.approvalId,
+      channel: "email",
+    }), "KILL_SWITCH_PRODUCT_MISMATCH");
+    assert(!(await providerClaimRef.get()).exists, "Malformed inactive kill-switch authority created a provider send claim");
+    assert(providerCallCount === 0, "Malformed inactive kill-switch authority reached the provider adapter");
+    await malformedGlobalPauseRef.delete();
+    const providerHealthRef = db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES).doc("email");
+    const providerHealthBeforeAdmission = (await providerHealthRef.get()).data();
+    await providerHealthRef.set({ ...providerHealthBeforeAdmission, pId: "ML" });
+    await expectRejects("Provider send with wrong-product current channel health", () => sendSignalDeskApprovedMessageServer(access, {
+      approvalId: ready.approvalId,
+      channel: "email",
+    }), "CHANNEL_HEALTH_CURRENT_SHAPE_INVALID");
+    assert(!(await providerClaimRef.get()).exists, "Wrong-product channel health created a provider send claim");
+    assert(providerCallCount === 0, "Wrong-product channel health reached the provider adapter");
+    if (providerHealthBeforeAdmission) {
+      await providerHealthRef.set({ ...providerHealthBeforeAdmission, pId: SIGNALDESK_PRODUCT_CODE });
+    } else {
+      await providerHealthRef.delete();
+    }
+    await providerHealthRef.set({
+      channel: "email",
+      configured: true,
+      lastError: "stale settlement error",
+      legacyPrivate: "remove-on-authoritative-write",
+      pId: SIGNALDESK_PRODUCT_CODE,
+      status: "warning",
+      updatedAt: timestampNow(),
+    });
     const concurrent = await Promise.allSettled([
       sendSignalDeskApprovedMessageServer(access, { approvalId: ready.approvalId, channel: "email" }),
       sendSignalDeskApprovedMessageServer(access, { approvalId: ready.approvalId, channel: "email" }),
@@ -8549,6 +9505,39 @@ async function assertProviderSendClaimAndRecovery() {
     assert(replay.replay === true && !("body" in replay) && !("recipient" in replay) && !("subject" in replay), "Completed provider send replay was not a redacted historical acknowledgement");
     assert(replay.currentAuthority === true, "Completed provider replay did not confirm current CTA authority");
     assert(providerCallCount === 1, "Completed provider send replay called the provider again");
+    const completedProviderClaim = (await providerClaimRef.get()).data();
+    await providerClaimRef.set({ ...completedProviderClaim, actorId: "poisoned-provider-send-actor" });
+    await expectRejects("Provider send replay with poisoned claim actor", () => sendSignalDeskApprovedMessageServer(access, {
+      approvalId: ready.approvalId,
+      channel: "email",
+    }), "PROVIDER_SEND_REVIEW_REQUIRED");
+    assert(providerCallCount === 1, "Poisoned provider send claim reached the provider adapter");
+    await providerClaimRef.set(completedProviderClaim);
+    const providerChannelHealth = (await db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES).doc("email").get()).data();
+    assert(providerChannelHealth?.pId === SIGNALDESK_PRODUCT_CODE && providerChannelHealth?.status === "paused", "Provider settlement overwrote a newer paused channel-health state");
+    assert(providerChannelHealth?.lastError === "Inbound complaint paused this channel." && !Object.prototype.hasOwnProperty.call(providerChannelHealth || {}, "legacyPrivate"), "Provider settlement lost current pause evidence or preserved stale channel-health fields");
+    const replyRaceConversationId = `conv_${ready.targetId}`;
+    const [replyRaceConversation, replyRaceTarget] = await Promise.all([
+      db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES).doc(replyRaceConversationId).get(),
+      db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(ready.targetId).get(),
+    ]);
+    assert(replyRaceConversation.data()?.state === "interested", "Provider settlement downgraded an in-flight inbound reply to contacted");
+    assert(replyRaceConversation.data()?.lastMessagePreview === "Yes, please send the details.", "Provider settlement replaced the newer inbound preview");
+    assert(replyRaceConversation.data()?.lastOutboundAt?.toDate, "Provider settlement lost its outbound timestamp while preserving the reply");
+    assert(replyRaceTarget.data()?.status === "replied" && replyRaceTarget.data()?.nextAction === "outcome", "Provider settlement downgraded the replied target workflow");
+    await providerHealthRef.set({
+      channel: "email",
+      configured: true,
+      lastError: null,
+      pId: SIGNALDESK_PRODUCT_CODE,
+      status: "healthy",
+      updatedAt: timestampNow(),
+    });
+    signalDeskProviderAdapters.sendSignalDeskProviderMessage = async (providerInput) => {
+      providerCallCount += 1;
+      assert(providerInput.senderDomain === "menulist.test", "Provider send did not receive the approved sender domain");
+      return { provider: "smtp", providerMessageId: "provider-message-e2e", status: "sent" };
+    };
     const readyTargetDetailSnap = await db.collection(SIGNALDESK_COLLECTIONS.TARGETS).doc(ready.targetId).get();
     const readyContactIdentityRef = db.collection(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES)
       .doc(`email_${hashValue(readyTargetDetailSnap.data()?.email)}`);
@@ -8632,6 +9621,29 @@ async function assertProviderSendClaimAndRecovery() {
       provider: "owned-email",
     }), "SIGNALDESK_CONTACT_AUTHORITY_STALE");
     assert(providerCallCount === providerCallsBeforeRevokedAdmission, "Revoked contact authority reached the provider adapter");
+
+    const wrongProductApprovalPolicy = await createPolicy("Wrong-product approval execution");
+    const wrongProductApprovalReady = await prepareApprovedTarget(wrongProductApprovalPolicy.sourcePolicyId, "WrongProductApprovalExecution");
+    const wrongProductApprovalRef = db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(wrongProductApprovalReady.approvalId);
+    const validApprovalTruth = (await wrongProductApprovalRef.get()).data();
+    assert(validApprovalTruth, "Wrong-product approval fixture did not create approval authority");
+    await wrongProductApprovalRef.set({ ...validApprovalTruth, pId: "ML" });
+    const providerCallsBeforeWrongProductApproval = providerCallCount;
+    await expectRejects("Export with wrong-product approval", () => exportSignalDeskMessageServer(access, wrongProductApprovalReady.approvalId), "APPROVAL_SHAPE_INVALID");
+    await expectRejects("Assisted handoff with wrong-product approval", () => prepareSignalDeskChannelHandoffServer(access, {
+      approvalId: wrongProductApprovalReady.approvalId,
+      channel: "email",
+    }), "APPROVAL_SHAPE_INVALID");
+    await expectRejects("Provider send with wrong-product approval", () => sendSignalDeskApprovedMessageServer(access, {
+      approvalId: wrongProductApprovalReady.approvalId,
+      channel: "email",
+    }), "APPROVAL_SHAPE_INVALID");
+    await expectRejects("Sequencer handoff with wrong-product approval", () => createSignalDeskSequencerHandoffServer(access, {
+      approvalId: wrongProductApprovalReady.approvalId,
+      provider: "owned-email",
+    }), "APPROVAL_SHAPE_INVALID");
+    assert(providerCallCount === providerCallsBeforeWrongProductApproval, "Wrong-product approval reached the provider adapter");
+    await wrongProductApprovalRef.set(validApprovalTruth);
 
     const crossChannelPolicy = await createPolicy("Email rail channel binding");
     const crossChannelReady = await prepareApprovedTarget(crossChannelPolicy.sourcePolicyId, "EmailRailCrossChannel");
@@ -8808,6 +9820,25 @@ async function assertProviderSendClaimAndRecovery() {
     ));
     assert(sequencePreflightAuditCount === 0, "Deterministic owned-sequence preflight failure wrote a send-start audit");
     process.env.MENULIST_SIGNALDESK_PHYSICAL_ADDRESS = "Local E2E address";
+    const sequenceApprovalRef = db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(sequenceReady.approvalId);
+    const sequenceApprovalTruth = (await sequenceApprovalRef.get()).data();
+    assert(sequenceApprovalTruth, "Owned-sequence approval fixture did not create approval authority");
+    await sequenceApprovalRef.set({ ...sequenceApprovalTruth, pId: "ML" });
+    await expectRejects("Owned sequence with wrong-product approval", () => sendSignalDeskOwnedSequenceStepServer(access, {
+      sequencerHandoffId: sequenceHandoff.sequencerHandoffId,
+    }), "APPROVAL_SHAPE_INVALID");
+    assert(!(await sequenceClaimRef.get()).exists, "Wrong-product approval created an owned-sequence send claim");
+    assert(sequenceProviderCalls === 0, "Wrong-product approval reached the owned-sequence provider adapter");
+    await sequenceApprovalRef.set(sequenceApprovalTruth);
+    const sequenceHealthRef = db.collection(SIGNALDESK_COLLECTIONS.CHANNEL_HEALTH_SUMMARIES).doc("email");
+    const sequenceHealthBeforeAdmission = (await sequenceHealthRef.get()).data();
+    await sequenceHealthRef.set({ ...sequenceHealthBeforeAdmission, pId: "ML" });
+    await expectRejects("Owned sequence with wrong-product current channel health", () => sendSignalDeskOwnedSequenceStepServer(access, {
+      sequencerHandoffId: sequenceHandoff.sequencerHandoffId,
+    }), "CHANNEL_HEALTH_CURRENT_SHAPE_INVALID");
+    assert(!(await sequenceClaimRef.get()).exists, "Wrong-product channel health created an owned-sequence send claim");
+    assert(sequenceProviderCalls === 0, "Wrong-product channel health reached the owned-sequence provider adapter");
+    await sequenceHealthRef.set({ ...sequenceHealthBeforeAdmission, pId: SIGNALDESK_PRODUCT_CODE });
     const concurrentSequence = await Promise.allSettled([
       sendSignalDeskOwnedSequenceStepServer(access, { sequencerHandoffId: sequenceHandoff.sequencerHandoffId }),
       sendSignalDeskOwnedSequenceStepServer(access, { sequencerHandoffId: sequenceHandoff.sequencerHandoffId }),
@@ -8820,6 +9851,13 @@ async function assertProviderSendClaimAndRecovery() {
     assert(sequenceReplay.providerMessageId === "sequence-provider-message-e2e", "Completed owned sequence replay lost durable provider truth");
     assert(sequenceReplay.currentAuthority === true, "Completed owned sequence replay did not confirm current CTA and sender authority");
     assert(sequenceProviderCalls === 1, "Completed owned sequence replay called the provider again");
+    const completedSequenceClaim = (await sequenceClaimRef.get()).data();
+    await sequenceClaimRef.set({ ...completedSequenceClaim, entityId: "poisoned-sequence-export" });
+    await expectRejects("Owned sequence replay with redirected claim entity", () => sendSignalDeskOwnedSequenceStepServer(access, {
+      sequencerHandoffId: sequenceHandoff.sequencerHandoffId,
+    }), "OWNED_SEQUENCE_SEND_REVIEW_REQUIRED");
+    assert(sequenceProviderCalls === 1, "Redirected owned-sequence claim reached the provider adapter");
+    await sequenceClaimRef.set(completedSequenceClaim);
     const sequenceExportCount = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGE_EXPORTS, (data) => (
       data.approvalId === sequenceReady.approvalId && data.status === "sent"
     ));
@@ -9132,6 +10170,31 @@ async function main() {
     console.log("SignalDesk focused Operating Layer E2E passed");
     return;
   }
+  if (process.env.SIGNALDESK_E2E_FOCUS === "audience-segment") {
+    await runStage("audience-segment", assertAudienceSegmentContracts);
+    console.log("SignalDesk focused audience-segment E2E passed");
+    return;
+  }
+  if (process.env.SIGNALDESK_E2E_FOCUS === "enrichment-waterfall-config") {
+    await runStage("enrichment-waterfall-config", assertEnrichmentWaterfallConfigurationContracts);
+    console.log("SignalDesk focused enrichment-waterfall configuration E2E passed");
+    return;
+  }
+  if (process.env.SIGNALDESK_E2E_FOCUS === "model-route") {
+    await runStage("model-route", assertModelRouteConfigurationContracts);
+    console.log("SignalDesk focused model-route E2E passed");
+    return;
+  }
+  if (process.env.SIGNALDESK_E2E_FOCUS === "provider-budget-config") {
+    await runStage("provider-budget-config", assertProviderBudgetConfigurationContracts);
+    console.log("SignalDesk focused provider/budget configuration E2E passed");
+    return;
+  }
+  if (process.env.SIGNALDESK_E2E_FOCUS === "connector-setting-config") {
+    await runStage("connector-setting-config", assertConnectorSettingConfigurationContracts);
+    console.log("SignalDesk focused connector-setting configuration E2E passed");
+    return;
+  }
   if (process.env.SIGNALDESK_E2E_FOCUS === "revenue") {
     await runStage("revenue-operating-layer", assertRevenueOperatingLayer);
     console.log("SignalDesk focused Revenue Operating Layer E2E passed");
@@ -9146,6 +10209,15 @@ async function main() {
     await runStage("sender-domain-authority", assertSenderDomainAuthorityIntegrity);
     await runStage("provider-send-recovery", assertProviderSendClaimAndRecovery);
     console.log("SignalDesk focused sender-outbound E2E passed");
+    return;
+  }
+  if (process.env.SIGNALDESK_E2E_FOCUS === "idempotency-claims") {
+    await runStage("fhrs-fhis-source-provider", assertFhrsFhisSourceProvider);
+    await runStage("research-agent-table", assertResearchAgentTable);
+    await runStage("ai-volume", assertAiVolumeMode);
+    await runStage("sender-domain-authority", assertSenderDomainAuthorityIntegrity);
+    await runStage("provider-send-recovery", assertProviderSendClaimAndRecovery);
+    console.log("SignalDesk focused idempotency-claims E2E passed");
     return;
   }
   if (process.env.SIGNALDESK_E2E_FOCUS === "source-import") {

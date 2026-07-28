@@ -25,26 +25,25 @@ service firebase.storage {
     }
 
     match /campaigncue/templates/platform/shared/{templateId}/{fileName} {
-      allow read: if isPlatformAdmin() || hasCampaignCueWorkspaceClaims();
-      allow write: if isPlatformAdmin()
+      allow read: if isPlatformAdmin() || isCurrentCampaignCueWorkspaceMember();
+      allow create: if isPlatformAdmin()
+        && resource == null
         && isCampaignCueTemplateArtifactName(fileName)
         && isCampaignCueTemplateArtifactType()
         && request.resource.size <= 750 * 1024;
-      allow delete: if isPlatformAdmin()
-        && isCampaignCueTemplateArtifactName(fileName);
+      allow update, delete: if false;
     }
 
     match /campaigncue/templates/platform/{categoryId}/{templateId}/{fileName} {
-      allow read: if (isPlatformAdmin() || hasCampaignCueWorkspaceClaims())
+      allow read: if (isPlatformAdmin() || isCurrentCampaignCueWorkspaceMember())
         && isCampaignCuePackTemplateCategoryId(categoryId);
-      allow write: if isPlatformAdmin()
+      allow create: if isPlatformAdmin()
+        && resource == null
         && isCampaignCuePackTemplateCategoryId(categoryId)
         && isCampaignCueTemplateArtifactName(fileName)
         && isCampaignCueTemplateArtifactType()
         && request.resource.size <= 750 * 1024;
-      allow delete: if isPlatformAdmin()
-        && isCampaignCuePackTemplateCategoryId(categoryId)
-        && isCampaignCueTemplateArtifactName(fileName);
+      allow update, delete: if false;
     }
 
     match /campaigncue/templates/workspaces/{workspaceId}/{templateId}/{fileName} {
@@ -103,8 +102,40 @@ service firebase.storage {
           || (
             hasCampaignCueWorkspaceClaims()
             && workspaceId == currentCampaignCueWorkspaceId()
+            && isCampaignCueWorkspaceMemberData(
+              workspaceId,
+              firestore.get(
+                /databases/(default)/documents/campaigncueWorkspaces/$(workspaceId)
+              ).data
+            )
           )
         );
+    }
+
+    function isCurrentCampaignCueWorkspaceMember() {
+      return hasCampaignCueWorkspaceClaims()
+        && isCampaignCueWorkspaceMember(currentCampaignCueWorkspaceId());
+    }
+
+    function isCampaignCueWorkspaceMemberData(workspaceId, data) {
+      return data.id == workspaceId
+        && data.workspaceId == workspaceId
+        && data.productId == 'CC'
+        && string(data.tId) == string(request.auth.token.tenantId)
+        && string(data.sId) == string(request.auth.token.storeId)
+        && data.status == 'active'
+        && data.members is map
+        && data.members.keys().hasAny([request.auth.uid])
+        && data.members[request.auth.uid] is map
+        && data.members[request.auth.uid].role in [
+          'owner',
+          'admin',
+          'marketer',
+          'reviewer',
+          'local_manager',
+          'agency_member',
+          'billing_admin'
+        ];
     }
 
     function isCampaignCuePackTemplateCategoryId(categoryId) {

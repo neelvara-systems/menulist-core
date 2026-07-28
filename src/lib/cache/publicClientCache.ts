@@ -1,6 +1,7 @@
 import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
 import { invalidateOwnerBusinessAssistantBrowserCache } from "@lib/ownerBusinessAssistant/cacheInvalidation";
 import { secureError } from "@lib/security/secureLogger";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS = 4000;
 const PUBLIC_CACHE_CONTEXT_MAX_LENGTH = 64;
@@ -75,7 +76,7 @@ const executePublicClientCacheRevalidation = async (
     } catch (error) {
         if (process.env.NODE_ENV !== 'production') {
             logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
-                errorName: error instanceof Error ? error.name : typeof error,
+                errorName: getBoundedErrorName(error) || typeof error,
             });
         }
     } finally {

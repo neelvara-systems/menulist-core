@@ -1,19 +1,19 @@
+import { resolveStorePermissionScopeDocumentIdAliases } from '@lib/permissions/scopeDocumentId';
+
 type LocalExportScopeSource = Record<string, unknown> | null | undefined;
 
-function normalizeNumericScopePart(value: unknown): string {
-    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-    const normalized = raw.trim();
-    if (!normalized || normalized !== raw || !/^[1-9]\d*$/.test(normalized)) return '';
-    const numeric = Number(normalized);
-    return Number.isSafeInteger(numeric) && numeric > 0 && String(numeric) === normalized
-        ? normalized
-        : '';
-}
-
 export function resolveLocalExportStorageScope(source: LocalExportScopeSource): string {
-    const tenantId = normalizeNumericScopePart(source?.tenantId ?? source?.tId);
-    const storeId = normalizeNumericScopePart(source?.storeId ?? source?.sId);
-    return tenantId && storeId ? `${tenantId}:${storeId}` : '';
+    const tenantScope = resolveStorePermissionScopeDocumentIdAliases([
+        source?.tenantId,
+        source?.tId,
+    ]);
+    const storeScope = resolveStorePermissionScopeDocumentIdAliases([
+        source?.storeId,
+        source?.sId,
+    ]);
+    return tenantScope && storeScope
+        ? `${tenantScope.documentId}:${storeScope.documentId}`
+        : '';
 }
 
 function localPdfKey(

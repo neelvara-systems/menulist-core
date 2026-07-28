@@ -53,6 +53,7 @@ const snapshotBoundary = read('src/lib/ops/notificationOpsSnapshotBoundary.ts');
 const alerts = read('src/lib/ops/alerts.ts');
 const recipientResolver = read('src/lib/owner-notifications/recipientResolver.ts');
 const currentPlatformUser = read('src/lib/auth/currentPlatformUser.ts');
+const sessionUserDocumentId = read('src/lib/auth/sessionUserDocumentId.ts');
 const currentPlatformUserTest = read('scripts/verification/test-current-platform-user.ts');
 const firestoreIndexes = read('firestore.indexes.json');
 const answerlatticeFirestoreIndexes = read('firestore-answerlattice.indexes.json');
@@ -222,11 +223,14 @@ assertIncludes(recipientResolver, ['options.onRead?.()'], 'owner recipient parti
 assertIncludes(currentPlatformUser, [
   'hasValidUnblockedLifecycleState',
   '!hasValidUnblockedLifecycleState(userData)',
-  'export const resolveCurrentSessionUserDocumentId = (session: unknown): string | null => {',
-  'normalized.every((documentId) => documentId === first)',
+  "export { resolveCurrentSessionUserDocumentId } from './sessionUserDocumentId';",
   'const sessionUserId = resolveCurrentSessionUserDocumentId(session);',
   'const userDocumentId = resolveCurrentSessionUserDocumentId(sessionRecord);',
 ], 'current platform malformed lifecycle fail-closed boundary');
+assertIncludes(sessionUserDocumentId, [
+  'export const resolveCurrentSessionUserDocumentId = (session: unknown): string | null => {',
+  'normalized.every((documentId) => documentId === first)',
+], 'pure session user identity boundary');
 assertIncludes(currentPlatformUserTest, [
   "authDisabled: 'true'",
   "deleted: 'true'",

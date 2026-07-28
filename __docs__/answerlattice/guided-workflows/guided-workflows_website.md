@@ -1,11 +1,13 @@
 # Answerlattice Guided Workflows Website
 
-> **Status:** Public feature promotion held pending real-client proof
-> **Last verified:** 2026-07-18
+> **Status:** Bounded supporting copy live; primary promotion held pending real-client proof
+> **Last verified:** 2026-07-28
 
 ## Current Website Decision
 
 Do not add a broad autonomous-support claim. The implementation is workspace opt-in and has not yet been proven on a deployed client workflow.
+
+The existing `/product/page-aware-widget` page may describe the declared-target, verified-event, and explicit-handoff contract as supporting detail. Guided Resolution must not become the homepage category, a standalone acquisition promise, or evidence of autonomous product operation until the promotion gate below passes.
 
 ## Approved Supporting Copy
 

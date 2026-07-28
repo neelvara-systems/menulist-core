@@ -1,7 +1,11 @@
-import type { AiMenuManagerPendingOperation } from '@type/aiMenuManager';
+import type {
+    AiMenuManagerPendingOperation,
+    AiMenuManagerReceipt,
+} from '@type/aiMenuManager';
 
 const STALE_OPERATION_MESSAGE = 'Card no longer matches the selected menu';
 const INVALID_GROUP_MESSAGE = 'Prepared updates no longer match this request';
+const TERMINAL_RECEIPT_MISMATCH_MESSAGE = 'Completed card no longer matches this request';
 
 function requireDistinctOperationIds(operations: AiMenuManagerPendingOperation[]): string[] {
     const operationIds = operations.map((operation) => operation.operationId);
@@ -105,4 +109,50 @@ export function resolveCurrentAiMenuManagerOperationGroup(params: {
     }
 
     return currentOperations;
+}
+
+export function resolveAiMenuManagerTerminalReceipt(params: {
+    pendingOperations?: AiMenuManagerPendingOperation[];
+    receipts: AiMenuManagerReceipt[];
+    requestedOperation: AiMenuManagerPendingOperation;
+    expectedStatus: AiMenuManagerReceipt['status'];
+}): AiMenuManagerReceipt | null {
+    const matches = params.receipts.filter((receipt) => (
+        receipt.proposalId === params.requestedOperation.operationId
+    ));
+    if (matches.length === 0) return null;
+    if (
+        matches.length !== 1
+        || params.pendingOperations?.some((operation) => (
+            operation.operationId === params.requestedOperation.operationId
+        ))
+        || matches[0].status !== params.expectedStatus
+        || matches[0].actionType !== params.requestedOperation.card.actionType
+        || String(matches[0].projectId || '') !== String(params.requestedOperation.projectId || '')
+    ) {
+        throw new Error(TERMINAL_RECEIPT_MISMATCH_MESSAGE);
+    }
+    return matches[0];
+}
+
+export function resolveAiMenuManagerTerminalReceiptGroup(params: {
+    pendingOperations?: AiMenuManagerPendingOperation[];
+    receipts: AiMenuManagerReceipt[];
+    requestedOperations: AiMenuManagerPendingOperation[];
+    expectedStatus: Extract<AiMenuManagerReceipt['status'], 'executed' | 'failed'>;
+}): AiMenuManagerReceipt[] | null {
+    assertAiMenuManagerPreparedOperationGroup(params.requestedOperations);
+    const resolved = params.requestedOperations.map((requestedOperation) => (
+        resolveAiMenuManagerTerminalReceipt({
+            pendingOperations: params.pendingOperations,
+            receipts: params.receipts,
+            requestedOperation,
+            expectedStatus: params.expectedStatus,
+        })
+    ));
+    if (resolved.every((receipt) => receipt === null)) return null;
+    if (resolved.some((receipt) => receipt === null)) {
+        throw new Error(TERMINAL_RECEIPT_MISMATCH_MESSAGE);
+    }
+    return resolved as AiMenuManagerReceipt[];
 }

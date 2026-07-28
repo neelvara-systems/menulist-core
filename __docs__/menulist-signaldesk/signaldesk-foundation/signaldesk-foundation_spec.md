@@ -100,6 +100,7 @@ Those belong to later module doc sets.
 - A stale platform-role session cannot retain founder authority after the current user role changes.
 - Blocking, deleting, deactivating, or revoking the current user removes SignalDesk access without waiting for the SignalDesk membership row to change.
 - Human team mutation cannot create a `system-worker` membership.
+- Every protected read or mutation applies its actor-scoped distributed rate limit before SignalDesk membership or permission reads. Provider uncertainty fails closed with a retryable service-unavailable response; established quota exhaustion remains a rate-limit response.
 - Concurrent or ambiguous member identities cannot create duplicate active authority.
 - Self-deactivation is checked against the persisted member identity, not caller-submitted replacement identity.
 - Audit history returns newest-first in stable 50-event pages and can load older pages without skipping events that share a timestamp.

@@ -4,17 +4,23 @@ type AnswerlatticeIntakeMetadataOptions = {
     maxStringLength?: number;
 };
 
-const cleanMetadataText = (value: unknown, maxLength: number) => String(value || '')
-    .replace(/[\u0000-\u001f\u007f]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, maxLength);
+const cleanMetadataText = (value: unknown, maxLength: number) => {
+    try {
+        return String(value ?? '')
+            .replace(/[\u0000-\u001f\u007f]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, maxLength);
+    } catch {
+        return '';
+    }
+};
 
 const stringifyMetadataValue = (value: unknown): string => {
     try {
         return JSON.stringify(value);
     } catch {
-        return String(value);
+        return cleanMetadataText(value, 1_000);
     }
 };
 
@@ -54,8 +60,12 @@ export const sanitizeAnswerlatticeIntakeMetadata = (
         if (typeof nested === 'string') {
             return cleanMetadataText(redactAnswerlatticeIntakeText(nested).text, maxStringLength);
         }
-        if (typeof nested === 'number' || typeof nested === 'boolean') return nested;
-        if (nested instanceof Date) return nested.toISOString();
+        if (typeof nested === 'number') return Number.isFinite(nested) ? nested : null;
+        if (typeof nested === 'boolean') return nested;
+        if (nested instanceof Date) {
+            const millis = nested.getTime();
+            return Number.isFinite(millis) ? nested.toISOString() : null;
+        }
         if (depth >= maxDepth) {
             return cleanMetadataText(
                 redactAnswerlatticeIntakeText(stringifyMetadataValue(nested)).text,
@@ -66,17 +76,25 @@ export const sanitizeAnswerlatticeIntakeMetadata = (
             return nested.slice(0, maxEntries).map(item => sanitizeValue(item, depth + 1));
         }
         if (typeof nested === 'object') {
-            return Object.fromEntries(Object.entries(nested as Record<string, unknown>)
-                .slice(0, maxEntries)
-                .map(([key, item]) => [cleanMetadataText(key, 80), sanitizeValue(item, depth + 1)])
-                .filter(([key]) => Boolean(key)));
+            try {
+                return Object.fromEntries(Object.entries(nested as Record<string, unknown>)
+                    .slice(0, maxEntries)
+                    .map(([key, item]) => [cleanMetadataText(key, 80), sanitizeValue(item, depth + 1)])
+                    .filter(([key]) => Boolean(key)));
+            } catch {
+                return null;
+            }
         }
         return cleanMetadataText(redactAnswerlatticeIntakeText(nested).text, Math.min(maxStringLength, 200));
     };
 
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
-        .slice(0, maxEntries)
-        .map(([key, nested]) => [cleanMetadataText(key, 80), sanitizeValue(nested, 0)])
-        .filter(([key]) => Boolean(key)));
+    try {
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+            .slice(0, maxEntries)
+            .map(([key, nested]) => [cleanMetadataText(key, 80), sanitizeValue(nested, 0)])
+            .filter(([key]) => Boolean(key)));
+    } catch {
+        return {};
+    }
 };

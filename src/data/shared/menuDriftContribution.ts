@@ -24,6 +24,8 @@ const isValidItemId = (value: unknown): value is string => (
     && value.length <= MENU_DRIFT_ITEM_ID_MAX_LENGTH
     && value.trim() === value
     && !value.includes('/')
+    && value !== '.'
+    && value !== '..'
 );
 
 const getSingleChangeCount = (value: unknown): 0 | 1 | null => (

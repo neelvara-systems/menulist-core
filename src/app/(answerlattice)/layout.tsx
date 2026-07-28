@@ -1,6 +1,7 @@
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import AnswerlatticeDashboardLayout from '@/components/answerlattice/AnswerlatticeDashboardLayout'
 import { authOptions } from '@lib/auth'
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser'
 import { ANSWERLATTICE_LOCAL_DEV_PATH_PREFIX, isAnswerlatticeProductHostname } from '@constant/answerlattice/domains'
 import { canUseAnswerlatticeManagement, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope'
 import { getStaticAnswerlatticeAppleStartupImages } from '@lib/answerlattice/pwaAssets'
@@ -84,7 +85,7 @@ export default async function AnswerlatticeLayout({ children }: { children: Reac
     if (!session) {
         redirect("/signin");
     }
-    if (session.user?.active === false || (session.user as any)?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
+    if (!resolveCurrentSessionUserDocumentId(session) || session.user?.active === false || session.user?.deleted === true || session.user?.isVerified === false || isPlatformEntityBlocked(session.user)) {
         redirect("/unauthorized");
     }
     if (!resolveAnswerlatticeSessionScope(session) && !canUseAnswerlatticeManagement(session)) {

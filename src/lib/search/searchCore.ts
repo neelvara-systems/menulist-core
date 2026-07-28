@@ -65,6 +65,7 @@ import type { AiSearchHistory } from '@type/aiSearchHistory';
 import type { AnswerlatticeEntitySearchIndex, AnswerlatticeRelease } from '@type/answerlattice';
 
 import type { CoreSearchInput, CoreSearchReference, CoreSearchResult, SearchPerfMetrics } from './types';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 // Image processing constants
 const TRUSTED_STORAGE_HOST = 'firebasestorage.googleapis.com';
@@ -82,7 +83,8 @@ const LOG_FILE = LOG_FILES.KB_SEARCH;
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
 
 const getSearchCoreErrorName = (error: unknown): string | undefined => {
-    if (error instanceof Error && error.name) return error.name.slice(0, 80);
+    const errorName = getBoundedErrorName(error);
+    if (errorName) return errorName.slice(0, 80);
     if (error && typeof error === 'object' && 'name' in error) {
         const name = (error as { name?: unknown }).name;
         return typeof name === 'string' ? name.slice(0, 80) : undefined;

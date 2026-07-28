@@ -1,12 +1,12 @@
 import { secureError } from '@lib/security/secureLogger';
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 type ChatAnalyticsLogContext = Record<string, boolean | number | string | undefined>;
-
-type ChatAnalyticsErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-};
 
 export const getBoundedChatAnalyticsStringContext = (
     label: string,
@@ -16,23 +16,17 @@ export const getBoundedChatAnalyticsStringContext = (
 };
 
 const getChatAnalyticsErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getChatAnalyticsErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as ChatAnalyticsErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    const normalized = String(code).slice(0, 64);
+    const normalized = getBoundedErrorCode(error);
+    if (normalized === undefined) return undefined;
     return /^[a-zA-Z0-9._:/-]+$/.test(normalized) ? normalized : 'non_standard_code';
 };
 
 const getChatAnalyticsErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object' || !('status' in error)) return undefined;
-    const status = Number((error as ChatAnalyticsErrorLike).status);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export const logChatAnalyticsFailure = (

@@ -183,7 +183,9 @@ export const getOutputJson = (projectData: Project) => buildExportDataFromProjec
 
 // Lazy load ExcelJS only when needed
 const loadExcelJS = async () => {
-    const ExcelJS = (await import('exceljs')).default;
+    // This is a browser-only export flow. Import the browser distribution so
+    // Next.js never traces ExcelJS's Node stream reader or optional AWS SDK.
+    const ExcelJS = (await import('exceljs/dist/exceljs.min.js')).default;
     return ExcelJS;
 };
 

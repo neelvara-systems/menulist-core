@@ -39,3 +39,7 @@
 | PTM-AUTH-004 | Store role loses `VIEW_ANALYTICS` before final summary transaction | Current permission callback rejects; refresh produces no summary write |
 | PTM-AUTH-005 | Root and nested aliases are equivalent string/number forms | Exact canonical scope is accepted |
 | PTM-AUTH-006 | Paid subscription is revoked or changed after report-input reads but before final persistence | Final transaction rejects current entitlement; no summary write |
+| PTM-CLIENT-001 | Tenant changes while a store identifier remains the same | SWR uses a different tenant-plus-store key and former history is not reused |
+| PTM-CLIENT-002 | Summary response carries another tenant or store ID | Runtime response validation rejects before cache mutation |
+| PTM-CLIENT-003 | Summary response has malformed enums, counters, history/latest identity, URLs, or source-boundary values | Runtime response validation rejects and the generic owner-safe error path is used |
+| PTM-CLIENT-004 | Refresh response includes the full readiness report and Firestore timestamp metadata | Browser projection retains only entitlement plus validated summary and drops unused/internal fields |

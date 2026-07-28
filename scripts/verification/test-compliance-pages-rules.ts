@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import {
     assertFails,
-    assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
@@ -47,8 +46,9 @@ async function run(): Promise<void> {
             platformRole: 'PLATFORM',
         }).firestore();
 
-        await assertSucceeds(getDoc(doc(publicDb, 'compliancePages', '202')));
-        await assertSucceeds(getDoc(doc(ownerDb, 'compliancePages', '202')));
+        await assertFails(getDoc(doc(publicDb, 'compliancePages', '202')));
+        await assertFails(getDoc(doc(ownerDb, 'compliancePages', '202')));
+        await assertFails(getDoc(doc(platformDb, 'compliancePages', '202')));
 
         await assertFails(setDoc(doc(publicDb, 'compliancePages', 'public-write'), complianceOverride));
         await assertFails(setDoc(doc(ownerDb, 'compliancePages', '203'), {

@@ -39,6 +39,16 @@ service firebase.storage {
              );
     }
 
+    function isActiveAnswerlatticeWorkspace(tId, sId) {
+      let store = firestore.get(/databases/(default)/documents/stores/$(sId));
+      return store.data.pId == 'AL'
+             && string(store.data.tId) == string(tId)
+             && string(store.data.sId) == string(sId)
+             && store.data.get('active', false) == true
+             && store.data.deleted != true
+             && store.data.authDisabled != true;
+    }
+
     function hasKnowledgeManagementPermission() {
       return isPlatformAdmin()
              || request.auth.token.get('canManageKnowledge', false) == true
@@ -62,9 +72,12 @@ service firebase.storage {
     }
 
     function canAccessSupportMedia(tId, sId) {
-      return isPlatformAdmin()
-             || isPlatformSupport()
-             || (belongsToStore(tId, sId) && hasSupportManagementPermission());
+      return isActiveAnswerlatticeWorkspace(tId, sId)
+             && (
+               isPlatformAdmin()
+               || isPlatformSupport()
+               || (belongsToStore(tId, sId) && hasSupportManagementPermission())
+             );
     }
 
     function hasValidKnowledgeSourceMetadata() {
@@ -118,26 +131,33 @@ service firebase.storage {
     }
 
     match /changelog/files/{tId}/{sId}/{fileId} {
-      allow read: if belongsToStore(tId, sId);
-      allow write: if belongsToStore(tId, sId)
+      allow read: if isActiveAnswerlatticeWorkspace(tId, sId)
+                  && belongsToStore(tId, sId);
+      allow write: if isActiveAnswerlatticeWorkspace(tId, sId)
+                   && belongsToStore(tId, sId)
                    && hasKnowledgeManagementPermission()
                    && isValidImageOrDocumentUpload();
-      allow delete: if belongsToStore(tId, sId) && hasKnowledgeManagementPermission();
+      allow delete: if isActiveAnswerlatticeWorkspace(tId, sId)
+                    && belongsToStore(tId, sId)
+                    && hasKnowledgeManagementPermission();
     }
 
     match /ingestion_source_files/{tId}/{sId}/{fileId} {
-      allow read: if isPlatformAdmin() || belongsToStore(tId, sId);
-      allow write: if (isPlatformAdmin() || (belongsToStore(tId, sId) && hasKnowledgeManagementPermission()))
+      allow read: if isActiveAnswerlatticeWorkspace(tId, sId)
+                  && (isPlatformAdmin() || belongsToStore(tId, sId));
+      allow write: if isActiveAnswerlatticeWorkspace(tId, sId)
+                   && (isPlatformAdmin() || (belongsToStore(tId, sId) && hasKnowledgeManagementPermission()))
                    && isValidKnowledgeSourceType()
                    && request.resource.size <= 10 * 1024 * 1024
                    && hasValidKnowledgeSourceMetadata();
-      allow delete: if isPlatformAdmin() || (belongsToStore(tId, sId) && hasKnowledgeManagementPermission());
+      allow delete: if isActiveAnswerlatticeWorkspace(tId, sId)
+                    && (isPlatformAdmin() || (belongsToStore(tId, sId) && hasKnowledgeManagementPermission()));
     }
 
     match /answerlattice-context/public/{publicBundleId}/{version}/{filePath=**} {
-      allow read: if publicBundleId.matches('^pb_[A-Za-z0-9_-]{8,80}$')
-                  && version.matches('^v[0-9]+$');
-      allow write, delete: if false;
+      // Public-safe payloads remain server-mediated so the proxy can enforce
+      // rate, size, observability, and workspace-lifecycle revocation controls.
+      allow read, write, delete: if false;
     }
 
     match /answerlattice-context/private/{tId}/{sId}/{version}/{filePath=**} {

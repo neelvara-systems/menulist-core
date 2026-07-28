@@ -38,7 +38,7 @@ export interface EmitSignalParams {
     entityId?: string;
     tId?: number;
     sId?: number;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     failureMode?: 'return_false' | 'throw';
 }
 
@@ -46,7 +46,7 @@ export interface AnswerlatticeSignalPersistenceParams extends EmitSignalParams {
     entityId: string;
     tId: number;
     sId: number;
-    metadata: Record<string, any>;
+    metadata: Record<string, unknown>;
     persistentDedupKey: string | null;
     identityFingerprint?: string;
 }
@@ -79,63 +79,95 @@ const cleanSignalText = (value: unknown, maxLength = 500): string => (
 
 const stringifySignalValue = (value: unknown): string => {
     try {
-        return JSON.stringify(value);
+        const serialized = JSON.stringify(value);
+        return typeof serialized === 'string' ? serialized : '';
     } catch {
-        return String(value);
+        return '';
     }
 };
 
-const sanitizeSignalMetadataValue = (value: unknown, depth = 0): any => {
+const sanitizeSignalMetadataValue = (value: unknown, depth = 0): unknown => {
     if (value === undefined || value === null) return null;
     if (typeof value === 'string') return cleanSignalText(value, 500);
-    if (typeof value === 'number' || typeof value === 'boolean') return value;
-    if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value === 'boolean') return value;
+    if (value instanceof Date) {
+        return Number.isFinite(value.getTime()) ? value.toISOString() : null;
+    }
     if (depth >= 3) return cleanSignalText(stringifySignalValue(value).slice(0, 500), 500);
     if (Array.isArray(value)) {
-        return value
-            .slice(0, 20)
-            .map((item) => {
-                if (typeof item === 'string') return cleanSignalText(item, 180);
-                if (typeof item === 'number' || typeof item === 'boolean' || item === null) return item;
-                return cleanSignalText(stringifySignalValue(item).slice(0, 500), 500);
-            });
+        try {
+            return value
+                .slice(0, 20)
+                .map((item) => {
+                    if (typeof item === 'string') return cleanSignalText(item, 180);
+                    if (typeof item === 'number') return Number.isFinite(item) ? item : null;
+                    if (typeof item === 'boolean' || item === null) return item;
+                    return cleanSignalText(stringifySignalValue(item).slice(0, 500), 500);
+                });
+        } catch {
+            return null;
+        }
     }
     if (typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value as Record<string, unknown>)
-            .slice(0, 12)
-            .map(([key, nested]) => [cleanSignalText(key, 80), sanitizeSignalMetadataValue(nested, depth + 1)])
-            .filter(([key]) => Boolean(key)));
+        try {
+            return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+                .slice(0, 12)
+                .map(([key, nested]) => [cleanSignalText(key, 80), sanitizeSignalMetadataValue(nested, depth + 1)])
+                .filter(([key]) => Boolean(key)));
+        } catch {
+            return null;
+        }
     }
     return cleanSignalText(value, 200);
 };
 
-const sanitizeSignalMetadata = (metadata: unknown): Record<string, any> => {
+export const sanitizeAnswerlatticeSignalMetadata = (metadata: unknown): Record<string, unknown> => {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
-    return Object.fromEntries(Object.entries(metadata as Record<string, unknown>)
-        .slice(0, 30)
-        .map(([key, value]) => [cleanSignalText(key, 80), sanitizeSignalMetadataValue(value)])
-        .filter(([key]) => Boolean(key)));
+    try {
+        return Object.fromEntries(Object.entries(metadata as Record<string, unknown>)
+            .slice(0, 30)
+            .map(([key, value]) => [cleanSignalText(key, 80), sanitizeSignalMetadataValue(value)])
+            .filter(([key]) => Boolean(key)));
+    } catch {
+        return {};
+    }
+};
+
+const getSignalMetadataKeyCount = (metadata: unknown): number => {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return 0;
+    try {
+        return Object.keys(metadata).length;
+    } catch {
+        return 0;
+    }
 };
 
 function getDeduplicationKey(params: EmitSignalParams): string | null {
     const meta = params.metadata;
     if (!meta) return null;
 
-    if (params.type === 'chat_negative' && meta.sessionId && meta.messageId) {
-        return `chat_${meta.sessionId}_${meta.messageId}`;
+    const sessionId = cleanSignalText(meta.sessionId, 180);
+    const messageId = cleanSignalText(meta.messageId, 180);
+    const searchHistoryId = cleanSignalText(meta.searchHistoryId, 180);
+    const ticketId = cleanSignalText(meta.ticketId, 180);
+    const feedbackId = cleanSignalText(meta.feedbackId, 180);
+
+    if (params.type === 'chat_negative' && sessionId && messageId) {
+        return `chat_${sessionId}_${messageId}`;
     }
-    if (params.type === 'chat_negative' && meta.searchHistoryId) {
-        return `chat_history_${meta.searchHistoryId}`;
+    if (params.type === 'chat_negative' && searchHistoryId) {
+        return `chat_history_${searchHistoryId}`;
     }
-    if (params.type === 'ticket' && meta.ticketId) {
+    if (params.type === 'ticket' && ticketId) {
         if (meta.signalPurpose === 'ticket_resolution' || Array.isArray(meta.resolutionMessages)) {
             const resolutionEventId = cleanSignalText(meta.resolutionEventId, 80);
-            return `ticket_resolution_${meta.ticketId}${resolutionEventId ? `_${resolutionEventId}` : ''}`;
+            return `ticket_resolution_${ticketId}${resolutionEventId ? `_${resolutionEventId}` : ''}`;
         }
-        return `ticket_${meta.ticketId}`;
+        return `ticket_${ticketId}`;
     }
-    if (params.type === 'feedback' && meta.feedbackId) {
-        return `feedback_${meta.feedbackId}`;
+    if (params.type === 'feedback' && feedbackId) {
+        return `feedback_${feedbackId}`;
     }
     return null;
 }
@@ -266,7 +298,7 @@ export const emitAnswerlatticeSignalWithPersistence = async (
         return false;
     }
 
-    const sanitizedMetadata = sanitizeSignalMetadata(params.metadata);
+    const sanitizedMetadata = sanitizeAnswerlatticeSignalMetadata(params.metadata);
     const persistentDedupKey = getPersistentDeduplicationKey({
         ...params,
         metadata: sanitizedMetadata,
@@ -281,7 +313,10 @@ export const emitAnswerlatticeSignalWithPersistence = async (
         : undefined;
 
     // Deduplication check
-    const sessionDedupKey = getDeduplicationKey(params);
+    const sessionDedupKey = getDeduplicationKey({
+        ...params,
+        metadata: sanitizedMetadata,
+    });
     const dedupKey = sessionDedupKey
         ? buildAnswerlatticeSignalMemoryDedupKey({ tId, sId, deduplicationKey: sessionDedupKey })
         : null;
@@ -328,9 +363,7 @@ export const emitAnswerlatticeSignalWithPersistence = async (
                 tId,
             }),
             hasMetadata: Boolean(params.metadata),
-            metadataKeyCount: params.metadata && typeof params.metadata === 'object'
-                ? Object.keys(params.metadata).length
-                : 0,
+            metadataKeyCount: getSignalMetadataKeyCount(params.metadata),
         };
         if (error instanceof AnswerlatticeSignalReplayConflictError) {
             logAnswerlatticeDiagnostic('answerlattice_signal_replay_conflict_skipped', logContext);

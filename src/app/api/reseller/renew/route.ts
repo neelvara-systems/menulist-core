@@ -10,6 +10,7 @@ import {
 } from "@database/reseller/server";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
+import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { appendBoundedBillingStatusHistory } from '@lib/billing/subscriptionStatusHistory';
 import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
@@ -49,7 +50,7 @@ const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
  */
 export const POST = withAuth(async (request, session) => {
     const resellerId = session.user.id;
-    const isPlatformUser = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
+    const isPlatformUser = resolveExactSessionPlatformRole(session) === 'PLATFORM';
 
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {

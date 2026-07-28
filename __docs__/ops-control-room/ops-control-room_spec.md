@@ -34,7 +34,7 @@ Give the founder/operator a small, truthful recovery and observability surface w
 
 Shows SAFE_MODE, alert mute state, bounded recent alert presence, new stores, recently publishing stores and 60-day publish inactivity. It also links the specialized monitors and exposes SAFE_MODE, mute and force-republish controls.
 
-It does not currently compute the historical placeholder metrics `publishedToday`, `feedbackToday`, `noProject` or `unpublished48h`; those typed fields remain zero for compatibility and are not a claimed complete health model.
+It does not compute the historical placeholder metrics `publishedToday`, `feedbackToday`, `noProject` or `unpublished48h`. They are absent from the active DTO and owner surfaces rather than represented as false zero measurements.
 
 ### Scheduler Monitor
 

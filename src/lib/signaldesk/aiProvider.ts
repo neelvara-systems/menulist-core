@@ -1,4 +1,5 @@
 import { SIGNALDESK_DEFAULT_AI_MODEL, SIGNALDESK_INTEGRATION_ENV } from "@constant/signaldesk/integrations";
+import { isSupportedGeminiModel } from "@data/shared/geminiRuntime";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { createAIGateway } from "@lib/google/genAi/aiGateway";
 import { KeyManager } from "@lib/google/genAi/keyManager";
@@ -50,7 +51,16 @@ const signalDeskKeyManager = new KeyManager([
 const signalDeskGenAIClient = createAIGateway(signalDeskKeyManager);
 const hasGeminiKey = () => signalDeskKeyManager.hasConfiguredKeys();
 
-const getModel = () => process.env[SIGNALDESK_INTEGRATION_ENV.AI_MODEL] || SIGNALDESK_DEFAULT_AI_MODEL;
+const requireSupportedModel = (model: string) => {
+    const normalizedModel = model.trim();
+    if (!isSupportedGeminiModel(normalizedModel)) {
+        throw new Error("SignalDesk Gemini model route requires owner review");
+    }
+    return normalizedModel;
+};
+const getModel = () => (
+    process.env[SIGNALDESK_INTEGRATION_ENV.AI_MODEL] || SIGNALDESK_DEFAULT_AI_MODEL
+);
 const SIGNALDESK_AI_RESPONSE_PARSE_FAILED = "signaldesk_ai_response_parse_failed";
 const SIGNALDESK_AI_RESPONSE_SHAPE_INVALID = "signaldesk_ai_response_shape_invalid";
 
@@ -159,7 +169,7 @@ const parseSignalDeskAiJsonResponse = (
 export async function runSignalDeskAiAssist(input: SignalDeskAiAssistInput): Promise<SignalDeskAiAssistResult> {
     if (!hasGeminiKey()) throw new Error("SignalDesk AI provider is not configured");
 
-    const model = input.model || getModel();
+    const model = requireSupportedModel(input.model || getModel());
     const response = await signalDeskGenAIClient.models.generateContent({
         model,
         contents: buildPrompt(input),
@@ -206,7 +216,7 @@ export async function runSignalDeskAiAssist(input: SignalDeskAiAssistInput): Pro
 export async function runSignalDeskAiCritic(input: SignalDeskAiCriticInput): Promise<SignalDeskAiCriticResult> {
     if (!hasGeminiKey()) throw new Error("SignalDesk AI provider is not configured");
 
-    const model = input.model || getModel();
+    const model = requireSupportedModel(input.model || getModel());
     const response = await signalDeskGenAIClient.models.generateContent({
         model,
         contents: buildCriticPrompt(input),

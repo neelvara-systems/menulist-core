@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import {
     ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
     requireAnswerlatticePermission,
@@ -57,22 +58,30 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
     }
     const scope = resolveSessionScope(session);
     if (!scope) return integrationTestJsonResponse({ error: 'Not onboarded' }, 400);
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return integrationTestJsonResponse({ error: 'Forbidden' }, 403);
 
     try {
         const rateLimitResult = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey(
                 'answerlattice-integrations-test',
-                session?.uId || session?.user?.id || session?.user?.email || 'unknown',
+                actorId,
                 scope.tenantId,
                 scope.storeId,
             ),
             limit: 3,
             window: 300,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
             return integrationTestJsonResponse(
-                { error: 'Too many test notifications. Please wait before trying again.' },
-                429,
+                {
+                    error: providerUnavailable
+                        ? 'Integration testing is temporarily unavailable. Please try again later.'
+                        : 'Too many test notifications. Please wait before trying again.',
+                },
+                providerUnavailable ? 503 : 429,
             );
         }
 

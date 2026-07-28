@@ -4,6 +4,7 @@ import {
     MAX_PROJECT_PROPAGATION_STORES,
     normalizeProjectPropagationPlan,
 } from "../../src/lib/multiOutlet/projectPropagationBoundary";
+import { hashString } from "../../src/utils/hash";
 
 const stores = [
     { storeId: 10, isMaster: true, active: true },
@@ -38,11 +39,33 @@ const secondId = buildDeterministicOutletProjectId({
     tenantId: "10",
 });
 assert.equal(firstId, secondId, "retry identity must be deterministic");
-assert.match(firstId || "", /^10-linked-\d+-11$/);
+assert.match(firstId || "", /^10-linked-[a-f0-9]{32}-11$/);
 assert.equal(buildDeterministicOutletProjectId({
     masterProjectId: "99-master-menu-10",
     outletStoreId: "11",
     tenantId: "10",
 }), null, "cross-tenant master identity fails closed");
+
+const legacyCollisionA = "10-master-1r-10";
+const legacyCollisionB = "10-master-30-10";
+assert.notEqual(legacyCollisionA, legacyCollisionB);
+assert.equal(
+    hashString(legacyCollisionA),
+    hashString(legacyCollisionB),
+    "the retired 32-bit identity demonstrates a real collision",
+);
+assert.notEqual(
+    buildDeterministicOutletProjectId({
+        masterProjectId: legacyCollisionA,
+        outletStoreId: "11",
+        tenantId: "10",
+    }),
+    buildDeterministicOutletProjectId({
+        masterProjectId: legacyCollisionB,
+        outletStoreId: "11",
+        tenantId: "10",
+    }),
+    "different master projects must never alias the same propagated project identity",
+);
 
 console.log("Project propagation boundary tests passed.");

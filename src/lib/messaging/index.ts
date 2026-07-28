@@ -19,6 +19,7 @@
 import { SYSTEM_EMAIL_FROM } from '@constant/urls';
 import { FEATURE_FLAGS } from '@config/features';
 import {
+  normalizeOwnerNotificationNumericScopeAliases,
   normalizeOwnerNotificationNumericScopeDocumentId,
   normalizeOwnerNotificationReferenceId,
 } from '@data/shared/ownerNotificationDeliveryBoundary';
@@ -133,10 +134,21 @@ async function resolveAuthoritativeLifecycleRecipient(params: {
 
   const store = storeSnapshot.data();
   if (!store) return null;
-  const storedTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(store.tenantId ?? store.tId);
+  const tenantAliases = [store.tenantId, store.tId]
+    .filter((value) => value !== undefined && value !== null);
+  const storedTenantScope = tenantAliases.length > 0
+    ? normalizeOwnerNotificationNumericScopeAliases(tenantAliases)
+    : null;
+  const storeAliases = [store.storeId, store.sId]
+    .filter((value) => value !== undefined && value !== null);
+  const storedStoreScope = storeAliases.length === 0
+    ? storeScope
+    : normalizeOwnerNotificationNumericScopeAliases(storeAliases);
   if (
-    (storedTenantScope && storedTenantScope.numericId !== tenantScope.numericId)
-    || (!storedTenantScope && !usedTenantScopedFallback)
+    !storedStoreScope
+    || storedStoreScope.numericId !== storeScope.numericId
+    || (tenantAliases.length > 0 && storedTenantScope?.numericId !== tenantScope.numericId)
+    || (tenantAliases.length === 0 && !usedTenantScopedFallback)
   ) return null;
 
   const settings = store.notificationSettings || {};

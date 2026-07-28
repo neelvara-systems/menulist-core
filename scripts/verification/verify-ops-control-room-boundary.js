@@ -364,7 +364,8 @@ function verifyOpsControlRoomBoundary() {
     'readJsonResponseWithLimit(response, CURRENT_PLATFORM_ACCESS_MAX_BYTES)',
     "accessModel === 'current_persisted_platform_user'",
   ].forEach((token) => assertIncludes(files.currentAccessClient, token, 'Platform current-access client'));
-  assertIncludes(files.platformRouteGuard, 'await getCurrentPlatformUser(session)', 'Platform route current authorization');
+  assertIncludes(files.platformRouteGuard, 'const currentUser = await getCurrentUser(session);', 'Platform route current authorization');
+  assertIncludes(files.platformRouteGuard, 'currentUser.userData.platformRole !== sessionPlatformRole', 'Platform route current role equality');
   [
     'acquireForceRepublishLease(',
     'completeForceRepublishLease(',

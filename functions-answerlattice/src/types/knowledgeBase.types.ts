@@ -4,8 +4,11 @@
  * Types for KB ingestion jobs, articles, categories, and sections.
  */
 
-import { Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { SourceFileType } from "./constants";
+
+export type KnowledgeBaseTiptapContent = Record<string, unknown>;
+export type KnowledgeBaseEmbedding = ReturnType<typeof FieldValue.vector>;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STATUS CONSTANTS
@@ -62,7 +65,7 @@ export interface KnowledgeBaseGeneratedFaq {
 export interface IngestionJobArticle {
     id: string;
     title: string;
-    content?: any; // tiptap json with provenance; omitted from compact review navigation
+    content?: KnowledgeBaseTiptapContent; // tiptap json with provenance; omitted from compact review navigation
     active?: boolean;
     index?: number;
     url?: string;
@@ -91,7 +94,8 @@ export interface IngestionJobCategoriesMap {
 export interface IngestionJobSourceFile {
     storagePath: string;
     fileName: string;
-    type: SourceFileType | string;
+    /** Uploaded MIME type; semantic article provenance uses KnowledgeBaseArticleSource.type. */
+    type: string;
     gsUri: string;
     downloadURL: string;
 }
@@ -216,7 +220,7 @@ export interface KnowledgeBaseArticleSource {
     url: string; // The gs:// path
     name: string;
     timestamp?: string;
-    page?: any;
+    page?: number;
 }
 
 export interface KnowledgeBaseArticleType {
@@ -230,8 +234,8 @@ export interface KnowledgeBaseArticleType {
     title: string;
     index: number;
     url: string;
-    content: any; // JSON (Tiptap editor format)
-    embedding?: any;
+    content: KnowledgeBaseTiptapContent; // JSON (Tiptap editor format)
+    embedding?: KnowledgeBaseEmbedding | null;
     tags: string[];
     createdOn: Timestamp;
     modifiedOn: Timestamp;
@@ -265,7 +269,7 @@ export interface KnowledgeBaseArticleType {
 
 export interface KnowledgeBaseArticleEmbeddingPayload {
     articleId: string;
-    content: any;
+    content: KnowledgeBaseTiptapContent;
     categoryId: string;
     sectionId: string;
     articleTitle: string;
@@ -286,7 +290,7 @@ export interface EmbedArticleType {
 export type ProcessedKBArticle = {
     id: string;
     title: string;
-    content: any; // tiptap JSON
+    content: KnowledgeBaseTiptapContent; // tiptap JSON
     sources: KnowledgeBaseArticleSource[];
     qualityScore?: number; // 0-1 deterministic score based on content length, structure, sources
     entityIds?: string[];

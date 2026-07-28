@@ -2,7 +2,7 @@
 
 **Status:** ✅ IMPLEMENTED — Ops alerts plus platform notification dashboard
 **Created:** February 20, 2026  
-**Last Updated:** July 13, 2026
+**Last Updated:** July 28, 2026
 **Audience:** Developers
 
 ---
@@ -13,9 +13,13 @@ July 13 route audit: `/api/ops/safe-mode`, `/api/ops/mute-alerts`, and `/api/ops
 
 Replay follow-up: acknowledgement skips its update when the selected alert is already acknowledged. Manual handoff and manual-alert actions require a bounded action ID created when the operator opens the action surface. Handoff persists the action-ID hash and skips an identical repeat; manual alert creation uses a deterministic document ID with atomic Firestore `create`, returning the existing alert ID before any delivery work when the action is replayed.
 
+July 28 Functions contract follow-up: classified Functions alerts derive cooldown from the shared registry, atomically inspect deterministic current/previous cooldown-bucket documents, and create only the current winner. This preserves a rolling boundary across bucket changes and prevents concurrent schedulers/retries from duplicating persistence or delivery. Zero-cooldown registry entries intentionally use a fresh document. Current app and Functions writers add 90-day expiry; scheduled cleanup remains the legacy fallback. Critical `systemErrors` now emit a complete classified `CRITICAL_SYSTEM_ERROR` alert through the canonical helper.
+
 ```
 createAlert() [EXISTING in alerts.ts]
-  └─→ Write alert to systemAlerts collection [EXISTING]
+  └─→ Resolve registry/default cooldown
+  └─→ Transactionally claim current/previous cooldown bucket
+  └─→ Write canonical alert + expiresAt to systemAlerts
   └─→ Check deploy mute window
   └─→ sendTelegramAlert(alert)
       ├─ Check ENABLE_OPS_ALERTS flag
@@ -46,7 +50,7 @@ Platform notifications are internal founder/operator alerts, separate from owner
 - AI/extraction: AI cost runaway, accounting failure, extraction spikes, stuck jobs, and WhatsApp onboarding queue stalls.
 - POS: repeated sync or connector delivery failure.
 - Answerlattice: widget/runtime failure, critical coverage gaps, and integration delivery failure.
-- Manual/system: manual platform alerts and unclassified legacy alerts.
+- Manual/system: manual platform alerts, canonical critical system errors, and unclassified legacy alerts.
 
 The file is mirrored to `functions/src/sharedData/platformNotificationRegistry.ts` for future Cloud Functions emitters. App-side emitters can already attach `metadata.platformTriggerType`, `metadata.productId`, and `metadata.category` through `src/lib/ops/alerts.ts`.
 

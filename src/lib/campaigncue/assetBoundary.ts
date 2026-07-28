@@ -83,6 +83,15 @@ export function parseCampaignCueAssetRecord(params: {
         if (!isAbsent(value.file.mimeType) && !isBoundedString(value.file.mimeType, 120)) {
             throw new Error("CampaignCue asset MIME type is invalid.");
         }
+        if (
+            !isAbsent(value.file.storageGeneration)
+            && (
+                typeof value.file.storageGeneration !== "string"
+                || !/^[1-9][0-9]{0,29}$/.test(value.file.storageGeneration)
+            )
+        ) {
+            throw new Error("CampaignCue asset Storage generation is invalid.");
+        }
         if (!isAbsent(value.file.sizeBytes) && (
             !Number.isSafeInteger(value.file.sizeBytes)
             || Number(value.file.sizeBytes) < 0
@@ -90,9 +99,17 @@ export function parseCampaignCueAssetRecord(params: {
         )) {
             throw new Error("CampaignCue asset size is invalid.");
         }
-        if (!isAbsent(value.file.storagePath) || !isAbsent(value.file.mimeType) || !isAbsent(value.file.sizeBytes)) {
+        if (
+            !isAbsent(value.file.storagePath)
+            || !isAbsent(value.file.storageGeneration)
+            || !isAbsent(value.file.mimeType)
+            || !isAbsent(value.file.sizeBytes)
+        ) {
             file = {
                 storagePath: isAbsent(value.file.storagePath) ? undefined : value.file.storagePath as string,
+                storageGeneration: isAbsent(value.file.storageGeneration)
+                    ? undefined
+                    : value.file.storageGeneration as string,
                 mimeType: isAbsent(value.file.mimeType) ? undefined : value.file.mimeType as string,
                 sizeBytes: isAbsent(value.file.sizeBytes) ? undefined : value.file.sizeBytes as number,
             };

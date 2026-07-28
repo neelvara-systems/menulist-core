@@ -202,7 +202,7 @@ const tenants = await db.collection("tenants").get();
 // ... same swap logic
 ```
 
-The maintained migration script is `scripts/migrate-business-type-swap.ts`. It is dry-run by default, derives categories from `src/data/shared/businessTypes.ts`, and refuses live writes unless the command includes `--write`, `--project-id`, matching `--confirm-project`, and `--all-stores-and-tenants`.
+The maintained migration script is `scripts/migrate-business-type-swap.ts`. It is dry-run by default, reads each collection in bounded document-ID pages, accepts only scalar bounded classifications, derives categories from `src/data/shared/businessTypes.ts`, and updates each existing `storesSummary` entry in the same batch as its canonical store. It refuses live writes unless the command includes `--write`, `--project-id`, matching `--confirm-project`, and `--all-stores-and-tenants`.
 
 ### Source Check D: StoreDataType
 
@@ -266,12 +266,12 @@ After the swap:
 - [x] Code fix applied to `create-subscription/route.ts`
 - [x] `StoreDataType` updated with `businessIndustry` field
 - [x] Migration script created with dry-run safety
-- [ ] **RUN migration in dry-run mode first** (`npx tsx scripts/migrate-business-type-swap.ts --project-id <projectId>`)
+- [ ] **RUN migration in dry-run mode first** (`npx ts-node --compiler-options '{"module":"CommonJS","target":"ES2022"}' -r tsconfig-paths/register scripts/migrate-business-type-swap.ts --project-id <projectId>`)
 - [ ] Review dry-run output — verify swap count matches expected stores
 - [ ] **Backup Firestore** before live migration
-- [ ] Run migration LIVE (`npx tsx scripts/migrate-business-type-swap.ts --project-id <projectId> --write --confirm-project <projectId> --all-stores-and-tenants`)
+- [ ] Run migration LIVE (`npx ts-node --compiler-options '{"module":"CommonJS","target":"ES2022"}' -r tsconfig-paths/register scripts/migrate-business-type-swap.ts --project-id <projectId> --write --confirm-project <projectId> --all-stores-and-tenants`)
 - [ ] Verify post-migration: spot-check 5 stores in Firestore console
-- [ ] Rebuild storesSummary (daily cron will do this, or trigger manually)
+- [ ] Verify the migration summary reports every changed store summary as synced; investigate any `Missing summary entries` before release
 
 ---
 

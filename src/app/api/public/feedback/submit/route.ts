@@ -19,6 +19,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { normalizeGuestFeedbackReviewUrl } from '@lib/feedback/guestFeedbackSubmitResponse';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { normalizeMenuListPublicEntityIdentityAliases } from '@lib/publicTruth/entityEligibility';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import { guestFeedbackSubmitSchema } from '@lib/validation/apiSchemas';
@@ -210,7 +211,10 @@ async function postGuestFeedback(req: NextRequest) {
         }
 
         const storeData = storeDoc.data();
-        const storeTenantScope = normalizeGuestFeedbackNumericDocumentId(storeData?.tenantId ?? storeData?.tId);
+        const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([
+            storeData?.tenantId,
+            storeData?.tId,
+        ]);
         if (!storeTenantScope || storeTenantScope.numericId !== tenantId) {
             return NextResponse.json(
                 { success: false, error: 'Invalid store.' },

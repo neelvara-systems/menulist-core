@@ -15,9 +15,16 @@ import {
     proposeCanonicalAnswerUpdate,
 } from '@database/answerlattice/canonicalAnswers';
 import { AnswerlatticeGovernanceClientError } from '@lib/answerlattice/governanceClient';
+import { createLatestRequestGuard } from '@lib/runtime/latestRequestGuard';
 import { AnswerlatticeCanonicalAnswer } from '@type/answerlattice';
 import { message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    AnswerlatticeCanonicalAnswersLoadState,
+    EMPTY_ANSWERLATTICE_CANONICAL_ANSWERS_STATE,
+    getAnswerlatticeCanonicalAnswersScopeKey,
+    projectCanonicalAnswersStateForScope,
+} from './canonicalAnswersScopeState';
 
 const ANSWERLATTICE_CANONICAL_ANSWERS_LOAD_FAILED = 'Could not load canonical answers';
 const ANSWERLATTICE_CANONICAL_ANSWER_CREATE_FAILED = 'Could not create answer';
@@ -41,32 +48,61 @@ interface UseCanonicalAnswersReturn {
 }
 
 export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswersReturn {
-    const [answers, setAnswers] = useState<AnswerlatticeCanonicalAnswer[]>([]);
-    const [driftedAnswers, setDriftedAnswers] = useState<AnswerlatticeCanonicalAnswer[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedAnswer, setSelectedAnswer] = useState<AnswerlatticeCanonicalAnswer | null>(null);
+    const [state, setState] = useState<AnswerlatticeCanonicalAnswersLoadState>(
+        EMPTY_ANSWERLATTICE_CANONICAL_ANSWERS_STATE,
+    );
+    const [selectedState, setSelectedState] = useState<{
+        scopeKey: string | null;
+        answer: AnswerlatticeCanonicalAnswer | null;
+    }>({ scopeKey: null, answer: null });
+    const requestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
+    if (!requestGuardRef.current) requestGuardRef.current = createLatestRequestGuard();
 
     const refresh = useCallback(async () => {
-        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI || !tId || !sId) return;
+        const scopeKey = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI
+            ? getAnswerlatticeCanonicalAnswersScopeKey(tId, sId)
+            : null;
+        const requestGuard = requestGuardRef.current;
+        if (!requestGuard || !scopeKey) {
+            requestGuard?.invalidate();
+            setState(EMPTY_ANSWERLATTICE_CANONICAL_ANSWERS_STATE);
+            return;
+        }
 
-        setLoading(true);
-        setError(null);
+        const requestId = requestGuard.begin();
+        setState({ scopeKey, answers: [], loading: true, error: null });
         try {
             const allAnswers = await getCanonicalAnswers(tId, sId);
-            const normalizedAnswers = allAnswers || [];
-            setAnswers(normalizedAnswers);
-            setDriftedAnswers(normalizedAnswers.filter(answer => answer.governance?.driftFlag === true));
+            if (!requestGuard.isCurrent(requestId)) return;
+            setState({
+                scopeKey,
+                answers: allAnswers || [],
+                loading: false,
+                error: null,
+            });
         } catch {
-            setError(ANSWERLATTICE_CANONICAL_ANSWERS_LOAD_FAILED);
-        } finally {
-            setLoading(false);
+            if (!requestGuard.isCurrent(requestId)) return;
+            setState({
+                scopeKey,
+                answers: [],
+                loading: false,
+                error: ANSWERLATTICE_CANONICAL_ANSWERS_LOAD_FAILED,
+            });
         }
     }, [tId, sId]);
 
     useEffect(() => {
-        refresh();
+        setSelectedState({ scopeKey: null, answer: null });
+        void refresh();
+        return () => requestGuardRef.current?.invalidate();
     }, [refresh]);
+
+    const setSelectedAnswer = useCallback((answer: AnswerlatticeCanonicalAnswer | null) => {
+        const scopeKey = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI
+            ? getAnswerlatticeCanonicalAnswersScopeKey(tId, sId)
+            : null;
+        setSelectedState({ scopeKey, answer: scopeKey ? answer : null });
+    }, [tId, sId]);
 
     const create = useCallback(async (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>): Promise<boolean> => {
         try {
@@ -82,7 +118,7 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
     const update = useCallback(async (data: Partial<AnswerlatticeCanonicalAnswer> & { id: string }) => {
         try {
             const previous = await getCanonicalAnswerById(data.id);
-            if (!previous || Number(previous.tId) !== Number(tId) || Number(previous.sId) !== Number(sId)) {
+            if (!previous || previous.tId !== tId || previous.sId !== sId) {
                 throw new Error('Canonical answer is not available in this workspace.');
             }
             await proposeCanonicalAnswerUpdate({
@@ -110,9 +146,23 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
         }
     }, []);
 
+    const visibleState = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI
+        ? projectCanonicalAnswersStateForScope(state, tId, sId)
+        : { answers: [], loading: false, error: null };
+    const currentScopeKey = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI
+        ? getAnswerlatticeCanonicalAnswersScopeKey(tId, sId)
+        : null;
+    const selectedAnswer = selectedState.scopeKey === currentScopeKey
+        ? selectedState.answer
+        : null;
+
     return {
-        answers, driftedAnswers, loading, error,
-        selectedAnswer, setSelectedAnswer,
+        ...visibleState,
+        driftedAnswers: visibleState.answers.filter(
+            answer => answer.governance?.driftFlag === true,
+        ),
+        selectedAnswer,
+        setSelectedAnswer,
         create, update, refresh, loadAnswer,
     };
 }

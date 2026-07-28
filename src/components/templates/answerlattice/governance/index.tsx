@@ -41,6 +41,7 @@ import {
     LuChevronDown,
     LuFlame,
     LuGitPullRequest,
+    LuGitBranch,
     LuHeart,
     LuHistory,
     LuLanguages,
@@ -57,6 +58,7 @@ import CanonicalAnswerEditor from './CanonicalAnswerEditor';
 import DriftDashboard from './DriftDashboard';
 import EntityHealthScore from './EntityHealthScore';
 import EntityManagementDashboard from './EntityManagementDashboard';
+import KnowledgeMapDashboard from './KnowledgeMapDashboard';
 import FounderTrustDashboard from './FounderTrustDashboard';
 import FrictionTab from './FrictionTab';
 import MultiLanguageArticles from './MultiLanguageArticles';
@@ -236,6 +238,11 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
                 label: tabLabel(LuBoxes, 'Product Ontology', 'Ontology'),
                 children: <EntityManagementDashboard />,
             },
+            ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP ? [{
+                key: ANSWERLATTICE_GOVERNANCE_TABS.MAP,
+                label: tabLabel(LuGitBranch, 'Knowledge Map', 'Map'),
+                children: <KnowledgeMapDashboard tId={tId} sId={sId} />,
+            }] : []),
             {
                 key: ANSWERLATTICE_GOVERNANCE_TABS.ANALYTICS,
                 label: tabLabel(LuBarChart3, 'Answer Analytics', 'Analytics'),

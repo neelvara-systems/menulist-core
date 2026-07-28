@@ -6,10 +6,10 @@ const {
   forceRepublishActiveProjects,
   isPublishVerificationScopeAuthorized,
   updateStoreHealth,
-} = require('../../functions/lib/functions/src/monitoring/publishVerification.js');
+} = require('../../functions/lib/monitoring/publishVerification.js');
 const {
   firestoreAdmin,
-} = require('../../functions/lib/functions/src/firebaseAdmin.js');
+} = require('../../functions/lib/firebaseAdmin.js');
 
 async function clearCollection(collectionName: string): Promise<void> {
   const snapshot = await firestoreAdmin.collection(collectionName).get();
@@ -58,6 +58,20 @@ async function run(): Promise<void> {
     true,
     'an active canonical store/tenant pair must be admitted',
   );
+  await storeRef.set({ tId: 2 }, { merge: true });
+  assert.equal(
+    await isPublishVerificationScopeAuthorized('101', '1', 'user-1'),
+    false,
+    'conflicting persisted store tenant aliases must fail closed',
+  );
+  await storeRef.set({ tId: 1 }, { merge: true });
+  await userRef.set({ tId: 2 }, { merge: true });
+  assert.equal(
+    await isPublishVerificationScopeAuthorized('101', '1', 'user-1'),
+    false,
+    'conflicting persisted user tenant aliases must fail closed',
+  );
+  await userRef.set({ tId: 1 }, { merge: true });
   const publicMenuUrl = 'https://scope-test.menulist.ai/dinner';
   assert.equal(
     await isPublishVerificationScopeAuthorized('101', '1', 'user-1', { publicMenuUrl }),
@@ -92,6 +106,14 @@ async function run(): Promise<void> {
     projects.doc('project-b').set({ active: true, deleted: false, storeId: 101, tenantId: 1 }),
     projects.doc('project-deleted').set({ active: true, deleted: true, sId: 101, tId: 1 }),
     projects.doc('project-other-scope').set({ active: true, deleted: false, sId: 202, tId: 1 }),
+    projects.doc('project-conflicting-alias').set({
+      active: true,
+      deleted: false,
+      sId: 101,
+      storeId: 202,
+      tId: 1,
+      tenantId: 1,
+    }),
   ]);
   const republish = await forceRepublishActiveProjects('101', '1', 'user-1');
   assert.deepEqual(

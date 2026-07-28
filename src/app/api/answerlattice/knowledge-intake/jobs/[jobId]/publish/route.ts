@@ -6,8 +6,8 @@ import {
 } from '@lib/answerlattice/knowledgeIntake';
 import {
     normalizeAnswerlatticeKnowledgeIntakeJobId,
-    normalizeAnswerlatticeKnowledgeIntakeReviewItemId,
 } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
+import { AnswerlatticeKnowledgeIntakePublishRequestSchema } from '@lib/answerlattice/knowledgeIntakeContracts';
 import {
     getAnswerlatticeKnowledgeIntakeLogContext,
     logAnswerlatticeKnowledgeIntakeFailure,
@@ -23,13 +23,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
-const ReviewItemIdSchema = z.string()
-    .trim()
-    .refine((value) => normalizeAnswerlatticeKnowledgeIntakeReviewItemId(value) === value);
-
-const PublishSchema = z.object({
-    itemIds: z.array(ReviewItemIdSchema).max(50).optional(),
-}).strict().optional();
 const KNOWLEDGE_INTAKE_PUBLISH_MAX_BODY_BYTES = 16 * 1024;
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
@@ -58,7 +51,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             );
         }
 
-        const parsed = PublishSchema.parse(bodyResult.data) || {};
+        const parsed = AnswerlatticeKnowledgeIntakePublishRequestSchema.parse(bodyResult.data) || {};
         const result = await publishKnowledgeIntakeJob(access.context.scope, jobId, parsed.itemIds, access.context.actor);
         secureLog('[Answerlattice Intake] Job published', getAnswerlatticeKnowledgeIntakeLogContext({
             jobId,

@@ -29,6 +29,15 @@ const args = process.argv.slice(2);
 const DEFAULT_STORE_READ_LIMIT = 1_500;
 const MAX_PROJECTS_PER_STORE = 500;
 const UNSAFE_SUMMARY_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+const VALID_PROJECT_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const RESERVED_PROJECT_SLUGS = new Set([
+  'info', 'about', 'contact', 'reviews', 'photos', 'gallery',
+  'offers', 'updates', 'order', 'book', 'events', 'jobs', 'careers',
+  'screen', 'feedback', 'admin', 'api', 'settings', 'dashboard',
+  'login', 'signup', 'auth', 'webhook', 'health', 'status',
+  'sitemap', 'robots', 'manifest', 'sw', '_next', 'client',
+  'customerapp', 'pwa', 'campaigncue',
+]);
 
 function hasFlag(name) {
   return args.includes(name);
@@ -319,6 +328,7 @@ async function verifyProjectSummary(store) {
     ));
   }
 
+  const slugOwners = new Map();
   for (const [projectId, data] of activeProjects) {
     const slug = typeof data?.slug === 'string' ? data.slug.trim() : '';
     if (!slug) {
@@ -328,6 +338,26 @@ async function verifyProjectSummary(store) {
         `Active project ${projectId} in platformSummary/${docId} is missing slug.`,
         { storeId: store.storeId, tenantId: store.tenantId, projectId },
       ));
+      continue;
+    }
+    if (slug.length > 80 || !VALID_PROJECT_SLUG.test(slug) || RESERVED_PROJECT_SLUGS.has(slug)) {
+      findings.push(issue(
+        'error',
+        'project-slug-invalid',
+        `Active project ${projectId} in platformSummary/${docId} has a non-canonical or reserved slug.`,
+        { storeId: store.storeId, tenantId: store.tenantId, projectId, slug },
+      ));
+    }
+    const existingOwner = slugOwners.get(slug);
+    if (existingOwner) {
+      findings.push(issue(
+        'error',
+        'project-slug-duplicate',
+        `Active projects ${existingOwner} and ${projectId} in platformSummary/${docId} claim the same canonical slug.`,
+        { storeId: store.storeId, tenantId: store.tenantId, projectId, conflictingProjectId: existingOwner, slug },
+      ));
+    } else {
+      slugOwners.set(slug, projectId);
     }
   }
 

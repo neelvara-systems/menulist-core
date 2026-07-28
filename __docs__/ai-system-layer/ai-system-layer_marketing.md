@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-gated internal positioning — not approved sales or launch collateral
-**Last Updated:** July 10, 2026
+**Last Updated:** July 26, 2026
 **Audience:** Internal (not customer-facing)
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
@@ -37,6 +37,8 @@ The AI System Layer reduces duplication through shared gateway patterns and sour
 ## Internal Positioning
 
 This is **NOT a customer-facing feature**. Customers never see or interact with the AI System Layer.
+
+The July 26 model/SDK migration is operational maintenance. Do not turn model names, SDK versions, Interactions API availability, or provider pricing into public claims.
 
 It is **infrastructure** that:
 - Reduces operational risk as AI usage grows

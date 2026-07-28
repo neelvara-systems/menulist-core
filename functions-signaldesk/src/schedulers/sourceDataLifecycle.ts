@@ -12,6 +12,11 @@ import {
 import * as logger from "firebase-functions/logger";
 import { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } from "../constants/database";
 import { db as defaultDb } from "../firebaseAdmin";
+import {
+  getBoundedFunctionsErrorCode,
+  getBoundedFunctionsErrorMessage,
+  getBoundedFunctionsErrorName,
+} from "../utils/boundedErrorContext";
 
 const SIGNALDESK_PRODUCT_CODE = "SD";
 const SYSTEM_ACTOR_ID = "signaldesk-source-data-lifecycle";
@@ -896,18 +901,16 @@ export const signalDeskProviderSourceDataLifecycleAuthorityHash = (value: unknow
 };
 
 const sourceErrorContext = (error: unknown): { sourceErrorCode?: string; sourceErrorName: string } => {
-  if (!error || typeof error !== "object") return { sourceErrorName: typeof error };
-  const data = error as { code?: unknown; name?: unknown };
   return {
-    sourceErrorName: typeof data.name === "string" ? data.name.slice(0, 80) : "Error",
-    ...(typeof data.code === "string" || typeof data.code === "number"
-      ? { sourceErrorCode: String(data.code).slice(0, 80) }
+    sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
+    ...(getBoundedFunctionsErrorCode(error)
+      ? { sourceErrorCode: getBoundedFunctionsErrorCode(error) }
       : {}),
   };
 };
 
 const lifecycleFailureCode = (error: unknown): string => {
-  const raw = error instanceof Error ? error.message : String(error || "unknown");
+  const raw = getBoundedFunctionsErrorMessage(error) || "unknown";
   const normalized = raw.trim().toUpperCase();
   return /^SIGNALDESK_[A-Z0-9_]+$/.test(normalized)
     ? normalized.slice(0, 160)
@@ -3725,6 +3728,7 @@ export const recordSignalDeskSourceDataLifecycleFailure = async (params: {
     }), { merge: true });
     if (incidentCreated || incidentReopened) {
       transaction.set(controlRef, {
+        controlRoomSummaryId: SIGNALDESK_SUMMARY_DOCS.CONTROL_ROOM,
         pId: SIGNALDESK_PRODUCT_CODE,
         ...(incidentCreated ? { incidentCount: FieldValue.increment(1) } : {}),
         openIncidentCount: FieldValue.increment(1),

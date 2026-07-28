@@ -93,6 +93,7 @@ export default async function CompliancePageContent({
     const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
     const t = createPublicCustomerTranslator(contentLanguage);
     const sId = storeData.storeId ?? storeData.id;
+    const tId = storeData.tenantId ?? storeData.tId;
     const inputs = extractComplianceInputs(storeData);
 
     const titleMap: Record<string, string> = {
@@ -124,7 +125,8 @@ export default async function CompliancePageContent({
     let content = systemContent;
 
     const complianceStoreDocumentId = normalizePublicComplianceStoreDocumentId(sId);
-    if (!complianceStoreDocumentId) {
+    const complianceTenantDocumentId = normalizePublicComplianceStoreDocumentId(tId);
+    if (!complianceStoreDocumentId || !complianceTenantDocumentId) {
         logComplianceOverrideReadFailure(new Error('public_compliance_invalid_store_scope'), {
             storeId: sId,
             tenantType,
@@ -134,7 +136,10 @@ export default async function CompliancePageContent({
         });
     } else {
         try {
-            const data = await getCachedComplianceOverridesServer(complianceStoreDocumentId);
+            const data = await getCachedComplianceOverridesServer(
+                complianceStoreDocumentId,
+                complianceTenantDocumentId,
+            );
             if (data) {
                 const overrideFieldMap: Record<string, string> = {
                     privacy: 'privacyOverride',

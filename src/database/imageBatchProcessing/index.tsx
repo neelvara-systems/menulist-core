@@ -21,7 +21,7 @@ import { BatchImageGenerationJobType } from "@template/main-app/projects/types";
 import { doc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS;
-const ACTIVE_BATCH_JOB_QUERY_LIMIT = 5;
+const RECENT_BATCH_JOB_QUERY_LIMIT = 5;
 const MAX_STATUS_HISTORY_ENTRIES = 20;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const IMAGE_BATCH_ITEMS_RETENTION_DAYS = 7;
@@ -116,7 +116,7 @@ export const getBatchImageJobCollectionRef = (session: any, projectId: string) =
         where("projectJobKey", ">=", projectJobKeyPrefix),
         where("projectJobKey", "<", `${projectJobKeyPrefix}\uf8ff`),
         orderBy("projectJobKey", "desc"),
-        limit(1),
+        limit(RECENT_BATCH_JOB_QUERY_LIMIT),
     );
 }
 
@@ -127,7 +127,7 @@ export const getLegacyBatchImageJobCollectionRef = (session: any, projectId: str
         collectionRef,
         where("projectId", "==", projectScope.projectId),
         where("status", "in", [BATCH_IMAGE_GENERATION_JOB_STATUS.QUEUED, BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING, BATCH_IMAGE_GENERATION_JOB_STATUS.COMPLETED, BATCH_IMAGE_GENERATION_JOB_STATUS.FAILED]),
-        limit(ACTIVE_BATCH_JOB_QUERY_LIMIT),
+        limit(RECENT_BATCH_JOB_QUERY_LIMIT),
     );
 }
 

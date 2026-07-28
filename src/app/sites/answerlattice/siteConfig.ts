@@ -11,7 +11,7 @@ export const ANSWERLATTICE_SITE_URL = getProductDeploymentTarget('answerlattice'
 export const ANSWERLATTICE_SITE_TITLE = 'AnswerLattice - Governed Support Layer for Founder-Led SaaS';
 
 export const ANSWERLATTICE_SITE_DESCRIPTION =
-    'AnswerLattice turns scattered docs, tickets, releases, product context, screenshots, recordings, notes, and repeated replies into approved answers for your help widget, help center, and future AI agents.';
+    'AnswerLattice gives founder-led SaaS approved product answers, safe fallback when coverage is missing, and a governed review loop for improving support knowledge.';
 
 export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     path: string;

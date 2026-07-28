@@ -1,64 +1,36 @@
-require('dotenv').config({ path: '.env.local' });
+/**
+ * Safe local Knowledge Base generation verification entry point.
+ *
+ * The former helper wrote a malformed, unscoped job through the Firebase
+ * browser SDK and then exited successfully even when the write failed. Current
+ * generation behavior is exercised by the maintained boundary plus isolated
+ * demo-project Firestore emulator suites instead.
+ *
+ * Usage:
+ *   npx ts-node --compiler-options '{"module":"CommonJS","target":"ES2022"}' scripts/trigger-kb-generation.ts
+ */
 
-const { initializeApp } = require('firebase/app');
-const { getFirestore, connectFirestoreEmulator, collection, addDoc } = require('firebase/firestore');
+import { spawnSync } from 'node:child_process';
 
-// Inlining the firebaseConfig object to avoid module issues
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.NEXT_PUBLIC_FB_DATABASE_URL,
-  projectId: 'menulist-qa',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-};
+if (process.argv.length > 2) {
+    process.stderr.write('This verifier accepts no arguments and never writes to a live Firebase project.\n');
+    process.exitCode = 1;
+} else {
+    const result = spawnSync('npm', ['run', 'verify:shared-kb-generation-boundary'], {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+        env: {
+            ...process.env,
+            FIREBASE_PROJECT_ID: '',
+            GCLOUD_PROJECT: '',
+            GOOGLE_CLOUD_PROJECT: '',
+        },
+    });
 
-const triggerGeneration = async () => {
-  console.log('Initializing Firebase and connecting to emulators...');
-
-  // Initialize Firebase app
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // Connect to Firestore emulator
-  connectFirestoreEmulator(db, '127.0.0.1', 8081);
-
-  console.log('Connected to Firestore emulator.');
-
-  const tId = 'test-tenant';
-  const sId = 'test-session';
-  const collectionPath = `ingestion_jobs/${tId}/${sId}`;
-
-  const jobData = {
-    sourceFiles: [
-      {
-        fileName: 'test-file.txt',
-        storagePath: 'test/path/test-file.txt',
-        type: 'text/plain',
-        gsUri: 'gs://menulist-qa.appspot.com/test/path/test-file.txt',
-        downloadURL: 'https://firebasestorage.googleapis.com/v0/b/menulist-qa.appspot.com/o/test%2Fpath%2Ftest-file.txt?alt=media'
-      }
-    ],
-    status: 'pending',
-    createdOn: new Date().toISOString(),
-    modifiedOn: new Date().toISOString(),
-  };
-
-  try {
-    const docRef = await addDoc(collection(db, collectionPath), jobData);
-    console.log(`Successfully created document with ID: ${docRef.id} in ${collectionPath}`);
-    console.log('startGeneration function should be triggered.');
-  } catch (error) {
-    console.error('Error creating document:', error);
-  }
-};
-
-triggerGeneration().then(() => {
-  console.log('Script finished.');
-  process.exit(0);
-}).catch(error => {
-  console.error('Script failed:', error);
-  process.exit(1);
-});
+    if (result.error) {
+        process.stderr.write(`Unable to start the maintained KB generation verifier: ${result.error.message.slice(0, 180)}\n`);
+        process.exitCode = 1;
+    } else {
+        process.exitCode = result.status === 0 ? 0 : 1;
+    }
+}

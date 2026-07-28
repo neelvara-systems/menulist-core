@@ -117,6 +117,10 @@ function verifyBillingEntitlementBoundary() {
   const answerlatticeBillingClient = read('src/database/answerlattice/billing.ts');
   const menuListIndexes = JSON.parse(read('firestore.indexes.json'));
   const answerlatticeIndexes = JSON.parse(read('firestore-answerlattice.indexes.json'));
+  assert(
+    !menuListIndexes.indexes.some((index) => index.collectionGroup === 'subscriptionPayments'),
+    'MenuList indexes must not retain the retired camel-case subscriptionPayments collection',
+  );
   const razorpayUtils = read('src/utils/razorpay.ts');
   const paymentHook = read('src/hooks/usePaymentHandler.ts');
   const answerlatticeBilling = read('src/components/templates/answerlattice/billing/AnswerlatticeBilling.tsx');
@@ -312,6 +316,8 @@ function verifyBillingEntitlementBoundary() {
     'skip_conflicting_or_other_product',
     'skip_invalid_scope',
     "aliases.some((value) => value !== PRODUCT_IDS.MENULIST)",
+    "getConsistentScopeAliases(record, ['tenantId', 'tId'])",
+    "getConsistentScopeAliases(record, ['storeId', 'sId'])",
     "pId: PRODUCT_IDS.MENULIST",
     "productId: PRODUCT_IDS.MENULIST",
   ].forEach((token) => assertIncludes(billingRecordProductIdentity, token, 'Billing record identity compatibility classifier'));
@@ -533,10 +539,16 @@ function verifyBillingEntitlementBoundary() {
     'providerConcurrency = 5',
     'runtimeBudgetMs = 6 * 60 * 1000',
     "doc('subscriptionReconciliationCursor')",
+    'await cursorRef.delete();',
     'syncDetails.length < 100',
     'checkpointed',
     'cycleCompleted',
   ].forEach((token) => assertIncludes(reconciliationFunction, token, 'Bounded subscription reconciliation'));
+  assertNotIncludes(
+    reconciliationFunction,
+    'cursorRef.delete().catch(() => undefined)',
+    'Subscription reconciliation cursor cleanup must remain fail-visible',
+  );
   [
     ".where('pId', '==', MENULIST_PRODUCT_ID)",
     ".where('productId', '==', MENULIST_PRODUCT_ID)",
@@ -549,6 +561,19 @@ function verifyBillingEntitlementBoundary() {
     'const hasInvalidProviderScalar = [',
     "throw new Error('Razorpay subscription scalar is invalid.');",
   ].forEach((token) => assertIncludes(reconciliationFunction, token, 'MenuList reconciliation exact provider scalar boundary'));
+  [
+    'export function getReconciliationEntitlementDecision(',
+    '} = getReconciliationEntitlementDecision(',
+    'updates.billingEntitlementSyncPending = true;',
+    'nextSubscription.billingEntitlementSyncPending = true;',
+    'billingEntitlementSyncPending: FieldValue.delete(),',
+  ].forEach((token) => assertIncludes(reconciliationFunction, token, 'MenuList reconciliation durable entitlement repair boundary'));
+  assertOrder(
+    reconciliationFunction,
+    '} = getReconciliationEntitlementDecision(',
+    'updates.billingEntitlementSyncPending = true;',
+    'Reconciliation must derive the next entitlement before persisting its retry marker',
+  );
   assertNotIncludes(reconciliationFunction, 'const seconds = Number(value);', 'Functions reconciliation must not coerce provider timestamps');
   assertNotIncludes(reconciliationFunction, 'const quantity = Number(value);', 'Functions reconciliation must not coerce provider quantity');
   assertNotIncludes(reconciliationFunction, 'Number(current.creditsLastResetMonth)', 'Functions reconciliation must not coerce the persisted credit-reset period');
@@ -611,7 +636,7 @@ function verifyBillingEntitlementBoundary() {
   ].forEach((token) => assertIncludes(razorpayReadmeDoc, token, 'Razorpay paid-cycle entitlement README parity'));
   [
     'Current `active` subscriptions carry an active plan type.',
-    'the hourly `subscription_access_expiry` maintenance task transitions at most 500 due cancelled/paused rows per run',
+    'The hourly `subscription_access_expiry` maintenance task transitions at most 500 due cancelled/paused rows per run',
     'The store and platform plan mirrors retain the purchased plan through that same paid cycle',
   ].forEach((token) => assertIncludes(razorpayImplDoc, token, 'Razorpay paid-cycle entitlement implementation docs'));
   [
@@ -836,6 +861,11 @@ function verifyBillingEntitlementBoundary() {
     'topUpCredits: newBalance',
     "status: 'paid'",
   ].forEach((token) => assertIncludes(topupSettlementServer, token, 'top-up webhook settlement server boundary'));
+  assertNotIncludes(
+    topupSettlementServer,
+    'id: subscription.id || subscription.providerSubscriptionId',
+    'top-up webhook Answerlattice mirror must use transaction-current projected subscription identity',
+  );
 
   [
     [cancelSubscription, 'cancel-subscription', 'applyProductSubscriptionStatusTransition(productId, {'],
@@ -902,6 +932,8 @@ function verifyBillingEntitlementBoundary() {
     'payment: capturedPayment',
     'invalidSubscription: true',
     'Top-up requires billing reconciliation.',
+    'subscription: currentSubscription,',
+    'transactionResult.subscription,',
   ].forEach((token) => assertIncludes(verifyTopup, token, 'verify-topup payment/order boundary'));
   assertOrder(verifyTopup, 'const topupDocumentId = normalizeBillingTopupDocumentId(razorpay_order_id);', 'verifyRazorpayOrderSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)', 'verify-topup order ID normalized before signature/provider work');
   assertOrder(verifyTopup, 'verifyRazorpayOrderSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)', 'razorpayClient.orders.fetch(razorpay_order_id)', 'verify-topup signature-before-provider order');
@@ -912,6 +944,8 @@ function verifyBillingEntitlementBoundary() {
   assertNotIncludes(verifyTopup, '.doc(razorpay_order_id)', 'verify-topup must not build raw top-up refs');
   assertNotIncludes(verifyTopup, '.doc(String(storeId))', 'verify-topup must not build raw store refs');
   assertNotIncludes(verifyTopup, 'const currentTopUpCredits = Number(subscriptionData?.topUpCredits ?? internalSub.topUpCredits', 'verify-topup must not fall back to a stale subscription balance inside settlement');
+  assertNotIncludes(verifyTopup, 'Number(subscription.monthlyCreditsAllowance', 'verify-topup Answerlattice mirror must not coerce raw subscription credits');
+  assertNotIncludes(verifyTopup, 'mirrorAnswerlatticeCreditSummary(billingDb, storeDocumentId, internalSub', 'verify-topup replay mirror must use the transaction-current projected subscription');
   assertNotIncludes(verifyTopup, 'tx.set(subscriptionRef, {\n                topUpCredits: newBalance,\n                productId,', 'verify-topup must not overwrite transaction-current subscription identity from stale pre-capture state');
 
   [
@@ -968,6 +1002,12 @@ function verifyBillingEntitlementBoundary() {
     "| { eventKey: string; outcome: 'processed' | 'processing' }",
     "if (current?.status === 'processed')",
     "return { eventKey, outcome: 'processing' as const }",
+    'projectRazorpayWebhookRecord(',
+    'value.stateVersion !== RAZORPAY_WEBHOOK_STATE_VERSION',
+    'value.eventKey !== expectedEventKey',
+    '!isValidAttemptId(value.attemptId)',
+    'Number(retryCount) < 0',
+    "throw new Error('Razorpay webhook ledger state is invalid.');",
     "current?.status !== 'processing'",
     'current.attemptId !== params.attemptId',
     "if (current?.status === 'processed') return 'already_processed';",
@@ -980,6 +1020,9 @@ function verifyBillingEntitlementBoundary() {
     'expired owner cannot downgrade replacement work',
     'successful retry must prune stale failure fields',
     'terminal state must not retain a lease',
+    'a status-only row must not suppress a signed payment event',
+    'embedded event identity must match the deterministic document key',
+    'malformed retry state must not become terminal payment truth',
   ].forEach((token) => assertIncludes(razorpayWebhookLeaseTest, token, 'Razorpay webhook lease emulator'));
   [
     "import { FieldValue } from 'firebase-admin/firestore';",
@@ -1026,9 +1069,12 @@ function verifyBillingEntitlementBoundary() {
     ".where('tenantId', '==', tenantScope.numericId)",
     ".where('storeId', '==', storeScope.numericId)",
     'const subscriptionId = normalizeAnswerlatticeSubscriptionId(subscription.id || subscription.providerSubscriptionId);',
-    'const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(subscription.tenantId ?? subscription.tId);',
-    'const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(subscription.storeId ?? subscription.sId);',
-    'const currentTenantScope = normalizeAnswerlatticeBillingScopeDocumentId(',
+    'const subscriptionScope = getProductSubscriptionBillingScope(',
+    'PRODUCT_IDS.ANSWERLATTICE,',
+    'const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(subscriptionScope?.tenantId);',
+    'const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(subscriptionScope?.storeId);',
+    'const currentScope = getProductSubscriptionBillingScope(',
+    'const currentTenantScope = normalizeAnswerlatticeBillingScopeDocumentId(currentScope?.tenantId);',
     'currentTenantScope.numericId !== tenantScope.numericId',
     'currentStoreScope.numericId !== storeScope.numericId',
     'transaction.get(activeSubscriptionsQuery)',
@@ -1131,6 +1177,24 @@ function verifyBillingEntitlementBoundary() {
       && index.fields?.some((field) => field.fieldPath === 'created_at' && field.order === 'DESCENDING')),
     'Answerlattice indexes must support ordered paid billing history',
   );
+  assertNotIncludes(
+    productBillingServer,
+    'subscription.tenantId ?? subscription.tId',
+    'Answerlattice entitlement sync must not select one input tenant alias',
+  );
+  assertNotIncludes(
+    productBillingServer,
+    'subscription.storeId ?? subscription.sId',
+    'Answerlattice entitlement sync must not select one input store alias',
+  );
+  [
+    'a conflicting input subscription alias must not write Answerlattice store entitlement',
+    'a conflicting input subscription alias must not acknowledge entitlement sync',
+  ].forEach((token) => assertIncludes(
+    productSubscriptionScopeEmulator,
+    token,
+    'Answerlattice entitlement entry-scope emulator regression',
+  ));
   assert(
     menuListIndexes.indexes.some((index) => index.collectionGroup === 'payment_transactions'
       && index.fields?.some((field) => field.fieldPath === 'pId')
@@ -1200,6 +1264,8 @@ function verifyBillingEntitlementBoundary() {
     'subscription.pId !== params.expectedProductId',
     'subscription.productId !== params.expectedProductId',
     'asExactNonNegativeSafeInteger(subscription.topUpCredits ?? 0)',
+    'providerSubscriptionId: string | null;',
+    'asBoundedNonEmptyString(subscription.providerSubscriptionId, 180)',
     'export function resolveVerifiedTopupSettlement(',
     'providerOrderId !== params.expectedOrderId',
     'topup.pId !== params.expectedProductId',
@@ -1269,7 +1335,7 @@ function verifyBillingEntitlementBoundary() {
     'billingSubscriptionId: activeSubscriptionIdValue',
     'runStorePublicTruthPostCommitEffects({',
     'storeIds: [syncResult.storeId]',
-    'revalidate: (tag) => revalidateTag(tag)',
+    'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
     "'subscriptionEntitlementSync'",
     'invalidateOwnerBusinessAssistantPacketCache({',
     'billing_store_plan_entitlement_post_commit_effect_failed',
@@ -1482,6 +1548,10 @@ function verifyBillingEntitlementBoundary() {
     "throw new Error('Answerlattice intake usage scope does not match this workspace.');",
     'isAnswerlatticeIntakeLedgerInScope(',
     'resolveAnswerlatticeIntakeRefundAllocation({',
+    'getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0)',
+    'getNonNegativeCreditInteger(subscription.topUpCredits ?? 0)',
+    'getNonNegativeCreditInteger(ledger.unitsReserved)',
+    'getCreditBillingPeriodKey(ledger.billingPeriod)',
   ].forEach((token) => assertIncludes(answerlatticeIntakeUsageLedger, token, 'Answerlattice intake credit period/shape boundary'));
   [answerlatticeActivationSummary, answerlatticeIntakeUsageLedger, answerlatticeKnowledgeIntakeApi]
     .forEach((source) => {
@@ -1505,6 +1575,7 @@ function verifyBillingEntitlementBoundary() {
     'ledgerStoreId?.numericId === storeId.numericId',
     'export function resolveAnswerlatticeIntakeRefundAllocation(',
     'params.currentBillingPeriod === params.reservedBillingPeriod',
+    'getNonNegativeCreditInteger(params.refundMonthlyCredits)',
   ].forEach((token) => assertIncludes(answerlatticeIntakeUsageSettlement, token, 'Answerlattice intake pure settlement boundary'));
 
   [
@@ -1582,7 +1653,12 @@ function verifyBillingEntitlementBoundary() {
   );
   assertIncludes(productBillingServer, 'const oldScope = getProductSubscriptionBillingScope(productId, oldSubscription);', 'upgrade old subscription exact scope admission');
   assertIncludes(productBillingServer, 'const newScope = getProductSubscriptionBillingScope(productId, newSubscription);', 'upgrade new subscription exact scope admission');
-  assertIncludes(productBillingServer, '.create(productDocPayload(productId, data, { isNew: true }));', 'product subscription initial persistence must be create-only');
+  assertIncludes(productBillingServer, 'transaction.create(subscriptionRef, payload);', 'product subscription initial persistence must be transactionally create-only');
+  [
+    'const assertAnswerlatticeWorkspaceAllowsBillingActivation = async',
+    'isAnswerlatticeWorkspaceBillingActivationAllowed(storeSnapshot.data())',
+    "throw new Error('Answerlattice workspace billing activation is not allowed.')",
+  ].forEach((token) => assertIncludes(productBillingServer, token, 'Answerlattice billing activation lifecycle fence'));
   assertIncludes(productBillingServer, "throw new Error('Subscription does not match the requested product and scope.');", 'direct product subscription update transaction-current scope guard');
   assertIncludes(subscriptionServer, '.create(\n        composeInitialSubscriptionPayloadServer(data),', 'MenuList initial subscription persistence must be create-only');
   assertIncludes(subscriptionServer, "throw new Error('MenuList subscription does not match the requested product and scope.');", 'direct MenuList subscription update transaction-current scope guard');
@@ -1613,6 +1689,21 @@ function verifyBillingEntitlementBoundary() {
     'const pendingScope = getProductSubscriptionBillingScope(productId, pending);',
   ].forEach((token) => assertIncludes(createSubscription, token, 'pending checkout exact duplicate-scope admission'));
   [
+    'const cleanupResult = await billingDb.runTransaction(async (transaction) => {',
+    'const currentSnapshot = await transaction.get(pendingDoc.ref);',
+    "current.status !== 'pending'",
+    'currentProviderId !== pendingProviderId',
+    'currentScope?.tenantId !== Number(tenantId)',
+    'currentScope.storeId !== Number(storeId)',
+    "return 'changed' as const;",
+    "if (cleanupResult === 'changed')",
+  ].forEach((token) => assertIncludes(createSubscription, token, 'pending checkout transaction-current terminal cleanup boundary'));
+  assertNotIncludes(
+    createSubscription,
+    "await pendingDoc.ref.set({\n                status: 'expired'",
+    'pending checkout cleanup must not expire a stale pre-provider snapshot',
+  );
+  [
     'where("tenantId", "==", tenantScope.numericId)',
     'where("tId", "==", tenantScope.numericId)',
     'where("storeId", "==", storeScope.numericId)',
@@ -1620,9 +1711,29 @@ function verifyBillingEntitlementBoundary() {
     'projectExactSubscriptionForScope(',
   ].forEach((token) => assertIncludes(subscriptionClient, token, 'browser MenuList exact duplicate-scope query/projection'));
   [
+    '.where("tenantId", "==", tenantScope.numericId)',
+    '.where("tId", "==", tenantScope.numericId)',
+    '.where("storeId", "==", storeScope.numericId)',
+    '.where("sId", "==", storeScope.numericId)',
+    'const expectedScope = getMenuListSubscriptionEntitlementScope(sub);',
+    'isMenuListSubscriptionInExpectedEntitlementScope(current, expectedScope)',
+  ].forEach((token) => assertIncludes(subscriptionServer, token, 'server MenuList exact duplicate-scope and transaction-current expiry boundary'));
+  [
     'where("tId", "==", tenantScope.numericId)',
     'where("sId", "==", storeScope.numericId)',
   ].forEach((token) => assertIncludes(paymentTransactionsDal, token, 'browser MenuList payment-history duplicate-scope query'));
+  [
+    'transaction.get(storeRef)',
+    'normalizeMenuListPublicEntityIdentityAliases([',
+    'storeSnapshot.id',
+    'storedTenantScope?.numericId !== expectedTenantScope.numericId',
+    'storedStoreScope?.numericId !== expectedStoreScope.numericId',
+  ].forEach((token) => assertIncludes(entitlementSync, token, 'MenuList entitlement transaction-current store ownership boundary'));
+  [
+    'sub_EntitlementStoreRace123',
+    'A stale subscription must not overwrite a store that now belongs to another tenant',
+    'A store-scope mismatch must leave the subscription entitlement retryable',
+  ].forEach((token) => assertIncludes(productSubscriptionScopeEmulator, token, 'MenuList entitlement store reassignment emulator regression'));
   [
     "where('tId', '==', tenantScope.numericId)",
     "where('sId', '==', storeScope.numericId)",

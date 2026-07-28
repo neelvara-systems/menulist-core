@@ -7,7 +7,7 @@
 
 ## Answerlattice Answer Tests Runtime Boundary
 
-Answer Tests is enabled in source and requires `MANAGE_GOVERNANCE`. Save, run, release-check, and rollback routes resolve exact session scope and rate-limit before the Firestore-backed permission check. Full-runtime mode checks SAFE_MODE before loading the suite or entering the search/provider path. The persisted summary requires its exact deterministic ID, product ID, numeric tenant/store scope, supported schema, strict suite revision, valid cases, and unique case IDs. Stored releases use the strict release schema; answer-history, audit-history, and rollback proposal/audit records also require exact Answerlattice ownership and scope.
+Answer Tests is enabled in source and requires `MANAGE_GOVERNANCE`. Save, run, release-check, rollback, and proposal-impact routes resolve exact session scope and apply fail-closed rate limits before the Firestore-backed permission check; limiter-provider uncertainty returns a retryable `503`, never write/provider admission. Full-runtime mode checks SAFE_MODE before loading the suite or entering the search/provider path. The persisted summary requires its exact deterministic ID, product ID, numeric tenant/store scope, supported schema, strict suite revision, valid cases, and unique case IDs. Stored releases use the strict release schema; answer-history, audit-history, and rollback proposal/audit records also require exact Answerlattice ownership and scope.
 
 ### Answer Tests
 
@@ -33,6 +33,20 @@ Before execution, the route hashes the run kind, mode, current suite revision, o
 
 The version-4 proof contract includes standard/critical risk, deterministic claim checks, bounded article-reference IDs, one of three evidence policies, a six-counter governed-source snapshot, request fingerprint, and suite revision on each new run. Case admission rejects duplicate references, duplicate phrases, required/blocked phrase overlap, malformed cases, and duplicate persisted case IDs. RAG and FAQ references are projected to at most eight explicit IDs; unknown reference shapes are ignored. Canonical answers remain provable by the expected canonical-answer ID and do not require a separate article reference. The pure evaluator derives `ready`, `review`, or `blocked` from retained case results. These outcomes prove the configured deterministic contract only; no LLM judge or semantic factual-correctness guarantee is introduced.
 
+### Feature 5 Hardening Boundary
+
+The external Critical Answer Test Suite proposal describes a second scenario/evaluation platform, but the shipped Answer Tests runtime already owns bounded authoring, production-equivalent retrieval, side-effect-free test traffic, release checks, in-memory proposal previews, freshness, retained proof, evidence, critical blocking, and founder-facing results. No parallel route, collection, scheduler, artifact store, semantic judge, or scenario engine is admitted.
+
+One code-level gap is verified: `ANSWERLATTICE_ANSWER_TEST_SOURCES` currently includes `rag` for every risk level, and `evaluateAnswerTestCase()` can pass a critical case when expected and actual source are both `rag`. The later implementation pass should stay inside the existing contracts:
+
+1. Add a deterministic evaluator failure whenever `riskLevel === 'critical'` and the resolved source is `rag`.
+2. Prevent new or edited critical cases from selecting `rag` in the owner form and return a specific validation message.
+3. Continue parsing existing critical-RAG cases so the scoped summary does not become corrupt; their next run must fail and produce `blocked` proof.
+4. Reuse the same evaluator for normal runs, release checks, First 10 proof, and proposal previews so the rule cannot diverge by surface.
+5. Add focused contract tests and truthful owner copy. Do not add a Firestore migration, schema family, provider call, or summary read.
+
+`faq` remains an admitted critical route because it resolves through published owner-controlled FAQ truth; `escalation` and `no_answer` remain valid safe outcomes when explicitly configured. This hardening does not make those sources factually correct by itself. Existing phrase, identity, context, reference, and freshness assertions still determine whether the configured contract passes.
+
 Activation reads the current compact source-version summary independently of the last compiled bundle manifest. It accepts a retained First 10 proof only when the run covers each current First 10 case, completed after the latest case edit, has the exact current suite revision, and has the same canonical/KB/docs/entity/relation/release counters as current truth. This prevents an old pass from surviving a question, suite, or knowledge change and prevents a newly run proof from being falsely compared with an intentionally stale bundle snapshot. Legacy runs without source-version or suite-revision evidence remain visible but require one rerun. Internal counters never enter the browser response; the client receives only the bounded stale boolean and proof status. Persisted older cases still normalize to standard/no-reference-check defaults, so no migration scan is required. Retained counts/status are recomputed from admitted results, malformed durations become zero, and a corrupted run with no valid result is discarded instead of appearing ready.
 
 Case `createdAt` and `updatedAt` are server-owned on every save. The transaction preserves both timestamps only when the normalized case definition is unchanged, preserves the original creation time when an existing definition changes, and stamps the current server time for changed or new definitions. Browser-supplied future or stale timestamps therefore cannot preserve an old launch proof.
@@ -47,7 +61,7 @@ Proposal Impact Preview is an owner-triggered read-only branch of this proof run
 
 ### Release Safety And Rollback
 
-Release checks normalize the request release ID, parse the stored release through the strict Answerlattice release schema, select related test cases from the answer-test summary, and run only those cases. A critical failure marks only the retained proof result blocked; it does not mutate the release or deployment. Rollback reads the selected canonical answer and immutable audit-history payload by normalized IDs, validates exact product/tenant/store ownership, then transactionally validates or creates the deterministic pending `version_update` proposal and paired audit row. If one half of a valid pair is missing, the transaction repairs it; conflicting target, mutation, source-audit, or audit identity fails closed. It never modifies the answer.
+Release checks normalize the request release ID, parse the stored release through the strict Answerlattice release schema, select related test cases from the answer-test summary, and run only those cases. A critical failure marks only the retained proof result blocked; it does not mutate the release or deployment. Rollback reads the selected canonical answer, immutable audit-history payload, deterministic proposal, and paired audit row inside the same transaction. Exact product/tenant/store ownership, audit-to-answer linkage, current entity bindings, restorable snapshot, and strict procedure shape are therefore current at the write decision. If one half of a valid pair is missing, the transaction repairs it; conflicting target, mutation, source-audit, status, or audit identity fails closed. The server and browser both validate one strict rollback acknowledgement. It never modifies the answer.
 
 ### Known Issues
 
@@ -112,6 +126,7 @@ Frontend and `functions-answerlattice` flags must match where scheduler/runtime 
 - All new document IDs are derived from validated numeric scope.
 - Error responses are generic; diagnostics log only bounded context.
 - Test mode never persists production search artifacts.
+- After the Feature 5 hardening is implemented, provider-backed RAG can never count as passing critical proof; legacy critical-RAG cases remain readable and fail explicitly.
 - Proposal impact preview never persists a run or evaluates unapproved truth through the fallback model.
 - Invalid signed context is ignored, signed-only identity claims are discarded, and generic page-aware support continues; no private fallback is attempted.
 - Known-issue delivery failure never blocks normal widget answers.

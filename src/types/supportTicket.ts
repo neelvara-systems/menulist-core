@@ -19,6 +19,14 @@ export interface TicketMessage {
     }>;
 }
 
+export interface SupportTicketDocument {
+    uid?: string;
+    url: string;
+    name: string;
+    type: string;
+    size: number;
+}
+
 export interface SupportTicketType {
     id: string;
     displayId: string;
@@ -27,7 +35,7 @@ export interface SupportTicketType {
     priority: string;
     category: string;
     message: string;
-    documents: any[];
+    documents: SupportTicketDocument[];
     platformNotes: string;
     platformTags: string[];
     contextKeys?: string[];
@@ -131,7 +139,15 @@ export const SUPPORT_TICKET_CATEGORY_LIST = [
     { value: SUPPORT_TICKET_CATEGORY.OTHER, label: 'Other' }
 ]
 
-export const getCardColor = (status: string, token: any) => {
+export const getCardColor = (
+    status: string,
+    token: {
+        colorErrorBg: string;
+        colorInfoBg: string;
+        colorSuccessBg: string;
+        colorWarningBg: string;
+    },
+) => {
     switch (status) {
         case SUPPORT_TICKET_STATUS.IN_PROGRESS: return token.colorInfoBg;
         case SUPPORT_TICKET_STATUS.RESOLVED: return token.colorSuccessBg;
@@ -163,15 +179,41 @@ export const SLA_CONFIG = {
 // SLA Status Types
 export type SLAStatus = 'on_time' | 'at_risk' | 'breached';
 
-const getSupportTicketTimestampMillis = (value: unknown): number | null => {
-    if (!value || typeof value !== 'object') return null;
-    const timestamp = value as { seconds?: unknown; toMillis?: unknown };
-    if (typeof timestamp.toMillis === 'function') {
-        const millis = (timestamp.toMillis as () => number)();
-        return Number.isFinite(millis) ? millis : null;
-    }
-    if (typeof timestamp.seconds === 'number' && Number.isFinite(timestamp.seconds)) {
-        return timestamp.seconds * 1000;
+export const getSupportTicketTimestampMillis = (value: unknown): number | null => {
+    try {
+        if (value instanceof Date) {
+            const millis = value.getTime();
+            return Number.isFinite(millis) && millis >= 0 ? millis : null;
+        }
+        if (typeof value === 'number') {
+            return Number.isFinite(value) && value >= 0 ? value : null;
+        }
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+
+        const timestamp = value as { nanoseconds?: unknown; seconds?: unknown; toMillis?: unknown };
+        if (typeof timestamp.toMillis === 'function') {
+            const millis = (timestamp.toMillis as () => unknown).call(value);
+            return typeof millis === 'number' && Number.isFinite(millis) && millis >= 0
+                ? millis
+                : null;
+        }
+        if (
+            typeof timestamp.seconds === 'number'
+            && Number.isSafeInteger(timestamp.seconds)
+            && timestamp.seconds >= 0
+        ) {
+            const nanoseconds = timestamp.nanoseconds ?? 0;
+            if (
+                typeof nanoseconds !== 'number'
+                || !Number.isSafeInteger(nanoseconds)
+                || nanoseconds < 0
+                || nanoseconds >= 1_000_000_000
+            ) return null;
+            const millis = (timestamp.seconds * 1000) + Math.floor(nanoseconds / 1_000_000);
+            return Number.isSafeInteger(millis) ? millis : null;
+        }
+    } catch {
+        return null;
     }
     return null;
 };

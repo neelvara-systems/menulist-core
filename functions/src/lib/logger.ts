@@ -27,7 +27,7 @@ export const logger = {
      * Firebase: Logged as INFO
      * Sentry: Added as breadcrumb
      */
-    info(message: string, data?: Record<string, any>): void {
+    info(message: string, data?: Record<string, unknown>): void {
         const safeMessage = Sentry.getSanitizedFunctionSentryMessage(message);
         const sanitizedData = Sentry.getSanitizedFunctionSentryContext(data) || {};
         firebaseLogger.info(safeMessage, sanitizedData);
@@ -39,7 +39,7 @@ export const logger = {
      * Firebase: Logged as WARNING
      * Sentry: Added as breadcrumb with warning level
      */
-    warn(message: string, data?: Record<string, any>): void {
+    warn(message: string, data?: Record<string, unknown>): void {
         const safeMessage = Sentry.getSanitizedFunctionSentryMessage(message);
         const sanitizedData = Sentry.getSanitizedFunctionSentryContext(data) || {};
         firebaseLogger.warn(safeMessage, sanitizedData);
@@ -51,7 +51,7 @@ export const logger = {
      * Firebase: Logged as ERROR
      * Sentry: Captures exception with full context
      */
-    error(message: string, error?: Error | unknown, context?: Record<string, any>): void {
+    error(message: string, error?: Error | unknown, context?: Record<string, unknown>): void {
         // Log to Firebase
         const safeMessage = Sentry.getSanitizedFunctionSentryMessage(message);
         const sanitizedContext = Sentry.getSanitizedFunctionSentryContext({ error, ...(context || {}) }) || {};
@@ -73,7 +73,7 @@ export const logger = {
      * Debug-level logs (Firebase only)
      * Sentry: Not captured (too verbose)
      */
-    debug(message: string, data?: Record<string, any>): void {
+    debug(message: string, data?: Record<string, unknown>): void {
         const safeMessage = Sentry.getSanitizedFunctionSentryMessage(message);
         const sanitizedData = Sentry.getSanitizedFunctionSentryContext(data) || {};
         firebaseLogger.debug(safeMessage, sanitizedData);
@@ -113,7 +113,7 @@ export const logger = {
      * Firebase: Logged as INFO
      * Sentry: Added as breadcrumb
      */
-    milestone(step: string, data?: Record<string, any>): void {
+    milestone(step: string, data?: Record<string, unknown>): void {
         const message = Sentry.getSanitizedFunctionSentryMessage(`[Milestone] ${step}`);
         const sanitizedData = Sentry.getSanitizedFunctionSentryContext(data) || {};
         firebaseLogger.info(message, sanitizedData);
@@ -125,7 +125,7 @@ export const logger = {
      * Firebase: Logged as INFO
      * Sentry: Added with performance context
      */
-    performance(operation: string, durationMs: number, data?: Record<string, any>): void {
+    performance(operation: string, durationMs: number, data?: Record<string, unknown>): void {
         const message = Sentry.getSanitizedFunctionSentryMessage(`[Performance] ${operation}: ${durationMs}ms`);
         const sanitizedData = Sentry.getSanitizedFunctionSentryContext({
             duration_ms: durationMs,

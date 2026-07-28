@@ -16,11 +16,11 @@ The owner should experience this as:
 1. Pay for an Answerlattice workspace.
 2. Paste product website and app URL.
 3. Add docs, files, policy answers, changelog, support exports, screenshots, or transcripts if available.
-4. Answerlattice shows what it found and what it trusts.
+4. Answerlattice shows what it found and any source-review status recorded by an authorized reviewer.
 5. Answerlattice shows source-backed review drafts and missing evidence.
 6. Answerlattice generates source-backed drafts.
 7. Owner approves what becomes official.
-8. Answerlattice publishes KB, FAQ, approved answers, product page help, and readiness summaries.
+8. Answerlattice publishes KB, FAQ, and product-page help, creates canonical-answer proposals for Governance, and updates aggregate intake summaries.
 
 Primary owner-facing promise:
 
@@ -41,8 +41,8 @@ Primary owner-facing promise:
 | Link-first | Product website links are treated as source discovery packs, not as blind crawls or pasted text files. |
 | Privacy-first | Sources are scanned for secrets and private data before provider prompts are built. |
 | Controlled execution | Expensive intake runs through bounded job orchestration, not unbounded per-source fanout. |
-| Summary-first | Dashboards, activation, and scheduler repair read compact summary/directory docs before opening detailed lists. |
-| Compatibility | Existing KB generation remains available as an output path until the successor publishing path is implemented. |
+| Summary-first | Dashboards, activation, and nightly intake analytics read compact summaries before opening detailed lists. |
+| Compatibility | The legacy KB-generation route redirects safely while the dedicated intake engine publishes into existing Answerlattice destinations. |
 
 ---
 
@@ -135,13 +135,13 @@ The first screen should say:
 
 ---
 
-## 7. Recommended Source Authority — Separate Governance Contract
+## 7. Source Authority — Manual Governance Contract
 
-The hierarchy below is the intended source-governance model, not a current first-class field or automatic conflict resolver in Knowledge Intake. Current intake preserves source IDs and requires human review; the later drift/conflict feature audit owns the broader authority lifecycle.
+Knowledge Intake has a controlled-rollout, manual source-governance map. A reviewer can record authority, owner, approval status, access scope, citation eligibility, effective/review dates, applicability, notes, and reciprocal same-job conflict links on an existing source. This is evidence review, not automatic truth selection: Knowledge Intake does not infer authority, detect conflicts, rank sources, or choose a winner. Missing governance remains readable as unreviewed evidence.
 
 AI confidence never outranks source authority.
 
-Default authority order:
+The following order is reviewer guidance, not an automatic ranking:
 
 1. Owner-approved canonical answer
 2. Owner-entered policy pack / product settings
@@ -156,11 +156,11 @@ Default authority order:
 11. Videos, demos, transcripts
 12. Sales decks, old PDFs, unstructured notes
 
-When a reviewer detects conflicting evidence, the safe product behavior is to hold the draft for review rather than guess. Automatic source-conflict detection is not a current Knowledge Intake claim.
+When a reviewer detects conflicting evidence, they can link the reviewed same-job sources. Canonical proposal acceptance and publication remain blocked while linked evidence is unapproved or has unresolved conflicts when source governance is enabled. The system never creates those links or resolves them automatically.
 
 Example:
 
-Pricing page says API access is Enterprise-only. Old sales deck says API access is included in Pro. Answerlattice recommends the pricing page as higher authority and asks the owner to confirm.
+Pricing page says API access is Enterprise-only. Old sales deck says API access is included in Pro. The reviewer records each source's authority, links the conflict, and confirms the winning policy outside automatic intake logic before removing the conflict and approving the evidence.
 
 ---
 
@@ -168,7 +168,7 @@ Pricing page says API access is Enterprise-only. Old sales deck says API access 
 
 These topics should remain owner-reviewed across Answerlattice. Current Knowledge Intake does not infer a complete risk policy from arbitrary source text; canonical proposals still pass through Governance before becoming authoritative.
 
-High-risk topics always require explicit owner/admin approval:
+High-risk topics must not become authoritative merely because intake generated or accepted a draft. They require deliberate authorized review, and canonical proposals still require the separate Governance approval flow:
 
 - pricing
 - plan limits
@@ -186,7 +186,7 @@ High-risk topics always require explicit owner/admin approval:
 - account deletion
 - compliance/SLA claims
 
-Support staff can draft or suggest, but owner/admin approval is required for official answers in these domains.
+Knowledge Intake does not infer these domains or implement a distinct low-risk/high-risk reviewer-role matrix. Workspace permissions and the destination Governance workflow remain authoritative.
 
 ---
 
@@ -199,7 +199,7 @@ The owner cannot run real intake processing until:
 - session is authenticated
 - user has access to the Answerlattice workspace
 - subscription is active and non-free for processing
-- support/processing credits are available
+- support/processing credits are available when the selected action consumes them
 - workspace maps to exactly one product support brain
 
 Static demo and sample preview remain allowed without processing customer data.
@@ -387,7 +387,7 @@ Intake processing is owner-triggered. Scheduler/ops do not discover active intak
 | Time to first review drafts | One focused setup session for a small starter import |
 | Owner review decisions | 5-15 decisions for the first focused support pack |
 | Time to first approved answer | One focused setup session for small starter imports, after human review |
-| Source coverage | At least top 2-5 product pages mapped in first session |
+| Source coverage | At least 2-5 support-relevant product pages selected in the first session |
 | Draft approval rate | >60% approved with minor edits |
 | Fallback reduction after launch | Tracked through existing signal/trust metrics |
 | Cost overrun | 0 jobs exceed configured plan/cap limits |
@@ -420,11 +420,11 @@ Intake processing is owner-triggered. Scheduler/ops do not discover active intak
 The implementation is complete only when:
 
 - paid entitlement blocks every expensive job before work begins
-- only one expensive intake job per workspace runs at a time unless an explicit plan/concurrency cap allows more
+- every expensive job action uses a transaction-owned lease/idempotency boundary and exact credit reservation where charged; no hidden retry or per-source fanout bypasses those controls
 - source registry exists and all adapters write through it
 - capped extracted source text and metadata are stored in Firestore; raw/heavy source artifacts are not retained by the current intake path
 - source metadata and summary reads are bounded and scoped by `pId`, `tId`, `sId`
-- high-risk destinations remain review-gated; first-class intake source authority, ownership, effective-date, and expiry fields are deferred to the source-governance audit
+- high-risk destinations remain review-gated; the optional source-governance map records manual authority, ownership, approval, access, citation, effective/review dates, applicability, notes, and reciprocal same-job conflict links without automatic ranking or resolution
 - review queue is unified and founder-friendly
 - generated outputs retain source lineage
 - publishing uses existing Answerlattice destination systems instead of duplicate content models

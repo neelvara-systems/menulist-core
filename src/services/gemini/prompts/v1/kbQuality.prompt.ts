@@ -5,7 +5,22 @@
 
 import { GeminiPrompt } from '../types';
 
-export const KB_QUALITY_PROMPT_V1: GeminiPrompt = {
+interface KBQualityPromptArticle {
+  category?: string;
+  content?: string;
+  lastUpdated?: string;
+  section?: string;
+  title?: string;
+}
+
+interface KBQualityPromptInput {
+  article: KBQualityPromptArticle;
+  lowConfidenceQueries: string[];
+  negativeFeedback: Array<{ query: string; comment: string }>;
+  noAnswerQueries: string[];
+}
+
+export const KB_QUALITY_PROMPT_V1: GeminiPrompt<KBQualityPromptInput> = {
   version: {
     version: 'v1',
     createdAt: '2025-10-28',
@@ -27,12 +42,7 @@ Guidelines:
 - Suggest concrete improvements
 - Score quality objectively based on data`,
 
-  user: (data: { 
-    article: any;
-    lowConfidenceQueries: string[];
-    negativeFeedback: Array<{ query: string; comment: string }>;
-    noAnswerQueries: string[];
-  }) => {
+  user: (data) => {
     const { article, lowConfidenceQueries, negativeFeedback, noAnswerQueries } = data;
     
     return `Analyze the quality and effectiveness of this knowledge base article:

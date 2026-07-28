@@ -15,6 +15,7 @@ import {
 } from "../../src/lib/campaigncue/pack-templates/editorDocumentBoundary";
 import {
     assertCampaignCuePackTemplatePayloadIdentity,
+    assertCampaignCuePlatformPayloadHash,
     assertCampaignCuePackTemplateSummaryScope,
     assertCampaignCuePlatformTemplateCatalogScope,
     assertCampaignCueWorkspaceTemplateIndexScope,
@@ -168,6 +169,17 @@ const platformSummary = (overrides: Partial<CampaignCuePackTemplateSummary> = {}
 
 const summary = platformSummary();
 assertCampaignCuePackTemplateSummaryScope(summary);
+assertCampaignCuePlatformPayloadHash(
+    summary,
+    "0123456789abcdef000000000000000000000000000000000000000000000000",
+);
+assert.throws(() => assertCampaignCuePlatformPayloadHash(
+    summary,
+    "1123456789abcdef000000000000000000000000000000000000000000000000",
+), /content hash does not match/);
+assert.throws(() => assertCampaignCuePackTemplateSummaryScope(platformSummary({
+    payloadPath: "campaigncue/templates/platform/food/lunch-pack/pack-template.json",
+})), /not content-addressed/);
 assertCampaignCuePlatformTemplateCatalogScope({
     businessCategory: "food",
     catalogId: "food",
@@ -384,6 +396,11 @@ assert.equal(CampaignCueCreateCampaignSchema.safeParse({
     outputIntentId: "whatsapp_sales_pack",
     sourceTemplateId: "lunch-pack",
 }).success, true);
+assert.equal(CampaignCueCreateCampaignSchema.safeParse({
+    channels: ["whatsapp"],
+    outputIntentId: "whatsapp_sales_pack",
+    sourceTemplateId: "lunch-pack",
+}).success, false, "campaign creation requires a durable retry identity");
 assert.equal(CampaignCueCreateCampaignSchema.safeParse({
     outputIntentId: "unknown_intent",
 }).success, false, "unknown output intent identifiers must fail at the API boundary");

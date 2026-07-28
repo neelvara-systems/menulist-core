@@ -22,6 +22,11 @@ import { firestoreAdmin } from '../firebaseAdmin';
 import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
 import { invalidateOwnerBusinessAssistantContextPackets } from '../ownerBusinessAssistant/contextPacketCacheInvalidation';
 import { getExactMenuListSubscriptionScope } from './subscriptionScope';
+import {
+    getBoundedFunctionsErrorCode,
+    getBoundedFunctionsErrorName,
+    getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
 
 const MENULIST_PRODUCT_ID = 'ML' as const;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,16 +65,14 @@ function getReconciliationStringContext(label: string, value: unknown): Record<s
 
 function getReconciliationErrorContext(error: unknown): Record<string, string> {
     if (error instanceof Error) {
-        const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
-        const status = record.status ?? record.statusCode;
+        const sourceErrorCode = getBoundedFunctionsErrorCode(error);
+        const sourceErrorStatus = getBoundedFunctionsErrorStatus(error);
 
         return {
-            sourceErrorName: (error.name || 'Error').slice(0, 80),
-            ...(record.code === undefined || record.code === null ? {} : {
-                sourceErrorCode: String(record.code).slice(0, 64),
-            }),
-            ...(status === undefined || status === null ? {} : {
-                sourceErrorStatus: String(status).slice(0, 32),
+            sourceErrorName: getBoundedFunctionsErrorName(error) || 'Error',
+            ...(sourceErrorCode === undefined ? {} : { sourceErrorCode }),
+            ...(sourceErrorStatus === undefined ? {} : {
+                sourceErrorStatus: sourceErrorStatus.toString(),
             }),
         };
     }
@@ -176,9 +179,44 @@ export function hasCurrentSubscriptionPlanEntitlement(
 function getActivePlanTypeForSubscription(
     sub: Record<string, any>,
     status: PaymentStatus = sub.status,
+    nowMs = Date.now(),
 ): string | null {
-    if (!hasCurrentSubscriptionPlanEntitlement(sub, status)) return null;
+    if (!hasCurrentSubscriptionPlanEntitlement(sub, status, nowMs)) return null;
     return normalizePlanId(sub.planId);
+}
+
+export function getReconciliationEntitlementDecision(
+    current: Record<string, any>,
+    updates: Record<string, any>,
+    subscriptionId: string,
+    nowMs = Date.now(),
+): {
+    desiredActivePlanType: string | null;
+    finalStatus: PaymentStatus;
+    nextSubscription: Record<string, any>;
+    previousActivePlanType: unknown;
+    shouldSyncEntitlement: boolean;
+} {
+    const finalStatus = (updates.status || current.status) as PaymentStatus;
+    const nextSubscription = {
+        ...current,
+        ...updates,
+        id: subscriptionId,
+    } as Record<string, any>;
+    const desiredActivePlanType = getActivePlanTypeForSubscription(
+        nextSubscription,
+        finalStatus,
+        nowMs,
+    );
+    const previousActivePlanType = current.analyticsEntitlement?.activePlanType ?? null;
+    return {
+        desiredActivePlanType,
+        finalStatus,
+        nextSubscription,
+        previousActivePlanType,
+        shouldSyncEntitlement: previousActivePlanType !== desiredActivePlanType
+            || Boolean(updates.status && updates.status !== current.status),
+    };
 }
 
 export async function syncStorePlanEntitlement(
@@ -457,7 +495,7 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
         if (lastDocumentId) pageQuery = pageQuery.startAfter(lastDocumentId);
         const snapshot = await pageQuery.get();
         if (snapshot.empty) {
-            await cursorRef.delete().catch(() => undefined);
+            await cursorRef.delete();
             cycleCompleted = true;
             break;
         }
@@ -587,11 +625,20 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                         });
                     }
 
-                    const finalStatus = (updates.status || current.status) as PaymentStatus;
-                    const desiredActivePlanType = getActivePlanTypeForSubscription(current, finalStatus);
-                    const syncedActivePlanType = current.analyticsEntitlement?.activePlanType ?? null;
-                    const shouldSyncEntitlement = syncedActivePlanType !== desiredActivePlanType
-                        || Boolean(updates.status && updates.status !== current.status);
+                    const {
+                        desiredActivePlanType,
+                        nextSubscription,
+                        previousActivePlanType,
+                        shouldSyncEntitlement,
+                    } = getReconciliationEntitlementDecision(
+                        current,
+                        updates,
+                        currentSnapshot.id,
+                    );
+                    if (shouldSyncEntitlement) {
+                        updates.billingEntitlementSyncPending = true;
+                        nextSubscription.billingEntitlementSyncPending = true;
+                    }
                     if (Object.keys(updates).length > 0) {
                         updates.lastWebhook = {
                             event: 'reconciliation.sync',
@@ -604,9 +651,9 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                     return {
                         changes,
                         desiredActivePlanType,
-                        previousActivePlanType: syncedActivePlanType,
+                        previousActivePlanType,
                         shouldSyncEntitlement,
-                        subscription: { ...current, ...updates, id: currentSnapshot.id },
+                        subscription: nextSubscription,
                         updatesApplied: Object.keys(updates).length > 0,
                         updates,
                     };
@@ -635,6 +682,10 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                     if (!entitlementSynced) {
                         throw new Error('Subscription entitlement scope is invalid.');
                     }
+                    await docSnap.ref.set({
+                        billingEntitlementSyncPending: FieldValue.delete(),
+                        modifiedOn: FieldValue.serverTimestamp(),
+                    }, { merge: true });
                     synced++;
                     if (syncDetails.length < 100) {
                         syncDetails.push({
@@ -658,7 +709,7 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
 
         lastDocumentId = snapshot.docs[snapshot.docs.length - 1]?.id || null;
         if (snapshot.size < pageSize || !lastDocumentId) {
-            await cursorRef.delete().catch(() => undefined);
+            await cursorRef.delete();
             cycleCompleted = true;
             break;
         }

@@ -1,11 +1,16 @@
 import { Redis } from '@upstash/redis';
+import * as functions from 'firebase-functions';
 import { OWNER_BUSINESS_ASSISTANT_CACHE } from './constants';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 const CACHE_TIMEOUT_MS = 1200;
 const MAX_INVALIDATION_SCAN_STEPS = 12;
 const MAX_INVALIDATION_KEYS = 200;
 
 let redisClient: Redis | null | undefined;
+const logger = functions.logger;
+const OWNER_BUSINESS_ASSISTANT_CACHE_INVALIDATION_FAILED =
+  'OWNER_BUSINESS_ASSISTANT_CACHE_INVALIDATION_FAILED';
 
 const getRedisClient = () => {
   if (redisClient !== undefined) return redisClient;
@@ -16,13 +21,12 @@ const getRedisClient = () => {
 };
 
 const buildPattern = (params: {
-  tId?: string | number;
+  tId: string | number;
   sId: string | number;
   projectId?: string | number;
 }) => {
-  const tenant = params.tId == null ? '*' : String(params.tId);
   const project = params.projectId == null ? '*' : String(params.projectId);
-  return `${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:${tenant}:${params.sId}:p:${project}:profile:*`;
+  return `${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:${params.tId}:${params.sId}:p:${project}:profile:*`;
 };
 
 const buildPacketIndexKey = (params: {
@@ -42,20 +46,28 @@ const readIndexedPacketKeys = async (redis: Redis, indexKey: string): Promise<st
   }
 };
 
-const deleteIndexedPacketKeys = async (redis: Redis, indexKey: string) => {
-  const keysToDelete = (await readIndexedPacketKeys(redis, indexKey))
-    .filter((key) => key.startsWith(OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix))
-    .slice(0, MAX_INVALIDATION_KEYS);
+const deleteIndexedPacketKeys = async (
+  redis: Redis,
+  indexKey: string,
+  expectedPacketPrefix: string,
+) => {
+  const indexedKeys = await readIndexedPacketKeys(redis, indexKey);
+  const eligibleKeys = indexedKeys
+    .filter((key) => key.startsWith(expectedPacketPrefix));
+  const keysToDelete = eligibleKeys.slice(0, MAX_INVALIDATION_KEYS);
 
   if (!keysToDelete.length) return 0;
 
   await redis.del(keysToDelete[0], ...keysToDelete.slice(1));
-  await redis.del(indexKey);
+  await redis.srem(indexKey, keysToDelete[0], ...keysToDelete.slice(1));
+  if (eligibleKeys.length <= keysToDelete.length) {
+    await redis.del(indexKey);
+  }
   return keysToDelete.length;
 };
 
 export async function invalidateOwnerBusinessAssistantContextPackets(params: {
-  tId?: string | number;
+  tId: string | number;
   sId: string | number;
   projectId?: string | number;
 }): Promise<{ attempted: boolean; keysDeleted: number }> {
@@ -64,17 +76,19 @@ export async function invalidateOwnerBusinessAssistantContextPackets(params: {
 
   const patterns = [
     buildPattern(params),
-    ...(params.projectId ? [buildPattern({ tId: params.tId, sId: params.sId })] : []),
+    ...(params.projectId != null ? [buildPattern({ tId: params.tId, sId: params.sId })] : []),
   ];
   let keysDeleted = 0;
 
   try {
-    if (params.tId) {
-      keysDeleted += await deleteIndexedPacketKeys(redis, buildPacketIndexKey({
+    keysDeleted += await deleteIndexedPacketKeys(
+      redis,
+      buildPacketIndexKey({
         tId: params.tId,
         sId: params.sId,
-      }));
-    }
+      }),
+      `${OWNER_BUSINESS_ASSISTANT_CACHE.serverPacketPrefix}:${params.tId}:${params.sId}:`,
+    );
 
     for (const pattern of Array.from(new Set(patterns))) {
       let cursor = '0';
@@ -99,7 +113,12 @@ export async function invalidateOwnerBusinessAssistantContextPackets(params: {
         keysDeleted += keysToDelete.length;
       }
     }
-  } catch {
+  } catch (error) {
+    logger.warn('[OwnerBusinessAssistant] Context packet cache invalidation failed', {
+      failureCode: OWNER_BUSINESS_ASSISTANT_CACHE_INVALIDATION_FAILED,
+      keysDeleted,
+      sourceErrorName: getBoundedFunctionsErrorName(error),
+    });
     return { attempted: true, keysDeleted };
   }
 

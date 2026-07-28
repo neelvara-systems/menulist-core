@@ -314,6 +314,7 @@ function assertPublicToolInventoryBoundary() {
     'mapsPlaceCheckClient.ts',
     'ownerPublicTruthReadiness.ts',
     'phoneValidation.ts',
+    'publicTruthMonitorClientContracts.ts',
     'publicTruthMonitorDiagnostics.ts',
     'publicTruthMonitorEntitlements.ts',
     'publicTruthMonitorReport.ts',

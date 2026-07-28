@@ -3,6 +3,10 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import {
+    getCreditBillingPeriodKey,
+    getNonNegativeCreditInteger,
+} from '@data/shared/aiCreditScalarContract';
+import {
     normalizeAnswerlatticeIntakeUsageLedgerId,
     normalizeAnswerlatticeBillingScopeDocumentId,
     normalizeAnswerlatticeSubscriptionId,
@@ -168,9 +172,9 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
         throw new Error('Unsupported Answerlattice intake usage action.');
     }
 
-    const unitsRequired = getUnitCost(action);
-    const byteSize = Number(input.byteSize || 0);
-    if (!Number.isFinite(unitsRequired) || unitsRequired < 0 || !Number.isFinite(byteSize) || byteSize < 0) {
+    const unitsRequired = getNonNegativeCreditInteger(getUnitCost(action));
+    const byteSize = getNonNegativeCreditInteger(input.byteSize ?? 0);
+    if (unitsRequired === null || byteSize === null) {
         throw new Error('Answerlattice intake usage reservation is invalid.');
     }
     const { storeRef, subscriptionRef } = await resolveSubscriptionRef(scope);
@@ -215,30 +219,37 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
             throw new Error('An active Answerlattice subscription is required before running paid intake processing.');
         }
 
-        let monthlyCredits = Number(subscription.monthlyCredits || 0);
-        let topUpCredits = Number(subscription.topUpCredits || 0);
-        const monthlyCreditsAllowance = Number(subscription.monthlyCreditsAllowance || 0);
+        let monthlyCredits = getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0);
+        const topUpCredits = getNonNegativeCreditInteger(subscription.topUpCredits ?? 0);
+        const monthlyCreditsAllowance = getNonNegativeCreditInteger(subscription.monthlyCreditsAllowance ?? 0);
         const billingPeriod = getBillingPeriodKey(subscription.cycleStartDate);
         if (billingPeriod === null) {
             throw new Error('Answerlattice subscription billing period is invalid.');
         }
 
         if (
-            !Number.isFinite(monthlyCredits)
-            || !Number.isFinite(topUpCredits)
-            || monthlyCredits < 0
-            || topUpCredits < 0
-            || !Number.isFinite(monthlyCreditsAllowance)
-            || monthlyCreditsAllowance < 0
+            monthlyCredits === null
+            || topUpCredits === null
+            || monthlyCreditsAllowance === null
         ) {
             throw new Error('Answerlattice subscription credit balance is invalid.');
         }
 
-        if (monthlyCreditsAllowance > 0 && subscription.creditsLastResetMonth !== billingPeriod) {
+        const rawLastResetPeriod = subscription.creditsLastResetMonth;
+        const lastResetPeriod = rawLastResetPeriod === undefined || rawLastResetPeriod === null
+            ? null
+            : getCreditBillingPeriodKey(rawLastResetPeriod);
+        if (rawLastResetPeriod !== undefined && rawLastResetPeriod !== null && lastResetPeriod === null) {
+            throw new Error('Answerlattice subscription billing period is invalid.');
+        }
+        if (monthlyCreditsAllowance > 0 && lastResetPeriod !== billingPeriod) {
             monthlyCredits = monthlyCreditsAllowance;
         }
 
         const remaining = monthlyCredits + topUpCredits;
+        if (!Number.isSafeInteger(remaining)) {
+            throw new Error('Answerlattice subscription credit balance is invalid.');
+        }
         if (remaining < unitsRequired) {
             throw new Error('Not enough Answerlattice support credits for this intake processing step.');
         }
@@ -344,13 +355,28 @@ export async function finalizeAnswerlatticeIntakeUsage(
         if (ledger.status !== 'reserved') {
             throw new Error('Answerlattice intake usage reservation is not available for settlement.');
         }
-        const unitsReserved = Number(ledger.unitsReserved);
-        if (!Number.isFinite(unitsReserved) || unitsReserved < 0) {
+        const unitsReserved = getNonNegativeCreditInteger(ledger.unitsReserved);
+        if (unitsReserved === null) {
             throw new Error('Answerlattice intake reservation credit evidence is invalid.');
         }
         const timestamp = now();
-        if (input.unitsCharged !== undefined && Number(input.unitsCharged) !== unitsReserved) {
+        const unitsCharged = input.unitsCharged === undefined
+            ? unitsReserved
+            : getNonNegativeCreditInteger(input.unitsCharged);
+        if (unitsCharged !== unitsReserved) {
             throw new Error('Answerlattice intake settlement units do not match the reservation.');
+        }
+        const promptTokenCount = getNonNegativeCreditInteger(input.promptTokenCount ?? 0);
+        const candidatesTokenCount = getNonNegativeCreditInteger(input.candidatesTokenCount ?? 0);
+        const totalTokenCount = getNonNegativeCreditInteger(input.totalTokenCount ?? 0);
+        const tokenCountSource = input.tokenCountSource ?? 'none';
+        if (
+            promptTokenCount === null
+            || candidatesTokenCount === null
+            || totalTokenCount === null
+            || !['provider', 'estimated', 'mixed', 'none'].includes(tokenCountSource)
+        ) {
+            throw new Error('Answerlattice intake settlement token evidence is invalid.');
         }
         if (settlementWriter) {
             await settlementWriter(transaction, { ledger, timestamp, unitsReserved });
@@ -359,10 +385,10 @@ export async function finalizeAnswerlatticeIntakeUsage(
             status: 'succeeded',
             unitsCharged: unitsReserved,
             aiOperationId: input.aiOperationId || null,
-            promptTokenCount: Number(input.promptTokenCount || 0),
-            candidatesTokenCount: Number(input.candidatesTokenCount || 0),
-            tokenCountSource: input.tokenCountSource || 'none',
-            totalTokenCount: Number(input.totalTokenCount || 0),
+            promptTokenCount,
+            candidatesTokenCount,
+            tokenCountSource,
+            totalTokenCount,
             metadata: {
                 ...sanitizeAnswerlatticeIntakeMetadata(ledger.metadata, { maxEntries: 24 }),
                 ...sanitizeAnswerlatticeIntakeMetadata(input.metadata, { maxEntries: 24 }),
@@ -409,8 +435,11 @@ export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, 
             throw new Error('Answerlattice intake usage scope does not match this workspace.');
         }
         if (ledger.status !== 'reserved') return;
-        const refundMonthly = Number(ledger.chargedMonthlyCredits || 0);
-        const refundTopUp = Number(ledger.chargedTopUpCredits || 0);
+        const refundMonthly = getNonNegativeCreditInteger(ledger.chargedMonthlyCredits ?? 0);
+        const refundTopUp = getNonNegativeCreditInteger(ledger.chargedTopUpCredits ?? 0);
+        if (refundMonthly === null || refundTopUp === null) {
+            throw new Error('Answerlattice intake refund credit evidence is invalid.');
+        }
         const subscription = subscriptionSnap.data() || {};
         if (!isAnswerlatticeSubscriptionInScope(subscription, {
             tId: tenantScope.numericId,
@@ -430,9 +459,9 @@ export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, 
         if (currentBillingPeriod === null) {
             throw new Error('Answerlattice subscription billing period is invalid.');
         }
-        const storedBillingPeriod = Number(ledger.billingPeriod);
+        const storedBillingPeriod = getCreditBillingPeriodKey(ledger.billingPeriod);
         const reservedOnMillis = toMillis(ledger.reservedOn);
-        const reservedBillingPeriod = isValidBillingPeriodKey(storedBillingPeriod)
+        const reservedBillingPeriod = storedBillingPeriod !== null && isValidBillingPeriodKey(storedBillingPeriod)
             ? storedBillingPeriod
             : reservedOnMillis
                 ? getBillingPeriodKey(subscription.cycleStartDate, new Date(reservedOnMillis))
@@ -442,8 +471,8 @@ export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, 
         }
         const allocation = resolveAnswerlatticeIntakeRefundAllocation({
             currentBillingPeriod,
-            currentMonthlyCredits: subscription.monthlyCredits || 0,
-            monthlyCreditsAllowance: subscription.monthlyCreditsAllowance || 0,
+            currentMonthlyCredits: subscription.monthlyCredits ?? 0,
+            monthlyCreditsAllowance: subscription.monthlyCreditsAllowance ?? 0,
             refundMonthlyCredits: refundMonthly,
             refundTopUpCredits: refundTopUp,
             reservedBillingPeriod,
@@ -451,17 +480,16 @@ export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, 
         if (!allocation) {
             throw new Error('Answerlattice intake refund credit evidence is invalid.');
         }
-        const currentMonthlyCredits = Number(subscription.monthlyCredits || 0);
-        const currentTopUpCredits = Number(subscription.topUpCredits || 0);
+        const currentMonthlyCredits = getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0);
+        const currentTopUpCredits = getNonNegativeCreditInteger(subscription.topUpCredits ?? 0);
+        if (currentMonthlyCredits === null || currentTopUpCredits === null) {
+            throw new Error('Answerlattice subscription credit balance is invalid.');
+        }
         const nextMonthlyCredits = currentMonthlyCredits + allocation.refundedMonthlyCredits;
         const nextTopUpCredits = currentTopUpCredits + allocation.refundedTopUpCredits;
         if (
-            !Number.isFinite(nextMonthlyCredits)
-            || !Number.isFinite(nextTopUpCredits)
-            || currentMonthlyCredits < 0
-            || currentTopUpCredits < 0
-            || nextMonthlyCredits < 0
-            || nextTopUpCredits < 0
+            !Number.isSafeInteger(nextMonthlyCredits)
+            || !Number.isSafeInteger(nextTopUpCredits)
         ) {
             throw new Error('Answerlattice subscription credit balance is invalid.');
         }

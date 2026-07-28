@@ -1,5 +1,8 @@
 import { PRODUCT_IDS } from '@constant/product';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+} from '@lib/answerlattice/sessionScope';
 
 export const ANSWERLATTICE_CHAT_ANALYTICS_MAX_DAYS = 90;
 export const ANSWERLATTICE_CHAT_ANALYTICS_PAGE_LIMIT = 50;
@@ -76,8 +79,8 @@ export const getAnswerlatticeChatWorkspaceScopeKey = (
     value: { tenantId?: unknown; storeId?: unknown; tId?: unknown; sId?: unknown } | null | undefined,
 ): string | null => {
     if (!value) return null;
-    const tId = normalizeAnswerlatticeScopeDocumentId(value.tId ?? value.tenantId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(value.sId ?? value.storeId);
+    const tId = normalizeConsistentAnswerlatticeScopeDocumentIds([value.tId, value.tenantId]);
+    const sId = normalizeConsistentAnswerlatticeScopeDocumentIds([value.sId, value.storeId]);
     return tId && sId ? `answerlattice-chat:${tId}:${sId}` : null;
 };
 

@@ -301,3 +301,4 @@ Never log tokens, business names, contacts, payment IDs, subscription IDs, or ba
 ## Prior-payment subscription query identity (July 22, 2026)
 
 Referral attribution reads at most the maintained history cap from `subscriptions` using exact `pId/productId/tenantId/storeId/tId/sId` equality. Exact paid history still blocks retroactive attribution, a saturated exact history remains fail-closed, and conflicting duplicate aliases are excluded. No new collection, index, rule, scheduled work or normal-path write is introduced.
+July 28 owner-referral authenticated scope now uses the exact shared root/nested tenant/store projector before feature eligibility, billing authority, wallet/referral reads, or token issuance. Conflicting compatibility aliases fail closed. Valid-path reads, query/index use, token policy and settlement behavior are unchanged.

@@ -11,13 +11,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const PUBLIC_BUNDLE_PATH_PATTERN = /^pb_[A-Za-z0-9_-]{8,80}\/v\d+\/[A-Za-z0-9_./-]+\.json$/;
 const PUBLIC_BUNDLE_PROXY_CACHE_TTL_MS = 10 * 60 * 1000;
+const PUBLIC_BUNDLE_RESPONSE_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
 const MAX_PUBLIC_BUNDLE_PROXY_CACHE_ENTRIES = 300;
 const MAX_PUBLIC_BUNDLE_PROXY_DOWNLOAD_BYTES = 512 * 1024;
 const MAX_PUBLIC_BUNDLE_PROXY_CACHE_BYTES = MAX_PUBLIC_BUNDLE_PROXY_DOWNLOAD_BYTES;
 
 type PublicBundleProxyCacheEntry = {
     buffer: Buffer;
-    cacheControl: string;
     expiresAt: number;
 };
 
@@ -30,10 +30,10 @@ const getBucket = () => {
     return answerlatticeStorageAdmin.bucket();
 };
 
-const buildBundleResponse = (request: NextRequest, buffer: Buffer, cacheControl: string) => withPublicApiCors(new NextResponse(buffer, {
+const buildBundleResponse = (request: NextRequest, buffer: Buffer) => withPublicApiCors(new NextResponse(buffer, {
     headers: {
         'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': cacheControl || 'public, max-age=300',
+        'Cache-Control': PUBLIC_BUNDLE_RESPONSE_CACHE_CONTROL,
         'Content-Length': String(buffer.length),
         'X-Content-Type-Options': 'nosniff',
     },
@@ -41,11 +41,19 @@ const buildBundleResponse = (request: NextRequest, buffer: Buffer, cacheControl:
 
 const jsonResponse = (
     request: NextRequest,
-    body: Record<string, any>,
+    body: Record<string, unknown>,
     init?: ResponseInit,
-): NextResponse => withPublicApiCors(NextResponse.json(body, init), request);
+): NextResponse => {
+    const headers = new Headers(init?.headers);
+    headers.set('Cache-Control', 'no-store');
+    headers.set('X-Content-Type-Options', 'nosniff');
+    return withPublicApiCors(NextResponse.json(body, {
+        ...init,
+        headers,
+    }), request);
+};
 
-const rememberPublicBundle = (storagePath: string, buffer: Buffer, cacheControl: string): void => {
+const rememberPublicBundle = (storagePath: string, buffer: Buffer): void => {
     if (buffer.length > MAX_PUBLIC_BUNDLE_PROXY_CACHE_BYTES) return;
     if (publicBundleProxyCache.size >= MAX_PUBLIC_BUNDLE_PROXY_CACHE_ENTRIES) {
         const oldestKey = publicBundleProxyCache.keys().next().value;
@@ -53,7 +61,6 @@ const rememberPublicBundle = (storagePath: string, buffer: Buffer, cacheControl:
     }
     publicBundleProxyCache.set(storagePath, {
         buffer,
-        cacheControl,
         expiresAt: Date.now() + PUBLIC_BUNDLE_PROXY_CACHE_TTL_MS,
     });
 };
@@ -65,7 +72,7 @@ const buildBundleUnavailableResponse = (request: NextRequest): NextResponse => j
     },
 });
 
-const checkBundleCacheMissRateLimit = async (request: NextRequest): Promise<NextResponse | null> => {
+const checkBundleRateLimit = async (request: NextRequest): Promise<NextResponse | null> => {
     const config = getRateLimitForFeature('ANSWERLATTICE_PUBLIC_BUNDLE');
     const ipHash = hashPublicRateLimitValue(getClientIp(request));
     try {
@@ -73,13 +80,9 @@ const checkBundleCacheMissRateLimit = async (request: NextRequest): Promise<Next
             key: `answerlattice-public-bundle:${ipHash}`,
             limit: config.limit,
             window: config.window,
+            failClosedOnProviderError: true,
         });
-        if (
-            result.allowed
-            && FEATURE_FLAGS.ENABLE_RATE_LIMITING
-            && result.current === 0
-            && result.remaining === config.limit
-        ) {
+        if (!result.allowed && result.reason === 'provider_unavailable') {
             return jsonResponse(request, { error: 'Bundle temporarily unavailable' }, {
                 status: 503,
                 headers: {
@@ -126,20 +129,21 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pat
         }
 
         const storagePath = `answerlattice-context/public/${requestedPath}`;
-        const cached = publicBundleProxyCache.get(storagePath);
-        if (cached && cached.expiresAt > Date.now()) {
-            return buildBundleResponse(request, cached.buffer, cached.cacheControl);
-        }
-        if (cached) publicBundleProxyCache.delete(storagePath);
-
-        const rateLimitResponse = await checkBundleCacheMissRateLimit(request);
+        const rateLimitResponse = await checkBundleRateLimit(request);
         if (rateLimitResponse) return rateLimitResponse;
 
         const file = getBucket().file(storagePath);
         const [exists] = await file.exists();
         if (!exists) {
+            publicBundleProxyCache.delete(storagePath);
             return jsonResponse(request, { error: 'Not found' }, { status: 404 });
         }
+
+        const cached = publicBundleProxyCache.get(storagePath);
+        if (cached && cached.expiresAt > Date.now()) {
+            return buildBundleResponse(request, cached.buffer);
+        }
+        if (cached) publicBundleProxyCache.delete(storagePath);
 
         const [metadata] = await file.getMetadata().catch(() => [null as any]);
         const metadataSize = Number(metadata?.size);
@@ -160,9 +164,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pat
             return buildBundleUnavailableResponse(request);
         }
 
-        const cacheControl = metadata?.cacheControl || 'public, max-age=300';
-        rememberPublicBundle(storagePath, buffer, cacheControl);
-        return buildBundleResponse(request, buffer, cacheControl);
+        rememberPublicBundle(storagePath, buffer);
+        return buildBundleResponse(request, buffer);
     } catch (error) {
         logRuntimeFailure('answerlattice_public_bundle_proxy_failed', error, {
             ...getBoundedRuntimeStringContext('bundlePath', requestedPath),

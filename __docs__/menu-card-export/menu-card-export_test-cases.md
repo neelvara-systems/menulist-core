@@ -176,6 +176,8 @@ Authenticated browser click-through remains an external certification gate befor
 | Route query `projectId` exists | Matching menu is selected when present. |
 | Route query `projectId` is stale/missing | Default active menu, then first active menu, is selected. |
 | Switch menu while previous project data is loaded | Preview/export waits for the new project data and never combines old items with the new menu URL. |
+| Tenant/store changes while project/advisor/export work is pending | The controller clears the old scope, rejects late project/advisor/artifact settlement, and never downloads, shares, records, or renders the previous workspace's result. |
+| Double-click layout suggestion or export | The controller admits one in-flight operation and does not duplicate provider work, file delivery, or local history. |
 | Store has no menus | Route shows an empty state and does not create a default project. |
 | Preview style browsing | No Firestore write, no Storage upload. |
 | Menu switch, then switch back | Previously opened project data is reused from route-session cache. |
@@ -238,6 +240,7 @@ Script responsibilities at freeze:
 - Verify route, library, API, service, and docs files exist.
 - Verify feature flags and AI accounting tokens exist.
 - Verify the route uses the read-only project helper, project selector, preview renderer, local history, AI advisor, history flag, and print-shop flag guard.
+- Verify controller state requires the exact current session tenant/store, late advice/artifacts are scope-owned, and same-tick duplicate advice/export operations are rejected.
 - Verify print-source support for top-level and file-based extracted menu data.
 - Verify print-source support for OBP accent color, existing store logo, renderer logo embedding, and brand-aware source hashes.
 - Verify PDF currency fallback, whole-number price formatting, and dynamic price-width handling.

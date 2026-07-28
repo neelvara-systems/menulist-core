@@ -3,9 +3,12 @@
 import assert from 'node:assert/strict';
 import {
     assertAiMenuManagerPreparedOperationGroup,
+    resolveAiMenuManagerTerminalReceipt,
+    resolveAiMenuManagerTerminalReceiptGroup,
     resolveCurrentAiMenuManagerOperation,
     resolveCurrentAiMenuManagerOperationGroup,
 } from '../../src/lib/ai-menu-manager/pendingOperationIntegrity';
+import { buildAiMenuManagerReceipt } from '../../src/lib/ai-menu-manager/receiptBuilder';
 import type { AiMenuManagerPendingOperation } from '../../src/types/aiMenuManager';
 
 function operation(params: {
@@ -136,6 +139,100 @@ assert.throws(
     }),
     /Prepared updates no longer match/,
     'inconsistent persisted group-size metadata must fail closed',
+);
+
+const executedA = buildAiMenuManagerReceipt({
+    proposalId: persistedProposal.operationId,
+    actionType: persistedProposal.card.actionType,
+    projectId: persistedProposal.projectId,
+    status: 'executed',
+    title: persistedProposal.card.title,
+    message: 'Applied.',
+    executedAt: '2026-07-13T00:01:00.000Z',
+});
+assert.equal(
+    resolveAiMenuManagerTerminalReceipt({
+        receipts: [executedA],
+        requestedOperation: persistedProposal,
+        expectedStatus: 'executed',
+    }),
+    executedA,
+    'a lost completion acknowledgement must replay the one canonical persisted receipt',
+);
+assert.throws(
+    () => resolveAiMenuManagerTerminalReceipt({
+        receipts: [executedA],
+        requestedOperation: persistedProposal,
+        expectedStatus: 'failed',
+    }),
+    /Completed card no longer matches/,
+    'a retry must not reinterpret an executed card as a failed completion',
+);
+assert.throws(
+    () => resolveAiMenuManagerTerminalReceipt({
+        pendingOperations: [persistedProposal],
+        receipts: [executedA],
+        requestedOperation: persistedProposal,
+        expectedStatus: 'executed',
+    }),
+    /Completed card no longer matches/,
+    'contradictory pending and terminal truth for one operation must fail closed',
+);
+
+const cancelledA = buildAiMenuManagerReceipt({
+    proposalId: persistedProposal.operationId,
+    actionType: persistedProposal.card.actionType,
+    projectId: persistedProposal.projectId,
+    status: 'cancelled',
+    title: persistedProposal.card.title,
+    message: 'No MenuList action was taken.',
+    executedAt: '2026-07-13T00:02:00.000Z',
+});
+assert.equal(
+    resolveAiMenuManagerTerminalReceipt({
+        receipts: [cancelledA],
+        requestedOperation: persistedProposal,
+        expectedStatus: 'cancelled',
+    }),
+    cancelledA,
+    'a lost cancellation acknowledgement must replay durable cancellation evidence',
+);
+
+const executedGroupA = buildAiMenuManagerReceipt({
+    proposalId: groupA.operationId,
+    actionType: groupA.card.actionType,
+    projectId: groupA.projectId,
+    status: 'executed',
+    title: groupA.card.title,
+    message: 'Applied.',
+    executedAt: '2026-07-13T00:03:00.000Z',
+});
+const executedGroupB = buildAiMenuManagerReceipt({
+    proposalId: groupB.operationId,
+    actionType: groupB.card.actionType,
+    projectId: groupB.projectId,
+    status: 'executed',
+    title: groupB.card.title,
+    message: 'Applied.',
+    executedAt: '2026-07-13T00:03:00.000Z',
+});
+assert.deepEqual(
+    resolveAiMenuManagerTerminalReceiptGroup({
+        receipts: [executedGroupB, executedGroupA],
+        requestedOperations: [groupA, groupB],
+        expectedStatus: 'executed',
+    }),
+    [executedGroupA, executedGroupB],
+    'a grouped retry must replay all canonical receipts in requested order',
+);
+assert.throws(
+    () => resolveAiMenuManagerTerminalReceiptGroup({
+        receipts: [executedGroupA],
+        requestedOperations: [groupA, groupB],
+        expectedStatus: 'executed',
+    }),
+    /Completed card no longer matches/,
+    'a partial grouped receipt set must fail closed instead of incrementing counters again',
 );
 
 process.stdout.write('AI Menu Manager pending-operation integrity tests passed.\n');

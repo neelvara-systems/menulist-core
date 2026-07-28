@@ -49,16 +49,8 @@ export async function generateFeedbackAnalysis(
       itemCount: feedback.length,
     });
 
-    // Prepare feedback summary for Gemini
-    const feedbackText = feedback
-      .map((item, index) => {
-        const contextStr = item.context ? ` (Query: "${item.context}")` : '';
-        return `${index + 1}. "${item.message}"${contextStr}`;
-      })
-      .join('\n');
-
     // Build prompt
-    const prompt = feedbackAnalysisPrompt(feedbackText, feedback.length);
+    const prompt = feedbackAnalysisPrompt(feedback);
 
     // Call Gemini (using shared genAIClient — SDK standardization P0)
     const result = await genAIClient.models.generateContent({
@@ -125,25 +117,54 @@ function parseGeminiResponse(text: string): FeedbackAnalysisResult {
       cleanText = cleanText.replace(/```\n?/, '').replace(/```\n?$/, '');
     }
 
-    const parsed = JSON.parse(cleanText);
+    const parsed: unknown = JSON.parse(cleanText);
+    const record = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : null;
 
     // Validate structure
-    if (!parsed.themes || !Array.isArray(parsed.themes)) {
+    if (!record || !Array.isArray(record.themes)) {
       throw new Error(GEMINI_FEEDBACK_ANALYSIS_INVALID_RESPONSE);
     }
 
+    const normalizeText = (value: unknown, maxLength: number, fallback = '') => (
+      typeof value === 'string'
+        ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength)
+        : fallback
+    );
+    const normalizeTextArray = (value: unknown, maxItems: number, maxLength: number) => (
+      Array.isArray(value)
+        ? value
+          .filter((entry): entry is string => typeof entry === 'string')
+          .map((entry) => normalizeText(entry, maxLength))
+          .filter(Boolean)
+          .slice(0, maxItems)
+        : []
+    );
+
     // Ensure all required fields exist
     return {
-      themes: parsed.themes.map((theme: any) => ({
-        theme: theme.theme || 'Unknown',
-        count: theme.count || 0,
-        severity: theme.severity || 'medium',
-        examples: theme.examples || [],
-        suggestedActions: theme.suggestedActions || theme.suggested_actions || [],
-      })),
-      summary: parsed.summary || 'No summary provided',
-      topIssues: parsed.topIssues || parsed.top_issues || [],
-      recommendations: parsed.recommendations || [],
+      themes: record.themes.flatMap((value) => {
+        const theme = value !== null && typeof value === 'object' && !Array.isArray(value)
+          ? value as Record<string, unknown>
+          : null;
+        if (!theme) return [];
+        const severity: 'low' | 'medium' | 'high' =
+          theme.severity === 'low' || theme.severity === 'high' ? theme.severity : 'medium';
+        const count = typeof theme.count === 'number' && Number.isSafeInteger(theme.count) && theme.count >= 0
+          ? theme.count
+          : 0;
+        return [{
+          theme: normalizeText(theme.theme, 80, 'Unknown'),
+          count,
+          severity,
+          examples: normalizeTextArray(theme.examples, 3, 500),
+          suggestedActions: normalizeTextArray(theme.suggestedActions ?? theme.suggested_actions, 8, 500),
+        }];
+      }).slice(0, 8),
+      summary: normalizeText(record.summary, 1500, 'No summary provided'),
+      topIssues: normalizeTextArray(record.topIssues ?? record.top_issues, 5, 300),
+      recommendations: normalizeTextArray(record.recommendations, 8, 500),
     };
 
   } catch (error) {
@@ -163,21 +184,25 @@ function parseGeminiResponse(text: string): FeedbackAnalysisResult {
 /**
  * Estimate token count for cost monitoring
  */
-export function estimateTokenCount(feedback: any[]): number {
+export function estimateTokenCount(feedback: unknown[]): number {
   const avgCharsPerToken = 4; // Rough estimate
-  const totalChars = JSON.stringify(feedback).length;
-  return Math.ceil(totalChars / avgCharsPerToken);
+  try {
+    const serialized = JSON.stringify(feedback);
+    return Math.ceil((serialized?.length || 0) / avgCharsPerToken);
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
 }
 
 /**
  * Batch feedback items to stay under token limits
  */
-export function batchFeedback(
-  feedback: any[],
+export function batchFeedback<T>(
+  feedback: T[],
   maxTokens: number = 8000
-): any[][] {
-  const batches: any[][] = [];
-  let currentBatch: any[] = [];
+): T[][] {
+  const batches: T[][] = [];
+  let currentBatch: T[] = [];
   let currentTokens = 0;
 
   for (const item of feedback) {

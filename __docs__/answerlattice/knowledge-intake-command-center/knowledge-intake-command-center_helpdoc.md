@@ -1,7 +1,7 @@
 # Knowledge Intake Command Center — Owner Helpdoc
 
 > **Status:** IMPLEMENTED — owner help copy for day-one intake
-> **Version:** 1.6.0
+> **Version:** 1.7.0
 > **Created:** 2026-05-31
 > **Audience:** Answerlattice workspace owners and staff
 
@@ -74,7 +74,7 @@ If you add the same selected page with identical extracted text again in the sam
 
 ## How Answerlattice Uses Sources
 
-Answerlattice keeps source links so you can judge whether a draft is supported. It does not currently assign automatic authority tiers or run a general source-conflict detector inside Knowledge Intake.
+Answerlattice keeps source links so you can judge whether a draft is supported. It does not assign automatic authority tiers or run a general source-conflict detector. When the controlled source-governance rollout is enabled, an authorized reviewer can manually record authority, approval, access, citation, applicability, review dates, and conflicts with another reviewed source in the same intake job. Answerlattice still does not choose the winning source.
 
 Example:
 
@@ -121,7 +121,7 @@ Publishing also runs the destination refresh work Answerlattice needs: approved 
 
 ## Intake Status
 
-The current summary shows aggregate intake progress: source count, ready sources, review items, accepted/rejected items, published items, usage units, and latest job status where available. It does not currently certify topic-level readiness.
+The owner screen shows bounded job and active-job details, including source and review counters. A separate compact aggregate summary records source count, ready sources, review items, accepted/rejected items, published items, usage units, and latest job status for downstream and operations use. Neither view certifies topic-level readiness.
 
 Before relying on support for a sensitive topic, review the published destination, verify its evidence, and test the real question through the deployed answer surface.
 
@@ -203,3 +203,4 @@ Check the linked source excerpt, where the answer applies, and any missing-evide
 | 2026-07-17 | 1.4.0 | Added the linked-source evidence review rule for accept/reject decisions. |
 | 2026-07-18 | 1.5.0 | Corrected source-deletion and raw-media retention guidance to current runtime behavior. |
 | 2026-07-18 | 1.6.0 | Removed unimplemented authority, conflict, topic-readiness, widget-setup, and bulk-approval claims. |
+| 2026-07-26 | 1.7.0 | Reconciled controlled manual source governance and the bounded owner job/bundle view with the separate aggregate summary. |

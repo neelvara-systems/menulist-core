@@ -1,5 +1,8 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { normalizeStoreSummaryNumericDocumentId } from '@data/shared/storeSummaryBoundary';
+import {
+    normalizeStoreSummaryNumericAliases,
+    normalizeStoreSummaryNumericDocumentId,
+} from '@data/shared/storeSummaryBoundary';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 
 const BRAND_SUBDOMAIN_TENANT_FIELDS = ['tenantId', 'tId'] as const;
@@ -45,7 +48,7 @@ export async function readSubdomainOwnerStoreInTransaction(params: {
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);
     const storeSnap = await transaction.get(storeRef);
     const storeData: Record<string, unknown> = storeSnap.exists ? storeSnap.data() || {} : {};
-    const storedTenantId = normalizeStoreSummaryNumericDocumentId(storeData.tenantId ?? storeData.tId);
+    const storedTenantId = normalizeStoreSummaryNumericAliases([storeData.tenantId, storeData.tId]);
     if (
         !storeSnap.exists
         || storedTenantId !== tenantId

@@ -1,7 +1,7 @@
 
 export interface AiFeedback {
     id?: string;
-    reasons: any[];
+    reasons: unknown[];
     comments: string;
     answer: string;
     query: string;
@@ -9,6 +9,6 @@ export interface AiFeedback {
     uId?: string;
     tId?: number;
     sId?: number;
-    createdOn?: any; // Should be a server timestamp
-    modifiedOn?: any; // Should be a server timestamp
+    createdOn?: unknown;
+    modifiedOn?: unknown;
 }

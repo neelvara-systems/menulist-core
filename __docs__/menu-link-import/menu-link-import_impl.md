@@ -198,7 +198,7 @@ Public Schema.org JSON-LD deduplicates categories by id before building `MenuSec
 
 ## Failure Cleanup
 
-If Storage artifact creation succeeds but Firestore job creation fails, the API deletes the newly created private Storage objects and artifact metadata before returning the owner-safe failure response. Once the job document exists, the extraction pipeline owns the job state.
+If Storage artifact creation succeeds but the route loses the active-job claim or job creation fails, the API deletes the newly created private Storage object. A failed Storage delete must persist the already validated `menuLinkImportArtifacts` metadata as a durable seven-day cleanup record before the route forgets the path; if neither deletion nor durable recording succeeds, the route fails observably instead of acknowledging cleanup. Once the job document exists, the extraction pipeline owns the job state.
 
 ## Storage Scope
 

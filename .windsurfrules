@@ -24,10 +24,11 @@ Backend Integration:
 Axios (v1.18.1)
 Firebase client (v11.7.3)
 Firebase Admin root app (v14.2.0, modular entry points through the repo compatibility boundary)
-MenuList Functions: firebase-admin (v13.10.0), firebase-functions (v6.6.0)
-Answerlattice Functions: firebase-admin (v13.10.0), firebase-functions (v6.6.0)
-SignalDesk Functions: firebase-admin (v13.10.0), firebase-functions (v6.6.0)
-Google GenAI SDK (@google/genai v0.12.0)
+MenuList Functions: firebase-admin (v13.10.0), firebase-functions (v7.3.0 stable)
+Answerlattice Functions: firebase-admin (v13.10.0), firebase-functions (v7.3.0 stable)
+SignalDesk Functions: firebase-admin (v13.10.0), firebase-functions (v7.3.0 stable)
+Google GenAI SDK (@google/genai v2.13.0)
+Gemini production routing: explicit stable IDs only; 3.5 Flash-Lite for structured/high-throughput work, 3.6 Flash for complex/escalation work, 3.5 Flash for balanced work, and 3.1 Flash Image variants for image work. All generateContent calls pass through the shared request compatibility compiler.
 
 Build Tools:
 Node.js (v22; .nvmrc v22.23.1)

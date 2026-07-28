@@ -29,12 +29,17 @@ import {
 } from "./templateRegistryStorageBoundary";
 import type { CreativeEditorDocument, CreativeEditorTemplateOrigin, CreativeEditorTemplateSummary } from "@/modules/creative-editor/types";
 import {
+    creativeEditorDocumentSchema,
     creativeEditorTemplateGetQuerySchema,
     creativeEditorTemplateListQuerySchema,
     creativeEditorTemplateSaveSchema,
     type CreativeEditorTemplateGetQuery,
     type CreativeEditorTemplateListQuery,
 } from "@lib/validation/creativeEditorTemplateSchemas";
+import {
+    resolveCreativeEditorTemplateScopeBoundary,
+    type CreativeEditorTemplateScope,
+} from "./templateRegistryScopeBoundary";
 
 const PLATFORM_CATALOG_COLLECTION = DB_COLLECTIONS.CREATIVE_EDITOR_PLATFORM_ASSET_TEMPLATES;
 const STORE_ASSET_TEMPLATES_COLLECTION = DB_COLLECTIONS.STORE_ASSET_TEMPLATES;
@@ -89,10 +94,7 @@ const isTemplateRegistryLocalError = (error: unknown, code?: TemplateRegistryLoc
     && (!code || error.code === code)
 );
 
-export type CreativeEditorTemplateScope = {
-    sId: string;
-    tId: string;
-};
+export type { CreativeEditorTemplateScope } from "./templateRegistryScopeBoundary";
 
 export type CreativeEditorTemplateContext = {
     assetTypeId?: string;
@@ -215,23 +217,9 @@ type CreativeEditorPlatformCatalogRecord = {
 };
 
 export const resolveCreativeEditorTemplateScope = (input: {
-    session?: any;
-    storeDetails?: any;
-}): CreativeEditorTemplateScope | null => {
-    const tId = input.storeDetails?.tenantId
-        ?? input.storeDetails?.tId
-        ?? input.session?.tId
-        ?? input.session?.user?.tenantId;
-    const sId = input.storeDetails?.storeId
-        ?? input.storeDetails?.sId
-        ?? input.session?.sId
-        ?? input.session?.user?.storeId;
-    if (tId == null || sId == null) return null;
-    return {
-        sId: String(sId),
-        tId: String(tId),
-    };
-};
+    session?: unknown;
+    storeDetails?: unknown;
+}): CreativeEditorTemplateScope | null => resolveCreativeEditorTemplateScopeBoundary(input);
 
 const safePathPart = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 100) || "_";
 
@@ -475,14 +463,18 @@ function toSummary(record: CreativeEditorTemplateRecord): CreativeEditorTemplate
     };
 }
 
-async function readStorageJson<T>(path: string): Promise<T> {
+async function readStorageJson(path: string): Promise<unknown> {
     const payloadBlob = await getBlob(ref(firebaseStorage, path));
     if (payloadBlob.size > MAX_DOCUMENT_BYTES) {
         throwTemplateRegistryLocalError("TEMPLATE_DOCUMENT_TOO_LARGE");
     }
     const raw = await payloadBlob.text();
-    return JSON.parse(raw) as T;
+    return JSON.parse(raw) as unknown;
 }
+
+const readCreativeEditorDocument = async (path: string): Promise<CreativeEditorDocument> => (
+    creativeEditorDocumentSchema.parse(await readStorageJson(path))
+);
 
 const isMissingStorageObjectError = (error: unknown): boolean => (
     Boolean(error)
@@ -718,8 +710,17 @@ async function getCreativeEditorPlatformTemplate(
     const match = readIndexRecords(catalog.data(), params)
         .find((item) => item.id === params.templateId && recordMatchesRequest(item, params));
     const record = match ? toPlatformRecord(match, requestedCategory, params) : undefined;
-    if (!record || (!params.includeUnpublished && (record.status || "published") !== "published") || !record.documentPath) return null;
-    const document = await readStorageJson<CreativeEditorDocument>(record.documentPath);
+    if (
+        !record
+        || (!params.includeUnpublished && (record.status || "published") !== "published")
+        || !record.documentPath
+        || !isOwnedCreativeEditorTemplateStoragePath(record.documentPath, {
+            businessCategory: record.businessCategory || requestedCategory,
+            templateId: record.id,
+            templateOrigin: "platform",
+        }, "document")
+    ) return null;
+    const document = await readCreativeEditorDocument(record.documentPath);
     return {
         document,
         template: toSummary(record),
@@ -734,8 +735,17 @@ async function getCreativeEditorUserTemplate(
     if (!indexDoc.exists()) return null;
     const record = readIndexRecords(indexDoc.data())
         .find((item) => item.id === params.templateId && recordMatchesRequest(item, params));
-    if (!record || !record.documentPath) return null;
-    const document = await readStorageJson<CreativeEditorDocument>(record.documentPath);
+    if (
+        !record
+        || !record.documentPath
+        || !isOwnedCreativeEditorTemplateStoragePath(record.documentPath, {
+            sId: scope.sId,
+            tId: scope.tId,
+            templateId: record.id,
+            templateOrigin: "user",
+        }, "document")
+    ) return null;
+    const document = await readCreativeEditorDocument(record.documentPath);
     return {
         document,
         template: toSummary({ ...record, templateType: "user" }),

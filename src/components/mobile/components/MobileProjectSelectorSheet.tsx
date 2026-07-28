@@ -2,7 +2,6 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader, updateSpecialMenuProject } from '@database/projects';
-import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
@@ -281,7 +280,6 @@ export default function MobileProjectSelectorSheet({
     const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
     const canDeactivateLinkedProjects = !outletPolicy || outletPolicy.allowProjectDeactivate !== false;
     const canTranslatePublicContent = userPermissions?.canGenerateDescriptions === true;
-    const skipLinkedOutletDeleteCheck = !canHaveLinkedOutlets(tenantDetails as any);
     const orderedProjects = useMemo(() => {
         return [...projects].sort((a, b) => {
             const aSpecial = a.isSpecialMenu === true ? 1 : 0;
@@ -1165,7 +1163,7 @@ export default function MobileProjectSelectorSheet({
             const isCurrent = project.projectId === currentProjectId;
             const fallback = getDeleteFallbackProject(project.projectId);
             const defaultReplacement = project.isDefault ? getDeleteDefaultReplacement(project.projectId) : null;
-            const deleteResult = await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+            const deleteResult = await deleteProject(project.projectId);
             assertProjectDeleteSucceeded(
                 deleteResult,
                 project.projectId,

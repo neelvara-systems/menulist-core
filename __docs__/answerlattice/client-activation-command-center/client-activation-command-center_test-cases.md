@@ -50,6 +50,7 @@
 - Persisted scheduler durations and counts accept exact nonnegative safe integers only; malformed scalar evidence projects to zero and cannot become plausible owner status.
 - Foreign/malformed embedded subscription summaries cannot complete License readiness and do not suppress the bounded exact-scope legacy fallback.
 - Case-mutated subscription status, numeric-string subscription amount, and numeric-string widget seen count do not become owner readiness or billing/runtime truth.
+- Object-coerced activation/operations/bundle statuses fail closed; manual rebuild acknowledgements reject unknown top-level, manifest, and stats fields and contain throwing object inspection.
 - First-client launch proof adds no Firestore calls beyond the activation summary response.
 - Content Control workbench adds no extra Firestore calls beyond the activation summary response.
 - Test-as-Customer checklist and Surface Readiness matrix add no extra Firestore calls beyond the activation summary response.

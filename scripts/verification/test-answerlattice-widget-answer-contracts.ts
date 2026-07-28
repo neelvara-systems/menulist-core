@@ -35,7 +35,10 @@ assert(!searchRoute.includes('interactionDetected: result.graphExpansion.interac
 assert(!searchRoute.includes('relatedSuggestions: result.graphExpansion.relatedSuggestions || []'), 'widget graph output must not expose internal related entity IDs');
 assert(searchRoute.indexOf('isAnswerlatticeWidgetRuntimeRequestAuthorized({') < searchRoute.indexOf('const rateLimitResult = await checkRateLimit({'), 'tenant/key search budget must be charged only after credential and runtime-origin authorization');
 
-assert(feedbackRoute.includes("let authoritativeOutcome: 'resolved' | 'not_resolved' | null = null"), 'widget feedback must return the stored outcome on replay');
+assert(feedbackRoute.includes('const transactionResult = await answerlatticeFirestoreAdmin.runTransaction'), 'widget feedback must derive replay state from the committed transaction attempt');
+assert(feedbackRoute.includes('return { historyData: current, feedbackCreated: false, authoritativeOutcome };'), 'widget feedback must return the stored outcome on replay');
+assert(feedbackRoute.includes('return { historyData: current, feedbackCreated: true, authoritativeOutcome };'), 'new widget feedback must return retry-local mutation state');
+assert(!feedbackRoute.includes("let authoritativeOutcome: 'resolved' | 'not_resolved' | null = null"), 'widget feedback must not retain outcome state from an abandoned transaction attempt');
 assert(feedbackRoute.includes('resolutionOutcome: authoritativeOutcome'), 'new widget feedback must persist an explicit authoritative outcome');
 assert(feedbackRoute.includes('created: feedbackCreated'), 'widget feedback must disclose whether the mutation was new or replayed');
 assert(feedbackRoute.includes('isAnswerlatticeSearchHistoryAvailableForInteraction(current)'), 'widget feedback must reject expired retained search history');
@@ -53,6 +56,9 @@ assert(escalationServer.includes("value.mountContext === 'widget'"), 'widget esc
 assert(escalationServer.includes('buildAnswerlatticeWidgetEscalationTicketId'), 'widget escalation must use a deterministic ticket identity');
 assert(escalationServer.includes('getAnswerlatticeSupportTicketDisplayId(ticketId)'), 'widget escalation must use the shared non-prefix display reference');
 assert(escalationServer.includes('transaction.create(ticketRef, ticket)'), 'widget escalation ticket creation must be create-only and idempotent');
+assert(escalationServer.includes('const transactionResult = await answerlatticeFirestoreAdmin.runTransaction'), 'widget escalation must derive its response from the committed transaction attempt');
+assert(escalationServer.includes('return { created, signalContext };'), 'widget escalation transaction must return retry-local outcome state');
+assert(!escalationServer.includes('let created = false;'), 'widget escalation must not mutate creation state outside a retryable transaction callback');
 assert(escalationServer.includes("history.resolutionOutcome === 'resolved'"), 'widget escalation must reject a history row already marked solved');
 assert(escalationServer.includes('isAnswerlatticeSearchHistoryAvailableForInteraction(history)'), 'widget escalation must reject expired retained search history');
 assert(escalationServer.includes('widgetEscalation?.searchHistoryId !== searchHistoryId'), 'widget escalation replay must verify persisted ticket ownership');

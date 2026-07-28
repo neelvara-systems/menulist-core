@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const RULES_FILE = process.env.ANSWERLATTICE_RULES_FILE || 'firestore-answerlattice.rules';
@@ -51,6 +52,10 @@ async function run(): Promise<void> {
             role: 'CUSTOMER', tenantId: '1', storeId: '101', uId: 'customer-1',
         }).firestore();
         const ref = doc(ownerDb, 'answerlattice_signalEvents', 'sig-ticket-1');
+
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
+        });
 
         await assertSucceeds(setDoc(ref, signal()));
         await assertSucceeds(getDoc(ref));

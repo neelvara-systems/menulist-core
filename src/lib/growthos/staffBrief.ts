@@ -5,13 +5,14 @@ import type {
     GrowthOSMenuItemFact,
     GrowthOSSourceFacts,
     GrowthOSStaffBriefOutput,
+    GrowthOSTimestampLike,
 } from "@type/growthos";
 
 export function buildGrowthOSStaffBrief(params: {
     action: GrowthOSActionSummary;
     facts: GrowthOSSourceFacts;
     item?: GrowthOSMenuItemFact | null;
-    expiresAt?: any;
+    expiresAt?: GrowthOSTimestampLike | null;
 }): GrowthOSStaffBriefOutput {
     const item = params.item;
     const price = item ? formatGrowthOSPrice(item) : "";

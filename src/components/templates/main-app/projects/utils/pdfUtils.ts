@@ -10,6 +10,7 @@ import {
     getBoundedMenuProcessingStringContext,
     logMenuProcessingFailure,
 } from '@lib/firebase/menuProcessingDiagnostics';
+import { getBoundedErrorName, getBoundedErrorStringField } from '@lib/monitoring/boundedLogContext';
 import { generateMenuFileUid } from '../utils';
 import { MAX_PDF_PAGES, WARN_PDF_PAGES } from '../constants';
 
@@ -163,8 +164,8 @@ export const convertPdfToImages = async (
                 try {
                     pdf = await pdfjs.getDocument({ data: fileArrayBuffer }).promise;
                 } catch (pdfError) {
-                    const errorName = pdfError instanceof Error ? pdfError.name : '';
-                    const errorMessage = pdfError instanceof Error ? pdfError.message : '';
+                    const errorName = getBoundedErrorName(pdfError) || '';
+                    const errorMessage = getBoundedErrorStringField(pdfError, 'message') || '';
                     if (errorName === 'InvalidPDFException' || errorMessage.includes('Invalid')) {
                         message.error({
                             content: `"${file.name}" is corrupted or invalid. Please try a different PDF file.`,

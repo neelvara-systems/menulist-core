@@ -21,6 +21,7 @@ import {
     LuFileInput,
     LuFlame,
     LuGitPullRequest,
+    LuGitBranch,
     LuGlobe,
     LuHeart,
     LuHelpCircle,
@@ -45,6 +46,7 @@ import {
     LuUsers,
     LuZap,
 } from 'react-icons/lu';
+import type { IconType } from 'react-icons';
 import type { AnswerlatticePermissionKey } from './permissions';
 import { ANSWERLATTICE_PERMISSION_KEYS } from './permissions';
 import { ANSWERLATTICE_BASE_PATH, ANSWERLATTICE_ROUTES } from './routes';
@@ -59,6 +61,7 @@ export const ANSWERLATTICE_DASHBOARD_SIDEBAR_EXPANDED_WIDTH = 256;
 export const ANSWERLATTICE_GOVERNANCE_TABS = {
     ANSWERS: 'answers',
     ENTITIES: 'entities',
+    MAP: 'map',
     ANALYTICS: 'analytics',
     HEALTH: 'health',
     HISTORY: 'history',
@@ -76,6 +79,14 @@ export const ANSWERLATTICE_DEFAULT_GOVERNANCE_TAB = ANSWERLATTICE_GOVERNANCE_TAB
 
 const ANSWERLATTICE_GOVERNANCE_TAB_VALUES = Object.values(ANSWERLATTICE_GOVERNANCE_TABS);
 
+const decodeRouteSegment = (value: string): string | null => {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return null;
+    }
+};
+
 export function isAnswerlatticeGovernanceTab(tab: string | null | undefined): tab is typeof ANSWERLATTICE_GOVERNANCE_TAB_VALUES[number] {
     return Boolean(tab && ANSWERLATTICE_GOVERNANCE_TAB_VALUES.includes(tab as typeof ANSWERLATTICE_GOVERNANCE_TAB_VALUES[number]));
 }
@@ -92,7 +103,7 @@ export function getAnswerlatticeGovernanceTabFromPathname(pathname: string) {
     const tab = governanceIndex >= 0 ? segments[governanceIndex + 1] : undefined;
     if (!tab) return null;
 
-    const decodedTab = decodeURIComponent(tab);
+    const decodedTab = decodeRouteSegment(tab);
     return isAnswerlatticeGovernanceTab(decodedTab) ? decodedTab : null;
 }
 
@@ -123,7 +134,7 @@ export function getAnswerlatticeWidgetTabFromPathname(pathname: string) {
     const tab = widgetIndex >= 0 ? segments[widgetIndex + 1] : undefined;
     if (!tab) return null;
 
-    const decodedTab = decodeURIComponent(tab);
+    const decodedTab = decodeRouteSegment(tab);
     return isAnswerlatticeWidgetTab(decodedTab) ? decodedTab : null;
 }
 
@@ -152,7 +163,7 @@ export function getAnswerlatticeTeamTabFromPathname(pathname: string) {
     const tab = teamIndex >= 0 ? segments[teamIndex + 1] : undefined;
     if (!tab) return null;
 
-    const decodedTab = decodeURIComponent(tab);
+    const decodedTab = decodeRouteSegment(tab);
     return isAnswerlatticeTeamTab(decodedTab) ? decodedTab : null;
 }
 
@@ -164,7 +175,7 @@ export interface AnswerlatticeNavItem {
     key: string;
     label: string;
     route: string;
-    icon: any;
+    icon: IconType;
     group?: string;
     platformOnly?: boolean;
     managementOnly?: boolean;
@@ -222,6 +233,7 @@ export const ANSWERLATTICE_GOVERNANCE_SUB_NAV: AnswerlatticeNavItem[] = [
     { key: 'governance-answer-tests', label: 'Answer Tests', route: ANSWERLATTICE_ROUTES.ANSWER_TESTS, icon: LuClipboardCheck, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_ANSWER_TESTS' },
     { key: 'governance-answers', label: 'Canonical Answers', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS), icon: LuBookOpen, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
     { key: 'governance-entities', label: 'Product Ontology', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ENTITIES), icon: LuBoxes, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
+    { key: 'governance-map', label: 'Knowledge Map', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.MAP), icon: LuGitBranch, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP' },
     { key: 'governance-analytics', label: 'Answer Analytics', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANALYTICS), icon: LuBarChart3, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, advanced: true },
     { key: 'governance-health', label: 'Entity Health', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.HEALTH), icon: LuHeart, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, advanced: true },
     { key: 'governance-history', label: 'Version History', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.HISTORY), icon: LuHistory, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, advanced: true },

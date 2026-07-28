@@ -1,4 +1,4 @@
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import { getBoundedLogValueContext, getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import type { AnswerlatticePublicCacheSegment } from '@lib/actions/revalidateAnswerlatticePublicCache';
 import { secureError } from '@lib/security/secureLogger';
 
@@ -128,7 +128,7 @@ export const revalidateAnswerlatticePublicClientCache = async (
             }
             if (process.env.NODE_ENV !== 'production') {
                 logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'request_failed', {
-                    errorName: error instanceof Error ? error.name : typeof error,
+                    errorName: getBoundedErrorName(error) || typeof error,
                 });
             }
             if (options.throwOnFailure) {

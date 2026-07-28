@@ -15,6 +15,7 @@ import {
     isAnswerlatticeSubscriptionInScope,
 } from '@lib/answerlattice/billingScopeBoundary';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import { isAnswerlatticeWorkspaceBillingActivationAllowed } from '@lib/answerlattice/workspaceLifecycleContracts';
 import {
     canUseAnswerlatticeManagement,
     getAnswerlatticeScopedSession,
@@ -96,6 +97,26 @@ const getAnswerlatticeBillingEntitlementLogContext = (
     ...getBoundedAnswerlatticeStringContext('status', subscription.status),
     ...getBoundedAnswerlatticeStringContext('source', source),
 });
+
+const assertAnswerlatticeWorkspaceAllowsBillingActivation = async (
+    transaction: FirebaseFirestore.Transaction,
+    db: FirebaseFirestore.Firestore,
+    scope: { tenantId: number; storeId: number },
+): Promise<void> => {
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId));
+    const storeSnapshot = await transaction.get(storeRef);
+    if (
+        !storeSnapshot.exists
+        || !isAnswerlatticeStoreInScope(
+            storeSnapshot.data(),
+            { tenantId: scope.tenantId, storeId: scope.storeId },
+            storeSnapshot.id,
+        )
+        || !isAnswerlatticeWorkspaceBillingActivationAllowed(storeSnapshot.data())
+    ) {
+        throw new Error('Answerlattice workspace billing activation is not allowed.');
+    }
+};
 
 export const getBillingFirestoreAdminForProduct = (productId: ProductId): FirebaseFirestore.Firestore => {
     if (productId === PRODUCT_IDS.ANSWERLATTICE) {
@@ -270,10 +291,15 @@ export const createProductInitialSubscription = async (
     const subscriptionId = normalizeAnswerlatticeSubscriptionId(providerSubscriptionId);
     if (!subscriptionId) throw new Error('Invalid Answerlattice subscription id.');
 
-    await getBillingFirestoreAdminForProduct(productId)
-        .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
-        .doc(subscriptionId)
-        .create(productDocPayload(productId, data, { isNew: true }));
+    const db = getBillingFirestoreAdminForProduct(productId);
+    const payload = productDocPayload(productId, data, { isNew: true });
+    const scope = getProductSubscriptionBillingScope(productId, payload);
+    if (!scope) throw new Error('Invalid Answerlattice subscription scope.');
+    const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
+    await db.runTransaction(async (transaction) => {
+        await assertAnswerlatticeWorkspaceAllowsBillingActivation(transaction, db, scope);
+        transaction.create(subscriptionRef, payload);
+    });
 };
 
 export const updateProductSubscription = async (
@@ -299,6 +325,17 @@ export const updateProductSubscription = async (
         const snapshot = await transaction.get(subscriptionRef);
         if (!snapshot.exists || !getProductSubscriptionBillingScope(productId, snapshot.data())) {
             throw new Error('Subscription does not match the requested product and scope.');
+        }
+        const scope = getProductSubscriptionBillingScope(productId, snapshot.data());
+        const requestedStatus = data.status;
+        if (
+            scope
+            && (
+                requestedStatus === 'active'
+                || (requestedStatus === undefined && snapshot.data()?.status === 'active')
+            )
+        ) {
+            await assertAnswerlatticeWorkspaceAllowsBillingActivation(transaction, db, scope);
         }
         transaction.set(subscriptionRef, productDocPayload(productId, data), { merge: true });
     });
@@ -628,6 +665,7 @@ export async function applyProductSubscriptionPayment(
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
         if (!getProductSubscriptionBillingScope(productId, current)) return null;
+        const currentScope = getProductSubscriptionBillingScope(productId, current);
         const billingHistory = Array.isArray(current.billingHistory)
             ? current.billingHistory.filter((entry): entry is string => typeof entry === 'string')
             : [];
@@ -646,6 +684,9 @@ export async function applyProductSubscriptionPayment(
                 previousSubscription: current,
                 subscription: current,
             };
+        }
+        if (isAnswerlatticeBillingProduct(productId) && currentScope) {
+            await assertAnswerlatticeWorkspaceAllowsBillingActivation(transaction, db, currentScope);
         }
 
         const {
@@ -762,6 +803,14 @@ export async function applyProductSubscriptionStatusTransition(
                 previousSubscription: current,
                 subscription: current,
             };
+        }
+        const currentScope = getProductSubscriptionBillingScope(productId, current);
+        if (
+            isAnswerlatticeBillingProduct(productId)
+            && params.nextStatus === 'active'
+            && currentScope
+        ) {
+            await assertAnswerlatticeWorkspaceAllowsBillingActivation(transaction, db, currentScope);
         }
 
         const {
@@ -914,6 +963,12 @@ export async function applyProductSubscriptionUpgradeCarryForward(
                 remainingCredits: 0,
             };
         }
+        if (isAnswerlatticeBillingProduct(productId)) {
+            await assertAnswerlatticeWorkspaceAllowsBillingActivation(transaction, db, {
+                tenantId: tenantScope.numericId,
+                storeId: storeScope.numericId,
+            });
+        }
 
         const calculatedCredits = calculateRemainingCredits(oldSubscription);
         const creditTransfer = resolveSubscriptionUpgradeCreditTransfer({
@@ -1049,6 +1104,17 @@ export async function applyProductSubscriptionWebhookEvent(
                 subscription: current,
             };
         }
+        const currentScope = getProductSubscriptionBillingScope(productId, current);
+        if (
+            isAnswerlatticeBillingProduct(productId)
+            && currentScope
+            && (
+                params.nextStatus === 'active'
+                || (!params.nextStatus && current.status === 'active')
+            )
+        ) {
+            await assertAnswerlatticeWorkspaceAllowsBillingActivation(transaction, db, currentScope);
+        }
 
         const {
             billingHistory: _ignoredBillingHistory,
@@ -1091,8 +1157,12 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
     subscription: FirestoreSubscriptionDoc,
     source: string,
 ): Promise<void> => {
-    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(subscription.tenantId ?? subscription.tId);
-    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(subscription.storeId ?? subscription.sId);
+    const subscriptionScope = getProductSubscriptionBillingScope(
+        PRODUCT_IDS.ANSWERLATTICE,
+        subscription,
+    );
+    const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(subscriptionScope?.tenantId);
+    const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(subscriptionScope?.storeId);
     const subscriptionId = normalizeAnswerlatticeSubscriptionId(subscription.id || subscription.providerSubscriptionId);
     if (!tenantScope || !storeScope || !subscriptionId) return;
 
@@ -1116,12 +1186,12 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
         if (!snapshot.exists) return;
 
         const currentData = snapshot.data() || {};
-        const currentTenantScope = normalizeAnswerlatticeBillingScopeDocumentId(
-            currentData.tenantId ?? currentData.tId,
+        const currentScope = getProductSubscriptionBillingScope(
+            PRODUCT_IDS.ANSWERLATTICE,
+            currentData,
         );
-        const currentStoreScope = normalizeAnswerlatticeBillingScopeDocumentId(
-            currentData.storeId ?? currentData.sId,
-        );
+        const currentTenantScope = normalizeAnswerlatticeBillingScopeDocumentId(currentScope?.tenantId);
+        const currentStoreScope = normalizeAnswerlatticeBillingScopeDocumentId(currentScope?.storeId);
         if (
             !currentTenantScope
             || !currentStoreScope

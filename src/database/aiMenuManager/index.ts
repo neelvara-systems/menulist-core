@@ -26,6 +26,8 @@ import { normalizeAiMenuManagerScopeDocumentId } from '@lib/ai-menu-manager/rout
 import { assertAiMenuManagerPatchAllowedForAction } from '@lib/ai-menu-manager/patchPolicy';
 import {
     assertAiMenuManagerPreparedOperationGroup,
+    resolveAiMenuManagerTerminalReceipt,
+    resolveAiMenuManagerTerminalReceiptGroup,
     resolveCurrentAiMenuManagerOperation,
     resolveCurrentAiMenuManagerOperationGroup,
 } from '@lib/ai-menu-manager/pendingOperationIntegrity';
@@ -510,7 +512,7 @@ function getMatchingSessionSnapshot(params: {
     return snapshot;
 }
 
-function getMatchingOperationSessionSnapshot(
+function getMatchingSessionForOperation(
     operation: AiMenuManagerPendingOperation,
     snapshot?: unknown,
 ) {
@@ -524,13 +526,6 @@ function getMatchingOperationSessionSnapshot(
     ) {
         throw new Error('Card no longer matches the selected menu');
     }
-
-    const operationStillPending = normalizeOperations(session, operation.projectId)
-        .some((entry) => entry.operationId === operation.operationId);
-    if (!operationStillPending) {
-        throw new Error('Card no longer matches the selected menu');
-    }
-
     return session;
 }
 
@@ -1296,11 +1291,20 @@ export async function completeAiMenuManagerClientOperations(params: {
     const sessionRef = getSessionDocRef(firstOperation.sessionId);
     return runTransaction(firebaseClient, async (transaction) => {
         const sessionSnap = await transaction.get(sessionRef);
-        const session = getMatchingOperationSessionSnapshot(
+        const session = getMatchingSessionForOperation(
             firstOperation,
             sessionSnap.exists() ? sessionSnap.data() : null,
         );
         const currentOperations = normalizeOperations(session, firstOperation.projectId);
+        const terminalReceipts = resolveAiMenuManagerTerminalReceiptGroup({
+            pendingOperations: currentOperations,
+            receipts: session.recentReceiptSummaries || [],
+            requestedOperations: params.operations,
+            expectedStatus: params.result,
+        });
+        if (terminalReceipts) {
+            return { receipts: terminalReceipts, session };
+        }
         const canonicalOperations = resolveCurrentAiMenuManagerOperationGroup({
             currentOperations,
             requestedOperations: params.operations,
@@ -1377,11 +1381,20 @@ export async function completeAiMenuManagerClientOperation(params: {
     const sessionRef = getSessionDocRef(params.operation.sessionId);
     return runTransaction(firebaseClient, async (transaction) => {
         const sessionSnap = await transaction.get(sessionRef);
-        const session = getMatchingOperationSessionSnapshot(
+        const session = getMatchingSessionForOperation(
             params.operation,
             sessionSnap.exists() ? sessionSnap.data() : null,
         );
         const currentOperations = normalizeOperations(session, params.operation.projectId);
+        const terminalReceipt = resolveAiMenuManagerTerminalReceipt({
+            pendingOperations: currentOperations,
+            receipts: session.recentReceiptSummaries || [],
+            requestedOperation: params.operation,
+            expectedStatus: params.result,
+        });
+        if (terminalReceipt) {
+            return { receipt: terminalReceipt, session };
+        }
         const currentOperation = resolveCurrentAiMenuManagerOperation({
             currentOperations,
             requestedOperation: params.operation,
@@ -1456,22 +1469,53 @@ export async function cancelAiMenuManagerClientOperation(params: {
     const sessionRef = getSessionDocRef(params.operation.sessionId);
     return runTransaction(firebaseClient, async (transaction) => {
         const sessionSnap = await transaction.get(sessionRef);
-        const session = getMatchingOperationSessionSnapshot(
+        const session = getMatchingSessionForOperation(
             params.operation,
             sessionSnap.exists() ? sessionSnap.data() : null,
         );
-        const pendingOperations = normalizeOperations(session, params.operation.projectId)
-            .filter((entry) => entry.operationId !== params.operation.operationId);
+        const currentOperations = normalizeOperations(session, params.operation.projectId);
+        const terminalReceipt = resolveAiMenuManagerTerminalReceipt({
+            pendingOperations: currentOperations,
+            receipts: session.recentReceiptSummaries || [],
+            requestedOperation: params.operation,
+            expectedStatus: 'cancelled',
+        });
+        if (terminalReceipt) {
+            return { status: 'cancelled' as const, session };
+        }
+        const currentOperation = resolveCurrentAiMenuManagerOperation({
+            currentOperations,
+            requestedOperation: params.operation,
+        });
+        const receipt = buildAiMenuManagerReceipt({
+            proposalId: currentOperation.operationId,
+            actionType: currentOperation.card.actionType,
+            projectId: currentOperation.projectId,
+            status: 'cancelled',
+            title: currentOperation.card.title,
+            message: 'No MenuList action was taken.',
+        });
+        const pendingOperations = currentOperations
+            .filter((entry) => entry.operationId !== currentOperation.operationId);
+        const recentReceiptSummaries = [
+            receipt,
+            ...(session.recentReceiptSummaries || [])
+                .filter((entry) => entry.proposalId !== currentOperation.operationId),
+        ].slice(0, MAX_RECEIPTS);
         const nextSession = prepareAiMenuManagerSessionWrite({
             ...session,
+            compactMessages: appendCompactReceipt(session.compactMessages, receipt),
             pendingOperations,
             pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
+            recentReceiptSummaries,
             updatedAt: nowIso(),
         } as AiMenuManagerSessionDoc, session);
 
         transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
+            compactMessages: nextSession.compactMessages,
             pendingOperations,
             pendingCardSummaries: nextSession.pendingCardSummaries,
+            recentReceiptSummaries: nextSession.recentReceiptSummaries,
             ...buildAiMenuManagerPendingState(nextSession),
             updatedAt: serverTimestamp(),
         }), { merge: true });

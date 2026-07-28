@@ -125,6 +125,7 @@ const StrictWidgetAllowedOriginsSaveSchema = z.array(
 export const AnswerlatticeWidgetConfigSaveSchema = z.object({
     config: z.unknown().default({}),
     allowedOrigins: StrictWidgetAllowedOriginsSaveSchema.default([]),
+    expectedConfigVersion: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER - 1),
 }).strict();
 
 export type AnswerlatticeWidgetConfigSaveInput = z.infer<typeof AnswerlatticeWidgetConfigSaveSchema>;
@@ -162,6 +163,7 @@ export function normalizeWidgetAllowedOrigins(values: unknown): string[] {
 export function parseWidgetConfigSaveInput(value: unknown): {
     config: AnswerlatticeWidgetConfig;
     allowedOrigins: string[];
+    expectedConfigVersion: number;
 } {
     const parsed = AnswerlatticeWidgetConfigSaveSchema.parse(value);
     const configInput = parsed.config && typeof parsed.config === 'object' && !Array.isArray(parsed.config)
@@ -179,6 +181,7 @@ export function parseWidgetConfigSaveInput(value: unknown): {
     return {
         config: normalizeWidgetConfig(rawConfig),
         allowedOrigins: normalizeWidgetAllowedOrigins(parsed.allowedOrigins),
+        expectedConfigVersion: parsed.expectedConfigVersion,
     };
 }
 

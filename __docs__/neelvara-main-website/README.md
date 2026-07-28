@@ -31,7 +31,7 @@ Build Neelvara inside the existing Next.js/Vercel product-site architecture:
 - no API routes, auth, CMS, contact form, analytics, or cookie banner in v1
 - optional public contact email env keys only: `NEXT_PUBLIC_NEELVARA_CONTACT_EMAIL`, `NEXT_PUBLIC_NEELVARA_LEGAL_EMAIL`, `NEXT_PUBLIC_NEELVARA_PRIVACY_EMAIL`
 - no Neelvara-owned browser preference storage is required in v1
-- current-color Prism glass visual system applied only to presentation: ice-white canvas, deep navy text, frosted parent-brand mark gradient, fixed restrained mesh, grain, factual reference summaries, restrained glass panels, and responsive section layout; no product funnel behavior added
+- current-color Prism glass visual system applied only to presentation: ice-white canvas, deep navy text, the supplied blue-to-violet Neelvara loop mark, fixed restrained mesh, grain, factual reference summaries, restrained glass panels, and responsive section layout; no product funnel behavior added
 
 Reason: the repo already uses a shared Vercel app with hostname/path-prefix routing for public product sites. Neelvara should follow that routing architecture while staying outside database-backed product identity.
 

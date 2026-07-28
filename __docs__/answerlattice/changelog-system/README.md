@@ -4,6 +4,10 @@
 
 This feature turns a versioned release note into a governed dependency event. A public versioned changelog entry is not merely text with a version label: it must point to an active Answerlattice release whose version, release time, workspace, and changed entities match exactly.
 
+`Release Impact Guard` is an external description of the preventive owner job
+inside this existing Releases and Changelog feature. It is not admitted as a
+separate release-management product or data model.
+
 ## Owned outcome
 
 - Register releases in increasing version order.
@@ -13,6 +17,24 @@ This feature turns a versioned release note into a governed dependency event. A 
 - Invalidate canonical cache, source versions, public cache, and compiled bundles.
 - Exclude drafts and legacy unlinked versioned notes from every delivery path.
 - Preserve owner retryability when activation fails.
+
+## Documentation Decision
+
+- Keep the immutable release registry, changelog separation, canonical drift
+  evaluation, Answer Tests release checks, and governed rollback proposals.
+- Add a later bounded **pre-activation support-impact preview** to the existing
+  versioned publishing flow.
+- Preview only directly entity-linked active canonical answers and explicitly
+  linked active Answer Tests.
+- Require the activation request to match the current preview inputs; changed
+  release or answer evidence must return the owner to review.
+- Keep the preview advisory. It does not block deployment, approve answers,
+  publish replacements, or mark a release universally support-ready.
+- Validate article, procedure, product-surface, and post-release friction
+  expansion with real-client mapping before development.
+- Reject a parallel Release Guard workspace, change-unit store, impact-item
+  queue, readiness score/state machine, scheduled answer activation, or
+  release-monitoring collection.
 
 ## Primary flow
 
@@ -51,3 +73,15 @@ Non-versioned announcements may publish without a release. Versioned public entr
 - QA deployment of the changed Answerlattice context-bundle Function.
 - Hosted desktop and narrow-width create, failed activation, retry, publish, unpublish, and pagination smoke.
 - Real workspace verification that changed entities identify the intended answer dependencies.
+
+## Documents
+
+- [Specification](./changelog-system_spec.md)
+- [Implementation](./changelog-system_impl.md)
+- [Firebase](./changelog-system_firebase.md)
+- [Mobile support](./changelog-system_mobile-support.md)
+- [Help documentation](./changelog-system_helpdoc.md)
+- [Marketing boundary](./changelog-system_marketing.md)
+- [Website boundary](./changelog-system_website.md)
+- [Test cases](./changelog-system_test-cases.md)
+- [Release Impact Guard proposal validation](./changelog-system_validation.md)

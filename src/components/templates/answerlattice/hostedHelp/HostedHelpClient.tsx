@@ -1,10 +1,14 @@
 'use client';
 
+import { FEATURE_FLAGS } from '@config/features';
 import type { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import type { AnswerlatticePublicArticleOutlineNode } from '@lib/answerlattice/publicRichText';
 import { buildHostedHelpArticlePath } from '@lib/answerlattice/hostedHelpRequest';
 import { theme } from 'antd';
 import Link from 'next/link';
-import { type CSSProperties, useMemo, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { LuFileText, LuGitBranch } from 'react-icons/lu';
+import ArticleTopicMap from './ArticleTopicMap';
 import styles from './HostedHelp.module.scss';
 
 type HostedHelpView = 'home' | 'docs' | 'article' | 'faq' | 'changelog';
@@ -18,6 +22,7 @@ export type HostedHelpArticle = KnowledgeBaseArticleMeta & {
     categoryTitle?: string;
     sectionTitle?: string;
     safeHtml?: string;
+    outline?: AnswerlatticePublicArticleOutlineNode[];
 };
 
 export type HostedHelpFaq = {
@@ -107,8 +112,30 @@ export default function HostedHelpClient({
 }: HostedHelpClientProps) {
     const { token } = theme.useToken();
     const [query, setQuery] = useState('');
+    const [articleMode, setArticleMode] = useState<'article' | 'map'>('article');
     const articles = useMemo(() => getArticles(categories), [categories]);
     const latestChangelog = changelogPage?.entries || [];
+    const relatedArticles = useMemo(() => {
+        if (!article) return [];
+        return articles
+            .filter(item => item.id !== article.id)
+            .sort((left, right) => {
+                const leftRank = left.sectionTitle && left.sectionTitle === article.sectionTitle
+                    ? 0
+                    : left.categoryTitle === article.categoryTitle ? 1 : 2;
+                const rightRank = right.sectionTitle && right.sectionTitle === article.sectionTitle
+                    ? 0
+                    : right.categoryTitle === article.categoryTitle ? 1 : 2;
+                return leftRank - rightRank
+                    || Number(left.index || 0) - Number(right.index || 0)
+                    || left.title.localeCompare(right.title);
+            })
+            .slice(0, 6)
+            .map(item => ({ id: item.id, href: articleHref(item), title: item.title }));
+    }, [article, articles]);
+    useEffect(() => {
+        setArticleMode('article');
+    }, [article?.id]);
     const hostedHelpThemeVars = {
         '--hosted-help-active-bg': token.colorPrimaryBg,
         '--hosted-help-active-text': token.colorPrimary,
@@ -118,11 +145,25 @@ export default function HostedHelpClient({
         '--hosted-help-hero-bg': token.colorPrimary,
         '--hosted-help-hero-text': token.colorTextLightSolid,
         '--hosted-help-link': token.colorPrimary,
+        '--hosted-help-map-grid': token.colorBorderSecondary,
         '--hosted-help-muted': token.colorTextSecondary,
         '--hosted-help-search-shadow': token.boxShadowSecondary,
         '--hosted-help-shell-bg': token.colorBgLayout,
         '--hosted-help-text': token.colorText,
     } as CSSProperties;
+
+    const selectArticleTopic = useCallback((headingId: string) => {
+        setArticleMode('article');
+        window.setTimeout(() => {
+            const target = document.getElementById(headingId)
+                || document.getElementById('hosted-help-article-title');
+            if (!target) return;
+            const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            target.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
+            target.setAttribute('tabindex', '-1');
+            target.focus({ preventScroll: true });
+        }, 0);
+    }, []);
 
     const results = useMemo(() => {
         const normalized = query.trim().toLowerCase();
@@ -226,20 +267,51 @@ export default function HostedHelpClient({
                 ) : null}
 
                 {!unavailableReason && view === 'article' && article ? (
-                    <div className={styles.articleLayout}>
-                        <article className={styles.article}>
+                    <div className={`${styles.articleLayout} ${articleMode === 'map' ? styles.articleLayoutMap : ''}`}>
+                        <div>
                             <p className={styles.muted}>{[article.categoryTitle, article.sectionTitle].filter(Boolean).join(' / ')}</p>
-                            <h1>{article.title}</h1>
-                            <div dangerouslySetInnerHTML={{ __html: article.safeHtml || '' }} />
-                        </article>
-                        <aside className={styles.sidePanel}>
+                            {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP ? (
+                                <div aria-label="Article view" className={styles.articleModeTabs} role="group">
+                                    <button
+                                        aria-pressed={articleMode === 'article'}
+                                        className={`${styles.articleModeTab} ${articleMode === 'article' ? styles.articleModeTabActive : ''}`}
+                                        onClick={() => setArticleMode('article')}
+                                        type="button"
+                                    >
+                                        <LuFileText /> Article
+                                    </button>
+                                    <button
+                                        aria-pressed={articleMode === 'map'}
+                                        className={`${styles.articleModeTab} ${articleMode === 'map' ? styles.articleModeTabActive : ''}`}
+                                        onClick={() => setArticleMode('map')}
+                                        type="button"
+                                    >
+                                        <LuGitBranch /> Topic map
+                                    </button>
+                                </div>
+                            ) : null}
+                            {articleMode === 'map' && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP ? (
+                                <ArticleTopicMap
+                                    articleTitle={article.title}
+                                    onSelectTopic={selectArticleTopic}
+                                    outline={article.outline || []}
+                                    relatedArticles={relatedArticles}
+                                />
+                            ) : (
+                                <article className={styles.article}>
+                                    <h1 id="hosted-help-article-title">{article.title}</h1>
+                                    <div dangerouslySetInnerHTML={{ __html: article.safeHtml || '' }} />
+                                </article>
+                            )}
+                        </div>
+                        {articleMode === 'article' ? <aside className={styles.sidePanel}>
                             <h3 className={styles.cardTitle}>More articles</h3>
                             <div className={styles.list}>
-                                {articles.filter(item => item.id !== article.id).slice(0, 6).map(item => (
-                                    <Link href={articleHref(item)} key={item.id}>{item.title}</Link>
+                                {relatedArticles.map(item => (
+                                    <Link href={item.href} key={item.id}>{item.title}</Link>
                                 ))}
                             </div>
-                        </aside>
+                        </aside> : null}
                     </div>
                 ) : null}
 

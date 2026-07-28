@@ -24,6 +24,7 @@ import * as functions from 'firebase-functions';
 import { FieldPath } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS, getAnalyticsDocId } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
+import { normalizeStoreSummaryNumericAliases } from '../sharedData/storeSummaryBoundary';
 import { getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
 const logger = functions.logger;
@@ -75,13 +76,6 @@ function rejectDormantHealthSignalExecution(): void {
  * Get a bounded daily analytics window for a store.
  * This is a direct Firestore query and must remain dormant until activation cost is approved.
  */
-function normalizeNumericScopeDocumentId(value: unknown): string | null {
-    const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-    if (!/^[1-9]\d*$/.test(raw)) return null;
-    const numeric = Number(raw);
-    return Number.isSafeInteger(numeric) && String(numeric) === raw ? raw : null;
-}
-
 function readNonNegativeInteger(value: unknown): number | null {
     return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
@@ -477,8 +471,8 @@ export async function processHealthSignalsForAllStores(): Promise<{
 
             for (const storeDoc of storesSnapshot.docs) {
                 const storeData = storeDoc.data();
-                const tId = normalizeNumericScopeDocumentId(storeData.tenantId ?? storeData.tId);
-                const sId = normalizeNumericScopeDocumentId(storeData.storeId ?? storeData.sId);
+                const tId = normalizeStoreSummaryNumericAliases([storeData.tenantId, storeData.tId]);
+                const sId = normalizeStoreSummaryNumericAliases([storeData.storeId, storeData.sId]);
 
                 if (!tId || !sId || storeDoc.id !== sId) {
                     logger.warn('[HealthSignals] Store identity invalid; skipping', {

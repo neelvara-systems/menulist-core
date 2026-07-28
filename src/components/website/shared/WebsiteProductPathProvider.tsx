@@ -1,6 +1,7 @@
 'use client';
 
 import { isReviewedWebsiteResourceLocale } from '@/content/websiteResources/routing';
+import { usePathname } from 'next/navigation';
 import { createContext, useContext, useMemo } from 'react';
 
 const WebsiteProductPathContext = createContext('');
@@ -83,8 +84,15 @@ export default function WebsiteProductPathProvider({
     basePath,
     children,
 }: WebsiteProductPathProviderProps) {
+    const pathname = usePathname();
+    const resolvedBasePath = useMemo(() => {
+        const explicitBasePath = normalizeBasePath(basePath);
+        if (explicitBasePath) return explicitBasePath;
+        return pathname === '/ml' || pathname?.startsWith('/ml/') ? '/ml' : '';
+    }, [basePath, pathname]);
+
     return (
-        <WebsiteProductPathContext.Provider value={normalizeBasePath(basePath)}>
+        <WebsiteProductPathContext.Provider value={resolvedBasePath}>
             {children}
         </WebsiteProductPathContext.Provider>
     );

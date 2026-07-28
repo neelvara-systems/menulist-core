@@ -3,8 +3,10 @@
 import assert from 'node:assert/strict';
 import {
   countMessagingEventTypes,
+  emitHealthAlerts,
   getMessagingSessionUploadByteSample,
   isMessagingHealthComputationDue,
+  isMessagingHealthLeaseOwner,
   normalizeMessagingHealthSessionSample,
   shouldCheckMessagingOnboardingHealth,
 } from '../../functions/src/messagingOnboarding/healthMonitor';
@@ -31,6 +33,21 @@ assert.equal(isMessagingHealthComputationDue({
   computeLeaseUntil: timestamp(now + 24 * 60 * 60 * 1000),
 }, now), true);
 assert.equal(isMessagingHealthComputationDue({}, Number.NaN), false);
+assert.equal(
+  isMessagingHealthLeaseOwner({ computeLeaseId: 'lease-current' }, 'lease-current'),
+  true,
+  'the current computation lease owner may settle',
+);
+assert.equal(
+  isMessagingHealthLeaseOwner({ computeLeaseId: 'lease-replacement' }, 'lease-stale'),
+  false,
+  'a stale computation must not settle or clear a replacement lease',
+);
+assert.equal(
+  isMessagingHealthLeaseOwner({ computeLeaseId: 'lease-current' }, ''),
+  false,
+  'an empty expected lease identity must fail closed',
+);
 
 assert.equal(shouldCheckMessagingOnboardingHealth(Date.UTC(2026, 6, 16, 10, 0)), true);
 assert.equal(shouldCheckMessagingOnboardingHealth(Date.UTC(2026, 6, 16, 10, 3, 59)), true);
@@ -100,4 +117,48 @@ assert.deepEqual(getMessagingSessionUploadByteSample({ uploads: null }), {
   invalidRecords: 1,
 });
 
-console.log('Messaging health data boundary verification passed.');
+void (async () => {
+  const alertAttempts: string[] = [];
+  const failedAlertCount = await emitHealthAlerts([
+    {
+      key: 'cost_warning',
+      severity: 'warning',
+      title: 'Cost warning',
+      message: 'Cost warning message',
+      metadata: {},
+    },
+    {
+      key: 'failure_critical',
+      severity: 'critical',
+      title: 'Failure critical',
+      message: 'Failure critical message',
+      metadata: {},
+    },
+    {
+      key: 'queue_warning',
+      severity: 'warning',
+      title: 'Queue warning',
+      message: 'Queue warning message',
+      metadata: {},
+    },
+  ], async (alert) => {
+    const alertKey = String(alert.metadata?.alertKey);
+    alertAttempts.push(alertKey);
+    if (alertKey === 'cost_warning') {
+      throw new Error('simulated alert persistence failure');
+    }
+    return 'test-alert-id';
+  });
+
+  assert.equal(failedAlertCount, 1);
+  assert.deepEqual(alertAttempts, [
+    'cost_warning',
+    'failure_critical',
+    'queue_warning',
+  ]);
+
+  console.log('Messaging health data boundary verification passed.');
+})().catch((error: unknown) => {
+  console.error(error);
+  process.exitCode = 1;
+});

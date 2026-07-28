@@ -1,7 +1,14 @@
 import Head from "next/head";
 import { DEFAULT_DESCRIPTION_METATAG, DEFAULT_IMAGE_METATAG, DEFAULT_KEYWORD_METATAG, DEFAULT_SITENAME_METATAG, DEFAULT_TITLE_METATAG } from "src/constants/defaultValues";
-export default function HeadMetaTags({ title, description, image, siteName, storeData }) {
-  if (!storeData) storeData = {};
+
+type HeadMetaTagsProps = {
+  description?: string;
+  image?: string;
+  siteName?: string;
+  title?: string;
+};
+
+export default function HeadMetaTags({ title, description, image, siteName }: HeadMetaTagsProps) {
   const titleTagData = title || DEFAULT_TITLE_METATAG;
   const descriptionTagData = description || DEFAULT_DESCRIPTION_METATAG;
   const imageTagData = image || DEFAULT_IMAGE_METATAG;
@@ -74,11 +81,10 @@ export default function HeadMetaTags({ title, description, image, siteName, stor
       <meta name="keywords" key="keywords" content={keywordsTagData}
       />
 
-      <meta name="application-name" content="Respark" />
+      <meta name="application-name" content="MenuList" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-      <meta name="apple-mobile-web-app-title" content="Respark" />
-      <meta name="description" content="Best Respark in the world" />
+      <meta name="apple-mobile-web-app-title" content="MenuList" />
       <meta name="format-detection" content="telephone=no" />
       <meta name="mobile-web-app-capable" content="yes" />
 
@@ -93,8 +99,8 @@ export default function HeadMetaTags({ title, description, image, siteName, stor
       <meta name="twitter:title" content={titleTagData} key="twittertitle" />
       <meta name="twitter:description" content={descriptionTagData} key="twitterdesc" />
       <meta name="twitter:image" content={imageTagData} key="twitterimage" />
-      <meta name="twitter:site" content="Ecoms.ai Salon" key="twittersitename" />
-      <meta name="twitter:creator" content="Ecoms.ai" />
+      <meta name="twitter:site" content="MenuList" key="twittersitename" />
+      <meta name="twitter:creator" content="MenuList" />
       {/* application meta tags */}
 
       {/* <meta name="viewport" content="width=device-width,initial-scale=1" /> */}

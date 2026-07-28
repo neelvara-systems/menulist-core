@@ -13,28 +13,12 @@ import ChangelogPreview from '@template/platform/changelog/ChangelogPreview';
 import ChangelogTagRenderer from '@template/platform/changelog/ChangelogTagRenderer';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import type { AnswerlatticePublicChangelogEntry, AnswerlatticePublicChangelogPage } from '@lib/answerlattice/publicContentBoundary';
+import { getTextFromTiptapJson } from '@lib/tiptap';
 
 const { Text, Title, Paragraph } = Typography;
 
 const getPlainTextFromDescription = (description: ChangelogEntry['description'] | AnswerlatticePublicChangelogEntry['description']): string => {
-    if (!description || typeof description !== 'object') return '';
-
-    const extractText = (node: any): string => {
-        if (!node) return '';
-        if (node.type === 'text') {
-            return node.text || '';
-        }
-        if (Array.isArray(node.content)) {
-            return node.content.map(extractText).join(' ');
-        }
-        return '';
-    };
-
-    if (Array.isArray(description.content)) {
-        return description.content.map(extractText).join(' ').replace(/\s+/g, ' ').trim();
-    }
-
-    return '';
+    return getTextFromTiptapJson(description);
 };
 
 const getExcerpt = (entry: ChangelogEntry | AnswerlatticePublicChangelogEntry, maxLength = 160): string | null => {

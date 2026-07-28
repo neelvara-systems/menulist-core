@@ -481,6 +481,7 @@ export interface CampaignCueAsset extends CampaignCueTimestamped {
     tags: string[];
     file?: {
         storagePath?: string;
+        storageGeneration?: string;
         downloadUrl?: string;
         mimeType?: string;
         sizeBytes?: number;

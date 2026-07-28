@@ -34,6 +34,7 @@ export default async function PwaOrderHandoffPage(
             : null;
 
     if (!store) return notFound();
+    if (store.publicPresence?.showOrder === false) return notFound();
 
     const orderUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.orderUrl);
     if (!orderUrl) return notFound();

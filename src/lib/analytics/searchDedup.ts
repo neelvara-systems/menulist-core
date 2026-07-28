@@ -46,7 +46,26 @@ export function getNormalizedSearchTerm(term: string): string {
   return normalizeSearchTerm(term);
 }
 
+export function getSearchDedupStorageKey(
+  tenantId: string | number,
+  storeId: string | number,
+  projectId: string,
+): string | null {
+  const tenantScope = String(tenantId).trim();
+  const storeScope = String(storeId).trim();
+  const projectScope = projectId.trim();
+  if (
+    !/^[1-9]\d{0,15}$/.test(tenantScope)
+    || !/^[1-9]\d{0,15}$/.test(storeScope)
+    || !/^[A-Za-z0-9_-]{1,160}$/.test(projectScope)
+  ) {
+    return null;
+  }
+  return `${SEARCH_SESSION_KEY_PREFIX}${tenantScope}_${storeScope}_${projectScope}`;
+}
+
 export function hasTrackedSearchTermInSession(
+  tenantId: string | number,
   storeId: string | number,
   projectId: string,
   term: string,
@@ -55,7 +74,8 @@ export function hasTrackedSearchTermInSession(
   if (!normalized) return false;
   if (!isSessionStorageAvailable('read')) return false;
 
-  const key = `${SEARCH_SESSION_KEY_PREFIX}${storeId}_${projectId}`;
+  const key = getSearchDedupStorageKey(tenantId, storeId, projectId);
+  if (!key) return false;
   let raw: string | null = null;
 
   try {
@@ -72,6 +92,7 @@ export function hasTrackedSearchTermInSession(
 }
 
 export function markSearchTermTrackedInSession(
+  tenantId: string | number,
   storeId: string | number,
   projectId: string,
   term: string,
@@ -80,7 +101,8 @@ export function markSearchTermTrackedInSession(
   if (!normalized) return;
   if (!isSessionStorageAvailable('write')) return;
 
-  const key = `${SEARCH_SESSION_KEY_PREFIX}${storeId}_${projectId}`;
+  const key = getSearchDedupStorageKey(tenantId, storeId, projectId);
+  if (!key) return;
   let raw: string | null = null;
   let serializedTerms = '';
 

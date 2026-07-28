@@ -1,9 +1,7 @@
 import { secureError } from "@lib/security/secureLogger";
-import { getBoundedLogValueContext } from "@lib/monitoring/boundedLogContext";
+import { getBoundedLogValueContext, getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
-const getLogErrorName = (error: unknown): string => (
-    error instanceof Error ? error.name : typeof error
-);
+const getLogErrorName = (error: unknown): string => getBoundedErrorName(error) || typeof error;
 
 const getLogErrorCode = (error: unknown): string | undefined => {
     if (!error || typeof error !== "object") return undefined;

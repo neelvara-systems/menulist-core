@@ -6,6 +6,11 @@ import {
     ProcessMenuImagesResponse,
     QualityDetails,
 } from '../types';
+import {
+    getBoundedFunctionsErrorCode,
+    getBoundedFunctionsErrorName,
+    getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
 
 const TEXT_SOURCE_KINDS = new Set([
     'html_text',
@@ -59,16 +64,14 @@ function getMenuLinkTextExtractionErrorContext(error: unknown): {
     sourceErrorStatus?: string;
 } {
     if (error instanceof Error) {
-        const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
-        const status = record.status ?? record.statusCode;
+        const sourceErrorCode = getBoundedFunctionsErrorCode(error);
+        const sourceErrorStatus = getBoundedFunctionsErrorStatus(error);
 
         return {
-            sourceErrorName: (error.name || 'Error').slice(0, 80),
-            ...(record.code === undefined || record.code === null ? {} : {
-                sourceErrorCode: String(record.code).slice(0, 64),
-            }),
-            ...(status === undefined || status === null ? {} : {
-                sourceErrorStatus: String(status).slice(0, 32),
+            sourceErrorName: getBoundedFunctionsErrorName(error) || 'Error',
+            ...(sourceErrorCode === undefined ? {} : { sourceErrorCode }),
+            ...(sourceErrorStatus === undefined ? {} : {
+                sourceErrorStatus: sourceErrorStatus.toString(),
             }),
         };
     }

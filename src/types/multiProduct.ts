@@ -69,6 +69,6 @@ export interface AnswerlatticeClient {
     secretKey: string;
     sourcePId: ProductId | null;
     active: boolean;
-    createdOn?: any;
-    modifiedOn?: any;
+    createdOn?: unknown;
+    modifiedOn?: unknown;
 }

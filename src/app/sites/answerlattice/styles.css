@@ -485,7 +485,8 @@ html[data-answerlattice-theme='dark'] body:has(.answerlattice-site) {
     padding-bottom: clamp(4.5rem, 8vh, 6.25rem);
 }
 
-.al-page-hero {
+.al-page-hero,
+.al-page-flow > section.al-page-hero {
     border-top: 0;
     padding-inline: clamp(1rem, 3vw, 1.5rem);
     padding-top: clamp(6rem, 11vh, 7.4rem);
@@ -2908,22 +2909,15 @@ html[data-answerlattice-theme='light'] .answerlattice-site [class*='shadow-black
 
     .al-home-flow > section:first-child .al-home-hero__chips {
         max-width: calc(100vw - 2rem);
-        flex-wrap: nowrap;
-        justify-content: flex-start;
+        flex-wrap: wrap;
+        justify-content: center;
         margin-top: 1rem;
-        overflow-x: auto;
-        padding: 0 0.25rem 0.25rem;
-        scrollbar-width: none;
-        scroll-snap-type: x proximity;
-    }
-
-    .al-home-flow > section:first-child .al-home-hero__chips::-webkit-scrollbar {
-        display: none;
+        overflow: visible;
+        padding: 0;
     }
 
     .al-home-flow > section:first-child .al-home-hero__chips > span {
         flex: 0 0 auto;
-        scroll-snap-align: start;
     }
 
     .al-home-flow > section:first-child .al-home-hero__image {
@@ -2939,7 +2933,8 @@ html[data-answerlattice-theme='light'] .answerlattice-site [class*='shadow-black
         padding-bottom: 4rem;
     }
 
-    .al-page-hero {
+    .al-page-hero,
+    .al-page-flow > section.al-page-hero {
         padding-top: 5.75rem;
         padding-bottom: 4rem;
     }

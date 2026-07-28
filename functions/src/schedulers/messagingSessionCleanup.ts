@@ -29,6 +29,7 @@ import { drainMessagingPendingUploadCleanup } from "../messagingOnboarding/uploa
 import {
   MessagingOnboardingState,
 } from "../types/messagingOnboarding.types";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const db = firestoreAdmin;
@@ -57,20 +58,15 @@ const EXPIRABLE_STATES: MessagingOnboardingState[] = [
 const CLEANABLE_TERMINAL_STATES: MessagingOnboardingState[] = ["EXPIRED", "COOLDOWN"];
 
 function getCleanupErrorName(error: unknown): string {
-  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
-  return typeof error;
+    return getBoundedFunctionsErrorName(error) || 'Error';
 }
 
-function getCleanupErrorCode(error: Error): string | undefined {
-  const code = (error as { code?: unknown }).code;
-  if (code === undefined || code === null) return undefined;
-  return String(code).slice(0, 64);
+function getCleanupErrorCode(error: unknown): string | undefined {
+    return getBoundedFunctionsErrorCode(error);
 }
 
-function getCleanupErrorStatus(error: Error): number | undefined {
-  const status = Number((error as { status?: unknown; statusCode?: unknown }).status
-    || (error as { statusCode?: unknown }).statusCode);
-  return Number.isFinite(status) ? status : undefined;
+function getCleanupErrorStatus(error: unknown): number | undefined {
+    return getBoundedFunctionsErrorStatus(error);
 }
 
 function getCleanupErrorContext(error: unknown): {
@@ -103,17 +99,13 @@ function getCleanupIdLogContext(
 }
 
 function isMissingStorageObjectError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const code = (error as { code?: unknown }).code;
-  const codeText = code === undefined || code === null ? "" : String(code).toLowerCase();
+  const codeText = (getBoundedFunctionsErrorCode(error) || "").toLowerCase();
   return getCleanupErrorStatus(error) === 404 || codeText === "404" || codeText === "not-found";
 }
 
 function isFailedPreconditionError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const code = (error as { code?: unknown }).code;
-  const codeText = code === undefined || code === null ? "" : String(code).toLowerCase();
-  return code === 9 || codeText === "9" || codeText === "failed-precondition";
+  const codeText = (getBoundedFunctionsErrorCode(error) || "").toLowerCase();
+  return codeText === "9" || codeText === "failed-precondition";
 }
 
 /**
@@ -127,17 +119,6 @@ export async function messagingSessionCleanupLogic(): Promise<{
   inboundCleaned: number;
   errors: number;
 }> {
-  if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {
-    return {
-      expired: 0,
-      reminders: 0,
-      cleaned: 0,
-      uploadCleanupDrained: 0,
-      inboundCleaned: 0,
-      errors: 0,
-    };
-  }
-
   const now = Timestamp.now();
   let expired = 0;
   let reminders = 0;
@@ -215,8 +196,10 @@ export async function messagingSessionCleanupLogic(): Promise<{
     errors++;
   }
 
-  // 2. Send 12h reminders for AWAITING_APPROVAL sessions
-  try {
+  // 2. Send 12h reminders only while the product is active. Expiry,
+  // retention, and orphan cleanup below must continue while it is disabled.
+  if (FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {
+    try {
     const expectedPreviewBaseUrl = normalizeMessagingPreviewBaseUrl(
       process.env.NEXT_PUBLIC_MSG_PREVIEW_BASE_URL,
       process.env.FUNCTIONS_EMULATOR === "true",
@@ -320,12 +303,13 @@ export async function messagingSessionCleanupLogic(): Promise<{
         errors++;
       }
     }
-  } catch (err) {
-    logger.error("[Cleanup] Failed to query reminder sessions", {
-      failureCode: REMINDER_QUERY_FAILED_CODE,
-      ...getCleanupErrorContext(err),
-    });
-    errors++;
+    } catch (err) {
+      logger.error("[Cleanup] Failed to query reminder sessions", {
+        failureCode: REMINDER_QUERY_FAILED_CODE,
+        ...getCleanupErrorContext(err),
+      });
+      errors++;
+    }
   }
 
   // 3. Clean up storage for expired sessions (older than 48h to be safe)

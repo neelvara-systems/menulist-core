@@ -1,4 +1,4 @@
-import { normalizeStorePermissionScopeDocumentId } from '@lib/permissions/scopeDocumentId';
+import { resolveStorePermissionScopeDocumentIdAliases } from '@lib/permissions/scopeDocumentId';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 
 type TempStatusMutationEntity = Record<string, unknown>;
@@ -27,7 +27,10 @@ export function isTempStatusMutationScopeCurrent(params: {
 
     const store = params.store as TempStatusMutationEntity;
     const tenant = params.tenant as TempStatusMutationEntity;
-    const persistedTenantScope = normalizeStorePermissionScopeDocumentId(store.tenantId ?? store.tId);
+    const persistedTenantScope = resolveStorePermissionScopeDocumentIdAliases([
+        store.tenantId,
+        store.tId,
+    ]);
 
     return persistedTenantScope?.documentId === params.tenantDocumentId
         && !isUnavailableEntity(store)

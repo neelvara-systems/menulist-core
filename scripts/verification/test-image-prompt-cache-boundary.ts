@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
     buildImagePromptCacheSourcePath,
     getReusableImagePromptCacheSource,
+    imagePromptCacheWriteCommitted,
     IMAGE_PROMPT_CACHE_KEY_VERSION,
     IMAGE_PROMPT_CACHE_STORAGE_PREFIX,
     isImagePromptCacheSourcePathForKey,
@@ -51,5 +52,9 @@ assert.equal(
     getReusableImagePromptCacheSource(validDoc, cacheKey, Uint8Array.from([0x3c, 0x68, 0x74, 0x6d, 0x6c, 0x3e, 0x00, 0x00])),
     null,
 );
+
+assert.equal(imagePromptCacheWriteCommitted({ sourcePath: validSourcePath }, validSourcePath), true);
+assert.equal(imagePromptCacheWriteCommitted({ sourcePath: `${validSourcePath}.other` }, validSourcePath), false);
+assert.equal(imagePromptCacheWriteCommitted(null, validSourcePath), false);
 
 console.log('Image prompt cache boundary tests passed.');

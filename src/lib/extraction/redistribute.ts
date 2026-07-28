@@ -86,8 +86,8 @@ interface RawItemFromAI {
     category?: string | number;
     categoryId?: string | number;
     description?: Record<string, string> | string; // AI may return plain string
-    price?: string | number; // AI may return number (e.g., 300) or string (e.g., "300")
-    attributes?: Array<{ id: string | number; name: Record<string, string> | string; price?: string | number; active?: boolean }> | Record<string, any>;
+    price?: string | number | null; // AI may return number (e.g., 300), string (e.g., "300"), or null
+    attributes?: Array<{ id: string | number; name: Record<string, string> | string; price?: string | number | null; active?: boolean }> | Record<string, unknown>;
     tags?: string[] | Record<string, string>;
     dietaryTags?: string[];
     spiceLevel?: string;
@@ -195,9 +195,22 @@ function normalizeTags(tags: string[] | Record<string, string> | undefined): str
 function normalizeStringArray(value: unknown): string[] | undefined {
     if (!Array.isArray(value)) return undefined;
     const normalized = value
-        .map((entry) => typeof entry === 'string' ? stripHtml(entry).trim().toLowerCase() : String(entry || '').trim().toLowerCase())
+        .filter((entry): entry is string => typeof entry === 'string')
+        .map((entry) => stripHtml(entry).trim().toLowerCase())
         .filter(Boolean);
     return normalized.length > 0 ? Array.from(new Set(normalized)) : undefined;
+}
+
+function resolveRawItemCategory(item: RawItemFromAI): string | undefined {
+    for (const value of [item.category, item.categoryId]) {
+        if (typeof value === 'string') {
+            const normalized = value.trim();
+            if (normalized && normalized !== 'undefined') return normalized;
+        } else if (typeof value === 'number' && Number.isFinite(value)) {
+            return String(value);
+        }
+    }
+    return undefined;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -232,10 +245,10 @@ export function redistributeExtractedData(
     });
 
     // Create map of categoryId -> sourceFileIndex
-    const categoryToFileIndex = new Map<number | string, number>();
+    const categoryToFileIndex = new Map<string, number>();
     categories.forEach((cat) => {
         if (cat.sourceFileIndex !== undefined) {
-            categoryToFileIndex.set(cat.id, cat.sourceFileIndex);
+            categoryToFileIndex.set(String(cat.id), cat.sourceFileIndex);
         }
     });
 
@@ -255,8 +268,8 @@ export function redistributeExtractedData(
                 if (item.sourceFileIndex !== undefined) {
                     return item.sourceFileIndex === index;
                 }
-                const categoryRef = item.category || item.categoryId;
-                const catFileIndex = categoryToFileIndex.get(categoryRef as string | number);
+                const categoryRef = resolveRawItemCategory(item);
+                const catFileIndex = categoryRef ? categoryToFileIndex.get(categoryRef) : undefined;
                 return catFileIndex === index;
             })
             .map(item => {
@@ -272,9 +285,7 @@ export function redistributeExtractedData(
                     ...rest
                 } = item;
 
-                const resolvedCategory = (rest.category && rest.category !== 'undefined' && rest.category !== undefined)
-                    ? rest.category
-                    : categoryId;
+                const resolvedCategory = resolveRawItemCategory({ ...rest, categoryId });
 
                 const normalizedAttributes = Array.isArray(rawAttributes) && rawAttributes.length > 0
                     ? rawAttributes.map(attr => ({
@@ -299,7 +310,7 @@ export function redistributeExtractedData(
                 return {
                     ...rest,
                     id: String(rest.id),
-                    category: String(resolvedCategory || ''),
+                    category: resolvedCategory || '',
                     name: sanitizeMultilingualObject(rest.name),
                     description: rest.description ? sanitizeMultilingualObject(rest.description) : undefined,
                     price: normalizedPrice,
@@ -424,7 +435,7 @@ export function transformIdsForFile(
  */
 export function processParallelResponse(
     combinedResponse: CombinedAIResponse,
-    files: Array<{ uid: string;[key: string]: any }>,
+    files: Array<{ uid: string; [key: string]: unknown }>,
     existingCategories?: Map<string, string>
 ): Map<string, ExtractedData> {
     const categories = combinedResponse?.data?.categories || [];

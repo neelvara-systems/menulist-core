@@ -35,8 +35,7 @@
  */
 
 import { ALL_PRODUCT_DOMAINS } from './productDomains';
-import { CAMPAIGNCUE_PRODUCT_SLUG } from '@constant/campaigncue/product';
-import { NEELVARA_PRODUCT_SLUG } from '@constant/neelvara/product';
+import { RESERVED_SUBDOMAINS as ROUTING_RESERVED_SUBDOMAINS } from './reservedSlugs';
 import {
     getActiveProductDomains,
     getDeploymentStage,
@@ -256,18 +255,4 @@ export const PLATFORM_DOMAINS = [
  * Reserved subdomains that are NOT client tenants.
  * Used by domainResolver.ts for subdomain routing.
  */
-export const RESERVED_SUBDOMAINS = [
-    'www',
-    DASHBOARD_SUBDOMAIN,
-    'api',
-    'admin',
-    'dashboard',
-    'mail',
-    'blog',
-    HELP_SUBDOMAIN,
-    SUPPORT_SUBDOMAIN,
-    'status',
-    'signaldesk',
-    NEELVARA_PRODUCT_SLUG,
-    CAMPAIGNCUE_PRODUCT_SLUG,
-];
+export const RESERVED_SUBDOMAINS = ROUTING_RESERVED_SUBDOMAINS;

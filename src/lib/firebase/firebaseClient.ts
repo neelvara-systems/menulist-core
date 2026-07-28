@@ -4,10 +4,13 @@ import { getDatabase } from "firebase/database";
 import { getFirestore } from 'firebase/firestore';
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
+import { getExpectedFirebaseProjectId } from "@constant/deploymentTargets";
 import firebaseConfig from "./config";
 import { logFirebaseBootstrapFailure } from "./firebaseDiagnostics";
+import { resolveMenuListFirebaseClientBoundary } from "./menuListFirebaseClientBoundary";
 
 const appCheckDebugToken = process.env.NEXT_PUBLIC_FIREBASE_APPCHECK_DEBUG_TOKEN;
+const expectedMenuListProjectId = getExpectedFirebaseProjectId('menulist');
 
 const isLocalAppCheckHost = (hostname: string): boolean => {
     const normalizedHost = hostname.toLowerCase();
@@ -28,10 +31,38 @@ const isLocalAppCheckHost = (hostname: string): boolean => {
     return false;
 };
 
-// Initialize Firebase — guard against missing env vars during build
-const hasConfig = !!firebaseConfig.apiKey;
 const defaultFirebaseApp = getApps().find((app) => app.name === '[DEFAULT]');
-const firebaseApp = hasConfig ? (defaultFirebaseApp || initializeApp(firebaseConfig)) : null;
+const firebaseClientBoundary = resolveMenuListFirebaseClientBoundary({
+    configuredOptions: firebaseConfig,
+    existingDefaultApp: defaultFirebaseApp,
+    expectedProjectId: expectedMenuListProjectId,
+});
+
+if (!firebaseClientBoundary.valid && firebaseClientBoundary.errorCode !== 'INCOMPLETE_CONFIGURATION') {
+    logFirebaseBootstrapFailure('menulist_client_configuration_rejected', undefined, {
+        boundaryErrorCode: firebaseClientBoundary.errorCode,
+        existingProjectMatchesExpected:
+            defaultFirebaseApp?.options.projectId === expectedMenuListProjectId,
+        product: 'menulist',
+        projectMatchesExpected:
+            firebaseConfig.projectId === expectedMenuListProjectId,
+    });
+}
+
+let firebaseApp = firebaseClientBoundary.existingApp;
+if (firebaseClientBoundary.valid && !firebaseApp) {
+    try {
+        firebaseApp = initializeApp(firebaseConfig);
+    } catch (error) {
+        logFirebaseBootstrapFailure('menulist_client_initialize_failed', error, {
+            hasApiKey: Boolean(firebaseConfig.apiKey),
+            hasAppId: Boolean(firebaseConfig.appId),
+            product: 'menulist',
+            projectMatchesExpected:
+                firebaseConfig.projectId === expectedMenuListProjectId,
+        });
+    }
+}
 
 const firebaseClient = firebaseApp ? getFirestore(firebaseApp) : null as any;
 const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null as any;

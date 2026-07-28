@@ -21,6 +21,7 @@ import type { CreativeEditorDocument } from "@/modules/creative-editor/types";
 import { CampaignCuePackTemplateEditorDocumentSchema } from "@lib/validation/campaigncueCueLayersSchemas";
 import {
     assertCampaignCuePackTemplatePayloadIdentity,
+    assertCampaignCuePlatformPayloadHash,
     assertCampaignCuePackTemplateSummaryScope,
     assertCampaignCuePlatformTemplateCatalogScope,
     assertCampaignCueWorkspaceTemplateIndexScope,
@@ -61,9 +62,20 @@ const activeTemplates = (templates: CampaignCuePackTemplateSummary[]) => (
     sortTemplates(templates.filter((template) => template.status === ACTIVE_STATUS))
 );
 
-async function readJsonFromStorage<T>(path: string, maxBytes: number, parser: (value: unknown) => T): Promise<T> {
+async function sha256Hex(value: string): Promise<string> {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function readJsonFromStorage<T>(
+    path: string,
+    maxBytes: number,
+    parser: (value: unknown) => T,
+    verifyRaw?: (raw: string) => Promise<void>,
+): Promise<T> {
     const blob = await getBlob(ref(firebaseStorage, path), maxBytes);
     const raw = await blob.text();
+    await verifyRaw?.(raw);
     return parser(JSON.parse(raw));
 }
 
@@ -133,6 +145,9 @@ export async function getCampaignCuePackTemplate(
         summary.payloadPath,
         CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_PAYLOAD_BYTES,
         (value) => campaignCuePackTemplatePayloadSchema.parse(value) as CampaignCuePackTemplatePayload,
+        summary.templateType === "platform"
+            ? async (raw) => assertCampaignCuePlatformPayloadHash(summary, await sha256Hex(raw))
+            : undefined,
     );
     assertCampaignCuePackTemplatePayloadIdentity(summary, payload);
     const editorDocument = summary.editorDocumentPath

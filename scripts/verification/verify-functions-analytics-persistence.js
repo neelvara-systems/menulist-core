@@ -87,6 +87,8 @@ const healthSignals = read('functions/src/analytics/healthSignalsComputation.ts'
   'id !== getAnalyticsDocId.daily(expectedTId, expectedSId, projectId, localDate)',
   '.limit(MAX_DAILY_ANALYTICS_DOCS_PER_STORE + 1)',
   'getRecentQualifyingWeeks(weeks, currentDate)',
+  'normalizeStoreSummaryNumericAliases([storeData.tenantId, storeData.tId])',
+  'normalizeStoreSummaryNumericAliases([storeData.storeId, storeData.sId])',
 ].forEach((token) => assert(
   healthSignals.includes(token),
   `Health-signal persistence boundary must include ${token}`,

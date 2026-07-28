@@ -58,6 +58,7 @@ import {
     MYCODEX_ROBOTS_TAG,
     MYCODEX_SESSION_COOKIE,
     getMyCodexExpectedCredentials,
+    isMyCodexAccessConfigured,
     isMyCodexAuthBypassPath,
     sanitizeMyCodexReturnTo,
     verifyMyCodexSessionToken,
@@ -105,7 +106,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     // A02: Force HTTPS in Production
     if (
         isProduction
-        && !isLocalDevelopmentHost(request.headers.get('host'))
+        && !isTrustedLocalDevelopmentRequest(request.headers.get('host'))
         && request.headers.get('x-forwarded-proto') !== 'https'
     ) {
         const url = request.nextUrl.clone();
@@ -128,6 +129,9 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
     );
 
     // Content Security Policy (CSP) - A03: Injection Prevention
+    const connectSources = isDev
+        ? [...CSP_ALLOWLIST.connectSources, ...CSP_DEV_SETTINGS.connectSources]
+        : CSP_ALLOWLIST.connectSources;
     const cspDirectivesCurrent = [
         "default-src 'self'",
         buildCSPDirective('script-src', CSP_ALLOWLIST.scriptSources, {
@@ -139,7 +143,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         }),
         buildCSPDirective('font-src', CSP_ALLOWLIST.fontSources),
         buildCSPDirective('img-src', CSP_ALLOWLIST.imageSources),
-        buildCSPDirective('connect-src', CSP_ALLOWLIST.connectSources),
+        buildCSPDirective('connect-src', connectSources),
         buildCSPDirective('frame-src', CSP_ALLOWLIST.frameSources),
         buildCSPDirective('worker-src', CSP_ALLOWLIST.workerSources),
         "object-src 'none'",
@@ -164,7 +168,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse): Nex
         }),
         buildCSPDirective('font-src', CSP_ALLOWLIST.fontSources),
         buildCSPDirective('img-src', CSP_ALLOWLIST.imageSources),
-        buildCSPDirective('connect-src', CSP_ALLOWLIST.connectSources),
+        buildCSPDirective('connect-src', connectSources),
         buildCSPDirective('frame-src', CSP_ALLOWLIST.frameSources),
         buildCSPDirective('worker-src', CSP_ALLOWLIST.workerSources),
         "object-src 'none'",
@@ -220,6 +224,10 @@ function isLocalDevelopmentHost(hostname: string | null): boolean {
         || normalizedHost.startsWith('192.168.');
 }
 
+function isTrustedLocalDevelopmentRequest(hostname: string | null): boolean {
+    return !process.env.VERCEL && isLocalDevelopmentHost(hostname);
+}
+
 function isAnswerlatticeWidgetFrameRoute(request: NextRequest): boolean {
     const pathname = request.nextUrl.pathname;
     if (pathname !== '/widget' && !pathname.startsWith('/widget/')) return false;
@@ -227,7 +235,7 @@ function isAnswerlatticeWidgetFrameRoute(request: NextRequest): boolean {
     const hostname = request.headers.get('host');
     if (resolveKnownProductIdByHostname(hostname) === 'answerlattice') return true;
 
-    return !process.env.VERCEL && isLocalDevelopmentHost(hostname);
+    return isTrustedLocalDevelopmentRequest(hostname);
 }
 
 function isLegacyAnswerlatticePublicHostname(hostname: string | null): boolean {
@@ -535,7 +543,7 @@ async function authorizeMyCodexRequest(request: NextRequest): Promise<NextRespon
         return null;
     }
 
-    if (!getMyCodexExpectedCredentials()) {
+    if (!isMyCodexAccessConfigured()) {
         return setMyCodexResponseHeaders(new NextResponse('MyCodex access is not configured.', {
             status: 503,
             headers: {
@@ -728,7 +736,7 @@ export async function proxy(request: NextRequest) {
     // must not become alternate entry points on MenuList or sister-product
     // domains. Local development remains path-based, and the dedicated host
     // and /sd alias have already been handled above.
-    if (isSignalDeskRuntimePath(pathname) && !isLocalDevelopmentHost(hostname)) {
+    if (isSignalDeskRuntimePath(pathname) && !isTrustedLocalDevelopmentRequest(hostname)) {
         return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
     }
 

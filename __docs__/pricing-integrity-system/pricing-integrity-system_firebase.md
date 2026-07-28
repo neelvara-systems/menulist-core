@@ -23,6 +23,12 @@ The July 16 normalization, option-price projection, filters, quality summaries, 
 - `ENABLE_BACKGROUND_PDF_REGEN` is false.
 - No current owner action writes a PDF regeneration job.
 - Dormant MOL/PDF-integrity writes are not counted as active runtime cost.
+- Browser writes to retired `projectsMetadata/{tId}/{sId}/{projectId}` and
+  `projectsData/{tId}/{sId}/{projectId}` aliases are denied. They remain
+  authenticated, exact tenant-and-store-scoped read-only compatibility surfaces;
+  active menu truth writes use
+  `projects/{tId}/{sId}/{projectId}` so validation, multi-location authority,
+  public-cache invalidation, and publication effects cannot be bypassed.
 
 There is no active background PDF queue cost.
 
@@ -34,6 +40,10 @@ The July 17 cost pass found no justified additional Firebase artifact. Project s
 
 ## Deployment boundary
 
-This audit changes no Firestore rules, indexes, Storage rules, or Cloud Function source, so it has no Firebase infrastructure deploy step. The app code still requires an approved app release before hosted behavior changes.
+The July 28 data-flow audit closes browser writes to the two retired project
+aliases in Firestore rules. Local rules-emulator proof is required, followed by
+the scoped MenuList QA Firestore-rules deployment when operator authentication
+is available. No index, Storage rule, Cloud Function, or app deployment is
+required by that correction.
 
 This document is not current launch certification. Release approval requires the production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/MobileShell checks, public menu and PDF artifact QA, configured-screen QA, target deploy evidence, and production-host smoke.

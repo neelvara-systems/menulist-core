@@ -28,6 +28,7 @@ assertNotIncludes(menuPage, 'showContextLine={false}', 'public trust context vis
 assertIncludes(mce, 'validatePrice(price).success', 'canonical stored-price validation');
 assertIncludes(quality, 'isDescriptionMissing(item, [lang])', 'primary-language description signal');
 assertIncludes(maintenanceScheduler, 'selectDeterministicRetentionStorePage(', 'menu snapshot deterministic retention paging');
+assertIncludes(maintenanceScheduler, 'totalActiveStores: storePage.totalStores', 'AI-operation active-store paging evidence');
 assertIncludes(maintenanceScheduler, 'including inactive stores whose old snapshots still need expiry', 'inactive-store snapshot retention boundary');
 assertIncludes(maintenanceScheduler, 'deleteExpiredMenuSnapshotsInCollectionRef({', 'menu snapshot shared retention helper');
 assertIncludes(snapshotRetention, ".where('createdAt', '<=', cutoff)", 'legacy/current snapshot creation-time retention query');

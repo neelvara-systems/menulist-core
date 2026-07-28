@@ -11,8 +11,10 @@ export type VerifiedTopupSettlement = {
 
 export type CurrentTopupSubscriptionSettlement = {
     creditsLastResetMonth: number | null;
+    id: string | null;
     monthlyCredits: number;
     monthlyCreditsAllowance: number;
+    providerSubscriptionId: string | null;
     storeId: number;
     tenantId: number;
     topUpCredits: number;
@@ -110,11 +112,30 @@ export function resolveCurrentTopupSubscriptionSettlement(params: {
     ) {
         return null;
     }
+    const id = subscription.id === undefined || subscription.id === null
+        ? null
+        : asBoundedNonEmptyString(subscription.id, 180);
+    const providerSubscriptionId = subscription.providerSubscriptionId === undefined
+        || subscription.providerSubscriptionId === null
+        ? null
+        : asBoundedNonEmptyString(subscription.providerSubscriptionId, 180);
+    if (
+        (subscription.id !== undefined && subscription.id !== null && id === null)
+        || (
+            subscription.providerSubscriptionId !== undefined
+            && subscription.providerSubscriptionId !== null
+            && providerSubscriptionId === null
+        )
+    ) {
+        return null;
+    }
 
     return {
         creditsLastResetMonth,
+        id,
         monthlyCredits,
         monthlyCreditsAllowance,
+        providerSubscriptionId,
         storeId,
         tenantId,
         topUpCredits,

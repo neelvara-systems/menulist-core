@@ -1,6 +1,7 @@
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
+import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import {
     normalizeAnswerlatticeEntitySearchIndexId,
@@ -105,7 +106,7 @@ const CanonicalAnswerSchema = ProductScopeSchema.extend({
         detailedExplanation: z.string().trim().min(1).max(24_000).optional(),
         edgeCases: z.string().trim().max(8_000).optional(),
         constraints: z.string().trim().max(8_000).optional(),
-        procedure: z.unknown().optional(),
+        procedure: AnswerlatticeProcedureSchema.optional(),
     }).passthrough(),
     evidence: z.object({
         sourceIds: z.array(EvidenceDocumentIdSchema).max(ANSWERLATTICE_CANONICAL_EVIDENCE_CONSTRAINTS.MAX_SOURCE_IDS),

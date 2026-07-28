@@ -12,13 +12,13 @@ import { attemptCanonicalRetrieval } from '@lib/answerlattice/canonicalRetrieval
 import {
     normalizeAnswerlatticePublicCitations,
     normalizeAnswerlatticeScopeClarification,
+    serializeAnswerlatticePublicCanonicalAnswer,
 } from '@lib/answerlattice/publicAnswerContracts';
 import {
     ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION,
     answerlatticePublicApiError,
     authenticateAnswerlatticePublicApi,
     buildAnswerlatticePublicApiResponseHeaders,
-    toIsoTimestamp,
 } from '@lib/answerlattice/publicApi';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -42,41 +42,6 @@ const isPublicApiDebugResponseAllowed = () => (
     process.env.ANSWERLATTICE_PUBLIC_API_DEBUG === 'true'
     && process.env.NODE_ENV !== 'production'
 );
-
-function serializeAnswer(answer: any) {
-    if (!answer) return null;
-
-    return {
-        id: answer.id,
-        title: answer.title,
-        slug: answer.slug,
-        answerType: answer.answerType || 'explanation',
-        content: {
-            structuredSummary: answer.content?.structuredSummary || '',
-            detailedExplanation: answer.content?.detailedExplanation || '',
-            edgeCases: answer.content?.edgeCases || null,
-            constraints: answer.content?.constraints || null,
-            procedure: FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS ? answer.content?.procedure || null : null,
-        },
-        scope: {
-            entityIds: answer.scope?.entityIds || [],
-            planIds: answer.scope?.planIds || [],
-            roleIds: answer.scope?.roleIds || [],
-            stateIds: answer.scope?.stateIds || [],
-        },
-        productBinding: answer.productBinding || null,
-        validation: {
-            confidenceScore: answer.validation?.confidenceScore ?? null,
-            validationSource: answer.validation?.validationSource || null,
-            lastValidatedOn: toIsoTimestamp(answer.validation?.lastValidatedOn),
-        },
-        governance: {
-            driftFlag: Boolean(answer.governance?.driftFlag),
-            reviewRequired: Boolean(answer.governance?.reviewRequired),
-        },
-        modifiedOn: toIsoTimestamp(answer.modifiedOn),
-    };
-}
 
 function serializeFallbackReason(reason?: string | null): string | null {
     if (!reason) return null;
@@ -142,14 +107,17 @@ export async function POST(request: NextRequest) {
             context: productContext?.success ? productContext.data : undefined,
         });
 
-        const response: Record<string, any> = {
+        const response: Record<string, unknown> = {
             schemaVersion: ANSWERLATTICE_PUBLIC_API_SCHEMA_VERSION,
             generatedAt: new Date().toISOString(),
             canonical: Boolean(result.found && result.canonical),
             confidence: result.confidence,
             matchedEntityIds: result.matchedEntityIds,
             fallbackReason: serializeFallbackReason(result.fallbackReason),
-            answer: serializeAnswer(result.answer),
+            answer: serializeAnswerlatticePublicCanonicalAnswer(
+                result.answer,
+                FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS,
+            ),
             citations: normalizeAnswerlatticePublicCitations(result.citations),
             clarification: normalizeAnswerlatticeScopeClarification(result.clarification),
         };

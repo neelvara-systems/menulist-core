@@ -23,7 +23,7 @@ export type UserUploadedFileType = {
     source?: string;
     name?: string;
     size?: number;
-    type?: string | null | any;
+    type?: string | null;
     url?: string;
     uid?: string;
     isSelected?: boolean;

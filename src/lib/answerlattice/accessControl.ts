@@ -21,6 +21,8 @@ import {
     getAnswerlatticeScopeLogContext,
     getBoundedAnswerlatticeStringContext,
 } from '@lib/answerlattice/diagnostics';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import type { NextRequest } from 'next/server';
@@ -71,11 +73,7 @@ export const getAnswerlatticeDb = () => {
 };
 
 const isPlatformAdminSession = (session: any) => {
-    const platformRole = String(
-        session?.platformRole
-        || session?.user?.platformRole
-        || ''
-    ).toUpperCase();
+    const platformRole = resolveExactSessionPlatformRole(session);
 
     return platformRole === ECOMSAI_PLATFORM_USER_ROLE
         || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
@@ -119,10 +117,12 @@ export const selectAnswerlatticeAccessUserCandidate = (
     candidates: AnswerlatticeAccessUserCandidate[],
     tenantId: number,
     storeId: number,
+    userId?: string,
 ): AnswerlatticeAccessUserCandidate | null => {
     const matching = candidates.filter((candidate) => {
         const data = candidate.data || {};
-        return hasCompatibleAnswerlatticeProductIdentity(data)
+        return (!userId || candidate.id === userId)
+            && hasCompatibleAnswerlatticeProductIdentity(data)
             && normalizeConsistentAnswerlatticeScopeDocumentIds([data.tenantId, data.tId]) === tenantId
             && getUserStoreIds(data).includes(storeId);
     });
@@ -137,6 +137,7 @@ const findAnswerlatticeAccessUser = async (
     email: string,
     tenantId: number,
     storeId: number,
+    userId: string,
 ): Promise<AnswerlatticeAccessUserCandidate | null> => {
     const readCandidates = (snapshot: FirebaseFirestore.QuerySnapshot) => (
         snapshot.docs.map((document) => ({
@@ -156,6 +157,7 @@ const findAnswerlatticeAccessUser = async (
             readCandidates(canonicalSnapshot),
             tenantId,
             storeId,
+            userId,
         );
     }
 
@@ -170,6 +172,7 @@ const findAnswerlatticeAccessUser = async (
         readCandidates(legacySnapshot),
         tenantId,
         storeId,
+        userId,
     );
 };
 
@@ -358,6 +361,8 @@ export async function getAnswerlatticeAccessContext(
         storeId,
         role: resolvedScope?.role,
     };
+    const sessionUserId = resolveCurrentSessionUserDocumentId(session);
+    if (!sessionUserId) return null;
 
     const db = getAnswerlatticeDb();
     if (!db) return null;
@@ -372,7 +377,7 @@ export async function getAnswerlatticeAccessContext(
     const isPlatformAdmin = isPlatformAdminSession(session);
     const sessionEmail = normalizeEmail(session?.user?.email);
     const userDoc = !isPlatformAdmin && sessionEmail
-        ? await findAnswerlatticeAccessUser(db, sessionEmail, scope.tenantId, scope.storeId)
+        ? await findAnswerlatticeAccessUser(db, sessionEmail, scope.tenantId, scope.storeId, sessionUserId)
         : null;
     const userData = userDoc?.data || {};
 
@@ -417,7 +422,7 @@ export async function getAnswerlatticeAccessContext(
         },
         storeName: String(storeData.productName || storeData.name || `Workspace ${scope.storeId}`),
         user: {
-            id: userDoc?.id || session?.uId || session?.user?.id || '',
+            id: userDoc?.id || sessionUserId,
             email: sessionEmail,
             name: userData.name || session?.user?.name || '',
         },

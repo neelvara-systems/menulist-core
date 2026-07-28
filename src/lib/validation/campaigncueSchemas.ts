@@ -125,7 +125,7 @@ export const CampaignCueCreateCampaignSchema = z.object({
     channels: z.array(CampaignCueChannelSchema).min(1).max(7).optional(),
     sourceTemplateId: CampaignCueIdSchema.optional(),
     outputIntentId: z.enum(CAMPAIGNCUE_OUTPUT_PICKER_ITEM_IDS).optional(),
-    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
 }).strict().superRefine((value, ctx) => {
     if (value.reuseCampaignId && (value.outputIntentId || value.sourceTemplateId)) {
         ctx.addIssue({
@@ -158,7 +158,7 @@ export const CampaignCueCampaignActionSchema = z.object({
     }).strict().optional(),
     staffAssignee: optionalText(80),
     taskType: z.enum(["post", "print", "staff_share", "follow_up", "result_check"]).optional(),
-    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
 }).strict().superRefine((input, context) => {
     if (input.action === "record_outcome" && !input.resultSignalId) {
         context.addIssue({
@@ -184,6 +184,7 @@ export const CampaignCueCampaignActionSchema = z.object({
 });
 
 export const CampaignCueAssetSchema = z.object({
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     name: z.string().trim().min(2).max(120),
     assetType: z.enum(["image", "video", "document", "logo", "export"]),
     source: z.enum(["upload", "generated", "imported", "manual"]).default("manual"),
@@ -209,6 +210,7 @@ export const CampaignCueAssetSchema = z.object({
 });
 
 export const CampaignCueBusinessPatchSchema = z.object({
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     name: z.string().trim().min(2).max(120).optional(),
     businessType: z.enum([
         "restaurant",
@@ -270,6 +272,7 @@ export const CampaignCueBusinessPatchSchema = z.object({
 }).strict();
 
 export const CampaignCueSourceInputSchema = z.object({
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     sourceType: z.enum(["manual_note", "menu_link", "booking_link", "offer", "event", "upload_metadata", "inspiration_pattern"]),
     label: z.string().trim().min(2).max(120),
     value: z.string().trim().min(2).max(1200),
@@ -326,6 +329,7 @@ export const CampaignCueSourceInputSchema = z.object({
 });
 
 export const CampaignCueLocationSchema = z.object({
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120),
     name: z.string().trim().min(2).max(120),
     locality: z.string().trim().max(120).optional(),
     status: z.enum(["active", "draft"]).default("draft"),

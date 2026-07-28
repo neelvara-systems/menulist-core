@@ -20,6 +20,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from '../constants/features';
 import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
+import { getMaintenanceRunStatus } from './maintenanceRunLogBoundary';
 import { isAlertsMuted } from '../monitoring/deployMute';
 import { sendPlatformAlertDelivery } from '../monitoring/platformNotificationDelivery';
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
@@ -59,6 +60,7 @@ import {
 import { selectDeterministicRetentionStorePage } from './retentionStorePageBoundary';
 import { deleteExpiredMenuSnapshotsInCollectionRef } from './menuSnapshotRetention';
 import { getExactMenuListSubscriptionScope } from '../billing/subscriptionScope';
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from '../utils/boundedErrorContext';
 
 const MENULIST_PRODUCT_ID = 'ML' as const;
 const logger = functions.logger;
@@ -260,20 +262,15 @@ function getTaskFailureCode(taskName: string): string {
 }
 
 function getSchedulerErrorName(error: unknown): string {
-    if (error instanceof Error) return (error.name || 'Error').slice(0, 80);
-    return typeof error;
+    return getBoundedFunctionsErrorName(error) || 'Error';
 }
 
 function getSchedulerErrorCode(error: Error): string | undefined {
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedFunctionsErrorCode(error);
 }
 
 function getSchedulerErrorStatus(error: Error): number | undefined {
-    const status = Number((error as { status?: unknown; statusCode?: unknown }).status
-        || (error as { statusCode?: unknown }).statusCode);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedFunctionsErrorStatus(error);
 }
 
 function getSchedulerErrorContext(error: unknown): {
@@ -480,7 +477,7 @@ async function persistMeaningfulRunLog(params: {
             params.startedAt.getTime() + FUNCTION_RETENTION_CONFIG.SCHEDULER_RUN_LOG_RETENTION_DAYS * DAY_MS,
         ),
         durationMs: params.finishedAt.getTime() - params.startedAt.getTime(),
-        status: params.summaries.some((summary) => summary.status === 'failed') ? 'partial' : 'success',
+        status: getMaintenanceRunStatus(params.summaries),
         tasks: params.summaries.map((summary) => ({
             ...summary,
             details: compactDetails(summary.details),
@@ -807,6 +804,43 @@ async function deleteExpiredDocs(params: {
     return { scanned: snapshot.size, deleted };
 }
 
+async function deleteLegacyOwnerNotificationDocs(params: {
+    collection: string;
+    now: Timestamp;
+    retentionDays: number;
+    timestampField: 'createdAt' | 'updatedAt';
+    limit?: number;
+}): Promise<{ scanned: number; deleted: number; skipped: number }> {
+    const cutoff = Timestamp.fromMillis(params.now.toMillis() - params.retentionDays * DAY_MS);
+    const snapshot = await db
+        .collection(params.collection)
+        .where('productId', '==', MENULIST_PRODUCT_ID)
+        .where(params.timestampField, '<=', cutoff)
+        .orderBy(params.timestampField, 'asc')
+        .limit(params.limit || 50)
+        .get();
+    let deleted = 0;
+    let skipped = 0;
+
+    for (const document of snapshot.docs) {
+        const removed = await db.runTransaction(async (transaction) => {
+            const current = await transaction.get(document.ref);
+            const data = current.data();
+            if (!current.exists || data?.productId !== MENULIST_PRODUCT_ID || data.expiresAt !== undefined) {
+                return false;
+            }
+            const timestamp = data[params.timestampField];
+            if (!(timestamp instanceof Timestamp) || timestamp.toMillis() > cutoff.toMillis()) return false;
+            transaction.delete(document.ref);
+            return true;
+        });
+        if (removed) deleted++;
+        else skipped++;
+    }
+
+    return { scanned: snapshot.size, deleted, skipped };
+}
+
 async function deleteLegacyFeedbackEvents(params: {
     now: Timestamp;
     limit?: number;
@@ -942,9 +976,13 @@ async function runAiOperationDetailCleanup(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
     const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
     const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
-    const storeEntries = Object.entries(storesSummary)
-        .filter(([, storeInfo]) => storeInfo.active !== false)
-        .slice(0, 200);
+    const storePage = selectDeterministicRetentionStorePage(
+        storesSummary,
+        now.toMillis(),
+        200,
+        (storeInfo) => storeInfo.active !== false,
+    );
+    const storeEntries = storePage.entries;
 
     const extraction = await compactAiOperationDetailsInCollectionRef({
         collectionRef: db.collection(DB_COLLECTIONS.MENULIST_AI_EXTRACTION_OPERATIONS),
@@ -1007,6 +1045,9 @@ async function runAiOperationDetailCleanup(): Promise<MaintenanceTaskResult> {
         activity: compacted > 0 || reservationsRefunded > 0 || refundedReservationsDeleted > 0 || storeErrors > 0,
         details: {
             mode: FUNCTION_RETENTION_CONFIG.AI_OPERATION_LOG_MODE,
+            storePageCount: storePage.pageCount,
+            storePageIndex: storePage.pageIndex,
+            totalActiveStores: storePage.totalStores,
             storesScanned,
             scanned,
             compacted,
@@ -1068,10 +1109,9 @@ function parseMenuItemStoragePathFromUrl(params: {
 }
 
 function isStorageObjectNotFound(error: unknown): boolean {
-    const code = (error as { code?: unknown }).code;
-    const statusCode = (error as { statusCode?: unknown }).statusCode;
-    return code === 404
-        || code === '404'
+    const code = getBoundedFunctionsErrorCode(error);
+    const statusCode = getBoundedFunctionsErrorStatus(error);
+    return code === '404'
         || code === 'storage/object-not-found'
         || code === 'not-found'
         || statusCode === 404;
@@ -1639,13 +1679,48 @@ async function runMenuSnapshotCleanup(): Promise<MaintenanceTaskResult> {
 }
 
 async function runOwnerNotificationRetentionCleanup(now = Timestamp.now()): Promise<MaintenanceTaskResult> {
-    const [events, deliveries, rateLimits, legacyMessages] = await Promise.all([
+    const [
+        events,
+        deliveries,
+        rateLimits,
+        legacyMessages,
+        legacyEvents,
+        legacyDeliveries,
+        legacyRateLimits,
+    ] = await Promise.all([
         deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_EVENTS, now, limit: 50, productField: 'productId', productValue: 'ML' }),
         deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_DELIVERIES, now, limit: 50, productField: 'productId', productValue: 'ML' }),
         deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_NOTIFICATION_RATE_LIMITS, now, limit: 50, productField: 'productId', productValue: 'ML' }),
         deleteExpiredDocs({ collection: DB_COLLECTIONS.MESSAGE_LOGS, now, limit: 50 }),
+        deleteLegacyOwnerNotificationDocs({
+            collection: DB_COLLECTIONS.OWNER_NOTIFICATION_EVENTS,
+            now,
+            retentionDays: FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS,
+            timestampField: 'createdAt',
+            limit: 50,
+        }),
+        deleteLegacyOwnerNotificationDocs({
+            collection: DB_COLLECTIONS.OWNER_NOTIFICATION_DELIVERIES,
+            now,
+            retentionDays: FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS,
+            timestampField: 'createdAt',
+            limit: 50,
+        }),
+        deleteLegacyOwnerNotificationDocs({
+            collection: DB_COLLECTIONS.OWNER_NOTIFICATION_RATE_LIMITS,
+            now,
+            retentionDays: FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS,
+            timestampField: 'updatedAt',
+            limit: 50,
+        }),
     ]);
-    const deleted = events.deleted + deliveries.deleted + rateLimits.deleted + legacyMessages.deleted;
+    const deleted = events.deleted
+        + deliveries.deleted
+        + rateLimits.deleted
+        + legacyMessages.deleted
+        + legacyEvents.deleted
+        + legacyDeliveries.deleted
+        + legacyRateLimits.deleted;
 
     return {
         activity: deleted > 0,
@@ -1656,6 +1731,9 @@ async function runOwnerNotificationRetentionCleanup(now = Timestamp.now()): Prom
             deliveries,
             rateLimits,
             legacyMessages,
+            legacyEvents,
+            legacyDeliveries,
+            legacyRateLimits,
         },
     };
 }
@@ -1851,35 +1929,35 @@ async function runSpecialMenuLifecycleTransitions(): Promise<MaintenanceTaskResu
 }
 
 async function runOwnerBusinessAssistantCleanup(): Promise<MaintenanceTaskResult> {
-    const healthEnabled = isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH');
-    const usageLoggingEnabled = healthEnabled && isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING');
-    const threadsEnabled = healthEnabled && isFunctionFeatureEnabled('ENABLE_OWNER_BUSINESS_HEALTH_THREADS');
-    if (!healthEnabled && !usageLoggingEnabled && !threadsEnabled) {
-        return { activity: false, details: { enabled: false } };
-    }
-
     const now = Timestamp.now();
-    const skippedCleanup = { scanned: 0, deleted: 0, skipped: true };
     const [snapshots, answerEvents, feedback, threads] = await Promise.all([
-        healthEnabled
-            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.PLATFORM_SUMMARY, now, limit: 50, kind: 'ownerBusinessHealthSnapshot' })
-            : Promise.resolve(skippedCleanup),
-        usageLoggingEnabled
-            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS, now, limit: 50 })
-            : Promise.resolve(skippedCleanup),
-        usageLoggingEnabled
-            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK, now, limit: 50 })
-            : Promise.resolve(skippedCleanup),
-        threadsEnabled
-            ? deleteExpiredDocs({ collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS, now, limit: 50 })
-            : Promise.resolve(skippedCleanup),
+        deleteExpiredDocs({
+            collection: DB_COLLECTIONS.PLATFORM_SUMMARY,
+            now,
+            limit: 50,
+            kind: 'ownerBusinessHealthSnapshot',
+        }),
+        deleteExpiredDocs({
+            collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS,
+            now,
+            limit: 50,
+        }),
+        deleteExpiredDocs({
+            collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK,
+            now,
+            limit: 50,
+        }),
+        deleteExpiredDocs({
+            collection: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS,
+            now,
+            limit: 50,
+        }),
     ]);
     const deleted = snapshots.deleted + answerEvents.deleted + feedback.deleted + threads.deleted;
 
     return {
         activity: deleted > 0,
         details: {
-            enabled: true,
             deleted,
             snapshots,
             answerEvents,

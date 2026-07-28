@@ -5,9 +5,20 @@
 
 import { Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
-import { ERROR_DEDUPLICATION } from '../../../src/constants/analyticsMetrics';
+import { ERROR_DEDUPLICATION } from './analyticsMetrics';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import {
+  getBoundedFunctionsErrorCode,
+  getBoundedFunctionsErrorName,
+  getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
+import {
+  getSystemErrorDocumentId,
+  getSystemErrorOccurrenceDecision,
+  normalizeSystemErrorScopeId,
+} from './systemErrorBoundary';
+import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 
 const logger = functions.logger;
 
@@ -33,26 +44,11 @@ export interface SystemError {
   occurrenceCount: number;
 }
 
-export interface ErrorSummary {
-  totalErrors: number;
-  criticalErrors: number;
-  unresolvedErrors: number;
-  errorsByType: Record<string, number>;
-  errorsBySeverity: Record<string, number>;
-  recentErrors: SystemError[];
-}
-
 function getErrorLogContext(error: unknown): { name?: string; code?: string; status?: string } {
-  if (!error || typeof error !== 'object') return {};
-
-  const record = error as Record<string, unknown>;
-  const code = record.code;
-  const status = record.status ?? record.statusCode;
-
   return {
-    name: error instanceof Error ? (error.name || 'Error').slice(0, 80) : undefined,
-    code: code === undefined || code === null ? undefined : String(code).slice(0, 64),
-    status: status === undefined || status === null ? undefined : String(status).slice(0, 32),
+    name: getBoundedFunctionsErrorName(error),
+    code: getBoundedFunctionsErrorCode(error),
+    status: getBoundedFunctionsErrorStatus(error)?.toString(),
   };
 }
 
@@ -120,8 +116,8 @@ function buildStoredSystemError(
   error: Omit<SystemError, 'id' | 'timestamp' | 'resolved' | 'occurrenceCount'>,
 ): Omit<SystemError, 'id' | 'timestamp' | 'resolved' | 'occurrenceCount'> {
   const stored: Omit<SystemError, 'id' | 'timestamp' | 'resolved' | 'occurrenceCount'> = {
-    tId: error.tId,
-    sId: error.sId,
+    tId: normalizeSystemErrorScopeId(error.tId),
+    sId: normalizeSystemErrorScopeId(error.sId),
     errorType: error.errorType,
     severity: error.severity,
     message: getStoredSystemErrorMessage(error.message),
@@ -139,37 +135,6 @@ function buildStoredSystemError(
   return stored;
 }
 
-function buildSafeSystemErrorFromDoc(id: string, data: FirebaseFirestore.DocumentData): SystemError {
-  const rawStack = typeof data.stack === 'string' ? data.stack : '';
-  const safe: SystemError = {
-    id,
-    tId: String(data.tId || 'system'),
-    sId: String(data.sId || 'system'),
-    errorType: ['api', 'function', 'database', 'integration', 'unknown'].includes(data.errorType)
-      ? data.errorType
-      : 'unknown',
-    severity: ['low', 'medium', 'high', 'critical'].includes(data.severity)
-      ? data.severity
-      : 'medium',
-    message: getStoredSystemErrorMessage(data.message),
-    timestamp: data.timestamp,
-    resolved: data.resolved === true,
-    occurrenceCount: Number(data.occurrenceCount || 1),
-  };
-
-  if (data.functionName) safe.functionName = String(data.functionName).slice(0, 120);
-  if (rawStack || data.stackPresent || data.stackLength) {
-    safe.stackPresent = Boolean(rawStack || data.stackPresent);
-    safe.stackLength = Number(data.stackLength || rawStack.length || 0);
-  }
-
-  const sanitizedContext = sanitizeSystemErrorContext(data.context);
-  if (sanitizedContext) safe.context = sanitizedContext;
-  if (data.resolvedAt) safe.resolvedAt = data.resolvedAt;
-
-  return safe;
-}
-
 // ================================================================
 // ERROR TRACKING
 // ================================================================
@@ -183,48 +148,45 @@ export async function logSystemError(
   const storedError = buildStoredSystemError(error);
 
   try {
-    // Check if similar error exists (within configured deduplication window)
-    const windowStart = new Date();
-    windowStart.setHours(windowStart.getHours() - ERROR_DEDUPLICATION.WINDOW_HOURS);
+    const nowMillis = Date.now();
+    const errorId = getSystemErrorDocumentId(storedError);
+    const errorRef = db.collection(DB_COLLECTIONS.SYSTEM_ERRORS).doc(errorId);
+    const transactionResult = await db.runTransaction(async transaction => {
+      const currentSnapshot = await transaction.get(errorRef);
+      const currentData = currentSnapshot.data();
+      const currentTimestamp = currentData?.timestamp;
+      const currentTimestampMillis = currentTimestamp instanceof Timestamp
+        ? currentTimestamp.toMillis()
+        : null;
+      const occurrence = getSystemErrorOccurrenceDecision(
+        currentTimestampMillis,
+        currentData?.occurrenceCount,
+        nowMillis,
+        ERROR_DEDUPLICATION.WINDOW_HOURS * 60 * 60 * 1000,
+      );
 
-    const existingErrorsSnapshot = await db
-      .collection(DB_COLLECTIONS.SYSTEM_ERRORS)
-      .where('tId', '==', storedError.tId)
-      .where('sId', '==', storedError.sId)
-      .where('errorType', '==', storedError.errorType)
-      .where('message', '==', storedError.message)
-      .where('timestamp', '>=', Timestamp.fromDate(windowStart))
-      .limit(1)
-      .get();
-
-    if (!existingErrorsSnapshot.empty) {
-      // Update existing error occurrence count
-      const existingError = existingErrorsSnapshot.docs[0];
-      await existingError.ref.update({
-        occurrenceCount: (existingError.data().occurrenceCount || 1) + 1,
-        timestamp: Timestamp.now(), // Update to latest occurrence
-      });
-
-      logger.info('[Error Tracking] Updated existing error occurrence', {
-        ...getSystemErrorLogContext(storedError),
-        ...getBoundedSystemErrorStringContext('errorId', existingError.id),
-      });
-    } else {
-      // Create new error document
-      await db.collection(DB_COLLECTIONS.SYSTEM_ERRORS).add({
+      transaction.set(errorRef, {
         ...storedError,
-        timestamp: Timestamp.now(),
-        expiresAt: Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000), // TTL: 30 days
+        timestamp: Timestamp.fromMillis(nowMillis),
+        expiresAt: Timestamp.fromMillis(nowMillis + 30 * 24 * 60 * 60 * 1000),
         resolved: false,
-        occurrenceCount: 1,
+        occurrenceCount: occurrence.occurrenceCount,
       });
 
+      return occurrence;
+    });
+
+    if (transactionResult.startsNewWindow) {
       logger.info('[Error Tracking] Logged new error', getSystemErrorLogContext(storedError));
 
-      // Check if critical error and trigger alert
       if (storedError.severity === 'critical') {
         await triggerCriticalAlert(storedError);
       }
+    } else {
+      logger.info('[Error Tracking] Updated existing error occurrence', {
+        ...getSystemErrorLogContext(storedError),
+        ...getBoundedSystemErrorStringContext('errorId', errorId),
+      });
     }
   } catch (err) {
     logger.error('[Error Tracking] Failed to log error', {
@@ -236,99 +198,29 @@ export async function logSystemError(
 }
 
 /**
- * Mark error as resolved
- */
-export async function resolveError(errorId: string): Promise<void> {
-  try {
-    await db.collection(DB_COLLECTIONS.SYSTEM_ERRORS).doc(errorId).update({
-      resolved: true,
-      resolvedAt: Timestamp.now(),
-    });
-
-    logger.info(
-      '[Error Tracking] Marked error as resolved',
-      getBoundedSystemErrorStringContext('errorId', errorId)
-    );
-  } catch (error) {
-    logger.error('[Error Tracking] Failed to resolve error', {
-      ...getBoundedSystemErrorStringContext('errorId', errorId),
-      error: getErrorLogContext(error),
-    });
-    throw error;
-  }
-}
-
-/**
- * Get error summary for a store
- */
-export async function getErrorSummary(
-  tId: string,
-  sId: string,
-  daysBack: number = 7
-): Promise<ErrorSummary> {
-  try {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysBack);
-
-    const errorsSnapshot = await db
-      .collection(DB_COLLECTIONS.SYSTEM_ERRORS)
-      .where('tId', '==', tId)
-      .where('sId', '==', sId)
-      .where('timestamp', '>=', Timestamp.fromDate(startDate))
-      .orderBy('timestamp', 'desc')
-      .get();
-
-    const errors: SystemError[] = errorsSnapshot.docs.map(doc => (
-      buildSafeSystemErrorFromDoc(doc.id, doc.data())
-    ));
-
-    const summary: ErrorSummary = {
-      totalErrors: errors.length,
-      criticalErrors: errors.filter(e => e.severity === 'critical').length,
-      unresolvedErrors: errors.filter(e => !e.resolved).length,
-      errorsByType: {},
-      errorsBySeverity: {},
-      recentErrors: errors.slice(0, 10),
-    };
-
-    // Count by type
-    errors.forEach(error => {
-      summary.errorsByType[error.errorType] =
-        (summary.errorsByType[error.errorType] || 0) + 1;
-      summary.errorsBySeverity[error.severity] =
-        (summary.errorsBySeverity[error.severity] || 0) + 1;
-    });
-
-    return summary;
-  } catch (error) {
-    logger.error('[Error Tracking] Failed to get error summary', {
-      ...getBoundedSystemErrorStringContext('tId', tId),
-      ...getBoundedSystemErrorStringContext('sId', sId),
-      daysBack,
-      error: getErrorLogContext(error),
-    });
-    throw error;
-  }
-}
-
-/**
  * Trigger critical error alert
  */
 async function triggerCriticalAlert(error: Omit<SystemError, 'id' | 'timestamp' | 'resolved' | 'occurrenceCount'>): Promise<void> {
   try {
-    // Store alert in alerts collection
-    await db.collection(DB_COLLECTIONS.SYSTEM_ALERTS).add({
-      type: 'critical_error',
+    // Dynamic import avoids the alerts -> errorTracking diagnostic dependency
+    // becoming a module-initialization cycle.
+    const { createAlert } = await import('./alerts');
+    await createAlert({
+      type: 'error',
+      severity: 'critical',
       tId: error.tId,
       sId: error.sId,
+      title: 'Critical system error recorded',
       message: 'Critical system error recorded',
-      errorType: error.errorType,
-      functionName: error.functionName,
       metadata: {
+        errorType: error.errorType,
+        functionName: error.functionName,
         errorMessageLength: error.message.length,
       },
-      timestamp: Timestamp.now(),
-      acknowledged: false,
+      triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.CRITICAL_SYSTEM_ERROR,
+      productId: 'PLATFORM',
+      category: 'system',
+      actionRequired: true,
     });
 
     logger.error('[Error Tracking] Critical alert triggered', getSystemErrorLogContext(error));
@@ -369,8 +261,6 @@ export const SEVERITY_LEVELS = {
 
 export default {
   logSystemError,
-  resolveError,
-  getErrorSummary,
   ERROR_CATEGORIES,
   SEVERITY_LEVELS,
 };

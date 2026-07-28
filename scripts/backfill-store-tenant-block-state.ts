@@ -19,12 +19,13 @@
  *   npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-store-tenant-block-state.ts --project-id menulist-qa --all-stores --write --confirm-project menulist-qa
  */
 
-import * as admin from 'firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../src/constants/database';
 
 const args = process.argv.slice(2);
 const WRITE_BATCH_LIMIT = 450;
+const MAX_READ_LIMIT = 1_500;
 const TENANT_STORE_SCOPE_FIELDS = ['tenantId', 'tId'] as const;
 
 function hasFlag(name: string): boolean {
@@ -45,27 +46,73 @@ function getRequiredProjectId(): string {
     return projectId;
 }
 
-function hasExplicitWriteScope(): boolean {
-    return Boolean(getArg('--tenant-id') || getArg('--store-id') || hasFlag('--all-stores'));
+function normalizePositiveNumericDocumentId(value: unknown): { documentId: string; numericId: number } | null {
+    const documentId = typeof value === 'number' ? String(value) : value;
+    if (typeof documentId !== 'string' || !/^[1-9]\d*$/.test(documentId)) return null;
+    const numericId = Number(documentId);
+    return Number.isSafeInteger(numericId) && String(numericId) === documentId
+        ? { documentId, numericId }
+        : null;
+}
+
+function normalizePositiveNumericDocumentIdAliases(
+    values: readonly unknown[],
+): { documentId: string; numericId: number } | null {
+    const supplied = values.filter((value) => value !== undefined && value !== null);
+    if (supplied.length === 0) return null;
+    const normalized = supplied.map(normalizePositiveNumericDocumentId);
+    const [first] = normalized;
+    return first && normalized.every((identity) => identity?.documentId === first.documentId)
+        ? first
+        : null;
+}
+
+export function resolveTenantBlockBackfillStoreIdentity(
+    documentId: unknown,
+    store: Record<string, unknown>,
+): { storeId: string; tenantId: string } | null {
+    const storeIdentity = normalizePositiveNumericDocumentId(documentId);
+    if (!storeIdentity) return null;
+
+    const embeddedStoreValues = [store.storeId, store.sId]
+        .filter((value) => value !== undefined && value !== null);
+    const embeddedStoreIdentity = embeddedStoreValues.length === 0
+        ? storeIdentity
+        : normalizePositiveNumericDocumentIdAliases(embeddedStoreValues);
+    const tenantIdentity = normalizePositiveNumericDocumentIdAliases([
+        store.tenantId,
+        store.tId,
+    ]);
+    return embeddedStoreIdentity?.documentId === storeIdentity.documentId && tenantIdentity
+        ? { storeId: storeIdentity.documentId, tenantId: tenantIdentity.documentId }
+        : null;
 }
 
 let db: FirebaseFirestore.Firestore;
 
 function initializeFirestore(projectId: string): FirebaseFirestore.Firestore {
-    if (!admin.apps.length) {
-        admin.initializeApp({ projectId });
-    }
-    return admin.firestore();
+    if (!getApps().length) initializeApp({ projectId });
+    return getFirestore();
 }
 
 function getTenantStoreQueryValues(tenantId: string): Array<string | number> {
-    const tenantIdNumber = Number(tenantId);
-    if (!Number.isFinite(tenantIdNumber)) return [tenantId];
-    return [tenantIdNumber, tenantId];
+    const normalized = normalizePositiveNumericDocumentId(tenantId);
+    if (!normalized) throw new Error('--tenant-id must be an exact positive numeric document ID.');
+    return [normalized.numericId, normalized.documentId];
 }
 
-function isPlatformBlocked(value: Record<string, any> | undefined): boolean {
-    return value?.blocked === true || value?.tenantBlocked === true || value?.blockDetails?.blocked === true;
+export function isTenantBlockBackfillBlocked(value: unknown): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+    const blockDetails = record.blockDetails;
+    return record.blocked === true
+        || record.tenantBlocked === true
+        || (
+            blockDetails != null
+            && typeof blockDetails === 'object'
+            && !Array.isArray(blockDetails)
+            && (blockDetails as Record<string, unknown>).blocked === true
+        );
 }
 
 function getBoundedErrorString(value: unknown, maxLength = 180): string | null {
@@ -73,27 +120,38 @@ function getBoundedErrorString(value: unknown, maxLength = 180): string | null {
     return value.trim().replace(/\s+/g, ' ').slice(0, maxLength);
 }
 
-function getBackfillErrorSummary(error: any) {
+function getBackfillErrorSummary(error: unknown) {
+    const source = error && typeof error === 'object'
+        ? error as Record<string, unknown>
+        : {};
     return {
-        code: typeof error?.code === 'number' || typeof error?.code === 'string' ? error.code : null,
-        domain: getBoundedErrorString(error?.domain),
-        reason: getBoundedErrorString(error?.reason),
-        message: getBoundedErrorString(error?.message),
-        details: getBoundedErrorString(error?.details),
-        errorName: getBoundedErrorString(error?.name),
+        code: typeof source.code === 'number' || typeof source.code === 'string' ? source.code : null,
+        domain: getBoundedErrorString(source.domain),
+        reason: getBoundedErrorString(source.reason),
+        message: getBoundedErrorString(source.message),
+        details: getBoundedErrorString(source.details),
+        errorName: getBoundedErrorString(source.name),
     };
 }
 
 async function loadStoreDocs(): Promise<FirebaseFirestore.QueryDocumentSnapshot[]> {
     const storeId = getArg('--store-id');
     if (storeId) {
-        const snap = await db.collection(DB_COLLECTIONS.STORES).doc(String(storeId)).get();
+        const normalizedStoreId = normalizePositiveNumericDocumentId(storeId);
+        if (!normalizedStoreId) throw new Error('--store-id must be an exact positive numeric document ID.');
+        const snap = await db.collection(DB_COLLECTIONS.STORES).doc(normalizedStoreId.documentId).get();
         return snap.exists ? [snap as FirebaseFirestore.QueryDocumentSnapshot] : [];
     }
 
     const tenantId = getArg('--tenant-id');
     const limitArg = getArg('--limit');
     const limit = limitArg ? Number(limitArg) : null;
+    if (
+        limitArg
+        && (!Number.isSafeInteger(limit) || limit == null || limit <= 0 || limit > MAX_READ_LIMIT)
+    ) {
+        throw new Error(`--limit must be a positive integer no greater than ${MAX_READ_LIMIT}.`);
+    }
 
     if (tenantId) {
         const storeDocs = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
@@ -102,7 +160,7 @@ async function loadStoreDocs(): Promise<FirebaseFirestore.QueryDocumentSnapshot[
                 let query: FirebaseFirestore.Query = db
                     .collection(DB_COLLECTIONS.STORES)
                     .where(field, '==', tenantQueryValue);
-                if (Number.isFinite(limit) && limit && limit > 0) query = query.limit(limit);
+                if (limit) query = query.limit(limit);
                 const snap = await query.get();
                 snap.docs.forEach((doc) => storeDocs.set(doc.id, doc));
             }
@@ -111,15 +169,15 @@ async function loadStoreDocs(): Promise<FirebaseFirestore.QueryDocumentSnapshot[
     }
 
     let query: FirebaseFirestore.Query = db.collection(DB_COLLECTIONS.STORES);
-    if (Number.isFinite(limit) && limit && limit > 0) query = query.limit(limit);
+    if (limit) query = query.limit(limit);
     const snap = await query.get();
     return snap.docs;
 }
 
 async function getTenantData(
-    tenantCache: Map<string, Record<string, any> | null>,
+    tenantCache: Map<string, Record<string, unknown> | null>,
     tenantId: string,
-): Promise<Record<string, any> | null> {
+): Promise<Record<string, unknown> | null> {
     if (tenantCache.has(tenantId)) return tenantCache.get(tenantId) || null;
 
     const snap = await db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId).get();
@@ -131,20 +189,29 @@ async function getTenantData(
 async function main() {
     const projectId = getRequiredProjectId();
     const write = hasFlag('--write');
+    const tenantScope = getArg('--tenant-id');
+    const storeScope = getArg('--store-id');
+    const allStores = hasFlag('--all-stores');
+    const scopeCount = Number(Boolean(tenantScope)) + Number(Boolean(storeScope)) + Number(allStores);
+    if (scopeCount !== 1) {
+        throw new Error('Pass exactly one of --tenant-id, --store-id, or --all-stores.');
+    }
+    if (tenantScope && !normalizePositiveNumericDocumentId(tenantScope)) {
+        throw new Error('--tenant-id must be an exact positive numeric document ID.');
+    }
+    if (storeScope && !normalizePositiveNumericDocumentId(storeScope)) {
+        throw new Error('--store-id must be an exact positive numeric document ID.');
+    }
     const confirmedProjectId = getArg('--confirm-project');
     if (write && confirmedProjectId !== projectId) {
         throw new Error(`Refusing write: pass --confirm-project ${projectId} to confirm the target Firebase project.`);
     }
-    if (write && !hasExplicitWriteScope()) {
-        throw new Error('Refusing write: pass --tenant-id, --store-id, or --all-stores after reviewing dry-run output.');
-    }
-
     db = initializeFirestore(projectId);
 
     console.log(`Project: ${projectId}`);
     console.log(`Mode: ${write ? 'WRITE' : 'DRY RUN'}`);
 
-    const tenantCache = new Map<string, Record<string, any> | null>();
+    const tenantCache = new Map<string, Record<string, unknown> | null>();
     const storeDocs = await loadStoreDocs();
     let batch = db.batch();
     let batchOperations = 0;
@@ -158,14 +225,13 @@ async function main() {
     for (const storeDoc of storeDocs) {
         scannedStores += 1;
         const store = storeDoc.data() || {};
-        const storeId = String(store.storeId ?? storeDoc.id);
-        const tenantId = String(store.tenantId ?? store.tId ?? '');
-
-        if (!tenantId) {
+        const identity = resolveTenantBlockBackfillStoreIdentity(storeDoc.id, store);
+        if (!identity) {
             skippedMissingTenantId += 1;
-            console.log(`[skip] store=${storeId}: missing tenantId`);
+            console.log(`[skip] store=${storeDoc.id}: invalid or conflicting store/tenant identity`);
             continue;
         }
+        const { storeId, tenantId } = identity;
 
         const tenant = await getTenantData(tenantCache, tenantId);
         if (!tenant) {
@@ -174,7 +240,7 @@ async function main() {
             continue;
         }
 
-        const tenantBlocked = isPlatformBlocked(tenant);
+        const tenantBlocked = isTenantBlockBackfillBlocked(tenant);
         const needsUpdate = store.tenantBlocked !== tenantBlocked || !store.tenantBlockedSyncedAt;
         if (!needsUpdate) {
             skippedAlreadySynced += 1;
@@ -216,7 +282,9 @@ async function main() {
     }, null, 2));
 }
 
-main().catch((error) => {
-    console.error('tenant_block_backfill_failed', JSON.stringify(getBackfillErrorSummary(error)));
-    process.exitCode = 1;
-});
+if (require.main === module) {
+    main().catch((error) => {
+        console.error('tenant_block_backfill_failed', JSON.stringify(getBackfillErrorSummary(error)));
+        process.exitCode = 1;
+    });
+}

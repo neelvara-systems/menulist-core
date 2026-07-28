@@ -62,7 +62,20 @@ export function getTodayLocalDateKey(): string {
     return new Intl.DateTimeFormat('en-CA').format(new Date());
 }
 
-export function getInactiveReminderDismissKey(storeId?: string | number | null, projectId?: string | null): string | null {
-    if (!storeId || !projectId) return null;
-    return `today_inactive_items_dismissed_${storeId}_${projectId}_${getTodayLocalDateKey()}`;
+export function getInactiveReminderDismissKey(
+    tenantId?: string | number | null,
+    storeId?: string | number | null,
+    projectId?: string | null,
+): string | null {
+    const normalizedTenantId = String(tenantId || '').trim();
+    const normalizedStoreId = String(storeId || '').trim();
+    const normalizedProjectId = String(projectId || '').trim();
+    if (
+        !/^[1-9]\d{0,15}$/.test(normalizedTenantId)
+        || !/^[1-9]\d{0,15}$/.test(normalizedStoreId)
+        || !/^[A-Za-z0-9_-]{1,160}$/.test(normalizedProjectId)
+    ) {
+        return null;
+    }
+    return `today_inactive_items_dismissed_${normalizedTenantId}_${normalizedStoreId}_${normalizedProjectId}_${getTodayLocalDateKey()}`;
 }

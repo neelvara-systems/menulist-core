@@ -1,0 +1,36 @@
+{
+  "firestore": {
+    "rules": "firestore-answerlattice.rules",
+    "indexes": "firestore-answerlattice.indexes.json"
+  },
+  "storage": {
+    "rules": "storage-answerlattice.rules"
+  },
+  "emulators": {
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9197
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8197,
+      "websocketPort": 9198
+    },
+    "storage": {
+      "host": "127.0.0.1",
+      "port": 9297
+    },
+    "hub": {
+      "host": "127.0.0.1",
+      "port": 4497
+    },
+    "logging": {
+      "host": "127.0.0.1",
+      "port": 4597
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}

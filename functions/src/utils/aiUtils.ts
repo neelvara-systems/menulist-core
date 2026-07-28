@@ -13,6 +13,7 @@ import {
 import { ProcessedKBMap } from "../types";
 import { buildSafeTempFilePath } from "./safeTempFile";
 import { tiptapToText } from "./tiptapUtils";
+import { getBoundedFunctionsErrorContext } from './boundedErrorContext';
 
 const GENERATIVE_MODEL = AI_ADVANCED_MODEL;
 const KB_SOURCE_GENERATION_FAILED_CODE = 'ANSWERLATTICE_KB_SOURCE_GENERATION_FAILED';
@@ -75,11 +76,11 @@ function boundedDiagnosticValue(value: unknown): string | number | null {
 }
 
 function getAiUtilsErrorContext(error: unknown): Record<string, string | number | null> {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
-        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+        sourceErrorName: context.sourceErrorName || typeof error,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceErrorStatus: context.sourceStatusCode ?? null,
     };
 }
 

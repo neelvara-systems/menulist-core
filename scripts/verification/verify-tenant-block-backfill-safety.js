@@ -67,29 +67,32 @@ function verifySourceGuards() {
   assertIncludes(backfill, "const confirmedProjectId = getArg('--confirm-project');", 'Backfill write confirmation argument');
   assertIncludes(backfill, 'if (write && confirmedProjectId !== projectId)', 'Backfill write target confirmation guard');
   assertIncludes(backfill, 'Refusing write: pass --confirm-project ${projectId}', 'Backfill mismatched project refusal');
-  assertIncludes(backfill, "return Boolean(getArg('--tenant-id') || getArg('--store-id') || hasFlag('--all-stores'));", 'Backfill scoped write helper');
-  assertIncludes(backfill, 'if (write && !hasExplicitWriteScope())', 'Backfill unscoped write guard');
-  assertIncludes(backfill, 'Refusing write: pass --tenant-id, --store-id, or --all-stores', 'Backfill unscoped write refusal');
+  assertIncludes(backfill, 'const scopeCount = Number(Boolean(tenantScope)) + Number(Boolean(storeScope)) + Number(allStores);', 'Backfill exact scope counter');
+  assertIncludes(backfill, 'if (scopeCount !== 1)', 'Backfill exact scope guard');
+  assertIncludes(backfill, 'resolveTenantBlockBackfillStoreIdentity(storeDoc.id, store)', 'Backfill exact persisted store/tenant identity projector');
+  assertIncludes(backfill, 'normalizePositiveNumericDocumentIdAliases([', 'Backfill all-alias identity agreement');
+  assert(!backfill.includes('store.tenantId ?? store.tId'), 'Backfill must not prefer one persisted tenant alias');
+  assertIncludes(backfill, 'Pass exactly one of --tenant-id, --store-id, or --all-stores.', 'Backfill missing or ambiguous scope refusal');
   assertIncludes(backfill, 'db = initializeFirestore(projectId);', 'Backfill Firestore initialization point');
   assertOrder(backfill, 'if (write && confirmedProjectId !== projectId)', 'db = initializeFirestore(projectId);', 'Backfill target guard before Firebase initialization');
-  assertOrder(backfill, 'if (write && !hasExplicitWriteScope())', 'db = initializeFirestore(projectId);', 'Backfill scope guard before Firebase initialization');
+  assertOrder(backfill, 'if (scopeCount !== 1)', 'db = initializeFirestore(projectId);', 'Backfill scope guard before Firebase initialization');
 }
 
 verifySourceGuards();
 runRefusalCase(
   'missing project write',
-  ['--write', '--confirm-project', 'menulist-qa', '--store-id', 'fixture-store'],
+  ['--write', '--confirm-project', 'menulist-qa', '--store-id', '42'],
   'Set FIREBASE_PROJECT_ID or pass --project-id before running tenant-block backfill.',
 );
 runRefusalCase(
   'mismatched project write',
-  ['--project-id', 'menulist-qa', '--write', '--confirm-project', 'menulist', '--store-id', 'fixture-store'],
+  ['--project-id', 'menulist-qa', '--write', '--confirm-project', 'menulist', '--store-id', '42'],
   'Refusing write: pass --confirm-project menulist-qa',
 );
 runRefusalCase(
   'unscoped project write',
   ['--project-id', 'menulist-qa', '--write', '--confirm-project', 'menulist-qa'],
-  'Refusing write: pass --tenant-id, --store-id, or --all-stores',
+  'Pass exactly one of --tenant-id, --store-id, or --all-stores.',
 );
 
 console.log('Tenant-block backfill safety verifier passed');

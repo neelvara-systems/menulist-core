@@ -5,6 +5,7 @@ import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/sto
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { normalizeVercelDomainDnsRecords, type VercelDomainDnsRecord } from '@lib/domains/vercelDnsRecords';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getBoundedErrorNumberAtPath } from '@lib/monitoring/boundedLogContext';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
 import { Alert, Button, Card, Col, Divider, Input, Row, Space, Steps, Tag, Typography, notification, theme } from 'antd';
 import { memo, useCallback, useEffect, useState } from 'react';
@@ -115,10 +116,9 @@ async function copyDesktopCustomDomainTextToClipboard(text: string) {
     }
 }
 
-function getAxiosStatus(error: any): number | undefined {
-    const status = Number(error?.response?.status);
-    return Number.isFinite(status) ? status : undefined;
-}
+const getAxiosStatus = (error: unknown): number | undefined => (
+    getBoundedErrorNumberAtPath(error, ['response', 'status'])
+);
 
 function createStatusError(failureCode: string, status?: number): Error & { code: string; status?: number } {
     return Object.assign(new Error(failureCode), {

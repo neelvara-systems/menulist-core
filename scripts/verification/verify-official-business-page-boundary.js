@@ -331,11 +331,17 @@ function verifyPublicRenderingBoundary() {
   assertIncludes(directions, 'normalizeOBPGoogleMapsUrl(store?.publicPresence?.googleMapsUrl)', 'PWA directions safe Google Maps handoff');
   assertIncludes(reservation, 'normalizeOBPExternalHttpsUrl(store.publicPresence?.reservationUrl)', 'PWA reservation safe external handoff');
   assertIncludes(order, 'normalizeOBPExternalHttpsUrl(store.publicPresence?.orderUrl)', 'PWA order safe external handoff');
+  assertIncludes(reservation, 'store.publicPresence?.showReservation === false', 'PWA reservation owner visibility boundary');
+  assertIncludes(order, 'store.publicPresence?.showOrder === false', 'PWA order owner visibility boundary');
   assertNotIncludes(reservation, 'const reservationUrl: string | undefined = store.publicPresence?.reservationUrl', 'PWA reservation raw external handoff');
   assertNotIncludes(order, 'const orderUrl: string | undefined = store.publicPresence?.orderUrl', 'PWA order raw external handoff');
   assertIncludes(manifest, 'const mapsUrl = normalizeOBPGoogleMapsUrl(store.publicPresence?.googleMapsUrl)', 'Customer app manifest safe Maps shortcut');
   assertIncludes(manifest, 'const reservationUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.reservationUrl)', 'Customer app manifest safe reservation shortcut');
   assertIncludes(manifest, 'const orderUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.orderUrl)', 'Customer app manifest safe order shortcut');
+  assertIncludes(manifest, 'const showReservation = store.publicPresence?.showReservation !== false', 'Customer app manifest reservation visibility boundary');
+  assertIncludes(manifest, 'const showOrder = store.publicPresence?.showOrder !== false', 'Customer app manifest order visibility boundary');
+  assertIncludes(manifest, 'reservationUrl: showReservation ? reservationUrl || null : null', 'Customer app manifest hidden reservation omission');
+  assertIncludes(manifest, 'orderUrl: showOrder ? orderUrl || null : null', 'Customer app manifest hidden order omission');
   assertNotIncludes(manifest, 'mapsUrl: store.publicPresence?.googleMapsUrl || null', 'Customer app manifest raw Maps shortcut');
 }
 
@@ -416,17 +422,23 @@ function verifyFreshnessBoundary() {
   }
 
   const revalidateAction = read('src/lib/actions/revalidateMenuCache.ts');
+  const postCommitEffects = read('src/lib/cache/storePublicTruthPostCommit.ts');
   const publicClientCache = read('src/lib/cache/publicClientCache.ts');
   const storeDal = read('src/database/stores/index.tsx');
   const clientStoreLookup = read('src/lib/firestore/clientStoreLookup.ts');
   const obpContent = read('src/app/client/obp/OBPContent.tsx');
 
+  assertIncludes(
+    revalidateAction,
+    'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
+    'OBP public cache tag invalidation adapter',
+  );
   for (const token of [
-    'revalidateTag(`menu-store-${storeId}`)',
-    'revalidateTag(`store-${storeId}`)',
-    "revalidateTag('client-stores')",
+    'params.deps.revalidate(`menu-store-${storeId}`)',
+    'params.deps.revalidate(`store-${storeId}`)',
+    "params.deps.revalidate('client-stores')",
   ]) {
-    assertIncludes(revalidateAction, token, 'OBP public cache tag invalidation source');
+    assertIncludes(postCommitEffects, token, 'OBP public cache tag invalidation source');
   }
 
   assertIncludes(publicClientCache, "fetch('/api/revalidate/menu'", 'OBP browser public cache revalidation endpoint');

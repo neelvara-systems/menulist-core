@@ -33,6 +33,7 @@ import {
 } from './aiOperationAccounting';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
 import { parseExactAnswerlatticeScope } from './scopeBoundary';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 const PROMPT_VERSION = 'friction_insight_v2';
 const MIN_SIGNALS_FOR_INSIGHT = 5;
@@ -83,13 +84,7 @@ const boundedDiagnosticValue = (value: unknown): string | number | null => {
 };
 
 const getSafeErrorName = (error: unknown): string | null => {
-    try {
-        if (!(error instanceof Error)) return null;
-        const name = boundedDiagnosticValue(error.name);
-        return typeof name === 'string' ? name : 'Error';
-    } catch {
-        return null;
-    }
+    return getBoundedFunctionsErrorName(error) ?? null;
 };
 
 function getFrictionInsightSourceErrorContext(error: unknown): {

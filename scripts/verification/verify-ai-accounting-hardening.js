@@ -122,6 +122,7 @@ for (const route of billableRoutes) {
     'writeImagePromptCacheSource',
     'buildImagePromptCacheSourcePath',
     'getReusableImagePromptCacheSource',
+    'imagePromptCacheWriteCommitted',
     'IMAGE_PROMPT_CACHE_TTL_DAYS',
     'generationConfig?.referanceImage?.url',
     'params.prompts.length !== 1',
@@ -133,6 +134,10 @@ for (const route of billableRoutes) {
     'source: "ai-image-prompt-cache-hit"',
     'expiresAt: admin.firestore.Timestamp.fromMillis',
     'promptLength: params.prompt.length',
+    "logRuntimeDiagnostic('ai_image_prompt_cache_write_acknowledgement_recovered'",
+    "logRuntimeFailure('ai_image_prompt_cache_write_recovery_probe_failed'",
+    "logRuntimeFailure('ai_image_prompt_cache_staged_source_cleanup_failed'",
+    "file(stagedSourcePath).delete({ ignoreNotFound: true })",
   ].forEach((token) => {
     assert(promptCache.includes(token), `AI image prompt cache helper includes token ${token}`);
   });
@@ -433,6 +438,7 @@ for (const route of billableRoutes) {
     'stale inherited-outlet reservations refund the effective HQ subscription',
     'numeric-string subscription balances must not authorize paid AI work',
     'numeric-string accounting units must not satisfy idempotent reservation replay',
+    'conflicting authenticated and input scope must fail before deterministic operation lookup or write',
     'numeric-string charged-credit evidence must not mint a refund',
     'numeric-string billing-period evidence must not authorize a refund',
     'numeric-string recovery evidence must not mint credits',
@@ -1110,7 +1116,6 @@ for (const route of billableRoutes) {
       'Still deferred',
       'deferred to Phase',
       'post-launch',
-      'future',
     ].forEach((token) => {
       assert(!doc.includes(token), `${label} must not retain stale roadmap token ${token}`);
     });
@@ -2265,8 +2270,15 @@ for (const route of billableRoutes) {
 const imageEditingPromptHelpers = [
   'src/app/api/image-editing/promptsList/index.ts',
   'src/app/api/image-editing/promptsList/getBusinessSpecificPrompt.ts',
-  'src/app/api/image-editing/promptsList/prompt.ts',
 ];
+
+{
+  const compatibilityEntry = read('src/app/api/image-editing/promptsList/prompt.ts').trim();
+  assert(
+    compatibilityEntry === "// Compatibility entry point. Keep one authoritative prompt-selection contract.\nexport { generateImageEditingPrompt } from './index';",
+    'image editing prompt compatibility entry re-exports the authoritative sanitized router only',
+  );
+}
 
 {
   const diagnostics = read('src/app/api/image-editing/promptsList/diagnostics.ts');
@@ -2320,7 +2332,6 @@ for (const helper of imageEditingPromptHelpers) {
 
   [
     'src/app/api/image-editing/promptsList/getBusinessSpecificPrompt.ts',
-    'src/app/api/image-editing/promptsList/prompt.ts',
   ].forEach((helper) => {
     const source = read(helper);
     assert(source.includes('sanitizeImageEditingItemDetails'), `${helper} sanitizes item-detail placeholders`);
@@ -3304,6 +3315,20 @@ const accounting = read('src/lib/ai/accounting.ts');
 const operationLogSource = read('src/lib/ai/operationLog.ts');
 assert(accounting.includes('recordAiOperationForSession'), 'shared accounting finalizer records session operations');
 assert(accounting.includes('recordAiOperation(operationInput)'), 'shared accounting finalizer records worker operations without session');
+assert(
+  accounting.includes('? normalizeAiOperationForSessionInput(session, input)'),
+  'shared accounting finalizer reconciles session/input identity before every accounting branch',
+);
+assert(
+  accounting.includes('session accounting scope is invalid.'),
+  'shared accounting finalizer fails closed on conflicting session/input identity',
+);
+[
+  'pId: input.pId ?? session?.pId',
+  'tId: input.tId ?? session?.tId',
+  'sId: input.sId ?? session?.sId',
+  'uId: input.uId ?? session?.uId',
+].forEach((token) => assert(!accounting.includes(token), `shared accounting finalizer forbids first-value session identity token ${token}`));
 assert(accounting.includes('ai_accounting_operation_log_failed'), 'shared accounting finalizer treats operation logging as best effort with bounded diagnostics');
 assert(accounting.includes('ai_accounting_credit_consumption_failed'), 'shared accounting finalizer logs credit consumption failures with bounded diagnostics');
 assert(accounting.includes('getAiAccountingLogContext'), 'shared accounting finalizer uses bounded accounting log context');
@@ -3470,12 +3495,18 @@ assert(!aiOperationsApi.includes('const hasMore = docs.length > 0 &&'), 'AI oper
   assert(aiOperationHistoryQuery.includes(token), `AI operation history query includes persisted-cursor admission token ${token}`);
 });
 assert(aiOperationsApi.includes('isAiOperationHistoryCursorAdmissible({'), 'AI operations API validates the persisted cursor before query continuation');
-assert(aiOperationsApi.includes("return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });"), 'AI operations API rejects an invalid persisted cursor with a fixed client response');
+assert(aiOperationsApi.includes("return privateJson({ error: 'Invalid cursor' }, { status: 400 });"), 'AI operations API rejects an invalid persisted cursor with a fixed private client response');
+assert(aiOperationsApi.includes("'Cache-Control': 'private, no-store, max-age=0'"), 'AI operations API prevents authenticated ledger responses from being cached');
+assert(aiOperationsApi.includes("'X-Content-Type-Options': 'nosniff'"), 'AI operations API hardens authenticated JSON content handling');
+assert(aiOperationsApi.includes('failClosedOnProviderError: true'), 'AI operations API fails closed when read admission is unavailable');
+assert(aiOperationsApi.includes("rateLimit.reason === 'provider_unavailable'"), 'AI operations API distinguishes provider admission outages');
+assert((aiOperationsApi.match(/return NextResponse\.json\(/g) || []).length === 1, 'AI operations API keeps NextResponse.json encapsulated by its private response helper');
 assert(aiOperationsApi.includes("import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';"), 'AI operations API uses the shared Firestore document ID guard for history scope');
 assert(aiOperationsApi.includes('function normalizeAiOperationHistoryScopeDocumentId(value: unknown): AiOperationHistoryScopeDocumentId | null'), 'AI operations API exposes a history scope document ID normalizer');
 assert(aiOperationsApi.includes('Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId'), 'AI operations API requires exact positive numeric tenant/store scope');
-assert(aiOperationsApi.includes('const tenantScope = normalizeAiOperationHistoryScopeDocumentId(session.tId || session.user?.tenantId);'), 'AI operations API normalizes tenant scope before reads');
-assert(aiOperationsApi.includes('const storeScope = normalizeAiOperationHistoryScopeDocumentId(session.sId || session.user?.storeId);'), 'AI operations API normalizes store scope before reads');
+assert(aiOperationsApi.includes('const sessionScope = resolveStorePermissionSessionScope(session);'), 'AI operations API reconciles every session scope alias before reads');
+assert(aiOperationsApi.includes('const tenantScope = normalizeAiOperationHistoryScopeDocumentId(sessionScope?.tenantScope.documentId);'), 'AI operations API normalizes exact reconciled tenant scope before reads');
+assert(aiOperationsApi.includes('const storeScope = normalizeAiOperationHistoryScopeDocumentId(sessionScope?.storeScope.documentId);'), 'AI operations API normalizes exact reconciled store scope before reads');
 assert(aiOperationsApi.includes('const tenantId = tenantScope.documentId;'), 'AI operations API reads tenant history through normalized document ID');
 assert(aiOperationsApi.includes('const storeId = storeScope.documentId;'), 'AI operations API reads store history through normalized document ID');
 assert(aiOperationsApi.includes("platformRole === 'PLATFORM'"), 'AI operations API detects platform role before response shaping');

@@ -103,6 +103,7 @@ assert.equal(normalizeCampaignCuePatternCueUrl("https://instagram.com/reel/examp
 assert.equal(normalizeCampaignCuePatternCueUrl(`https://example.com/${"a".repeat(1000)}`), null);
 
 const validInput = CampaignCueSourceInputSchema.safeParse({
+    idempotencyKey: "source-pattern-001",
     inspiration: {
         sourceUrl: "https://www.instagram.com/reel/example/",
         transcriptOrNotes: rawNotes,
@@ -118,6 +119,7 @@ const validInput = CampaignCueSourceInputSchema.safeParse({
 assert.equal(validInput.success, true, "valid inspiration input should pass");
 
 const privateInput = CampaignCueSourceInputSchema.safeParse({
+    idempotencyKey: "source-pattern-private-001",
     inspiration: {
         sourceUrl: "https://192.168.1.10/video",
         transcriptOrNotes: rawNotes,

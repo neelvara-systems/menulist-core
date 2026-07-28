@@ -72,7 +72,7 @@ Reset clears the project's live `files[]` state but does not delete these Storag
 
 - `menuImageProcessingJobs`: Write requires auth + tenant match. Read requires auth + own tenant.
 - `projects`: Write requires auth + tenant isolation (`{tId}/{sId}`). Cloud Function uses admin SDK (bypasses rules).
-- Storage: Active upload paths require auth, tenant/store path shape, and `belongsToStore(tId, sId)` on `projects/files/{tId}/{sId}/{fileId}`. Legacy `MenuListAi/project/files/*` compatibility rules remain until the app deploy and Storage rules cutover are coordinated.
+- Storage: Active upload paths require auth, tenant/store path shape, and `belongsToStore(tId, sId)` on `projects/files/{tId}/{sId}/{fileId}`. Legacy `MenuListAi/project/files/*` paths deny direct client access because they cannot prove tenant/store ownership; retained objects require tokenized or server-mediated compatibility access.
 - Rate limiting: protected admission uses the shared expensive-AI limit keyed by user, tenant, and store; the worker repeats the expensive-AI limit by project.
 - Preview review apply/discard rejects missing jobs, non-`preview_ready` jobs, project mismatches, tenant/store mismatches, and user mismatches before updating project or job state.
 

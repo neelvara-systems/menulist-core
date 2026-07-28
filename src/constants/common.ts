@@ -1,7 +1,7 @@
 // Re-export business types from shared data (primary source for copy-paste to functions)
 export { BUSINESS_CATEGORIES, BUSINESS_TYPES, FALLBACK_BUSINESS_CATEGORY, FALLBACK_BUSINESS_TYPE, FILTER_ALLOWLIST, getBusinessCatalogKind, getBusinessCategory, getBusinessCategoryConfig, getBusinessOfferingKind, getBusinessSchemaOrgType, getBusinessTypeConfig, normalizeBusinessCategory, resolveBusinessCategory, resolveBusinessCategoryOrFallback, resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 export type { BusinessCatalogKind, BusinessCategory, BusinessOfferingKind, BusinessType, SystemFilter } from "@data/shared/businessTypes";
-export const APP_NAME = 'MenulistAi'
+export const APP_NAME = 'MenuList'
 export const APP_TAGLINE = 'Your Second Brain'
 export const APP_THEME_COLOR = "#0054D0";
 export const TOGGLE_DARK_MODE = 'TOGGLE_DARK_MODE';
@@ -24,7 +24,7 @@ export const BGRCreditValueInTokens = 500;//1 credit = 500 token (ex. 1mb image 
 // Platform URLs — import from @constant/urls for all domain references
 export { DASHBOARD_URL as APP_DASHBOARD_URL, DASHBOARD_URL, HELP_URL, PLATFORM_URL, SUPPORT_URL } from "@constant/urls";
 export const LOGO = '/icons/icon-192x192.png'
-export const LOGO_TEXT = 'MenulistAi'
+export const LOGO_TEXT = 'MenuList'
 export const LOGO_LARGE = '/icons/icon-512x512.png';
 export const LOGO_SMALL = '/icons/icon-192x192.png';
 export const LOGO_ANIMATED = '/icons/icon-512x512.png';

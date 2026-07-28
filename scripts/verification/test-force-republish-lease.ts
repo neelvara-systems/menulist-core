@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 const {
     acquireForceRepublishLease: acquireForceRepublishLeaseForTest,
     completeForceRepublishLease: completeForceRepublishLeaseForTest,
-} = require('../../functions/lib/functions/src/monitoring/publishVerification.js');
-const { firestoreAdmin } = require('../../functions/lib/functions/src/firebaseAdmin.js');
+} = require('../../functions/lib/monitoring/publishVerification.js');
+const { firestoreAdmin } = require('../../functions/lib/firebaseAdmin.js');
 
 const SYSTEM_COLLECTION = '_system';
 const MINUTE_MS = 60 * 1000;

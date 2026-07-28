@@ -22,7 +22,10 @@ import {
     buildAnswerlatticePublicApiResponseHeaders,
     toIsoTimestamp,
 } from '@lib/answerlattice/publicApi';
-import { ANSWERLATTICE_PUBLIC_ENTITY_STATUSES } from '@lib/answerlattice/publicApiContracts';
+import {
+    ANSWERLATTICE_PUBLIC_ENTITY_STATUSES,
+    buildAnswerlatticePublicEntityQueryPredicates,
+} from '@lib/answerlattice/publicApiContracts';
 import { generateETag } from '@lib/publicApi/auth';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { parseAnswerlatticeRetrievalEntity } from '@lib/answerlattice/retrievalContracts';
@@ -155,13 +158,15 @@ export async function GET(request: NextRequest) {
         });
         const resolvedPage = bundledEntities || (await (async () => {
             const scanLimit = Math.min(Math.max(limit * 2, limit + 1), 201);
-            const snapshot = await getAnswerlatticeAdminDb()
+            let query = getAnswerlatticeAdminDb()
                 .collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITIES)
                 .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
                 .where('tId', '==', auth.context.tId)
-                .where('sId', '==', auth.context.sId)
-                .limit(scanLimit)
-                .get();
+                .where('sId', '==', auth.context.sId);
+            for (const predicate of buildAnswerlatticePublicEntityQueryPredicates(type, status)) {
+                query = query.where(predicate.field, predicate.operator, predicate.value);
+            }
+            const snapshot = await query.limit(scanLimit).get();
 
             const visibleStatuses = status ? new Set([status]) : new Set(['active', 'beta']);
             const matchingEntities = sortPublicEntities(snapshot.docs

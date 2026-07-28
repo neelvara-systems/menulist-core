@@ -2,7 +2,7 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-backed code/cost truth — not current launch or deploy certification
-**Last Updated:** July 14, 2026
+**Last Updated:** July 26, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -18,9 +18,15 @@
 
 The AI System Layer should avoid creating a write per internal AI call unless the operation is billable, owner-visible, or needed for incident response. The daily provider health checks add only one small status write per product per UTC day.
 
+The July 26 Gemini request compiler, explicit model routing, SDK upgrade, Functions SDK upgrade, and atomic Upstash policy add no Firestore collection, read, write, delete, rule, index, or Storage operation. Live Functions behavior still requires a scoped QA deploy; the current shell cannot deploy or inventory Extensions until Firebase authentication/IAM is restored.
+
 Paid MenuList provider calls use the existing operation ledger as a reservation state machine. `reserveAiCapacity()` transactionally reads the operation ID and effective subscription, writes a hidden `reserved` shell plus the debited subscription balance, and must complete before provider work. The selected outlet remains the operation `sId`; `accountingBillingStoreId` identifies the HQ/effective subscription for inherited billing. Settlement transactionally replaces that shell with the normal `consumed` operation row; non-retry failure and stale recovery transactionally restore the exact charged buckets to that same effective subscription and mark the shell `refunded`. This adds one operation-row read and one pre-provider shell write per paid request compared with the retired post-provider debit path, but prevents concurrent provider spend that cannot be settled. No collection or index is added.
 
 All paid unit values must be nonnegative safe integers at finalization and positive safe integers at reservation/debit. Daily recovery rechecks the current `reservationRecoveryAt` deadline inside each transaction, isolates malformed rows so one poisoned operation cannot block later reservations in that store, and isolates store-level query/compaction failures so later stores still run. Recovery errors are counted in scheduler state and logged with bounded tenant/store shape metadata; no raw operation or subscription payload is logged.
+
+Authenticated finalization has one identity admission boundary. Every supplied operation and session product, tenant, store, and actor alias must normalize and agree before reservation settlement, deterministic replay/reference, random operation logging, or bounded diagnostics. Worker finalization without a session retains its explicit trusted-scope contract. This repair adds no Firestore read/write/delete, provider call, credit mutation, rule, index, cache invalidation, Function change, or deploy target on valid requests; conflicting calls now stop before composing a ledger reference.
+
+Authenticated AI-operation history uses the same exact root/nested session tenant/store projection before hashing limiter keys, reading a cursor, or querying `menulistAiOperations/{tId}/{sId}`. Conflicting aliases no longer select one private ledger path. Valid history read counts, pagination, owner/platform field projection, rules and indexes are unchanged.
 
 > **Current accounting-order rule:** Historical entries below that say a route keeps the same "credit consumption order", consumes after provider work, or is unchanged in accounting write count describe the boundary at the date of that entry. They are superseded for every positive-unit paid route by the July 13 reserve-before-provider, settle-on-success, exact-refund contract above. Zero-unit platform-absorbed actions remain unreserved.
 

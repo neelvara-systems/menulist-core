@@ -4,6 +4,7 @@ import { ANSWERLATTICE_TEXT_MODEL } from '../constants/ai';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { callAnswerlatticeGeminiContent } from './aiOperationAccounting';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 const HEALTH_DOC_ID = 'answerlatticeAiProviderHealth';
 const PROVIDER = 'gemini';
@@ -81,13 +82,7 @@ function boundedDiagnosticValue(value: unknown): string | number | null {
 }
 
 function getSafeErrorName(error: unknown): string | null {
-    try {
-        if (!(error instanceof Error)) return null;
-        const name = boundedDiagnosticValue(error.name);
-        return typeof name === 'string' ? name : 'Error';
-    } catch {
-        return null;
-    }
+    return getBoundedFunctionsErrorName(error) ?? null;
 }
 
 export function getProviderHealthSourceErrorContext(error: unknown): {

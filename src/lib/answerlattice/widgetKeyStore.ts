@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from '@constant/database';
-import { isAnswerlatticeStoreInScope, normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import {
     buildAnswerlatticeWidgetApiStateWithNewKey,
     buildAnswerlatticeWidgetKeySummaries,
@@ -44,6 +44,25 @@ const getDb = () => {
     return answerlatticeFirestoreAdmin;
 };
 
+export const isExactAnswerlatticeWidgetStoreAuthority = (
+    value: unknown,
+    scope: { tenantId: number; storeId: number },
+    documentId: unknown,
+): boolean => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const store = value as Record<string, unknown>;
+    const productIds = [store.pId, store.productId].filter(value => value !== undefined);
+    const tenantIds = [store.tId, store.tenantId].filter(value => value !== undefined);
+    const storeIds = [store.sId, store.storeId, store.id].filter(value => value !== undefined);
+    return documentId === String(scope.storeId)
+        && productIds.length > 0
+        && productIds.every(value => value === 'AL')
+        && tenantIds.length > 0
+        && tenantIds.every(value => value === scope.tenantId)
+        && storeIds.length > 0
+        && storeIds.every(value => value === scope.storeId);
+};
+
 export const mutateAnswerlatticeWidgetKeys = async (
     scope: { tenantId: number; storeId: number },
     mutation: WidgetKeyMutation,
@@ -61,7 +80,7 @@ export const mutateAnswerlatticeWidgetKeys = async (
             throw new AnswerlatticeWidgetKeyStoreError('store_not_found', 404, 'Store not found.');
         }
         const storeData = storeSnapshot.data() || {};
-        if (!isAnswerlatticeStoreInScope(storeData, { tenantId, storeId }, storeSnapshot.id)) {
+        if (!isExactAnswerlatticeWidgetStoreAuthority(storeData, { tenantId, storeId }, storeSnapshot.id)) {
             throw new AnswerlatticeWidgetKeyStoreError('workspace_mismatch', 403, 'Answerlattice workspace is not available.');
         }
 

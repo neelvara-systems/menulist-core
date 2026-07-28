@@ -4,15 +4,16 @@ import {
     buildPublicTruthMonitorExportText,
 } from "@lib/public-truth-tools/publicTruthMonitorReport";
 import {
+    parsePublicTruthMonitorClientData,
+    type PublicTruthMonitorClientData,
+    type PublicTruthMonitorClientScope,
+} from "@lib/public-truth-tools/publicTruthMonitorClientContracts";
+import {
     getPublicTruthMonitorBoundedStringContext,
     logPublicTruthMonitorApiFailure,
 } from "@lib/public-truth-tools/publicTruthMonitorDiagnostics";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
-import type {
-    PublicTruthMonitorRefreshResponse,
-    PublicTruthMonitorSummaryDocument,
-    PublicTruthMonitorSummaryResponse,
-} from "@type/publicTruthMonitor";
+import type { PublicTruthMonitorSummaryDocument } from "@type/publicTruthMonitor";
 
 const PUBLIC_TRUTH_MONITOR_CLIENT_REQUEST_POLICY: Pick<RequestInit, "cache" | "credentials" | "redirect"> = {
     cache: "no-store",
@@ -20,11 +21,12 @@ const PUBLIC_TRUTH_MONITOR_CLIENT_REQUEST_POLICY: Pick<RequestInit, "cache" | "c
     redirect: "manual",
 };
 
-async function parsePublicTruthMonitorResponse<T = unknown>(
+async function parsePublicTruthMonitorResponse(
     response: Response,
     fallbackMessage: string,
     operation: string,
-): Promise<T> {
+    expectedScope: PublicTruthMonitorClientScope,
+): Promise<PublicTruthMonitorClientData> {
     let payload: unknown = null;
     try {
         payload = await readJsonResponseWithLimit<unknown>(
@@ -58,11 +60,13 @@ async function parsePublicTruthMonitorResponse<T = unknown>(
         throw new Error(fallbackMessage);
     }
 
-    if (!payload || typeof payload !== "object") {
+    try {
+        return parsePublicTruthMonitorClientData(payload, expectedScope);
+    } catch (error) {
         logPublicTruthMonitorApiFailure(
             "[Public Truth Monitor Client] Response invalid",
             "public_truth_monitor_client_response_invalid",
-            undefined,
+            error,
             {
                 ...getPublicTruthMonitorBoundedStringContext("operation", operation),
                 responseStatus: response.status,
@@ -70,28 +74,29 @@ async function parsePublicTruthMonitorResponse<T = unknown>(
         );
         throw new Error(fallbackMessage);
     }
-
-    return payload as T;
 }
 
-export const getPublicTruthMonitorSummary = async (): Promise<PublicTruthMonitorSummaryResponse["data"] | null> => {
+export const getPublicTruthMonitorSummary = async (
+    scope: PublicTruthMonitorClientScope,
+): Promise<PublicTruthMonitorClientData | null> => {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_MONITOR_ADDON) return null;
 
     const response = await fetch("/api/public-truth-monitor/summary", {
         ...PUBLIC_TRUTH_MONITOR_CLIENT_REQUEST_POLICY,
         method: "GET",
     });
-    const payload = await parsePublicTruthMonitorResponse<PublicTruthMonitorSummaryResponse>(
+    return parsePublicTruthMonitorResponse(
         response,
         "Public truth history could not load",
         "summary",
+        scope,
     );
-    return payload.data;
 };
 
 export const refreshPublicTruthMonitor = async (params: {
+    scope: PublicTruthMonitorClientScope;
     selectedProjectId?: string | null;
-} = {}): Promise<PublicTruthMonitorRefreshResponse["data"]> => {
+}): Promise<PublicTruthMonitorClientData> => {
     const response = await fetch("/api/public-truth-monitor/refresh", {
         ...PUBLIC_TRUTH_MONITOR_CLIENT_REQUEST_POLICY,
         body: JSON.stringify({
@@ -100,12 +105,12 @@ export const refreshPublicTruthMonitor = async (params: {
         headers: { "Content-Type": "application/json" },
         method: "POST",
     });
-    const payload = await parsePublicTruthMonitorResponse<PublicTruthMonitorRefreshResponse>(
+    return parsePublicTruthMonitorResponse(
         response,
         "Public truth history could not refresh",
         "refresh",
+        params.scope,
     );
-    return payload.data;
 };
 
 export const getPublicTruthMonitorExportText = (

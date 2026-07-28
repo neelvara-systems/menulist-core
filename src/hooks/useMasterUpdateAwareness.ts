@@ -246,68 +246,90 @@ export function useMasterUpdateAwareness(
     // ── ACKNOWLEDGE CHANGES ───────────────────────────────────────
 
     const acknowledge = useCallback(async () => {
-        if (!outletProject?.projectId || !masterProjectRef.current) return;
+        const requestedOutletProject = outletProjectRef.current;
+        const requestedMasterProject = masterProjectRef.current;
+        const requestedOperationalVersion = latestVersionRef.current;
+        const requestedDiff = diff;
+        if (
+            !requestedOutletProject?.projectId
+            || !requestedOutletProject.masterProjectId
+            || !requestedMasterProject
+        ) {
+            return;
+        }
+
+        const isCurrentAcknowledgement = () => {
+            const currentOutletProject = outletProjectRef.current;
+            return currentOutletProject?.projectId === requestedOutletProject.projectId
+                && currentOutletProject.masterProjectId === requestedOutletProject.masterProjectId
+                && masterProjectRef.current === requestedMasterProject;
+        };
 
         setIsAcknowledging(true);
 
         try {
             const session = await getActiveSession();
-            const masterProject = masterProjectRef.current;
+            if (!isCurrentAcknowledgement()) return;
+
+            const { tId, sId } = parseProjectId(requestedOutletProject.projectId);
+            if (String(session.tId) !== String(tId) || String(session.sId) !== String(sId)) {
+                throw new Error("Active outlet session changed before acknowledgement");
+            }
 
             // Create new snapshot from current master state
-            const currentItems = extractItemsFromProject(masterProject);
-            const currentCategories = extractCategoriesFromProject(masterProject);
-
-            // Persist the current diff so "Last changes" link can re-show it
-            const diffToStore = diff;
+            const currentItems = extractItemsFromProject(requestedMasterProject);
+            const currentCategories = extractCategoriesFromProject(requestedMasterProject);
 
             const newSnapshot = createMasterSnapshot(
                 currentItems,
                 currentCategories,
-                latestVersionRef.current, // Store current operationalVersion
+                requestedOperationalVersion,
                 session?.uId || "unknown",
-                diffToStore, // Persist diff for "Last changes" re-view
+                requestedDiff,
             );
 
             // Write snapshot to outlet project document
             // Path: projects/{tId}/{sId}/{projectId} — use OUTLET's own tId/sId
-            const { tId, sId } = parseProjectId(outletProject.projectId);
             const projectRef = doc(
                 firebaseClient,
                 `${DB_COLLECTIONS.PROJECTS}/${tId}/${sId}`,
-                outletProject.projectId,
+                requestedOutletProject.projectId,
             );
 
             await updateDoc(projectRef, {
                 masterSnapshot: newSnapshot,
             });
 
-            // Update acknowledgedVersion ref so the listener skips
-            // signals at or below the just-acknowledged version.
-            acknowledgedVersionRef.current = latestVersionRef.current;
-
             // MOL: Log acknowledge event (fire-and-forget, non-blocking)
             try {
-                const { tId, sId } = parseProjectId(outletProject.projectId);
                 logMultiOutletEvent(
                     createAcknowledgeEvent(
                         tId,
                         sId,
-                        outletProject.projectId,
+                        requestedOutletProject.projectId,
                         session?.uId || "unknown",
-                        outletProject.masterProjectId!,
-                        latestVersionRef.current,
-                        diffToStore?.changes?.length ?? 0,
+                        requestedOutletProject.masterProjectId,
+                        requestedOperationalVersion,
+                        requestedDiff?.changes?.length ?? 0,
                     ),
                 );
             } catch (err) {
                 // Silent fail — MOL is non-critical
                 logMultiOutletFailure('master_update_awareness_acknowledge_event_failed', err, {
-                    ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
-                    latestVersion: latestVersionRef.current,
-                    diffChangeCount: diffToStore?.changes?.length ?? 0,
+                    ...getMultiOutletProjectLogContext(
+                        requestedOutletProject.projectId,
+                        requestedOutletProject.masterProjectId,
+                    ),
+                    latestVersion: requestedOperationalVersion,
+                    diffChangeCount: requestedDiff?.changes?.length ?? 0,
                 });
             }
+
+            if (!isCurrentAcknowledgement()) return;
+
+            // Update acknowledgedVersion ref so the listener skips
+            // signals at or below the just-acknowledged version.
+            acknowledgedVersionRef.current = requestedOperationalVersion;
 
             // Update local activeProject with new snapshot so:
             // 1. hasHistory/lastDiff derive from current data (fixes SWR stale cache)
@@ -320,16 +342,19 @@ export function useMasterUpdateAwareness(
             setDiff(null);
         } catch (err) {
             logMultiOutletFailure('master_update_awareness_acknowledge_failed', err, {
-                ...getMultiOutletProjectLogContext(outletProject.projectId, outletProject.masterProjectId),
-                latestVersion: latestVersionRef.current,
-                hasDiff: Boolean(diff),
-                diffChangeCount: diff?.changes?.length ?? 0,
+                ...getMultiOutletProjectLogContext(
+                    requestedOutletProject.projectId,
+                    requestedOutletProject.masterProjectId,
+                ),
+                latestVersion: requestedOperationalVersion,
+                hasDiff: Boolean(requestedDiff),
+                diffChangeCount: requestedDiff?.changes?.length ?? 0,
             });
             setError("Failed to acknowledge changes");
         } finally {
             setIsAcknowledging(false);
         }
-    }, [outletProject, diff, onProjectUpdate]);
+    }, [diff, onProjectUpdate]);
 
     // ── RECHECK ───────────────────────────────────────────────────
 

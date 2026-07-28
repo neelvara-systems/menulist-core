@@ -1,120 +1,120 @@
-'use client'
+'use client';
+
 import { windowRef } from "./window";
 
-export const setValueInLocalStorage = (key: any, value: any) => {
-  type Dict = { [key: string]: string };
-  var storage: any;
-  let localstorageData: any = window.localStorage.getItem('salon');
-  if (localstorageData && localstorageData != '' && localstorageData != 'undefined' && (JSON.parse(localstorageData)) != null) {
-    let storeageRef: any = window.localStorage.getItem('salon');
-    storage = JSON.parse(storeageRef);
-    storage[key] = value;
-    window.localStorage.setItem('salon', JSON.stringify(storage))
-  } else {
-    let object: any = {};
-    object[key] = value;
-    window.localStorage.setItem('salon', JSON.stringify(object));
-  }
-}
+const STORAGE_NAMESPACE = "salon";
+type StorageRecord = Record<string, unknown>;
 
-export const getValueFromLocalStorage = (key: any) => {
-  let value = null;
-  let storage = window.localStorage.getItem('salon');
-  if (storage && storage != '' && storage != 'undefined' && (JSON.parse(storage)) != null) {
-    storage = (JSON.parse(storage));
-  }
-  return (storage && storage[key]) ? storage[key] : null;
-}
+const isStorageRecord = (value: unknown): value is StorageRecord => (
+  Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
 
-export const removeItemFromLocalStorage = (key: any) => {
-  type Dict = { [key: string]: string };
-  var storage: Dict = {};
-  let localstorageData: any = window.localStorage.getItem('salon');
-  if (storage && localstorageData != '' && localstorageData != 'undefined' && (JSON.parse(localstorageData)) != null) {
-    let storeageRef: any = window.localStorage.getItem('salon');
-    storage = JSON.parse(storeageRef);
-    if (storage[key]) {
-      delete storage[key]; localstorageData
-      window.localStorage.setItem('salon', JSON.stringify(storage))
+export const parseWebStorageRecord = (raw: string | null): StorageRecord => {
+  if (!raw || raw === "undefined") return {};
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isStorageRecord(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const updateStorage = (
+  storage: Storage,
+  key: string,
+  value: unknown,
+): void => {
+  const record = parseWebStorageRecord(storage.getItem(STORAGE_NAMESPACE));
+  record[key] = value;
+  storage.setItem(STORAGE_NAMESPACE, JSON.stringify(record));
+};
+
+const getStorageValue = <T>(
+  storage: Storage,
+  key: string,
+): T | null => {
+  const record = parseWebStorageRecord(storage.getItem(STORAGE_NAMESPACE));
+  return Object.prototype.hasOwnProperty.call(record, key)
+    ? record[key] as T
+    : null;
+};
+
+const removeStorageValue = (storage: Storage, key: string): void => {
+  const record = parseWebStorageRecord(storage.getItem(STORAGE_NAMESPACE));
+  if (!Object.prototype.hasOwnProperty.call(record, key)) return;
+  delete record[key];
+  storage.setItem(STORAGE_NAMESPACE, JSON.stringify(record));
+};
+
+export const setValueInLocalStorage = (key: string, value: unknown): void => {
+  const browserWindow = windowRef();
+  if (!browserWindow) return;
+  updateStorage(browserWindow.localStorage, key, value);
+};
+
+export const getValueFromLocalStorage = <T = unknown>(key: string): T | null => {
+  const browserWindow = windowRef();
+  return browserWindow ? getStorageValue<T>(browserWindow.localStorage, key) : null;
+};
+
+export const removeItemFromLocalStorage = (key: string): void => {
+  const browserWindow = windowRef();
+  if (!browserWindow) return;
+  removeStorageValue(browserWindow.localStorage, key);
+};
+
+export const setValueInSessionStorage = (key: string, value: unknown): void => {
+  const browserWindow = windowRef();
+  if (!browserWindow) return;
+  updateStorage(browserWindow.sessionStorage, key, value);
+};
+
+export const getValueFromSessionStorage = <T = unknown>(key: string): T | null => {
+  const browserWindow = windowRef();
+  return browserWindow ? getStorageValue<T>(browserWindow.sessionStorage, key) : null;
+};
+
+export const removeItemFromSessionStorage = (key: string): void => {
+  const browserWindow = windowRef();
+  if (!browserWindow) return;
+  removeStorageValue(browserWindow.sessionStorage, key);
+};
+
+const isCookieName = (key: string): boolean => (
+  key.length > 0 && !/[\u0000-\u0020\u007f()<>@,;:\\"/[\]?={}]/.test(key)
+);
+
+export const setValueInCookies = (
+  key: string,
+  value: string,
+  expires: Date | string,
+): void => {
+  const browserWindow = windowRef();
+  if (!browserWindow || !isCookieName(key)) return;
+  const expiry = expires instanceof Date ? expires : new Date(expires);
+  if (!Number.isFinite(expiry.getTime())) return;
+  browserWindow.document.cookie = `${key}=${encodeURIComponent(value)};expires=${expiry.toUTCString()};path=/;SameSite=Lax`;
+};
+
+export const getValueFromCookies = (key: string): string | null => {
+  const browserWindow = windowRef();
+  if (!browserWindow || !isCookieName(key)) return null;
+
+  for (const item of browserWindow.document.cookie.split(";")) {
+    const separator = item.indexOf("=");
+    if (separator < 0 || item.slice(0, separator).trim() !== key) continue;
+    try {
+      return decodeURIComponent(item.slice(separator + 1));
+    } catch {
+      return null;
     }
   }
-}
+  return null;
+};
 
-export const setValueInSessionStorage = (key: any, value: any) => {
-  type Dict = { [key: string]: string };
-  var storage: Dict = {};
-  let sessionStorageData: any = window.localStorage.getItem('salon');
-  if (sessionStorageData && sessionStorageData != '' && sessionStorageData != 'undefined' && (JSON.parse(sessionStorageData)) != null) {
-    let storeageRef: any = window.localStorage.getItem('salon');
-    storage = JSON.parse(storeageRef);
-    // storage = (JSON.parse(window.localStorage.getItem('salon')));
-    storage[key] = value;
-    window.sessionStorage.setItem('salon', JSON.stringify(storage))
-  } else {
-    let object: any = {};
-    object[key] = value;
-    window.sessionStorage.setItem('salon', JSON.stringify(object));
-  }
-}
-
-export const getValueFromSessionStorage = (key: any) => {
-  let value = null;
-  type Dict = { [key: string]: string };
-  var storage: Dict = {};
-  let sessionStorageData: any = window.sessionStorage.getItem('salon');
-  if (sessionStorageData && sessionStorageData != '' && sessionStorageData != 'undefined' && (JSON.parse(sessionStorageData)) != null) {
-    let storeageRef: any = window.localStorage.getItem('salon');
-    storage = JSON.parse(storeageRef);
-    //  storage = (JSON.parse(window.sessionStorage.getItem('salon')));
-  }
-  return (storage && storage[key]) ? storage[key] : null;
-}
-
-export const removeItemFromSessionStorage = (key: any) => {
-  type Dict = { [key: string]: string };
-  var storage: Dict = {};
-  let sessionStorageData: any = window.sessionStorage.getItem('salon');
-  if (sessionStorageData && sessionStorageData != '' && sessionStorageData != 'undefined' && (JSON.parse(sessionStorageData)) != null) {
-    let storeageRef: any = window.localStorage.getItem('salon');
-    storage = JSON.parse(storeageRef);
-    // storage = (JSON.parse(window.sessionStorage.getItem('salon')));
-    if (storage[key]) {
-      delete storage[key];
-      window.sessionStorage.setItem('salon', JSON.stringify(storage))
-    }
-  }
-}
-
-export const setValueInCookies = (key: any, value: any, expDays: any) => {
-  if (windowRef) windowRef.document.cookie = key + "=" + value + ';expires=' + expDays + ';path=/';
-}
-
-export const getValueFromCookies = (key: any) => {
-  if (windowRef) {
-    let value: any = null;
-    var name = key + "=";
-    var decodedCookie = decodeURIComponent(window.document.cookie);
-    var ca = decodedCookie.split(';');
-    ca && ca.map((dataString) => {
-      //remove spaces from string at starting
-      while (dataString.charAt(0) == ' ') {
-        dataString = dataString.substring(1);
-      }
-      if (dataString.indexOf(name) == 0) {
-        value = dataString.substring(name.length, dataString.length);
-      }
-    })
-    return value;
-  }
-}
-
-export const removeValueFromCookies = (key: any) => {
-  // const serialised = serialize(key, "", { //user registration fields
-  //   path: "/",
-  //   expires: new Date(new Date().setSeconds(1)),
-  //   sameSite: true,
-  // });
-  // document.cookie = serialised;
-  // document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-}
-
+export const removeValueFromCookies = (key: string): void => {
+  const browserWindow = windowRef();
+  if (!browserWindow || !isCookieName(key)) return;
+  browserWindow.document.cookie = `${key}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax`;
+};

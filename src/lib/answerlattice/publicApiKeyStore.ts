@@ -3,6 +3,7 @@ import { PRODUCT_IDS } from '@constant/product';
 import {
     ANSWERLATTICE_PUBLIC_API_PURPOSE,
     buildAnswerlatticePublicApiKeySummary,
+    classifyAnswerlatticePublicApiKeyRotationReplay,
     normalizeAnswerlatticePublicApiScopes,
     type AnswerlatticePublicApiKeySummary,
     type AnswerlatticePublicApiScope,
@@ -22,7 +23,7 @@ export type AnswerlatticePublicApiKeyActor = {
 
 export class AnswerlatticePublicApiKeyStoreError extends Error {
     constructor(
-        readonly code: 'firebase_unavailable' | 'invalid_request' | 'workspace_mismatch',
+        readonly code: 'firebase_unavailable' | 'idempotency_conflict' | 'invalid_request' | 'workspace_mismatch',
         message: string,
         readonly status: number,
     ) {
@@ -116,6 +117,7 @@ export async function rotateAnswerlatticePublicApiKey(
     credential: {
         apiKeyHash: string;
         keyPrefix: string;
+        requestId: string;
         scopes: AnswerlatticePublicApiScope[];
         createdAt: string;
     },
@@ -131,6 +133,7 @@ export async function rotateAnswerlatticePublicApiKey(
         || scopes.length !== credential.scopes.length
         || !/^[a-f0-9]{64}$/.test(credential.apiKeyHash)
         || !/^al_[A-Za-z0-9_-]{1,9}$/.test(credential.keyPrefix)
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(credential.requestId)
         || Number.isNaN(createdAt.getTime())
         || createdAt.toISOString() !== credential.createdAt
     ) {
@@ -143,12 +146,13 @@ export async function rotateAnswerlatticePublicApiKey(
         createdAt: credential.createdAt,
         productId: PRODUCT_IDS.ANSWERLATTICE,
         purpose: ANSWERLATTICE_PUBLIC_API_PURPOSE,
+        rotationRequestId: credential.requestId,
         scopes,
     };
     const nextSummary = buildAnswerlatticePublicApiKeySummary(publicApi)!;
     const auditRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
 
-    await db.runTransaction(async (transaction) => {
+    return db.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(storeRef);
         if (!snapshot.exists) {
             throw new AnswerlatticePublicApiKeyStoreError(
@@ -159,10 +163,24 @@ export async function rotateAnswerlatticePublicApiKey(
         }
         const storeData = snapshot.data() || {};
         assertStoreScope(storeData, scope, storeDocumentId);
+        const existingCredential = storeData.publicApi && typeof storeData.publicApi === 'object'
+            ? storeData.publicApi as Record<string, unknown>
+            : undefined;
+        const replay = classifyAnswerlatticePublicApiKeyRotationReplay(existingCredential, {
+            apiKeyHash: credential.apiKeyHash,
+            requestId: credential.requestId,
+            scopes,
+        });
+        if (replay.kind === 'replay') return replay.summary;
+        if (replay.kind === 'conflict') {
+            throw new AnswerlatticePublicApiKeyStoreError(
+                'idempotency_conflict',
+                'Public API key request conflicts with an earlier attempt',
+                409,
+            );
+        }
         const previousSummary = buildAnswerlatticePublicApiKeySummary(
-            storeData.publicApi && typeof storeData.publicApi === 'object'
-                ? storeData.publicApi as Record<string, unknown>
-                : undefined,
+            existingCredential,
         );
         transaction.update(storeRef, { publicApi });
         transaction.create(
@@ -175,9 +193,8 @@ export async function rotateAnswerlatticePublicApiKey(
                 nextSummary,
             ),
         );
+        return nextSummary;
     });
-
-    return nextSummary;
 }
 
 export async function revokeAnswerlatticePublicApiKey(

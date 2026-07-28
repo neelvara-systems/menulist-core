@@ -283,6 +283,7 @@ function OpsControlRoom() {
                     <Button type="default" href="/platform/cost-posture">Cost Posture</Button>
                     <Button type="default" href="/platform/owner-business-assistant">Business Health Monitor</Button>
                     <Button type="default" href="/ops/messaging-onboarding">Messaging Onboarding</Button>
+                    <Button type="default" href="/ops/website-enquiries">Website Enquiries</Button>
                     <Button type="default" href="/ops/report-leads">Report Leads</Button>
                     <Button type="default" href="/ops/platform-notifications">Platform Notifications</Button>
                     <Button type="default" href="/ops/owner-notifications">Owner Notifications</Button>

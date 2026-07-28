@@ -20,6 +20,7 @@ import { logOnboardingEvent, maskUserId } from "./eventLogger";
 import { getProviderAdapter } from "./providers/providerRegistry";
 import { isRetryableMessagingProviderError } from "./providers/IMessagingProvider";
 import { handleMessage } from "./sessionEngine";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode } from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const db = firestoreAdmin;
@@ -44,10 +45,10 @@ function getInboundQueueErrorContext(error: unknown): {
   errorCode?: string;
 } {
   if (error instanceof Error) {
-    const code = (error as { code?: unknown }).code;
+    const errorCode = getBoundedFunctionsErrorCode(error);
     return {
-      errorName: (error.name || "Error").slice(0, 80),
-      ...(code === undefined || code === null ? {} : { errorCode: String(code).slice(0, 64) }),
+      errorName: getBoundedFunctionsErrorName(error) || 'Error',
+      ...(errorCode === undefined ? {} : { errorCode }),
     };
   }
 

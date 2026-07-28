@@ -49,6 +49,10 @@ function verifyPackageScript() {
     packageJson.scripts['test:guest-feedback:rules']?.includes('scripts/verification/test-guest-feedback-rules.ts'),
     'package.json must expose test:guest-feedback:rules',
   );
+  assert(
+    packageJson.scripts['test:public-feedback-defaults-boundary']?.includes('scripts/verification/test-public-feedback-defaults-boundary.ts'),
+    'package.json must expose the public feedback defaults regression',
+  );
   assertIncludes(rulesTest, 'const replayedSubmission = await submitGuestFeedbackAdmin(idempotentInput);', 'Guest Feedback emulator idempotent replay test');
   assertIncludes(rulesTest, 'nodeAssert.equal(persistedFeedback.size, 1);', 'Guest Feedback emulator single feedback persistence assertion');
   assertIncludes(rulesTest, 'nodeAssert.equal(persistedEvents.size, 1);', 'Guest Feedback emulator single event persistence assertion');
@@ -121,7 +125,8 @@ function verifyPublicSubmitRoute() {
   assertIncludes(route, "checkPublicRateLimit(req, 'FEEDBACK_SUBMISSION')", 'Guest Feedback submit route public rate limit');
   assertIncludes(route, 'PUBLIC_FEEDBACK_SUBMIT_MAX_BODY_BYTES = 16 * 1024', 'Guest Feedback submit route body cap');
   assertIncludes(route, 'function resolveFeedbackDefaults(raw: unknown)', 'Guest Feedback defaults runtime input boundary');
-  assertIncludes(route, 'const storeTenantScope = normalizeGuestFeedbackNumericDocumentId(storeData?.tenantId ?? storeData?.tId);', 'Guest Feedback exact stored tenant scope');
+  assertIncludes(route, 'const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([', 'Guest Feedback exact all-alias stored tenant scope');
+  assertNotIncludes(route, 'storeData?.tenantId ?? storeData?.tId', 'Guest Feedback must reject conflicting persisted tenant aliases');
   assertIncludes(route, 'tenantData?.active === false', 'Guest Feedback inactive tenant rejection');
   assertIncludes(route, 'tenantData?.deleted === true', 'Guest Feedback deleted tenant rejection');
   assertIncludes(route, 'await logFeedbackMOLEventAdmin(', 'Guest Feedback event completion before response');
@@ -232,6 +237,8 @@ function verifyPublicPageAndForm() {
   assertIncludes(page, 'getPublicStoreById(storeDocumentId)', 'Guest Feedback public page shared store/tenant eligibility lookup');
   assertIncludes(page, 'projectPublicClientStore({', 'Guest Feedback public page browser-safe store projection');
   assertIncludes(page, 'storeTenantScope.numericId !== tId', 'Guest Feedback public page project/store tenant match');
+  assertIncludes(page, 'const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([', 'Guest Feedback public page exact all-alias tenant scope');
+  assertNotIncludes(page, 'storeData.tenantId ?? storeData.tId', 'Guest Feedback page must reject conflicting persisted tenant aliases');
   assertIncludes(page, 'const getProjectData = cache(async', 'Guest Feedback public page request-deduplicated project lookup');
   assertIncludes(page, 'const getStoreInfo = cache(async', 'Guest Feedback public page request-deduplicated store projection');
   assertNotIncludes(page, '.doc(projectId)', 'Guest Feedback public page direct project ID document read');
@@ -242,6 +249,10 @@ function verifyPublicPageAndForm() {
   assertNotIncludes(page, '.doc(String(sId))', 'Guest Feedback public page must not build store refs from stringified store IDs');
   assertIncludes(page, 'data?.menuSettings?.feedback === false', 'Guest Feedback public page project feedback toggle');
   assertIncludes(page, 'const feedbackEnabled = storeData.feedbackEnabled !== false', 'Guest Feedback public page store feedback toggle');
+  assertIncludes(page, 'normalizePublicFeedbackDefaults(storeData.feedbackDefaults)', 'Guest Feedback public page exact defaults normalization');
+  assertIncludes(page, 'storeDetails: PublicClientStore;', 'Guest Feedback public page typed browser-safe store projection');
+  assertNotIncludes(page, 'storeDetails: Record<string, any>;', 'Guest Feedback public page must not erase its browser-safe store projection');
+  assertNotIncludes(page, 'tempStatus?: any;', 'Guest Feedback public page must not erase its temporary-status contract');
   assertNotIncludes(page, 'contactPersonName', 'Guest Feedback public page owner contact name serialization');
   assertNotIncludes(page, 'contactPersonEmail', 'Guest Feedback public page owner contact email serialization');
   assertNotIncludes(page, 'contactPersonNumber', 'Guest Feedback public page owner contact phone serialization');
@@ -260,6 +271,8 @@ function verifyPublicPageAndForm() {
   assertIncludes(notFoundPage, 'createPublicCustomerTranslator(activeLanguage)', 'Guest Feedback not-found localized copy');
   assertIncludes(notFoundPage, 'getPublicCustomerLanguageDirection(activeLanguage)', 'Guest Feedback not-found language direction');
   assertIncludes(notFoundPage, "new URLSearchParams(window.location.search).get('lang')", 'Guest Feedback not-found requested language');
+  assertIncludes(notFoundPage, "getPublicCustomerLocale(requestedLanguage).split('-')[0] || 'en'", 'Guest Feedback not-found supported language projection');
+  assertNotIncludes(notFoundPage, 'setActiveLanguage(requestedLanguage)', 'Guest Feedback not-found must not reflect a raw language query into document attributes');
   assertIncludes(notFoundPage, "appendPublicLanguageParam('/', activeLanguage)", 'Guest Feedback not-found localized recovery link');
   assertIncludes(notFoundPage, '<LuMessageSquareDashed', 'Guest Feedback not-found approved icon');
   assertNotIncludes(notFoundPage, 'Page Not Found', 'Guest Feedback not-found English hardcode');

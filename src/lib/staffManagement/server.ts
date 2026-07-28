@@ -3,11 +3,14 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { ALL_PERMISSIONS, PERMISSIONS, PermissionKey } from "@constant/permissions";
 import { STAFF_EMAIL_DOMAIN } from "@constant/urls";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
+import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { createDefaultRoles, DEFAULT_ROLE_IDS, DEFAULT_ROLE_METADATA, generateCustomRoleId } from "@data/shared/defaultRoles";
 import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from "@lib/auth/loginIdentifiers";
 import { authAdmin, firestoreAdmin, admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { hasPermission, normalizeRolePermissions } from "@lib/permissions/hasPermission";
+import { resolveStorePermissionSessionScope } from "@lib/permissions/scopeDocumentId";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -64,6 +67,7 @@ const STAFF_LOGIN_ID_PREFIX = "88";
 const STAFF_MUTATION_MAX_BODY_BYTES = 16 * 1024;
 const STAFF_PASSCODE_RESET_LEASE_MS = 15 * 60 * 1000;
 const STAFF_PASSWORD_RESET_PROVIDER_TIMEOUT_MS = 10_000;
+const STAFF_EMAIL_QUERY_LIMIT = 2;
 const FIREBASE_AUTH_SEND_OOB_CODE_URL = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode";
 const MAX_STAFF_STORE_MAPPINGS = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1;
 const STAFF_TENANT_STORE_QUERY_LIMIT = MAX_STAFF_STORE_MAPPINGS + 1;
@@ -172,18 +176,8 @@ export const DeleteRoleSchema = z.object({
 });
 
 const isPlatformSession = (session: any) => (
-    session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-    || session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
 );
-
-const getRequestIp = (request: NextRequest) => (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || request.headers.get("x-real-ip")
-    || "unknown"
-);
-
-const getSessionTenantId = (session: any) => normalizeStaffScopeNumericId(session?.tId ?? session?.user?.tenantId);
-const getSessionStoreId = (session: any) => normalizeStaffScopeNumericId(session?.sId ?? session?.user?.storeId);
 
 const isPositiveId = (value: unknown): value is number => (
     typeof value === "number" && Number.isSafeInteger(value) && value > 0
@@ -400,13 +394,17 @@ const buildSessionRevocationFields = (
     session: any,
     now: admin.firestore.Timestamp,
     reason: string,
-) => sanitizeFirestoreValue({
-    authTokensRevokedAt: now,
-    sessionRevokedAt: now,
-    sessionRevokedBy: session?.uId || session?.user?.id,
-    sessionRevokedByEmail: session?.user?.email,
-    sessionRevokedReason: reason,
-});
+) => {
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) throw new Error("INVALID_SESSION_ACTOR");
+    return sanitizeFirestoreValue({
+        authTokensRevokedAt: now,
+        sessionRevokedAt: now,
+        sessionRevokedBy: actorId,
+        sessionRevokedByEmail: session?.user?.email,
+        sessionRevokedReason: reason,
+    });
+};
 
 const generateDigits = (length: number) => {
     let output = "";
@@ -649,8 +647,9 @@ const ensureDefaultRolesForStore = async (
 };
 
 const getAuthority = async (session: any, tenantId: number, targetStoreIds: number[]) => {
-    const sessionTenantId = getSessionTenantId(session);
-    const sessionStoreId = getSessionStoreId(session);
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    const sessionTenantId = sessionScope?.tenantScope.numericId ?? null;
+    const sessionStoreId = sessionScope?.storeScope.numericId ?? null;
 
     if (isPlatformSession(session)) {
         return {
@@ -851,7 +850,7 @@ const getUsersForStore = async (tenantId: number, storeId: number) => {
 };
 
 const ensureNotSelfDestructive = (session: any, targetUserId: string) => {
-    const sessionUserId = session?.uId || session?.user?.id;
+    const sessionUserId = resolveCurrentSessionUserDocumentId(session);
     if (!isPlatformSession(session) && targetUserId && sessionUserId === targetUserId) {
         throw new Error("SELF_UPDATE_BLOCKED");
     }
@@ -864,7 +863,11 @@ const applyRateLimit = async (
     keyPrefix: string,
 ) => {
     const config = getRateLimitForFeature(feature);
-    const identityKey = hashPublicRateLimitValue(session?.uId || session?.user?.id || getRequestIp(request));
+    const sessionUserId = resolveCurrentSessionUserDocumentId(session);
+    if (!sessionUserId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const identityKey = hashPublicRateLimitValue(sessionUserId);
     const key = `${keyPrefix}:${identityKey}`;
     const result = await checkRateLimit({ key, ...config });
     if (result.allowed) return null;
@@ -936,14 +939,14 @@ const sendFirebasePasswordResetEmail = async (email: string) => {
 const recordStaffPasswordSetupEmailMetadata = async (
     userRef: FirebaseFirestore.DocumentReference,
     now: admin.firestore.Timestamp,
-    session: any,
+    actorId: string,
     context: { storeId: number; tenantId: number; userId: string },
 ) => {
     try {
         await userRef.update(sanitizeFirestoreValue({
             passwordResetEmailSentAt: now,
             passwordResetRequestedAt: now,
-            passwordResetRequestedBy: session?.uId || session?.user?.id,
+            passwordResetRequestedBy: actorId,
         }));
         return true;
     } catch {
@@ -1020,6 +1023,8 @@ export const createStaffUser = async (
 ) => {
     const rateLimit = await applyRateLimit(request, session, "AUTH_SENSITIVE", "staff-create");
     if (rateLimit) return rateLimit;
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return jsonError("Forbidden", 403, "FORBIDDEN");
 
     const bodyResult = await readStaffMutationBody(request);
     if (bodyResult.ok === false) return bodyResult.response;
@@ -1072,11 +1077,24 @@ export const createStaffUser = async (
         ? await firestoreAdmin
             .collection(USERS_COLLECTION)
             .where("email", "==", input.email)
-            .limit(1)
+            .limit(STAFF_EMAIL_QUERY_LIMIT)
             .get()
         : null;
 
     const now = admin.firestore.Timestamp.now();
+
+    if (existingUserQuery && existingUserQuery.size > 1) {
+        logSecurity("Staff Email Authority Ambiguous", session, request, {
+            tenantId: input.tenantId,
+            storeId: input.storeId,
+            matchingRecordCount: existingUserQuery.size,
+        }, "critical");
+        return jsonError(
+            "This staff account cannot be created. Contact MenuList support.",
+            409,
+            "EMAIL_RECORD_AMBIGUOUS",
+        );
+    }
 
     if (existingUserQuery && !existingUserQuery.empty) {
         const existingDoc = existingUserQuery.docs[0];
@@ -1193,7 +1211,7 @@ export const createStaffUser = async (
 
             const passwordResetEmail = await sendFirebasePasswordResetEmail(loginEmail);
             if (passwordResetEmail.ok) {
-                await recordStaffPasswordSetupEmailMetadata(existingDoc.ref, now, session, {
+                await recordStaffPasswordSetupEmailMetadata(existingDoc.ref, now, actorId, {
                     storeId: input.storeId,
                     tenantId: input.tenantId,
                     userId: existingDoc.id,
@@ -1400,7 +1418,7 @@ export const createStaffUser = async (
     if (hasStaffEmail) {
         passwordResetEmail = await sendFirebasePasswordResetEmail(loginEmail);
         if (passwordResetEmail.ok) {
-            await recordStaffPasswordSetupEmailMetadata(docRef, now, session, {
+            await recordStaffPasswordSetupEmailMetadata(docRef, now, actorId, {
                 storeId: input.storeId,
                 tenantId: input.tenantId,
                 userId: docRef.id,
@@ -1782,6 +1800,8 @@ export const requestStaffPasswordReset = async (
 ) => {
     const rateLimit = await applyRateLimit(request, session, "AUTH_SENSITIVE", "staff-password-reset");
     if (rateLimit) return rateLimit;
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return jsonError("Forbidden", 403, "FORBIDDEN");
 
     const bodyResult = await readStaffMutationBody(request);
     if (bodyResult.ok === false) return bodyResult.response;
@@ -1904,7 +1924,7 @@ export const requestStaffPasswordReset = async (
                     leaseExpiresAt: passcodeResetLeaseExpiresAt,
                     operationId: passcodeResetOperationId,
                     requestedAt: now,
-                    requestedBy: session?.uId || session?.user?.id || "system",
+                    requestedBy: actorId,
                 },
             });
         });
@@ -1954,11 +1974,11 @@ export const requestStaffPasswordReset = async (
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         passcodeResetAt: now,
-        passcodeResetBy: session?.uId || session?.user?.id,
+        passcodeResetBy: actorId,
         passwordResetRequestedAt: now,
-        passwordResetRequestedBy: session?.uId || session?.user?.id,
+        passwordResetRequestedBy: actorId,
         sessionRevokedAt: now,
-        sessionRevokedBy: session?.uId || session?.user?.id,
+        sessionRevokedBy: actorId,
         sessionRevokedByEmail: session?.user?.email,
         sessionRevokedReason: "staff_passcode_reset",
         staffLoginId: loginId,
@@ -1999,7 +2019,7 @@ export const requestStaffPasswordReset = async (
             leaseExpiresAt: passcodeResetLeaseExpiresAt,
             operationId: passcodeResetOperationId,
             requestedAt: now,
-            requestedBy: session?.uId || session?.user?.id || "system",
+            requestedBy: actorId,
         },
     };
 

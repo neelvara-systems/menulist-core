@@ -1364,8 +1364,10 @@ contains(
   'src/lib/menu-extraction/jobStartFailure.ts',
   [
     "MENU_PROCESSING_JOB_START_REJECTED_CODE = 'menu_processing_job_start_rejected'",
-    'Number(candidate.status) >= 400',
-    'Number(candidate.status) < 500',
+    "typeof candidate.status === 'number'",
+    'Number.isInteger(candidate.status)',
+    'candidate.status >= 400',
+    'candidate.status < 500',
     'cleanupUploadedFilesAfterJobStartRejection = true',
     'shouldCleanupUploadedFilesAfterJobStartError',
   ],
@@ -2124,7 +2126,7 @@ contains(
     'let existingSummaryProjectsForDefaultDemotion: Record<string, any> = {};',
     'existingSummaryProjectsForDefaultDemotion = existingSummaryDoc.exists',
     'Object.entries(existingSummaryProjectsForDefaultDemotion).forEach',
-    'storeTenantId !== tenantId',
+    'storeTenantScope?.numericId !== tenantId',
     'storeData.active === false',
     'storeData.deleted === true',
     'isPlatformEntityBlocked(storeData)',
@@ -2447,11 +2449,10 @@ notContains(
   'src/app/api/menu-link-imports/route.ts',
   [
     'artifactRef.set(',
-    'await artifactRef.create(',
     'artifactDocCreated',
     'jobDocCreated',
   ],
-  'Authenticated link import must not create artifact metadata outside the active-job transaction',
+  'Authenticated link import must not split primary artifact/job creation outside the active-job transaction',
 );
 
 notContains(
@@ -2779,6 +2780,8 @@ contains(
     'extractionReviewJobRef',
     'transaction.get(extractionReviewJobRef)',
     'reviewJob.status !== "preview_ready"',
+    'reviewJob.tId !== tenantId',
+    'reviewJob.sId !== outletStoreId',
     '!reviewJob.uId',
     '!sessionUserIds.includes(String(reviewJob.uId))',
     'currentLocalVersion !== extractionReview.expectedLocalVersion',
@@ -2787,6 +2790,15 @@ contains(
     'appliedChangeCount: extractionReview.expectedChangeCount',
   ],
   'Linked-outlet extraction review validates current job/version and completes atomically with project persistence',
+);
+
+notContains(
+  'src/app/api/projects/outlet-save/route.ts',
+  [
+    'Number(reviewJob.tId)',
+    'Number(reviewJob.sId)',
+  ],
+  'Linked-outlet extraction review rejects coercive persisted workspace authority',
 );
 
 notContains(
@@ -3251,9 +3263,13 @@ contains(
     'HEALTH_COMPUTE_LEASE_MS = 15 * 60 * 1000',
     'export function isMessagingHealthComputationDue',
     'export function shouldCheckMessagingOnboardingHealth',
+    'export function isMessagingHealthLeaseOwner',
+    'computeLeaseId,',
     'computeLeaseUntil: Timestamp.fromMillis(now.toMillis() + HEALTH_COMPUTE_LEASE_MS)',
     'lastAttemptAt: now',
+    'transaction.set(snapshotRef, snapshot);',
     'computeLeaseUntil: null',
+    'MESSAGING_HEALTH_LEASE_OWNERSHIP_LOST',
     'MESSAGING_HEALTH_LEASE_RELEASE_FAILED',
   ],
   'Messaging health snapshots use a recoverable bounded computation lease instead of treating attempts as completions',
@@ -3631,6 +3647,7 @@ contains(
     'failedFileIndices.sort',
     'uploadedFiles.length !== files.length',
     'findInvalidMenuExtractionSourceIndexes',
+    'getMenuExtractionFailedSourceFileIndices(uploadedFiles)',
     'batchResults: batchResults.map',
     'await cleanupProviderFiles(uploadedFilesForCleanup);',
     "status: successfulBatches === totalBatches ? 'completed' : 'partial'",
@@ -3650,6 +3667,11 @@ contains(
     'transactionObject.jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD',
     'transactionObject.jobSource === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT',
     'userId !== transactionObject.uId',
+    'normalizeOwnerNotificationNumericScopeAliases([',
+    'transactionObject.tId,',
+    'transactionObject.tenantId,',
+    'transactionObject.sId,',
+    'transactionObject.storeId,',
   ].every((token) => boundary.includes(token));
   const excludesNonOwnerDestinations =
     !boundary.includes('MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT')
@@ -3767,7 +3789,7 @@ contains(
     'const normalizedExistingLanguages = existingLanguages',
     "import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from '../sharedData/menuExtractionProjectSize';",
     "...getBoundedSaveFilesStringContext('projectId', projectId)",
-    "sourceErrorName: error instanceof Error ? error.name || 'Error' : typeof error",
+    'return getBoundedFunctionsErrorContext(error)',
     "throw new Error('Project not found.');",
     "throw new Error('Project is not available for extraction.');",
     "throw new Error('Project identity does not match extraction scope.');",
@@ -4002,9 +4024,9 @@ contains(
     'if (!isAllowedMenuLinkTextArtifactPath(job, objectPath)) return null;',
     'jobIdLength: jobId.length',
     'failureCode: MENU_LINK_TEXT_EXTRACTION_SKIPPED_CODE',
-    "(error.name || 'Error').slice(0, 80)",
-    'String(record.code).slice(0, 64)',
-    'String(status).slice(0, 32)',
+    'getBoundedFunctionsErrorName(error)',
+    'getBoundedFunctionsErrorCode(error)',
+    'getBoundedFunctionsErrorStatus(error)',
   ],
   'Deterministic menu-link text extraction uses bounded diagnostics',
 );
@@ -4030,6 +4052,32 @@ notContains(
     'sourceErrorStatus: (error as any).status || (error as any).statusCode',
   ],
   'Deterministic menu-link text extraction does not log raw job IDs or exception messages',
+);
+
+contains(
+  'src/app/api/menu-link-imports/route.ts',
+  [
+    '): Promise<boolean> {',
+    'return true;',
+    'return false;',
+    'async function persistMenuLinkImportCleanupRecord',
+    'await artifactRef.create(artifactData);',
+    'const storageDeleted = await deleteMenuLinkImportStoragePath(storagePath, {',
+    '!storageDeleted',
+    'persistMenuLinkImportCleanupRecord(artifactRef, artifactData, projectId)',
+    "throw new Error('menu_link_import_cleanup_untracked');",
+  ],
+  'Menu-link route preserves a durable retention record when loser Storage cleanup fails',
+);
+
+ordered(
+  'src/app/api/menu-link-imports/route.ts',
+  [
+    'const storageDeleted = await deleteMenuLinkImportStoragePath(storagePath, {',
+    'persistMenuLinkImportCleanupRecord(artifactRef, artifactData, projectId)',
+    'createdStoragePaths.length = 0;',
+  ],
+  'Menu-link route acknowledges Storage deletion or durable cleanup metadata before forgetting the path',
 );
 
 contains(

@@ -62,6 +62,11 @@ const permissionRequirements = read('src/lib/permissions/permissionRequirements.
 const currentRoute = read('src/app/api/owner-business-assistant/current/route.ts');
 const analyticsRoute = read('src/app/api/owner-business-assistant/analytics/route.ts');
 const locationsRoute = read('src/app/api/owner-business-assistant/locations/route.ts');
+requireToken(locationsRoute, "'Cache-Control': 'private, no-store, max-age=0'", 'locations route private response cache boundary');
+requireToken(locationsRoute, "'X-Content-Type-Options': 'nosniff'", 'locations route JSON content boundary');
+if ((locationsRoute.match(/return NextResponse\.json\(/g) || []).length !== 1) {
+  failures.push('locations route must keep NextResponse.json encapsulated by its private response boundary');
+}
 const answerRoute = read('src/app/api/owner-business-assistant/answer/route.ts');
 const feedbackRoute = read('src/app/api/owner-business-assistant/feedback/route.ts');
 const threadRoute = read('src/app/api/owner-business-assistant/thread/[threadId]/route.ts');
@@ -78,6 +83,7 @@ const domainMatrix = read('src/lib/ownerBusinessAssistant/server/domainCapabilit
 const answerResolver = read('src/lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer.ts');
 const answerEventLogger = read('src/lib/ownerBusinessAssistant/server/answerEventLogger.ts');
 const threadStore = read('src/lib/ownerBusinessAssistant/server/threadStore.ts');
+const maintenanceScheduler = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
 const businessSignals = read('src/lib/ownerBusinessAssistant/businessSignals.ts');
 const ownerPublicTruthReadiness = read('src/lib/public-truth-tools/ownerPublicTruthReadiness.ts');
 const currentHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessHealthCurrent.ts');
@@ -250,6 +256,39 @@ forbidToken(mobilePublicTruthOwnerCard, 'window.location', 'mobile public truth 
 ].forEach((token) => requireToken(answerRoute, token, 'answer route'));
 forbidToken(answerRoute, 'request.json()', 'answer route raw request parsing');
 forbidToken(answerRoute, 'logger.warn', 'answer route raw warn logging');
+
+const ownerBusinessAssistantCleanupStart = maintenanceScheduler.indexOf(
+  'async function runOwnerBusinessAssistantCleanup(): Promise<MaintenanceTaskResult> {',
+);
+const ownerBusinessAssistantCleanupEnd = maintenanceScheduler.indexOf(
+  '\nasync function runAlertEscalation(): Promise<MaintenanceTaskResult> {',
+  ownerBusinessAssistantCleanupStart,
+);
+const ownerBusinessAssistantCleanup = ownerBusinessAssistantCleanupStart >= 0
+  && ownerBusinessAssistantCleanupEnd > ownerBusinessAssistantCleanupStart
+  ? maintenanceScheduler.slice(ownerBusinessAssistantCleanupStart, ownerBusinessAssistantCleanupEnd)
+  : '';
+[
+  'DB_COLLECTIONS.PLATFORM_SUMMARY',
+  "kind: 'ownerBusinessHealthSnapshot'",
+  'DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS',
+  'DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK',
+  'DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_THREADS',
+].forEach((token) => requireToken(
+  ownerBusinessAssistantCleanup,
+  token,
+  'owner business assistant retention cleanup',
+));
+forbidToken(
+  ownerBusinessAssistantCleanup,
+  'isFunctionFeatureEnabled',
+  'owner business assistant retention cleanup feature gate',
+);
+forbidToken(
+  ownerBusinessAssistantCleanup,
+  'skippedCleanup',
+  'owner business assistant retention cleanup skip branch',
+);
 
 [
   'OwnerBusinessAssistantThreadParamsSchema.safeParse(params)',

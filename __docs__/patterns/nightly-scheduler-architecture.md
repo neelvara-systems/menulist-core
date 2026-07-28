@@ -379,6 +379,8 @@ Every run writes a time-bounded `schedulerRunLogs` document:
 - Error details (capped at 50)
 - `expiresAt` for configured retention cleanup
 
+The run-log consumer contract includes both store-EOD and consolidated maintenance task names. An all-failed maintenance attempt is stored as `failed`, not `partial`; mixed attempted outcomes are `partial`. Operator “Runs (7d)” uses an exact count aggregation while task/error details remain bounded recent-row projections.
+
 ### Telegram Alert
 
 Every run sends a Dead Man's Switch telegram alert:

@@ -3,6 +3,9 @@
  * Common utilities for testing analytics components
  */
 
+import type { ReactElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+
 // ================================================================
 // MOCK DATA GENERATORS
 // ================================================================
@@ -90,21 +93,23 @@ export function generateMockNotifications(count: number = 5) {
 /**
  * Assert chart data is valid
  */
-export function assertValidChartData(data: any[]) {
+export function assertValidChartData(data: unknown[]): void {
   expect(Array.isArray(data)).toBe(true);
   expect(data.length).toBeGreaterThan(0);
 
   data.forEach(item => {
+    expect(item).toBeTruthy();
+    expect(typeof item).toBe('object');
     expect(item).toHaveProperty('date');
-    expect(typeof item.date).toBe('string');
+    expect(typeof (item as { date?: unknown }).date).toBe('string');
   });
 }
 
 /**
  * Assert component renders without error
  */
-export function assertComponentRenders(component: React.ReactElement) {
-  expect(() => component).not.toThrow();
+export function assertComponentRenders(component: ReactElement): void {
+  expect(() => renderToStaticMarkup(component)).not.toThrow();
 }
 
 // ================================================================
@@ -114,7 +119,7 @@ export function assertComponentRenders(component: React.ReactElement) {
 /**
  * Mock SWR hook
  */
-export function mockUseSWR(data: any, error: any = null) {
+export function mockUseSWR<T>(data: T | undefined, error: unknown = null) {
   return {
     data,
     error,
@@ -165,7 +170,7 @@ export function setupTests() {
       return [];
     }
     unobserve() {}
-  } as any;
+  } as unknown as typeof IntersectionObserver;
 }
 
 // ================================================================

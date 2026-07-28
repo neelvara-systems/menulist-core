@@ -21,6 +21,7 @@ import {
 } from '../types';
 import { getAnswerlatticeEmbeddingInput } from './embeddingSourceBoundary';
 import { getReusableEmbeddingVectorDimensions } from './embeddingVectorBoundary';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 const PRODUCT_ID = 'AL';
 const MAX_PUBLISH_ARTICLES = 60;
@@ -83,21 +84,13 @@ function normalizeScopeId(value: unknown): number | null {
     return Number.isSafeInteger(id) && id > 0 && String(id) === raw ? id : null;
 }
 
-function boundedDiagnosticValue(value: unknown): string | number | null {
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') return value.slice(0, 120);
-    return null;
-}
-
 function getPublishApprovedJobErrorContext(jobId: string, error: unknown) {
-    const sourceError = error as { code?: unknown; status?: unknown };
-    const sourceErrorCode = boundedDiagnosticValue(sourceError?.code);
-    const sourceStatusCode = boundedDiagnosticValue(sourceError?.status);
+    const context = getBoundedFunctionsErrorContext(error);
     return {
         jobIdLength: jobId.length,
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        ...(sourceErrorCode ? { sourceErrorCode } : {}),
-        ...(sourceStatusCode ? { sourceStatusCode } : {}),
+        sourceErrorName: context.sourceErrorName || typeof error,
+        ...(context.sourceErrorCode ? { sourceErrorCode: context.sourceErrorCode } : {}),
+        ...(context.sourceStatusCode !== undefined ? { sourceStatusCode: context.sourceStatusCode } : {}),
     };
 }
 

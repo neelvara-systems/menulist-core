@@ -2,6 +2,11 @@
 
 Public copy may say that Answerlattice groups mapped support evidence by product area, compares completed seven-day windows, and helps founders prioritize what to review.
 
+Do not market a Customer Friction Map, workflow tree, root-cause percentage,
+release-causation overlay, or automatic friction classification until each
+capability is implemented and validated with real founder evidence. The
+maintained public feature name is `Product Friction Evidence`.
+
 Public copy must also preserve these boundaries:
 
 - support evidence is not automatically verified truth;

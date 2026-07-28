@@ -148,7 +148,7 @@ This appendix lists the source evidence used by [SMB data map](./smb-data-invent
 | Owner notification deliveries store recipient hash/masked value, status, subject, template, provider id, error, sent timestamp, and expiry metadata. | `functions/src/ownerNotifications/processor.ts` |
 | Owner notification events store trigger metadata, processing status, expiry metadata, and failures can create platform alerts. | `functions/src/ownerNotifications/processor.ts` |
 | System alerts store alert type/severity/title/message/metadata/action/ack fields and can deliver platform/Telegram alerts. | `functions/src/monitoring/alerts.ts:19-38`, `functions/src/monitoring/alerts.ts:121-205` |
-| System health reports write daily tenant/store health docs with 7-day expiry. | `functions/src/monitoring/healthCheck.ts:301-322` |
+| The retired MenuList support health check no longer writes legacy tenant/store health documents or reads the retired nested `knowledgeBase` namespace. | `functions/src/monitoring/healthCheck.ts` is absent; guarded by `scripts/verification/verify-auth-security-failure-matrix.js` |
 | Scheduler run logs are persisted only when a run has activity or failure. | `functions/src/schedulers/menulistMaintenanceScheduler.ts:284-311` |
 | POS sync writes capped delivery logs and updates store `posSync` status fields. | `src/app/api/pos-sync/deliver/route.ts:80-141`, `src/app/api/pos-sync/deliver/route.ts:200-245` |
 
@@ -172,7 +172,7 @@ This appendix lists the source evidence used by [SMB data map](./smb-data-invent
 | Owner-business-assistant cleanup deletes expired current/snapshot/action/draft/event/feedback/thread docs. | `functions/src/schedulers/menulistMaintenanceScheduler.ts:839-885` |
 | Maintenance scheduler run logs carry `expiresAt`; the same scheduler deletes expired and legacy startedAt-only run logs. | `functions/src/schedulers/menulistMaintenanceScheduler.ts:296-311`, `functions/src/schedulers/menulistMaintenanceScheduler.ts:605-635`, `functions/src/schedulers/menulistMaintenanceScheduler.ts:820-837`, `functions/src/schedulers/menulistMaintenanceScheduler.ts:1028-1033` |
 | Hourly decision scheduler and manual store recovery run logs also carry `expiresAt`. | `functions/src/decisionBlocksScoring.ts:1151-1165`, `functions/src/decisionBlocksScoring.ts:2016-2036`, `functions/src/decisionBlocksScoring.ts:2132-2144` |
-| System health reports carry a 7-day expiry field. | `functions/src/monitoring/healthCheck.ts:301-322` |
+| No active MenuList system-health report writer remains; historical rows are not current runtime truth. | `functions/src/monitoring/healthCheck.ts` is absent |
 | POS delivery logs are capped to the latest 20 entries. | `src/app/api/pos-sync/deliver/route.ts:215-227` |
 | MenuList maintenance scheduler now handles AI operation detail cleanup, menu snapshot cleanup, and owner-notification retention cleanup through existing task leases/cadences. | `functions/src/schedulers/menulistMaintenanceScheduler.ts` |
 

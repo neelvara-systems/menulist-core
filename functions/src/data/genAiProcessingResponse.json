@@ -28,7 +28,7 @@
             "index": 0
         }
     ],
-    "modelVersion": "gemini-2.5-pro",
+    "modelVersion": "gemini-3.6-flash",
     "responseId": "5D7CaLKOA-asz7IP-6Kh8A0",
     "usageMetadata": {
         "promptTokenCount": 1139,

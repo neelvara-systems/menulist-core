@@ -21,7 +21,43 @@ import PwaDirectionsHandoffClient from './PwaDirectionsHandoffClient';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-function buildMapsUrl(store: any): string | null {
+type PwaDirectionsStore = {
+    addressLine?: unknown;
+    area?: unknown;
+    city?: unknown;
+    country?: unknown;
+    name?: unknown;
+    postalCode?: unknown;
+    publicPresence?: {
+        googleMapsUrl?: unknown;
+    };
+    state?: unknown;
+};
+
+const isUnknownRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+function projectPwaDirectionsStore(value: unknown): PwaDirectionsStore | null {
+    if (!isUnknownRecord(value)) return null;
+    const publicPresence = isUnknownRecord(value.publicPresence)
+        ? { googleMapsUrl: value.publicPresence.googleMapsUrl }
+        : undefined;
+    return {
+        addressLine: value.addressLine,
+        area: value.area,
+        city: value.city,
+        country: value.country,
+        name: value.name,
+        postalCode: value.postalCode,
+        publicPresence,
+        state: value.state,
+    };
+}
+
+function buildMapsUrl(value: unknown): string | null {
+    const store = projectPwaDirectionsStore(value);
+    if (!store) return null;
     // 1. Owner-provided direct URL wins.
     const direct = normalizeOBPGoogleMapsUrl(store?.publicPresence?.googleMapsUrl);
     if (direct) return direct;

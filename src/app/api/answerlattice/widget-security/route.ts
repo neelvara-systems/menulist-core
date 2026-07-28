@@ -3,12 +3,17 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
     isAnswerlatticeStoreInScope,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import { isExactAnswerlatticeWidgetStoreAuthority } from '@lib/answerlattice/widgetKeyStore';
 import {
     generateAnswerlatticeVerifiedContextKey,
     normalizeAnswerlatticeEvidenceHosts,
@@ -26,7 +31,7 @@ import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const WIDGET_SECURITY_MAX_BODY_BYTES = 8 * 1024;
 const WIDGET_SECURITY_ROTATION_MIN_INTERVAL_MS = 30_000;
-const PRIVATE_NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' };
+const PRIVATE_NO_STORE_HEADERS = ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS;
 const EvidenceHostsSchema = z.object({
     evidenceAllowedHosts: z.array(z.string().trim().min(1).max(300)).max(10),
 }).strict();
@@ -53,6 +58,13 @@ class WidgetSecurityRotationConflictError extends Error {
         this.name = 'WidgetSecurityRotationConflictError';
     }
 }
+
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(PRIVATE_NO_STORE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
 
 const getStore = async (access: NonNullable<Awaited<ReturnType<typeof requireAnswerlatticePermission>>['access']>) => {
     const ref = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(access.scope.storeId));
@@ -87,9 +99,9 @@ const buildResponse = (data: Record<string, unknown>) => {
 export const GET = withAuth(async (request: NextRequest, session) => {
     if (!featureAvailable()) return NextResponse.json({ error: 'Widget security controls are not enabled.' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
     const readRateLimit = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'widget-security');
-    if (readRateLimit) return readRateLimit;
+    if (readRateLimit) return withPrivateHeaders(readRateLimit);
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-    if (permission.response) return permission.response;
+    if (permission.response) return withPrivateHeaders(permission.response);
     const access = permission.access;
     if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
 
@@ -112,7 +124,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
     const sessionScope = resolveAnswerlatticeSessionScope(session);
     if (!sessionScope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400, headers: PRIVATE_NO_STORE_HEADERS });
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
 
     try {
         const rateLimit = await checkRateLimit({
@@ -126,7 +139,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
         if (!rateLimit.allowed) return NextResponse.json({ error: 'Signing keys can only be changed a few times per hour.' }, { status: 429, headers: PRIVATE_NO_STORE_HEADERS });
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateHeaders(permission.response);
         const access = permission.access;
         if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
         const store = await getStore(access);
@@ -136,7 +149,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
             const currentSnapshot = await transaction.get(store.ref);
             const currentData = currentSnapshot.data() || {};
-            if (!currentSnapshot.exists || !isAnswerlatticeStoreInScope(currentData, access.scope, currentSnapshot.id)) {
+            if (!currentSnapshot.exists || !isExactAnswerlatticeWidgetStoreAuthority(currentData, {
+                tenantId: access.scope.tenantId,
+                storeId: access.scope.storeId,
+            }, currentSnapshot.id)) {
                 throw new WidgetSecurityOwnershipError();
             }
             const currentRecord = normalizeVerifiedContextKeyRecord(currentData.answerlatticeVerifiedContext);
@@ -183,7 +199,8 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     }
     const sessionScope = resolveAnswerlatticeSessionScope(session);
     if (!sessionScope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400, headers: PRIVATE_NO_STORE_HEADERS });
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
 
     try {
         const rateLimit = await checkRateLimit({
@@ -197,7 +214,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         }
         if (!rateLimit.allowed) return NextResponse.json({ error: 'Too many changes. Please wait before trying again.' }, { status: 429, headers: PRIVATE_NO_STORE_HEADERS });
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateHeaders(permission.response);
         const access = permission.access;
         if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
         const bodyResult = await readBoundedJsonBody(request, WIDGET_SECURITY_MAX_BODY_BYTES);
@@ -216,7 +233,10 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
             const currentSnapshot = await transaction.get(store.ref);
             const currentData = currentSnapshot.data() || {};
-            if (!currentSnapshot.exists || !isAnswerlatticeStoreInScope(currentData, access.scope, currentSnapshot.id)) {
+            if (!currentSnapshot.exists || !isExactAnswerlatticeWidgetStoreAuthority(currentData, {
+                tenantId: access.scope.tenantId,
+                storeId: access.scope.storeId,
+            }, currentSnapshot.id)) {
                 throw new WidgetSecurityOwnershipError();
             }
             transaction.set(store.ref, {
@@ -246,7 +266,8 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
     }
     const sessionScope = resolveAnswerlatticeSessionScope(session);
     if (!sessionScope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400, headers: PRIVATE_NO_STORE_HEADERS });
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
 
     try {
         const rateLimit = await checkRateLimit({
@@ -260,7 +281,7 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
         }
         if (!rateLimit.allowed) return NextResponse.json({ error: 'Signing keys can only be changed a few times per hour.' }, { status: 429, headers: PRIVATE_NO_STORE_HEADERS });
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateHeaders(permission.response);
         const access = permission.access;
         if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
         const store = await getStore(access);
@@ -268,7 +289,10 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
         const updatedStoreData = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
             const currentSnapshot = await transaction.get(store.ref);
             const currentData = currentSnapshot.data() || {};
-            if (!currentSnapshot.exists || !isAnswerlatticeStoreInScope(currentData, access.scope, currentSnapshot.id)) {
+            if (!currentSnapshot.exists || !isExactAnswerlatticeWidgetStoreAuthority(currentData, {
+                tenantId: access.scope.tenantId,
+                storeId: access.scope.storeId,
+            }, currentSnapshot.id)) {
                 throw new WidgetSecurityOwnershipError();
             }
             transaction.set(store.ref, {

@@ -23,6 +23,11 @@
 | Login/offline screens | Centered content stays inside safe area. |
 | Oversized login form POST | The session route rejects the submission through the fixed `input` login error without parsing unbounded form data. |
 | Repeated login attempts | The session route applies `AUTH_LOGIN` rate limiting before form parsing or credential validation. |
+| Distributed login limiter unavailable | Login fails closed before credential validation. |
+| Missing dedicated session secret | Protected requests return configuration failure and no token is signed with the NextAuth secret or access password. |
+| External, backslash, encoded internal, or protocol-relative return path | Login redirects only to `/`; no cross-origin or internal API redirect is possible. |
+| Direct document handler request without a valid session | Returns private/no-store `401`, or `503` when access configuration is incomplete. |
+| Symlink outside `__docs__` or Markdown source over 4 MiB | The source is not resolved or returned; symbolic links are absent from the document tree. |
 | Desktop reader | Layout remains unchanged. |
 | Direct `/sites/mycodex` or descendant request | Fixed no-store, noindex 404; internal rewrite namespace is not addressable. |
 
@@ -33,5 +38,7 @@ npm run verify:mycodex-pwa-assets
 ```
 
 The verifier requires the direct internal namespace denial to execute before
-the MyCodex product rewrite, in addition to the PWA, session, static-reader,
-three-environment-key, and zero-Firebase checks.
+the MyCodex product rewrite, in addition to the PWA, fail-closed login,
+dedicated-secret, return-path, handler-authenticated static-reader,
+canonical-path/size, three-environment-key, and zero-Firebase checks. It also
+runs `scripts/verification/test-mycodex-auth-boundary.ts`.

@@ -1,4 +1,4 @@
-.blinking-cursor {
+.blinkingCursor {
     animation: blink 1s step-end infinite;
 }
 
@@ -12,12 +12,20 @@
     }
 }
 
-.typing-indicator {
+.typingIndicator {
     display: flex;
     padding: 20px;
     justify-content: center;
     align-items: center;
+}
 
+.typingDot {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    margin: 0 2px;
+    border-radius: 50%;
+    animation: bounce 1.4s ease-in-out infinite both;
 }
 
 @keyframes bounce {

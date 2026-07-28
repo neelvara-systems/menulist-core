@@ -1,4 +1,4 @@
-import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/scopeDocumentId";
+import { resolveStorePermissionScopeDocumentIdAliases } from "@lib/permissions/scopeDocumentId";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 
 export function isCurrentPublicTruthMonitorStoreScope(params: {
@@ -6,9 +6,10 @@ export function isCurrentPublicTruthMonitorStoreScope(params: {
     tenantData: Record<string, unknown> | undefined;
     tenantDocumentId: string;
 }): boolean {
-    const persistedTenantId = normalizeStorePermissionScopeDocumentId(
-        params.storeData?.tenantId ?? params.storeData?.tId,
-    )?.documentId;
+    const persistedTenantId = resolveStorePermissionScopeDocumentIdAliases([
+        params.storeData?.tenantId,
+        params.storeData?.tId,
+    ])?.documentId;
 
     return Boolean(
         params.storeData

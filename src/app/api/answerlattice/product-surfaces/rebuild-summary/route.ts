@@ -30,12 +30,26 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const { tenantId, storeId } = scope;
 
     const rateLimit = await checkRateLimit({
-        key: buildAnswerlatticeRateLimitKey('answerlattice-product-surfaces:summary', tenantId, storeId),
+        key: buildAnswerlatticeRateLimitKey(
+            'answerlattice-product-surfaces:summary',
+            session.uId,
+            tenantId,
+            storeId,
+        ),
         limit: 12,
         window: 60,
+        failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
-        return NextResponse.json({ error: 'Too many rebuild requests.' }, { status: 429 });
+        const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+        return NextResponse.json(
+            {
+                error: providerUnavailable
+                    ? 'Product-surface summary rebuild is temporarily unavailable.'
+                    : 'Too many rebuild requests.',
+            },
+            { status: providerUnavailable ? 503 : 429 },
+        );
     }
 
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);

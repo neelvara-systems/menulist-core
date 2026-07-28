@@ -603,7 +603,7 @@ const main = async () => {
   const manualOutcome = await recordSignalDeskOutcomeServer(access, manualOutcomeInput);
   const manualOutcomeReplay = await recordSignalDeskOutcomeServer(access, manualOutcomeInput);
   assert.equal(manualOutcome.activationWatchSyncStatus, "updated", "Manual outcome did not reconcile the existing activation watch");
-  assert.equal(await readWriteEstimate(), manualOutcomeCostBefore + 14, "Manual outcome did not count eight base writes plus six activation-watch reconciliation writes exactly once");
+  assert.equal(await readWriteEstimate(), manualOutcomeCostBefore + 12, "Manual outcome did not count eight base writes plus four change-aware activation-watch reconciliation writes exactly once");
   assert.equal(manualOutcomeReplay.duplicate, true);
   assert.equal(manualOutcomeReplay.outcomeSummaryId, manualOutcome.outcomeSummaryId, "Exact replay changed its source-scoped summary identity");
   assert.notEqual(manualOutcome.outcomeSummaryId, demandOutcome.outcomeSummaryId, "Manual and demand outcomes shared one summary identity");

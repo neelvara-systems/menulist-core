@@ -10,10 +10,13 @@ import {
     AnalyticsAiEntitlement,
     OwnerActionPlan,
     OwnerConfidence,
+    OwnerDashboardData,
     SourceQuality,
 } from '@template/main-app/projects/types';
 import { useContext, useMemo } from 'react';
 import useSWR from 'swr';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveOwnerBusinessAssistantClientScope } from '@lib/ownerBusinessAssistant/clientScope';
 
 interface UseOwnerActionPlanResult {
     actionPlan?: OwnerActionPlan;
@@ -37,11 +40,11 @@ function createCacheKey(tId: string, sId: string, projectId: string): string {
 
 async function cachedSettledFetcher(
     cacheKey: string,
-    fetcher: () => Promise<any>,
+    fetcher: () => Promise<OwnerDashboardData | null>,
     schedulerCacheKey: string,
-) {
+): Promise<OwnerDashboardData | null> {
     if (!shouldRevalidate(cacheKey, schedulerCacheKey)) {
-        const cached = getCachedData<any>(cacheKey, undefined, schedulerCacheKey);
+        const cached = getCachedData<OwnerDashboardData>(cacheKey, undefined, schedulerCacheKey);
         if (cached !== undefined) return cached;
     }
 
@@ -54,8 +57,13 @@ async function cachedSettledFetcher(
 
 export function useOwnerActionPlan(projectId?: string | null): UseOwnerActionPlanResult {
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
-    const tId = storeDetails?.tenantId ? String(storeDetails.tenantId) : null;
-    const sId = storeDetails?.storeId ? String(storeDetails.storeId) : null;
+    const session = useClientAuthSession();
+    const scope = useMemo(
+        () => resolveOwnerBusinessAssistantClientScope(session, storeDetails?.storeId, storeDetails?.tenantId),
+        [session, storeDetails?.storeId, storeDetails?.tenantId],
+    );
+    const tId = scope?.tenantId || null;
+    const sId = scope?.storeId || null;
     const canFetch = Boolean(tId && sId && projectId);
     const schedulerCacheKey = useMemo(
         () => getAnalyticsSchedulerCacheKey(new Date(), storeDetails?.timeZone, storeDetails?.businessDayEndTime),
@@ -63,7 +71,7 @@ export function useOwnerActionPlan(projectId?: string | null): UseOwnerActionPla
     );
     const cacheKey = canFetch ? createCacheKey(tId!, sId!, projectId!) : null;
     const fallbackData = useMemo(
-        () => cacheKey ? getCachedData<any>(cacheKey, undefined, schedulerCacheKey) : undefined,
+        () => cacheKey ? getCachedData<OwnerDashboardData>(cacheKey, undefined, schedulerCacheKey) : undefined,
         [cacheKey, schedulerCacheKey],
     );
 

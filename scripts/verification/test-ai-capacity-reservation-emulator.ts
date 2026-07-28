@@ -283,6 +283,30 @@ async function run(): Promise<void> {
     );
     assert.equal((await operationCollection.doc('reservation-string-input-units').get()).exists, false);
 
+    const conflictingSessionScopeId = 'reservation-conflicting-session-scope';
+    const conflictingTenantOperationRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
+        .doc('99999')
+        .collection(String(sId))
+        .doc(conflictingSessionScopeId);
+    await assert.rejects(
+        finalizeAiOperationAccounting({
+            idempotencyKey: conflictingSessionScopeId,
+            input: { action, sId, tId: 99999, unitsConsumed: 0 },
+            logLabel: 'Conflicting session accounting scope emulator',
+            session: {
+                pId: 'ML',
+                sId,
+                tId,
+                user: { id: 'owner-1', pId: 'ML', storeId: sId, tenantId: tId },
+            },
+        }),
+        /session accounting scope is invalid/,
+        'conflicting authenticated and input scope must fail before deterministic operation lookup or write',
+    );
+    assert.equal((await operationCollection.doc(conflictingSessionScopeId).get()).exists, false);
+    assert.equal((await conflictingTenantOperationRef.get()).exists, false);
+
     const historicalReplayId = 'reservation-historical-string-replay';
     const historicalReplayRef = operationCollection.doc(historicalReplayId);
     await historicalReplayRef.set({
@@ -625,6 +649,8 @@ async function run(): Promise<void> {
         deleteOperation('reservation-operation-scope-conflict'),
         deleteOperation('reservation-string-units-replay'),
         deleteOperation('reservation-string-input-units'),
+        deleteOperation(conflictingSessionScopeId),
+        conflictingTenantOperationRef.delete(),
         deleteOperation('reservation-historical-string-replay'),
         deleteOperation('reservation-free-string-replay'),
         deleteOperation('reservation-malformed-refund-evidence'),

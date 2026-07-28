@@ -1,16 +1,30 @@
 import type { ActiveProjectEntry, OwnerBusinessFeedbackSummary, OwnerBusinessHealthSourceRef } from './types';
 
+function normalizeScopeId(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return normalized ? normalized.slice(0, 160) : null;
+  }
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : null;
+}
+
 export function buildOwnerBusinessHealthSourceRefs(params: {
   generatedAt: string;
   analyticsDocIds: string[];
   activeProjects: ActiveProjectEntry[];
   feedbackSummary?: OwnerBusinessFeedbackSummary;
-  storeInfo: FirebaseFirestore.DocumentData;
+  storeInfo: Record<string, unknown>;
 }): OwnerBusinessHealthSourceRef[] {
+  const storeScope = normalizeScopeId(params.storeInfo.storeId)
+    || normalizeScopeId(params.storeInfo.sId)
+    || 'store';
+  const timeZone = typeof params.storeInfo.timeZone === 'string'
+    ? params.storeInfo.timeZone.trim().slice(0, 120)
+    : '';
   const projectSource: OwnerBusinessHealthSourceRef = {
     id: 'projects_summary',
     source: 'Menu projects',
-    docId: `projects_${params.storeInfo.storeId || params.storeInfo.sId || 'store'}`,
+    docId: `projects_${storeScope}`,
     generatedAt: params.generatedAt,
     freshnessLabel: 'Updated from nightly check',
   };
@@ -29,7 +43,7 @@ export function buildOwnerBusinessHealthSourceRefs(params: {
     ...(params.feedbackSummary ? [{
       id: 'guest_feedback_summary',
       source: 'Guest feedback',
-      docId: `guestFeedback_${params.storeInfo.storeId || params.storeInfo.sId || 'store'}_summary`,
+      docId: `guestFeedback_${storeScope}_summary`,
       generatedAt: params.generatedAt,
       freshnessLabel: 'Updated from latest Business Health check',
     }] : []),
@@ -37,7 +51,7 @@ export function buildOwnerBusinessHealthSourceRefs(params: {
       id: 'store_summary',
       source: 'Store settings',
       generatedAt: params.generatedAt,
-      freshnessLabel: params.storeInfo.timeZone ? String(params.storeInfo.timeZone) : 'Store timezone not set',
+      freshnessLabel: timeZone || 'Store timezone not set',
     },
   ];
 }

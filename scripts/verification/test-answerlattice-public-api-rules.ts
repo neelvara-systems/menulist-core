@@ -4,7 +4,6 @@ import fs from 'fs';
 import path from 'path';
 import {
     assertFails,
-    assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import { deleteField, doc, setDoc, updateDoc } from 'firebase/firestore';
@@ -14,7 +13,6 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const RULES_FILE = process.env.ANSWERLATTICE_RULES_FILE === 'firestore.rules'
     ? 'firestore.rules'
     : 'firestore-answerlattice.rules';
-const IS_SHARED_RULES = RULES_FILE === 'firestore.rules';
 
 const storeData = (storeId: number, overrides: Record<string, unknown> = {}) => ({
     active: true,
@@ -51,6 +49,15 @@ async function run(): Promise<void> {
                     activeKeyHash: 'b'.repeat(64),
                     schemaVersion: 'answerlattice.widgetKeys.v1',
                 },
+                widgetAllowedOrigins: ['https://app.example.com'],
+                widgetConfig: {
+                    headerTitle: 'Help',
+                },
+                widgetConfigSchemaVersion: 'answerlattice.widget.v1',
+                widgetConfigVersion: 1,
+                widgetRuntimeStatus: {
+                    seenCount: 1,
+                },
             }));
             await setDoc(doc(context.firestore(), 'stores', '102'), storeData(102));
         });
@@ -80,6 +87,18 @@ async function run(): Promise<void> {
             }));
             await assertFails(updateDoc(doc(clientDb, 'stores', '101'), {
                 'answerlatticeWidgetApi.activeKeyHash': 'd'.repeat(64),
+            }));
+            await assertFails(updateDoc(doc(clientDb, 'stores', '101'), {
+                widgetAllowedOrigins: [],
+            }));
+            await assertFails(updateDoc(doc(clientDb, 'stores', '101'), {
+                'widgetConfig.headerTitle': 'Bypassed API',
+            }));
+            await assertFails(updateDoc(doc(clientDb, 'stores', '101'), {
+                widgetConfigVersion: 2,
+            }));
+            await assertFails(updateDoc(doc(clientDb, 'stores', '101'), {
+                'widgetRuntimeStatus.seenCount': 999,
             }));
             await assertFails(setDoc(
                 doc(clientDb, 'answerlattice_auditLogs', `reserved-${clientDb === ownerDb ? 'owner' : 'platform'}`),
@@ -117,13 +136,15 @@ async function run(): Promise<void> {
                 scopes: ['public:read'],
             },
         })));
+        await assertFails(setDoc(doc(ownerDb, 'stores', '104'), storeData(104, {
+            widgetAllowedOrigins: [],
+            widgetConfig: { headerTitle: 'Bypassed API' },
+            widgetConfigVersion: 1,
+        })));
 
-        const ordinaryUpdate = updateDoc(doc(ownerDb, 'stores', '101'), { productName: 'Updated product' });
-        if (IS_SHARED_RULES) {
-            await assertSucceeds(ordinaryUpdate);
-        } else {
-            await assertFails(ordinaryUpdate);
-        }
+        await assertFails(updateDoc(doc(ownerDb, 'stores', '101'), {
+            productName: 'Updated product',
+        }));
 
         process.stdout.write(`Answerlattice Public API ${RULES_FILE} rules tests passed.\n`);
     } finally {

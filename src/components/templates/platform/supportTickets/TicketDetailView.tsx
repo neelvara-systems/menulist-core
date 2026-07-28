@@ -16,7 +16,11 @@ import SupportTicketCategory from '@organisms/SupportTicket/SupportTicketCategor
 import SupportTicketPriority from '@organisms/SupportTicket/SupportTicketPriority';
 import SupportTicketStatus from '@organisms/SupportTicket/SupportTicketStatus';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
+import {
+    getSupportTicketTimestampMillis,
+    SUPPORT_TICKET_STATUS,
+    SupportTicketType,
+} from '@type/supportTicket';
 import { Badge, Button, Card, Drawer, Flex, Grid, Image as AntImage, message, Tag, theme, Tooltip, Typography } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -134,9 +138,8 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 const persistedTicket = res as SupportTicketType;
                 const persistedStatuses = Array.isArray(persistedTicket.statuses) ? persistedTicket.statuses : [];
                 const latestStatus = persistedStatuses[persistedStatuses.length - 1];
-                const latestStatusMillis = latestStatus?.timestamp && typeof latestStatus.timestamp.toMillis === 'function'
-                    ? latestStatus.timestamp.toMillis()
-                    : persistedStatuses.length;
+                const latestStatusMillis = getSupportTicketTimestampMillis(latestStatus?.timestamp)
+                    ?? persistedStatuses.length;
                 const matchedEntityIds = persistedTicket.escalationContext?.retrievalDebug?.canonicalResult?.matchedEntityIds || [];
                 const resolutionEntityId = matchedEntityIds.find((value: unknown): value is string => (
                     typeof value === 'string' && Boolean(value.trim())

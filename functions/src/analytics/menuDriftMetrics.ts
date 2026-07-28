@@ -28,7 +28,11 @@ import {
     type MenuDriftSummaryContribution,
 } from '../sharedData/menuDriftContribution';
 import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
-import { logTelemetry, startTimer } from '../telemetry/logger';
+import {
+    logMenuDriftCostTelemetry,
+    logTelemetry,
+    startTimer,
+} from '../telemetry/logger';
 import { analyticsLogger, getAnalyticsErrorContext, getAnalyticsIdContext } from './analyticsDiagnostics';
 
 // ================================================================
@@ -101,13 +105,10 @@ const METRICS_WRITE_BATCH_SIZE = 400;
 // HELPER FUNCTIONS
 // ================================================================
 
-/**
- * Get date string N days ago
- */
-function getDateNDaysAgo(days: number, now = new Date()): string {
-    const date = new Date(now.getTime());
-    date.setDate(date.getDate() - days);
-    return date.toISOString().split('T')[0];
+export function getMenuDriftWindowStart(windowEnd: Timestamp): Timestamp {
+    return Timestamp.fromMillis(
+        windowEnd.toMillis() - ROLLING_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+    );
 }
 
 /**
@@ -370,7 +371,8 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
         const windowEndTimestamp = Timestamp.now();
         const windowEndDate = windowEndTimestamp.toDate();
         const windowEnd = windowEndDate.toISOString().split('T')[0];
-        const windowStart = getDateNDaysAgo(ROLLING_WINDOW_DAYS, windowEndDate);
+        const windowStartTimestamp = getMenuDriftWindowStart(windowEndTimestamp);
+        const windowStart = windowStartTimestamp.toDate().toISOString().split('T')[0];
 
         for (const sId of storeIds) {
             const storeInfo = storesSummary[sId];
@@ -409,7 +411,7 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
                     tId,
                     sId,
                     activeProjectIds,
-                    Timestamp.fromDate(new Date(windowStart)),
+                    windowStartTimestamp,
                     windowEndTimestamp,
                 );
                 result.readsCount += storeDrift.reads;
@@ -477,20 +479,16 @@ export async function processMenuDriftMetricsForAllStores(): Promise<DriftMetric
             completedAt: Timestamp.now(),
         });
 
-        // Also log cost telemetry per Category F of Internal Tracking System
-        const today = new Date().toISOString().split('T')[0];
-        await db.collection(DB_COLLECTIONS.SYSTEM_TELEMETRY).doc(`mol_costs_${today}`).set({
-            type: 'mol_cost_telemetry',
-            functionName: 'menuDriftMetrics',
-            date: today,
+        // Also log best-effort cost telemetry per Category F of the Internal
+        // Tracking System. Observability failure must not retry completed work.
+        await logMenuDriftCostTelemetry({
             readsCount: result.readsCount,
             writesCount: result.writesCount,
             executionMs: timer.getElapsed(),
             storesProcessed: result.storesProcessed,
             itemsProcessed: result.itemsProcessed,
             errors: result.errors.length,
-            timestamp: FieldValue.serverTimestamp(),
-        }, { merge: true });
+        });
 
         return result;
     } catch (error: unknown) {

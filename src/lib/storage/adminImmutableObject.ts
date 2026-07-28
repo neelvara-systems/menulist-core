@@ -43,36 +43,57 @@ const MAX_DOWNLOAD_TOKEN_LENGTH = 512;
 
 export function isAdminImmutableObjectCreateConflict(error: unknown): boolean {
     if (!error || typeof error !== 'object') return false;
-    const candidate = error as { code?: unknown; statusCode?: unknown };
-    return candidate.code === 412
-        || candidate.code === '412'
-        || candidate.statusCode === 412
-        || candidate.statusCode === '412';
+    try {
+        const candidate = error as { code?: unknown; statusCode?: unknown };
+        return candidate.code === 412
+            || candidate.code === '412'
+            || candidate.statusCode === 412
+            || candidate.statusCode === '412';
+    } catch {
+        return false;
+    }
 }
+
+const normalizeAdminImmutableObjectSize = (value: unknown): number | null => {
+    if (typeof value === 'number') {
+        return Number.isSafeInteger(value) && value >= 0 ? value : null;
+    }
+    if (typeof value !== 'string' || !/^(0|[1-9]\d*)$/.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+};
 
 export function adminImmutableObjectMatchesUpload(
     existing: AdminImmutableObjectMetadata,
     expected: Pick<CreateOrReuseAdminImmutableObjectInput, 'buffer' | 'cacheControl' | 'contentType' | 'customMetadata'>,
 ): boolean {
-    if (Number(existing.size) !== expected.buffer.length) return false;
-    if (existing.cacheControl !== expected.cacheControl) return false;
-    if (existing.contentType !== expected.contentType) return false;
+    try {
+        if (normalizeAdminImmutableObjectSize(existing.size) !== expected.buffer.length) return false;
+        if (existing.cacheControl !== expected.cacheControl) return false;
+        if (existing.contentType !== expected.contentType) return false;
 
-    return Object.entries(expected.customMetadata).every(([key, value]) => (
-        existing.metadata?.[key] === value
-    ));
+        return Object.entries(expected.customMetadata).every(([key, value]) => (
+            existing.metadata?.[key] === value
+        ));
+    } catch {
+        return false;
+    }
 }
 
 export function getAdminImmutableObjectDownloadToken(
     metadata: AdminImmutableObjectMetadata,
 ): string | null {
-    const rawTokens = metadata.metadata?.[FIREBASE_DOWNLOAD_TOKEN_METADATA_KEY];
-    if (typeof rawTokens !== 'string') return null;
-    const token = rawTokens.split(',')[0]?.trim() || '';
-    if (!token || token.length > MAX_DOWNLOAD_TOKEN_LENGTH || /[\u0000-\u001F\u007F]/.test(token)) {
+    try {
+        const rawTokens = metadata.metadata?.[FIREBASE_DOWNLOAD_TOKEN_METADATA_KEY];
+        if (typeof rawTokens !== 'string') return null;
+        const token = rawTokens.split(',')[0]?.trim() || '';
+        if (!token || token.length > MAX_DOWNLOAD_TOKEN_LENGTH || /[\u0000-\u001F\u007F]/.test(token)) {
+            return null;
+        }
+        return token;
+    } catch {
         return null;
     }
-    return token;
 }
 
 export function buildAdminImmutableObjectDownloadUrl(

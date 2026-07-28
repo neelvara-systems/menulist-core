@@ -20,20 +20,28 @@ const METRIC_KEYS: Array<keyof OwnerBusinessAnalyticsPeriod['metrics']> = [
   'unavailableItemTaps',
 ];
 
-const toNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : 0;
+type UnknownRecord = Record<string, unknown>;
 
-const compactString = (value: unknown) => {
+const asRecord = (value: unknown): UnknownRecord | undefined =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as UnknownRecord
+    : undefined;
+
+const toNumber = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+
+const compactString = (value: unknown, maxLength = 160) => {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
-  return trimmed || undefined;
+  return trimmed ? trimmed.slice(0, maxLength) : undefined;
 };
 
 const compactLocalizedString = (value: unknown) => {
   const direct = compactString(value);
   if (direct) return direct;
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  return Object.values(value as Record<string, unknown>)
-    .map(compactString)
+  return Object.values(value as UnknownRecord)
+    .map((entry) => compactString(entry))
     .find(Boolean);
 };
 
@@ -63,36 +71,46 @@ const sortProjectsForIndex = (projects: ActiveProjectEntry[]) =>
     return getProjectName(a).localeCompare(getProjectName(b)) || a.projectId.localeCompare(b.projectId);
   });
 
-const readMetrics = (data: any) => ({
-  menuVisits: toNumber(data?.metrics?.menuVisits ?? data?.totalViews ?? data?.lifetimeMetrics?.totalViews),
-  itemClicks: toNumber(data?.metrics?.itemClicks ?? data?.totalClicks ?? data?.lifetimeMetrics?.totalClicks),
-  menuSessions: toNumber(data?.metrics?.menuSessions ?? data?.menuSessions ?? data?.lifetimeMetrics?.menuSessions),
-  engagedSessions: toNumber(data?.metrics?.engagedSessions ?? data?.engagedSessions ?? data?.lifetimeMetrics?.engagedSessions),
-  actionSessions: toNumber(data?.metrics?.actionSessions ?? data?.actionSessions ?? data?.lifetimeMetrics?.actionSessions),
-  searches: toNumber(data?.metrics?.searches ?? data?.totalSearches ?? data?.lifetimeMetrics?.totalSearches),
-  unavailableItemTaps: toNumber(data?.metrics?.unavailableItemTaps ?? data?.totalUnavailableItemTaps ?? data?.lifetimeMetrics?.totalUnavailableItemTaps),
-});
+const readMetrics = (value: unknown) => {
+  const data = asRecord(value);
+  const metrics = asRecord(data?.metrics);
+  const lifetimeMetrics = asRecord(data?.lifetimeMetrics);
+  return {
+    menuVisits: toNumber(metrics?.menuVisits ?? data?.totalViews ?? lifetimeMetrics?.totalViews),
+    itemClicks: toNumber(metrics?.itemClicks ?? data?.totalClicks ?? lifetimeMetrics?.totalClicks),
+    menuSessions: toNumber(metrics?.menuSessions ?? data?.menuSessions ?? lifetimeMetrics?.menuSessions),
+    engagedSessions: toNumber(metrics?.engagedSessions ?? data?.engagedSessions ?? lifetimeMetrics?.engagedSessions),
+    actionSessions: toNumber(metrics?.actionSessions ?? data?.actionSessions ?? lifetimeMetrics?.actionSessions),
+    searches: toNumber(metrics?.searches ?? data?.totalSearches ?? lifetimeMetrics?.totalSearches),
+    unavailableItemTaps: toNumber(metrics?.unavailableItemTaps ?? data?.totalUnavailableItemTaps ?? lifetimeMetrics?.totalUnavailableItemTaps),
+  };
+};
 
-const readTopItems = (data: any): OwnerBusinessAnalyticsPeriod['topItems'] => {
+const readTopItems = (value: unknown): OwnerBusinessAnalyticsPeriod['topItems'] => {
+  const data = asRecord(value);
   if (Array.isArray(data?.topItems)) {
-    return data.topItems.slice(0, 5).map((item: any) => {
+    return data.topItems.flatMap((candidate) => {
+      const item = asRecord(candidate);
+      if (!item) return [];
       const clicks = item.clicks ?? item.totalClicks;
       const views = item.views ?? item.totalViews;
+      const itemId = compactString(item.itemId ?? item.id ?? compactLocalizedString(item.name), 160);
+      if (!itemId) return [];
       return {
-        itemId: String(item.itemId || item.id || compactLocalizedString(item.name) || 'item'),
+        itemId,
         name: compactLocalizedString(item.name),
         value: toNumber(clicks ?? views ?? item.value),
-        signal: clicks != null ? 'clicks' : 'views',
+        signal: clicks != null ? 'clicks' as const : 'views' as const,
       };
-    });
+    }).filter((item) => item.value > 0).slice(0, 5);
   }
 
-  const clicksByItem = data?.clicksByItem && typeof data.clicksByItem === 'object' ? data.clicksByItem : null;
-  const viewsByItem = data?.viewsByItem && typeof data.viewsByItem === 'object' ? data.viewsByItem : null;
+  const clicksByItem = asRecord(data?.clicksByItem);
+  const viewsByItem = asRecord(data?.viewsByItem);
   const metricMap = clicksByItem || viewsByItem;
   if (!metricMap) return [];
 
-  const itemNames = data?.itemNames && typeof data.itemNames === 'object' ? data.itemNames : {};
+  const itemNames = asRecord(data?.itemNames) || {};
   const signal: 'clicks' | 'views' = clicksByItem ? 'clicks' : 'views';
   return Object.entries(metricMap)
     .map(([itemId, value]) => ({
@@ -106,28 +124,60 @@ const readTopItems = (data: any): OwnerBusinessAnalyticsPeriod['topItems'] => {
     .slice(0, 5);
 };
 
-const readTopCategories = (data: any): OwnerBusinessAnalyticsPeriod['topCategories'] => {
+const readTopCategories = (value: unknown): OwnerBusinessAnalyticsPeriod['topCategories'] => {
+  const data = asRecord(value);
   const source = Array.isArray(data?.topCategories) ? data.topCategories : [];
-  return source.slice(0, 5).map((category: any) => ({
-    categoryId: String(category.categoryId || category.id || compactLocalizedString(category.name) || 'category'),
-    name: compactLocalizedString(category.name),
-    value: toNumber(category.views ?? category.clicks ?? category.value),
-  }));
+  return source.flatMap((candidate) => {
+    const category = asRecord(candidate);
+    if (!category) return [];
+    const categoryId = compactString(category.categoryId ?? category.id ?? compactLocalizedString(category.name), 160);
+    const metricValue = toNumber(category.views ?? category.clicks ?? category.value);
+    return categoryId && metricValue > 0 ? [{
+      categoryId,
+      name: compactLocalizedString(category.name),
+      value: metricValue,
+    }] : [];
+  }).slice(0, 5);
 };
 
-const readTopSearches = (data: any): OwnerBusinessAnalyticsPeriod['topSearches'] => {
+const readTopSearches = (value: unknown): OwnerBusinessAnalyticsPeriod['topSearches'] => {
+  const data = asRecord(value);
   const source = Array.isArray(data?.topSearchTerms) ? data.topSearchTerms : [];
-  return source.slice(0, 5).map((term: any): { term: string; count: number } => ({
-    term: String(term.term || term.key || ''),
-    count: toNumber(term.count),
-  })).filter((term: { term: string; count: number }) => term.term);
+  return source.flatMap((candidate) => {
+    const entry = asRecord(candidate);
+    const term = compactString(entry?.term ?? entry?.key, 120);
+    const count = toNumber(entry?.count);
+    return term && count > 0 ? [{ term, count }] : [];
+  }).slice(0, 5);
 };
 
-function buildPeriod(params: {
+const readSourceQuality = (value: unknown): OwnerBusinessAnalyticsPeriod['sourceQuality'] => {
+  const data = asRecord(value);
+  const source = Array.isArray(data?.sourceQuality) ? data.sourceQuality : [];
+  return source.flatMap((candidate) => {
+    const entry = asRecord(candidate);
+    const sourceName = compactString(entry?.source, 80);
+    const visits = toNumber(entry?.visits);
+    const rawActionRate = entry?.actionRate;
+    const actionRate = typeof rawActionRate === 'number'
+      && Number.isFinite(rawActionRate)
+      && rawActionRate >= 0
+      && rawActionRate <= 1
+      ? rawActionRate
+      : undefined;
+    return sourceName && visits > 0 ? [{
+      source: sourceName,
+      visits,
+      ...(actionRate === undefined ? {} : { actionRate }),
+    }] : [];
+  }).slice(0, 5);
+};
+
+export function buildOwnerBusinessAnalyticsPeriod(params: {
   key: string;
   label: string;
   rangeLabel: string;
-  source: any;
+  source: unknown;
   sourceFactIds: string[];
   scope: 'store' | 'project';
   projectId?: string;
@@ -137,14 +187,14 @@ function buildPeriod(params: {
   if (!params.source) return undefined;
   const metrics = readMetrics(params.source);
   const hasData = Object.values(metrics).some((value) => value > 0);
-  const addProjectScope = <T extends Record<string, any>>(entry: T): T => ({
+  const addProjectScope = <T extends UnknownRecord>(entry: T): T => ({
     ...entry,
     ...(params.projectId ? { projectId: params.projectId } : {}),
     ...(params.projectName ? { projectName: params.projectName } : {}),
   });
-  const sourceQuality = Array.isArray(params.source.sourceQuality)
-    ? params.source.sourceQuality.slice(0, 5)
-    : undefined;
+  const source = asRecord(params.source);
+  if (!source) return undefined;
+  const sourceQuality = readSourceQuality(source);
   return {
     key: params.key,
     label: params.label,
@@ -159,7 +209,7 @@ function buildPeriod(params: {
     topCategories: readTopCategories(params.source)?.map(addProjectScope),
     topSearches: readTopSearches(params.source),
     sourceQuality,
-    freshnessLabel: params.source.lastUpdated ? 'Updated after store end of day' : 'Latest settled data',
+    freshnessLabel: source.lastUpdated ? 'Updated after store end of day' : 'Latest settled data',
     sourceFactIds: params.sourceFactIds,
   };
 }
@@ -244,9 +294,9 @@ function buildProjectPeriods(params: {
   projectId: string;
   projectName: string;
   localDate: string;
-  dashboardData: any;
+  dashboardData: unknown;
   dashboardDocId?: string;
-  todayData: any;
+  todayData: unknown;
   todayDocId?: string;
 }): Record<string, OwnerBusinessAnalyticsPeriod | undefined> {
   const dashboardSourceFactIds = params.dashboardDocId && params.dashboardData ? [`analytics_${params.dashboardDocId}`] : [];
@@ -256,80 +306,83 @@ function buildProjectPeriods(params: {
     projectId: params.projectId,
     projectName: params.projectName,
   };
-  const daily = params.dashboardData?.daily || params.dashboardData?.overview?.yesterday;
-  const wtd = params.dashboardData?.wtd || params.dashboardData?.overview?.wtd;
-  const mtd = params.dashboardData?.mtd || params.dashboardData?.overview?.mtd;
+  const dashboardData = asRecord(params.dashboardData);
+  const overview = asRecord(dashboardData?.overview);
+  const daily = dashboardData?.daily || overview?.yesterday;
+  const wtd = dashboardData?.wtd || overview?.wtd;
+  const mtd = dashboardData?.mtd || overview?.mtd;
+  const todayData = asRecord(params.todayData);
 
   return {
-    today: buildPeriod({
+    today: buildOwnerBusinessAnalyticsPeriod({
       key: 'today',
       label: 'Today',
-      rangeLabel: params.todayData?.date || params.todayData?.localDate || params.localDate,
-      source: params.todayData ? { ...params.todayData, lastUpdated: params.todayData.lastUpdated || params.todayData.updatedAt || params.todayData.modifiedOn } : null,
+      rangeLabel: compactString(todayData?.date ?? todayData?.localDate, 40) || params.localDate,
+      source: todayData ? { ...todayData, lastUpdated: todayData.lastUpdated || todayData.updatedAt || todayData.modifiedOn } : null,
       sourceFactIds: todaySourceFactIds,
       ...projectScope,
     }),
-    yesterday: buildPeriod({
+    yesterday: buildOwnerBusinessAnalyticsPeriod({
       key: 'yesterday',
       label: 'Yesterday',
-      rangeLabel: daily?.date || 'Yesterday',
+      rangeLabel: compactString(asRecord(daily)?.date, 40) || 'Yesterday',
       source: daily,
       sourceFactIds: dashboardSourceFactIds,
       ...projectScope,
     }),
-    thisWeek: buildPeriod({
+    thisWeek: buildOwnerBusinessAnalyticsPeriod({
       key: 'thisWeek',
       label: 'This week',
-      rangeLabel: formatDateRange(wtd?.weekStart, wtd?.weekEnd),
+      rangeLabel: formatDateRange(compactString(asRecord(wtd)?.weekStart, 40), compactString(asRecord(wtd)?.weekEnd, 40)),
       source: wtd,
       sourceFactIds: dashboardSourceFactIds,
       ...projectScope,
     }),
-    lastWeek: buildPeriod({
+    lastWeek: buildOwnerBusinessAnalyticsPeriod({
       key: 'lastWeek',
       label: 'Last week',
-      rangeLabel: formatDateRange(params.dashboardData?.weekly?.weekStart, params.dashboardData?.weekly?.weekEnd),
-      source: params.dashboardData?.weekly,
+      rangeLabel: formatDateRange(compactString(asRecord(dashboardData?.weekly)?.weekStart, 40), compactString(asRecord(dashboardData?.weekly)?.weekEnd, 40)),
+      source: dashboardData?.weekly,
       sourceFactIds: dashboardSourceFactIds,
       ...projectScope,
     }),
-    thisMonth: buildPeriod({
+    thisMonth: buildOwnerBusinessAnalyticsPeriod({
       key: 'thisMonth',
       label: 'This month',
-      rangeLabel: formatDateRange(mtd?.monthStart, mtd?.monthEnd),
+      rangeLabel: formatDateRange(compactString(asRecord(mtd)?.monthStart, 40), compactString(asRecord(mtd)?.monthEnd, 40)),
       source: mtd,
       sourceFactIds: dashboardSourceFactIds,
       ...projectScope,
     }),
-    lastMonth: buildPeriod({
+    lastMonth: buildOwnerBusinessAnalyticsPeriod({
       key: 'lastMonth',
       label: 'Last month',
-      rangeLabel: formatDateRange(params.dashboardData?.monthly?.monthStart, params.dashboardData?.monthly?.monthEnd),
-      source: params.dashboardData?.monthly,
+      rangeLabel: formatDateRange(compactString(asRecord(dashboardData?.monthly)?.monthStart, 40), compactString(asRecord(dashboardData?.monthly)?.monthEnd, 40)),
+      source: dashboardData?.monthly,
       sourceFactIds: dashboardSourceFactIds,
       ...projectScope,
     }),
-    last7Days: buildPeriod({
+    last7Days: buildOwnerBusinessAnalyticsPeriod({
       key: 'last7Days',
       label: 'Last 7 days',
-      rangeLabel: formatDateRange(wtd?.weekStart, wtd?.weekEnd),
+      rangeLabel: formatDateRange(compactString(asRecord(wtd)?.weekStart, 40), compactString(asRecord(wtd)?.weekEnd, 40)),
       source: wtd,
       sourceFactIds: dashboardSourceFactIds,
       ...projectScope,
     }),
-    last30Days: buildPeriod({
+    last30Days: buildOwnerBusinessAnalyticsPeriod({
       key: 'last30Days',
       label: 'Last 30 days',
-      rangeLabel: formatDateRange(mtd?.monthStart, mtd?.monthEnd),
+      rangeLabel: formatDateRange(compactString(asRecord(mtd)?.monthStart, 40), compactString(asRecord(mtd)?.monthEnd, 40)),
       source: mtd,
       sourceFactIds: dashboardSourceFactIds,
       ...projectScope,
     }),
-    overall: buildPeriod({
+    overall: buildOwnerBusinessAnalyticsPeriod({
       key: 'overall',
       label: 'Overall',
       rangeLabel: 'All time',
-      source: params.dashboardData?.overall,
+      source: dashboardData?.overall,
       sourceFactIds: dashboardSourceFactIds,
       ...projectScope,
     }),
@@ -465,6 +518,10 @@ export async function buildOwnerBusinessAnalyticsIndex(params: {
   const primaryDashboardData = dashboardEntries
     .map((entry) => dashboardDataByProject.get(entry.project.projectId)?.data)
     .find(Boolean) || null;
+  const primaryDashboardRecord = asRecord(primaryDashboardData);
+  const primaryOverview = asRecord(primaryDashboardRecord?.overview);
+  const primaryYesterday = asRecord(primaryOverview?.yesterday);
+  const primaryDaily = asRecord(primaryDashboardRecord?.daily);
   const analyticsDocIds = sourceRefs.map((ref) => ref.docId).filter(Boolean) as string[];
 
   return {
@@ -474,7 +531,7 @@ export async function buildOwnerBusinessAnalyticsIndex(params: {
       sId: params.sId,
       localDate: params.localDate,
       generatedAt: params.generatedAt,
-      lastSettledLocalDate: primaryDashboardData?.overview?.yesterday?.date || primaryDashboardData?.daily?.date,
+      lastSettledLocalDate: compactString(primaryYesterday?.date ?? primaryDaily?.date, 40),
       projectScope: {
         totalActiveProjects: params.activeProjects.length,
         indexedProjectCount: indexedProjects.length,

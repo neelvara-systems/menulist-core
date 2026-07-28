@@ -34,11 +34,14 @@ function verifySchedulerDal(dal) {
     'Read-only DAL for scheduler monitoring dashboard.',
     'getSchedulerRunHistory(',
     'getSchedulerHealthSummary()',
+    'getSchedulerRunsLast7Days()',
     'getSchedulerRunDetails(runId: string)',
     'getSchedulerSettlementSummary(maxResults: number = 50)',
     'getSchedulerDashboardSnapshot(',
     'collection(firebaseClient, DB_COLLECTIONS.SCHEDULER_RUN_LOGS)',
     "orderBy('startedAt', 'desc')",
+    "where('startedAt', '>=', sevenDaysAgo)",
+    'getCountFromServer(',
     'constraints.push(limit(historyLimit))',
     'SCHEDULER_HISTORY_LIMIT = 30',
     'query(logsRef, orderBy(\'startedAt\', \'desc\'), limit(10))',
@@ -51,7 +54,7 @@ function verifySchedulerDal(dal) {
     'await assertCurrentPlatformAccess();',
     "throw new Error('ops_scheduler_run_history_unavailable')",
     "throw new Error('ops_scheduler_settlement_summary_unavailable')",
-    'buildSchedulerHealthSummaryFromRuns(runHistory.slice(0, 10))',
+    'buildSchedulerHealthSummaryFromRuns(runHistory.slice(0, 10), runsLast7Days)',
     "logOpsFailure('ops_scheduler_run_history_load_failed'",
     "logOpsFailure('ops_scheduler_health_summary_load_failed'",
     "logOpsFailure('ops_scheduler_run_details_load_failed'",
@@ -122,7 +125,7 @@ function verifyDesktopMonitor(component) {
     'return `[object:keys=${Object.keys(value as Record<string, unknown>).length}]`',
     'function formatStoredSchedulerError(value: unknown): string',
     'function formatTaskError(value: unknown): string',
-    'function flattenDetails(details: Record<string, any> | undefined): string',
+    'function flattenDetails(details: Record<string, unknown> | undefined): string',
     'formatTaskError(task.error) || flattenDetails(task.details)',
     'formatStoredSchedulerError(state.error) || \'failed\'',
     'formatStoredSchedulerError(err.error) || \'failed\'',
@@ -259,11 +262,14 @@ function verifyTypes(types) {
     'export interface SchedulerRunLog',
     'manualScope?: { tId?: string; sId?: string };',
     'errors: Array<{',
-    'details?: Record<string, any>;',
+    'details?: Record<string, unknown>;',
     'export interface SchedulerSettlementSummary',
     'export interface SchedulerDashboardSnapshot',
     'Historical MenuList run logs may contain this task. New Answerlattice runs',
     'are owned by functions-answerlattice and should not be written here.',
+    "| 'owner_business_health'",
+    "| 'messaging_intake'",
+    "| 'system_alert_retention_cleanup'",
   ].forEach((token) => assertIncludes(types, token, 'Scheduler Monitor types'));
 }
 
@@ -320,6 +326,7 @@ function verifySchedulerMonitorBoundary() {
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
     recoveryResponse: read('src/lib/ops/schedulerRecoveryResponse.ts'),
     schedulerFunction: read('functions/src/decisionBlocksScoring.ts'),
+    maintenanceScheduler: read('functions/src/schedulers/menulistMaintenanceScheduler.ts'),
     sessionProvider: read('src/providers/sessionProvider.tsx'),
     sessionScopeBoundary: read('src/lib/multiOutlet/sessionProviderScopeBoundary.ts'),
   };
@@ -348,6 +355,10 @@ function verifySchedulerMonitorBoundary() {
     'completeStoreNightlySchedulerLease(',
     'storeSchedulerLeaseStatus,',
   ].forEach((token) => assertIncludes(files.schedulerFunction, token, 'Manual store recovery server lease'));
+  [
+    "import { getMaintenanceRunStatus } from './maintenanceRunLogBoundary';",
+    'status: getMaintenanceRunStatus(params.summaries),',
+  ].forEach((token) => assertIncludes(files.maintenanceScheduler, token, 'Maintenance scheduler run-log status'));
   assertNotIncludes(
     files.schedulerFunction,
     '`scheduled_store_${runStartTime}_${tId}_${sId}`,\n                new Date(runStartTime),',

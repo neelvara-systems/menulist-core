@@ -171,6 +171,29 @@ Do not market KitStamp until:
 - support/help docs match actual implementation
 - file-based adapters are described as handoff packages, not live sync
 
+### Deferred Distribution Hypothesis
+
+The July 28 [Product Portfolio Distribution Insight
+Ledger](../strategy/product-portfolio-distribution-insight-ledger.md) retains
+one possible future channel shape without authorizing execution:
+
+- target content operators and agencies that repeatedly lose source facts,
+  approvals, translations, filenames, and usage notes during handoff;
+- use high-intent workflow demonstrations such as preparing a menu-item,
+  catalog, marketplace-listing, or agency-client kit;
+- package the viewer, handoff problem, title/thumbnail, source evidence, final
+  approved artifact, and CTA before producing a walkthrough;
+- treat YouTube workflow demos and X/LinkedIn-style operator education as
+  hypotheses to test only after the product is implemented and launch-ready;
+- measure qualified operator conversations, completed reviewed kits, handoff
+  acceptance, and retained use—not views or followers.
+
+Do not create KitStamp social accounts, publish product claims, recruit users,
+or run a creator/affiliate program while implementation, domain, billing,
+export, approval, support, and public-site gates remain incomplete. Never use
+fake-region accounts, proxies, aged accounts, engagement manipulation,
+undisclosed partnerships, or guaranteed growth claims.
+
 ## 11. Rejected Market Claims
 
 Do not claim:

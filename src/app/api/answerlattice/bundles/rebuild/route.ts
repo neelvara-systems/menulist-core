@@ -6,6 +6,7 @@ import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl
 import { buildAnswerlatticeContextBundleServer } from '@lib/answerlattice/contextBundleBuilderServer';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -49,14 +50,32 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return bundleRebuildJson({ error: 'Answerlattice workspace is not available.' }, 400);
     }
     const { tenantId, storeId } = scope;
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return bundleRebuildJson({ error: 'Forbidden' }, 403);
+    }
 
     const rateLimit = await checkRateLimit({
-        key: buildAnswerlatticeRateLimitKey('answerlattice-context-bundle:rebuild', tenantId, storeId),
+        key: buildAnswerlatticeRateLimitKey(
+            'answerlattice-context-bundle:rebuild',
+            userId,
+            tenantId,
+            storeId,
+        ),
         limit: 4,
         window: 60,
+        failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
-        return bundleRebuildJson({ error: 'Too many rebuild requests.' }, 429);
+        const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+        return bundleRebuildJson(
+            {
+                error: providerUnavailable
+                    ? 'Compiled context rebuild is temporarily unavailable.'
+                    : 'Too many rebuild requests.',
+            },
+            providerUnavailable ? 503 : 429,
+        );
     }
 
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.REBUILD_CONTEXT);

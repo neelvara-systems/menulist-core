@@ -127,6 +127,7 @@ import {
 } from "@lib/menu/projectMutationAuthority";
 import { buildProjectUploadObjectId } from "@lib/menu/projectUploadIdentity";
 import { validateProjectUploadDataUrl } from "@lib/menu/projectUploadPayload";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import {
     normalizeTimeSlotPreset,
     normalizeTimeSlotPresetId,
@@ -1615,6 +1616,8 @@ export type ProjectDeleteResult = {
     deleted: true;
 };
 
+const PROJECT_DELETE_RESPONSE_MAX_BYTES = 16 * 1024;
+
 export function isProjectDeleteResult(
     result: unknown,
     expectedProjectId?: string | number,
@@ -1902,9 +1905,9 @@ const runUpdateProject = async (data: Partial<Project>, options: ProjectUpdateOp
             try {
                 const projectForValidation = buildProjectAfterPartialUpdate(freshProject, persistedUpdateData);
                 mceResult = mceRuntime.mceValidate({
-                    projectData: projectForValidation as Record<string, any>,
+                    projectData: projectForValidation,
                     isOutlet: false,
-                    oldProjectData: freshProject as Record<string, any>,
+                    oldProjectData: freshProject,
                 });
                 persistedUpdateData._mce = mceRuntime.toMCEMetadata(mceResult);
             } catch (error) {
@@ -2144,6 +2147,33 @@ export const setProjectActive = async (projectId: string, active: boolean) => {
                 scope.projectId,
             );
             const summaryDocRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${scope.sId}`);
+            const currentProjectSnap = await getDoc(projectDocRef);
+            const currentProject = currentProjectSnap.exists()
+                ? currentProjectSnap.data() as Project
+                : null;
+            if (
+                !currentProject
+                || currentProject.deleted === true
+                || !projectDocumentMatchesScope(currentProject, scope)
+            ) {
+                throw new Error('Project active identity mismatch');
+            }
+
+            // Linked outlet documents are server-write-only. Route their
+            // active-state mutation through the same protected save path used
+            // by all other linked outlet changes so current master policy,
+            // tenant/store authority, summary truth, and cache effects are
+            // evaluated together.
+            if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && currentProject.masterProjectId) {
+                await runUpdateProject(
+                    { projectId, active },
+                    {
+                        expectedScope: { tId: session.tId, sId: session.sId },
+                        syncPublicSummary: true,
+                    },
+                );
+                return { projectId, active };
+            }
 
             const transactionResult = await runTransaction(firebaseClient, async (transaction) => {
                 const projectSnap = await transaction.get(projectDocRef);
@@ -2623,9 +2653,9 @@ export const publishProject = async (
                     if (publishMceRuntime) {
                         try {
                             mceResult = publishMceRuntime.mceValidate({
-                                projectData: nextProject as Record<string, any>,
+                                projectData: nextProject,
                                 isOutlet: false,
-                                oldProjectData: freshProject as Record<string, any>,
+                                oldProjectData: freshProject,
                             });
                             persistedPublishData._mce = publishMceRuntime.toMCEMetadata(mceResult);
                         } catch (error) {
@@ -3099,172 +3129,43 @@ export const uploadFile = async (
  * Delete a project (soft delete)
  * 
  * @param projectId - Project ID to delete
- * @param options - Optional configuration
- * @param options.skipLinkedOutletCheck - Set to true if caller already verified
- *        no linked outlets using canHaveLinkedOutlets(tenantDetails).
- *        This avoids expensive Firestore query when tenant context is available.
- * 
- * @example
- * ```typescript
- * // UI component with tenant context
- * const { tenantDetails } = useContext(PlatformGlobalDataContext);
- * 
- * // Early-exit optimization: skip expensive query if no multi-chain setup
- * const skipCheck = !canHaveLinkedOutlets(tenantDetails);
- * await deleteProject(projectId, { skipLinkedOutletCheck: skipCheck });
- * ```
+ * Deletion is server-authoritative because the linked-outlet check must run
+ * in the same Firestore transaction as the soft-delete write.
  */
-export const deleteProject = async (
-    projectId: string,
-    options?: { skipLinkedOutletCheck?: boolean }
-) => {
+export const deleteProject = async (projectId: string) => {
     const result = await apiCallComposer(
         async () => {
-            const session = await getActiveSession();
-            const scope = normalizeProjectDocumentScope({ tId: session.tId, sId: session.sId, projectId });
-            if (!scope) throw new Error('Invalid project deletion scope');
-            const dataDocRef = doc(
-                firebaseClient,
-                DATA_COLLECTION,
-                scope.tId,
-                scope.sId,
-                scope.projectId,
-            );
-            const summaryDocRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${scope.sId}`);
-
-            // Multi-Outlet Protection: Block deletion of inherited projects (Feature #4C)
-            if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
-                const projSnap = await getDoc(dataDocRef);
-                if (!projSnap.exists() || !projectDocumentMatchesScope(projSnap.data(), scope)) {
-                    throw new Error('Project deletion identity mismatch');
-                }
-                if (projSnap.data()?.masterProjectId) {
-                    throw new Error(
-                        "Cannot delete an inherited outlet project. " +
-                        "Use 'Deactivate' to hide it, or contact HQ to remove the master project.",
-                    );
-                }
-
-                // Block deletion of master projects with linked outlets
-                if (!options?.skipLinkedOutletCheck) {
-                    const { hasLinkedOutlets } = await import("@database/multiOutlet");
-                    const hasOutlets = await hasLinkedOutlets(projectId);
-                    if (hasOutlets) {
-                        throw new Error(
-                            "Cannot delete this project: It is linked as a master to one or more outlet menus. " +
-                            "Please unlink or reassign all outlets before deleting.",
-                        );
-                    }
-                }
-            }
-
-            const transactionResult = await runTransaction(firebaseClient, async (transaction) => {
-                const projectDoc = await transaction.get(dataDocRef);
-                const summaryDoc = await transaction.get(summaryDocRef);
-                if (!projectDoc.exists() || !projectDocumentMatchesScope(projectDoc.data(), scope)) {
-                    throw new Error('Project deletion identity mismatch');
-                }
-                if (projectDoc.data().deleted === true) throw new Error('Project is already deleted');
-
-                const summaryProjects = summaryDoc.exists()
-                    ? filterProjectsSummaryMapForScope(
-                        extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>),
-                        scope,
-                    )
-                    : {};
-                if (FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING) {
-                    const currentSummary = summaryProjects[projectId];
-                    if (
-                        currentSummary?.isSpecialMenu === true
-                        && (
-                            currentSummary.specialMenuStatus === "active"
-                            || currentSummary.specialMenuStatus === "scheduled"
-                        )
-                    ) {
-                        throw new Error("End or cancel this special menu before deleting it.");
-                    }
-                    for (const [smId, smData] of Object.entries(summaryProjects) as [string, any][]) {
-                        if (
-                            smData.isSpecialMenu
-                            && smData.specialMenuBaseProjectId === projectId
-                            && smData.specialMenuStatus !== "expired"
-                            && smData.specialMenuStatus !== "cancelled"
-                        ) {
-                            throw new Error(
-                                `Cannot delete this project: It is referenced by special menu "${getLocalizedText(
-                                    smData.specialMenuDisplayName,
-                                    undefined,
-                                    resolveProjectTextLanguage(smData.specialMenuDisplayName, 'en'),
-                                    smId,
-                                )}". Cancel or wait for the special menu to expire first.`,
-                            );
-                        }
-                    }
-                }
-
-                const currentSummary = summaryProjects[projectId];
-                const fallbackDefaultEntry = currentSummary?.isDefault === true
-                    ? Object.entries(summaryProjects).find(([candidateProjectId, candidateSummary]) => (
-                        candidateProjectId !== projectId
-                        && candidateSummary?.isSpecialMenu !== true
-                        && candidateSummary?.active !== false
-                    )) || Object.entries(summaryProjects).find(([candidateProjectId, candidateSummary]) => (
-                        candidateProjectId !== projectId
-                        && candidateSummary?.isSpecialMenu !== true
-                    )) || null
-                    : null;
-                const deletedSummary = currentSummary
-                    ? stripUndefinedProjectSummaryFields(currentSummary)
-                    : {};
-                const updateData = {
-                    deleted: true,
-                    deletedAt: Timestamp.now(),
-                    active: false,
-                    ...(Object.keys(deletedSummary).length ? { deletedSummary } : {}),
-                };
-                const summaryUpdate: Record<string, any> = {
-                    lastUpdated: serverTimestamp(),
-                    ...buildSummaryProjectDeletePayload(projectId, deleteField()),
-                };
-                const remainingSummaryProjects = { ...summaryProjects };
-                delete remainingSummaryProjects[projectId];
-                summaryUpdate.specialMenuNextTransitionAt = resolveNextSpecialMenuTransitionAt(
-                    remainingSummaryProjects,
-                ) || deleteField();
-                if (fallbackDefaultEntry) {
-                    const [fallbackProjectId, fallbackSummary] = fallbackDefaultEntry;
-                    const fallbackDefaultSummary = stripUndefinedProjectSummaryFields({
-                        ...fallbackSummary,
-                        isDefault: true,
-                        active: fallbackSummary.active ?? true,
-                        name: fallbackSummary.name || 'Untitled',
-                    }) as ProjectSummaryData;
-                    Object.assign(summaryUpdate, buildSummaryProjectPayload(fallbackProjectId, fallbackDefaultSummary));
-                }
-
-                transaction.set(dataDocRef, updateData, { merge: true });
-                transaction.set(summaryDocRef, summaryUpdate, { merge: true });
-                return {
-                    fallbackProjectId: fallbackDefaultEntry?.[0],
-                    updateData,
-                };
+            const response = await fetch("/api/projects/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ projectId }),
+                cache: "no-store",
+                credentials: "same-origin",
             });
-
-            await revalidateProjectSummaryMutation(
-                projectId,
-                transactionResult.fallbackProjectId ? [transactionResult.fallbackProjectId] : [],
-                { cacheContext: 'deleteProject' },
+            const responseBody = await readJsonResponseWithLimit<unknown>(
+                response,
+                PROJECT_DELETE_RESPONSE_MAX_BYTES,
             );
-            const { updateData } = transactionResult;
-
-            // Security Audit: Log project deletion
-            logger.security('Project Deleted', {
-                projectId,
-                action: 'DELETE_PROJECT',
-                deletedAt: updateData.deletedAt.toDate().toISOString(),
-            }, 'medium');
-
-            return { projectId, ...updateData };
+            if (!response.ok) {
+                const message = responseBody && typeof responseBody === "object"
+                    && !Array.isArray(responseBody)
+                    && typeof (responseBody as { error?: unknown }).error === "string"
+                    ? (responseBody as { error: string }).error
+                    : "Project deletion failed";
+                throw createProjectPersistenceStatusError(
+                    "project_delete_rejected",
+                    response.status,
+                    message,
+                );
+            }
+            if (!isProjectDeleteResult(responseBody, projectId)) {
+                throw createProjectPersistenceStatusError(
+                    "project_delete_response_invalid",
+                    response.status,
+                    "Project deletion failed",
+                );
+            }
+            return responseBody;
         },
         projectId,
         "deleteProject",

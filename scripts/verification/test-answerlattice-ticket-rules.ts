@@ -9,6 +9,7 @@ import {
     ANSWERLATTICE_TICKET_MESSAGE_LIMIT,
     ANSWERLATTICE_TICKET_STATUS_HISTORY_LIMIT,
 } from '@lib/answerlattice/supportTicketLifecycle';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const RULES_FILE = process.env.ANSWERLATTICE_RULES_FILE || 'firestore-answerlattice.rules';
@@ -111,6 +112,7 @@ async function run(): Promise<void> {
             (_, index) => message(`history-${index}`),
         );
         await testEnv.withSecurityRulesDisabled(async (context) => {
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
             await setDoc(doc(context.firestore(), 'supportTickets', 'message-limit-ticket'), ticket({
                 messages: appendableMessages,
                 statuses: maximumStatuses,

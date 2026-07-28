@@ -29,6 +29,7 @@ import {
     ANSWERLATTICE_PREDICTIVE_CONSTRAINTS,
     AnswerlatticePredictiveTrigger,
 } from "@type/answerlattice";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_PREDICTIVE_TRIGGERS;
 const SUMMARY_COLLECTION = DB_COLLECTIONS.PLATFORM_SUMMARY;
@@ -160,7 +161,7 @@ const rebuildPredictiveTriggerSummaryAfterCommit = async (
             '[Predictive Trigger DAL] Post-commit summary rebuild failed',
             new Error('answerlattice_predictive_trigger_summary_post_commit_failed'),
             {
-                errorName: error instanceof Error ? error.name : typeof error,
+                errorName: getBoundedErrorName(error) || typeof error,
                 operation: reason,
                 hasTenantScope: Number.isSafeInteger(scope.tId) && scope.tId > 0,
                 hasStoreScope: Number.isSafeInteger(scope.sId) && scope.sId > 0,

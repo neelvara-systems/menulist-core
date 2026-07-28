@@ -5,7 +5,7 @@ import {
     assertSucceeds,
     initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-todo-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -17,6 +17,19 @@ async function run(): Promise<void> {
         firestore: { rules: fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8') },
     });
     try {
+        await environment.withSecurityRulesDisabled(async (context) => {
+            const db = context.firestore();
+            await setDoc(doc(db, 'todos', '1', '10', 'todo-1'), {
+                sId: 10,
+                tId: 1,
+                title: 'Historical task',
+            });
+            await setDoc(doc(db, 'todosMetadata', 'data', '1', '10'), {
+                statuses: [{ id: 'open', name: 'Open', color: '#ffffff' }],
+                tags: [],
+            });
+        });
+
         const ownerDb = environment.authenticatedContext('owner-1', {
             tenantId: '1',
             storeId: '10',
@@ -34,12 +47,17 @@ async function run(): Promise<void> {
         const todoRef = doc(ownerDb, 'todos', '1', '10', 'todo-1');
         const configRef = doc(ownerDb, 'todosMetadata', 'data', '1', '10');
 
-        await assertSucceeds(setDoc(todoRef, { title: 'Call supplier', tId: 1, sId: 10 }));
         await assertSucceeds(getDoc(todoRef));
-        await assertSucceeds(setDoc(configRef, {
-            statuses: [{ id: 'open', name: 'Open', color: '#ffffff' }],
-            tags: [],
+        await assertSucceeds(getDoc(configRef));
+        await assertFails(setDoc(doc(ownerDb, 'todos', '1', '10', 'todo-2'), {
+            sId: 10,
+            tId: 1,
+            title: 'Reactivated task',
         }));
+        await assertFails(updateDoc(todoRef, { title: 'Changed historical task' }));
+        await assertFails(deleteDoc(todoRef));
+        await assertFails(setDoc(configRef, { tags: [] }, { merge: true }));
+        await assertFails(deleteDoc(configRef));
 
         await assertFails(getDoc(doc(foreignDb, 'todos', '1', '10', 'todo-1')));
         await assertFails(setDoc(doc(foreignDb, 'todos', '1', '10', 'todo-2'), { title: 'Foreign' }));

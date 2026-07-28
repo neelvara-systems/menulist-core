@@ -9,11 +9,21 @@ import type {
 
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
+function asRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+}
+
 function resolveText(value: unknown, fallback = ""): string {
     if (typeof value === "string") return value.trim() || fallback;
     if (value && typeof value === "object") {
-        const first = Object.values(value as Record<string, unknown>).find((entry) => typeof entry === "string" && entry.trim());
-        return typeof first === "string" ? first.trim() : fallback;
+        try {
+            const first = Object.values(asRecord(value)).find((entry) => typeof entry === "string" && entry.trim());
+            return typeof first === "string" ? first.trim() : fallback;
+        } catch {
+            return fallback;
+        }
     }
     return fallback;
 }
@@ -27,39 +37,54 @@ function parsePrice(value: unknown): number | null {
     return null;
 }
 
-function getTodayHoursLabel(storeData: any): { isOpenToday: boolean; label?: string } {
+function getTodayHoursLabel(storeData: unknown): { isOpenToday: boolean; label?: string } {
     const todayKey = DAY_KEYS[new Date().getDay()];
-    const value = storeData?.workingHours?.[todayKey];
-    if (!value || String(value).toLowerCase() === "closed") {
+    const workingHours = asRecord(asRecord(storeData).workingHours);
+    const value = workingHours[todayKey];
+    if (typeof value !== "string" || !value.trim() || value.trim().toLowerCase() === "closed") {
         return { isOpenToday: false, label: "Closed today" };
     }
-    return { isOpenToday: true, label: String(value).replace("-", " - ") };
+    return { isOpenToday: true, label: value.trim().replace("-", " - ") };
 }
 
-function buildMenuLink(storeData: any, projectName: string): string | undefined {
-    if (!storeData?.subdomain && !storeData?.customDomain) return undefined;
+function buildMenuLink(storeData: unknown, projectName: string): string | undefined {
+    const store = asRecord(storeData);
+    const subdomain = typeof store.subdomain === "string" ? store.subdomain : "";
+    const customDomain = typeof store.customDomain === "string" ? store.customDomain : "";
+    if (!subdomain && !customDomain) return undefined;
     try {
-        return generateProjectUrl(storeData.subdomain, storeData.customDomain, projectName, false);
+        return generateProjectUrl(subdomain, customDomain, projectName, false);
     } catch {
         return undefined;
     }
 }
 
-function extractMenuItems(projectData: any, currencySymbol?: string): GrowthOSMenuItemFact[] {
+function extractMenuItems(projectData: unknown, currencySymbol?: string): GrowthOSMenuItemFact[] {
     const items: GrowthOSMenuItemFact[] = [];
-    for (const file of projectData?.files || []) {
-        for (const item of file?.extractedData?.data?.items || []) {
-            const name = resolveText(item?.name, "Menu item");
+    const files = asRecord(projectData).files;
+    for (const fileValue of Array.isArray(files) ? files : []) {
+        const file = asRecord(fileValue);
+        const extractedData = asRecord(file.extractedData);
+        const data = asRecord(extractedData.data);
+        const rawItems = data.items;
+        for (const itemValue of Array.isArray(rawItems) ? rawItems : []) {
+            const item = asRecord(itemValue);
+            const name = resolveText(item.name, "Menu item");
+            const images = Array.isArray(item.images) ? item.images : [];
+            const firstImage = asRecord(images[0]);
+            const rawId = item.id;
             items.push({
-                id: String(item?.id || `${name}-${items.length}`),
+                id: typeof rawId === "string" || typeof rawId === "number"
+                    ? String(rawId)
+                    : `${name}-${items.length}`,
                 name,
-                categoryName: resolveText(item?.category, ""),
-                available: item?.available !== false,
-                price: parsePrice(item?.price),
+                categoryName: resolveText(item.category, ""),
+                available: item.available !== false,
+                price: parsePrice(item.price),
                 currencySymbol,
-                imageUrl: item?.images?.[0]?.url || item?.imageUrl,
-                isBestSeller: item?.isBestSeller === true,
-                isNew: item?.isNew === true || item?.newItem === true,
+                imageUrl: resolveText(firstImage.url || item.imageUrl, "") || undefined,
+                isBestSeller: item.isBestSeller === true,
+                isNew: item.isNew === true || item.newItem === true,
             });
         }
     }
@@ -78,14 +103,23 @@ function stableStringify(value: unknown): string {
 export function hashGrowthOSSourceFacts(facts: GrowthOSSourceFacts): string {
     const hashInput = stableStringify({
         projectId: facts.projectId,
+        businessName: facts.businessName,
+        projectName: facts.projectName,
+        businessType: facts.businessType || null,
         menuLink: facts.menuLink || null,
+        currencySymbol: facts.currencySymbol || null,
         todayHoursLabel: facts.todayHoursLabel || null,
         isOpenToday: facts.isOpenToday,
         items: facts.items.map((item) => ({
             id: item.id,
             name: item.name,
+            categoryName: item.categoryName || null,
             available: item.available,
             price: item.price ?? null,
+            currencySymbol: item.currencySymbol || null,
+            imageUrl: item.imageUrl || null,
+            isBestSeller: item.isBestSeller === true,
+            isNew: item.isNew === true,
         })),
     });
 
@@ -98,14 +132,16 @@ export function hashGrowthOSSourceFacts(facts: GrowthOSSourceFacts): string {
 }
 
 export function buildGrowthOSSourceFacts(params: {
-    projectData: any;
+    projectData: unknown;
     projectId: string;
-    storeData: any;
+    storeData: unknown;
     tId: string | number;
     sId: string | number;
 }): GrowthOSSourceFacts {
-    const projectName = resolveText(params.projectData?.name, resolveText(params.projectData?.projectName, "your menu"));
-    const currencySymbol = params.storeData?.currencySymbol || "₹";
+    const project = asRecord(params.projectData);
+    const store = asRecord(params.storeData);
+    const projectName = resolveText(project.name, resolveText(project.projectName, "your menu"));
+    const currencySymbol = resolveText(store.currencySymbol, "₹");
     const hours = getTodayHoursLabel(params.storeData);
     return {
         tId: String(params.tId),
@@ -113,7 +149,7 @@ export function buildGrowthOSSourceFacts(params: {
         projectId: params.projectId,
         businessName: getStoreContextName(params.storeData, "Business"),
         projectName,
-        businessType: params.storeData?.businessType || params.projectData?.businessType,
+        businessType: resolveText(store.businessType || project.businessType, "") || undefined,
         menuLink: buildMenuLink(params.storeData, projectName),
         currencySymbol,
         todayHoursLabel: hours.label,

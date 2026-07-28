@@ -3,6 +3,8 @@ import { PRODUCT_IDS } from '@constant/product';
 import {
     hasOwnerNotificationWhatsAppConsent,
     normalizeOwnerNotificationDocumentId,
+    normalizeOwnerNotificationDocumentIdAliases,
+    normalizeOwnerNotificationNumericScopeAliases,
     normalizeOwnerNotificationNumericScopeDocumentId,
     type OwnerNotificationNumericScopeDocumentId,
 } from '@data/shared/ownerNotificationDeliveryBoundary';
@@ -86,9 +88,10 @@ export async function resolveOwnerNotificationScope(
         options.onRead?.();
         if (!storeSnap.exists) return { readCount: 1 };
         const workspaceData = storeSnap.data() || null;
-        const storedTenantDocumentId = normalizeOwnerNotificationRecipientDocumentId(
-            workspaceData?.tenantId ?? workspaceData?.tId,
-        );
+        const storedTenantDocumentId = normalizeOwnerNotificationDocumentIdAliases([
+            workspaceData?.tenantId,
+            workspaceData?.tId,
+        ]);
         return storedTenantDocumentId === tenantDocumentId
             ? { readCount: 1, workspaceData }
             : { readCount: 1 };
@@ -103,9 +106,10 @@ export async function resolveOwnerNotificationScope(
     options.onRead?.();
     if (storeSnap.exists) {
         const storeData = storeSnap.data() || null;
-        const storedTenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(
-            storeData?.tenantId ?? storeData?.tId,
-        );
+        const storedTenantScope = normalizeOwnerNotificationNumericScopeAliases([
+            storeData?.tenantId,
+            storeData?.tId,
+        ]);
         return storedTenantScope?.numericId === tenantScope.numericId
             ? { readCount: 1, storeData }
             : { readCount: 1 };
@@ -119,10 +123,12 @@ export async function resolveOwnerNotificationScope(
 
     if (!legacyStoreSnap.exists) return { readCount: 2 };
     const storeData = legacyStoreSnap.data() || null;
-    const storedTenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(
-        storeData?.tenantId ?? storeData?.tId,
-    );
-    return !storedTenantScope || storedTenantScope.numericId === tenantScope.numericId
+    const storedTenantAliases = [storeData?.tenantId, storeData?.tId]
+        .filter((value) => value !== undefined && value !== null);
+    const storedTenantScope = storedTenantAliases.length > 0
+        ? normalizeOwnerNotificationNumericScopeAliases(storedTenantAliases)
+        : null;
+    return storedTenantAliases.length === 0 || storedTenantScope?.numericId === tenantScope.numericId
         ? { readCount: 2, storeData }
         : { readCount: 2 };
 }

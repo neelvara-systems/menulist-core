@@ -66,6 +66,7 @@ export function buildGrowthOSKit(params: {
     action: GrowthOSActionSummary;
     facts: GrowthOSSourceFacts;
     kitId: string;
+    operationId: string;
     now?: Date;
     timestampFactory?: (date: Date) => any;
 }): GrowthOSKit {
@@ -102,6 +103,7 @@ export function buildGrowthOSKit(params: {
         sId: params.facts.sId,
         projectId: params.facts.projectId,
         actionId: params.action.id,
+        operationId: params.operationId,
         actionType: params.action.type,
         title: params.action.title,
         itemName: item?.name,

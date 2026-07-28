@@ -15,6 +15,7 @@ import {
     answerlatticeAdminApp,
     answerlatticeFirestoreAdmin,
 } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { deleteApp } from 'firebase-admin/app';
 import { Timestamp } from 'firebase-admin/firestore';
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -132,6 +133,27 @@ async function run(): Promise<void> {
     );
 
     const subscriptionId = 'sub_contract';
+    const subscriptionPayload = {
+        amount: 99900,
+        currency: 'INR',
+        email: 'owner@example.test',
+        name: 'Contract Owner',
+        paymentProvider: 'razorpay',
+        planId: 'answerlattice_starter',
+        planName: 'Starter',
+        planType: 'MONTH',
+        productId: PRODUCT_IDS.ANSWERLATTICE,
+        providerPlanId: 'plan_contract',
+        providerSubscriptionId: subscriptionId,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        sId: scope.storeId,
+        status: 'pending',
+        storeId: scope.storeId,
+        tId: scope.tenantId,
+        tenantId: scope.tenantId,
+        userId: scope.userId,
+        userType: 'B2B',
+    } as any;
     await markAnswerlatticeOnboardingProviderRecoveryPending({
         db,
         providerSubscriptionId: subscriptionId,
@@ -139,6 +161,40 @@ async function run(): Promise<void> {
         recoveryAvailableAtMillis,
         scope,
     });
+    const conflictingPayloadSubscriptionId = 'sub_contract_payload_conflict';
+    await assert.rejects(
+        persistAnswerlatticePendingSubscription({
+            db,
+            scope,
+            storeSubscriptionSummary: {
+                id: conflictingPayloadSubscriptionId,
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                sId: scope.storeId,
+                tId: scope.tenantId,
+            },
+            subscriptionId: conflictingPayloadSubscriptionId,
+            subscriptionPayload: {
+                ...subscriptionPayload,
+                providerSubscriptionId: conflictingPayloadSubscriptionId,
+                tenantId: scope.tenantId + 1,
+            },
+            widgetApiState: { keyHashes: ['must_not_persist'], keysByHash: {} },
+        }),
+        /subscription_payload_scope_conflict/,
+        'a contradictory subscription payload must fail before any onboarding finalization write',
+    );
+    const [conflictingPayloadSubscription, storeBeforeFinalization] = await Promise.all([
+        db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(conflictingPayloadSubscriptionId).get(),
+        db.collection(DB_COLLECTIONS.STORES).doc(String(scope.storeId)).get(),
+    ]);
+    assert.equal(conflictingPayloadSubscription.exists, false);
+    assert.equal(
+        storeBeforeFinalization.data()?.onboardingStatus,
+        ANSWERLATTICE_ONBOARDING_STATUS.PROVIDER_RECOVERY_PENDING,
+    );
+    assert.equal(storeBeforeFinalization.data()?.answerlatticeSubscription, undefined);
+    assert.equal(storeBeforeFinalization.data()?.answerlatticeWidgetApi, undefined);
+
     await persistAnswerlatticePendingSubscription({
         db,
         scope,
@@ -156,25 +212,7 @@ async function run(): Promise<void> {
             tId: scope.tenantId,
         },
         subscriptionId,
-        subscriptionPayload: {
-            amount: 99900,
-            currency: 'INR',
-            email: 'owner@example.test',
-            name: 'Contract Owner',
-            paymentProvider: 'razorpay',
-            planId: 'answerlattice_starter',
-            planName: 'Starter',
-            planType: 'MONTH',
-            providerPlanId: 'plan_contract',
-            providerSubscriptionId: subscriptionId,
-            sId: scope.storeId,
-            status: 'pending',
-            storeId: scope.storeId,
-            tId: scope.tenantId,
-            tenantId: scope.tenantId,
-            userId: scope.userId,
-            userType: 'B2B',
-        } as any,
+        subscriptionPayload,
         widgetApiState: { keyHashes: ['hash_contract'], keysByHash: {} },
     });
 
@@ -192,8 +230,11 @@ async function run(): Promise<void> {
         assert.equal(data.onboardingProviderSubscriptionId, subscriptionId);
     }
     assert.equal(subscriptionFinal.data()?.pId, PRODUCT_IDS.ANSWERLATTICE);
+    assert.equal(subscriptionFinal.data()?.productId, PRODUCT_IDS.ANSWERLATTICE);
     assert.equal(subscriptionFinal.data()?.tId, scope.tenantId);
+    assert.equal(subscriptionFinal.data()?.tenantId, scope.tenantId);
     assert.equal(subscriptionFinal.data()?.sId, scope.storeId);
+    assert.equal(subscriptionFinal.data()?.storeId, scope.storeId);
     assert.equal(storeFinal.data()?.answerlatticeSubscription?.id, subscriptionId);
     assert.deepEqual(storeFinal.data()?.answerlatticeWidgetApi?.keyHashes, ['hash_contract']);
 
@@ -278,10 +319,10 @@ async function run(): Promise<void> {
 
 void run()
     .then(async () => {
-        if (answerlatticeAdminApp) await answerlatticeAdminApp.delete();
+        if (answerlatticeAdminApp) await deleteApp(answerlatticeAdminApp);
     })
     .catch(async (error) => {
         console.error(error);
-        if (answerlatticeAdminApp) await answerlatticeAdminApp.delete().catch(() => undefined);
+        if (answerlatticeAdminApp) await deleteApp(answerlatticeAdminApp).catch(() => undefined);
         process.exit(1);
     });

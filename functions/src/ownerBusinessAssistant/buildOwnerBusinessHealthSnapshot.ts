@@ -15,6 +15,11 @@ import type {
 
 const formatCount = (value: number) => new Intl.NumberFormat('en').format(value);
 
+const resolveOptionalStoreString = (value: unknown, maxLength: number) =>
+  typeof value === 'string' && value.trim()
+    ? value.trim().slice(0, maxLength)
+    : undefined;
+
 const resolveStoreName = (storeInfo: FirebaseFirestore.DocumentData, fallback: string) => {
   const candidates = [
     storeInfo.name,
@@ -40,7 +45,8 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
   }
 
   const generatedAt = params.runAt.toISOString();
-  const localDate = getBusinessAnalyticsDateKey(params.runAt, params.storeInfo.timeZone, params.businessDayEndTime);
+  const timeZone = resolveOptionalStoreString(params.storeInfo.timeZone, 80);
+  const localDate = getBusinessAnalyticsDateKey(params.runAt, timeZone, params.businessDayEndTime);
   const analyticsBuild = FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX
     ? await buildOwnerBusinessAnalyticsIndex({
         db: params.db,
@@ -59,7 +65,7 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
     generatedAt,
     localDate,
     runAt: params.runAt,
-    timeZone: params.storeInfo.timeZone,
+    timeZone,
     businessDayEndTime: params.businessDayEndTime,
   });
   const healthBlocks = buildOwnerBusinessHealthBlocks({
@@ -110,7 +116,7 @@ export async function buildAndWriteOwnerBusinessHealthSnapshot(params: {
     sourceWindow: {
       today: localDate,
       lastSettledDate: analyticsBuild?.doc.lastSettledLocalDate,
-      timeZone: params.storeInfo.timeZone,
+      timeZone,
     },
     status: healthBlocks.status,
     summary: {

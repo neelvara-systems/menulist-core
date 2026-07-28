@@ -16,9 +16,12 @@ import {
 } from '@constant/answerlattice/navigations';
 import {
     ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
+    isAnswerlatticeActivationSummaryForScope,
     isAnswerlatticeActivationSummaryResponse,
     readAnswerlatticeActivationDashboardResponse,
 } from '@lib/answerlattice/activationDashboardResponseClient';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import AnswerlatticeContentWorkbench from '@template/answerlattice/content/AnswerlatticeContentWorkbench';
 import AnswerlatticeCustomerFlowChecklist from '@template/answerlattice/content/AnswerlatticeCustomerFlowChecklist';
 import AnswerlatticeSurfaceReadinessMatrix from '@template/answerlattice/content/AnswerlatticeSurfaceReadinessMatrix';
@@ -43,7 +46,7 @@ import {
     theme,
 } from 'antd';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
     LuBookOpen,
@@ -73,14 +76,32 @@ export default function AnswerlatticeDashboardPage() {
     const screens = Grid.useBreakpoint();
     const router = useRouter();
     const { token } = theme.useToken();
+    const session = useClientAuthSession();
+    const sessionScope = resolveAnswerlatticeSessionScope(session);
+    const tenantId = sessionScope?.tenantId ?? null;
+    const storeId = sessionScope?.storeId ?? null;
     const isMobile = screens.md !== true;
     const [summary, setSummary] = useState<AnswerlatticeActivationSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const activeRequestRef = useRef<AbortController | null>(null);
+    const requestGenerationRef = useRef(0);
 
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
 
     const loadSummary = useCallback(async (silent = false) => {
+        if (tenantId === null || storeId === null) {
+            setSummary(null);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
+
+        const requestGeneration = ++requestGenerationRef.current;
+        activeRequestRef.current?.abort();
+        const controller = new AbortController();
+        activeRequestRef.current = controller;
+
         if (silent) {
             setRefreshing(true);
         } else {
@@ -91,6 +112,7 @@ export default function AnswerlatticeDashboardPage() {
             const response = await fetch('/api/answerlattice/activation/summary', {
                 ...ANSWERLATTICE_ACTIVATION_DASHBOARD_REQUEST_POLICY,
                 method: 'GET',
+                signal: controller.signal,
             });
             const data = await readAnswerlatticeActivationDashboardResponse(
                 response,
@@ -98,17 +120,40 @@ export default function AnswerlatticeDashboardPage() {
                 isAnswerlatticeActivationSummaryResponse,
                 ANSWERLATTICE_READINESS_METRICS_LOAD_FAILED,
             );
+            if (requestGeneration !== requestGenerationRef.current) {
+                return;
+            }
+            if (!isAnswerlatticeActivationSummaryForScope(data.summary, { tenantId, storeId })) {
+                throw new Error('Answerlattice activation summary scope mismatch');
+            }
             setSummary(data.summary);
         } catch {
+            if (
+                controller.signal.aborted
+                || requestGeneration !== requestGenerationRef.current
+            ) {
+                return;
+            }
+            setSummary(null);
             message.error(ANSWERLATTICE_READINESS_METRICS_LOAD_FAILED);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            if (requestGeneration === requestGenerationRef.current) {
+                activeRequestRef.current = null;
+                setLoading(false);
+                setRefreshing(false);
+            }
         }
-    }, []);
+    }, [storeId, tenantId]);
 
     useEffect(() => {
-        loadSummary();
+        setSummary(null);
+        void loadSummary();
+
+        return () => {
+            requestGenerationRef.current += 1;
+            activeRequestRef.current?.abort();
+            activeRequestRef.current = null;
+        };
     }, [loadSummary]);
 
     const requiredSteps = useMemo(() => summary?.steps.filter(step => step.required) || [], [summary]);

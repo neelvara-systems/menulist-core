@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { LuMoon, LuSun } from 'react-icons/lu';
 import { secureError } from '@lib/security/secureLogger';
 import styles from './obp.module.scss';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 type OBPTheme = 'light' | 'dark';
 type OBPThemeStorageOperation = 'read' | 'write';
@@ -28,7 +29,7 @@ function logOBPThemeStorageFailure(
         storageKeyLength: storageKey.length,
         themePresent: Boolean(themeValue),
         themeLength: themeValue.length,
-        errorName: error instanceof Error ? error.name : typeof error,
+        errorName: getBoundedErrorName(error) || typeof error,
     });
 }
 

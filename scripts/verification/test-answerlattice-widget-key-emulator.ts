@@ -7,7 +7,13 @@ import {
     normalizeAnswerlatticeWidgetApiState,
 } from '../../src/lib/answerlattice/widgetKeyManager';
 import {
+    DEFAULT_ANSWERLATTICE_WIDGET_CONFIG,
+    normalizeWidgetConfig,
+} from '../../src/lib/answerlattice/widgetConfig';
+import { saveAnswerlatticeWidgetConfigAdmin } from '../../src/lib/answerlattice/widgetConfigStore';
+import {
     AnswerlatticeWidgetKeyStoreError,
+    isExactAnswerlatticeWidgetStoreAuthority,
     mutateAnswerlatticeWidgetKeys,
 } from '../../src/lib/answerlattice/widgetKeyStore';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
@@ -36,6 +42,30 @@ async function run(): Promise<void> {
     if (!db || typeof (db as any).collection !== 'function') throw new Error('Answerlattice emulator Firestore is not configured');
 
     await seedStore();
+    assert.equal(
+        isExactAnswerlatticeWidgetStoreAuthority((await storeRef().get()).data(), scope, String(scope.storeId)),
+        true,
+        'widget mutation authority must accept exact numeric workspace identity',
+    );
+    for (const coerciveAuthority of [
+        { tId: String(scope.tenantId) },
+        { tenantId: String(scope.tenantId) },
+        { sId: String(scope.storeId) },
+        { storeId: String(scope.storeId) },
+    ]) {
+        await storeRef().set(coerciveAuthority, { merge: true });
+        await assert.rejects(
+            mutateAnswerlatticeWidgetKeys(scope, {
+                action: 'generate',
+                apiKey: keyFor('z', 9),
+                keyHash: hashApiKey(keyFor('z', 9)),
+            }),
+            (error: unknown) => error instanceof AnswerlatticeWidgetKeyStoreError
+                && error.code === 'workspace_mismatch',
+            `coercive widget-store authority must fail closed: ${JSON.stringify(coerciveAuthority)}`,
+        );
+        await seedStore();
+    }
     const firstRawKey = keyFor('a', 1);
     const secondRawKey = keyFor('b', 2);
     const [first, second] = await Promise.all([
@@ -66,6 +96,36 @@ async function run(): Promise<void> {
     const secondKeyRecord = state.keysByHash[secondKeyHash];
     assert.ok(firstKeyRecord);
     assert.ok(secondKeyRecord);
+    await storeRef().update({
+        answerlatticeWidgetApi: {
+            ...state,
+            keysByHash: {
+                ...state.keysByHash,
+                [firstKeyHash]: {
+                    ...firstKeyRecord,
+                    encryptedKey: 'legacy-recoverable-ciphertext',
+                    encryptionVersion: 'legacy-v1',
+                },
+            },
+        },
+    });
+    await mutateAnswerlatticeWidgetKeys(scope, {
+        action: 'rename',
+        keyId: first.generatedRecord!.id,
+        name: 'Production renamed',
+    });
+    const keyStateAfterLegacyCleanup = (await storeRef().get()).data()?.answerlatticeWidgetApi;
+    assert.equal(
+        'encryptedKey' in keyStateAfterLegacyCleanup.keysByHash[firstKeyHash],
+        false,
+        'the next key mutation must remove legacy recoverable ciphertext',
+    );
+    assert.equal(
+        'encryptionVersion' in keyStateAfterLegacyCleanup.keysByHash[firstKeyHash],
+        false,
+        'the next key mutation must remove legacy encryption metadata',
+    );
+    state = normalizeAnswerlatticeWidgetApiState(keyStateAfterLegacyCleanup);
     const duplicateManagementIdentity = normalizeAnswerlatticeWidgetApiState({
         ...state,
         keyHashes: [firstKeyHash, secondKeyHash],
@@ -228,7 +288,86 @@ async function run(): Promise<void> {
         (error: unknown) => error instanceof AnswerlatticeWidgetKeyStoreError && error.code === 'workspace_mismatch',
     );
 
-    process.stdout.write('Answerlattice widget-key emulator tests passed.\n');
+    await seedStore();
+    const initialConfig = normalizeWidgetConfig({
+        ...DEFAULT_ANSWERLATTICE_WIDGET_CONFIG,
+        headerTitle: 'Initial help',
+    });
+    await storeRef().set({
+        widgetAllowedOrigins: ['https://app.example.com'],
+        widgetConfig: initialConfig,
+        widgetConfigVersion: 1,
+    }, { merge: true });
+
+    const firstConfig = normalizeWidgetConfig({
+        ...initialConfig,
+        headerTitle: 'Billing help',
+    });
+    const secondConfig = normalizeWidgetConfig({
+        ...initialConfig,
+        headerTitle: 'Setup help',
+    });
+    const concurrentConfigSaves = await Promise.all([
+        saveAnswerlatticeWidgetConfigAdmin({
+            allowedOrigins: ['https://billing.example.com'],
+            config: firstConfig,
+            db,
+            expectedConfigVersion: 1,
+            ...scope,
+        }),
+        saveAnswerlatticeWidgetConfigAdmin({
+            allowedOrigins: ['https://setup.example.com'],
+            config: secondConfig,
+            db,
+            expectedConfigVersion: 1,
+            ...scope,
+        }),
+    ]);
+    const savedConfigResult = concurrentConfigSaves.find(result => result.status === 'saved');
+    const conflictedConfigResult = concurrentConfigSaves.find(result => result.status === 'conflict');
+    assert.ok(savedConfigResult && savedConfigResult.status === 'saved');
+    assert.ok(conflictedConfigResult && conflictedConfigResult.status === 'conflict');
+    assert.equal(savedConfigResult.configVersion, 2);
+    assert.equal(conflictedConfigResult.configVersion, 2);
+
+    const persistedConfig = (await storeRef().get()).data() || {};
+    assert.equal(persistedConfig.widgetConfigVersion, 2);
+    assert.deepEqual(persistedConfig.widgetConfig, savedConfigResult.config);
+    assert.deepEqual(persistedConfig.widgetAllowedOrigins, savedConfigResult.allowedOrigins);
+
+    const exactReplay = await saveAnswerlatticeWidgetConfigAdmin({
+        allowedOrigins: savedConfigResult.allowedOrigins,
+        config: savedConfigResult.config,
+        db,
+        expectedConfigVersion: 1,
+        ...scope,
+    });
+    assert.equal(exactReplay.status, 'unchanged', 'an exact retry must not conflict or write again');
+    if (exactReplay.status === 'unchanged') {
+        assert.equal(exactReplay.configVersion, 2);
+    }
+
+    const staleDifferentSave = await saveAnswerlatticeWidgetConfigAdmin({
+        allowedOrigins: ['https://stale.example.com'],
+        config: initialConfig,
+        db,
+        expectedConfigVersion: 1,
+        ...scope,
+    });
+    assert.equal(staleDifferentSave.status, 'conflict');
+    assert.deepEqual((await storeRef().get()).data()?.widgetConfig, savedConfigResult.config);
+
+    const wrongScopeSave = await saveAnswerlatticeWidgetConfigAdmin({
+        allowedOrigins: [],
+        config: initialConfig,
+        db,
+        expectedConfigVersion: 2,
+        tenantId: scope.tenantId + 1,
+        storeId: scope.storeId,
+    });
+    assert.equal(wrongScopeSave.status, 'forbidden');
+
+    process.stdout.write('Answerlattice widget key and config-mutation emulator tests passed.\n');
 }
 
 run().catch((error) => {

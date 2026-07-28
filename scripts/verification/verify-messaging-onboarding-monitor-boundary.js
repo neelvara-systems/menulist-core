@@ -163,6 +163,34 @@ function verifyRoute(route) {
   assert(closedWindowMatches.length === 2, 'Messaging onboarding ops route must close recent and count queries at one window end');
 }
 
+function verifyHealthMonitor(healthMonitor) {
+  [
+    'MESSAGING_HEALTH_ALERT_EMIT_FAILED',
+    '.doc(snapshotId)',
+    'computeLeaseId,',
+    'if (!isMessagingHealthLeaseOwner(currentControl.data(), computeLeaseId))',
+    'transaction.set(snapshotRef, snapshot);',
+    'MESSAGING_HEALTH_LEASE_OWNERSHIP_LOST',
+    'export async function emitHealthAlerts(',
+    'failedAlerts += 1;',
+    'alertKey: alert.key,',
+  ].forEach((token) => assertIncludes(
+    healthMonitor,
+    token,
+    'Messaging onboarding health snapshot and alert isolation boundary',
+  ));
+  assertNotIncludes(
+    healthMonitor,
+    '.set(snapshot, { merge: true });',
+    'Messaging onboarding complete hourly snapshot replacement boundary',
+  );
+  assertNotIncludes(
+    healthMonitor,
+    '.doc(snapshotId)\n      .set(snapshot);',
+    'Messaging onboarding stale workers must not publish outside owner-bound settlement',
+  );
+}
+
 function verifyIndexes(indexes) {
   assertIncludes(indexes, '"fieldPath": "metadata.subsystem"', 'Messaging onboarding alert subsystem index');
   const subsystemIndexStart = indexes.indexOf('"fieldPath": "metadata.subsystem"');
@@ -513,6 +541,7 @@ function verifyMessagingOnboardingMonitorBoundary() {
     providerRegistry: read('functions/src/messagingOnboarding/providers/providerRegistry.ts'),
     constants: read('functions/src/messagingOnboarding/constants.ts'),
     webhookHandler: read('functions/src/messagingOnboarding/webhookHandler.ts'),
+    healthMonitor: read('functions/src/messagingOnboarding/healthMonitor.ts'),
     envFiles: {
       stagingExample: read('.env.staging.example'),
       productionExample: read('.env.production.example'),
@@ -546,6 +575,7 @@ function verifyMessagingOnboardingMonitorBoundary() {
 
   verifyProviderRuntimeBoundary(files.providerRegistry, files.constants, files.webhookHandler, files.envFiles);
   verifyRoute(files.route);
+  verifyHealthMonitor(files.healthMonitor);
   verifyOpsBoundary(files.opsBoundary);
   verifyIndexes(files.indexes);
   verifyMonitor(files.monitor);

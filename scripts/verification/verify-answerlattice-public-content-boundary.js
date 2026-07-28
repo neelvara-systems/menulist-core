@@ -70,7 +70,12 @@ assert(client.includes('normalizeAnswerlatticePublicCategories(data)'), 'browser
 assert(client.includes('normalizeAnswerlatticePublicChangelogPage(data)'), 'browser changelog response must re-enter runtime validation');
 assert(route.includes('parsed.data.expectedTenantId !== scope.tId'), 'public-content route must reject an initiating/current tenant mismatch');
 assert(route.includes('parsed.data.expectedStoreId !== scope.sId'), 'public-content route must reject an initiating/current workspace mismatch');
-assert(route.includes('NextResponse.json({ data, scope })'), 'public-content route must acknowledge the exact admitted workspace');
+assert(route.includes("applyAnswerlatticeDashboardReadRateLimit(request, session, 'public-content')"), 'public-content route must rate-limit before cached reads');
+assert(route.indexOf("applyAnswerlatticeDashboardReadRateLimit(request, session, 'public-content')")
+  < route.indexOf('resolveAnswerlatticePublicContentScope(session)'), 'public-content route must rate-limit before scope/cache work');
+assert(route.includes('headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS'), 'public-content responses must use the private no-store boundary');
+assert(route.includes('privateJson({ data, scope })'), 'public-content route must acknowledge the exact admitted workspace');
+assert(!route.includes('return NextResponse.json('), 'public-content route must not bypass its private response boundary');
 assert(client.includes('value.scope.tId === expectedScope.tId'), 'public-content client must verify tenant acknowledgement');
 assert(client.includes('value.scope.sId === expectedScope.sId'), 'public-content client must verify workspace acknowledgement');
 assert(client.includes('expectedTenantId: expectedScope.tId'), 'public-content client must corroborate initiating tenant scope');

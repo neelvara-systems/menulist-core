@@ -1091,10 +1091,10 @@ function MenuPageNew({
 
         const normalizedSearch = debouncedSearch.trim();
         if (normalizedSearch.length < 2) return;
-        if (hasTrackedSearchTermInSession(storeDetails.storeId, projectData.projectId, normalizedSearch)) return;
+        if (hasTrackedSearchTermInSession(storeDetails.tenantId, storeDetails.storeId, projectData.projectId, normalizedSearch)) return;
 
         const timer = window.setTimeout(() => {
-            markSearchTermTrackedInSession(storeDetails.storeId, projectData.projectId, normalizedSearch);
+            markSearchTermTrackedInSession(storeDetails.tenantId, storeDetails.storeId, projectData.projectId, normalizedSearch);
             void trackSearch(normalizedSearch, filteredItems.length, {
                 tenantId: storeDetails.tenantId,
                 storeId: String(storeDetails.storeId),

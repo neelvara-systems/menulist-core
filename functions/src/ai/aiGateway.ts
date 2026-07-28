@@ -25,6 +25,8 @@
 import * as functions from 'firebase-functions';
 import { isSafeModeActive } from '../monitoring/safeMode';
 import { AI_PROVIDER_CONFIG_MISSING_CODE, KeyManager } from "./keyManager";
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
+import { compileGeminiGenerateContentRequest } from '../sharedData/geminiRuntime';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -112,7 +114,7 @@ function getProviderErrorStrings(value: any, depth = 0): string[] {
         .map(([, entry]) => String(entry));
 
     return [
-        ...(value instanceof Error ? [value.name] : []),
+        ...(value instanceof Error ? [getBoundedFunctionsErrorName(value) || 'Error'] : []),
         ...indicators,
         ...getProviderErrorStrings(value.error, depth + 1),
         ...getProviderErrorStrings(value.errorDetails, depth + 1),
@@ -176,7 +178,7 @@ function getProviderErrorLogContext(error: any) {
     const sourceStatus = typeof error?.status === 'string' ? error.status : nestedError?.status;
 
     return {
-        sourceErrorName: error instanceof Error ? error.name : typeof error,
+        sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
         sourceErrorCode: getSafeDiagnosticValue(error?.code ?? nestedError?.code),
         sourceStatus: getSafeDiagnosticValue(sourceStatus),
         sourceStatusCode: getStatusCode(error?.status)
@@ -203,7 +205,10 @@ export class AIGateway {
     get models() {
         return {
             generateContent: (config: any) =>
-                this.executeWithRetry('generateContent', config),
+                this.executeWithRetry(
+                    'generateContent',
+                    compileGeminiGenerateContentRequest(config),
+                ),
             embedContent: (config: any) =>
                 this.executeWithRetry('embedContent', config),
             generateImages: (config: any) =>
@@ -274,7 +279,7 @@ export class AIGateway {
                 }
 
                 // Success — reset key health
-                this.keyManager.markCurrentKeySuccess();
+                this.keyManager.markKeySuccess(client);
                 return result;
 
             } catch (error: any) {
@@ -283,7 +288,7 @@ export class AIGateway {
                 // ── Rate Limit (429) → Rotate key, retry immediately ──
                 if (isRateLimitError(error)) {
                     const hardQuota = isHardQuotaError(error);
-                    this.keyManager.markCurrentKeyRateLimited();
+                    this.keyManager.markKeyRateLimited(client);
 
                     if (this.keyManager.totalKeys > 1) {
                         this.logger.warn(

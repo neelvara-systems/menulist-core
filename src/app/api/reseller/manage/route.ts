@@ -24,7 +24,7 @@ import { validateAPIInput } from "@lib/security/inputValidation";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
-import { applyResellerReadRateLimit } from "../readRateLimit";
+import { applyResellerReadRateLimit, resellerPrivateJson } from "../readRateLimit";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 /**
@@ -39,7 +39,7 @@ import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 export const GET = withAuth(async (request, session) => {
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            return NextResponse.json({ error: "Feature not available." }, { status: 404 });
+            return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
         }
 
         const rateLimitResponse = await applyResellerReadRateLimit(session, "manage");
@@ -51,7 +51,7 @@ export const GET = withAuth(async (request, session) => {
             .map(projectResellerManagementProfile);
         const profiles = projectedProfiles.filter((profile) => profile !== null);
         const invalidProfileCount = projectedProfiles.length - profiles.length;
-        return NextResponse.json({
+        return resellerPrivateJson({
             invalidProfileCount,
             isCapped: persistedProfiles.length > 50,
             isPartial: persistedProfiles.length > 50 || invalidProfileCount > 0,
@@ -61,7 +61,7 @@ export const GET = withAuth(async (request, session) => {
         logResellerApiFailure('reseller_manage_get_route_failed', error, {
             ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
         });
-        return NextResponse.json({ error: 'Failed to fetch reseller profiles.' }, { status: 500 });
+        return resellerPrivateJson({ error: 'Failed to fetch reseller profiles.' }, { status: 500 });
     }
 }, { requiredPlatformRole: 'PLATFORM' });
 

@@ -7,6 +7,7 @@ import {
     SUPPORT_TICKET_CATEGORY,
     SUPPORT_TICKET_PRIORITY,
     SUPPORT_TICKET_STATUS,
+    type SupportTicketDocument,
     type SupportTicketType,
     type TicketMessage,
 } from '@type/supportTicket';
@@ -183,7 +184,7 @@ const isTicketStatusEntry = (value: unknown): value is SupportTicketType['status
     && value.remark.length <= 2000
 );
 
-const isTicketDocument = (value: unknown): boolean => (
+const isTicketDocument = (value: unknown): value is SupportTicketDocument => (
     isRecord(value)
     && typeof value.url === 'string'
     && value.url.length > 0

@@ -8,6 +8,7 @@ import {
     getOwnerUploadExpiry,
     isSlideExpired,
     isValidScreenToken,
+    getScreenReloadGuardKey,
 } from '../../src/lib/screen/utils';
 import type { ScreenSlide } from '../../src/types/campaigns';
 
@@ -54,5 +55,15 @@ assert.ok(
 assert.equal(isValidScreenToken('Ab12Cd34'), true, 'Legacy valid screen token must remain supported');
 assert.equal(isValidScreenToken('a1b2c3d4e5f6g7h8i9j0kl'), true, 'Current screen token must be supported');
 assert.equal(isValidScreenToken('../screen-token'), false, 'Malformed screen token must fail closed');
+assert.equal(
+    getScreenReloadGuardKey('screen', 'Ab12Cd34'),
+    'menulist-screen-Ab12Cd34-last-reload',
+    'reload throttling must be scoped to the exact screen token',
+);
+assert.notEqual(
+    getScreenReloadGuardKey('screen', 'Ab12Cd34'),
+    getScreenReloadGuardKey('screen', 'Ef56Gh78'),
+    'one screen token must not suppress another screen token reload',
+);
 
 process.stdout.write('Digital Screens lifecycle tests passed.\n');

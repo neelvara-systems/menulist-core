@@ -2,11 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
+const ROOT = path.resolve(__dirname, '..', '..');
 const WIDTH = 1440;
 const HEIGHT = 1200;
-const PUBLIC_OUT_DIR = path.join(process.cwd(), 'public', 'answerlattice-website-assets', 'dummy');
+const PUBLIC_OUT_DIR = path.join(ROOT, 'public', 'answerlattice-website-assets', 'dummy');
 const SOURCE_OUT_DIR = path.join(
-    process.cwd(),
+    ROOT,
     'packages',
     'asset-factory',
     'answerlattice-website-assets',

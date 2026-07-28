@@ -8,6 +8,8 @@ Use:
 
 > Every morning, Answerlattice shows what support needs attention, what is already prepared, and where the founder should approve the fix.
 
+The strongest proof is not the number of cards. It is that Answerlattice can confidently show no cards when nothing requires a decision.
+
 Avoid:
 
 - AI employee
@@ -15,6 +17,10 @@ Avoid:
 - helpdesk replacement
 - project manager
 - auto-resolution
+- notification feed
+- task manager
+- support health score
+- ticket SLA dashboard
 
 ## Buyer Value
 
@@ -23,4 +29,5 @@ Avoid:
 - Faster conversion from support gaps to approved answers.
 - Clear cost posture before AI-heavy actions.
 - Same governance loop, lower mental load.
-
+- No manufactured work in the healthy state.
+- Every ranked item links to the evidence-owning workflow.

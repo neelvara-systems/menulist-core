@@ -195,25 +195,48 @@ export function buildSchemaTelephone(input: PhoneNumberStorageInput): string | u
 }
 
 export function buildSchemaPriceRange(priceRange: unknown): string | undefined {
-    const value = String(priceRange ?? '').trim();
+    const value = typeof priceRange === 'string'
+        ? priceRange.trim()
+        : typeof priceRange === 'number' && Number.isFinite(priceRange)
+            ? String(priceRange)
+            : '';
     if (!value || value.length > SCHEMA_PRICE_RANGE_MAX_LENGTH) return undefined;
     return value;
+}
+
+function getSchemaRecord(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null;
+}
+
+function getSchemaText(value: unknown, maxLength: number): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().replace(/\s+/g, ' ').slice(0, maxLength);
+    return normalized || undefined;
 }
 
 /**
  * Build PostalAddress schema from store data.
  * Returns undefined if no address data available (Law 5: show less, not wrong).
  */
-export function buildAddress(storeData: any) {
-    if (!storeData?.addressLine && !storeData?.city) return undefined;
+export function buildAddress(storeData: unknown) {
+    const store = getSchemaRecord(storeData);
+    if (!store) return undefined;
+    const streetAddress = getSchemaText(store.addressLine, 300);
+    const addressLocality = getSchemaText(store.city, 160);
+    if (!streetAddress && !addressLocality) return undefined;
+    const addressRegion = getSchemaText(store.state, 160);
+    const postalCode = getSchemaText(store.postalCode, 40);
+    const addressCountry = getSchemaText(store.country, 80);
 
     return {
         '@type': 'PostalAddress' as const,
-        ...(storeData?.addressLine && { streetAddress: storeData.addressLine }),
-        ...(storeData?.city && { addressLocality: storeData.city }),
-        ...(storeData?.state && { addressRegion: storeData.state }),
-        ...(storeData?.postalCode && { postalCode: storeData.postalCode }),
-        ...(storeData?.country && { addressCountry: storeData.country }),
+        ...(streetAddress && { streetAddress }),
+        ...(addressLocality && { addressLocality }),
+        ...(addressRegion && { addressRegion }),
+        ...(postalCode && { postalCode }),
+        ...(addressCountry && { addressCountry }),
     };
 }
 
@@ -221,10 +244,21 @@ export function buildAddress(storeData: any) {
  * Build GeoCoordinates schema from store.geo field.
  * Returns undefined if no geo data available.
  */
-export function buildGeoCoordinates(storeData: any) {
-    const latitude = Number(storeData?.geo?.latitude);
-    const longitude = Number(storeData?.geo?.longitude);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return undefined;
+export function buildGeoCoordinates(storeData: unknown) {
+    const store = getSchemaRecord(storeData);
+    const geo = getSchemaRecord(store?.geo);
+    const latitude = geo?.latitude;
+    const longitude = geo?.longitude;
+    if (
+        typeof latitude !== 'number'
+        || !Number.isFinite(latitude)
+        || latitude < -90
+        || latitude > 90
+        || typeof longitude !== 'number'
+        || !Number.isFinite(longitude)
+        || longitude < -180
+        || longitude > 180
+    ) return undefined;
 
     return {
         '@type': 'GeoCoordinates' as const,
@@ -328,17 +362,19 @@ export function buildAmenityFeatures(attributes?: Record<string, boolean>) {
  * Falls back to 'LocalBusiness' for unknown types.
  */
 export function getSchemaType(businessType?: string, businessCategory?: string): string {
-    const configuredSchema = getBusinessSchemaOrgType(businessType, businessCategory);
+    const safeBusinessType = typeof businessType === 'string' ? businessType : undefined;
+    const safeBusinessCategory = typeof businessCategory === 'string' ? businessCategory : undefined;
+    const configuredSchema = getBusinessSchemaOrgType(safeBusinessType, safeBusinessCategory);
     if (configuredSchema) return configuredSchema;
 
-    const normalized = businessType?.toLowerCase().trim() || '';
+    const normalized = safeBusinessType?.toLowerCase().trim() || '';
     if (normalized && LEGACY_BUSINESS_TYPE_SCHEMA_FALLBACK[normalized]) return LEGACY_BUSINESS_TYPE_SCHEMA_FALLBACK[normalized];
     const keywordMatch = normalized
         ? BUSINESS_TYPE_SCHEMA_KEYWORDS.find(([keyword]) => normalized.includes(keyword))?.[1]
         : undefined;
     if (keywordMatch) return keywordMatch;
 
-    const category = resolveBusinessCategory(businessType, businessCategory);
+    const category = resolveBusinessCategory(safeBusinessType, safeBusinessCategory);
     if (category === 'food') return 'FoodEstablishment';
     if (category === 'retail') return 'Store';
 

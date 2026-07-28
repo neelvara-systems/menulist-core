@@ -24,6 +24,11 @@ export const dynamic = 'force-dynamic';
  */
 
 import { logger } from "@lib/monitoring/logger";
+import {
+    canMenuRevalidationSessionAccessStore,
+    resolveMenuRevalidationSessionAccess,
+    type MenuRevalidationSessionAccess,
+} from "@lib/cache/menuRevalidationSessionAccess";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -105,36 +110,6 @@ function deriveSingleStoreIdFromTags(tags: string[]): string | undefined {
     return storeIds.size === 1 ? Array.from(storeIds)[0] : undefined;
 }
 
-function isPlatformSession(session: any | null): boolean {
-    return session?.user?.platformRole === 'PLATFORM' || session?.platformRole === 'PLATFORM';
-}
-
-function getSessionStoreIds(session: any | null): Set<string> {
-    const ids = new Set<string>();
-    const add = (value: unknown) => {
-        const normalized = String(value ?? '').trim();
-        if (normalized) ids.add(normalized);
-    };
-
-    add(session?.sId);
-    add(session?.storeId);
-    add(session?.user?.storeId);
-    if (Array.isArray(session?.user?.storeIds)) {
-        session.user.storeIds.forEach(add);
-    }
-    if (Array.isArray(session?.user?.stores)) {
-        session.user.stores.forEach((store: any) => add(store?.storeId));
-    }
-
-    return ids;
-}
-
-function canRevalidateStore(session: any | null, storeId: string): boolean {
-    if (!session) return true;
-    if (isPlatformSession(session)) return true;
-    return getSessionStoreIds(session).has(storeId);
-}
-
 function getMenuRevalidationRateLimitIdentity(
     request: NextRequest,
     session: any | null,
@@ -199,10 +174,15 @@ async function handleRevalidateMenuCache(
 ) {
     let requestedStoreId: string | undefined;
     let tagCount = 0;
+    let sessionAccess: MenuRevalidationSessionAccess | null = null;
 
     try {
         const rateLimitResponse = await applyMenuRevalidationRateLimit(request, session, authMode);
         if (rateLimitResponse) return rateLimitResponse;
+        sessionAccess = session ? resolveMenuRevalidationSessionAccess(session) : null;
+        if (authMode === 'session' && !sessionAccess) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
 
         const bodyResult = await readBoundedJsonBody(request, MENU_REVALIDATE_MAX_BODY_BYTES, {
             invalidJsonMessage: "Invalid revalidation request",
@@ -229,12 +209,12 @@ async function handleRevalidateMenuCache(
                 );
             }
             requestedStoreId = storeId;
-            if (!canRevalidateStore(session, storeId)) {
+            if (sessionAccess && !canMenuRevalidationSessionAccessStore(sessionAccess, storeId)) {
                 return NextResponse.json({ error: "Forbidden" }, { status: 403 });
             }
             tags = [`menu-store-${storeId}`, `store-${storeId}`, 'client-stores', 'screen-data'];
         } else if (body.tags) {
-            if (session && !isPlatformSession(session)) {
+            if (sessionAccess && !sessionAccess.platformSession) {
                 return NextResponse.json({ error: "Forbidden" }, { status: 403 });
             }
             tags = body.tags.map((tag) => tag.trim()).filter(isValidTag);
@@ -256,7 +236,7 @@ async function handleRevalidateMenuCache(
 
         const ownerBusinessAssistant = requestedStoreId
             ? await invalidateOwnerBusinessAssistantPacketCache({
-                tId: (session as any)?.tId || (session as any)?.user?.tenantId,
+                tId: sessionAccess?.tenantId,
                 sId: requestedStoreId,
             })
             : { attempted: false, keysDeleted: 0, patterns: [] };
@@ -272,7 +252,7 @@ async function handleRevalidateMenuCache(
             ...getMenuRevalidationLogContext({
                 endpoint: request.nextUrl.pathname,
                 hasSession: Boolean(session),
-                platformSession: isPlatformSession(session),
+                platformSession: sessionAccess?.platformSession === true,
                 storeId: requestedStoreId,
                 tagCount,
             }),

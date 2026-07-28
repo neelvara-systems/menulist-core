@@ -43,12 +43,15 @@ Each event in `authSecurityEvents` collection has:
   email: string;           // User email (lowercase)
   eventType: 'login_success' | 'login_failed' | 'account_locked';
   timestamp: Timestamp;    // When it happened
+  expiresAt: Timestamp;    // 90-day Firestore TTL field
   source: string;          // ✅ NEW: 'google' | 'credentials' | etc.
   reason?: string;         // For failures: why it failed
   ip?: string;             // IP address (null for OAuth - NextAuth limitation)
   userAgent?: string;      // Browser info
 }
 ```
+
+The active server contract bounds every string field, requires real Firestore timestamps on reads, caps lockout queries at five events, and denies credential admission when the lockout datastore/index/schema is unavailable. Security monitoring is emitted after transaction commit so Firestore retries cannot duplicate lock/warning alerts. The admin summary is bounded to 1,000 events inside the retained 90-day window and fails visibly on malformed or overflowing data.
 
 ---
 

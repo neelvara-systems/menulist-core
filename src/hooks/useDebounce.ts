@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
  * const [searchQuery, setSearchQuery] = useState('');
  * const debouncedQuery = useDebounceValue(searchQuery, 500);
  */
-export function useDebounceValue(value: any, delay: number = 500) {
+export function useDebounceValue<T>(value: T, delay: number = 500): T {
     const [debouncedValue, setDebouncedValue] = useState(value);
     
     useEffect(() => {
@@ -41,22 +41,22 @@ export function useDebounceValue(value: any, delay: number = 500) {
 //     };
 // };
 
-export function _debounce(func, delay = 1000) {
+export function _debounce<TArgs extends unknown[]>(
+    func: (...args: TArgs) => void,
+    delay = 1000,
+): (...args: TArgs) => void {
     // Declare a variable called 'timer' to store the timer ID
-    let timeout;
-    // Return an anonymous function that takes in any number of arguments
-    return function (...args) {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    return (...args: TArgs) => {
         // Clear the previous timer to prevent the execution of 'mainFunction'
         clearTimeout(timeout);
-        const context = this;
-        // Set a new timer that will execute 'mainFunction' after the specified delay
-        timeout = setTimeout(() => func.apply(context, args), delay);
+        timeout = setTimeout(() => func(...args), delay);
     };
 }
 
 
-const useDebounce = (callback) => {
-    const ref: any = useRef(undefined);
+const useDebounce = (callback: () => void): (() => void) => {
+    const ref = useRef<(() => void) | undefined>(undefined);
 
     useEffect(() => {
         ref.current = callback;

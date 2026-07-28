@@ -12,11 +12,23 @@ type RazorpayWebhookRecord = {
     attemptId?: unknown;
     createdAt?: unknown;
     eventId?: unknown;
+    eventKey?: unknown;
     eventType?: unknown;
     processingExpiresAt?: unknown;
     retryCount?: unknown;
     stateVersion?: unknown;
     status?: unknown;
+    updatedAt?: unknown;
+};
+
+type ProjectedRazorpayWebhookRecord = {
+    attemptId: string;
+    createdAt: unknown;
+    eventId: string | null;
+    eventType: string | null;
+    processingExpiresAt: unknown | null;
+    retryCount: number;
+    status: RazorpayWebhookState;
 };
 
 export type RazorpayWebhookClaim =
@@ -49,8 +61,66 @@ function getTimestampMillis(value: unknown): number {
     if (!value || typeof value !== 'object') return 0;
     const toMillis = (value as { toMillis?: unknown }).toMillis;
     if (typeof toMillis !== 'function') return 0;
-    const millis = Number(toMillis.call(value));
-    return Number.isFinite(millis) ? millis : 0;
+    try {
+        const millis = Number(toMillis.call(value));
+        return Number.isSafeInteger(millis) && millis > 0 ? millis : 0;
+    } catch {
+        return 0;
+    }
+}
+
+function isValidAttemptId(value: unknown): value is string {
+    return typeof value === 'string'
+        && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function projectOptionalProviderString(
+    value: unknown,
+    maxLength: number,
+): string | null | undefined {
+    if (value === null) return null;
+    const normalized = normalizeOptionalProviderString(value, maxLength);
+    return normalized ?? undefined;
+}
+
+function projectRazorpayWebhookRecord(
+    value: RazorpayWebhookRecord | undefined,
+    expectedEventKey: string,
+): ProjectedRazorpayWebhookRecord | null {
+    if (!value) return null;
+    const status = value.status;
+    const createdAtMillis = getTimestampMillis(value.createdAt);
+    const updatedAtMillis = getTimestampMillis(value.updatedAt);
+    const eventId = projectOptionalProviderString(value.eventId, 180);
+    const eventType = projectOptionalProviderString(value.eventType, 120);
+    const retryCount = value.retryCount;
+    const processingExpiresAtMillis = getTimestampMillis(value.processingExpiresAt);
+    if (
+        value.stateVersion !== RAZORPAY_WEBHOOK_STATE_VERSION
+        || value.eventKey !== expectedEventKey
+        || !isValidAttemptId(value.attemptId)
+        || !Number.isSafeInteger(retryCount)
+        || Number(retryCount) < 0
+        || Number(retryCount) >= Number.MAX_SAFE_INTEGER
+        || createdAtMillis === 0
+        || updatedAtMillis === 0
+        || eventId === undefined
+        || eventType === undefined
+        || (status !== 'failed' && status !== 'processed' && status !== 'processing')
+        || (status === 'processing' && processingExpiresAtMillis === 0)
+        || (status !== 'processing' && value.processingExpiresAt !== undefined)
+    ) {
+        throw new Error('Razorpay webhook ledger state is invalid.');
+    }
+    return {
+        attemptId: value.attemptId,
+        createdAt: value.createdAt,
+        eventId,
+        eventType,
+        processingExpiresAt: status === 'processing' ? value.processingExpiresAt : null,
+        retryCount: Number(retryCount),
+        status,
+    };
 }
 
 export async function claimRazorpayWebhookEvent(params: {
@@ -70,7 +140,10 @@ export async function claimRazorpayWebhookEvent(params: {
 
     return firestoreAdmin.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(eventRef);
-        const current = snapshot.data() as RazorpayWebhookRecord | undefined;
+        const current = projectRazorpayWebhookRecord(
+            snapshot.data() as RazorpayWebhookRecord | undefined,
+            eventKey,
+        );
         if (current?.status === 'processed') {
             return { eventKey, outcome: 'processed' as const };
         }
@@ -79,17 +152,13 @@ export async function claimRazorpayWebhookEvent(params: {
             if (lockExpiry > nowMillis) {
                 return { eventKey, outcome: 'processing' as const };
             }
-        } else if (current && current.status !== 'failed') {
-            throw new Error('Razorpay webhook ledger state is invalid.');
         }
 
-        const retryCount = current
-            ? Math.max(0, Number.isSafeInteger(current.retryCount) ? Number(current.retryCount) : 0) + 1
-            : 0;
+        const retryCount = current ? current.retryCount + 1 : 0;
         transaction.set(eventRef, {
             attemptId,
-            createdAt: getTimestampMillis(current?.createdAt) > 0
-                ? current?.createdAt
+            createdAt: current
+                ? current.createdAt
                 : admin.firestore.FieldValue.serverTimestamp(),
             eventId,
             eventKey,
@@ -114,7 +183,10 @@ export async function completeRazorpayWebhookEvent(params: {
     const eventRef = firestoreAdmin.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS).doc(eventKey);
     return firestoreAdmin.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(eventRef);
-        const current = snapshot.data() as RazorpayWebhookRecord | undefined;
+        const current = projectRazorpayWebhookRecord(
+            snapshot.data() as RazorpayWebhookRecord | undefined,
+            eventKey,
+        );
         if (current?.status === 'processed') return 'already_processed';
         if (
             current?.status !== 'processing'
@@ -136,13 +208,11 @@ export async function completeRazorpayWebhookEvent(params: {
         } = params.data || {};
         transaction.set(eventRef, {
             attemptId: params.attemptId,
-            createdAt: getTimestampMillis(current.createdAt) > 0
-                ? current.createdAt
-                : admin.firestore.FieldValue.serverTimestamp(),
-            eventId: current.eventId || null,
+            createdAt: current.createdAt,
+            eventId: current.eventId,
             eventKey,
-            eventType: current.eventType || null,
-            retryCount: Number.isSafeInteger(current.retryCount) ? Number(current.retryCount) : 0,
+            eventType: current.eventType,
+            retryCount: current.retryCount,
             stateVersion: RAZORPAY_WEBHOOK_STATE_VERSION,
             ...completionData,
             status: params.status,

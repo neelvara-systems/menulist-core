@@ -29,6 +29,20 @@ assert.doesNotThrow(() => assertAnswerlatticeDocxEntryIsBounded({
     uncompressedSize: 24 * 1024,
 }));
 assert.throws(() => assertAnswerlatticeDocxEntryIsBounded(undefined), /metadata/);
+assert.throws(
+    () => assertAnswerlatticeDocxEntryIsBounded({ compressedSize: '10', uncompressedSize: 100 }),
+    /metadata/,
+    'archive size metadata must not be numerically coerced',
+);
+assert.throws(
+    () => assertAnswerlatticeDocxEntryIsBounded({
+        get compressedSize() {
+            throw new Error('hostile archive metadata');
+        },
+        uncompressedSize: 100,
+    }),
+    /metadata/,
+);
 assert.throws(() => assertAnswerlatticeDocxEntryIsBounded({ compressedSize: 1, uncompressedSize: 1000 }), /ratio/);
 assert.throws(() => assertAnswerlatticeDocxEntryIsBounded({
     compressedSize: 64 * 1024,

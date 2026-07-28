@@ -32,12 +32,15 @@ Allow an authorized SaaS owner to obtain a portable snapshot of the approved sup
 - KB articles and FAQs must be active/published.
 - AI translations require human review evidence; human translations may be included directly.
 - Changelog entries must be published and retain their changed-entity and release links.
+- Nested changelog pages must corroborate exact `AL`/tenant/workspace identity; missing publication state and unlinked versioned entries are excluded.
 - Citation output uses explicit canonical citation fields; arbitrary evidence metadata is discarded.
+- Unknown timestamps are failure-contained and portable numeric fields do not coerce strings or booleans.
 
 ## Security Rules
 
 - No tickets, chats, feedback, secrets, embeddings, raw audit history, actor metadata, or tenant identifiers enter the file.
 - The response is private, no-store, and `nosniff`.
+- Browser settlement is owned by the initiating workspace; duplicate clicks are synchronously refused and workspace transitions abort the in-flight download.
 - A metadata-only `support_truth_export_generated` audit event is awaited before delivery.
 - That audit action is server-reserved in dedicated and shared Firestore rules.
 

@@ -2160,7 +2160,7 @@ body[data-menulist-website="true"] {
 
 .ws-link-includes__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--ws-space-3);
   margin-top: var(--ws-space-8);
 }
@@ -2214,6 +2214,18 @@ body[data-menulist-website="true"] {
   font-size: 0.95rem;
   line-height: 1.65;
   text-align: center;
+}
+
+@media (max-width: 860px) {
+  .ws-link-includes__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .ws-link-includes__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ws-home-faq__list,
@@ -4400,10 +4412,8 @@ body[data-menulist-website="true"] {
   height: 1rem;
 }
 
-.ws-header-feature-menu:hover .ws-header-feature-menu__panel,
-.ws-header-feature-menu:focus-within .ws-header-feature-menu__panel,
-.ws-header-resource-menu:hover .ws-header-resource-menu__panel,
-.ws-header-resource-menu:focus-within .ws-header-resource-menu__panel {
+.ws-header-feature-menu__panel[data-open="true"],
+.ws-header-resource-menu__panel[data-open="true"] {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, 0) scale(1);
@@ -4470,7 +4480,7 @@ body[data-menulist-website="true"] {
   display: block;
   margin-top: 0.2rem;
   color: color-mix(in srgb, var(--ws-text-secondary) 84%, var(--ws-text-primary) 16%);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.35;
 }
@@ -4516,7 +4526,7 @@ body[data-menulist-website="true"] {
 .ws-header-feature-menu__group > p {
   margin: 0;
   color: var(--ws-text-muted);
-  font-size: 0.74rem;
+  font-size: 0.8125rem;
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.2;

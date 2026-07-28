@@ -27,7 +27,7 @@ const normalizeSegment = (value: unknown, fallback: string, maxLength: number): 
 export type SupportTicketAttachmentUpload = Readonly<{
     name: string;
     size: number;
-    type: string;
+    type: (typeof ANSWERLATTICE_TICKET_ATTACHMENT_TYPES)[number];
     uid?: string;
     url: string;
 }>;
@@ -71,7 +71,7 @@ export const parseSupportTicketAttachmentUpload = (value: unknown): SupportTicke
     return {
         name,
         size,
-        type,
+        type: type as SupportTicketAttachmentUpload['type'],
         url,
         ...(typeof uid === 'string' && uid ? { uid } : {}),
     };

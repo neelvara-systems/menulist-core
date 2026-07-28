@@ -9,6 +9,7 @@ import type {
     MessagingOnboardingOpsSnapshot,
 } from '@lib/ops/messagingOnboardingTypes';
 import { isMessagingOnboardingOpsSnapshotResponse } from '@lib/ops/messagingOnboardingOpsBoundary';
+import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
@@ -127,7 +128,7 @@ function formatBytes(value: number | undefined): string {
 }
 
 function getBoundedMessagingEventErrorCode(error: MessagingOnboardingOpsEvent['error']): string {
-    return error?.code ? String(error.code).slice(0, 64) : 'messaging_onboarding_event_failed';
+    return getBoundedErrorCode(error) || 'messaging_onboarding_event_failed';
 }
 
 function Metric({ label, value, tone }: { label: string; value: string | number; tone?: 'danger' | 'warning' }) {

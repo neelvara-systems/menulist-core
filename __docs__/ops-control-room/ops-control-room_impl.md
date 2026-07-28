@@ -78,6 +78,8 @@ Scheduled and manual store-nightly execution share one tenant/store `_system/sto
 
 Source gate: `npm run verify:scheduler-monitor-boundary` locks the read-only scheduler DAL, bounded desktop/mobile scheduler detail rendering, store-scoped `triggerStoreNightlyScheduler` manual recovery, shared store scheduler lease, per-store acquisition timing, MobileShell route mapping and docs. Its Firestore emulator proves concurrent exclusion, exact scope separation, intentional later rerun, stale-lease recovery, and stale-owner finalization refusal.
 
+July 28 run-log contract audit: the browser projector now admits the complete current nightly and maintenance task-name union instead of discarding maintenance entries. The maintenance producer records `failed` when every attempted task fails, `partial` only for mixed attempted outcomes, and `success` when no attempted task fails. The desktop “Runs (7d)” metric uses one exact `startedAt` aggregation count; recent rows remain the bounded health/detail sample.
+
 ## Extraction Monitor
 
 `getExtractionDashboardSnapshot()` performs current access admission, one capped recent-job read (150) and one capped cost read (100). It reuses job rows for health, quality and list output. Failed reads reject rather than returning an empty/zero snapshot. Desktop SWR and mobile manual refresh label unavailable/previous data.

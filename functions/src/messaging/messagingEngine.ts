@@ -23,6 +23,7 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import {
+  normalizeOwnerNotificationNumericScopeAliases,
   normalizeOwnerNotificationNumericScopeDocumentId,
   normalizeOwnerNotificationReferenceId,
 } from '../sharedData/ownerNotificationDeliveryBoundary';
@@ -35,6 +36,11 @@ import {
   MessageLogDoc,
   SendMessagePayload,
 } from './types';
+import {
+  getBoundedFunctionsErrorCode,
+  getBoundedFunctionsErrorName,
+  getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
 
 const MENULIST_PRODUCT_ID = 'ML' as const;
 const logger = functions.logger;
@@ -59,17 +65,13 @@ function getErrorLogContext(error: unknown): {
   errorStatus?: string;
 } {
   if (error instanceof Error) {
-    const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
-    const status = record.status ?? record.statusCode;
+    const errorCode = getBoundedFunctionsErrorCode(error);
+    const errorStatus = getBoundedFunctionsErrorStatus(error);
 
     return {
-      errorName: (error.name || 'Error').slice(0, 80),
-      ...(record.code === undefined || record.code === null ? {} : {
-        errorCode: String(record.code).slice(0, 64),
-      }),
-      ...(status === undefined || status === null ? {} : {
-        errorStatus: String(status).slice(0, 32),
-      }),
+      errorName: getBoundedFunctionsErrorName(error) || 'Error',
+      ...(errorCode === undefined ? {} : { errorCode }),
+      ...(errorStatus === undefined ? {} : { errorStatus: errorStatus.toString() }),
     };
   }
 
@@ -271,10 +273,19 @@ async function getStoreInfo(storeId: string, tenantId: string): Promise<StoreInf
 
     const data = storeDoc.data();
     if (!data) return null;
-    const storedTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId);
+    const tenantAliases = [data.tenantId, data.tId]
+      .filter((value) => value !== undefined && value !== null);
+    const storedTenantScope = normalizeOwnerNotificationNumericScopeAliases(tenantAliases);
+    const storeAliases = [data.storeId, data.sId]
+      .filter((value) => value !== undefined && value !== null);
+    const storedStoreScope = storeAliases.length === 0
+      ? storeScope
+      : normalizeOwnerNotificationNumericScopeAliases(storeAliases);
     if (
-      (storedTenantScope && storedTenantScope.numericId !== tenantScope.numericId)
-      || (!storedTenantScope && !usedTenantScopedFallback)
+      !storedStoreScope
+      || storedStoreScope.numericId !== storeScope.numericId
+      || (tenantAliases.length > 0 && storedTenantScope?.numericId !== tenantScope.numericId)
+      || (tenantAliases.length === 0 && !usedTenantScopedFallback)
     ) return null;
 
     const notifSettings = data.notificationSettings;
@@ -612,7 +623,7 @@ export async function checkSuspensionWarnings(): Promise<void> {
  * Max 1 retry per message (checks retryCount field).
  * Industry best practice: transient SMTP failures should be retried once.
  */
-export async function retryFailedMessages(): Promise<{ retried: number; succeeded: number }> {
+export async function retryFailedMessages(): Promise<{ retried: number; succeeded: number; ambiguous: number }> {
   if (FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATIONS && FUNCTION_FLAGS.ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION) {
     try {
       const { retryFailedOwnerNotifications } = await import('../ownerNotifications/processor');
@@ -676,7 +687,7 @@ export async function retryFailedMessages(): Promise<{ retried: number; succeede
     });
   }
 
-  return { retried, succeeded };
+  return { retried, succeeded, ambiguous: 0 };
 }
 
 // ================================================================

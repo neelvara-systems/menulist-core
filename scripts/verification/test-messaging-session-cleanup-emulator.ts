@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { DB_COLLECTIONS } from "../../functions/src/constants/database";
 import { admin, firestoreAdmin } from "../../functions/src/firebaseAdmin";
+import { FEATURE_FLAGS } from "../../functions/src/messagingOnboarding/constants";
 import { quarantineInvalidMessagingCleanupSession } from "../../functions/src/messagingOnboarding/reminderLease";
 import { messagingSessionCleanupLogic } from "../../functions/src/schedulers/messagingSessionCleanup";
 
@@ -109,6 +110,28 @@ async function main(): Promise<void> {
     "Cleanup must not delete a queue row while a worker owns its PROCESSING claim",
   );
   assert.equal((await inbound.doc(processedInboundId).get()).exists, false);
+
+  const disabledExpiryId = "DiSaBlEdExPiRy123456";
+  const disabledInboundId = "disabled-expired-inbound";
+  (FEATURE_FLAGS as { ENABLE_MESSAGING_ONBOARDING: boolean }).ENABLE_MESSAGING_ONBOARDING = false;
+  await Promise.all([
+    sessions.doc(disabledExpiryId).set(buildSession({
+      expiresAt: Timestamp.fromMillis(now.toMillis() - 49 * 60 * 60 * 1_000),
+      sessionId: disabledExpiryId,
+      state: "COLLECTING_INPUT",
+    })),
+    inbound.doc(disabledInboundId).set({
+      expiresAt: Timestamp.fromMillis(now.toMillis() - 1_000),
+      status: "PROCESSED",
+    }),
+  ]);
+  const disabledResult = await messagingSessionCleanupLogic();
+  assert.equal(disabledResult.reminders, 0, "A disabled feature must not send reminders");
+  assert.equal(disabledResult.expired, 1, "Session expiry must continue while the feature is disabled");
+  assert.equal(disabledResult.cleaned, 1, "Expired session cleanup must continue while disabled");
+  assert.equal(disabledResult.inboundCleaned, 1, "Inbound retention must continue while disabled");
+  assert.equal((await sessions.doc(disabledExpiryId).get()).exists, false);
+  assert.equal((await inbound.doc(disabledInboundId).get()).exists, false);
 
   const staleQuarantineId = "StAlEQuArAnTiNe12345";
   const staleQuarantineRef = sessions.doc(staleQuarantineId);

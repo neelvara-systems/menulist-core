@@ -21,6 +21,25 @@
 - A malformed affected answer returns the release to pending.
 - Retry completes after the malformed answer is repaired.
 
+## Pre-Activation Impact Preview
+
+- Preview rejects malformed, foreign, active, missing, or wrong-workspace
+  release state as required by the final contract.
+- Preview returns only directly entity-linked active canonical answers.
+- Preview and activation use the same affected-answer admission projector and
+  200-answer cap.
+- Preview performs no write, drift mutation, release mutation, changelog
+  mutation, test run, or provider call.
+- Preview exposes linked current, stale, missing, and critical-failure Answer
+  Test proof without treating missing proof as passing.
+- Activation rejects a missing, malformed, wrong-release, or stale preview
+  fingerprint.
+- Repeating the same current preview is deterministic.
+- Release or affected-answer changes invalidate the earlier preview.
+- Workspace transition clears preview UI and cannot settle activation into the
+  later workspace.
+- Owner cancellation after preview leaves the note private and release pending.
+
 ## Changelog emulator
 
 - Create/update/delete are replay-safe.
@@ -54,3 +73,5 @@
 - Reopen and retry publishes the same entry/version.
 - Unpublish removes the note from public cache and surface summary.
 - Narrow-width form and public timeline have no overlap or horizontal clipping.
+- Direct-impact preview is understandable on desktop and narrow widths.
+- Stale preview requires review again and does not publish.

@@ -19,7 +19,7 @@
 - safe-mode rejection preserves the route's private/no-store response contract;
 - source changes and existing locale records cannot be overwritten after provider work;
 - drafts carry status, source locale, and source fingerprint;
-- model usage is accounted for provider-completed attempts;
+- provider attempts carry an explicit failure/completion/write outcome, and the failure-contained operation-log write settles before the route returns;
 - rate limiting fails closed on limiter-provider failure;
 - private drafts do not invalidate public KB/context state;
 - UI no longer calls draft existence multilingual coverage;

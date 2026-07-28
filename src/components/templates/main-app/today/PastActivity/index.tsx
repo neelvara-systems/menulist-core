@@ -3,6 +3,12 @@
 import { getExistingProjectsListWithoutLoader } from "@database/projects";
 import { PAST_ACTIVITY_GUIDE_SECTIONS, PAST_ACTIVITY_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { usePastActivity } from "@hook/usePastActivity";
+import { useClientAuthSession } from "@hook/useClientAuthSession";
+import {
+    getCampaignCacheScope,
+    getPastActivityProjectsCacheKey,
+    normalizeCampaignActivityDate,
+} from "@lib/campaigns/campaignClientBoundary";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { Campaign } from "@type/campaigns";
 import { formatDateTime } from "@util/dateTime";
@@ -67,6 +73,8 @@ const resolveSelectedProject = (
  * - Must feel like "a memory, not a report"
  */
 const PastActivityScreen = () => {
+    const session = useClientAuthSession();
+    const campaignScope = getCampaignCacheScope(session);
     const router = useRouter();
     const formatter = useFormatter();
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -75,7 +83,7 @@ const PastActivityScreen = () => {
         data: projects = [],
         isLoading: isProjectsLoading,
     } = useSWR<ProjectSummary[]>(
-        "past-activity-projects",
+        getPastActivityProjectsCacheKey(campaignScope),
         async () => {
             const result = await getExistingProjectsListWithoutLoader(true);
             return (result?.projects || []) as ProjectSummary[];
@@ -110,7 +118,9 @@ const PastActivityScreen = () => {
     // Group campaigns by date (simple display, NO counts, NO statistics)
     // HARD RULE: No "Completed X times" labels ever
     const groupedByDate = campaigns.reduce((acc, campaign) => {
-        const activityDate = campaign.resolvedAt?.toDate() || campaign.updatedAt?.toDate() || campaign.createdAt?.toDate();
+        const activityDate = normalizeCampaignActivityDate(campaign.resolvedAt)
+            || normalizeCampaignActivityDate(campaign.updatedAt)
+            || normalizeCampaignActivityDate(campaign.createdAt);
         const date = activityDate
             ? formatDateTime(activityDate, 'date', formatter)
             : 'Unknown';

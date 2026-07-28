@@ -354,24 +354,6 @@
       ]
     },
     {
-      "collectionGroup": "subscriptionPayments",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "subscriptions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -456,6 +438,38 @@
       ]
     },
     {
+      "collectionGroup": "ownerNotificationEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "processingStartedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ownerNotificationEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "ownerNotificationDeliveries",
       "queryScope": "COLLECTION",
       "fields": [
@@ -469,6 +483,34 @@
         },
         {
           "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ownerNotificationDeliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "ownerNotificationRateLimits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "productId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
           "order": "ASCENDING"
         }
       ]
@@ -719,32 +761,6 @@
       "fields": [
         {
           "fieldPath": "deleted",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdOn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "kb_generation_jobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "pId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
           "order": "ASCENDING"
         },
         {
@@ -1482,50 +1498,6 @@
       ]
     },
     {
-      "collectionGroup": "systemAlerts",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "acknowledged",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "systemAlerts",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "tId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "sId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "title",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timestamp",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "subscriptions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -2140,6 +2112,32 @@
         },
         {
           "fieldPath": "type",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "answerlattice_entities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "pId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "tId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
           "order": "ASCENDING"
         }
       ]

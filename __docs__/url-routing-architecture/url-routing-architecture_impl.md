@@ -44,6 +44,8 @@ Customer opens: storypizza.menulist.ai/food-menu
 
 Middleware also owns `x-product-id`, `x-product-name`, and `x-product-base-path`. `getSanitizedRoutingRequestHeaders()` removes tenant, hosted-help, and product routing headers before every internal rewrite or pass-through. Product branches then add only the product metadata derived from the active Host/path contract. This prevents direct request headers from changing MenuList/MyCodex aliases, Answerlattice/CampaignCue base paths, SignalDesk path handling, or server loader branding.
 
+July 28 persisted-scope correction: brand-subdomain admission and admin rename transaction reads require every supplied canonical/legacy tenant alias on `stores/{storeId}` to represent the same exact positive identifier. A row with conflicting `tenantId` and `tId` fails before claim or redirect writes, even if one alias matches the authenticated tenant. The Firestore emulator covers this transaction-current failure path.
+
 `src/app/client/sitemap.ts` keeps tenant sitemap lookup failures fail-closed and bounded. Master-store lookup failure logs `tenant_sitemap_master_store_lookup_failed` and returns an empty sitemap; outlet lookup failure logs `tenant_sitemap_outlets_lookup_failed` and omits outlet entries; project lookup failure logs `tenant_sitemap_projects_lookup_failed` and omits project entries. The diagnostic guard caps unique failure shapes and logs only presence/length metadata plus fallback-policy labels, never raw tenant hosts, custom domains, IDs, slugs, generated sitemap URLs, or exception text.
 
 The current internal tenant route namespace is `/client`, backed by `src/app/client/[[...slug]]/page.tsx`. Retired route wording is kept only in archived review history, not active implementation guidance.

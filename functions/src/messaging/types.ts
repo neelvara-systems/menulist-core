@@ -56,7 +56,7 @@ export interface SendMessagePayload {
   tenantId: string;
   eventType: MessageEventType;
   referenceId: string;        // Idempotency: paymentId, subscriptionId, publishId, etc.
-  metadata?: Record<string, any>; // Event-specific data for template rendering
+  metadata?: Record<string, unknown>; // Event-specific data for template rendering
 }
 
 // ================================================================

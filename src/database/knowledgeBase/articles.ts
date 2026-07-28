@@ -18,7 +18,10 @@ import {
     resolveKnowledgeBaseArticlePlacement,
     upsertKnowledgeBaseArticleMeta,
 } from '@lib/answerlattice/knowledgeBaseCategoryMutations';
-import { normalizeAnswerlatticeScopeDocumentId } from "@lib/answerlattice/sessionScope";
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+} from "@lib/answerlattice/sessionScope";
 import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -175,18 +178,25 @@ const resolveKnowledgeBaseArticleSession = async (operation: string): Promise<Kn
 };
 
 const normalizeKnowledgeBaseArticleScope = (source?: Record<string, unknown> | null) => {
-    const tId = normalizeAnswerlatticeScopeDocumentId(source?.tId ?? source?.tenantId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(source?.sId ?? source?.storeId);
+    const user = source?.user && typeof source.user === 'object' && !Array.isArray(source.user)
+        ? source.user as Record<string, unknown>
+        : null;
+    const tId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        source?.tId,
+        source?.tenantId,
+        user?.tenantId,
+    ]);
+    const sId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        source?.sId,
+        source?.storeId,
+        user?.storeId,
+    ]);
     if (!tId || !sId) return null;
     return { tId, sId };
 };
 
 const normalizeKnowledgeBaseArticleSessionScope = (session: Awaited<ReturnType<typeof getActiveSession>> | null) => {
-    const record = session as any;
-    return normalizeKnowledgeBaseArticleScope({
-        tId: record?.tId ?? record?.tenantId ?? record?.user?.tenantId,
-        sId: record?.sId ?? record?.storeId ?? record?.user?.storeId,
-    });
+    return normalizeKnowledgeBaseArticleScope(session as unknown as Record<string, unknown> | null);
 };
 
 const resolveReadableArticleScope = async (): Promise<ReadableArticleScope> => {
@@ -291,8 +301,14 @@ const acknowledgeArticleEntityExtractionResponse = async (
 const readableScopeAllowsArticle = (scope: ReadableArticleScope, article: Partial<KnowledgeBaseArticleType> | null | undefined) => {
     if (article?.pId !== ANSWERLATTICE_PRODUCT_ID) return false;
     const record = article as Record<string, unknown> | null | undefined;
-    const articleTId = normalizeAnswerlatticeScopeDocumentId(record?.tId ?? record?.tenantId);
-    const articleSId = normalizeAnswerlatticeScopeDocumentId(record?.sId ?? record?.storeId);
+    const articleTId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        record?.tId,
+        record?.tenantId,
+    ]);
+    const articleSId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        record?.sId,
+        record?.storeId,
+    ]);
     if (!articleTId || !articleSId) return false;
     if (scope.isPlatform) {
         return !scope.tId || !scope.sId || (articleTId === scope.tId && articleSId === scope.sId);

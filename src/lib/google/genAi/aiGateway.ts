@@ -23,6 +23,8 @@
 
 import { logger } from "@lib/monitoring/logger";
 import { AI_PROVIDER_CONFIG_MISSING_CODE, KeyManager } from "./keyManager";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
+import { compileGeminiGenerateContentRequest } from '@data/shared/geminiRuntime';
 
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -104,7 +106,7 @@ function getProviderErrorStrings(value: any, depth = 0): string[] {
         .map(([, entry]) => String(entry));
 
     return [
-        ...(value instanceof Error ? [value.name] : []),
+        ...(value instanceof Error ? [getBoundedErrorName(value) || 'Error'] : []),
         ...indicators,
         ...getProviderErrorStrings(value.error, depth + 1),
         ...getProviderErrorStrings(value.errorDetails, depth + 1),
@@ -170,7 +172,7 @@ function getProviderErrorLogContext(error: any) {
     const sourceStatus = typeof error?.status === 'string' ? error.status : nestedError?.status;
 
     return {
-        sourceErrorName: error instanceof Error ? error.name : typeof error,
+        sourceErrorName: getBoundedErrorName(error) || typeof error,
         sourceErrorCode: getSafeDiagnosticValue(error?.code ?? nestedError?.code),
         sourceStatus: getSafeDiagnosticValue(sourceStatus),
         sourceStatusCode: getStatusCode(error?.status)
@@ -196,7 +198,10 @@ export class AIGateway {
     get models() {
         return {
             generateContent: (config: any) =>
-                this.executeWithRetry('generateContent', config),
+                this.executeWithRetry(
+                    'generateContent',
+                    compileGeminiGenerateContentRequest(config),
+                ),
             embedContent: (config: any) =>
                 this.executeWithRetry('embedContent', config),
             generateImages: (config: any) =>

@@ -24,6 +24,7 @@ import {
     getMenuLinkImportArtifactCleanupDecision,
     getMenuLinkImportArtifactJobLookupId,
 } from './menuLinkImportArtifactRetention';
+import { getBoundedFunctionsErrorCode, getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 const MENU_JOB_RETENTION_DAYS = 7;
 const MENU_LINK_IMPORT_ARTIFACT_CLEANUP_LIMIT = 100;
@@ -40,22 +41,6 @@ const EXTRACTION_ALERT_TITLES = {
     qualityDrop: 'Extraction Quality Degraded',
     stuckJob: 'Extraction Job Stuck',
 } as const;
-
-async function shouldCreateExtractionAlert(title: string, cooldownMinutes: number): Promise<boolean> {
-    const cooldownDate = new Date();
-    cooldownDate.setMinutes(cooldownDate.getMinutes() - cooldownMinutes);
-
-    const existing = await firestoreAdmin
-        .collection(DB_COLLECTIONS.SYSTEM_ALERTS)
-        .where('tId', '==', EXTRACTION_ALERT_SCOPE.tId)
-        .where('sId', '==', EXTRACTION_ALERT_SCOPE.sId)
-        .where('title', '==', title)
-        .where('timestamp', '>=', Timestamp.fromDate(cooldownDate))
-        .limit(1)
-        .get();
-
-    return existing.empty;
-}
 
 async function createExtractionAlert(params: {
     title: string;
@@ -339,14 +324,11 @@ export async function cleanupOldMenuLinkImportArtifactsLogic(): Promise<{
             deletedFiles += 1;
         } catch (error) {
             errors += 1;
-            const errorRecord = error && typeof error === 'object' ? error as Record<string, unknown> : {};
             logger.warn('[cleanupOldMenuLinkImportArtifacts] Failed to delete source artifact', {
                 artifactIdLength: artifactDoc.id.length,
                 failureCode: MENU_LINK_IMPORT_ARTIFACT_DELETE_FAILED_CODE,
-                sourceErrorCode: typeof errorRecord.code === 'string' || typeof errorRecord.code === 'number'
-                    ? String(errorRecord.code).slice(0, 64)
-                    : undefined,
-                sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : 'UnknownError',
+                sourceErrorCode: getBoundedFunctionsErrorCode(error),
+                sourceErrorName: getBoundedFunctionsErrorName(error) || 'UnknownError',
             });
             // Preserve the artifact metadata as the durable retry record. Deleting it
             // here would orphan the private Storage object permanently.
@@ -469,7 +451,7 @@ export async function monitorExtractionHealthLogic(): Promise<void> {
             qualityScores.reduce((sum, score) => sum + score, 0) / qualityScores.length
         );
 
-        if (avgQualityScore < 55 && await shouldCreateExtractionAlert(EXTRACTION_ALERT_TITLES.qualityDrop, 60)) {
+        if (avgQualityScore < 55) {
             await createExtractionAlert({
                 title: EXTRACTION_ALERT_TITLES.qualityDrop,
                 severity: avgQualityScore < 40 ? 'critical' : 'warning',
@@ -486,7 +468,7 @@ export async function monitorExtractionHealthLogic(): Promise<void> {
     const failedJobs = recentJobs.filter((job) => job.status === MENU_PROCESSING_STATUS.FAILED).length;
     const failureRate = totalJobs > 0 ? Math.round((failedJobs / totalJobs) * 100) : 0;
 
-    if (totalJobs >= 5 && failureRate > 5 && await shouldCreateExtractionAlert(EXTRACTION_ALERT_TITLES.failureSpike, 60)) {
+    if (totalJobs >= 5 && failureRate > 5) {
         await createExtractionAlert({
             title: EXTRACTION_ALERT_TITLES.failureSpike,
             severity: failureRate >= 20 ? 'critical' : 'warning',

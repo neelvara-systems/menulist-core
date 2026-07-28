@@ -28,6 +28,10 @@ import {
     isAnswerlatticeOwnerAssistantRoute,
     parseAnswerlatticeOwnerAssistantSupportBoardSummary,
 } from '@lib/answerlattice/ownerSupportAssistantContracts';
+import {
+    normalizeAnswerlatticeOwnerAssistantCount,
+    normalizeAnswerlatticeOwnerAssistantTimestamp,
+} from '@lib/answerlattice/ownerSupportAssistantNormalization';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import type {
@@ -73,30 +77,9 @@ const SCHEDULED_SUMMARY_STALE_AFTER_MS = 48 * 60 * 60 * 1_000;
 const SUMMARY_TIMESTAMP_FUTURE_TOLERANCE_MS = 5 * 60 * 1_000;
 const summaryCache = new Map<string, { expiresAt: number; value: SummaryPacketValue }>();
 
-const toNumber = (value: unknown) => {
-    const numberValue = Number(value);
-    return Number.isFinite(numberValue) ? numberValue : 0;
-};
-
-const toIso = (value: unknown): string | null => {
-    if (!value) return null;
-    if (typeof value === 'string') return value;
-    if (typeof (value as any)?.toDate === 'function') {
-        const date = (value as any).toDate();
-        return date instanceof Date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
-    }
-    return null;
-};
-
-const isRecord = (value: unknown): value is Record<string, any> => (
+const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
-
-const toBoundedCount = (value: unknown, maximum: number): number => {
-    const normalized = Number(value);
-    if (!Number.isFinite(normalized) || normalized < 0) return 0;
-    return Math.min(maximum, Math.floor(normalized));
-};
 
 const normalizeLaunchRoute = (value: unknown): string => {
     const route = typeof value === 'string' ? value.trim() : '';
@@ -142,8 +125,8 @@ const buildLaunchVerification = (
             .filter(Boolean)
             .slice(0, 6)
         : [];
-    const completeCount = toBoundedCount(launchProof.completeCount, 20);
-    const totalCount = toBoundedCount(launchProof.totalCount, 20);
+    const completeCount = normalizeAnswerlatticeOwnerAssistantCount(launchProof.completeCount, 20);
+    const totalCount = normalizeAnswerlatticeOwnerAssistantCount(launchProof.totalCount, 20);
     const currentPriorityProofReady = Array.isArray(launchProof.items)
         && launchProof.items.slice(0, 20).some((item: unknown) => (
             isRecord(item)
@@ -171,7 +154,7 @@ const buildLaunchVerification = (
         nextActionRoute: isRecord(nextItem)
             ? normalizeLaunchRoute(nextItem.route)
             : ANSWERLATTICE_ROUTES.ACTIVATION,
-        verifiedAt: toIso(activation?.computedAtIso),
+        verifiedAt: normalizeAnswerlatticeOwnerAssistantTimestamp(activation?.computedAtIso),
     };
 };
 
@@ -322,11 +305,11 @@ const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacke
         : null;
     const nowMs = Date.now();
     const sourceHealth = [
-        getSourceHealth('coverage', snapshots[0]?.exists === true, coverage, toIso(coverage?.lastUpdated), true, nowMs),
-        getSourceHealth('trust', snapshots[1]?.exists === true, trust, toIso(trust?.lastUpdated), true, nowMs),
-        getSourceHealth('support_board', snapshots[2]?.exists === true, board, toIso(board?.lastUpdated), false, nowMs),
-        getSourceHealth('friction', snapshots[3]?.exists === true, friction, toIso(friction?.lastUpdated), true, nowMs),
-        getSourceHealth('knowledge_intake', snapshots[4]?.exists === true, intake, toIso(intake?.lastUpdated), false, nowMs),
+        getSourceHealth('coverage', snapshots[0]?.exists === true, coverage, normalizeAnswerlatticeOwnerAssistantTimestamp(coverage?.lastUpdated), true, nowMs),
+        getSourceHealth('trust', snapshots[1]?.exists === true, trust, normalizeAnswerlatticeOwnerAssistantTimestamp(trust?.lastUpdated), true, nowMs),
+        getSourceHealth('support_board', snapshots[2]?.exists === true, board, normalizeAnswerlatticeOwnerAssistantTimestamp(board?.lastUpdated), false, nowMs),
+        getSourceHealth('friction', snapshots[3]?.exists === true, friction, normalizeAnswerlatticeOwnerAssistantTimestamp(friction?.lastUpdated), true, nowMs),
+        getSourceHealth('knowledge_intake', snapshots[4]?.exists === true, intake, normalizeAnswerlatticeOwnerAssistantTimestamp(intake?.lastUpdated), false, nowMs),
         getSourceHealth('activation', snapshots[5]?.exists === true, activation, activation?.computedAtIso || null, false, nowMs),
     ];
     const value = {
@@ -358,15 +341,15 @@ const buildMetrics = (packet: SummaryPacket): AnswerlatticeOwnerAssistantBrief['
     confirmedResolutionRate: (packet.trust?.confirmedResolution?.explicitOutcomeTotal || 0) > 0
         ? packet.trust?.confirmedResolution?.rate ?? null
         : null,
-    recontactEligible: toNumber(packet.trust?.confirmedResolution?.recontactEligible),
-    recontactedSameSession: toNumber(packet.trust?.confirmedResolution?.recontactedSameSession),
-    driftedAnswers: toNumber(packet.trust?.drift?.driftedCount),
-    uncoveredEntities: toNumber(packet.trust?.entityAnswerCoverage?.uncoveredCount),
-    openBoardCards: toNumber(packet.board?.openCards),
-    needsAnswerCards: toNumber(packet.board?.needsAnswerCards),
-    reviewItems: toNumber(packet.intake?.reviewItems),
-    signals7d: toNumber(packet.friction?.totalSignals7d),
-    escalations7d: toNumber(packet.friction?.totalEscalations7d),
+    recontactEligible: normalizeAnswerlatticeOwnerAssistantCount(packet.trust?.confirmedResolution?.recontactEligible),
+    recontactedSameSession: normalizeAnswerlatticeOwnerAssistantCount(packet.trust?.confirmedResolution?.recontactedSameSession),
+    driftedAnswers: normalizeAnswerlatticeOwnerAssistantCount(packet.trust?.drift?.driftedCount),
+    uncoveredEntities: normalizeAnswerlatticeOwnerAssistantCount(packet.trust?.entityAnswerCoverage?.uncoveredCount),
+    openBoardCards: normalizeAnswerlatticeOwnerAssistantCount(packet.board?.openCards),
+    needsAnswerCards: normalizeAnswerlatticeOwnerAssistantCount(packet.board?.needsAnswerCards),
+    reviewItems: normalizeAnswerlatticeOwnerAssistantCount(packet.intake?.reviewItems),
+    signals7d: normalizeAnswerlatticeOwnerAssistantCount(packet.friction?.totalSignals7d),
+    escalations7d: normalizeAnswerlatticeOwnerAssistantCount(packet.friction?.totalEscalations7d),
 });
 
 const getUpdatedAt = (packet: SummaryPacket) => packet.summaryHealth.newestUpdatedAt;
@@ -378,11 +361,14 @@ const createDailyAction = (action: AnswerlatticeFounderDailyAction): Answerlatti
 const buildFounderDailyBrief = (
     status: AnswerlatticeOwnerAssistantStatus,
     metrics: AnswerlatticeOwnerAssistantBrief['metrics'],
+    friction: SummaryPacketValue['friction'],
     launchVerification: AnswerlatticeLaunchVerification,
     permissions: AnswerlatticeOwnerAssistantPermissionMap,
     capabilities: AnswerlatticeOwnerAssistantCapabilities,
 ): AnswerlatticeFounderDailyBrief => {
     const ranked: Array<AnswerlatticeFounderDailyAction & { rank: number }> = [];
+    const topFrictionEntity = friction?.topFrictionEntities[0] || null;
+    const frictionRoute = `${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`;
     const add = (rank: number, action: AnswerlatticeFounderDailyAction) => {
         if (!canUseAnswerlatticeOwnerAssistantRoute(action.href, permissions)) return;
         ranked.push({
@@ -496,14 +482,22 @@ const buildFounderDailyBrief = (
             id: 'support-reply-grounding',
             category: 'support_reply',
             severity: metrics.escalations7d > 0 ? 'high' : 'medium',
-            title: 'Reply from approved knowledge',
-            description: `${metrics.signals7d} support signals and ${metrics.escalations7d} escalations are visible in the current seven-day summary.`,
-            reason: 'Ticket replies should reuse approved answers where possible instead of becoming one-off explanations.',
-            href: ANSWERLATTICE_ROUTES.TICKETS,
-            cta: 'Open tickets',
+            title: topFrictionEntity
+                ? 'Review the highest-friction product area'
+                : 'Reply from approved knowledge',
+            description: topFrictionEntity
+                ? `${topFrictionEntity.entityName} produced ${topFrictionEntity.last7d.queryCount} support questions, ${topFrictionEntity.last7d.escalationCount} escalations, and ${topFrictionEntity.last7d.lowConfidenceCount} low-confidence outcomes in the current seven-day summary.`
+                : `${metrics.signals7d} support signals and ${metrics.escalations7d} escalations are visible in the current seven-day summary.`,
+            reason: topFrictionEntity
+                ? 'Start with the product area creating the most measured support friction before adding generic content.'
+                : 'Ticket replies should reuse approved answers where possible instead of becoming one-off explanations.',
+            href: topFrictionEntity ? frictionRoute : ANSWERLATTICE_ROUTES.TICKETS,
+            cta: topFrictionEntity ? 'Review friction' : 'Open tickets',
             source: 'Friction summary',
-            aiAssist: 'Use approved answers and drafts as starting points; customize before sending.',
-            costImpact: 'Ticket review is no-cost; new AI drafts remain explicitly metered.',
+            aiAssist: topFrictionEntity
+                ? 'Use the measured entity evidence to decide whether the next fix belongs in support truth or the product.'
+                : 'Use approved answers and drafts as starting points; customize before sending.',
+            costImpact: 'This prioritization reuses the loaded friction summary and adds no read or model call.',
         });
     }
 
@@ -666,6 +660,7 @@ export const getAnswerlatticeOwnerAssistantBrief = async (
                 dailyBrief: buildFounderDailyBrief(
                     status,
                     metrics,
+                    packet.friction,
                     launchVerification,
                     permissions,
                     capabilities,
@@ -703,6 +698,8 @@ export const answerAnswerlatticeOwnerQuestion = async (
     const metrics = buildMetrics(packet);
     const status = getAnswerlatticeOwnerAssistantStatus(metrics, packet.summaryHealth);
     const intent = classifyIntent(question);
+    const topFrictionEntity = packet.friction?.topFrictionEntities[0] || null;
+    const frictionRoute = `${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`;
     const evidence: AnswerlatticeOwnerAssistantAnswer['evidence'] = [];
     const nextActions: Array<{ label: string; href: string }> = [];
     let directAnswer = '';
@@ -728,13 +725,23 @@ export const answerAnswerlatticeOwnerQuestion = async (
         nextActions.push({ label: 'Open Drift Review', href: ANSWERLATTICE_ROUTES.GOVERNANCE });
     } else if (intent === 'friction') {
         directAnswer = metrics.signals7d > 0
-            ? `${metrics.signals7d} support signals and ${metrics.escalations7d} escalations were recorded in the current seven-day summary. Review the top friction entities before adding more generic content.`
+            ? topFrictionEntity
+                ? `${topFrictionEntity.entityName} is the highest-friction product area in the current seven-day summary, with ${topFrictionEntity.last7d.queryCount} support questions, ${topFrictionEntity.last7d.escalationCount} escalations, and ${topFrictionEntity.last7d.lowConfidenceCount} low-confidence outcomes. Review that evidence before adding more generic content.`
+                : `${metrics.signals7d} support signals and ${metrics.escalations7d} escalations were recorded in the current seven-day summary. Review the top friction entities before adding more generic content.`
             : 'No recent friction signals are available yet.';
         evidence.push(
-            { label: 'Signals in 7 days', value: String(metrics.signals7d), href: ANSWERLATTICE_ROUTES.GOVERNANCE, source: 'friction summary' },
+            ...(topFrictionEntity
+                ? [{
+                    label: 'Highest-friction area',
+                    value: `${topFrictionEntity.entityName} · ${topFrictionEntity.trendDirection}`,
+                    href: frictionRoute,
+                    source: 'friction summary',
+                }]
+                : []),
+            { label: 'Signals in 7 days', value: String(metrics.signals7d), href: frictionRoute, source: 'friction summary' },
             { label: 'Escalations in 7 days', value: String(metrics.escalations7d), href: ANSWERLATTICE_ROUTES.TICKETS, source: 'friction summary' },
         );
-        nextActions.push({ label: 'Open Friction Review', href: ANSWERLATTICE_ROUTES.GOVERNANCE });
+        nextActions.push({ label: 'Open Friction Review', href: frictionRoute });
     } else if (intent === 'readiness') {
         directAnswer = metrics.coverageRate === null
             ? 'Coverage is not available yet. Let real users ask questions, then review the next nightly summary.'

@@ -3,7 +3,7 @@
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** Source-implemented and hardened — not current launch or deploy certification
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation
-**Last Updated:** July 17, 2026
+**Last Updated:** July 26, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -22,12 +22,17 @@ Production rule: API keys are failover and rotation credentials, not a quota sca
 | Workload | Active source | Stable candidate | Current action |
 | --- | --- | --- | --- |
 | Answerlattice query/article embeddings | `gemini-embedding-2` on `embedding` | Active source contract | Pre-launch single-vector contract; no legacy model, dual-write, migration task, or corpus backfill |
-| Deterministic extraction, translation, summaries, structured JSON | Gemini 2.5 Flash / Flash-Lite by existing operation | `gemini-3.1-flash-lite` | Benchmark exact prompts, schema validity, latency, token use, retries, and effective cost before any operation mapping changes |
-| Complex reasoning and KB generation | Gemini 2.5 Flash / Pro by existing operation | `gemini-3.5-flash` | Selective benchmark only; no blanket model replacement |
-| High-volume image generation/editing | `gemini-2.5-flash-image` | `gemini-3.1-flash-lite-image` | Use the shared generator adapter and benchmark 1K output quality, edit fidelity, latency, failures, and per-image effective cost |
-| Quality-sensitive image output | `gemini-2.5-flash-image` | `gemini-3.1-flash-image` | Reserve as the higher-quality candidate when conversion impact justifies the cost |
+| Deterministic extraction, translation, summaries, structured JSON | `gemini-3.5-flash-lite` | Active source contract | Benchmark complete request cost, latency, schema validity, retries, and tool loops before changing an operation to another model |
+| Complex reasoning and recovery/escalation | `gemini-3.6-flash` | Active selective contract | Keep selective; it is not the universal default |
+| Balanced Gemini 3 text work | `gemini-3.5-flash` | Active explicit option | Use only where the operation deliberately selects the balanced model |
+| High-volume image generation/editing | `gemini-3.1-flash-lite-image` | Active high-throughput contract | Use the shared generator adapter and retain explicit model accounting |
+| Quality-sensitive image output | `gemini-3.1-flash-image` | Active quality contract | Reserve when output quality justifies the higher effective cost |
 
-All candidate IDs are concrete stable IDs in `src/constants/AI/models.ts`; active operation mappings remain unchanged until benchmark evidence is accepted. Image operation accounting now records the concrete provider model ID instead of the internal `GEMINI` adapter key. All three Cloud Functions packages already declare Node.js 22, so the Node.js 20 decommission alert requires no repository change.
+The model registry lives in `src/data/shared/geminiRuntime.ts` and is byte-identical in MenuList and Answerlattice Functions. The three gateways compile every `generateContent` request before retry/provider work. The compiler removes deprecated sampling fields from every admitted Gemini 3.x request and removes unsupported `candidateCount`; it rejects final prefilled model turns where disallowed, `thinkingBudget`, invalid `thinkingLevel`, incomplete function responses, unstable aliases, and unknown model IDs. It does not mutate the caller's request.
+
+`@google/genai` is pinned at 2.13.0 in the root, MenuList Functions, and Answerlattice Functions. Existing mature `generateContent` paths remain on that supported interface; there is no blanket Interactions API rewrite. A future Interactions adoption requires a separate workload benchmark and persistence/tool-loop design rather than a transport-only change.
+
+Image operation accounting records the concrete provider model ID instead of the internal `GEMINI` adapter key. All three Cloud Functions packages declare Node.js 22 and pin stable Firebase Functions 7.3.0; Answerlattice CI pins Firebase CLI 15.24.0.
 
 Firebase AI Logic one-time App Check tokens do not map to the current expensive-operation architecture: MenuList and Answerlattice AI calls are server-mediated by authenticated/rate-limited Next routes or dedicated Cloud Functions, and the repository has no client-side Firebase AI Logic call path. Do not add a second client-exposed AI transport solely to use replay protection. Cloud Storage hierarchical namespace is also not configured in the repository's Firebase Storage setup; the empty-folder lifecycle change has no source action unless a bucket is later enabled outside this repo.
 
@@ -63,30 +68,30 @@ July 5 response-parse boundary: `/api/seo` now logs unrecoverable provider-respo
 
 ## Quick Reference
 
-### Current State (✅ Updated June 25, 2026)
+### Current State (✅ Updated July 26, 2026)
 
-AI call sites use the gateway and shared model constants. Active source code no longer calls Gemini 2.0 Flash models.
+AI call sites use the gateway, shared request compiler, and explicit stable model constants. Active source code no longer calls Gemini 2.0 or 2.5 models. Retired SignalDesk IDs exist only in the persisted-route migration registry and cannot reach the provider adapter.
 
 June 28 hardening: frontend and Cloud Functions AI gateways classify rate limits, hard quota, and retryable provider errors from structured source code/name/status/quota/limit indicators only. Shared app-route provider helpers use the same structured retry/rate-limit posture. They do not parse raw provider `message` fields for retry decisions or diagnostics.
 
 | AI Feature              | SDK             | Model                                | Key Rotation | Retry           | Rate Limiting |
 | ----------------------- | --------------- | ------------------------------------ | ------------ | --------------- | ------------- |
-| Menu Extraction         | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway + CB | ✅ Upstash    |
-| Feedback Analysis       | `@google/genai` | `gemini-2.5-flash`                   | Dormant compatibility source | Gateway if deliberately invoked | Not scheduled |
-| Owner Dashboard Summary | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
-| KB Quality Analysis     | `@google/genai` | `gemini-2.5-flash`                   | Dormant compatibility source | Gateway if deliberately invoked | Not scheduled |
-| Weekly Narrative        | `@google/genai` | `gemini-2.5-flash`                   | Dormant compatibility source | Gateway if deliberately invoked | Not scheduled |
-| KB Generation           | `@google/genai` | `gemini-2.5-pro`                     | ✅ Gateway   | ✅ Gateway      | ❌ None       |
+| Menu Extraction         | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway + CB | ✅ Upstash    |
+| Feedback Analysis       | `@google/genai` | `gemini-3.5-flash-lite`              | Dormant compatibility source | Gateway if deliberately invoked | Not scheduled |
+| Owner Dashboard Summary | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway      | ❌ Nightly    |
+| KB Quality Analysis     | —               | —                                    | Retired MenuList source | Source absent | Answerlattice owns current truth |
+| Weekly Narrative        | `@google/genai` | `gemini-3.5-flash-lite`              | Dormant compatibility source | Gateway if deliberately invoked | Not scheduled |
+| KB Generation           | `@google/genai` | `gemini-3.6-flash`                   | ✅ Gateway   | ✅ Gateway      | ❌ None       |
 | Embeddings (CF)         | `@google/genai` | `gemini-embedding-2`                 | ✅ Gateway   | ✅ Gateway      | ❌ None       |
-| Help Center Search      | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Descriptions            | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Translations            | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Image Generation        | `@google/genai` | `gemini-2.5-flash-image`             | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Image Editing           | `@google/genai` | `gemini-2.5-flash-image`             | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| New Item Metadata       | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Campaign Captions       | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Review Drafts           | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
-| Answerlattice Translate | `@google/genai` | `gemini-2.5-flash`                   | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Help Center Search      | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Descriptions            | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Translations            | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Image Generation        | `@google/genai` | `gemini-3.1-flash-image`             | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Image Editing           | `@google/genai` | `gemini-3.1-flash-image`             | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| New Item Metadata       | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Campaign Captions       | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Review Drafts           | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
+| Answerlattice Translate | `@google/genai` | `gemini-3.5-flash-lite`              | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Public Create Menu      | `@google/genai` | varies                               | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 | Answerlattice Embeddings | `@google/genai` | `gemini-embedding-2`                 | ✅ Gateway   | ✅ Gateway      | ✅ Upstash    |
 
@@ -118,7 +123,8 @@ Gemini API (via @google/genai SDK)
 | --------------------- | -------------------------------- | ----------------------------------------------------------- |
 | Gateway scope         | **BOTH frontend + CF**           | All AI calls need key rotation protection                   |
 | SDK standardization   | `@google/genai` (new SDK)        | Already used by extraction, newer API                       |
-| Default model         | `gemini-2.5-flash`               | Cost-effective, already proven in extraction                |
+| Default model         | `gemini-3.5-flash-lite`          | High-throughput structured default; complex recovery uses `gemini-3.6-flash` |
+| Request compatibility | Shared compile-before-call guard | Stops known Gemini 3 contract failures before paid provider work |
 | Key pool              | **✅ IMPLEMENTED** (1-4 keys)    | Auto-discovers available keys from env vars                 |
 | Proxy approach        | Transparent (same interface)     | Zero changes to 19 call sites                               |
 | Production key policy | Separate restricted keys per environment | Limits blast radius; keys are not exposed client-side       |
@@ -223,4 +229,4 @@ npm run verify:ai-accounting
 ---
 
 _Document Status: Source-implemented and hardened; not current launch or deploy certification._
-_Last Updated: July 10, 2026_
+_Last Updated: July 26, 2026_

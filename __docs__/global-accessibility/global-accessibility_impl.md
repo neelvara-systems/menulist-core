@@ -6,6 +6,8 @@
 
 Viewport exports under `src/app/` no longer set `maximumScale: 1` or `userScalable: false`. Product-specific theme color and viewport-fit behavior remain unchanged.
 
+`src/components/website/Header.tsx` keeps the controlled desktop Features and Resources panels `aria-hidden` and `inert` whenever they are closed. Visibility is driven by the same `data-open` state used by CSS, so invisible submenu links do not remain keyboard-focusable. The Features button also opens the controlled panel on activation instead of depending only on pointer hover. Authenticated sign-out is dynamically imported only after logout is requested, avoiding an unnecessary Firebase client bootstrap path for anonymous website visitors.
+
 ## Shared interaction primitives
 
 `src/components/mobile/antd.tsx` is the mobile interaction boundary:

@@ -29,6 +29,7 @@ import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { writeOwnerControlUsageEvent } from '@lib/ownerControlUsage/writeOwnerControlUsage';
 import { secureError } from '@lib/security/secureLogger';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { getBoundedErrorCode, getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 // ================================================================
 // COST OPTIMIZATION: Debounce tracking to reduce writes
@@ -46,16 +47,11 @@ export interface OwnerControlMetadata {
 const pendingData: Map<string, { controlType: OwnerControlType; metadata?: OwnerControlMetadata }> = new Map();
 
 const getOwnerControlErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getOwnerControlErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getOwnerControlMetadataContext = (metadata?: OwnerControlMetadata) => {

@@ -1,4 +1,5 @@
 import { secureError } from '@lib/security/secureLogger';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 /**
  * SWR LocalStorage Cache Provider
@@ -85,7 +86,7 @@ const buildSwrLocalStorageFailureContext = (
         dayKeyLength: dayKey.length,
         hasData: Boolean(metadata.hasData),
         removedCount: metadata.removedCount,
-        errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error,
+        errorName: getBoundedErrorName(metadata.error) || typeof metadata.error,
     };
 };
 

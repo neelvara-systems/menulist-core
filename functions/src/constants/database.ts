@@ -46,8 +46,9 @@ export const DB_COLLECTIONS = {
     MENU_IMAGE_PROCESSING_JOBS: 'menuImageProcessingJobs',
     MENU_LINK_IMPORT_ARTIFACTS: 'menuLinkImportArtifacts',
 
-    // Knowledge Base
-    KNOWLEDGE_BASE: 'knowledgeBase',
+    // Answerlattice knowledge-base collections use the dedicated product
+    // runtime. The retired MenuList nested `knowledgeBase` namespace must not
+    // be restored here.
     KB_CATEGORIES: 'kb_categories',
     KB_ARTICLES: 'kb_articles',
     KB_SECTIONS: 'kb_sections',
@@ -217,6 +218,7 @@ export const TTL_CONFIG = {
     CHAT_SESSIONS_DAYS: 365,                // Keep chat sessions for 1 year
     ERROR_LOGS_DAYS: 30,                    // Keep error logs for 30 days
     GUEST_FEEDBACK_DAYS: 90,                // Keep guest feedback for 90 days (privacy/cost)
+    SYSTEM_TELEMETRY_DAYS: 90,              // Keep bounded operational telemetry for 90 days
 } as const;
 
 // ═══════════════════════════════════════════════════════════════
@@ -226,21 +228,23 @@ export const TTL_CONFIG = {
 /**
  * Get ISO week number from date
  */
-function getISOWeek(date: Date): number {
+function getISOWeekParts(date: Date): { week: number; year: number } {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return {
+        week: Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7),
+        year: d.getUTCFullYear(),
+    };
 }
 
 /**
  * Get week string (YYYY-Www) from date
  */
 function getWeekStr(date: Date): string {
-    const weekNum = getISOWeek(date);
-    const year = date.getFullYear();
-    return `${year}-W${weekNum.toString().padStart(2, '0')}`;
+    const { week, year } = getISOWeekParts(date);
+    return `${year}-W${week.toString().padStart(2, '0')}`;
 }
 
 /**

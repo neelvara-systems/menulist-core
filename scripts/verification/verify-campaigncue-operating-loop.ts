@@ -20,9 +20,11 @@ import {
     isCampaignCueSourceInputCurrent,
 } from "../../src/lib/campaigncue/operatingLoop";
 import {
+    CampaignCueAssetSchema,
     CampaignCueBusinessPatchSchema,
     CampaignCueCampaignActionSchema,
     CampaignCueCreateCampaignSchema,
+    CampaignCueLocationSchema,
     CampaignCueSourceInputSchema,
 } from "../../src/lib/validation/campaigncueSchemas";
 import type {
@@ -607,28 +609,51 @@ const verifyCampaignRhythmAndReadiness = () => {
 
 const verifyRequestBoundaries = () => {
     assert(CampaignCueCreateCampaignSchema.safeParse({
+        idempotencyKey: "create_reuse_test",
         reuseCampaignId: "cc_campaign_test",
     }).success, "campaign create must accept a bounded reuse campaign id");
+    assert(!CampaignCueCreateCampaignSchema.safeParse({
+        reuseCampaignId: "cc_campaign_test",
+    }).success, "campaign create must require a retry identity");
     assert(!CampaignCueCampaignActionSchema.safeParse({
         action: "record_outcome",
+        idempotencyKey: "record_outcome_test",
     }).success, "record-outcome action must require a result signal");
     assert(CampaignCueCampaignActionSchema.safeParse({
         action: "record_outcome",
+        idempotencyKey: "record_outcome_test",
         resultSignalId: "got_orders",
     }).success, "record-outcome action with a result signal must validate");
     assert(!CampaignCueCampaignActionSchema.safeParse({
         action: "schedule",
+        idempotencyKey: "schedule_action_test",
         taskType: "staff_share",
     }).success, "manual schedule action must require a date and time");
     assert(CampaignCueCampaignActionSchema.safeParse({
         action: "schedule",
+        idempotencyKey: "schedule_action_test",
         scheduledAt: "2026-07-11T05:00:00.000Z",
         taskType: "staff_share",
     }).success, "manual schedule action with a date and time must validate");
-    assert(CampaignCueCampaignActionSchema.safeParse({ action: "approve" }).success, "approve action must validate");
-    assert(!CampaignCueCampaignActionSchema.safeParse({ action: "reject" }).success, "reject action must require a reason");
-    assert(CampaignCueCampaignActionSchema.safeParse({ action: "reject", note: "Price needs correction." }).success, "reject action with a reason must validate");
+    assert(
+        CampaignCueCampaignActionSchema.safeParse({ action: "approve", idempotencyKey: "approve_action_test" }).success,
+        "approve action must validate",
+    );
+    assert(
+        !CampaignCueCampaignActionSchema.safeParse({ action: "approve" }).success,
+        "campaign actions must require a retry identity",
+    );
+    assert(
+        !CampaignCueCampaignActionSchema.safeParse({ action: "reject", idempotencyKey: "reject_action_test" }).success,
+        "reject action must require a reason",
+    );
+    assert(CampaignCueCampaignActionSchema.safeParse({
+        action: "reject",
+        idempotencyKey: "reject_action_test",
+        note: "Price needs correction.",
+    }).success, "reject action with a reason must validate");
     assert(CampaignCueSourceInputSchema.safeParse({
+        idempotencyKey: "source-input-contact-safe-001",
         sourceType: "manual_note",
         label: "Past customer audience",
         value: "Past customers who visited this month, selected in our existing workflow",
@@ -636,22 +661,42 @@ const verifyRequestBoundaries = () => {
     }).success, "non-identifying audience description must validate");
     assert(!CampaignCueSourceInputSchema.safeParse({
         sourceType: "manual_note",
+        label: "Weekend offer",
+        value: "Owner-confirmed offer",
+    }).success, "source creation must require a retry identity");
+    assert(!CampaignCueSourceInputSchema.safeParse({
+        idempotencyKey: "source-input-contact-private-001",
+        sourceType: "manual_note",
         label: "Past customer audience",
         value: "Paste customer contacts from customers.csv: owner@example.com, +91 98765 43210",
         status: "active",
     }).success, "customer contact payload must fail validation");
     assert(!CampaignCueBusinessPatchSchema.safeParse({
+        idempotencyKey: "business-patch-invalid-clear-001",
         presence: { googleReviewUrl: "javascript:alert(1)" },
     }).success, "non-HTTP review destination must fail validation");
     assert(CampaignCueBusinessPatchSchema.safeParse({
+        idempotencyKey: "business-patch-clear-001",
         presence: { googleReviewUrl: "https://g.page/r/example/review" },
     }).success, "HTTPS review destination must validate");
     assert(!CampaignCueBusinessPatchSchema.safeParse({
+        idempotencyKey: "business-patch-private-url-001",
         targetLocales: ["Hindi language"],
     }).success, "invalid target locale must fail validation");
     assert(CampaignCueBusinessPatchSchema.safeParse({
+        idempotencyKey: "business-patch-current-facts-001",
         targetLocales: ["hi-IN", "kn-IN"],
     }).success, "valid target locales must validate");
+    assert(!CampaignCueBusinessPatchSchema.safeParse({
+        name: "Updated business",
+    }).success, "business patches must require a retry identity");
+    assert(!CampaignCueAssetSchema.safeParse({
+        assetType: "image",
+        name: "Owner photo",
+    }).success, "asset creation must require a retry identity");
+    assert(!CampaignCueLocationSchema.safeParse({
+        name: "Main outlet",
+    }).success, "location creation must require a retry identity");
 };
 
 const verifyIdempotencyBoundaries = () => {

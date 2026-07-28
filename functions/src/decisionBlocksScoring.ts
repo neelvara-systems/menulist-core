@@ -20,13 +20,21 @@ import { extractActiveItems } from './intelligence/shared/itemExtractor';
 import { compareDecisionScores, getQuickPickThreshold, isQuickPickEnabledForCategory, normalize, WEIGHTS } from './intelligence/shared/scoreNormalizer';
 import { revalidatePublicClientCacheForStore } from './logic/publicCacheRevalidation';
 import { transitionScheduledSpecialMenu } from './schedulers/specialMenuLifecycle';
+import { getSchedulerTaskStatus } from './schedulers/taskStatus';
 import { resolveBusinessCategoryOrFallback } from './sharedData/businessTypes';
 import { DEFAULT_DECISION_BLOCK_CATEGORY } from './sharedData/decisionBlockConfig';
-import { normalizeOwnerNotificationDocumentId } from './sharedData/ownerNotificationDeliveryBoundary';
+import {
+    normalizeOwnerNotificationDocumentId,
+    normalizeOwnerNotificationNumericScopeAliases,
+} from './sharedData/ownerNotificationDeliveryBoundary';
 import { parsePlatformStoreSummary, type PlatformStoreSummaryData } from './sharedData/storeSummaryBoundary';
 import { addDaysToAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessDayEndTime } from './utils/businessDay';
 import type { OwnerBusinessHealthBuildResult } from './ownerBusinessAssistant/types';
+import {
+    getBoundedFunctionsErrorCode,
+    getBoundedFunctionsErrorName,
+} from './utils/boundedErrorContext';
 
 const GUEST_FEEDBACK_RETENTION_TASK_FAILED = 'GUEST_FEEDBACK_RETENTION_TASK_FAILED';
 const SCHEDULER_TASK_FAILED_MESSAGE = 'Scheduler task failed';
@@ -1009,13 +1017,22 @@ async function assertCurrentPlatformOwner(
 function assertActiveStoreScope(
     storeData: FirebaseFirestore.DocumentData | undefined,
     tId: string,
+    sId: string,
 ): void {
-    const storedTenantId = String(storeData?.tId || storeData?.tenantId || '');
+    const storedTenantScope = normalizeOwnerNotificationNumericScopeAliases([
+        storeData?.tId,
+        storeData?.tenantId,
+    ]);
+    const storedStoreAliases = [storeData?.storeId, storeData?.sId];
     if (
         !storeData
         || storeData.active === false
         || storeData.deleted === true
-        || storedTenantId !== tId
+        || storedTenantScope?.documentId !== tId
+        || (
+            storedStoreAliases.some((value) => value !== undefined && value !== null)
+            && normalizeOwnerNotificationNumericScopeAliases(storedStoreAliases)?.documentId !== sId
+        )
     ) {
         throw new HttpsError('failed-precondition', 'Store is not active in the requested tenant.');
     }
@@ -1042,23 +1059,23 @@ function createNightlyAnalyticsCounters(): NightlyAnalyticsCounters {
     };
 }
 
-function getSchedulerErrorCode(error: any): string {
-    return String(error?.code || error?.details?.code || error?.name || 'unknown_error');
+function getSchedulerErrorCode(error: unknown): string {
+    return getBoundedFunctionsErrorCode(error) || 'unknown';
 }
 
-function getSchedulerErrorMessage(_error: any): string {
+function getSchedulerErrorMessage(_error: unknown): string {
     return SCHEDULER_TASK_FAILED_MESSAGE;
 }
 
 function buildSchedulerFailureDiagnostic(
-    error: any,
+    error: unknown,
     context: Omit<SchedulerFailureDiagnostic, 'error' | 'code' | 'name'>,
 ): SchedulerFailureDiagnostic {
     return {
         ...context,
         error: getSchedulerErrorMessage(error),
         code: getSchedulerErrorCode(error),
-        name: error?.name ? String(error.name) : undefined,
+        name: getBoundedFunctionsErrorName(error),
     };
 }
 
@@ -2179,7 +2196,7 @@ export const computeDecisionBlocksScores = onSchedule({
         });
         taskResults.push({
             name: 'menu_intelligence',
-            status: results.intelligenceFailed > 0 ? (results.intelligenceSuccess > 0 ? 'success' : 'failed') : 'success',
+            status: getSchedulerTaskStatus(results.intelligenceFailed),
             details: { success: results.intelligenceSuccess, failed: results.intelligenceFailed },
         });
         taskResults.push({
@@ -2200,9 +2217,7 @@ export const computeDecisionBlocksScores = onSchedule({
             name: 'owner_business_health',
             status: !FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
                 ? 'skipped'
-                : ownerBusinessHealthResults.storesFailed > 0
-                    ? (ownerBusinessHealthResults.storesSucceeded > 0 ? 'success' : 'failed')
-                    : 'success',
+                : getSchedulerTaskStatus(ownerBusinessHealthResults.storesFailed),
             durationMs: Date.now() - analyticsTaskStart,
             details: ownerBusinessHealthResults,
         });
@@ -2245,7 +2260,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 if (driftResult.errors.length > 0) {
                     logger.warn(`  Errors: ${driftResult.errors.length}`);
                 }
-                taskResults.push({ name: 'menu_drift', status: driftResult.errors.length > 0 ? 'success' : 'success', durationMs: Date.now() - taskStart, details: { items: driftResult.itemsProcessed, stores: driftResult.storesProcessed, projects: driftResult.projectsProcessed, reads: driftResult.readsCount, writes: driftResult.writesCount, errors: driftResult.errors.length } });
+                taskResults.push({ name: 'menu_drift', status: getSchedulerTaskStatus(driftResult.errors.length), durationMs: Date.now() - taskStart, details: { items: driftResult.itemsProcessed, stores: driftResult.storesProcessed, projects: driftResult.projectsProcessed, reads: driftResult.readsCount, writes: driftResult.writesCount, errors: driftResult.errors.length } });
             } catch (driftError: any) {
                 // Non-blocking - log but continue
                 logSchedulerFailure(logger, 'Menu Drift Metrics computation failed', SCHEDULER_MENU_DRIFT_FAILED, driftError, {
@@ -2306,11 +2321,14 @@ export const computeDecisionBlocksScores = onSchedule({
 
                 // Retry failed messages from last 24h (max 1 retry per message)
                 // Industry best practice: transient SMTP failures should be retried
-                let retryDetails = { retried: 0, succeeded: 0 };
+                let retryDetails = { retried: 0, succeeded: 0, ambiguous: 0 };
                 try {
                     retryDetails = await retryFailedMessages();
                     if (retryDetails.retried > 0) {
                         logger.info(`Message Retry: ${retryDetails.retried} retried, ${retryDetails.succeeded} succeeded`);
+                    }
+                    if (retryDetails.ambiguous > 0) {
+                        logger.error(`Message Retry: ${retryDetails.ambiguous} ambiguous processing outcomes require manual review`);
                     }
                 } catch (retryError) {
                     logSchedulerFailure(logger, 'Lifecycle Messaging retry task failed', SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED, retryError, {
@@ -2484,7 +2502,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 }
 
                 logger.info(`Special Menu Switching: checked ${smResult.checked}, activated ${smResult.activated}, deactivated ${smResult.deactivated}, errors ${smResult.errors}`);
-                taskResults.push({ name: 'special_menu_switching', status: 'success', durationMs: Date.now() - taskStart, details: smResult }); // Per-store errors tracked in details, not task-level failure
+                taskResults.push({ name: 'special_menu_switching', status: getSchedulerTaskStatus(smResult.errors), durationMs: Date.now() - taskStart, details: smResult });
             } catch (smError: any) {
                 logSchedulerFailure(logger, 'Special Menu Switching check failed', SCHEDULER_SPECIAL_MENU_TASK_FAILED, smError, {
                     phase: 'special_menu_switching',
@@ -2519,7 +2537,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 const { processExtractionLearningForAllStores } = await import('./analytics/extractionLearning');
                 const learningResult = await processExtractionLearningForAllStores();
                 logger.info(`Extraction Learning: ${learningResult.totalCorrections} corrections aggregated from ${learningResult.storesWithCorrections} stores`);
-                taskResults.push({ name: 'extraction_learning', status: 'success', durationMs: Date.now() - taskStart, details: { corrections: learningResult.totalCorrections, storesProcessed: learningResult.storesProcessed, storesWithCorrections: learningResult.storesWithCorrections, reads: learningResult.readsCount, writes: learningResult.writesCount } });
+                taskResults.push({ name: 'extraction_learning', status: getSchedulerTaskStatus(learningResult.storesFailed), durationMs: Date.now() - taskStart, details: { corrections: learningResult.totalCorrections, storesProcessed: learningResult.storesProcessed, storesWithCorrections: learningResult.storesWithCorrections, storesFailed: learningResult.storesFailed, reads: learningResult.readsCount, writes: learningResult.writesCount } });
             } catch (learningError: any) {
                 logSchedulerFailure(logger, 'Extraction Learning aggregation failed', SCHEDULER_EXTRACTION_LEARNING_FAILED, learningError, {
                     phase: 'extraction_learning',
@@ -2567,7 +2585,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 const { checkStalenessForAllStores } = await import('./analytics/stalenessCheck');
                 const stalenessResult = await checkStalenessForAllStores();
                 logger.info(`Staleness Check: ${stalenessResult.staleFound} stale, ${stalenessResult.newStalenessDetected} new detections, ${stalenessResult.skippedRecent} skipped (recent)`);
-                taskResults.push({ name: 'staleness_check', status: 'success', durationMs: Date.now() - taskStart, details: { checked: stalenessResult.checked, staleFound: stalenessResult.staleFound, newDetections: stalenessResult.newStalenessDetected, skippedRecent: stalenessResult.skippedRecent, errors: stalenessResult.errors, reads: stalenessResult.readsCount, writes: stalenessResult.writesCount } });
+                taskResults.push({ name: 'staleness_check', status: getSchedulerTaskStatus(stalenessResult.errors), durationMs: Date.now() - taskStart, details: { checked: stalenessResult.checked, staleFound: stalenessResult.staleFound, newDetections: stalenessResult.newStalenessDetected, skippedRecent: stalenessResult.skippedRecent, errors: stalenessResult.errors, reads: stalenessResult.readsCount, writes: stalenessResult.writesCount } });
             } catch (stalenessError: any) {
                 logSchedulerFailure(logger, 'Staleness Check failed', SCHEDULER_STALENESS_CHECK_FAILED, stalenessError, {
                     phase: 'staleness_check',
@@ -2877,7 +2895,7 @@ export const triggerStoreNightlyScheduler = onCall({
 
         const canonicalStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(sId).get();
         try {
-            assertActiveStoreScope(canonicalStoreSnap.exists ? canonicalStoreSnap.data() : undefined, tId);
+            assertActiveStoreScope(canonicalStoreSnap.exists ? canonicalStoreSnap.data() : undefined, tId, sId);
         } catch (scopeError) {
             const diagnostic = buildSchedulerFailureDiagnostic(scopeError, {
                 tId,
@@ -2938,7 +2956,12 @@ export const triggerStoreNightlyScheduler = onCall({
             }, { merge: true });
         }
 
+        const ownerBusinessHealthFailed = FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+            && !storeRun.ownerBusinessHealth?.currentDocId;
         const status = storeRun.failedCount > 0
+            || storeRun.intelligenceFailed > 0
+            || storeRun.analytics.storesFailed > 0
+            || ownerBusinessHealthFailed
             ? (storeRun.successCount > 0 || storeRun.analytics.storesSucceeded > 0 ? 'partial' : 'failed')
             : 'success';
         const taskResults = [
@@ -2955,7 +2978,7 @@ export const triggerStoreNightlyScheduler = onCall({
             },
             {
                 name: 'menu_intelligence',
-                status: storeRun.intelligenceFailed > 0 ? (storeRun.intelligenceSuccess > 0 ? 'success' : 'failed') : 'success',
+                status: getSchedulerTaskStatus(storeRun.intelligenceFailed),
                 details: {
                     success: storeRun.intelligenceSuccess,
                     failed: storeRun.intelligenceFailed,
@@ -2970,9 +2993,7 @@ export const triggerStoreNightlyScheduler = onCall({
                 name: 'owner_business_health',
                 status: !FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
                     ? 'skipped'
-                    : storeRun.ownerBusinessHealth?.currentDocId
-                        ? 'success'
-                        : 'failed',
+                    : getSchedulerTaskStatus(ownerBusinessHealthFailed ? 1 : 0),
                 details: storeRun.ownerBusinessHealth || { enabled: FUNCTION_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH },
             },
         ];
@@ -3179,7 +3200,7 @@ export const triggerDecisionBlocksScoring = onCall({
 
         const storeData = storeDoc.data();
         const projectData = projectDoc.data()!;
-        assertActiveStoreScope(storeData, tId);
+        assertActiveStoreScope(storeData, tId, sId);
         if (projectData.deleted === true || projectData.active === false) {
             throw new HttpsError('failed-precondition', 'Project is not active.');
         }
@@ -3237,7 +3258,7 @@ export const triggerDecisionBlocksScoring = onCall({
         }
 
         const storeData = storeDoc.data();
-        assertActiveStoreScope(storeData, tId);
+        assertActiveStoreScope(storeData, tId, sId);
         const businessCategory = resolveBusinessCategoryOrFallback(storeData?.businessType, storeData?.businessCategory);
 
         const { projectEntries } = await loadActiveProjectsForScheduler(db, tId, sId);

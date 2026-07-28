@@ -8,6 +8,8 @@ import {
     hashAnswerlatticeSignalIdentity,
     normalizeExactAnswerlatticeSignalScopeId,
 } from '@lib/answerlattice/signalIdentity';
+import { sanitizeAnswerlatticeSignalMetadata } from '@lib/answerlattice/signalEmitter';
+import { redactAnswerlatticeSupportEvidenceText } from '@data/shared/answerlatticeSupportEvidencePrivacy';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const first = buildAnswerlatticeSignalDocumentId({
@@ -29,6 +31,7 @@ assert.notEqual(first, buildAnswerlatticeSignalDocumentId({
 }));
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: ' 1', sId: 101, deduplicationKey: 'x' }), null);
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: 1, sId: 101, deduplicationKey: '' }), null);
+assert.equal(buildAnswerlatticeSignalDocumentId({ tId: 1, sId: 101, deduplicationKey: 123 }), null);
 assert.equal(hashAnswerlatticeSignalIdentity('same'), hashAnswerlatticeSignalIdentity('same'));
 assert.equal(
     buildAnswerlatticeSignalMemoryDedupKey({ tId: 1, sId: 101, deduplicationKey: 'ticket:ticket-1' }),
@@ -63,6 +66,50 @@ assert.equal(normalizeExactAnswerlatticeSignalScopeId(Number.MAX_SAFE_INTEGER), 
 for (const value of ['1', '01', '1e0', 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, true, null]) {
     assert.equal(normalizeExactAnswerlatticeSignalScopeId(value), null);
 }
+
+const cyclicMetadata: Record<string, unknown> = { subject: 'Need help' };
+cyclicMetadata.self = cyclicMetadata;
+assert.doesNotThrow(() => buildAnswerlatticeSignalPayloadFingerprint({
+    type: 'ticket',
+    entityId: 'entity-1',
+    deduplicationKey: 'ticket:cyclic',
+    metadata: cyclicMetadata,
+}));
+assert.doesNotThrow(() => buildAnswerlatticeSignalPayloadFingerprint({
+    type: { toString: () => { throw new Error('crafted identity coercion'); } },
+    entityId: 'entity-1',
+    deduplicationKey: 'ticket:crafted',
+    metadata: new Proxy({}, {
+        ownKeys() {
+            throw new Error('crafted metadata proxy');
+        },
+    }),
+}));
+assert.deepEqual(sanitizeAnswerlatticeSignalMetadata(new Proxy({}, {
+    ownKeys() {
+        throw new Error('crafted metadata proxy');
+    },
+})), {});
+assert.deepEqual(sanitizeAnswerlatticeSignalMetadata({ finite: 2, invalid: Number.NaN }), {
+    finite: 2,
+    invalid: null,
+});
+assert.deepEqual(sanitizeAnswerlatticeSignalMetadata({
+    invalidDate: new Date(Number.NaN),
+    nestedProxy: new Proxy({}, {
+        ownKeys() {
+            throw new Error('crafted nested metadata proxy');
+        },
+    }),
+}), {
+    invalidDate: null,
+    nestedProxy: null,
+});
+assert.equal(redactAnswerlatticeSupportEvidenceText({
+    toString() {
+        throw new Error('crafted redaction coercion');
+    },
+}), '');
 
 const clientEmitter = fs.readFileSync(path.join(ROOT, 'src/lib/answerlattice/signalEmitter.ts'), 'utf8');
 const serverEmitter = fs.readFileSync(path.join(ROOT, 'src/lib/answerlattice/signalEmitterServer.ts'), 'utf8');
@@ -127,6 +174,10 @@ assert.ok(serverEmitter.includes('dedupKey: cleanSignalText(params.persistentDed
 assert.ok(clientEmitter.includes('answerlattice_signal_replay_conflict'));
 assert.ok(clientEmitter.includes('AnswerlatticeSignalReplayConflictError'));
 assert.ok(serverEmitter.includes('AnswerlatticeSignalReplayConflictError'));
+assert.ok(clientEmitter.includes('sanitizeAnswerlatticeSignalMetadata'));
+assert.ok(!clientEmitter.includes('return String(value);'));
+assert.ok(clientEmitter.includes('metadata: sanitizedMetadata'));
+assert.ok(!clientEmitter.includes('const sessionDedupKey = getDeduplicationKey(params);'));
 assert.ok(clientEmitter.includes('resolutionEventId'));
 assert.ok(signalDal.includes('answerlattice_signal_replay_conflict'));
 assert.ok(signalDal.includes('buildAnswerlatticeSignalPayloadFingerprint'));

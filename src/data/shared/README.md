@@ -38,6 +38,7 @@ Every file in this folder **MUST** stay portable across frontend and Functions:
 | `categoryIconSuggestions.ts` | Category icon suggestions by canonical business category | Menu category editor and repair flows |
 | `defaultRoles.ts` | Role permissions, DEFAULT_ROLE_METADATA, createDefaultRoles | Store creation (onboarding, publish) |
 | `extractedBusinessProfile.ts` | Extracted profile suggestion contract and normalization helpers | Menu extraction and messaging onboarding |
+| `founderMonitorPersistedBoundary.ts` | Strict Founder revenue movement and summary scalar admission | Founder Monitor API and maintenance reconciliation |
 | `ownerBusinessHealthQuestionSuggestions.ts` | Business Health starter/follow-up question catalog and ranking helper | Owner Business Assistant app APIs and Cloud Functions health builder |
 
 ### Country Data

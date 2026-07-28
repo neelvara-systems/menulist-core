@@ -130,6 +130,45 @@ async function run(): Promise<void> {
         eventType: 'subscription.charged',
     }), /ledger state is invalid/);
 
+    const malformedProcessedEventKey = 'evt_webhook_malformed_processed_005';
+    await firestoreAdmin.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS).doc(malformedProcessedEventKey).set({
+        status: 'processed',
+    });
+    await assert.rejects(() => claimRazorpayWebhookEvent({
+        eventKey: malformedProcessedEventKey,
+        eventType: 'subscription.charged',
+    }), /ledger state is invalid/, 'a status-only row must not suppress a signed payment event');
+
+    const conflictingIdentityEventKey = 'evt_webhook_conflicting_identity_006';
+    const conflictingIdentityClaim = await claimRazorpayWebhookEvent({
+        eventKey: conflictingIdentityEventKey,
+        eventType: 'subscription.charged',
+    });
+    assert.equal(conflictingIdentityClaim.outcome, 'acquired');
+    await firestoreAdmin.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS).doc(conflictingIdentityEventKey).set({
+        eventKey: 'evt_webhook_other_identity',
+    }, { merge: true });
+    await assert.rejects(() => claimRazorpayWebhookEvent({
+        eventKey: conflictingIdentityEventKey,
+        eventType: 'subscription.charged',
+    }), /ledger state is invalid/, 'embedded event identity must match the deterministic document key');
+
+    const malformedRetryEventKey = 'evt_webhook_malformed_retry_007';
+    const malformedRetryClaim = await claimRazorpayWebhookEvent({
+        eventKey: malformedRetryEventKey,
+        eventType: 'order.paid',
+    });
+    assert.equal(malformedRetryClaim.outcome, 'acquired');
+    if (malformedRetryClaim.outcome !== 'acquired') throw new Error('malformed retry claim was not acquired');
+    await firestoreAdmin.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS).doc(malformedRetryEventKey).set({
+        retryCount: -1,
+    }, { merge: true });
+    await assert.rejects(() => completeRazorpayWebhookEvent({
+        attemptId: malformedRetryClaim.attemptId,
+        eventKey: malformedRetryEventKey,
+        status: 'processed',
+    }), /ledger state is invalid/, 'malformed retry state must not become terminal payment truth');
+
     const auditEventKey = 'evt_webhook_audit_005';
     const auditRef = firestoreAdmin.collection(DB_COLLECTIONS.PAYMENT_TRANSACTIONS).doc(auditEventKey);
     await auditRef.delete();

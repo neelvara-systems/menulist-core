@@ -207,6 +207,12 @@ function verifyMetadataAndRegistration() {
   assertIncludes(auth, "MYCODEX_PRODUCT_SLUG = 'mycodex'", 'MyCodex route slug boundary');
   assertIncludes(auth, 'product: MYCODEX_PRODUCT_SLUG', 'MyCodex session slug boundary');
   assertNotIncludes(auth, 'product: MYCODEX_PRODUCT_CODE', 'MyCodex session must not store the pId code');
+  assertIncludes(auth, "process.env.MYCODEX_SESSION_SECRET?.trim()", 'MyCodex must use its dedicated session secret');
+  assertIncludes(auth, 'isMyCodexAccessConfigured', 'MyCodex configuration must require credentials and a dedicated session secret');
+  assertNotIncludes(auth, 'process.env.NEXTAUTH_SECRET?.trim()', 'MyCodex must not reuse the MenuList NextAuth secret');
+  assertNotIncludes(auth, "|| process.env.MYCODEX_BASIC_AUTH_PASSWORD?.trim()", 'MyCodex password must not double as its signing secret');
+  assertIncludes(auth, "decodedPathname.includes('\\\\')", 'MyCodex return path must reject decoded backslashes');
+  assertIncludes(auth, "parsed.origin !== baseUrl.origin", 'MyCodex return path must remain same-origin');
   assertIncludes(requestHost, "normalizeRequestAuthority(authority)?.hostname", 'MyCodex local-dev host helper must use the shared strict Host authority parser');
   assertIncludes(requestHost, 'MYCODEX_LOCAL_DEVELOPMENT_HOSTS.has(hostname)', 'MyCodex local-dev host helper must compare exact normalized hostnames');
   for (const [label, content] of [
@@ -219,6 +225,13 @@ function verifyMetadataAndRegistration() {
     assertNotIncludes(content, "host.includes('127.0.0.1')", `${label} must not classify raw Host substrings as local development`);
   }
   assertIncludes(auth, "MYCODEX_OFFLINE_PATH = '/offline'", 'MyCodex auth bypass');
+  assertIncludes(sessionRoute, 'failClosedOnProviderError: true', 'MyCodex login must fail closed when distributed rate limiting is unavailable');
+  assertIncludes(sessionRoute, 'isMyCodexAccessConfigured()', 'MyCodex login must fail closed when any access credential is missing');
+  assertIncludes(documentRoute, 'verifyMyCodexSessionToken(', 'MyCodex document route must enforce session auth inside the handler');
+  assertIncludes(documentRoute, "request.cookies.get(MYCODEX_SESSION_COOKIE)?.value", 'MyCodex document route must read only the dedicated session cookie');
+  assertIncludes(docsLoader, 'MYCODEX_MARKDOWN_MAX_BYTES = 4 * 1024 * 1024', 'MyCodex filesystem reader must bound Markdown bytes');
+  assertIncludes(docsLoader, 'fs.realpath(', 'MyCodex filesystem reader must verify canonical paths');
+  assertIncludes(docsLoader, 'item.isSymbolicLink()', 'MyCodex docs tree must omit symbolic links');
   assertNotIncludes(apiSchemas, "['ML', 'AL', 'CC', 'MC']", 'MyCodex must not be exposed as a billing API product');
   assertIncludes(billingPlans, 'normalized === PRODUCT_IDS.MYCODEX', 'MyCodex billing normalizer boundary');
   assertIncludes(billingPlans, 'isProductBillingDisabled', 'MyCodex disabled billing boundary');
@@ -227,8 +240,17 @@ function verifyMetadataAndRegistration() {
   assertIncludes(nextConfig, "const myCodexDocsTraceIncludes = ['./__docs__/**/*.md'];", 'MyCodex Markdown-only Vercel filesystem tracing');
   assertIncludes(nextConfig, "'/sites/mycodex/**/*': myCodexDocsTraceIncludes", 'MyCodex Vercel filesystem tracing');
   assertIncludes(clientContainer, "const normalizedTargetPath = String(targetPath || '').trim();", 'MyCodex client route builder boundary');
-  assertIncludes(clientContainer, "const safeTargetPath = !normalizedTargetPath || normalizedTargetPath.startsWith('//') ? '/' : normalizedTargetPath;", 'MyCodex client route builder protocol-relative guard');
-  assertIncludes(clientContainer, "const cleanPath = safeTargetPath.startsWith('/') ? safeTargetPath : '/' + safeTargetPath;", 'MyCodex client route builder same-origin path normalization');
+  assertIncludes(clientContainer, "!/[\\u0000-\\u001f\\u007f\\\\]/.test(normalizedTargetPath)", 'MyCodex client route builder raw control/backslash guard');
+  assertIncludes(clientContainer, "parsed.origin === baseUrl.origin", 'MyCodex client route builder same-origin guard');
+  assertIncludes(clientContainer, "!decodedPathname.includes('\\\\')", 'MyCodex client route builder encoded-backslash guard');
+  assertIncludes(clientContainer, 'const getLocalStorageValue = (key: string)', 'MyCodex browser storage reads must be failure-contained');
+  assertIncludes(clientContainer, 'window.localStorage.getItem(key)', 'MyCodex browser storage helper must own localStorage access');
+  assertNotIncludes(clientContainer, 'Number(localStorage.getItem(', 'MyCodex numeric preferences must not coerce missing storage to zero');
+  assertIncludes(clientContainer, 'storedFontSizeValue === null ? Number.NaN', 'MyCodex missing font preference must preserve the default');
+  assertIncludes(clientContainer, 'storedSpeechRateValue === null ? Number.NaN', 'MyCodex missing speech preference must preserve the default');
+  assertIncludes(clientContainer, 'MAX_AUDIO_QUEUE_DOCUMENTS = 12', 'MyCodex multi-document speech preparation must cap document count');
+  assertIncludes(clientContainer, 'MAX_AUDIO_QUEUE_CHARACTERS = 250_000', 'MyCodex speech queues must cap retained text');
+  assertIncludes(clientContainer, 'MAX_SCROLL_POSITION_DOCS = 200', 'MyCodex browser scroll state must cap retained document keys');
   assertNotIncludes(clientContainer, "const cleanPath = targetPath.startsWith('/') ? targetPath : '/' + targetPath;", 'MyCodex client route builder must not trust raw protocol-relative target paths');
   assertIncludes(shellImplDoc, 'MyCodex client navigation path boundary', 'MyCodex implementation docs route builder boundary');
   assertIncludes(shellFirebaseDoc, 'Client navigation path guard', 'MyCodex Firebase docs route builder boundary');

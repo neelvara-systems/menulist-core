@@ -10,6 +10,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 const PRODUCT_ID = 'AL';
 const RESOLVED_STATUS = 'resolved';
@@ -148,7 +149,7 @@ export async function refreshAnswerlatticeSupportBoardLiveSummary(params: {
             failureCode: SUPPORT_BOARD_LIVE_SUMMARY_FAILED,
             hasTenantScope: true,
             hasStoreScope: true,
-            sourceErrorName: error instanceof Error ? error.name : typeof error,
+            sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
         });
         throw error;
     }

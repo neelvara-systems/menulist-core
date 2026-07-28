@@ -24,6 +24,14 @@ export function normalizeStoreSummaryNumericDocumentId(value: unknown): string |
         : null;
 }
 
+export function normalizeStoreSummaryNumericAliases(values: readonly unknown[]): string | null {
+    const supplied = values.filter((value) => value !== undefined && value !== null);
+    if (supplied.length === 0) return null;
+    const normalized = supplied.map(normalizeStoreSummaryNumericDocumentId);
+    const first = normalized[0];
+    return first && normalized.every((value) => value === first) ? first : null;
+}
+
 export function normalizeStoreSummaryDate(value: unknown): Date | null {
     try {
         let candidate: Date | null = null;
@@ -67,10 +75,10 @@ export function normalizePlatformStoreSummaryIdentity(
 ): { storeId: string; tId: string } | null {
     if (!isRecord(rawEntry)) return null;
     const storeId = normalizeStoreSummaryNumericDocumentId(rawStoreId);
-    const tenantId = normalizeStoreSummaryNumericDocumentId(rawEntry.tId ?? rawEntry.tenantId);
-    const embeddedStoreId = rawEntry.storeId === undefined
+    const tenantId = normalizeStoreSummaryNumericAliases([rawEntry.tId, rawEntry.tenantId]);
+    const embeddedStoreId = rawEntry.storeId === undefined && rawEntry.sId === undefined
         ? storeId
-        : normalizeStoreSummaryNumericDocumentId(rawEntry.storeId);
+        : normalizeStoreSummaryNumericAliases([rawEntry.storeId, rawEntry.sId]);
     return storeId && tenantId && embeddedStoreId === storeId
         ? { storeId, tId: tenantId }
         : null;

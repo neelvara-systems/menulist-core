@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
+import { getCurrentPlatformUser, resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { getUniqueAuthUserByEmailFromCollection } from '@lib/auth/serverUserContext';
 import {
     buildAnswerlatticePlatformWorkspaceOptions,
@@ -15,9 +15,16 @@ import { getBoundedSecurityRouteContext } from '@lib/security/securityDiagnostic
 import { NextRequest, NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { withPlatformAuth } from '../../../../../middleware/auth';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 export const GET = withPlatformAuth(async (request: NextRequest, session: any) => {
-    const operatorId = String(session?.uId || session?.user?.id || 'platform');
+    const operatorId = resolveCurrentSessionUserDocumentId(session);
+    if (!operatorId) {
+        return NextResponse.json(
+            { error: 'Forbidden' },
+            { status: 403, headers: { 'Cache-Control': 'private, no-store' } },
+        );
+    }
     const rateLimit = await checkRateLimit({
         key: `answerlattice-platform-workspaces:${hashPublicRateLimitValue(operatorId)}`,
         ...getRateLimitForFeature('DATA_READ'),
@@ -71,7 +78,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
         logger.error('Answerlattice platform workspace list failed', {
             ...getBoundedSecurityRouteContext(session, request),
             failureCode: 'answerlattice_platform_workspaces_load_failed',
-            sourceErrorName: error instanceof Error ? error.name : typeof error,
+            sourceErrorName: getBoundedErrorName(error) || typeof error,
         });
         return NextResponse.json(
             { error: 'Could not load workspaces' },

@@ -10,6 +10,7 @@ import {
     useGrowthOS,
 } from "@hook/useGrowthOS";
 import { getGrowthOSBoundedStringContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
+import { getGrowthOSClientScope } from "@lib/growthos/clientContracts";
 import { evaluateGrowthOSEntitlement } from "@lib/growthos/entitlements";
 import { isGrowthOSKitExpired } from "@lib/growthos/readiness";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
@@ -23,7 +24,7 @@ import type {
 } from "@type/growthos";
 import { Alert, App, Button, Card, Divider, Input, Select, Space, Spin, Tag, Typography } from "antd";
 import { useRouter } from "next/navigation";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { LuArrowLeft, LuClipboard, LuDownload, LuRefreshCw, LuSend, LuShieldCheck } from "react-icons/lu";
 import useSWR from "swr";
 import styles from "./styles.module.scss";
@@ -152,16 +153,26 @@ const GrowthOSPage = () => {
     const [reviewRating, setReviewRating] = useState<number>(5);
     const [reviewResult, setReviewResult] = useState<GrowthOSReviewGuardResult | null>(null);
     const [isReviewing, setIsReviewing] = useState(false);
+    const pendingOperationsRef = useRef(new Set<string>());
     const entitlement = evaluateGrowthOSEntitlement({
         activeSubscription,
         storeDetails,
         storeId: storeDetails?.storeId,
     });
     const isCheckingEntitlement = FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON && activeSubscriptionLoading;
-    const { growthOSSummary, isLoading, mutate } = useGrowthOS(!isCheckingEntitlement && entitlement.allowed);
+    const clientScope = getGrowthOSClientScope({
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    });
+    const { growthOSSummary, isLoading, mutate } = useGrowthOS({
+        storeId: storeDetails?.storeId,
+        tenantId: storeDetails?.tenantId,
+    }, !isCheckingEntitlement && entitlement.allowed);
 
     const { data: projects = [] } = useSWR<ProjectSummary[]>(
-        !isCheckingEntitlement && entitlement.allowed ? "growthos-projects" : null,
+        !isCheckingEntitlement && entitlement.allowed && clientScope
+            ? ["growthos-projects", clientScope.tId, clientScope.sId]
+            : null,
         async () => {
             const result = await getExistingProjectsListWithoutLoader(true);
             return (result?.projects || []) as ProjectSummary[];
@@ -172,6 +183,10 @@ const GrowthOSPage = () => {
             dedupingInterval: 30000,
         },
     );
+
+    useEffect(() => {
+        setSelectedProjectId(null);
+    }, [clientScope?.sId, clientScope?.tId]);
 
     useEffect(() => {
         if (selectedProjectId || !projects.length) return;
@@ -228,10 +243,12 @@ const GrowthOSPage = () => {
     })), [projects]);
 
     const handleRefresh = async () => {
+        if (pendingOperationsRef.current.has("refresh")) return;
         if (!selectedProjectId) {
             notification.warning({ message: "Select a menu first", placement: "bottomRight" });
             return;
         }
+        pendingOperationsRef.current.add("refresh");
         setIsRefreshing(true);
         try {
             const payload = await refreshGrowthOSForProject(selectedProjectId, true);
@@ -241,12 +258,15 @@ const GrowthOSPage = () => {
             logGrowthOSClientFailure("desktop_growthos_refresh_failed", error, "refresh");
             notification.error({ message: "Could not check menu", description: GROWTHOS_REFRESH_FAILED_DESCRIPTION, placement: "bottomRight" });
         } finally {
+            pendingOperationsRef.current.delete("refresh");
             setIsRefreshing(false);
         }
     };
 
     const handleGenerate = async (nextAction?: GrowthOSActionSummary | null) => {
+        if (pendingOperationsRef.current.has("generate")) return;
         if (!selectedProjectId) return;
+        pendingOperationsRef.current.add("generate");
         setIsGenerating(true);
         try {
             const payload = await createGrowthOSKitForProject({
@@ -261,26 +281,34 @@ const GrowthOSPage = () => {
             });
             notification.error({ message: "Could not prepare Sales Pack", description: GROWTHOS_GENERATE_FAILED_DESCRIPTION, placement: "bottomRight" });
         } finally {
+            pendingOperationsRef.current.delete("generate");
             setIsGenerating(false);
         }
     };
 
     const recordUse = async (output: GrowthOSOutput, method: "copy" | "share" | "download" | "mark_used") => {
         if (!latestKit) return;
-        const payload = await recordGrowthOSKitExport({
-            kitId: latestKit.id,
-            destination: output.destination as GrowthOSDestination,
-            method,
-            outputId: output.id,
-        });
-        await mutate((current) => current ? {
-            ...current,
-            latestKit: current.latestKit ? {
-                ...current.latestKit,
-                status: method === "mark_used" ? "used" : method === "copy" ? "copied" : method === "share" ? "shared" : "downloaded",
-                isStale: typeof payload?.data?.isStale === "boolean" ? payload.data.isStale : current.latestKit.isStale,
-            } : current.latestKit,
-        } : current, { revalidate: false });
+        const operationKey = `record:${latestKit.id}:${output.id}:${method}`;
+        if (pendingOperationsRef.current.has(operationKey)) return;
+        pendingOperationsRef.current.add(operationKey);
+        try {
+            const payload = await recordGrowthOSKitExport({
+                kitId: latestKit.id,
+                destination: output.destination as GrowthOSDestination,
+                method,
+                outputId: output.id,
+            });
+            await mutate((current) => current ? {
+                ...current,
+                latestKit: current.latestKit ? {
+                    ...current.latestKit,
+                    status: method === "mark_used" ? "used" : method === "copy" ? "copied" : method === "share" ? "shared" : "downloaded",
+                    isStale: typeof payload?.data?.isStale === "boolean" ? payload.data.isStale : current.latestKit.isStale,
+                } : current.latestKit,
+            } : current, { revalidate: false });
+        } finally {
+            pendingOperationsRef.current.delete(operationKey);
+        }
     };
 
     const handleCopy = async (output: GrowthOSOutput) => {
@@ -376,6 +404,8 @@ const GrowthOSPage = () => {
     };
 
     const handleReviewGuard = async () => {
+        if (pendingOperationsRef.current.has("review")) return;
+        pendingOperationsRef.current.add("review");
         setIsReviewing(true);
         try {
             const payload = await prepareGrowthOSReviewReply({
@@ -392,6 +422,7 @@ const GrowthOSPage = () => {
             });
             notification.error({ message: "Could not prepare reply", description: GROWTHOS_REVIEW_REPLY_FAILED_DESCRIPTION, placement: "bottomRight" });
         } finally {
+            pendingOperationsRef.current.delete("review");
             setIsReviewing(false);
         }
     };

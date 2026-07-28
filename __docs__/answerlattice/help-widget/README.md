@@ -1,6 +1,6 @@
 # Answerlattice Help Widget
 
-> **Status:** Implemented; Features 15 and 16 audits updated July 18, 2026
+> **Status:** Implemented; Features 15 and 16 audits updated July 26, 2026
 > **Role:** Governed customer-support distribution surface
 > **Primary flag:** `ENABLE_ANSWERLATTICE_WIDGET`
 
@@ -18,7 +18,8 @@ Answerlattice operator with canManageWidget
 -> copies the raw key once
 -> adds exact app origins
 -> configures launcher, behavior, branding, and blocked routes
--> saves the store-scoped config
+-> saves against the exact loaded config version
+-> unchanged retries remain no-op; stale differing edits require reload/review
 -> installs the public loader script
 -> loader validates key + origin through /api/widget/config
 -> loader receives public config and a short-lived host authorization
@@ -36,12 +37,13 @@ Answerlattice operator with canManageWidget
 - Exact allowed origins reject credentials, paths, query strings, and fragments.
 - An empty origin list is an explicit open-origin mode. The dashboard warns that all origins are allowed until at least one origin is added.
 - Invalid origin or blocked-route input fails the save instead of being silently discarded.
+- Concurrent configuration edits cannot silently replace a newer origin policy; stale differing saves return `409`.
 - Blocked routes are a local visibility policy, not an authorization control.
 - The loader uses `/widget/embed`; the raw key is transferred through origin-targeted `postMessage`, avoiding raw-key iframe paths and access-log URLs.
 - The public iframe and its API requests use `no-referrer` handling.
 - Runtime search and feedback require the active key, required scope, exact Answerlattice workspace identity, rate limits, and either an allowed direct origin or a valid host authorization.
 - Explicit support requests require the same runtime admission plus one exact stored widget search-history row and a valid reply email. Ticket evidence is server-derived and replay-safe.
-- Client Firestore writes to `stores` are denied in the dedicated Answerlattice rules; management writes go through protected server routes.
+- Client Firestore writes to `stores` are denied in the dedicated Answerlattice rules. The maintained shared rules also preserve widget credentials, configuration, origins, versions, timestamps, and runtime status as server-managed fields.
 
 ## Configuration Stored On The Workspace Store
 
@@ -60,7 +62,7 @@ No widget-specific collection is required.
 
 `GET /api/widget/config` returns only the normalized public widget configuration, capability booleans, optional public bundle references, and the short-lived runtime authorization. It does not return the origin allowlist, tenant/store identifiers, key hashes, revoked records, private signing material, or workspace internals.
 
-Runtime configuration is short-cached per key and request origin. Dashboard saves are explicit and unchanged saves do not write.
+Runtime configuration is short-cached per key and request origin. Dashboard saves are explicit, exact retries and unchanged saves do not write, and stale differing saves preserve the browser draft while requiring reload/review.
 
 ## Answer And Fallback Runtime
 

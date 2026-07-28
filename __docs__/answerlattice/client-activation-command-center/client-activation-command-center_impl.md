@@ -90,7 +90,7 @@ If an older workspace does not yet have the store-level subscription mirror, the
 
 ## Focused Verification
 
-`npm run test:answerlattice-activation-contracts` proves that a setup score above 85 cannot produce `stage: live` while launch proof is blocked. It also covers the notification email boundary and compiled-context status/version consistency. The aggregate `verify:answerlattice-runtime-truth` gate runs this test.
+`npm run test:answerlattice-activation-contracts` proves that a setup score above 85 cannot produce `stage: live` while launch proof is blocked. It also covers the notification email boundary and compiled-context status/version consistency. Dashboard enum fields require literal strings rather than coercible objects, and the manual rebuild acknowledgement rejects uncontracted top-level, manifest, or stats fields while containing malformed object inspection. The aggregate `verify:answerlattice-runtime-truth` gate runs this test.
 
 ## Signal-to-Knowledge Queue
 

@@ -3,6 +3,7 @@ import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin } from '../firebaseAdmin';
 import { validateNetworkTargetUrl } from '../utils/networkTarget';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 const PUBLIC_CACHE_REVALIDATION_CONFIG_MISSING_CODE = 'PUBLIC_CACHE_REVALIDATION_CONFIG_MISSING';
 const PUBLIC_CACHE_REVALIDATION_TARGET_REJECTED_CODE = 'PUBLIC_CACHE_REVALIDATION_TARGET_REJECTED';
@@ -30,11 +31,11 @@ function boundedDiagnosticValue(value: unknown): string | number | null {
 }
 
 function getPublicCacheErrorContext(error: unknown): Record<string, string | number | null> {
-    const sourceError = error as { code?: unknown; status?: unknown; statusCode?: unknown };
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : typeof error,
-        sourceErrorCode: boundedDiagnosticValue(sourceError?.code),
-        sourceErrorStatus: boundedDiagnosticValue(sourceError?.status || sourceError?.statusCode),
+        sourceErrorName: context.sourceErrorName || typeof error,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceErrorStatus: context.sourceStatusCode ?? null,
     };
 }
 

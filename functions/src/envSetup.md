@@ -1,7 +1,9 @@
 # Firebase Functions Secrets Setup
 
-> Scope: MenuList Firebase Functions and Answerlattice Firebase Functions
-> Current primary AI secret: `GEMINI_AI_KEY`
+> Scope: MenuList, Answerlattice, and SignalDesk Firebase Functions
+> Current MenuList primary AI secret: `GEMINI_AI_KEY`
+> Current Answerlattice primary AI secret: `ANSWERLATTICE_GEMINI_AI_KEY`
+> Current SignalDesk app AI env: `MENULIST_SIGNALDESK_GEMINI_AI_KEY`
 
 This file documents the Firebase Functions secrets that are actually declared by
 the current code. Do not print, commit, or paste secret values in logs or docs.
@@ -11,6 +13,7 @@ the current code. Do not print, commit, or paste secret values in logs or docs.
 - MenuList Functions secret declarations: `functions/src/config/secrets.ts`
 - Answerlattice Functions secret declarations:
   `functions-answerlattice/src/config/secrets.ts`
+- SignalDesk Functions codebase: `functions-signaldesk/src`
 - Full product setup runbook:
   `__docs__/deployment/three-product-environment-setup.md`
 
@@ -115,28 +118,78 @@ Set this in both Answerlattice Firebase projects:
 - staging/local Firebase project: `answerlattice-qa`
 - production Firebase project: `answerlattice`
 
-Required Answerlattice secret:
+Declared Answerlattice secrets:
 
 ```text
 ANSWERLATTICE_CRON_SECRET
+ANSWERLATTICE_GEMINI_AI_KEY
+ANSWERLATTICE_GEMINI_AI_KEY_2
+ANSWERLATTICE_GEMINI_AI_KEY_3
+ANSWERLATTICE_GEMINI_AI_KEY_4
+ANSWERLATTICE_PUBLIC_BUNDLE_SALT
+ANSWERLATTICE_SMTP_HOST
+ANSWERLATTICE_SMTP_PORT
+ANSWERLATTICE_SMTP_USER
+ANSWERLATTICE_SMTP_PASS
 ```
 
 Set staging:
 
 ```bash
 firebase functions:secrets:set ANSWERLATTICE_CRON_SECRET --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_2 --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_3 --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_GEMINI_AI_KEY_4 --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_PUBLIC_BUNDLE_SALT --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_SMTP_HOST --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_SMTP_PORT --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_SMTP_USER --project answerlattice-qa --config firebase-answerlattice.json
+firebase functions:secrets:set ANSWERLATTICE_SMTP_PASS --project answerlattice-qa --config firebase-answerlattice.json
 ```
 
-Set production:
+Set production by repeating every Answerlattice command above with:
 
 ```bash
-firebase functions:secrets:set ANSWERLATTICE_CRON_SECRET --project answerlattice --config firebase-answerlattice.json
+--project answerlattice
 ```
 
-## CampaignCue And MyCodex
+Use production-specific values for production. Do not reuse the QA AI keys,
+bundle salt, SMTP credentials, or cron secret.
+
+## SignalDesk Function Secrets
+
+SignalDesk uses separate Firebase projects:
+
+- staging/local Firebase project: `menulist-signaldesk-qa`
+- production Firebase project: `menulist-signaldesk`
+
+Current `functions-signaldesk/src` reads only Firebase-provided runtime project
+identity (`FIREBASE_CONFIG`, `GCLOUD_PROJECT`, and `GOOGLE_CLOUD_PROJECT`) and
+does not declare Firebase Secret Manager secrets.
+
+Do not set undeclared SignalDesk Function secrets just to mirror Vercel env.
+SignalDesk app/provider/runtime env belongs in Vercel through
+`MENULIST_SIGNALDESK_*` variables unless a future Cloud Function explicitly
+adds a `defineSecret` declaration.
+
+SignalDesk deploy commands after project access, billing, rules, indexes, and
+storage exist:
+
+```bash
+firebase deploy --project menulist-signaldesk-qa --config firebase-signaldesk.json --only firestore:rules,firestore:indexes,storage
+firebase deploy --project menulist-signaldesk-qa --config firebase-signaldesk.json --only functions:signaldesk
+
+firebase deploy --project menulist-signaldesk --config firebase-signaldesk.json --only firestore:rules,firestore:indexes,storage
+firebase deploy --project menulist-signaldesk --config firebase-signaldesk.json --only functions:signaldesk
+```
+
+## CampaignCue, Neelvara, And MyCodex
 
 CampaignCue currently has no Firebase Cloud Functions in this repo. CampaignCue
 Admin SDK/provider values belong in Vercel env.
+
+Neelvara is static/no DB and has no Firebase Functions secrets.
 
 MyCodex is static/no DB and has no Firebase Functions secrets.
 
@@ -169,6 +222,8 @@ gcloud secrets list --project menulist-qa --format='value(name)'
 gcloud secrets list --project menulist --format='value(name)'
 gcloud secrets list --project answerlattice-qa --format='value(name)'
 gcloud secrets list --project answerlattice --format='value(name)'
+gcloud secrets list --project menulist-signaldesk-qa --format='value(name)'
+gcloud secrets list --project menulist-signaldesk --format='value(name)'
 ```
 
 If the command returns `CONSUMER_INVALID`, the project id is not available to
@@ -182,8 +237,19 @@ validating Functions secrets.
 
 ## Current AI Secret Name
 
-Use `GEMINI_AI_KEY` as the primary Firebase Functions AI secret. Rotation keys
-are `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4`.
+Use `GEMINI_AI_KEY` as the primary MenuList Firebase Functions AI secret.
+Rotation keys are `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and
+`GEMINI_AI_KEY_4`.
+
+Answerlattice uses `ANSWERLATTICE_GEMINI_AI_KEY` plus
+`ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and
+`ANSWERLATTICE_GEMINI_AI_KEY_4`.
+
+SignalDesk app/runtime uses `MENULIST_SIGNALDESK_GEMINI_AI_KEY` plus
+`MENULIST_SIGNALDESK_GEMINI_AI_KEY_2`,
+`MENULIST_SIGNALDESK_GEMINI_AI_KEY_3`, and
+`MENULIST_SIGNALDESK_GEMINI_AI_KEY_4`. These are Vercel env values today, not
+Firebase Functions Secret Manager values.
 
 `GEMINI_API_KEY` is a legacy app env alias only. Do not set it as the primary
 Firebase Functions secret unless code is intentionally changed to read it again.

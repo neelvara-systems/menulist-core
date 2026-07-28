@@ -3,6 +3,7 @@
 import PublicMenuListAttribution from '@/components/customer/PublicMenuListAttribution';
 import {
     createPublicCustomerTranslator,
+    getPublicCustomerLocale,
     getPublicCustomerLanguageDirection,
 } from '@lib/localization/publicCustomerMessages';
 import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
@@ -14,7 +15,9 @@ export default function GuestFeedbackNotFound() {
 
     useEffect(() => {
         const requestedLanguage = new URLSearchParams(window.location.search).get('lang');
-        if (requestedLanguage) setActiveLanguage(requestedLanguage);
+        if (requestedLanguage) {
+            setActiveLanguage(getPublicCustomerLocale(requestedLanguage).split('-')[0] || 'en');
+        }
     }, []);
 
     const t = createPublicCustomerTranslator(activeLanguage);

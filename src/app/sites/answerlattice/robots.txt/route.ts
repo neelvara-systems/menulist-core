@@ -3,24 +3,36 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
 export const dynamic = 'force-static';
 
-export function GET() {
-    const crawlerRules = DISCOVERY_CRAWLERS.map((crawler) => `User-agent: ${crawler}
-Allow: /`).join('\n\n');
+export const ANSWERLATTICE_DISCOVERY_DISALLOWED_PATHS = [
+    '/answerlattice/',
+    '/api/',
+    '/signin',
+    '/unauthorized',
+] as const;
 
-    return new Response(`# Agent context: ${ANSWERLATTICE_SITE_URL}/llms.txt
+export function renderAnswerlatticeRobotsTxt(): string {
+    const disallowRules = ANSWERLATTICE_DISCOVERY_DISALLOWED_PATHS
+        .map((path) => `Disallow: ${path}`)
+        .join('\n');
+    const crawlerRules = DISCOVERY_CRAWLERS
+        .map((crawler) => `User-agent: ${crawler}\nAllow: /\n${disallowRules}`)
+        .join('\n\n');
+
+    return `# Agent context: ${ANSWERLATTICE_SITE_URL}/llms.txt
 # Extended agent context: ${ANSWERLATTICE_SITE_URL}/llms-full.txt
 ${crawlerRules}
 
 User-agent: *
 Allow: /
-Disallow: /answerlattice/
-Disallow: /api/
-Disallow: /signin
-Disallow: /unauthorized
+${disallowRules}
 
 Sitemap: ${ANSWERLATTICE_SITE_URL}/sitemap.xml
 Host: ${ANSWERLATTICE_SITE_URL}
-`, {
+`;
+}
+
+export function GET() {
+    return new Response(renderAnswerlatticeRobotsTxt(), {
         headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'Cache-Control': 'public, max-age=3600, s-maxage=86400',

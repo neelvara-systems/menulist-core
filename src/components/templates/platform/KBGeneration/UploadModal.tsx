@@ -259,7 +259,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
       dispatch(startLoader('Creating generation job...'));
 
       const newJobData: Partial<IngestionJob> = {
-        sourceFiles: uploadedFiles as any,
+        sourceFiles: uploadedFiles,
         status: INGESTION_JOB_STATUS.PENDING,
         categories: null
       };

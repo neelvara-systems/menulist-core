@@ -48,7 +48,7 @@ export function saveLocalMenuCardExport(params: {
     preset: MenuCardLocalHistoryRecord['preset'];
     storageScope: string;
     styleId: string;
-    artifact: MenuCardGeneratedArtifact;
+    artifact: Pick<MenuCardGeneratedArtifact, 'filename' | 'pageCount' | 'sourceHash'>;
 }): MenuCardLocalHistoryRecord[] {
     if (typeof window === 'undefined' || !params.projectId || !params.storageScope) return [];
 

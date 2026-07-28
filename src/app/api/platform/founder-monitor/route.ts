@@ -14,6 +14,10 @@ import type {
   FounderMonitorSourceCoverage,
 } from '@lib/ops/founderMonitorTypes';
 import { normalizeFounderMonitorStatus, type FounderMonitorStatus } from '@lib/ops/founderMonitorTypes';
+import {
+  projectFounderRevenueMovementRow,
+  readFounderMonitorPersistedInteger,
+} from '@lib/ops/founderMonitorPersistedBoundary';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -36,8 +40,7 @@ type SummaryReadResult = {
 };
 
 function safeNumber(value: unknown): number {
-  const numberValue = Number(value || 0);
-  return Number.isFinite(numberValue) ? numberValue : 0;
+  return readFounderMonitorPersistedInteger(value, 'integer');
 }
 
 function cleanText(value: unknown, max = 180): string {
@@ -192,18 +195,10 @@ async function readRevenueMovements(): Promise<{
       .get();
 
     return {
-      rows: snap.docs.map((doc) => {
-        const data = doc.data() || {};
-        return {
-          id: hashPublicRateLimitValue(doc.id),
-          occurredAt: toIso(data.occurredAt),
-          tenantId: cleanText(data.tenantId || data.tId, 80),
-          storeId: cleanText(data.storeId || data.sId, 80),
-          kind: cleanText(data.kind, 80) as FounderMonitorRevenueMovementRow['kind'],
-          amountPaise: safeNumber(data.amountPaise),
-          description: cleanText(data.description || data.eventName || data.kind, 220),
-        };
-      }).filter((row) => ['new_mrr', 'cash_collected', 'failed_payment', 'churn', 'refund', 'expansion_mrr', 'downgrade_mrr'].includes(row.kind)),
+      rows: snap.docs.flatMap((doc) => {
+        const row = projectFounderRevenueMovementRow({ data: doc.data(), documentId: doc.id });
+        return row ? [{ id: hashPublicRateLimitValue(doc.id), ...row }] : [];
+      }),
       coverage: {
         id: 'founder-revenue-movements',
         label: 'Founder revenue movement ledger',

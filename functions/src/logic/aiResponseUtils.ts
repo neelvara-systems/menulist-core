@@ -7,13 +7,14 @@
  * - Response parsing with BOM/markdown cleanup
  * - Basic structure validation (without external dependencies)
  * 
- * Note: 
- * - Full XSS sanitization is done on the frontend in redistributeExtractedData.ts
- * - We use simple validation here since Zod/DOMPurify have compatibility issues in Firebase
- * - Data flows: Firebase (basic validation) → Frontend (full sanitization)
+ * Note:
+ * - Provider data is structurally projected and text-normalized here before use.
+ * - The redistribution layer performs a second output-specific sanitization pass.
+ * - Data flows: provider unknown input → Functions admission → output redistribution.
  */
 
 import * as functions from 'firebase-functions';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 import { BusinessAttributeSuggestion, ExtractedMenuData, FileMessage } from '../types';
 import { getAllBusinessAttributeInferenceKeys } from '../sharedData/businessAttributeInference';
 import { normalizeExtractedBusinessProfile } from '../sharedData/extractedBusinessProfile';
@@ -90,27 +91,55 @@ function isMultilingualTextMap(value: unknown): boolean {
     ));
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null;
+}
+
+function normalizeMultilingualTextMap(value: unknown): Record<string, string> {
+    const record = asRecord(value);
+    if (!record) return {};
+    return Object.fromEntries(
+        Object.entries(record)
+            .flatMap(([language, text]) => {
+                if (!/^[a-z]{2,3}(?:-[a-z]{2,4})?$/i.test(language)) return [];
+                const normalized = normalizeBoundedText(text, 2000);
+                return normalized ? [[language, normalized] as const] : [];
+            }),
+    );
+}
+
+function normalizePrice(value: unknown): string | number | null | undefined {
+    if (value === null) return null;
+    if (typeof value === 'string') {
+        const normalized = normalizeBoundedText(value, 80);
+        return normalized || undefined;
+    }
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 /**
  * Validate the basic structure of AI response
  * Checks that required fields exist and have correct types
  */
-function validateResponseStructure(data: any): ValidationResult {
+function validateResponseStructure(data: unknown): ValidationResult {
     const errors: string[] = [];
+    const response = asRecord(data);
 
-    if (!data || typeof data !== 'object') {
+    if (!response) {
         return { valid: false, errors: ['Response is not an object'] };
     }
 
-    if (data.message !== undefined && typeof data.message !== 'string') {
+    if (response.message !== undefined && typeof response.message !== 'string') {
         errors.push('message field must be a string');
     }
 
-    if (!data.data || typeof data.data !== 'object' || Array.isArray(data.data)) {
+    const extractedData = asRecord(response.data);
+    if (!extractedData) {
         errors.push('data field must be an object');
         return { valid: false, errors };
     }
-
-    const extractedData = data.data;
 
     // Validate languages
     if (!Array.isArray(extractedData.languages)) {
@@ -118,11 +147,12 @@ function validateResponseStructure(data: any): ValidationResult {
     } else if (extractedData.languages.length > 12) {
         errors.push('languages exceeds the supported limit');
     } else if (extractedData.languages.length > 0) {
-        extractedData.languages.forEach((lang: any, i: number) => {
-            if (!lang.code || typeof lang.code !== 'string') {
+        extractedData.languages.forEach((value, i) => {
+            const lang = asRecord(value);
+            if (!lang || typeof lang.code !== 'string' || !lang.code) {
                 errors.push(`languages[${i}].code is required`);
             }
-            if (!lang.name || typeof lang.name !== 'string') {
+            if (!lang || typeof lang.name !== 'string' || !lang.name) {
                 errors.push(`languages[${i}].name is required`);
             }
         });
@@ -134,11 +164,12 @@ function validateResponseStructure(data: any): ValidationResult {
     } else if (extractedData.categories.length > 200) {
         errors.push('categories exceeds the supported limit');
     } else {
-        extractedData.categories.forEach((cat: any, i: number) => {
-            if (!isSupportedScalarId(cat.id)) {
+        extractedData.categories.forEach((value, i) => {
+            const category = asRecord(value);
+            if (!category || !isSupportedScalarId(category.id)) {
                 errors.push(`categories[${i}].id is required`);
             }
-            if (!isMultilingualTextMap(cat.name)) {
+            if (!category || !isMultilingualTextMap(category.name)) {
                 errors.push(`categories[${i}].name must be an object`);
             }
         });
@@ -150,17 +181,18 @@ function validateResponseStructure(data: any): ValidationResult {
     } else if (extractedData.items.length > 1000) {
         errors.push('items exceeds the supported limit');
     } else {
-        extractedData.items.forEach((item: any, i: number) => {
-            if (!isSupportedScalarId(item.id)) {
+        extractedData.items.forEach((value, i) => {
+            const item = asRecord(value);
+            if (!item || !isSupportedScalarId(item.id)) {
                 errors.push(`items[${i}].id is required`);
             }
-            if (!isMultilingualTextMap(item.name)) {
+            if (!item || !isMultilingualTextMap(item.name)) {
                 errors.push(`items[${i}].name must be an object`);
             }
-            if (!isSupportedScalarId(item.category)) {
+            if (!item || !isSupportedScalarId(item.category)) {
                 errors.push(`items[${i}].category is required`);
             }
-            if (item.attributes !== undefined && (!Array.isArray(item.attributes) || item.attributes.length > 50)) {
+            if (item?.attributes !== undefined && (!Array.isArray(item.attributes) || item.attributes.length > 50)) {
                 errors.push(`items[${i}].attributes must be a bounded array`);
             }
         });
@@ -175,30 +207,30 @@ function validateResponseStructure(data: any): ValidationResult {
  * - Normalizes tags to array format
  * - Adds default values
  */
-function normalizeResponseData(data: any): { message: string; data: ExtractedMenuData | null } {
-    if (!data.data || Object.keys(data.data).length === 0) {
+function normalizeResponseData(data: unknown): { message: string; data: ExtractedMenuData | null } {
+    const response = asRecord(data);
+    const extractedData = asRecord(response?.data);
+    const message = typeof response?.message === 'string' ? response.message : '';
+    if (!extractedData || Object.keys(extractedData).length === 0) {
         return {
-            message: data.message || '',
+            message,
             data: null
         };
     }
 
-    const extractedData = data.data;
-
     // Normalize categories
-    // Filter out categories missing critical fields (id, name) to prevent invalid data reaching Firestore
-    const categories = (extractedData.categories || []).filter((cat: any) => {
-        if (cat.id === undefined || cat.id === null) return false;
-        if (!cat.name || typeof cat.name !== 'object' || Object.keys(cat.name).length === 0) return false;
-        return true;
-    }).map((cat: any) => {
-        const sourceFileIndex = normalizeSourceFileIndex(cat.sourceFileIndex);
-        return {
-            id: String(cat.id),
-            name: cat.name || {},
-            ...(sourceFileIndex !== undefined ? { sourceFileIndex } : {}),
-        };
-    });
+    const categories = (Array.isArray(extractedData.categories) ? extractedData.categories : [])
+        .flatMap((value) => {
+            const category = asRecord(value);
+            const name = normalizeMultilingualTextMap(category?.name);
+            if (!category || !isSupportedScalarId(category.id) || Object.keys(name).length === 0) return [];
+            const sourceFileIndex = normalizeSourceFileIndex(category.sourceFileIndex);
+            return [{
+                id: String(category.id),
+                name,
+                ...(sourceFileIndex !== undefined ? { sourceFileIndex } : {}),
+            }];
+        });
 
     const normalizeDietaryTag = (value: string): string => {
         const normalized = value
@@ -221,7 +253,8 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
     ): string[] | undefined => {
         if (!Array.isArray(value)) return undefined;
         const normalized = value
-            .map((entry) => String(entry || '').trim().toLowerCase())
+            .filter((entry): entry is string => typeof entry === 'string')
+            .map((entry) => entry.trim().toLowerCase())
             .map((entry) => canonicalize ? canonicalize(entry) : entry)
             .filter((entry) => entry.length > 0)
             .filter((entry) => !allowlist || allowlist.has(entry));
@@ -231,20 +264,21 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
     const normalizeBusinessAttributeSuggestions = (value: unknown): BusinessAttributeSuggestion[] | undefined => {
         if (!Array.isArray(value)) return undefined;
         const normalized = value
-            .map((entry: any) => {
-                if (!entry || typeof entry !== 'object') return null;
+            .map((value): BusinessAttributeSuggestion | null => {
+                const entry = asRecord(value);
+                if (!entry) return null;
                 const key = typeof entry.key === 'string' ? entry.key.trim() : '';
                 if (!SAFE_BUSINESS_ATTRIBUTE_KEYS.has(key)) return null;
                 if (entry.value !== true) return null;
 
-                const rawConfidence = String(entry.confidence || '').trim().toLowerCase();
+                const rawConfidence = typeof entry.confidence === 'string'
+                    ? entry.confidence.trim().toLowerCase()
+                    : '';
                 const confidence = ['high', 'medium', 'low'].includes(rawConfidence)
                     ? rawConfidence as 'high' | 'medium' | 'low'
                     : undefined;
                 const sourceFileIndex = normalizeSourceFileIndex(entry.sourceFileIndex);
-                const evidence = typeof entry.evidence === 'string'
-                    ? entry.evidence.replace(/<[^>]*>/g, '').trim().slice(0, 160)
-                    : undefined;
+                const evidence = normalizeBoundedText(entry.evidence, 160) || undefined;
 
                 return {
                     key,
@@ -261,24 +295,25 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
 
     // Normalize items with tags handling
     // Filter out items missing critical fields (name or id) to prevent invalid data reaching Firestore
-    const items = (extractedData.items || []).filter((item: any) => {
-        if (item.id === undefined || item.id === null) return false;
-        if (!item.name || typeof item.name !== 'object' || Object.keys(item.name).length === 0) return false;
-        return true;
-    }).map((item: any) => {
+    const items = (Array.isArray(extractedData.items) ? extractedData.items : []).flatMap((value) => {
+        const item = asRecord(value);
+        const normalizedName = normalizeMultilingualTextMap(item?.name);
+        if (!item || !isSupportedScalarId(item.id) || Object.keys(normalizedName).length === 0) return [];
         // Normalize tags from multilingual object to array
         let normalizedTags: string[] | undefined;
         if (item.tags) {
             if (Array.isArray(item.tags)) {
                 // Defensive: ensure all tag values are strings
                 normalizedTags = item.tags
-                    .map((t: any) => typeof t === 'string' ? t : String(t))
-                    .filter((t: string) => t.length > 0);
-            } else if (typeof item.tags === 'object') {
+                    .filter((tag: unknown): tag is string => typeof tag === 'string')
+                    .map((tag: string) => normalizeBoundedText(tag, 80))
+                    .filter((tag: string) => tag.length > 0);
+            } else {
+                const tagsRecord = asRecord(item.tags);
                 // Extract from multilingual object: {"en": "Veg, Spicy"} -> ["Veg", "Spicy"]
-                normalizedTags = Object.values(item.tags)
+                normalizedTags = Object.values(tagsRecord || {})
                     .filter((v): v is string => typeof v === 'string')
-                    .flatMap((tagString) => tagString.split(',').map(t => t.trim()))
+                    .flatMap((tagString) => tagString.split(',').map((tag) => normalizeBoundedText(tag, 80)))
                     .filter(t => t.length > 0);
             }
         }
@@ -286,76 +321,83 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
         // Normalize confidence (Infrastructure Compounding 10.1)
         // Default to undefined (treated as high/high downstream) if AI doesn't return it
         let normalizedConfidence: { name: 'high' | 'medium' | 'low'; price: 'high' | 'medium' | 'low' } | undefined;
-        if (item.confidence && typeof item.confidence === 'object') {
+        const confidence = asRecord(item.confidence);
+        if (confidence) {
             const validLevels = ['high', 'medium', 'low'];
-            const nameConf = validLevels.includes(item.confidence.name) ? item.confidence.name : 'medium';
-            const priceConf = validLevels.includes(item.confidence.price) ? item.confidence.price : 'medium';
+            const nameConf = typeof confidence.name === 'string' && validLevels.includes(confidence.name)
+                ? confidence.name as 'high' | 'medium' | 'low'
+                : 'medium';
+            const priceConf = typeof confidence.price === 'string' && validLevels.includes(confidence.price)
+                ? confidence.price as 'high' | 'medium' | 'low'
+                : 'medium';
             normalizedConfidence = { name: nameConf, price: priceConf };
         }
 
-        // Normalize name: ensure it's an object (AI validated above, but be safe)
-        const normalizedName = (item.name && typeof item.name === 'object') ? item.name : {};
-
         // Normalize description: AI may return string instead of multilingual object
         let normalizedDescription: Record<string, string> | undefined;
-        if (item.description) {
-            if (typeof item.description === 'object' && !Array.isArray(item.description)) {
-                normalizedDescription = item.description;
-            } else if (typeof item.description === 'string' && item.description.trim()) {
-                // AI returned plain string — wrap as English
-                normalizedDescription = { en: item.description };
-            }
+        if (typeof item.description === 'string') {
+            const description = normalizeBoundedText(item.description, 2000);
+            if (description) normalizedDescription = { en: description };
+        } else {
+            const description = normalizeMultilingualTextMap(item.description);
+            if (Object.keys(description).length > 0) normalizedDescription = description;
         }
 
         const dietaryTags = normalizeStringArray(item.dietaryTags, SAFE_DIETARY_TAGS, normalizeDietaryTag);
-        const rawSpiceLevel = String(item.spiceLevel || '').trim().toLowerCase();
+        const rawSpiceLevel = typeof item.spiceLevel === 'string' ? item.spiceLevel.trim().toLowerCase() : '';
         const spiceLevel = SAFE_SPICE_LEVELS.has(rawSpiceLevel)
             ? rawSpiceLevel as 'none' | 'mild' | 'medium' | 'hot' | 'very-hot'
             : undefined;
-        const duration = Number(item.duration);
+        const duration = typeof item.duration === 'number' ? item.duration : Number.NaN;
         const sourceFileIndex = normalizeSourceFileIndex(item.sourceFileIndex);
+        const price = normalizePrice(item.price);
+        const attributes = Array.isArray(item.attributes)
+            ? item.attributes.flatMap((value) => {
+                const attribute = asRecord(value);
+                const attributeName = typeof attribute?.name === 'string'
+                    ? { en: normalizeBoundedText(attribute.name, 500) }
+                    : normalizeMultilingualTextMap(attribute?.name);
+                if (!attribute || !isSupportedScalarId(attribute.id) || Object.keys(attributeName).length === 0) return [];
+                const attributePrice = normalizePrice(attribute.price);
+                return [{
+                    id: String(attribute.id),
+                    name: attributeName,
+                    ...(attributePrice !== undefined ? { price: attributePrice } : {}),
+                }];
+            })
+            : undefined;
 
-        return {
+        return [{
             id: String(item.id),
             name: normalizedName,
             categoryId: item.category != null ? String(item.category) : '',
-            description: normalizedDescription,
-            price: item.price,
-            tags: normalizedTags,
+            ...(normalizedDescription ? { description: normalizedDescription } : {}),
+            ...(price !== undefined ? { price } : {}),
+            ...(normalizedTags && normalizedTags.length > 0 ? { tags: Array.from(new Set(normalizedTags)) } : {}),
             ...(sourceFileIndex !== undefined ? { sourceFileIndex } : {}),
-            attributes: item.attributes
-                ?.filter((attr: any) => attr && attr.id != null && attr.name)
-                .map((attr: any) => ({
-                    id: String(attr.id),
-                    // Defensive: attr.name may be string instead of multilingual object
-                    name: (attr.name && typeof attr.name === 'object') ? attr.name
-                        : (typeof attr.name === 'string' ? { en: attr.name } : {}),
-                    price: attr.price,
-                })),
+            ...(attributes && attributes.length > 0 ? { attributes } : {}),
             ...(dietaryTags ? { dietaryTags } : {}),
             ...(spiceLevel ? { spiceLevel } : {}),
             ...(Number.isFinite(duration) && duration > 0 ? { duration } : {}),
             // Only include confidence if AI returned it (saves document bytes)
             ...(normalizedConfidence ? { confidence: normalizedConfidence } : {}),
-        };
+        }];
     });
 
     // Normalize languages
     // Filter out languages with missing/invalid codes and validate code format (2-3 letter ISO 639)
-    const languages = (extractedData.languages || []).filter((lang: any) => {
-        if (!lang.code || typeof lang.code !== 'string') return false;
-        // Basic ISO 639 validation: 2-3 lowercase letters, optionally with region (e.g., "en", "hi", "zh-TW")
-        if (!/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(lang.code.trim())) return false;
-        return true;
-    }).map((lang: any) => ({
-        name: lang.name || '',
-        code: lang.code.trim(),
-        isPrimary: lang.isPrimary || false,
-    }));
+    const languages = (Array.isArray(extractedData.languages) ? extractedData.languages : []).flatMap((value) => {
+        const language = asRecord(value);
+        const code = typeof language?.code === 'string' ? language.code.trim() : '';
+        const name = normalizeBoundedText(language?.name, 120);
+        if (!/^[a-z]{2,3}(-[A-Za-z]{2,4})?$/.test(code) || !name) return [];
+        return [{ name, code, isPrimary: language?.isPrimary === true }];
+    });
 
     // Extract fileMessages if present (Section 8.14)
     const fileMessages = Array.isArray(extractedData.fileMessages)
-        ? extractedData.fileMessages.map((msg: any): FileMessage | null => {
+        ? extractedData.fileMessages.map((value): FileMessage | null => {
+            const msg = asRecord(value);
             const sourceFileIndex = normalizeSourceFileIndex(msg?.sourceFileIndex);
             const status = typeof msg?.status === 'string' && SAFE_FILE_MESSAGE_STATUSES.has(msg.status)
                 ? msg.status as FileMessage['status']
@@ -366,27 +408,46 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
             const message = normalizeBoundedText(msg?.message, 500);
             if (sourceFileIndex === undefined || !status || !type || !message) return null;
 
-            const omittedItems = Array.isArray(msg?.details?.omittedItems)
-                ? msg.details.omittedItems.slice(0, 20).map((item: any) => ({
+            const details = asRecord(msg?.details);
+            const omittedItems = Array.isArray(details?.omittedItems)
+                ? details.omittedItems.slice(0, 20).map((value) => {
+                    const item = asRecord(value);
+                    return {
                     position: normalizeBoundedText(item?.position, 80) || undefined,
                     partialName: normalizeBoundedText(item?.partialName, 120) || undefined,
                     reason: normalizeBoundedText(item?.reason, 160),
-                })).filter((item: { reason: string }) => item.reason)
+                    };
+                }).filter((item: { reason: string }) => item.reason)
                 : undefined;
-            const affectedFields = Array.isArray(msg?.details?.affectedFields)
-                ? msg.details.affectedFields.slice(0, 20).map((field: any) => ({
-                    itemId: Number.isSafeInteger(Number(field?.itemId)) ? Number(field.itemId) : undefined,
+            const affectedFields = Array.isArray(details?.affectedFields)
+                ? details.affectedFields.slice(0, 20).map((value) => {
+                    const field = asRecord(value);
+                    const rawItemId = field?.itemId;
+                    const itemId = typeof rawItemId === 'number' && Number.isSafeInteger(rawItemId)
+                        ? rawItemId
+                        : typeof rawItemId === 'string' && /^\d+$/.test(rawItemId)
+                            ? Number(rawItemId)
+                            : undefined;
+                    return {
+                    itemId,
                     itemName: normalizeBoundedText(field?.itemName, 120) || undefined,
                     field: normalizeBoundedText(field?.field, 80),
                     reason: normalizeBoundedText(field?.reason, 160),
-                })).filter((field: { field: string; reason: string }) => field.field && field.reason)
+                    };
+                }).filter((field: { field: string; reason: string }) => field.field && field.reason)
                 : undefined;
             const normalizeCount = (value: unknown) => {
-                const count = Number(value);
-                return Number.isSafeInteger(count) && count >= 0 ? count : undefined;
+                if (typeof value === 'number') {
+                    return Number.isSafeInteger(value) && value >= 0 ? value : undefined;
+                }
+                if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+                    const count = Number(value.trim());
+                    return Number.isSafeInteger(count) ? count : undefined;
+                }
+                return undefined;
             };
-            const omittedCount = normalizeCount(msg?.details?.omittedCount);
-            const extractedCount = normalizeCount(msg?.details?.extractedCount);
+            const omittedCount = normalizeCount(details?.omittedCount);
+            const extractedCount = normalizeCount(details?.extractedCount);
             const hasDetails = Boolean(
                 omittedItems?.length
                 || affectedFields?.length
@@ -414,7 +475,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
     const extractedBusinessProfile = normalizeExtractedBusinessProfile(extractedData.extractedBusinessProfile);
 
     return {
-        message: data.message || '',
+        message,
         data: {
             languages,
             categories,
@@ -439,7 +500,7 @@ function normalizeResponseData(data: any): { message: string; data: ExtractedMen
  * - Markdown fence removal  
  * - JSON parsing
  */
-function parseAIResponseText(rawText: string | object): any {
+function parseAIResponseText(rawText: string | object): unknown {
     // Handle case where response is already an object
     if (typeof rawText === 'object' && rawText !== null) {
         return rawText;
@@ -471,7 +532,7 @@ function parseAIResponseText(rawText: string | object): any {
             failureCode: AI_RESPONSE_PARSE_FAILED,
             inputType: typeof rawText,
             inputLength: typeof rawText === 'string' ? rawText.length : undefined,
-            errorName: parseError instanceof Error ? parseError.name : typeof parseError,
+            errorName: getBoundedFunctionsErrorName(parseError) || typeof parseError,
         });
         throw new Error('AI returned malformed data. Please try again.');
     }
@@ -491,7 +552,7 @@ function parseAIResponseText(rawText: string | object): any {
  * 2. Validate structure (basic checks)
  * 3. Normalize data (ensure consistent types)
  * 
- * Note: XSS sanitization is done on the frontend in redistributeExtractedData.ts
+ * Text and structure are admitted here; redistribution applies output-specific sanitization again.
  */
 export function processAIResponseForFirebase(rawText: string | object): {
     message: string;
@@ -503,11 +564,12 @@ export function processAIResponseForFirebase(rawText: string | object): {
     // Step 2: Validate structure
     const validation = validateResponseStructure(parsed);
     if (!validation.valid) {
+        const parsedRecord = asRecord(parsed);
         logger.warn('[AIResponseUtils] Response validation warnings', {
             failureCode: AI_RESPONSE_VALIDATION_WARNINGS,
             warningCount: validation.errors.length,
-            hasMessage: typeof parsed?.message === 'string',
-            hasData: Boolean(parsed?.data),
+            hasMessage: typeof parsedRecord?.message === 'string',
+            hasData: Boolean(parsedRecord?.data),
         });
         throw new Error('AI returned data in an unexpected format. Please try again.');
     }

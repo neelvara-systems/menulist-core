@@ -2,10 +2,14 @@
 
 ## Cost Verdict
 
-The selected architecture is Firebase-cost optimized:
+The selected architecture is Firebase-cost bounded and keeps durable workspace
+membership authoritative:
 
-- one platform category catalog read for normal template browsing,
-- optional one workspace saved-template index read when saved templates are shown,
+- one workspace authorization-document read plus one platform category catalog
+  read for normal template browsing,
+- optional one workspace saved-template index read when saved templates are shown
+  (the same authorization document may be cached during one rule evaluation, but
+  cost estimates do not assume cross-request caching),
 - full payloads in Storage only when the owner opens a template,
 - no realtime listener,
 - no provider call,
@@ -56,16 +60,16 @@ campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{saveId}/pr
 | Operation | Firestore Reads | Firestore Writes | Storage | Cloud Functions | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Resolve owner category | 0 | 0 | 0 | 0 | Uses already-loaded business type/category from overview/session state. |
-| Load platform templates | 1 | 0 | 0 | 0 | Reads one `campaigncuePlatformPackTemplates/{businessCategory}` doc. |
+| Load platform templates | 2 | 0 | 0 | 0 | Reads the active workspace document in rules and one `campaigncuePlatformPackTemplates/{businessCategory}` doc. |
 | Search/filter templates | 0 | 0 | 0 | 0 | In-memory filtering over loaded summary metadata. |
 | Choose campaign output intent | 0 | 0 | 0 | 0 | In-memory filter plus deterministic requirement/decision preflight over already-loaded overview and template summaries. |
 | Create campaign from output intent | Existing campaign-create reads | Existing campaign batch only | 0 | 0 | Server rechecks canonical intent requirements/decision/channels and stores bounded intent, requested-output, and optional template provenance in the existing campaign document. No extra document or write. |
 | Choose Campaign Proof Deck intent | 0 | 0 | 0 | 0 | Uses the same in-memory output picker and existing output-pack proof deck field. |
-| Open platform template | 0 | 0 | 1-2 downloads | 0 | Downloads pack payload and optional editor document from Storage. |
-| Load saved workspace templates | 1 | 0 | 0 | 0 | Reads `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` only when saved templates are shown. |
-| Save workspace template | 1 baseline | 1 | 1-3 uploads | 0 | A Firestore transaction reads/writes the bounded index; contention may retry the transaction read. Immutable payload/editor/preview artifacts upload first. Ambiguous write failures probe the index before cleanup. Unexpected cleanup failures log bounded diagnostics; missing objects are expected no-ops. |
-| Delete workspace template | 1 baseline | 0-1 | Up to 3 deletes | 0 | A transaction removes the summary only when present; contention may retry the read. Storage cleanup follows visible index removal, with an ambiguity probe on failure. |
-| Load overflow templates | 1 | 0 | 0 | 0 | Only after explicit owner action such as "More templates". |
+| Open platform template | 1 rule read | 0 | 1-2 downloads | 0 | Each Storage request checks the active workspace membership document; downloads the pack payload and optional editor document. |
+| Load saved workspace templates | 2 | 0 | 0 | 0 | Reads the active workspace document in rules and `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` only when saved templates are shown. |
+| Save workspace template | 2 baseline plus 1 rule read per upload | 1 | 1-3 uploads | 0 | The transaction reads the bounded index and the Firestore rule checks active membership; every Storage upload also checks the workspace document. Contention may retry the transaction read. Immutable payload/editor/preview artifacts upload first. Ambiguous write failures probe the index before cleanup. Unexpected cleanup failures log bounded diagnostics; missing objects are expected no-ops. |
+| Delete workspace template | 2 baseline plus 1 rule read per delete | 0-1 | Up to 3 deletes | 0 | The transaction reads the index and the Firestore rule checks active membership; every Storage delete checks the workspace document. Storage cleanup follows visible index removal, with an ambiguity probe on failure. |
+| Load overflow templates | 2 | 0 | 0 | 0 | Only after explicit owner action such as "More templates"; includes the active-membership rule read. |
 | Admin seed platform catalogs | 0 | One batched write per category doc | Up to N create attempts | 0 | Platform/admin tooling only; explicit project/bucket target, create-only content-hashed payloads first, then one atomic catalog batch. Existing hash objects are not overwritten on rerun. |
 
 ## Default Owner Cost
@@ -73,7 +77,7 @@ campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{saveId}/pr
 Normal CampaignCue owner template browsing:
 
 ```text
-1 Firestore read
+2 Firestore reads
 0 writes
 0 Storage downloads until open
 0 provider calls
@@ -83,7 +87,7 @@ Normal CampaignCue owner template browsing:
 If saved templates are visible in the same panel:
 
 ```text
-2 Firestore reads total
+4 Firestore reads total
 0 writes
 0 Storage downloads until open
 ```
@@ -103,7 +107,8 @@ When a selected template opens a saved editor document, the output intent stays 
 
 One global doc is cheapest for a small universal catalog, but CampaignCue must support category-aware usefulness. A food business should not scan salon-heavy metadata, and a salon should not see restaurant-first template ranking.
 
-Category docs keep the normal cost at one read while improving:
+Category docs keep the content lookup at one catalog read (plus the required
+workspace authorization read) while improving:
 
 - search relevance,
 - business-type alignment,
@@ -149,10 +154,18 @@ Not allowed:
 
 | Path | Read | Write |
 | --- | --- | --- |
-| `campaigncuePlatformPackTemplates/{businessCategory}` | Signed-in CampaignCue workspace user or platform user | Platform/admin only |
-| `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` | Workspace member | Workspace member under the current workspace-claim rule |
-| `campaigncue/templates/platform/...` | Signed-in CampaignCue workspace user or platform user | Platform/admin only |
-| `campaigncue/templates/workspaces/{workspaceId}/...` | Workspace member | Workspace member under the current workspace-claim rule and exact artifact allowlist |
+| `campaigncuePlatformPackTemplates/{businessCategory}` | Active durable CampaignCue workspace member or platform user | Platform/admin only |
+| `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` | Active durable workspace member | Active durable workspace member under the exact tenant/store scope |
+| `campaigncue/templates/platform/...` | Active durable CampaignCue workspace member or platform user | Platform/admin only |
+| `campaigncue/templates/workspaces/{workspaceId}/...` | Active durable workspace member | Active durable workspace member under the exact tenant/store scope and exact artifact allowlist |
+
+The rules require the authoritative workspace document to have exact
+`id`/`workspaceId`, `productId: "CC"`, tenant/store scope, `status: "active"`,
+and an allowed role under `members[request.auth.uid]`. Matching custom claims
+alone is not authorization. Firestore `get()`/`exists()` access calls in rules
+are billed even for rejected requests, and Storage-rule Firestore lookups count
+toward Firestore quota and billing, so the ledger includes these authorization
+reads.
 
 ## Rejected Cost Patterns
 

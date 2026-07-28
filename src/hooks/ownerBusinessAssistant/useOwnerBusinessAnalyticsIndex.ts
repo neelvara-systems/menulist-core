@@ -1,5 +1,6 @@
 import useSWR from 'swr';
 import { FEATURE_FLAGS } from '@config/features';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getCachedData, removeCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import {
@@ -8,6 +9,8 @@ import {
   type OwnerBusinessAssistantAnalyticsResponse,
 } from '@lib/ownerBusinessAssistant/clientResponses';
 import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics';
+import { resolveOwnerBusinessAssistantClientScope } from '@lib/ownerBusinessAssistant/clientScope';
+import { useMemo } from 'react';
 
 const fetcher = async ([url, storeScopeKey]: readonly [string, string]): Promise<OwnerBusinessAssistantAnalyticsResponse> => {
   const response = await fetch(url, OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY);
@@ -22,30 +25,39 @@ const fetcher = async ([url, storeScopeKey]: readonly [string, string]): Promise
 const hasAnalyticsData = (response: OwnerBusinessAssistantAnalyticsResponse | undefined) => Boolean(response?.data);
 
 export function useOwnerBusinessAnalyticsIndex(projectId?: string, storeScopeKey?: string | number, options?: { enabled?: boolean }) {
-  const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+  const session = useClientAuthSession();
+  const clientScope = useMemo(
+    () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
+    [session?.sId, session?.tId, storeScopeKey],
+  );
+  const enabled = Boolean(clientScope)
+    && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
     && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_ANALYTICS_INDEX
     && (options?.enabled ?? true);
   const params = new URLSearchParams();
   if (projectId) params.set('projectId', projectId);
-  if (storeScopeKey) params.set('storeId', String(storeScopeKey));
+  if (clientScope) params.set('storeId', clientScope.storeId);
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.analytics}${params.toString() ? `?${params.toString()}` : ''}`;
-  const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserAnalyticsPrefix}:${storeScopeKey || 'store'}:${projectId || 'all'}`;
-  const cached = typeof window !== 'undefined'
+  const cacheKey = clientScope
+    ? `${OWNER_BUSINESS_ASSISTANT_CACHE.browserAnalyticsPrefix}:${clientScope.cacheScope}:${projectId || 'all'}`
+    : null;
+  const cached = typeof window !== 'undefined' && cacheKey
     ? getCachedData<OwnerBusinessAssistantAnalyticsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
 
   const cachedMissingAnalytics = !hasAnalyticsData(cached);
 
   const swr = useSWR<OwnerBusinessAssistantAnalyticsResponse>(
-    enabled ? [url, String(storeScopeKey || 'store')] as const : null,
+    enabled && clientScope ? [url, clientScope.cacheScope] as const : null,
     fetcher,
     {
       fallbackData: cachedMissingAnalytics ? undefined : cached,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      revalidateIfStale: typeof window === 'undefined' ? false : cachedMissingAnalytics || shouldRevalidate(cacheKey),
+      revalidateIfStale: typeof window === 'undefined' || !cacheKey ? false : cachedMissingAnalytics || shouldRevalidate(cacheKey),
       dedupingInterval: 10 * 60 * 1000,
       onSuccess: (data) => {
+        if (!cacheKey) return;
         if (!hasAnalyticsData(data)) {
           removeCachedData(cacheKey);
           return;

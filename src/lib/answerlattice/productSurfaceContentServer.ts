@@ -21,6 +21,7 @@ import { getAnswerlatticeSupportTicketDisplayId } from '@lib/answerlattice/suppo
 import {
     ANSWERLATTICE_PRODUCT_SURFACE_LIMIT,
     buildPublicRelatedContent,
+    getAnswerlatticeProductSurfaceTimestampMillis,
     getContextContentSummaryDocId,
     mergeSurfaceContext,
     normalizeAnswerlatticeSurfaceContentSummary,
@@ -69,13 +70,9 @@ const rememberSummary = (cacheKey: string, summary: AnswerlatticeSurfaceContentS
     summaryCache.set(cacheKey, { summary, expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS });
 };
 
-const getTimestampMillis = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    const parsed = Date.parse(String(value));
-    return Number.isFinite(parsed) ? parsed : 0;
-};
+const getTimestampMillis = (value: unknown): number => (
+    getAnswerlatticeProductSurfaceTimestampMillis(value) ?? 0
+);
 
 const compactArticle = (article: KnowledgeBaseArticleType): AnswerlatticeRelatedArticleRef => ({
     id: article.id,

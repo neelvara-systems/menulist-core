@@ -53,6 +53,7 @@ const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDa
 const ownerDashboardHook = read('src/hooks/useOwnerDashboard.ts');
 const obpDashboardHook = read('src/hooks/useOBPDashboard.ts');
 const ownerDashboardDb = read('src/database/ownerDashboard/index.ts');
+const ownerDashboardReadBoundary = read('src/lib/analytics/ownerDashboardReadBoundary.ts');
 const ownerActionMarkDoneRoute = read('src/app/api/analytics/owner-action/mark-done/route.ts');
 const ownerActionReceiptTransaction = read('src/lib/analytics/ownerActionReceiptTransaction.ts');
 const ownerDashboardTypes = read('src/components/templates/main-app/projects/types/ownerDashboard.types.ts');
@@ -75,6 +76,11 @@ const changelog = read('__docs__/changelog.md');
 requireToken(
   packageJson,
   '"verify:owner-dashboard-today-boundary": "node scripts/verification/verify-owner-dashboard-today-boundary.js"',
+  'package scripts',
+);
+requireToken(
+  packageJson,
+  '"test:owner-dashboard-read-boundary":',
   'package scripts',
 );
 
@@ -127,12 +133,21 @@ forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'o
 ].forEach((token) => requireToken(obpDashboardHook, token, 'OBP dashboard hook'));
 
 [
+  'buildOwnerDashboardDocumentPrefix',
+  'hasOwnerDashboardSummaryIdentity',
+  'readOwnerDashboardCounter',
+  'readOwnerDashboardMap',
+  'normalizePersistedMetrics',
+  'normalizePersistedLifetimeMetrics',
+  'normalizeTopItems',
+  'normalizeSourceQuality',
+  'normalizeHistoricalWeeks',
   'export async function getOwnerDashboardToday(',
   'const todayDate = getTodayDate(timeZone, businessDayEndTime);',
   'includeAiSummary: false,',
   'isPartial: true,',
   'export async function getOwnerDashboardSettled(',
-  'const summaryDocId = getDocId.dashboardSummary(tId, sId, projectId);',
+  'const summaryDocId = getDocId.dashboardSummary(tenantId, storeId, normalizedProjectId);',
   'export async function getOBPDashboardToday(',
   'const tenantId = normalizeAnalyticsScopeDocumentId(tId);',
   'const docId = getDocId.daily(tenantId, storeId, OBP_PROJECT_ID, todayDate);',
@@ -153,6 +168,16 @@ forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'o
   'logOBPDashboardSummaryReadFailure(error, { tId, sId, summaryDocId });',
 ].forEach((token) => requireToken(ownerDashboardDb, token, 'owner dashboard DAL'));
 forbidToken(ownerDashboardDb, '} catch {\n                // Non-critical\n            }', 'owner dashboard OBP summary read silent catch');
+
+[
+  'const MAX_ANALYTICS_MAP_ENTRIES = 1_000;',
+  'export function readOwnerDashboardCounter(',
+  'export function readOwnerDashboardFiniteNumber(',
+  'export function buildOwnerDashboardDocumentPrefix(',
+  'export function hasOwnerDashboardSummaryIdentity(',
+  'export function readOwnerDashboardMap(',
+  "UNSAFE_ANALYTICS_MAP_KEYS.has(value)",
+].forEach((token) => requireToken(ownerDashboardReadBoundary, token, 'owner dashboard read boundary'));
 
 [
   'export function getOwnerActionReceiptIdsToPrune(',

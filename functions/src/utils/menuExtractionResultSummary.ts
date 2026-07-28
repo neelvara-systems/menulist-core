@@ -1,17 +1,39 @@
 import type { ExtractedBusinessProfile } from "../sharedData/extractedBusinessProfile";
 import type { ConfidenceSummary } from "../types";
 
+type MenuExtractionSummaryInput = {
+    categories?: unknown;
+    items?: unknown;
+    languages?: unknown;
+    fileMessages?: unknown;
+    businessAttributeSuggestions?: unknown;
+    extractedBusinessProfile?: unknown;
+};
+
+function asSummaryInput(value: unknown): MenuExtractionSummaryInput {
+    return typeof value === "object" && value !== null
+        ? value as MenuExtractionSummaryInput
+        : {};
+}
+
+function hasNonEmptyArrayField(value: unknown, field: "dietaryTags" | "attributes"): boolean {
+    if (typeof value !== "object" || value === null) return false;
+    const fieldValue = (value as Record<string, unknown>)[field];
+    return Array.isArray(fieldValue) && fieldValue.length > 0;
+}
+
 export function buildExtractionResultSummary(
-    menuData: any,
+    menuData: unknown,
     confidenceSummary?: ConfidenceSummary | null,
     extractedBusinessProfile?: ExtractedBusinessProfile,
 ): Record<string, unknown> {
-    const categories = Array.isArray(menuData?.categories) ? menuData.categories : [];
-    const items = Array.isArray(menuData?.items) ? menuData.items : [];
-    const languages = Array.isArray(menuData?.languages) ? menuData.languages : [];
-    const fileMessages = Array.isArray(menuData?.fileMessages) ? menuData.fileMessages : [];
-    const businessAttributeSuggestions = Array.isArray(menuData?.businessAttributeSuggestions)
-        ? menuData.businessAttributeSuggestions
+    const input = asSummaryInput(menuData);
+    const categories = Array.isArray(input.categories) ? input.categories : [];
+    const items = Array.isArray(input.items) ? input.items : [];
+    const languages = Array.isArray(input.languages) ? input.languages : [];
+    const fileMessages = Array.isArray(input.fileMessages) ? input.fileMessages : [];
+    const businessAttributeSuggestions = Array.isArray(input.businessAttributeSuggestions)
+        ? input.businessAttributeSuggestions
         : [];
 
     return {
@@ -20,9 +42,9 @@ export function buildExtractionResultSummary(
         languagesCount: languages.length,
         fileMessagesCount: fileMessages.length,
         businessAttributeSuggestionsCount: businessAttributeSuggestions.length,
-        dietaryTaggedItemsCount: items.filter((item: any) => Array.isArray(item?.dietaryTags) && item.dietaryTags.length > 0).length,
-        attributedItemsCount: items.filter((item: any) => Array.isArray(item?.attributes) && item.attributes.length > 0).length,
-        hasExtractedBusinessProfile: Boolean(extractedBusinessProfile || menuData?.extractedBusinessProfile),
+        dietaryTaggedItemsCount: items.filter((item) => hasNonEmptyArrayField(item, "dietaryTags")).length,
+        attributedItemsCount: items.filter((item) => hasNonEmptyArrayField(item, "attributes")).length,
+        hasExtractedBusinessProfile: Boolean(extractedBusinessProfile || input.extractedBusinessProfile),
         ...(confidenceSummary ? { confidenceSummary } : {}),
     };
 }

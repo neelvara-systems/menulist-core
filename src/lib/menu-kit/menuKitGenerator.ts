@@ -178,7 +178,7 @@ async function prepareMenuKitInput(input: MenuKitInput): Promise<{
 }> {
     const validatedUrl = validateMenuUrl(input.menuUrl);
     if (!validatedUrl) {
-        throw new Error('Invalid menu URL: must use http:// or https:// protocol');
+        throw new Error('Invalid menu URL: must use HTTPS without embedded credentials');
     }
 
     const safeName = buildMenuKitSafeName(input.storeName);

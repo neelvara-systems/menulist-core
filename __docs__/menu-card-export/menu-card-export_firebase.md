@@ -70,7 +70,7 @@ Sources:
 Evidence:
 
 - Compatibility generator returns a Blob in browser: `src/lib/export/menuPdfGenerator.ts`.
-- Desktop and mobile call `src/lib/export/localExportHistory.ts` after a legacy/flag-off PDF delivery. The helper scopes markers by tenant/store/project and treats storage rejection as best-effort.
+- Desktop and mobile call `src/lib/export/localExportHistory.ts` after a legacy/flag-off PDF delivery. The helper scopes markers by tenant/store/project only after every present tenant and store compatibility alias agrees, and treats storage rejection as best-effort.
 - Current docs describe zero generation cost: `__docs__/pdf-surface/pdf-surface_firebase.md:11`.
 
 ---

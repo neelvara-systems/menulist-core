@@ -4,15 +4,15 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { DEFAULT_PRODUCT_ID } from "@constant/product";
 import { getResellerProfile } from "@database/reseller/server";
 import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
+import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import { projectResellerClientRecord } from "@lib/reseller/resellerClientRecord";
 import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
-import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
-import { applyResellerReadRateLimit } from "../readRateLimit";
+import { applyResellerReadRateLimit, resellerPrivateJson } from "../readRateLimit";
 
 /**
  * GET /api/reseller/clients — List reseller's onboarded clients
@@ -25,17 +25,17 @@ import { applyResellerReadRateLimit } from "../readRateLimit";
 export const GET = withAuth(async (request, session) => {
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            return NextResponse.json({ error: "Feature not available." }, { status: 404 });
+            return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
         }
 
         const rateLimitResponse = await applyResellerReadRateLimit(session, "clients");
         if (rateLimitResponse) return rateLimitResponse;
 
-        const isPlatform = session.user.platformRole === 'PLATFORM' || session.platformRole === 'PLATFORM';
+        const isPlatform = resolveExactSessionPlatformRole(session) === 'PLATFORM';
         const resellerId = session.user.id;
         if (isPlatform) {
             if (!await getCurrentPlatformUser(session)) {
-                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
             }
         } else {
             const currentProfile = await getResellerProfile(
@@ -49,7 +49,7 @@ export const GET = withAuth(async (request, session) => {
                 sessionEmail: session.user.email,
                 sessionProfileId: session.user.resellerProfileId,
             })) {
-                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
             }
         }
         const db = admin.firestore();
@@ -90,13 +90,13 @@ export const GET = withAuth(async (request, session) => {
         );
         const transactions = projectedTransactions.slice(0, resultLimit);
 
-        return NextResponse.json({ invalidRowCount, isPartial, transactions });
+        return resellerPrivateJson({ invalidRowCount, isPartial, transactions });
 
     } catch (error) {
         logResellerApiFailure('reseller_clients_route_failed', error, {
             ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
         });
-        return NextResponse.json(
+        return resellerPrivateJson(
             { error: 'Failed to fetch clients.' },
             { status: 500 }
         );

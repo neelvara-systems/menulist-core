@@ -96,7 +96,7 @@ ${content}
 // TEMPLATE GENERATORS
 // ================================================================
 
-function storePublished(meta: Record<string, any>): EmailTemplate {
+function storePublished(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const publicUrl = urlValue(meta.publicUrl);
@@ -118,7 +118,7 @@ function storePublished(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function menuPublishFailed(meta: Record<string, any>): EmailTemplate {
+function menuPublishFailed(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const failureReason = publishFailureReasonText(meta.failureReason);
@@ -136,7 +136,7 @@ function menuPublishFailed(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function paymentSuccess(meta: Record<string, any>): EmailTemplate {
+function paymentSuccess(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const formattedAmount = normalizeText(meta.amountLabel, `${normalizeText(meta.currency, 'INR')} ${normalizeText(meta.amount, '0')}`);
@@ -157,7 +157,7 @@ function paymentSuccess(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function paymentFailed(meta: Record<string, any>): EmailTemplate {
+function paymentFailed(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const formattedAmount = normalizeText(meta.amountLabel, `${normalizeText(meta.currency, 'INR')} ${normalizeText(meta.amount, '0')}`);
@@ -177,7 +177,7 @@ function paymentFailed(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function renewalReminder(meta: Record<string, any>): EmailTemplate {
+function renewalReminder(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const planName = htmlValue(meta.planName, 'subscription');
@@ -197,7 +197,7 @@ function renewalReminder(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function gracePeriodStarted(meta: Record<string, any>): EmailTemplate {
+function gracePeriodStarted(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   return {
@@ -214,7 +214,7 @@ function gracePeriodStarted(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function suspensionWarning(meta: Record<string, any>): EmailTemplate {
+function suspensionWarning(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const daysOverdue = htmlValue(meta.daysOverdue, 'several');
@@ -232,7 +232,7 @@ function suspensionWarning(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function creditPurchaseSuccess(meta: Record<string, any>): EmailTemplate {
+function creditPurchaseSuccess(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const amountPresent = meta.amount !== undefined && meta.amount !== null && normalizeText(meta.amount, '') !== '';
@@ -252,7 +252,7 @@ function creditPurchaseSuccess(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function creditsExhausted(meta: Record<string, any>): EmailTemplate {
+function creditsExhausted(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   return {
@@ -269,7 +269,7 @@ function creditsExhausted(meta: Record<string, any>): EmailTemplate {
   };
 }
 
-function menuStale(meta: Record<string, any>): EmailTemplate {
+function menuStale(meta: Record<string, unknown>): EmailTemplate {
   const storeName = normalizeText(meta.storeName, 'MenuList');
   const storeNameHtml = htmlValue(meta.storeName, 'your business');
   const daysSincePublish = normalizeText(meta.daysSincePublish, '');
@@ -291,7 +291,7 @@ function menuStale(meta: Record<string, any>): EmailTemplate {
 // TEMPLATE RESOLVER
 // ================================================================
 
-const TEMPLATE_MAP: Record<MessageEventType, (meta: Record<string, any>) => EmailTemplate> = {
+const TEMPLATE_MAP: Record<MessageEventType, (meta: Record<string, unknown>) => EmailTemplate> = {
   STORE_PUBLISHED: storePublished,
   MENU_PUBLISH_FAILED: menuPublishFailed,
   PAYMENT_SUCCESS: paymentSuccess,
@@ -310,7 +310,7 @@ const TEMPLATE_MAP: Record<MessageEventType, (meta: Record<string, any>) => Emai
  */
 export function resolveTemplate(
   eventType: MessageEventType,
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
 ): EmailTemplate | null {
   const generator = TEMPLATE_MAP[eventType];
   if (!generator) return null;

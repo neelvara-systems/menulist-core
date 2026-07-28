@@ -146,3 +146,116 @@ export function renderPublicTiptapHtml(content: unknown): string {
         return '';
     }
 }
+
+export interface AnswerlatticePublicArticleOutlineNode {
+    id: string;
+    text: string;
+    level: number;
+    children: AnswerlatticePublicArticleOutlineNode[];
+}
+
+export interface AnswerlatticeRenderedPublicArticle {
+    safeHtml: string;
+    outline: AnswerlatticePublicArticleOutlineNode[];
+}
+
+const MAX_PUBLIC_ARTICLE_HEADINGS = 40;
+const MAX_PUBLIC_ARTICLE_HEADING_CHARS = 160;
+
+const normalizePublicHeadingLevel = (value: unknown): number => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.min(Math.max(Math.trunc(parsed), 1), 6) : 2;
+};
+
+const getPublicNodeText = (node: unknown): string => {
+    if (!node || typeof node !== 'object') return '';
+    const record = node as Record<string, any>;
+    const ownText = record.type === 'text' && typeof record.text === 'string' ? record.text : '';
+    const childText = Array.isArray(record.content)
+        ? record.content.map(getPublicNodeText).join(' ')
+        : '';
+    return `${ownText} ${childText}`.replace(/\s+/g, ' ').trim();
+};
+
+const getPublicHeadingIdBase = (text: string) => (
+    text
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80)
+        || 'topic'
+);
+
+export function buildAnswerlatticePublicArticleOutline(
+    content: unknown,
+): AnswerlatticePublicArticleOutlineNode[] {
+    if (!content || typeof content !== 'object') return [];
+
+    const flat: AnswerlatticePublicArticleOutlineNode[] = [];
+    const idCounts = new Map<string, number>();
+    const visit = (node: unknown) => {
+        if (flat.length >= MAX_PUBLIC_ARTICLE_HEADINGS || !node || typeof node !== 'object') return;
+        const record = node as Record<string, any>;
+        if (record.type === 'heading') {
+            const text = getPublicNodeText(record).slice(0, MAX_PUBLIC_ARTICLE_HEADING_CHARS) || 'Untitled section';
+            const base = getPublicHeadingIdBase(text);
+            const occurrence = (idCounts.get(base) || 0) + 1;
+            idCounts.set(base, occurrence);
+            flat.push({
+                id: `topic-${base}${occurrence > 1 ? `-${occurrence}` : ''}`,
+                text,
+                level: normalizePublicHeadingLevel(record.attrs?.level),
+                children: [],
+            });
+        }
+        if (Array.isArray(record.content)) record.content.forEach(visit);
+    };
+    visit(content);
+
+    const roots: AnswerlatticePublicArticleOutlineNode[] = [];
+    const stack: AnswerlatticePublicArticleOutlineNode[] = [];
+    for (const heading of flat) {
+        while (stack.length && stack[stack.length - 1].level >= heading.level) stack.pop();
+        const parent = stack[stack.length - 1];
+        if (parent) parent.children.push(heading);
+        else roots.push(heading);
+        stack.push(heading);
+    }
+    return roots;
+}
+
+const flattenPublicArticleOutline = (
+    outline: AnswerlatticePublicArticleOutlineNode[],
+): AnswerlatticePublicArticleOutlineNode[] => (
+    outline.flatMap(node => [node, ...flattenPublicArticleOutline(node.children)])
+);
+
+/**
+ * Adds deterministic IDs only to heading tags emitted by the fixed sanitizer
+ * above. The source remains sanitized TipTap JSON; arbitrary HTML is never
+ * accepted or parsed.
+ */
+const addPublicHeadingAnchors = (
+    safeHtml: string,
+    outline: AnswerlatticePublicArticleOutlineNode[],
+): string => {
+    const headings = flattenPublicArticleOutline(outline);
+    let headingIndex = 0;
+    return safeHtml.replace(/<h([1-6])([^>]*)>/g, (match, level: string, attributes: string) => {
+        const heading = headings[headingIndex];
+        headingIndex += 1;
+        if (!heading) return match;
+        return `<h${level} id="${escapeAttribute(heading.id)}"${attributes}>`;
+    });
+};
+
+export function renderPublicTiptapArticle(content: unknown): AnswerlatticeRenderedPublicArticle {
+    const outline = buildAnswerlatticePublicArticleOutline(content);
+    const safeHtml = renderPublicTiptapHtml(content);
+    return {
+        safeHtml: addPublicHeadingAnchors(safeHtml, outline),
+        outline,
+    };
+}

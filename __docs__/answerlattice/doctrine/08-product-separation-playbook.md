@@ -193,8 +193,7 @@ useEntityCandidates.ts, useMutationProposals.ts
 | `logic/embedArticleWorker.ts`  | KB embedding worker (task queue)                 |
 | `logic/regenerateEmbedding.ts` | KB embedding regen (callable)                    |
 | `logic/publishApprovedJob.ts`  | KB ingestion publish (callable)                  |
-| `analytics/kbQuality.ts`       | Dormant MenuList compatibility implementation. It is not scheduled or exported; dedicated deterministic chat intelligence runs in `functions-answerlattice/`. |
-| `services/gemini/kbQuality.ts` | Dormant MenuList compatibility provider helper. It has no active scheduler/export path and is not part of Answerlattice runtime truth. |
+| Retired MenuList KB Quality source | The former worker and provider helper were removed; dedicated deterministic chat intelligence runs in `functions-answerlattice/`. |
 | `types/knowledgeBase.types.ts` | KB types                                         |
 
 ### Copy Shared Utilities to `functions-answerlattice/src/`
@@ -214,7 +213,7 @@ Answerlattice nightly has been removed from `functions/src/decisionBlocksScoring
 
 Keep the legacy MenuList exports for now as explicit shared-mode/emulator recovery compatibility. In `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MODE=shared`, `answerlatticeFunctions` resolves to the MenuList Firebase Functions app, so removing the legacy exports would break those recovery deployments. The active local, preview, and production paths call the same function names from `functions-answerlattice/`.
 
-Dormant MenuList chat-monitoring compatibility boundary: Feedback Intelligence, KB Quality, Weekly Narrative, and Health Signals source remains in `functions/src/` for recovery/history, but no active MenuList scheduler or callable invokes those workers. `decisionBlocksScoring.ts` records the legacy task names as `moved_to_answerlattice_runtime`; the retained manual scheduler callables fail closed. Dedicated Answerlattice nightly aggregation and deterministic `chat_intelligence` own current feedback/weekly output. Do not reconnect the dormant workers or count their source presence as an active MenuList data flow.
+Dormant MenuList chat-monitoring compatibility boundary: Feedback Intelligence, Weekly Narrative, and Health Signals source remains in `functions/src/` for recovery/history, but no active MenuList scheduler or callable invokes those workers. The former KB Quality worker, provider helper, and legacy support health check are retired and absent. `decisionBlocksScoring.ts` records the legacy task names as `moved_to_answerlattice_runtime`; the retained manual scheduler callables fail closed. Dedicated Answerlattice nightly aggregation and deterministic `chat_intelligence` own current feedback/weekly output. Do not reconnect the dormant workers or restore the retired KB path.
 
 ### Deployment Commands
 
@@ -316,7 +315,7 @@ Older feature docs (`help-center_impl.md`, `ticket-system_impl.md`, `feedback-sy
 
 ### 7.7 `src/services/gemini/prompts/` — Answerlattice KB Quality
 
-Three files in `src/services/gemini/prompts/` are legacy KB-quality prompt assets. The old Cloud Function KB Quality implementation remains dormant in `functions/src/analytics/kbQuality.ts` plus `functions/src/services/gemini/kbQuality.ts`; it is neither scheduled nor exported. Current Answerlattice chat feedback/weekly intelligence is deterministic and runs in the dedicated project, so the dormant Gemini path must not be presented as current behavior or reconnected without a new reviewed runtime decision.
+Three files in `src/services/gemini/prompts/` are legacy KB-quality prompt assets. The old MenuList Cloud Function worker and provider helper are retired and absent. Current Answerlattice chat feedback/weekly intelligence is deterministic and runs in the dedicated project, so those prompt assets must not be presented as current behavior or reconnected without a new reviewed runtime decision.
 
 ### 7.8 `src/lib/firebase/appCheck.ts`
 

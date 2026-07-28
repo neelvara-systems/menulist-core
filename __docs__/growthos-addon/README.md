@@ -118,6 +118,19 @@ June 29 hardening note: the guarded review-reply route keeps the same 10/minute 
 
 June 30 security-log boundary note: GrowthOS refresh, generate, export, and review-guard routes now use bounded route/session metadata for invalid-JSON, validation-failure, and tenant-violation security events. They no longer spread raw `buildSecurityContext()` output into Growth Kits security logs.
 
+July 26 data-integrity hardening:
+
+- summary and project-list browser cache keys now include tenant and store identity, and selected-project state resets on a scope switch
+- persisted summaries are runtime-validated and tenant/store-correlated before either browser or server use
+- source hashes cover every owner-visible and ranking-relevant fact used by the deterministic kit, including business/menu names, currency, item category/image/highlight state, hours, link, price, and availability
+- generation and export mutations carry UUID operation identities; one ambiguous browser transport retry reuses the same identity
+- kit creation, source revalidation, and latest-summary projection settle in one Firestore transaction
+- export creation, current-source revalidation, kit status, and latest-summary status settle in one Firestore transaction
+- refresh re-reads source truth and the current latest-kit projection in its transaction, preserving a concurrently generated kit instead of overwriting it
+- the guarded review route fails closed when the rate-limit provider is unavailable and partitions its hashed limiter key by user, tenant, and store
+- synchronous desktop/mobile pending-operation guards prevent same-surface double submission before React loading state renders
+- `npm run verify:growthos` includes client-contract tests and a real Firestore emulator concurrency/idempotency suite
+
 ## June 1, 2026 Owner-Value Hardening Update
 
 The owner-facing Today surface is now framed as `Today's Sales Pack`, not as a generic module card.

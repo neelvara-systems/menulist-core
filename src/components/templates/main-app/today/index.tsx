@@ -142,16 +142,24 @@ const TodayScreen = () => {
     }, [hasMaintenanceCards, todayCampaigns, isLoading, sortedOperationalCampaigns.length]);
 
     useEffect(() => {
-        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        const dismissKey = getInactiveReminderDismissKey(
+            storeDetails?.tenantId ?? (storeDetails as any)?.tId,
+            storeDetails?.storeId,
+            inactiveItemsReminder?.projectId,
+        );
         if (!dismissKey) {
             setIsInactiveReminderDismissed(false);
             return;
         }
         setIsInactiveReminderDismissed(localStorage.getItem(dismissKey) === '1');
-    }, [inactiveItemsReminder?.projectId, storeDetails?.storeId]);
+    }, [inactiveItemsReminder?.projectId, storeDetails?.storeId, storeDetails?.tenantId, (storeDetails as any)?.tId]);
 
     const dismissInactiveReminder = () => {
-        const dismissKey = getInactiveReminderDismissKey(storeDetails?.storeId, inactiveItemsReminder?.projectId);
+        const dismissKey = getInactiveReminderDismissKey(
+            storeDetails?.tenantId ?? (storeDetails as any)?.tId,
+            storeDetails?.storeId,
+            inactiveItemsReminder?.projectId,
+        );
         if (dismissKey) {
             localStorage.setItem(dismissKey, '1');
         }

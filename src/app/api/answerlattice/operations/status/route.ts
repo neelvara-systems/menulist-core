@@ -13,7 +13,11 @@ import {
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { normalizeAnswerlatticeOperationsMetric } from '@lib/answerlattice/activationDashboardResponseClient';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -96,12 +100,22 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
 
     const rateLimit = await checkRateLimit({
-        key: buildAnswerlatticeRateLimitKey('answerlattice-operations-status', scope.tenantId, scope.storeId),
+        key: buildAnswerlatticeRateLimitKey(
+            'answerlattice-operations-status',
+            session.uId,
+            scope.tenantId,
+            scope.storeId,
+        ),
         limit: 60,
         window: 60,
+        failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+        return NextResponse.json(
+            { error: providerUnavailable ? 'Operations status is temporarily unavailable' : 'Too many requests' },
+            { status: providerUnavailable ? 503 : 429 },
+        );
     }
 
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS);
@@ -129,7 +143,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         if (!storeSnap.exists) return NextResponse.json({ error: 'Store not found' }, { status: 404 });
         const storeData = storeSnap.data() || {};
-        const storeTenantId = normalizeAnswerlatticeScopeDocumentId(storeData.tenantId ?? storeData.tId);
+        const storeTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+            storeData.tenantId,
+            storeData.tId,
+        ]);
         if (storeTenantId !== tId) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }

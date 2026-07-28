@@ -87,6 +87,7 @@ export const COST_MONITORING = {
 export const RETENTION = {
   INBOUND_MESSAGE_TTL_MS: 30 * 24 * 60 * 60 * 1000,
   EVENT_TTL_MS: 30 * 24 * 60 * 60 * 1000,
+  RATE_LIMIT_TTL_MS: 90 * 24 * 60 * 60 * 1000,
 } as const;
 
 // ═══════════════════════════════════════════════════════════════

@@ -74,7 +74,7 @@ export interface AIEnhancementPack {
 export type CreditPack = AIEnhancementPack;
 
 export interface Feature {
-    valueLabel: any;
+    valueLabel: string;
     id: string;
     name: string;
     category: string;

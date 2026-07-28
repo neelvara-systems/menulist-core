@@ -387,3 +387,4 @@ const { firebaseUser, isSyncing } = useFirebaseAuthSync();
 **Last Updated:** November 6, 2025  
 **Status:** Implemented source evidence; not current launch certification
 **Maintainer:** Auth Team
+Firebase Auth session scope is fail-closed. The browser projector distinguishes a truly absent onboarding scope from malformed, partial, or contradictory tenant/store identity across root and nested compact/verbose aliases. Only exact scope may match cached claims, form the synchronization key, or request `/api/auth/set-claims`; invalid scope raises the fixed `firebase_auth_sync_invalid_session_scope` bootstrap failure before token work.

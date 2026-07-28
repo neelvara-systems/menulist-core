@@ -1,8 +1,8 @@
 # Owner Notifications - Implementation Plan
 
 **Status:** Implemented for MenuList lifecycle owner notifications, Answerlattice owner test notification, and internal ops tracking
-**Last Reviewed:** July 21, 2026
-**Date:** 2026-07-21
+**Last Reviewed:** July 28, 2026
+**Date:** 2026-07-28
 **Audience:** Developers
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation plan is source-gated owner-notification runtime evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
@@ -11,7 +11,19 @@ July 10 transactional tenant-boundary follow-up: app and MenuList Functions deli
 
 July 21 retry/digest product-boundary follow-up: MenuList Functions retry now queries `ownerNotificationEvents` by exact `productId == ML`, `status == failed`, and `updatedAt >= 24h`, with ascending order and limit 20. Digest totals use product-scoped aggregate counts over `ownerNotificationDeliveries.productId + status + createdAt`. This prevents Answerlattice rows in a shared Firebase project from consuming the retry window, being mutated by the retry bookkeeping path, or contributing to MenuList delivery totals. The matching composite indexes are in `firestore.indexes.json`. App and Functions delivery-log writes transactionally preserve the first `createdAt`, add `lastAttemptAt`, and write the claimed event `processingAttempt`.
 
+July 28 persisted-boundary and ambiguous-delivery correction: app and Functions processors project every stored event through the byte-identical runtime contract before scope reads, counters, templates, or provider calls. The contract proves exact product/scope identity, deterministic dedupe, registry fields, bounded metadata/source, Firestore timestamps, processing attempts, and total event size. Persisted rate-limit counters likewise require exact product/date/scope-or-recipient identity, a non-negative safe-integer count, and a Firestore timestamp; malformed rows fail closed instead of being numerically coerced. A deterministic delivery row is transactionally claimed as `sending` before SMTP or WhatsApp is invoked and finalized only when the same event, product, channel, recipient hash, attempt, `createdAt`, and `sending` state still match. A terminal row converges without a provider replay. A pre-existing `sending` row is deliberately treated as an ambiguous provider outcome and is never automatically resent; this is duplicate prevention with explicit reconciliation, not provider-level exactly-once delivery.
+
+The Functions retry path also queries at most 20 exact-MenuList `processing` events whose `processingStartedAt` is at least 15 minutes old. Each row is transactionally re-read and revalidated before being moved to terminal `failed` with the stable `owner_notification_processing_outcome_ambiguous` code and an error diagnostic. This makes a crashed post-claim execution visible without guessing whether the provider accepted the message.
+
+Retry bookkeeping is part of the persisted event boundary. `retryCount` admits only exact `0` or `1`, `retriedAt` must be a Firestore timestamp and cannot exist without `retryCount: 1`, and the bounded failed-event query projects the complete row before attempting it. After processing, a transaction re-reads the event and records the retry only when the deterministic event/registry identity still matches, the second processing attempt has settled, and another worker has not already recorded it. Raw or stale query data cannot consume the retry budget or mutate a non-owning claim.
+
+MenuList app-created event and delivery documents now receive 30-day `expiresAt` timestamps, and app-created rate-limit documents receive 2-day timestamps. The consolidated maintenance scheduler separately cleans up at most 50 legacy MenuList rows per owner-notification collection and run when those rows predate the same cutoff and lack `expiresAt`; Answerlattice rows and current/future rows are preserved.
+
 Recipient resolution now treats scope as mandatory delivery authority. MenuList canonical stores must carry the matching `tenantId` or legacy `tId`; nested legacy stores may omit the redundant tenant field but cannot contradict their parent tenant. Answerlattice uses `workspaceId` (with `storeId` only as legacy compatibility) and verifies the workspace document's tenant before returning recipient data. Missing or mismatched scope records the stable `scope_not_found_or_mismatch` event code and makes no provider call. Caller hints are destination inputs only for platform-authorized events marked `metadata.manualRecipientOverride === true`; normal lifecycle events cannot send to hint-only email or WhatsApp recipients. The Functions processor applies the same canonical/nested MenuList tenant checks and does not use stored recipient hints as delivery destinations.
+
+July 28 persisted-alias follow-up: recipient resolution does not prefer one compatibility alias over another. Every supplied Answerlattice workspace `tenantId`/`tId`, MenuList canonical store tenant alias, and app lifecycle store/tenant alias must normalize to the same exact scope. Canonical MenuList stores must also agree with their requested `storeId`/`sId`; tenant-nested legacy stores may omit redundant aliases but cannot contradict the authenticated parent. Conflicts return no recipient and cause no provider effect.
+
+The affected MenuList QA Functions deployment was attempted on July 28 for customer analytics, decision-block scoring/nightly scheduling, maintenance, and summary backfill, but Firebase CLI authentication failed before predeploy or upload. No remote revision changed; the Functions-side shared alias projector remains locally source/build verified pending an authenticated deploy.
 
 The Next.js and Functions legacy lifecycle fallbacks use the same deterministic SHA-256 `messageLogs` claim over store, event, and reference before SMTP. This closes the query-before-send race if the migrated queue path is unavailable. Store daily-rate counters now include tenant and store identity. `npm run test:owner-notification-delivery-boundaries`, `npm run verify:owner-notifications-boundary`, and `npm run verify:menulist-api-tenant-safety` are the local regression gates; provider smoke and target deploy evidence remain required.
 
@@ -134,9 +146,10 @@ The worker:
 7. Builds channel list.
 8. Builds email/WhatsApp templates using formatted metadata.
 9. Checks dedupe and rate limits.
-10. Sends per channel.
-11. Writes delivery logs.
-12. Updates event status.
+10. Transactionally claims each deterministic delivery row as `sending`.
+11. Calls the provider only after the claim.
+12. Finalizes only the matching claim as sent, failed, skipped, or rate-limited; an existing `sending` claim is an observable ambiguous outcome and is not replayed automatically.
+13. Updates event status.
 
 ## Implemented File Structure
 
@@ -297,7 +310,7 @@ type OwnerNotificationDelivery = {
   recipientRole: string;
   recipientHash: string;
   recipientMasked: string;
-  status: 'sent' | 'failed' | 'skipped' | 'rate_limited';
+  status: 'sending' | 'sent' | 'failed' | 'skipped' | 'rate_limited';
   subject?: string;
   templateKey: string;
   templateVersion: string;

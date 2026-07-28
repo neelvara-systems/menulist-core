@@ -1,0 +1,136 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import {
+    getBoundedErrorCode,
+    getBoundedErrorCodeAtPath,
+    getBoundedErrorLogContext,
+    getBoundedErrorName,
+    getBoundedErrorNumberAtPath,
+    getBoundedErrorStringField,
+    getBoundedErrorStatus,
+} from '../../src/lib/monitoring/boundedLogContext';
+import {
+    getBoundedFunctionsErrorContext as getMenuListFunctionsErrorContext,
+} from '../../functions/src/utils/boundedErrorContext';
+import {
+    getBoundedFunctionsErrorContext as getAnswerlatticeFunctionsErrorContext,
+} from '../../functions-answerlattice/src/utils/boundedErrorContext';
+import {
+    getBoundedFunctionsErrorContext as getSignalDeskFunctionsErrorContext,
+} from '../../functions-signaldesk/src/utils/boundedErrorContext';
+
+const throwingError = new Error('original failure');
+Object.defineProperties(throwingError, {
+    code: {
+        get: () => { throw new Error('must not read code unsafely'); },
+    },
+    name: {
+        get: () => { throw new Error('must not read name unsafely'); },
+    },
+    status: {
+        get: () => { throw new Error('must not read status unsafely'); },
+    },
+});
+
+assert.deepEqual(getBoundedErrorLogContext(throwingError), {
+    sourceErrorCode: undefined,
+    sourceErrorName: 'object',
+    sourceStatusCode: undefined,
+});
+assert.equal(getBoundedErrorName(throwingError), 'object');
+assert.equal(getBoundedErrorCode(throwingError), undefined);
+assert.equal(getBoundedErrorStatus(throwingError), undefined);
+for (const getFunctionsErrorContext of [
+    getMenuListFunctionsErrorContext,
+    getAnswerlatticeFunctionsErrorContext,
+    getSignalDeskFunctionsErrorContext,
+]) {
+    assert.deepEqual(getFunctionsErrorContext(throwingError), {
+        sourceErrorCode: undefined,
+        sourceErrorName: 'object',
+        sourceStatusCode: undefined,
+    });
+}
+
+const nested = {
+    error: {
+        code: 'provider/conflict',
+        statusCode: '409',
+    },
+    response: {
+        retryAfter: '30',
+    },
+};
+assert.equal(getBoundedErrorCodeAtPath(nested, ['error', 'code']), 'provider/conflict');
+assert.equal(getBoundedErrorNumberAtPath(nested, ['error', 'statusCode']), 409);
+assert.equal(getBoundedErrorNumberAtPath(nested, ['response', 'retryAfter']), 30);
+assert.equal(getBoundedErrorStringField({ digest: 'NEXT_REDIRECT;replace;/owner' }, 'digest'), 'NEXT_REDIRECT;replace;/owner');
+
+const throwingProxy = new Proxy({}, {
+    get: () => { throw new Error('must contain proxy get'); },
+    has: () => { throw new Error('must contain proxy has'); },
+});
+assert.equal(getBoundedErrorCodeAtPath(throwingProxy, ['error', 'code']), undefined);
+assert.equal(getBoundedErrorNumberAtPath(throwingProxy, ['response', 'status']), undefined);
+
+const sourceFiles: string[] = [];
+const visit = (directory: string): void => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+        const absolutePath = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+            visit(absolutePath);
+        } else if (/\.(?:ts|tsx)$/.test(entry.name)) {
+            sourceFiles.push(absolutePath);
+        }
+    }
+};
+[
+    'src',
+    'functions/src',
+    'functions-answerlattice/src',
+    'functions-signaldesk/src',
+].forEach((sourceRoot) => visit(path.resolve(process.cwd(), sourceRoot)));
+
+const forbiddenPatterns: Array<{ label: string; pattern: RegExp }> = [
+    { label: 'unknown error code String coercion', pattern: /String\s*\(\s*(?:error|err)(?:\?|\.)[\s\S]{0,80}?code[\s\S]{0,30}?\)/ },
+    { label: 'local code variable String coercion', pattern: /String\s*\(\s*code\s*\)\s*\.slice/ },
+    { label: 'unknown status Number coercion', pattern: /Number\s*\(\s*(?:statusValue|(?:error|err)(?:\?|\.)[\s\S]{0,80}?(?:status|statusCode))\s*\)/ },
+    {
+        label: 'unsafe Error name conditional',
+        pattern: /\b([A-Za-z_$][\w$]*)\s+instanceof Error\s*\?[\s\S]{0,80}?\1\.name/,
+    },
+    {
+        label: 'unsafe Error name guard',
+        pattern: /\b([A-Za-z_$][\w$]*)\s+instanceof Error\s*&&[\s\S]{0,80}?\1\.name/,
+    },
+    {
+        label: 'Functions diagnostic code/status pre-read',
+        pattern: /const\s+(?:record|sourceError)\s*=\s*error as [^;\n]*(?:code|status)/,
+    },
+    {
+        label: 'Functions diagnostic local status coercion',
+        pattern: /String\s*\(\s*(?:status|statusValue|record\.code|code)\s*\)\s*\.slice/,
+    },
+];
+
+const violations: string[] = [];
+for (const file of sourceFiles) {
+    const source = fs.readFileSync(file, 'utf8');
+    for (const { label, pattern } of forbiddenPatterns) {
+        if (
+            label.startsWith('unsafe Error name')
+            && /(?:^|\/)bounded(?:Log|Error)Context\.ts$/.test(file)
+        ) {
+            continue;
+        }
+        if (pattern.test(source)) {
+            violations.push(`${path.relative(process.cwd(), file)}: ${label}`);
+        }
+    }
+}
+
+assert.deepEqual(violations, [], `Unsafe diagnostic metadata coercion restored:\n${violations.join('\n')}`);
+
+console.log(`Diagnostic error metadata boundary passed across ${sourceFiles.length} source files.`);

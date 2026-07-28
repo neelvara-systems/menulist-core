@@ -11,7 +11,7 @@ export default function StickyCta() {
   const [nearStop, setNearStop] = useState(false);
 
   useEffect(() => {
-    const media = window.matchMedia('(min-width: 768px)');
+    const media = window.matchMedia('(min-width: 1024px) and (min-height: 780px)');
     const syncEnabled = () => setEnabled(media.matches);
 
     syncEnabled();

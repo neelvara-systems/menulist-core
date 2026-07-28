@@ -4,6 +4,12 @@
 
 Product Friction Evidence turns bounded support events and canonical-answer fallbacks into a compact review queue for active product entities. It helps a founder decide which product areas and approved answers need investigation. It does not measure product health, customer satisfaction, answer accuracy, or verified resolution.
 
+`Customer Friction Map` is an external owner-facing description of this same
+job. It is not admitted as a second journey-analytics product. The maintained
+feature remains **Product Friction Evidence** because Answerlattice can prove
+support evidence and mapping, but cannot infer that every cluster is a product
+defect, user-experience problem, or customer-journey failure.
+
 ## Governed Flow
 
 1. Answerlattice records privacy-filtered support signals and canonical misses.
@@ -23,6 +29,20 @@ Product Friction Evidence turns bounded support events and canonical-answer fall
 - **Trend:** current completed seven-day weighted load compared with the previous completed seven days.
 - **Emerging topic:** at least 10 current-window events and fewer than 3 previous-window events.
 - **Unmapped evidence:** valid support evidence whose entity is missing, inactive, malformed, or outside the workspace.
+
+## Documentation Decision
+
+- Keep the existing entity-ranked, completed-window review surface.
+- In the later code pass, expose the deterministic ticket,
+  negative-feedback, escalation, and canonical-miss breakdown already retained
+  in daily rows.
+- Replace owner-facing `questions` language with `support-evidence events`.
+- Present the aggregate label as support-evidence load, with its components,
+  rather than an unexplained product-friction judgment.
+- Validate workflow hierarchy, release comparison, and owner-confirmed reason
+  classification with real founder workspaces before development.
+- Do not add session replay, product-event tracking, funnel analytics,
+  automatic root-cause claims, or autonomous fixes.
 
 ## Safety Boundaries
 
@@ -44,6 +64,18 @@ Product Friction Evidence turns bounded support events and canonical-answer fall
 - `src/hooks/answerlattice/useFrictionInsights.ts`
 - `src/components/templates/answerlattice/governance/FrictionTab.tsx`
 - `scripts/verification/test-answerlattice-support-metrics-contracts.ts`
+
+## Documents
+
+- [Specification](./product-friction-intelligence_spec.md)
+- [Implementation](./product-friction-intelligence_impl.md)
+- [Firebase](./product-friction-intelligence_firebase.md)
+- [Mobile support](./product-friction-intelligence_mobile-support.md)
+- [Help documentation](./product-friction-intelligence_helpdoc.md)
+- [Marketing boundary](./product-friction-intelligence_marketing.md)
+- [Website boundary](./product-friction-intelligence_website.md)
+- [Test cases](./product-friction-intelligence_test-cases.md)
+- [External proposal validation](./product-friction-intelligence_validation.md)
 
 ## Verification
 

@@ -9,10 +9,10 @@
 | `src/app/sites/mycodex/components/MyCodexClientContainer.tsx` | Loads reader preferences from browser storage before persistence effects run, so saved settings are not overwritten by defaults on app start. |
 | `src/app/sites/mycodex/favorites/page.tsx` | Adds the private `/favorites` reader page backed by browser-local starred documents. |
 | `src/app/sites/mycodex/queue/page.tsx` | Adds the private `/queue` read-later page backed by browser-local queued documents. |
-| `src/app/sites/mycodex/api/document/route.ts` | Adds a protected no-store Markdown reader for favorites playback. |
-| `src/app/sites/mycodex/api/session/route.ts` | Handles private reader login with IP rate limiting before form parsing and an 8 KB bounded form-data body cap. |
-| `src/lib/mycodex/docs.ts` | Centralizes MyCodex docs tree, document resolution, and heading extraction for document routes, favorites, and the document API. |
-| `src/lib/mycodex/auth.ts` | Keeps `MYCODEX_PRODUCT_CODE = MC` for internal metadata and `MYCODEX_PRODUCT_SLUG = mycodex` for route/session checks. |
+| `src/app/sites/mycodex/api/document/route.ts` | Adds a handler-authenticated, private/no-store Markdown reader for favorites playback. |
+| `src/app/sites/mycodex/api/session/route.ts` | Handles private reader login with fail-closed IP rate limiting before form parsing and an 8 KB bounded form-data body cap. |
+| `src/lib/mycodex/docs.ts` | Centralizes MyCodex docs tree, canonical document resolution, a 4 MiB source limit, symlink exclusion, and heading extraction for document routes, favorites, and the document API. |
+| `src/lib/mycodex/auth.ts` | Keeps `MYCODEX_PRODUCT_CODE = MC` for internal metadata and `MYCODEX_PRODUCT_SLUG = mycodex` for route/session checks; requires the dedicated `MYCODEX_SESSION_SECRET` for signing and rejects external, protocol-relative, encoded-internal, control-character, and backslash return paths. |
 | `src/constants/product.ts` | Reserves `PRODUCT_IDS.MYCODEX = MC` without creating any MyCodex Firebase data path. |
 | `src/app/sites/mycodex/styles.css` | Defines MyCodex safe-area variables and applies mobile-only spacing with `env(safe-area-inset-*)`. |
 | `src/app/sites/mycodex/login/page.tsx` | Adds `mycodex-safe-page`. |
@@ -54,9 +54,9 @@ MyCodex reader state is browser-local and scoped with `mycodex:*` keys. The shel
 | Audio follow-reading scroll | `mycodex:audio-autoscroll` |
 | Audio keep-screen-awake preference | `mycodex:audio-wake-lock` |
 
-The hydration guard in `MyCodexClientContainer` prevents first-render defaults from resetting stored values during PWA relaunches or mobile browser refreshes.
+The hydration guard in `MyCodexClientContainer` prevents first-render defaults from resetting stored values during PWA relaunches or mobile browser refreshes. Storage access is failure-contained so browsers that block `localStorage` or `sessionStorage` keep the in-memory defaults and remain readable. Missing numeric values are not coerced to zero. Persisted document strings/timestamps and scroll-position keys/numbers are bounded before they enter state.
 
-MyCodex client navigation path boundary: `MyCodexClientContainer.buildUrl()` trims browser-local reader targets, collapses empty values and protocol-relative `//...` targets to `/`, then prefixes normal relative document paths with `/` and the local `/__mycodex` route when needed. This keeps favorite, queue, recent, continue-reading, previous/next, and document-tree navigation on the MyCodex origin even if browser-local reader state is malformed.
+MyCodex client navigation path boundary: `MyCodexClientContainer.buildUrl()` trims browser-local reader targets, requires an absolute same-origin path, and collapses empty, external, protocol-relative, control-character, raw-backslash, and encoded-backslash targets to `/`, then applies the local `/__mycodex` route when needed. This keeps favorite, queue, recent, continue-reading, previous/next, and document-tree navigation on the MyCodex origin even if browser-local reader state is malformed.
 
 ## Favorites Route
 
@@ -83,4 +83,6 @@ non-Vercel/self-hosted deployments as well as the intended host setup, while
 `/__mycodex` local development and approved MyCodex-host routes continue through
 the authenticated reader boundary.
 
-The login form posts only `username`, `password`, and `returnTo`. `src/app/sites/mycodex/api/session/route.ts` applies the `AUTH_LOGIN` rate limit before reading form data, then parses the form through `readBoundedFormDataBody()` with `MYCODEX_LOGIN_FORM_MAX_BODY_BYTES = 8 * 1024`. Oversized or malformed submissions redirect back to login with the fixed `input` error state.
+The login form posts only `username`, `password`, and `returnTo`. `src/app/sites/mycodex/api/session/route.ts` applies the `AUTH_LOGIN` rate limit before reading form data and fails closed if the distributed limiter is unavailable, then parses the form through `readBoundedFormDataBody()` with `MYCODEX_LOGIN_FORM_MAX_BODY_BYTES = 8 * 1024`. Oversized or malformed submissions redirect back to login with the fixed `input` error state. Access is configured only when the username, password, and dedicated session secret are all present; MenuList's NextAuth secret and the access password are never signing-secret fallbacks.
+
+The document route repeats authentication inside the route handler instead of relying only on proxy routing. Outside the exact local-development host bypass, missing configuration returns `503` and an invalid/missing MyCodex session returns `401`; both responses remain private, no-store, noindex, and cookie-varying. The filesystem loader resolves both the docs root and target to canonical paths, rejects symlinks that escape `__docs__`, omits symbolic links from generated navigation, and refuses Markdown sources larger than 4 MiB.

@@ -46,7 +46,7 @@
 - Event, idempotency claim, and attribution touch are create-only. An existing summary is replaced with a fully validated coupled record rather than broadly merged.
 - New route-token issuance writes route, idempotency claim, audit, and daily-cost summary: four writes. Exact replay writes nothing.
 - A new manual or demand outcome writes event, source-scoped summary, idempotency claim, attribution touch, target projection, audit, control summary, and daily-cost summary: eight writes. A signed route outcome also updates the route: nine writes. Exact replay writes nothing.
-- If the target already has a revenue account and the Revenue Operating Layer is enabled, outcome settlement then runs a separate activation-watch reconciliation: six writes normally or seven when it closes an opportunity. This follow-up is reported as `updated` or `pending`; it does not alter the accepted outcome transaction.
+- If the target already has a revenue account and the Revenue Operating Layer is enabled, outcome settlement then runs a separate change-aware activation-watch reconciliation: four writes when only the watch changes, with one additional write for each changed account, opportunity, or revenue summary (up to seven). This follow-up is reported as `updated` or `pending`; it does not alter the accepted outcome transaction.
 - Token revocation uses one route write, one audit write, and one cost-summary write.
 - Manual reporting exports should use summaries unless raw evidence is explicitly needed.
 

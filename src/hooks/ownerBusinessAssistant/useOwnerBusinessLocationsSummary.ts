@@ -1,5 +1,6 @@
 import useSWR from 'swr';
 import { FEATURE_FLAGS } from '@config/features';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { getCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import {
@@ -8,6 +9,8 @@ import {
   type OwnerBusinessAssistantLocationsResponse,
 } from '@lib/ownerBusinessAssistant/clientResponses';
 import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics';
+import { resolveOwnerBusinessAssistantClientScope } from '@lib/ownerBusinessAssistant/clientScope';
+import { useMemo } from 'react';
 
 const fetcher = async ([url, scope, selectedStoreScope]: readonly [string, string, string]): Promise<OwnerBusinessAssistantLocationsResponse> => {
   const response = await fetch(url, OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY);
@@ -25,27 +28,37 @@ export function useOwnerBusinessLocationsSummary(
   scopeKey?: string | number | null,
   storeScopeKey?: string | number | null,
 ) {
-  const scope = String(scopeKey || 'tenant');
-  const selectedStoreScope = String(storeScopeKey || 'store');
+  const session = useClientAuthSession();
+  const clientScope = useMemo(
+    () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
+    [session?.sId, session?.tId, storeScopeKey],
+  );
+  const requestedTenantScope = scopeKey === undefined || scopeKey === null || scopeKey === ''
+    ? clientScope?.tenantId
+    : String(scopeKey).trim();
+  const scopeMatches = Boolean(clientScope && requestedTenantScope === clientScope.tenantId);
   const params = new URLSearchParams();
-  if (storeScopeKey) params.set('storeId', String(storeScopeKey));
+  if (clientScope) params.set('storeId', clientScope.storeId);
   const url = `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.locations}${params.toString() ? `?${params.toString()}` : ''}`;
-  const cacheKey = `${OWNER_BUSINESS_ASSISTANT_CACHE.browserLocationsPrefix}:${scope}:${selectedStoreScope}`;
-  const cached = typeof window !== 'undefined'
+  const cacheKey = clientScope && scopeMatches
+    ? `${OWNER_BUSINESS_ASSISTANT_CACHE.browserLocationsPrefix}:${clientScope.cacheScope}`
+    : null;
+  const cached = typeof window !== 'undefined' && cacheKey
     ? getCachedData<OwnerBusinessAssistantLocationsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
   const swr = useSWR<OwnerBusinessAssistantLocationsResponse>(
-    FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && enabled
-      ? [url, scope, selectedStoreScope] as const
+    FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && enabled && clientScope && scopeMatches
+      ? [url, clientScope.tenantId, clientScope.storeId] as const
       : null,
     fetcher,
     {
       fallbackData: cached,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      revalidateIfStale: typeof window === 'undefined' ? false : shouldRevalidate(cacheKey),
+      revalidateIfStale: typeof window === 'undefined' || !cacheKey ? false : shouldRevalidate(cacheKey),
       dedupingInterval: 10 * 60 * 1000,
       onSuccess: (data) => {
+        if (!cacheKey) return;
         setCachedData(cacheKey, data, data.data?.generatedAt?.slice(0, 10));
       },
     },

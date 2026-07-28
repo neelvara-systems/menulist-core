@@ -70,10 +70,12 @@ assert(
 [
   'const docRef = getCampaignsSummaryDocRef(session);',
   'const docSnap = await getDoc(docRef);',
-  'if (data.today?.date !== today)',
+  'const normalizedToday = getCampaignTodayState(data, today);',
+  'const storedTodayDate = (',
+  'if (storedTodayDate !== today)',
   'staffPrompt: undefined',
-  'staffPrompt: data.staffPrompt',
-  'physicalSurfaces: data.physicalSurfaces',
+  'staffPrompt: projectStaffPrompt(',
+  'physicalSurfaces: projectPhysicalSurfaceEligibility(',
 ].forEach((token) => {
   assertIncludes(campaignsDal, token, `Today DAL preserves summary-read Staff Prompt token ${token}`);
 });

@@ -23,11 +23,11 @@
 | Operation | Reads | Writes | Trigger |
 |-----------|-------|--------|---------|
 | Resolve store (subdomain/custom domain) | 0 | 0 | Uses shared cached public store lookup |
-| Read compliancePages doc | 0 or 1 | 0 | direct compliancePages doc read only on tagged cache fill |
+| Read compliancePages doc | 0 or 1 | 0 | server/Admin read only on tenant/store-keyed tagged cache fill |
 | Generate from template (if system) | 0 | 0 | Pure function — no Firestore |
 | **Total per view** | **1** | **0** | |
 
-**Current cache contract:** the direct compliancePages doc read is behind a tagged 60-second cache keyed by store. A successful override/reset invalidates `compliance-store-{sId}`; an invalidation failure returns `refreshPending: true` and remains bounded by the 60-second TTL.
+**Current cache contract:** the server/Admin `compliancePages` read is behind a tagged 60-second cache keyed by tenant and store. A successful override/reset invalidates `compliance-store-{sId}`; an invalidation failure returns `refreshPending: true` and remains bounded by the 60-second TTL. Direct browser Firestore reads and writes are denied.
 
 July 16 end-to-end hardening adds no new valid owner read/write and reduces repeated public reads. The owner preview store read now fails closed when canonical tenant/store identity aliases do not match the authenticated scope. Template dates are deterministic and the refund baseline removes unsupported customer refund timelines. These changes add no Firebase rule, index, Storage operation, Cloud Function, collection, or schema field.
 
@@ -37,8 +37,9 @@ July 16 end-to-end hardening adds no new valid owner read/write and reduces repe
 |-----------|-------|--------|---------|
 | Store permission check | 1 | 0 | Verify `MANAGE_PUBLIC_PRESENCE` or `MANAGE_STORE` |
 | Rate/body admission | 0 | 0 | `DATA_WRITE` limiter + 32KB body cap |
+| Transaction-current override read | 1 | 0 | Validate persisted tenant/store/shape before mutation |
 | Write override content | 0 | 1 | Save custom text |
-| **Total per override** | **1** | **1** | |
+| **Total per override** | **2** | **1** | |
 
 ### Reset to System (Very rare)
 
@@ -46,14 +47,17 @@ July 16 end-to-end hardening adds no new valid owner read/write and reduces repe
 |-----------|-------|--------|---------|
 | Store permission check | 1 | 0 | Verify `MANAGE_PUBLIC_PRESENCE` or `MANAGE_STORE` |
 | Rate/body admission | 0 | 0 | `DATA_WRITE` limiter + 32KB body cap |
+| Transaction-current override read | 1 | 0 | Missing row is a no-op; exact scope required for an existing row |
 | Delete override field | 0 | 1 | System template takes over |
-| **Total per reset** | **1** | **1** | |
+| **Total per reset** | **2** | **0 or 1** | |
+
+July 28 audit hardening denies all direct client reads as well as writes because the public SSR renderer and authenticated owner API already use Admin SDK reads. This prevents anonymous collection scans from exposing internal `tId`/`sId` fields without changing public `/privacy`, `/terms`, or `/refund` availability. Admin reads now strictly project the persisted tenant/store identity, timestamp and override bounds. Save/reset transactions revalidate existing truth; reset on a missing document is a no-op instead of creating an orphan metadata row. Valid save/reset adds one transaction read. The rule and Admin emulators cover denial, conflicting-scope preservation and missing-reset behavior; QA rules deployment remains required.
 
 June 29 limiter-key hardening is Firebase-cost neutral. `/api/compliance` still uses the `DATA_WRITE` limiter before the 32KB bounded JSON body and override writes, but owner and store key segments are HMAC-hashed before storage in Upstash. This resets existing override/reset rate-limit buckets once and changes no Firestore reads/writes/deletes, cache invalidations, rules, indexes, schema fields, public page rendering, or owner-facing settings.
 
 July 6 session document-ID boundary is Firebase-cost neutral for valid requests. `/api/compliance` keeps the same owner preview read, override read, permission check, save/reset write, and limiter behavior, but validates authenticated session tenant/store IDs with the shared Firestore document-ID guard before store lookup, permission checks, limiter keys, override writes, reset writes, or bounded diagnostics. The server compliance DAL also rejects malformed `compliancePages/{sId}` refs before building the Firestore document reference. This adds no Firestore reads/writes/deletes for valid requests, no Storage operation, no Cloud Function, no cache invalidation, no rule, no index, no schema field, no provider call, no owner setting, no public compliance rendering change, and no deploy requirement.
 
-July 13 server-owned compliance mutation boundary keeps valid operation cost unchanged. Public reads remain allowed, while every Firebase client create/update/delete is denied. Owner save/reset continues through `/api/compliance`, so granular store permission, rate/body, schema, sanitizer and exact scope controls always run before the existing one Admin write. The unused browser mutation DAL is removed. This adds no valid read/write, collection, index, Storage, provider, cache, or Cloud Function operation; it changes `firestore.rules`, requires `npm run test:compliance-pages:rules`, and requires a scoped MenuList QA rules deployment before the protection is active outside local source/emulator state.
+July 13 server-owned compliance mutation boundary originally denied Firebase client create/update/delete while retaining public direct reads. The July 28 audit supersedes that compatibility posture: every browser read/write is now denied and valid public/owner access stays server-owned.
 
 The required QA command `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json --non-interactive` read `firestore.indexes.json`, checked `firestore.rules` for compilation errors, and stopped at the Firestore Rules API test request with HTTP 403 `The caller does not have permission`. No rules were uploaded. QA therefore retains its prior direct-client compliance mutation policy until authorized project access is restored and the same scoped deployment succeeds.
 
@@ -88,8 +92,8 @@ July 5 owner store-lookup diagnostics are Firebase-cost neutral beyond the exist
 | Scenario | Reads | Writes | Cost |
 |----------|-------|--------|------|
 | Page views (avg 100/month) | 1–100 cache fills | 0 | Traffic spacing determines fills; never more than one override read per request |
-| Owner edits (1-2/month) | 2 | 2 | ~₹0.0002 |
-| **Total** | **cache-pattern dependent + 2 owner reads** | **~2** | Use measured traffic/cache-hit data for billing forecasts |
+| Owner edits (1-2/month) | 4 | 2 | Measure current Firestore pricing |
+| **Total** | **cache-pattern dependent + 4 owner reads** | **~2** | Use measured traffic/cache-hit data for billing forecasts |
 
 ### At Scale
 

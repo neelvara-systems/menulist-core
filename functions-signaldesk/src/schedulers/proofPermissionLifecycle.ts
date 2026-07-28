@@ -12,6 +12,11 @@ import {
 import * as logger from "firebase-functions/logger";
 import { SIGNALDESK_COLLECTIONS, SIGNALDESK_SUMMARY_DOCS } from "../constants/database";
 import { db as defaultDb } from "../firebaseAdmin";
+import {
+  getBoundedFunctionsErrorCode,
+  getBoundedFunctionsErrorMessage,
+  getBoundedFunctionsErrorName,
+} from "../utils/boundedErrorContext";
 
 const SIGNALDESK_PRODUCT_CODE = "SD";
 const SYSTEM_ACTOR_ID = "signaldesk-proof-permission-lifecycle";
@@ -971,6 +976,7 @@ const processAssetPage = async (params: {
 
     if (incidentsCreated > 0 || openIncidentDelta > 0) {
       transaction.set(controlRef, {
+        controlRoomSummaryId: SIGNALDESK_SUMMARY_DOCS.CONTROL_ROOM,
         pId: SIGNALDESK_PRODUCT_CODE,
         ...(incidentsCreated > 0 ? { incidentCount: FieldValue.increment(incidentsCreated) } : {}),
         ...(openIncidentDelta > 0 ? { openIncidentCount: FieldValue.increment(openIncidentDelta) } : {}),
@@ -1139,6 +1145,7 @@ const processDependencyPage = async (params: {
 
     if (incidentsCreated > 0 || openIncidentDelta > 0) {
       transaction.set(controlRef, {
+        controlRoomSummaryId: SIGNALDESK_SUMMARY_DOCS.CONTROL_ROOM,
         pId: SIGNALDESK_PRODUCT_CODE,
         ...(incidentsCreated > 0 ? { incidentCount: FieldValue.increment(incidentsCreated) } : {}),
         ...(openIncidentDelta > 0 ? { openIncidentCount: FieldValue.increment(openIncidentDelta) } : {}),
@@ -1153,6 +1160,7 @@ const processDependencyPage = async (params: {
       assertOptionalProduct(queueData, "SIGNALDESK_QUEUE_SUMMARY_PRODUCT_MISMATCH");
       transaction.set(queueRef, {
         pId: SIGNALDESK_PRODUCT_CODE,
+        queueSummaryId: SIGNALDESK_SUMMARY_DOCS.QUEUES,
         humanReview: Math.max(
           0,
           summaryCount(queueData.humanReview, "SIGNALDESK_QUEUE_SUMMARY_SHAPE_INVALID") - pendingHeld,
@@ -1365,7 +1373,7 @@ const addCompletedResult = (
 };
 
 const lifecycleFailureCode = (error: unknown): string => {
-  const raw = error instanceof Error ? error.message : String(error || "unknown");
+  const raw = getBoundedFunctionsErrorMessage(error) || "unknown";
   const normalized = raw.trim().toUpperCase();
   return /^SIGNALDESK_[A-Z0-9_]+$/.test(normalized)
     ? normalized.slice(0, 160)
@@ -1472,6 +1480,7 @@ export const recordSignalDeskProofPermissionLifecycleFailure = async (params: {
     const incidentOpened = incidentCreated || incidentReopened;
     if (incidentCreated || incidentOpened) {
       transaction.set(controlRef, {
+        controlRoomSummaryId: SIGNALDESK_SUMMARY_DOCS.CONTROL_ROOM,
         pId: SIGNALDESK_PRODUCT_CODE,
         ...(incidentCreated ? { incidentCount: FieldValue.increment(1) } : {}),
         ...(incidentOpened ? { openIncidentCount: FieldValue.increment(1) } : {}),
@@ -1517,12 +1526,10 @@ const diagnosticSourceContext = (error: unknown): {
   sourceErrorCode?: string;
   sourceErrorName: string;
 } => {
-  if (!error || typeof error !== "object") return { sourceErrorName: typeof error };
-  const source = error as { code?: unknown; name?: unknown };
   return {
-    sourceErrorName: typeof source.name === "string" ? source.name.slice(0, 80) : "Error",
-    ...(typeof source.code === "string" || typeof source.code === "number"
-      ? { sourceErrorCode: String(source.code).slice(0, 80) }
+    sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
+    ...(getBoundedFunctionsErrorCode(error)
+      ? { sourceErrorCode: getBoundedFunctionsErrorCode(error) }
       : {}),
   };
 };

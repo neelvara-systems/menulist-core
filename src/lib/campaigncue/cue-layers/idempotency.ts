@@ -4,6 +4,7 @@ export interface CampaignCueCueLayersIdempotencyRecord {
     action: string;
     actorId: string;
     claimId?: string;
+    expiresAt?: unknown;
     leaseExpiresAt?: unknown;
     requestHash: string;
     responseError?: string;

@@ -34,6 +34,18 @@ export interface ReusableImagePromptCacheSource {
     sourcePath: string;
 }
 
+export function imagePromptCacheWriteCommitted(
+    currentData: unknown,
+    stagedSourcePath: string,
+): boolean {
+    return Boolean(
+        currentData
+        && typeof currentData === 'object'
+        && !Array.isArray(currentData)
+        && (currentData as Record<string, unknown>).sourcePath === stagedSourcePath,
+    );
+}
+
 export function getReusableImagePromptCacheSource(
     cacheDoc: Record<string, unknown>,
     cacheKey: string,

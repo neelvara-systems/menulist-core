@@ -14,11 +14,15 @@
  */
 
 import { getTodayCampaigns, TodayScreenData } from '@database/campaigns';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { getCampaignCacheScope, getTodayCampaignsCacheKey } from '@lib/campaigns/campaignClientBoundary';
 import useSWR from 'swr';
 
 export const useTodayCampaigns = () => {
+    const session = useClientAuthSession();
+    const cacheKey = getTodayCampaignsCacheKey(getCampaignCacheScope(session));
     const { data, error, isLoading, mutate } = useSWR<TodayScreenData | null>(
-        'today-campaigns',
+        cacheKey,
         getTodayCampaigns,
         {
             revalidateOnFocus: true,

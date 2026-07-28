@@ -27,7 +27,12 @@ import {
     type MenuCardPrintSource,
     type MenuCardSafeOverrides,
 } from '@lib/menu-card-export';
-import type { MenuCardDesignAdvisorRecommendation } from '@lib/menu-card-export/ai/designAdvisor';
+import {
+    isMenuCardAdvisorDensity,
+    isMenuCardAdvisorPreset,
+    isMenuCardAdvisorStyle,
+    type MenuCardDesignAdvisorRecommendation,
+} from '@lib/menu-card-export/ai/designAdvisor';
 import type { MenuCardDesignAdvisorRequest } from '@lib/validation/apiSchemas';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { generateProjectUrl } from '@lib/utils/slugify';
@@ -35,6 +40,10 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { AICapacityError } from '@services/ai/capacityError';
 import getMenuCardDesignAdviceViaAPI, { MenuCardDesignAdvisorPlanError } from '@services/ai/menuCardExport/getDesignAdviceViaAPI';
 import { resolveLocalExportStorageScope } from '@lib/export/localExportHistory';
+import type { Project } from '@template/main-app/projects/types';
+import type { StoreDataType } from '@type/platform/store';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { resolveOwnerBusinessAssistantClientScope } from '@lib/ownerBusinessAssistant/clientScope';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 export type MenuCardProjectOption = {
@@ -58,9 +67,9 @@ export type MenuCardExportNotice = {
 
 type UseMenuCardExportControllerOptions = {
     initialProjectId?: string | null;
-    loadProjectData?: (projectId: string) => Promise<any | null>;
+    loadProjectData?: (projectId: string) => Promise<Project | null>;
     notify?: (notice: MenuCardExportNotice) => void;
-    projectDataById?: Record<string, any>;
+    projectDataById?: Record<string, Project | null | undefined>;
     projectSummaries?: Array<Partial<MenuCardProjectOption> & { projectId: string }>;
 };
 
@@ -71,7 +80,9 @@ export function resolveMenuCardProjectName(
     return getLocalizedText(name, undefined, getPrimaryLocalizedLanguage(name, 'en'), fallback);
 }
 
-function buildMenuUrl(storeDetails: any, project: MenuCardProjectOption): string {
+type MenuCardStoreUrlContext = Pick<StoreDataType, 'customDomain' | 'subdomain'>;
+
+function buildMenuUrl(storeDetails: MenuCardStoreUrlContext, project: MenuCardProjectOption): string {
     return generateProjectUrl(
         storeDetails?.subdomain || '',
         storeDetails?.customDomain,
@@ -80,7 +91,7 @@ function buildMenuUrl(storeDetails: any, project: MenuCardProjectOption): string
     );
 }
 
-function normalizeProjectOption(storeUrlContext: any, project: Partial<MenuCardProjectOption> & { projectId: string }): MenuCardProjectOption {
+function normalizeProjectOption(storeUrlContext: MenuCardStoreUrlContext, project: Partial<MenuCardProjectOption> & { projectId: string }): MenuCardProjectOption {
     return {
         projectId: project.projectId,
         name: project.name || 'Menu',
@@ -118,9 +129,15 @@ export default function useMenuCardExportController({
     projectSummaries,
 }: UseMenuCardExportControllerOptions = {}) {
     const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const session = useClientAuthSession();
+    const scope = useMemo(
+        () => resolveOwnerBusinessAssistantClientScope(session, storeDetails?.storeId, storeDetails?.tenantId),
+        [session, storeDetails?.storeId, storeDetails?.tenantId],
+    );
+    const scopedStoreDetails = scope ? storeDetails : null;
     const [projects, setProjects] = useState<MenuCardProjectOption[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialProjectId);
-    const [projectData, setProjectData] = useState<any | null>(null);
+    const [projectData, setProjectData] = useState<Project | null>(null);
     const [loadedProjectId, setLoadedProjectId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [rendering, setRendering] = useState(false);
@@ -129,39 +146,36 @@ export default function useMenuCardExportController({
     const [overrides] = useState<MenuCardSafeOverrides>({});
     const autoDesignKeyRef = useRef('');
     const manualSettingsTouchedRef = useRef(false);
-    const projectDataCacheRef = useRef<Record<string, any>>({});
+    const projectDataCacheRef = useRef<Record<string, Project>>({});
     const adviceCacheRef = useRef<Record<string, MenuCardDesignAdvisorRecommendation>>({});
+    const currentArtifactScopeRef = useRef('');
+    const currentAdviceSourceHashRef = useRef('');
+    const adviceInFlightRef = useRef(false);
+    const artifactInFlightRef = useRef(false);
     const lastInitialProjectIdRef = useRef(initialProjectId || null);
     const [designAdvice, setDesignAdvice] = useState<MenuCardDesignAdvisorRecommendation | null>(null);
     const [adviceLoading, setAdviceLoading] = useState(false);
     const [adviceError, setAdviceError] = useState<string | null>(null);
 
-    const storeName = useMemo(() => getStoreContextName(storeDetails as any, 'Your Business'), [storeDetails]);
+    const storeName = useMemo(() => getStoreContextName(scopedStoreDetails, 'Your Business'), [scopedStoreDetails]);
     const storeUrlContext = useMemo(() => ({
-        subdomain: (storeDetails as any)?.subdomain || '',
-        customDomain: (storeDetails as any)?.customDomain,
-    }), [(storeDetails as any)?.subdomain, (storeDetails as any)?.customDomain]);
+        subdomain: scopedStoreDetails?.subdomain || '',
+        customDomain: scopedStoreDetails?.customDomain,
+    }), [scopedStoreDetails?.subdomain, scopedStoreDetails?.customDomain]);
     const storeRouteKey = useMemo(() => {
-        if (!storeDetails) return '';
-        const tenantId = (storeDetails as any)?.tenantId || (storeDetails as any)?.tId || '';
-        const storeId = (storeDetails as any)?.storeId || (storeDetails as any)?.sId || '';
-        const subdomain = (storeDetails as any)?.subdomain || '';
-        const customDomain = (storeDetails as any)?.customDomain || '';
+        if (!scopedStoreDetails || !scope) return '';
+        const tenantId = scope.tenantId;
+        const storeId = scope.storeId;
+        const subdomain = scopedStoreDetails.subdomain || '';
+        const customDomain = scopedStoreDetails.customDomain || '';
         if (!tenantId && !storeId && !subdomain && !customDomain) return '';
         return [tenantId, storeId, subdomain, customDomain].join('|');
     }, [
-        (storeDetails as any)?.tenantId,
-        (storeDetails as any)?.tId,
-        (storeDetails as any)?.storeId,
-        (storeDetails as any)?.sId,
-        (storeDetails as any)?.subdomain,
-        (storeDetails as any)?.customDomain,
+        scope,
+        scopedStoreDetails,
     ]);
-    const historyStorageScope = useMemo(() => resolveLocalExportStorageScope(storeDetails as any), [
-        (storeDetails as any)?.tenantId,
-        (storeDetails as any)?.tId,
-        (storeDetails as any)?.storeId,
-        (storeDetails as any)?.sId,
+    const historyStorageScope = useMemo(() => resolveLocalExportStorageScope(scopedStoreDetails), [
+        scopedStoreDetails,
     ]);
 
     useEffect(() => {
@@ -199,8 +213,8 @@ export default function useMenuCardExportController({
                 : await getExistingProjectsListWithoutLoader(true);
             if (!mounted) return;
             const list = (result?.projects || [])
-                .filter((project: any) => project.deleted !== true && project.active !== false)
-                .map((project: any) => normalizeProjectOption(storeUrlContext, project));
+                .filter((project) => (!('deleted' in project) || project.deleted !== true) && project.active !== false)
+                .map((project) => normalizeProjectOption(storeUrlContext, project));
             setProjects(list);
             setSelectedProjectId((current) => {
                 if (current && list.some((project: MenuCardProjectOption) => project.projectId === current)) return current;
@@ -293,15 +307,15 @@ export default function useMenuCardExportController({
     }, [historyStorageScope, loadProjectData, projectDataById, selectedProject?.projectId, storeRouteKey]);
 
     const source = useMemo<MenuCardPrintSource | null>(() => {
-        if (!projectData || !selectedProject || !storeDetails) return null;
+        if (!projectData || !selectedProject || !scopedStoreDetails || !scope) return null;
         if (loadedProjectId !== selectedProject.projectId) return null;
         return buildPrintSource({
             project: projectData,
-            store: { ...storeDetails, name: storeName },
+            store: { ...scopedStoreDetails, name: storeName },
             menuUrl: selectedProject.url,
             settings,
         });
-    }, [loadedProjectId, projectData, selectedProject, settings, storeDetails, storeName]);
+    }, [loadedProjectId, projectData, scope, scopedStoreDetails, selectedProject, settings, storeName]);
 
     const autoDesign = useMemo<MenuCardAutoPrintDesign | null>(() => {
         if (!source) return null;
@@ -357,6 +371,8 @@ export default function useMenuCardExportController({
         if (!source) return '';
         return buildPrintSourceHash(source, settings, overrides);
     }, [source, settings, overrides]);
+    currentArtifactScopeRef.current = `${storeRouteKey}:${selectedProject?.projectId || ''}:${sourceHash}`;
+    currentAdviceSourceHashRef.current = sourceHash;
 
     const reusableExport = useMemo(
         () => FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY ? findReusableExport(history, sourceHash) : null,
@@ -375,7 +391,12 @@ export default function useMenuCardExportController({
     useEffect(() => {
         setDesignAdvice(null);
         setAdviceError(null);
+        setAdviceLoading(false);
     }, [sourceHash, selectedProject?.projectId]);
+
+    useEffect(() => {
+        setRendering(false);
+    }, [storeRouteKey]);
 
     const updatePreset = useCallback((preset: MenuCardExportPreset) => {
         if (!isMenuCardPresetAvailable(preset)) return;
@@ -407,15 +428,20 @@ export default function useMenuCardExportController({
 
     const buildDesignAdvisorPayload = useCallback((): MenuCardDesignAdvisorRequest | null => {
         if (!source || !preview || !selectedProject || !sourceHash) return null;
+        if (
+            !isMenuCardAdvisorPreset(settings.preset)
+            || !isMenuCardAdvisorStyle(settings.styleId)
+            || !isMenuCardAdvisorDensity(settings.density)
+        ) return null;
         const itemCount = source.menu.categories.reduce((total, category) => total + category.items.length, 0);
 
         return {
             projectId: selectedProject.projectId,
             sourceHash,
             currentSettings: {
-                preset: settings.preset as any,
-                styleId: settings.styleId as any,
-                density: settings.density as any,
+                preset: settings.preset,
+                styleId: settings.styleId,
+                density: settings.density,
                 includeDescriptions: settings.includeDescriptions,
                 includeQr: settings.includeQr,
                 includeContactBlock: settings.includeContactBlock,
@@ -452,7 +478,8 @@ export default function useMenuCardExportController({
         }
 
         const payload = buildDesignAdvisorPayload();
-        if (!payload) return;
+        if (!payload || adviceInFlightRef.current) return;
+        const requestSourceHash = payload.sourceHash;
 
         const cached = adviceCacheRef.current[payload.sourceHash];
         if (cached) {
@@ -461,10 +488,12 @@ export default function useMenuCardExportController({
             return;
         }
 
+        adviceInFlightRef.current = true;
         setAdviceLoading(true);
         setAdviceError(null);
         try {
             const response = await getMenuCardDesignAdviceViaAPI(payload);
+            if (currentAdviceSourceHashRef.current !== requestSourceHash) return;
             if (!response?.recommendation) {
                 setAdviceError('Could not prepare a layout suggestion.');
                 return;
@@ -473,6 +502,7 @@ export default function useMenuCardExportController({
             setDesignAdvice(response.recommendation);
             notify?.({ content: 'Layout suggestion ready', type: 'success' });
         } catch (error) {
+            if (currentAdviceSourceHashRef.current !== requestSourceHash) return;
             if (error instanceof MenuCardDesignAdvisorPlanError) {
                 setAdviceError(MENU_CARD_ADVICE_PLAN_REQUIRED_MESSAGE);
                 return;
@@ -483,7 +513,8 @@ export default function useMenuCardExportController({
             }
             setAdviceError('Could not prepare a layout suggestion.');
         } finally {
-            setAdviceLoading(false);
+            adviceInFlightRef.current = false;
+            if (currentAdviceSourceHashRef.current === requestSourceHash) setAdviceLoading(false);
         }
     }, [buildDesignAdvisorPayload, notify]);
 
@@ -502,7 +533,7 @@ export default function useMenuCardExportController({
     }, [designAdvice, notify]);
 
     const createArtifact = useCallback(async (share = false) => {
-        if (!source || !selectedProject) return false;
+        if (!source || !selectedProject || artifactInFlightRef.current) return false;
         if (!isMenuCardPresetAvailable(settings.preset)) {
             notify?.({ content: 'This export option is not enabled', type: 'error' });
             return false;
@@ -512,15 +543,18 @@ export default function useMenuCardExportController({
             return false;
         }
 
+        const operationScope = currentArtifactScopeRef.current;
+        artifactInFlightRef.current = true;
         setRendering(true);
         try {
             const artifact = settings.preset === 'print_shop_packet'
                 ? await buildPrintShopPacket(source, settings, overrides)
                 : await renderPdf(source, settings, overrides);
+            if (currentArtifactScopeRef.current !== operationScope) return false;
 
             let delivery: 'downloaded' | 'shared' = 'downloaded';
             if (share) {
-                const shareResult = await shareMenuCardArtifact(artifact as any, 'Menu file');
+                const shareResult = await shareMenuCardArtifact(artifact, 'Menu file');
                 if (shareResult === 'cancelled') {
                     notify?.({ content: 'Share cancelled', type: 'info' });
                     return false;
@@ -528,10 +562,10 @@ export default function useMenuCardExportController({
                 if (shareResult === 'shared') {
                     delivery = 'shared';
                 } else {
-                    downloadMenuCardArtifact(artifact as any);
+                    downloadMenuCardArtifact(artifact);
                 }
             } else {
-                downloadMenuCardArtifact(artifact as any);
+                downloadMenuCardArtifact(artifact);
             }
 
             if (FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY) {
@@ -542,7 +576,7 @@ export default function useMenuCardExportController({
                     preset: settings.preset,
                     storageScope: historyStorageScope,
                     styleId: settings.styleId,
-                    artifact: artifact as any,
+                    artifact,
                 });
                 setHistory(nextHistory);
             }
@@ -558,7 +592,8 @@ export default function useMenuCardExportController({
             notify?.({ content: share ? 'Could not share file' : 'Could not create file', type: 'error' });
             return false;
         } finally {
-            setRendering(false);
+            artifactInFlightRef.current = false;
+            if (currentArtifactScopeRef.current === operationScope) setRendering(false);
         }
     }, [historyStorageScope, notify, overrides, preview?.preflight.status, selectedProject, settings, source, storeName]);
 

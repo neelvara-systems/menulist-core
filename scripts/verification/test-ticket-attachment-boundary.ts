@@ -7,6 +7,7 @@ import {
     isSupportTicketAttachmentStoragePath,
     parseSupportTicketAttachmentUpload,
 } from '../../src/lib/answerlattice/supportTicketAttachmentBoundary';
+import { resolveBase64UploadConfig } from '../../src/lib/storage/base64UploadBoundary';
 
 const first = buildSupportTicketAttachmentFileId({
     attemptId: 'upload_a',
@@ -57,6 +58,34 @@ assert.throws(
     /answerlattice_ticket_attachment_invalid/,
 );
 assert.equal(ANSWERLATTICE_TICKET_ATTACHMENT_MAX_BYTES, 10 * 1024 * 1024);
+
+for (const [type, content, extension] of [
+    ['application/json', '{"ok":true}', '.json'],
+    ['application/xml', '<root>ok</root>', '.xml'],
+    ['text/plain', 'plain text', '.txt'],
+    ['text/markdown', '# Heading', '.md'],
+    ['text/csv', 'name,value\\nA,1', '.csv'],
+    ['text/html', '<p>bounded attachment</p>', '.html'],
+    ['text/xml', '<root>ok</root>', '.xml'],
+] as const) {
+    const url = `data:${type};base64,${Buffer.from(content).toString('base64')}`;
+    const parsed = parseSupportTicketAttachmentUpload({
+        name: `attachment${extension}`,
+        size: Buffer.byteLength(content),
+        type,
+        url,
+    });
+    assert.equal(parsed.type, type);
+    assert.equal(resolveBase64UploadConfig({ type: parsed.type, url }).extension, extension);
+}
+const invalidJson = 'not json';
+assert.throws(
+    () => resolveBase64UploadConfig({
+        type: 'application/json',
+        url: `data:application/json;base64,${Buffer.from(invalidJson).toString('base64')}`,
+    }),
+    /base64_upload_signature_mismatch/,
+);
 
 assert.equal(isSupportTicketAttachmentStoragePath({
     collection: 'supportTickets',

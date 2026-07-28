@@ -1,6 +1,7 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { getHoursConfidenceState } from '@lib/outputControl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Button, Card, Flex, Typography, theme } from 'antd';
@@ -34,8 +35,12 @@ export default function HoursFreshnessNudge() {
     const [initialized, setInitialized] = useState(false);
 
     useEffect(() => {
-        if (storeDetails?.storeId) {
-            const dismissKey = `hours_nudge_dismissed_${storeDetails.storeId}`;
+        const dismissKey = getTenantStoreStorageKey(
+            'menulist:hours-nudge-dismissed',
+            storeDetails?.tenantId ?? (storeDetails as any)?.tId,
+            storeDetails?.storeId,
+        );
+        if (dismissKey) {
             const dismissedAt = localStorage.getItem(dismissKey);
             if (dismissedAt) {
                 // Re-show after 30 days (give owner another chance)
@@ -46,7 +51,7 @@ export default function HoursFreshnessNudge() {
             }
             setInitialized(true);
         }
-    }, [storeDetails?.storeId]);
+    }, [storeDetails?.storeId, storeDetails?.tenantId, (storeDetails as any)?.tId]);
 
     if (!FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL) return null;
     if (!storeDetails) return null;
@@ -65,8 +70,12 @@ export default function HoursFreshnessNudge() {
 
     const handleDismiss = () => {
         setDismissed(true);
-        const dismissKey = `hours_nudge_dismissed_${storeDetails.storeId}`;
-        localStorage.setItem(dismissKey, Date.now().toString());
+        const dismissKey = getTenantStoreStorageKey(
+            'menulist:hours-nudge-dismissed',
+            storeDetails?.tenantId ?? (storeDetails as any)?.tId,
+            storeDetails?.storeId,
+        );
+        if (dismissKey) localStorage.setItem(dismissKey, Date.now().toString());
     };
 
     const message = confidenceState === 'RISKY'

@@ -15,6 +15,29 @@ const ROOT_ALLOWED_MODERATE_PACKAGES = new Map([
 ]);
 const ROOT_MAX_HIGH_COUNT = 1;
 const ROOT_MAX_MODERATE_COUNT = 1;
+const ROOT_ALLOWED_DEV_HIGH_PACKAGES = new Set([
+  '@eslint/config-array',
+  '@eslint/eslintrc',
+  'brace-expansion',
+  'eslint',
+  'eslint-config-next',
+  'eslint-plugin-import',
+  'eslint-plugin-jsx-a11y',
+  'eslint-plugin-react',
+  'minimatch',
+]);
+const FUNCTIONS_ALLOWED_DEV_HIGH_PACKAGES = new Set([
+  '@eslint/eslintrc',
+  '@humanwhocodes/config-array',
+  'brace-expansion',
+  'eslint',
+  'eslint-plugin-import',
+  'file-entry-cache',
+  'flat-cache',
+  'glob',
+  'minimatch',
+  'rimraf',
+]);
 
 const REQUIRED_DIRECT_VERSIONS = {
   root: {
@@ -30,20 +53,22 @@ const REQUIRED_DIRECT_VERSIONS = {
     ws: '8.21.1',
   },
   menulistFunctions: {
+    '@google/genai': '2.13.0',
     '@sentry/node': '10.68.0',
     'firebase-admin': '13.10.0',
-    'firebase-functions': '6.6.0',
+    'firebase-functions': '7.3.0',
     nodemailer: '9.0.3',
     razorpay: '2.9.8',
   },
   answerlatticeFunctions: {
+    '@google/genai': '2.13.0',
     'firebase-admin': '13.10.0',
-    'firebase-functions': '6.6.0',
+    'firebase-functions': '7.3.0',
     nodemailer: '9.0.3',
   },
   signaldeskFunctions: {
     'firebase-admin': '13.10.0',
-    'firebase-functions': '6.6.0',
+    'firebase-functions': '7.3.0',
   },
 };
 
@@ -104,6 +129,14 @@ function verifyRootDependencyOverrides() {
   assert(
     packageJson.overrides?.next?.sharp === '0.35.3',
     'Next optional Sharp runtime must stay overridden to 0.35.3',
+  );
+  assert(
+    packageJson.overrides?.exceljs?.archiver === '8.0.0'
+      && packageJson.overrides?.exceljs?.unzipper === '0.12.5'
+      && packageJson.overrides?.['google-gax']?.rimraf === '6.1.3'
+      && packageJson.overrides?.sucrase?.glob === '13.0.6'
+      && packageJson.devDependencies?.['brace-expansion'] === '1.1.16',
+    'Root production brace-expansion consumers must stay on compatible patched chains',
   );
 }
 
@@ -174,15 +207,15 @@ function getMigrationFamily(name, vulnerability) {
   return null;
 }
 
-function verifyRootAudit(report, label) {
+function verifyRootAudit(report, label, { allowDevLintChain = false } = {}) {
   const counts = report.metadata.vulnerabilities;
   assert(
     counts.critical === 0,
     `${label} audit contains ${counts.critical} critical vulnerabilities`,
   );
   assert(
-    counts.high <= ROOT_MAX_HIGH_COUNT,
-    `${label} audit high count increased from the controlled baseline of ${ROOT_MAX_HIGH_COUNT} to ${counts.high}`,
+    counts.high <= ROOT_MAX_HIGH_COUNT + (allowDevLintChain ? ROOT_ALLOWED_DEV_HIGH_PACKAGES.size : 0),
+    `${label} audit high count increased beyond the controlled production and dev-tooling baselines to ${counts.high}`,
   );
   assert(
     counts.moderate <= ROOT_MAX_MODERATE_COUNT,
@@ -196,6 +229,7 @@ function verifyRootAudit(report, label) {
   const unapprovedHighs = Object.entries(report.vulnerabilities)
     .filter(([, vulnerability]) => vulnerability.severity === 'high')
     .filter(([name, vulnerability]) => {
+      if (allowDevLintChain && ROOT_ALLOWED_DEV_HIGH_PACKAGES.has(name)) return false;
       const expectedFamily = ROOT_ALLOWED_HIGH_PACKAGES.get(name);
       const family = getMigrationFamily(name, vulnerability);
       return !expectedFamily || family !== expectedFamily;
@@ -224,7 +258,8 @@ function verifyRootAudit(report, label) {
     .filter(([, vulnerability]) => vulnerability.severity === 'high' && vulnerability.isDirect)
     .map(([name]) => name);
   const unexpectedDirectHighs = directHighs.filter(
-    (name) => !ROOT_ALLOWED_HIGH_PACKAGES.has(name),
+    (name) => !ROOT_ALLOWED_HIGH_PACKAGES.has(name)
+      && !(allowDevLintChain && ROOT_ALLOWED_DEV_HIGH_PACKAGES.has(name)),
   );
   assert(
     unexpectedDirectHighs.length === 0,
@@ -233,18 +268,36 @@ function verifyRootAudit(report, label) {
 
   console.log(
     `${label} audit accepted: ${counts.critical} critical, ${counts.high} high, `
-      + `${counts.moderate} moderate. The only accepted family is Next's pinned PostCSS dependency.`,
+      + `${counts.moderate} moderate. Production accepts only Next's pinned PostCSS dependency`
+      + (allowDevLintChain ? '; the additional highs are the exact dev-only lint chain.' : '.'),
   );
 }
 
-function verifyFunctionsAudit(report, label) {
+function verifyFunctionsFullAudit(report, label) {
+  const counts = report.metadata.vulnerabilities;
+  assert(
+    counts.critical === 0 && counts.moderate === 0 && counts.low === 0,
+    `${label} full audit contains a non-approved severity: ${JSON.stringify(counts)}`,
+  );
+  const unexpectedDevHighs = Object.entries(report.vulnerabilities)
+    .filter(([, vulnerability]) => vulnerability.severity === 'high')
+    .map(([name]) => name)
+    .filter((name) => !FUNCTIONS_ALLOWED_DEV_HIGH_PACKAGES.has(name));
+  assert(
+    unexpectedDevHighs.length === 0,
+    `${label} full audit contains unapproved high vulnerabilities: ${unexpectedDevHighs.join(', ')}`,
+  );
+  console.log(`${label} full audit accepted with ${counts.high} dev-only lint-chain entries.`);
+}
+
+function verifyFunctionsProductionAudit(report, label) {
   const counts = report.metadata.vulnerabilities;
   assert(
     counts.total === 0,
-    `${label} audit contains ${counts.total} vulnerabilities: ${counts.critical} critical, `
-      + `${counts.high} high, ${counts.moderate} moderate, ${counts.low} low`,
+    `${label} production audit contains ${counts.total} vulnerabilities: `
+      + `${counts.critical} critical, ${counts.high} high, ${counts.moderate} moderate, ${counts.low} low`,
   );
-  console.log(`${label} audit accepted: 0 vulnerabilities.`);
+  console.log(`${label} production audit accepted: 0 vulnerabilities.`);
 }
 
 verifyDirectVersions(ROOT, REQUIRED_DIRECT_VERSIONS.root, 'Root runtime');
@@ -269,29 +322,29 @@ verifyFunctionsDependencyBoundary(MENULIST_FUNCTIONS_DIR, 'MenuList Functions');
 verifyFunctionsDependencyBoundary(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions');
 verifyFunctionsDependencyBoundary(SIGNALDESK_FUNCTIONS_DIR, 'SignalDesk Functions');
 verifyFirebaseAdminModularBoundary();
-verifyRootAudit(runAudit(ROOT, 'Root full'), 'Root full');
+verifyRootAudit(runAudit(ROOT, 'Root full'), 'Root full', { allowDevLintChain: true });
 verifyRootAudit(runAudit(ROOT, 'Root production', { omitDev: true }), 'Root production');
-verifyFunctionsAudit(
+verifyFunctionsFullAudit(
   runAudit(MENULIST_FUNCTIONS_DIR, 'MenuList Functions full'),
   'MenuList Functions full',
 );
-verifyFunctionsAudit(
+verifyFunctionsProductionAudit(
   runAudit(MENULIST_FUNCTIONS_DIR, 'MenuList Functions production', { omitDev: true }),
   'MenuList Functions production',
 );
-verifyFunctionsAudit(
+verifyFunctionsFullAudit(
   runAudit(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions full'),
   'Answerlattice Functions full',
 );
-verifyFunctionsAudit(
+verifyFunctionsProductionAudit(
   runAudit(ANSWERLATTICE_FUNCTIONS_DIR, 'Answerlattice Functions production', { omitDev: true }),
   'Answerlattice Functions production',
 );
-verifyFunctionsAudit(
+verifyFunctionsFullAudit(
   runAudit(SIGNALDESK_FUNCTIONS_DIR, 'SignalDesk Functions full'),
   'SignalDesk Functions full',
 );
-verifyFunctionsAudit(
+verifyFunctionsProductionAudit(
   runAudit(SIGNALDESK_FUNCTIONS_DIR, 'SignalDesk Functions production', { omitDev: true }),
   'SignalDesk Functions production',
 );

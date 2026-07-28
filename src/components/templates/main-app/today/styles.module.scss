@@ -227,6 +227,14 @@
         color: var(--ant-color-text);
       }
     }
+
+    .desktopHint {
+      margin: 0;
+      color: var(--ant-color-text-secondary);
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: center;
+    }
   }
 }
 

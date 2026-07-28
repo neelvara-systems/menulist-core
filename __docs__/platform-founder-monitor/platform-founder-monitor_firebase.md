@@ -31,7 +31,7 @@ Scheduler writes every 30 minutes from the 30-minute `menulistMaintenanceSchedul
 - `platformSummary/founderMonitorSnapshot`: store, onboarding, truth, support, risk, and source-gap snapshot.
 - `platformSummary/founderMonitorRevenue`: store/reconciliation fields; revenue totals are overwritten only when the bounded subscription reconciliation is not capped.
 - `platformSummary/founderMonitorRevenueDaily_YYYY-MM-DD`: daily movement reconciliation for the current India business day.
-- `founderOnboardingTransitions/{storeId}`: completes up to 50 missing `firstLiveAt` / `timeToLiveHours` records per run.
+- `founderOnboardingTransitions/{storeId}`: transactionally completes up to 50 observed missing `firstLiveAt` / `timeToLiveHours` records per run. Each selected row is re-read before write; conflicting scope and already-complete rows are not overwritten. When the capped collection read is incomplete or unavailable, a non-sampled row is not treated as absent.
 - `systemAlerts`: bounded Founder Monitor exception alerts for failed payments, paid-not-live stores, stale/broken stores, and critical support tickets. Existing alert cooldown logic controls repeat alerts.
 
 Founder Monitor revenue document-ID admission is Firebase-cost neutral. `src/lib/ops/founderRevenueReadModel.ts` validates movement IDs with `src/lib/firebase/firestoreDocumentId.ts` and requires transition store IDs to be exact positive numeric MenuList store document IDs before the same guard, before `founderRevenueMovements/{movementId}` and `founderOnboardingTransitions/{storeId}` refs. Valid movement and store IDs keep the same writes; malformed, reserved, empty, path-shaped, whitespace-mutated, zero, negative, unsafe, leading-zero, or nonnumeric IDs return for optional callers and reject required financial callers before invalid refs. This adds no reads, writes, deletes, rules, indexes, Cloud Functions, provider calls, deploy action, or owner/platform setting.
@@ -39,8 +39,12 @@ Founder Monitor revenue document-ID admission is Firebase-cost neutral. `src/lib
 Scheduler reads for store coverage:
 
 - `platformSummary/storesSummary`: 1 document for all store identity/status/publish/distribution summary fields.
+- `supportTickets`: latest 200 rows; only exact Answerlattice product rows with agreeing tenant/store aliases and a matching canonical MenuList tenant+store summary scope contribute to the snapshot.
+- `founderOnboardingTransitions`: latest 500 rows; document ID and all present embedded store aliases must agree, and present tenant aliases must agree with the canonical store-summary tenant before use.
 - The scheduler does not query `stores` for Founder Monitor store rows.
 - Store distribution signals are mirrored into `storesSummary.stores.{storeId}.menuPresence` as bounded presence hints when owners confirm Google Business, Instagram bio, or WhatsApp profile setup.
+
+The scope repair keeps the existing capped collection read and adds up to 50 transaction point reads for selected completion candidates. It changes persisted-row admission before aggregation and makes completion writes transaction-current; malformed, conflicting, wrong-product, foreign-tenant, already-complete, or non-sampled rows are excluded rather than attributed or overwritten through stale sampled state. No collection, index, rule, cache, provider operation, or standalone scheduled function was added.
 
 Backfill writes, only when explicitly confirmed:
 
@@ -98,3 +102,4 @@ firebase deploy --project menulist-qa --config firebase.json --only functions:me
 ## Billing source scope and cost (July 22, 2026)
 
 Exact projection adds no Firestore read/write/index/Storage/provider operation. Founder Monitor keeps the existing capped product query, filters ambiguous rows in memory and retains the raw-cap reconciliation-limited signal. The dry-run-by-default revenue backfill likewise rejects conflicting aliases before constructing or writing deterministic movement IDs.
+The Admin writer is not treated as sufficient runtime validation. `src/data/shared/founderMonitorPersistedBoundary.ts` and its byte-identical Functions mirror reproject every movement returned to the platform route or consumed by scheduled reconciliation. They reject conflicting product/day/scope identity, coercible amounts, arbitrary date strings and malformed text/kinds. The scheduler excludes invalid rows, logs one bounded error and records a data gap before replacing daily counters. Precomputed numeric summary fields are exact safe integers or absent; malformed persisted counters make the protected route fail visibly for repair.

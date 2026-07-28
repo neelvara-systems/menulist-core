@@ -59,7 +59,8 @@ Only run after the read-only preflight succeeds:
 
 ```bash
 ANSWERLATTICE_BACKUP_APPLY=1 \
-  npm run answerlattice:backup -- ensure-daily qa
+  npm run answerlattice:backup -- ensure-daily qa \
+  --confirm-project answerlattice-qa
 ```
 
 The command creates a daily 14-week schedule only when no managed-backup schedule exists. It accepts an existing policy only when the API reports exactly one daily schedule with `8467200s` retention. Any weekly, shorter-retention, or additional schedule is printed and stops the command for manual review rather than being silently edited or supplemented.
@@ -68,7 +69,8 @@ Repeat for production only after QA schedule and restore evidence are approved:
 
 ```bash
 ANSWERLATTICE_BACKUP_APPLY=1 \
-  npm run answerlattice:backup -- ensure-daily prod
+  npm run answerlattice:backup -- ensure-daily prod \
+  --confirm-project answerlattice
 ```
 
 After the first scheduled run, rerun `preflight` and record the full ready backup resource name.
@@ -82,7 +84,8 @@ ANSWERLATTICE_BACKUP_APPLY=1 \
   npm run answerlattice:backup -- restore-rehearsal \
   qa \
   projects/answerlattice-qa/locations/LOCATION/backups/BACKUP_ID \
-  answerlattice-recovery-YYYYMMDD
+  answerlattice-recovery-YYYYMMDD \
+  --confirm-project answerlattice-qa
 ```
 
 The tool rejects:
@@ -92,6 +95,7 @@ The tool rejects:
 - `(default)` or any non-recovery destination;
 - an existing destination database;
 - a cloud mutation without `ANSWERLATTICE_BACKUP_APPLY=1`.
+- a confirmation project that is absent or does not exactly match the selected stage.
 
 It does not switch application traffic, alter environment variables, copy secrets, delete the recovery database, or overwrite live data.
 

@@ -25,12 +25,40 @@ export function computeGrowthOSReadiness(facts: GrowthOSSourceFacts): GrowthOSPr
     return buildPreflight(blocks, warnings);
 }
 
-export function isGrowthOSKitExpired(expiresAt?: any): boolean {
-    if (!expiresAt) return false;
-    const expiryMs = typeof expiresAt?.toMillis === "function"
-        ? expiresAt.toMillis()
-        : typeof expiresAt?.toDate === "function"
-            ? expiresAt.toDate().getTime()
-            : new Date(expiresAt).getTime();
-    return Number.isFinite(expiryMs) && expiryMs <= Date.now();
+export function getGrowthOSTimestampMillis(value: unknown): number | null {
+    if (value == null) return null;
+    if (typeof value === "number") return Number.isFinite(value) ? value : null;
+    if (typeof value === "string") {
+        const millis = Date.parse(value);
+        return Number.isFinite(millis) ? millis : null;
+    }
+    if (value instanceof Date) {
+        const millis = value.getTime();
+        return Number.isFinite(millis) ? millis : null;
+    }
+    if (typeof value !== "object") return null;
+
+    try {
+        const timestamp = value as { toDate?: unknown; toMillis?: unknown };
+        const toMillis = timestamp.toMillis;
+        if (typeof toMillis === "function") {
+            const millis = toMillis.call(value);
+            return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
+        }
+        const toDate = timestamp.toDate;
+        if (typeof toDate === "function") {
+            const date = toDate.call(value);
+            if (!(date instanceof Date)) return null;
+            const millis = date.getTime();
+            return Number.isFinite(millis) ? millis : null;
+        }
+    } catch {
+        return null;
+    }
+    return null;
+}
+
+export function isGrowthOSKitExpired(expiresAt?: unknown): boolean {
+    const expiryMs = getGrowthOSTimestampMillis(expiresAt);
+    return expiryMs !== null && expiryMs <= Date.now();
 }

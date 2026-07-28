@@ -4,6 +4,7 @@ import { secureError } from "@lib/security/secureLogger";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast } from "@reduxSlices/toast";
 import { reduxStore } from "@reduxStore/index";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 type DalOperation<T> = () => Promise<T> | T;
 
@@ -37,7 +38,7 @@ export const apiCallComposerClient = async <T>(fn: DalOperation<T>, ...args: unk
         const fallbackMessage = 'Could not load data. Please try again.';
         secureError('[DAL Client] API call failed', new Error('dal_client_call_failed'), {
             functionName,
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedErrorName(error) || typeof error,
             params: summarizeDalArgs(args),
             withLoader: true,
         });

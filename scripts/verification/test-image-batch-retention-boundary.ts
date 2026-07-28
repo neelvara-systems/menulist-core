@@ -44,6 +44,25 @@ assert.ok(
     snapshotPage.entries.some(([storeId]) => storeId === '451'),
     'The deterministic all-store retention cycle must eventually cover inactive stores.',
 );
+const activeOperationPage = selectDeterministicRetentionStorePage(
+    stores,
+    2 * DAY_MS,
+    200,
+    (store) => store.active !== false,
+);
+assert.deepEqual(
+    {
+        pageIndex: activeOperationPage.pageIndex,
+        totalActiveStores: activeOperationPage.totalStores,
+        storeIds: activeOperationPage.entries.map(([storeId]) => storeId),
+    },
+    {
+        pageIndex: 2,
+        totalActiveStores: 450,
+        storeIds: Array.from({ length: 50 }, (_, index) => String(index + 401)),
+    },
+    'AI-operation cleanup must rotate through every active store instead of permanently slicing the first page.',
+);
 assert.deepEqual(
     {
         pageCount: thirdStorePage.pageCount,

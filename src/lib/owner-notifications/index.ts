@@ -7,8 +7,11 @@ import {
     type OwnerNotificationProductId,
 } from '@data/shared/ownerNotificationRegistry';
 import {
+    getOwnerNotificationDeliveryClaimDecision,
     getNextOwnerNotificationProcessingAttempt,
     isOwnerNotificationEventWithinByteLimit,
+    projectOwnerNotificationPersistedEvent,
+    projectOwnerNotificationRateLimitCount,
 } from '@data/shared/ownerNotificationDeliveryBoundary';
 import { getAnswerlatticeRetentionFields, type AnswerlatticeRetentionKey } from '@lib/answerlattice/dataRetention';
 import { admin } from '@lib/firebase/firebaseAdmin';
@@ -41,6 +44,9 @@ import type {
 
 const MAX_PER_RECIPIENT_PER_DAY = 20;
 const MAX_PER_STORE_PER_DAY = 10;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MENULIST_OWNER_NOTIFICATION_RETENTION_DAYS = 30;
+const MENULIST_OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS = 2;
 const OWNER_NOTIFICATION_EVENT_STATUSES: OwnerNotificationEventStatus[] = [
     'pending',
     'processing',
@@ -89,7 +95,16 @@ function getRetentionFieldsForProduct(
 ) {
     return productId === PRODUCT_IDS.ANSWERLATTICE
         ? getAnswerlatticeRetentionFields(key, from)
-        : {};
+        : {
+            expiresAt: Timestamp.fromMillis(
+                (from ?? Timestamp.now()).toMillis()
+                + (
+                    key === 'ownerNotificationRateLimits'
+                        ? MENULIST_OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS
+                        : MENULIST_OWNER_NOTIFICATION_RETENTION_DAYS
+                ) * DAY_MS,
+            ),
+        };
 }
 
 function sanitizeForFirestore(value: any): any {
@@ -166,12 +181,30 @@ async function incrementRateLimit(
     return db.runTransaction(async (tx) => {
         const now = Timestamp.now();
         const recipientSnap = await tx.get(recipientRef);
-        const recipientCount = Number(recipientSnap.data()?.count || 0);
+        const recipientCount = recipientSnap.exists
+            ? projectOwnerNotificationRateLimitCount(recipientSnap.data(), {
+                productId: params.productId,
+                dateKey,
+                kind: 'recipient',
+                channel: params.channel,
+                recipientHash: params.recipientHash,
+            })
+            : 0;
+        if (recipientCount === null) return false;
         if (recipientCount >= MAX_PER_RECIPIENT_PER_DAY) return false;
 
         if (storeRef) {
             const storeSnap = await tx.get(storeRef);
-            const storeCount = Number(storeSnap.data()?.count || 0);
+            const storeCount = storeSnap.exists
+                ? projectOwnerNotificationRateLimitCount(storeSnap.data(), {
+                    productId: params.productId,
+                    dateKey,
+                    kind: 'store',
+                    tenantId: params.tenantId,
+                    storeId: params.storeId,
+                })
+                : 0;
+            if (storeCount === null) return false;
             if (storeCount >= MAX_PER_STORE_PER_DAY) return false;
             tx.set(storeRef, {
                 productId: params.productId,
@@ -199,19 +232,22 @@ async function incrementRateLimit(
     });
 }
 
-async function writeDelivery(params: {
+type OwnerNotificationDeliveryClaim = {
+    decision: 'claimed' | 'terminal' | 'ambiguous' | 'invalid';
+    existingStatus?: 'sent' | 'failed' | 'skipped' | 'rate_limited';
+};
+
+async function claimDelivery(params: {
     db: Firestore;
     event: OwnerNotificationEventDoc;
     eventId: string;
     channel: OwnerNotificationChannel;
     recipient: OwnerNotificationRecipient;
     recipientValue: string;
-    status: 'sent' | 'failed' | 'skipped' | 'rate_limited';
     templateKey: string;
     templateVersion: string;
     subject?: string;
-    result?: OwnerNotificationChannelResult;
-}): Promise<void> {
+}): Promise<OwnerNotificationDeliveryClaim> {
     const recipientHash = sha256(params.recipientValue.toLowerCase());
     const deliveryId = safeId(`${params.eventId}|${params.channel}|${recipientHash}`);
     const recipientMasked = params.channel === 'email'
@@ -219,10 +255,49 @@ async function writeDelivery(params: {
         : maskPhone(params.recipientValue);
     const attemptedAt = Timestamp.now();
     const deliveryRef = params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES).doc(deliveryId);
+    const attempt = params.event.processingAttempt;
+    if (!attempt) return { decision: 'invalid' };
 
-    await params.db.runTransaction(async (transaction) => {
+    return params.db.runTransaction(async (transaction): Promise<OwnerNotificationDeliveryClaim> => {
         const existing = await transaction.get(deliveryRef);
-        const createdAt = existing.data()?.createdAt || attemptedAt;
+        const existingData = existing.data();
+        if (
+            existing.exists
+            && (
+                existingData?.eventId !== params.eventId
+                || existingData?.productId !== params.event.productId
+                || existingData?.channel !== params.channel
+                || existingData?.recipientHash !== recipientHash
+                || !(existingData?.createdAt instanceof Timestamp)
+            )
+        ) return { decision: 'invalid' };
+
+        const decision = getOwnerNotificationDeliveryClaimDecision(
+            existingData?.status,
+            existingData?.attempt,
+            attempt,
+        );
+        if (decision === 'terminal') {
+            const existingStatus = existingData?.status;
+            if (
+                existingStatus !== 'sent'
+                && existingStatus !== 'failed'
+                && existingStatus !== 'skipped'
+                && existingStatus !== 'rate_limited'
+            ) return { decision: 'invalid' };
+            return {
+                decision,
+                existingStatus,
+            };
+        }
+        if (decision !== 'claim') return { decision };
+
+        const createdAt = existing.exists
+            ? existingData?.createdAt instanceof Timestamp
+                ? existingData.createdAt
+                : null
+            : attemptedAt;
+        if (!createdAt) return { decision: 'invalid' };
         transaction.set(deliveryRef, sanitizeForFirestore({
             eventId: params.eventId,
             productId: params.event.productId,
@@ -231,18 +306,60 @@ async function writeDelivery(params: {
             recipientRole: params.recipient.role,
             recipientHash,
             recipientMasked,
-            status: params.status,
+            status: 'sending',
             subject: params.subject || null,
             templateKey: params.templateKey,
             templateVersion: params.templateVersion,
-            providerMessageId: params.result?.providerMessageId || null,
-            error: getOwnerNotificationDeliveryError(params.result),
-            attempt: params.event.processingAttempt || 1,
+            providerMessageId: null,
+            error: null,
+            attempt,
             createdAt,
             lastAttemptAt: attemptedAt,
-            sentAt: params.status === 'sent' ? attemptedAt : null,
+            sentAt: null,
             ...getRetentionFieldsForProduct(params.event.productId, 'ownerNotificationDeliveries', createdAt),
-        }), { merge: true });
+        }));
+        return { decision: 'claimed' };
+    });
+}
+
+async function finalizeDelivery(params: {
+    db: Firestore;
+    event: OwnerNotificationEventDoc;
+    eventId: string;
+    channel: OwnerNotificationChannel;
+    recipientValue: string;
+    status: 'sent' | 'failed' | 'skipped' | 'rate_limited';
+    result?: OwnerNotificationChannelResult;
+}): Promise<void> {
+    const recipientHash = sha256(params.recipientValue.toLowerCase());
+    const deliveryId = safeId(`${params.eventId}|${params.channel}|${recipientHash}`);
+    const deliveryRef = params.db.collection(OWNER_NOTIFICATION_COLLECTIONS.DELIVERIES).doc(deliveryId);
+    const attempt = params.event.processingAttempt;
+    if (!attempt) throw new Error('owner_notification_delivery_attempt_missing');
+
+    await params.db.runTransaction(async (transaction) => {
+        const existing = await transaction.get(deliveryRef);
+        const data = existing.data();
+        if (
+            !existing.exists
+            || data?.eventId !== params.eventId
+            || data?.productId !== params.event.productId
+            || data?.channel !== params.channel
+            || data?.recipientHash !== recipientHash
+            || data?.status !== 'sending'
+            || data?.attempt !== attempt
+            || !(data?.createdAt instanceof Timestamp)
+        ) throw new Error('owner_notification_delivery_claim_mismatch');
+
+        const finalizedAt = Timestamp.now();
+        transaction.set(deliveryRef, {
+            ...data,
+            status: params.status,
+            providerMessageId: params.result?.providerMessageId || null,
+            error: getOwnerNotificationDeliveryError(params.result),
+            lastAttemptAt: finalizedAt,
+            sentAt: params.status === 'sent' ? finalizedAt : null,
+        });
     });
 }
 
@@ -324,6 +441,18 @@ export async function enqueueOwnerNotification(
         });
         return { eventId: '', status: 'skipped' };
     }
+    const projectedDoc = projectOwnerNotificationPersistedEvent(doc, input.productId);
+    if (
+        !projectedDoc
+        || safeId(projectedDoc.dedupeKey) !== eventId
+        || projectedDoc.priority !== registryEntry.priority
+    ) {
+        logNotificationFailure('owner_notification_event_invalid', undefined, {
+            ...getBoundedNotificationStringContext('productId', input.productId),
+            ...getBoundedNotificationStringContext('triggerType', input.triggerType),
+        });
+        return { eventId: '', status: 'skipped' };
+    }
 
     const enqueueResult = await db.runTransaction(async (transaction): Promise<{
         created: boolean;
@@ -331,11 +460,18 @@ export async function enqueueOwnerNotification(
     }> => {
         const existing = await transaction.get(ref);
         if (existing.exists) {
-            const existingStatus = existing.data()?.status;
+            const current = projectOwnerNotificationPersistedEvent(existing.data(), input.productId);
+            const currentRegistryEntry = current
+                ? getOwnerNotificationRegistryEntry(current.productId, current.triggerType)
+                : null;
             return {
                 created: false,
-                status: OWNER_NOTIFICATION_EVENT_STATUSES.includes(existingStatus)
-                    ? existingStatus
+                status: current
+                    && currentRegistryEntry
+                    && safeId(current.dedupeKey) === eventId
+                    && current.priority === currentRegistryEntry.priority
+                    && OWNER_NOTIFICATION_EVENT_STATUSES.includes(current.status)
+                    ? current.status
                     : 'skipped',
             };
         }
@@ -378,8 +514,16 @@ export async function processOwnerNotificationEvent(
             return { event: null, status: 'failed', claimReason: 'not_found_or_product_mismatch' };
         }
 
-        const current = snap.data() as OwnerNotificationEventDoc;
-        if (current.productId !== productId) {
+        const current = projectOwnerNotificationPersistedEvent(snap.data(), productId);
+        const registryEntry = current
+            ? getOwnerNotificationRegistryEntry(current.productId, current.triggerType)
+            : null;
+        if (
+            !current
+            || safeId(current.dedupeKey) !== eventId
+            || !registryEntry
+            || current.priority !== registryEntry.priority
+        ) {
             return { event: null, status: 'failed', claimReason: 'not_found_or_product_mismatch' };
         }
         const processingAttempt = getNextOwnerNotificationProcessingAttempt(
@@ -474,19 +618,40 @@ export async function processOwnerNotificationEvent(
 
         for (const channel of channels) {
             const recipientValue = channel === 'email' ? recipient.email : recipient.whatsappNumber;
+            const persistedRecipientValue = recipientValue
+                || (channel === 'email' ? 'missing@email' : 'missing-phone');
+            const deliveryClaim = await claimDelivery({
+                db,
+                event,
+                eventId,
+                channel,
+                recipient,
+                recipientValue: persistedRecipientValue,
+                templateKey: template.templateKey,
+                templateVersion: template.templateVersion,
+                subject: template.subject,
+            });
+
+            if (deliveryClaim.decision === 'terminal') {
+                if (deliveryClaim.existingStatus === 'sent') sent++;
+                else if (deliveryClaim.existingStatus === 'failed') failed++;
+                else skipped++;
+                continue;
+            }
+            if (deliveryClaim.decision !== 'claimed') {
+                failed++;
+                continue;
+            }
+
             if (!recipientValue) {
                 skipped++;
-                await writeDelivery({
+                await finalizeDelivery({
                     db,
                     event,
                     eventId,
                     channel,
-                    recipient,
-                    recipientValue: channel === 'email' ? 'missing@email' : 'missing-phone',
+                    recipientValue: persistedRecipientValue,
                     status: 'skipped',
-                    templateKey: template.templateKey,
-                    templateVersion: template.templateVersion,
-                    subject: template.subject,
                     result: { ok: false, skippedReason: 'recipient_missing' },
                 });
                 continue;
@@ -494,17 +659,13 @@ export async function processOwnerNotificationEvent(
 
             if (channel === 'whatsapp' && registryEntry.requiresWhatsAppConsent && !recipient.whatsappConsent) {
                 skipped++;
-                await writeDelivery({
+                await finalizeDelivery({
                     db,
                     event,
                     eventId,
                     channel,
-                    recipient,
                     recipientValue,
                     status: 'skipped',
-                    templateKey: template.templateKey,
-                    templateVersion: template.templateVersion,
-                    subject: template.subject,
                     result: { ok: false, skippedReason: 'whatsapp_consent_missing' },
                 });
                 continue;
@@ -523,17 +684,13 @@ export async function processOwnerNotificationEvent(
 
             if (!allowed) {
                 skipped++;
-                await writeDelivery({
+                await finalizeDelivery({
                     db,
                     event,
                     eventId,
                     channel,
-                    recipient,
                     recipientValue,
                     status: 'rate_limited',
-                    templateKey: template.templateKey,
-                    templateVersion: template.templateVersion,
-                    subject: template.subject,
                     result: { ok: false, skippedReason: 'rate_limited' },
                 });
                 continue;
@@ -560,17 +717,13 @@ export async function processOwnerNotificationEvent(
                 failed++;
             }
 
-            await writeDelivery({
+            await finalizeDelivery({
                 db,
                 event,
                 eventId,
                 channel,
-                recipient,
                 recipientValue,
                 status: result.ok ? 'sent' : (result.skippedReason ? 'skipped' : 'failed'),
-                templateKey: template.templateKey,
-                templateVersion: template.templateVersion,
-                subject: template.subject,
                 result,
             });
         }

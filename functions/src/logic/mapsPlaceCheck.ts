@@ -7,6 +7,7 @@ import {
     normalizeMapsGroundingPlaceId,
     normalizeMapsGroundingSourceUri,
 } from "./mapsPlaceIdentityBoundary";
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 export type MapsPlaceCheckStatus = "needs_owner_confirmation" | "no_grounded_result";
 
@@ -231,13 +232,7 @@ function hasGroundingMetadata(response: GenerateContentResponse): boolean {
 }
 
 function getProviderErrorContext(error: unknown): Record<string, string | number | undefined> {
-    const record = error && typeof error === "object" ? error as Record<string, unknown> : {};
-    const status = Number(record.status ?? record.statusCode);
-    return {
-        sourceErrorName: error instanceof Error ? error.name : typeof error,
-        sourceErrorCode: typeof record.code === "string" ? record.code.slice(0, 80) : undefined,
-        sourceStatusCode: Number.isFinite(status) ? status : undefined,
-    };
+    return getBoundedFunctionsErrorContext(error);
 }
 
 export async function runMapsPlaceCheck(input: MapsPlaceCheckInput): Promise<MapsPlaceCheckResult> {

@@ -15,8 +15,8 @@
  *     /api/outlets/create)
  *
  * Usage:
- *   DRY_RUN=true  npx ts-node scripts/backfill-outlet-slugs.ts   # default
- *   DRY_RUN=false npx ts-node scripts/backfill-outlet-slugs.ts   # apply
+ *   npx ts-node scripts/backfill-outlet-slugs.ts --project-id menulist-qa --all-outlets
+ *   npx ts-node scripts/backfill-outlet-slugs.ts --project-id menulist-qa --store-id 42 --write --confirm-project menulist-qa
  *
  * Idempotent: re-running after a successful apply is a no-op.
  *
@@ -31,13 +31,8 @@
  * @see src/constants/reservedSlugs.ts — reserved outlet names
  */
 
-import * as admin from 'firebase-admin';
-
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
-
-const db = admin.firestore();
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 
 // Must stay in lock-step with src/constants/reservedSlugs.ts
 // (copied inline — script runs standalone, not through Next.js path aliases).
@@ -47,17 +42,47 @@ const RESERVED_PROJECT_SLUGS = [
     'screen', 'feedback', 'admin', 'api', 'settings', 'dashboard',
     'login', 'signup', 'auth', 'webhook', 'health', 'status',
     'sitemap', 'robots', 'manifest', 'sw', '_next', 'client',
-    'customerapp', 'pwa',
+    'customerapp', 'pwa', 'campaigncue',
 ];
 const RESERVED_OUTLET_SLUGS = [
     ...RESERVED_PROJECT_SLUGS,
-    'locations', 'stores', 'outlets', 'branches', 'main',
+    'menu', 'locations', 'stores', 'outlets', 'branches', 'main',
 ];
 
-function slugify(text: string): string {
-    if (!text) return '';
-    return text
-        .toString()
+const args = process.argv.slice(2);
+const MAX_SLUG_LENGTH = 60;
+
+function hasFlag(name: string): boolean {
+    return args.includes(name);
+}
+
+function getArg(name: string): string | null {
+    const index = args.indexOf(name);
+    return index === -1 ? null : args[index + 1] || null;
+}
+
+function getRequiredProjectId(): string {
+    const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;
+    if (!projectId) {
+        throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running the outlet-slug backfill.');
+    }
+    return projectId;
+}
+
+function resolveName(value: unknown): string {
+    if (typeof value === 'string') return value;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+    const localized = value as Record<string, unknown>;
+    for (const candidate of [localized.en, localized.en_US, localized.default, ...Object.values(localized)]) {
+        if (typeof candidate === 'string' && candidate.trim()) return candidate;
+    }
+    return '';
+}
+
+export function slugifyOutletBackfillValue(text: unknown): string {
+    const resolved = resolveName(text);
+    if (!resolved) return '';
+    return resolved
         .toLowerCase()
         .trim()
         .normalize('NFD')
@@ -72,31 +97,32 @@ function isReservedOutletSlug(slug: string): boolean {
     return RESERVED_OUTLET_SLUGS.includes(slug.toLowerCase());
 }
 
-function deriveSlug(name: string, fallback: string): string {
-    let slug = slugify(name);
-    if (!slug || slug.length < 2) slug = slugify(fallback);
+export function deriveOutletBackfillSlug(name: unknown, fallback: string): string {
+    let slug = slugifyOutletBackfillValue(name);
+    if (!slug || slug.length < 2) slug = slugifyOutletBackfillValue(fallback);
     if (!slug) slug = 'outlet';
     if (isReservedOutletSlug(slug)) slug = `${slug}-outlet`;
     // Max 60 chars matches outlet rename endpoint validation
-    return slug.slice(0, 60);
+    return slug.slice(0, MAX_SLUG_LENGTH);
 }
 
-const DRY_RUN = process.env.DRY_RUN !== 'false';
-
 interface OutletDoc {
-    ref: admin.firestore.DocumentReference;
+    ref: FirebaseFirestore.DocumentReference;
     storeId: string;
     tenantId: string;
-    name?: string;
+    name?: unknown;
     existingSlug?: string;
     active?: boolean;
     isMaster?: boolean;
 }
 
-async function listOutletsNeedingBackfill(): Promise<OutletDoc[]> {
-    const storesSnap = await db.collection('stores').get();
+async function listOutletsNeedingBackfill(
+    storesSnap: FirebaseFirestore.QuerySnapshot,
+    targetStoreId: string | null,
+): Promise<OutletDoc[]> {
     const out: OutletDoc[] = [];
     for (const doc of storesSnap.docs) {
+        if (targetStoreId && doc.id !== targetStoreId) continue;
         const data = doc.data() || {};
         if (data.isMaster === true) continue;
         if (data.active === false) continue;
@@ -115,8 +141,9 @@ async function listOutletsNeedingBackfill(): Promise<OutletDoc[]> {
     return out;
 }
 
-async function loadExistingSlugsByTenant(): Promise<Record<string, Set<string>>> {
-    const storesSnap = await db.collection('stores').get();
+async function loadExistingSlugsByTenant(
+    storesSnap: FirebaseFirestore.QuerySnapshot,
+): Promise<Record<string, Set<string>>> {
     const byTenant: Record<string, Set<string>> = {};
     for (const doc of storesSnap.docs) {
         const data = doc.data() || {};
@@ -129,7 +156,7 @@ async function loadExistingSlugsByTenant(): Promise<Record<string, Set<string>>>
     return byTenant;
 }
 
-function resolveUniqueSlug(
+export function resolveUniqueOutletBackfillSlug(
     baseSlug: string,
     tenantId: string,
     taken: Record<string, Set<string>>,
@@ -137,17 +164,33 @@ function resolveUniqueSlug(
     const tenantTaken = taken[tenantId] || new Set<string>();
     if (!tenantTaken.has(baseSlug)) return baseSlug;
     for (let i = 2; i <= 20; i++) {
-        const candidate = `${baseSlug}-${i}`.slice(0, 60);
+        const suffix = `-${i}`;
+        const candidate = `${baseSlug.slice(0, MAX_SLUG_LENGTH - suffix.length).replace(/-+$/g, '')}${suffix}`;
         if (!tenantTaken.has(candidate)) return candidate;
     }
     return null; // give up — operator will need to handle manually
 }
 
 async function backfill() {
-    console.log('\n=== T3-N-05 Backfill Outlet Slugs ===');
-    console.log(`Mode: ${DRY_RUN ? 'DRY RUN (no writes)' : 'LIVE (writing to Firestore)'}\n`);
+    const projectId = getRequiredProjectId();
+    const write = hasFlag('--write');
+    const storeId = getArg('--store-id');
+    const allOutlets = hasFlag('--all-outlets');
+    if (storeId && allOutlets) throw new Error('Use either --store-id or --all-outlets, not both.');
+    if (!storeId && !allOutlets) throw new Error('Pass --store-id or --all-outlets before running the outlet-slug backfill.');
+    if (storeId && !/^[1-9]\d*$/.test(storeId)) throw new Error('--store-id must be a positive numeric document ID.');
+    if (write && getArg('--confirm-project') !== projectId) {
+        throw new Error(`Refusing write: pass --confirm-project ${projectId}.`);
+    }
+    if (!getApps().length) initializeApp({ projectId });
+    const db = getFirestore();
+    const storesSnap = await db.collection('stores').get();
 
-    const candidates = await listOutletsNeedingBackfill();
+    console.log('\n=== T3-N-05 Backfill Outlet Slugs ===');
+    console.log(`Project: ${projectId}`);
+    console.log(`Mode: ${write ? 'LIVE (writing to Firestore)' : 'DRY RUN (no writes)'}\n`);
+
+    const candidates = await listOutletsNeedingBackfill(storesSnap, storeId);
     console.log(`Found ${candidates.length} outlet(s) missing outletSlug\n`);
 
     if (candidates.length === 0) {
@@ -155,15 +198,15 @@ async function backfill() {
         return;
     }
 
-    const taken = await loadExistingSlugsByTenant();
+    const taken = await loadExistingSlugsByTenant(storesSnap);
 
     let written = 0;
     let skipped = 0;
     const failures: string[] = [];
 
     for (const outlet of candidates) {
-        const base = deriveSlug(outlet.name || '', outlet.storeId);
-        const resolved = resolveUniqueSlug(base, outlet.tenantId, taken);
+        const base = deriveOutletBackfillSlug(outlet.name || '', outlet.storeId);
+        const resolved = resolveUniqueOutletBackfillSlug(base, outlet.tenantId, taken);
 
         if (!resolved) {
             failures.push(
@@ -175,24 +218,24 @@ async function backfill() {
         }
 
         console.log(
-            `  ${DRY_RUN ? '[DRY]' : '[WRITE]'} ${outlet.storeId} ` +
+            `  ${write ? '[WRITE]' : '[DRY]'} ${outlet.storeId} ` +
             `(${outlet.name || 'unnamed'}) → outletSlug="${resolved}" ` +
             `(tenant=${outlet.tenantId})`,
         );
 
-        if (!DRY_RUN) {
+        if (write) {
             await outlet.ref.set(
                 {
                     outletSlug: resolved,
-                    modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
-                    outletSlugBackfilledAt: admin.firestore.FieldValue.serverTimestamp(),
+                    modifiedOn: FieldValue.serverTimestamp(),
+                    outletSlugBackfilledAt: FieldValue.serverTimestamp(),
                 },
                 { merge: true },
             );
-            // Reserve the slug locally so the next candidate doesn't pick it
-            if (!taken[outlet.tenantId]) taken[outlet.tenantId] = new Set();
-            taken[outlet.tenantId].add(resolved);
         }
+        // Reserve in both modes so dry-run exactly previews live allocation.
+        if (!taken[outlet.tenantId]) taken[outlet.tenantId] = new Set();
+        taken[outlet.tenantId].add(resolved);
         written++;
     }
 
@@ -204,16 +247,18 @@ async function backfill() {
         console.log('\nUnresolved failures (operator action required):');
         failures.forEach((f) => console.log(f));
     }
-    if (DRY_RUN && written > 0) {
+    if (!write && written > 0) {
         console.log(
-            '\nTo apply: DRY_RUN=false npx ts-node scripts/backfill-outlet-slugs.ts',
+            `\nTo apply: rerun with --write --confirm-project ${projectId}.`,
         );
     }
 }
 
-backfill()
-    .then(() => process.exit(0))
-    .catch((err) => {
-        console.error('Migration failed:', err);
-        process.exit(1);
-    });
+if (require.main === module) {
+    backfill()
+        .catch((error) => {
+            const message = error instanceof Error ? error.message.slice(0, 240) : 'Outlet-slug backfill failed.';
+            console.error('outlet_slug_backfill_failed', message);
+            process.exitCode = 1;
+        });
+}

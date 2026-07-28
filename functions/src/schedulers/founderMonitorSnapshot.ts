@@ -4,8 +4,16 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
+import { projectFounderRevenueMovementRow } from '../sharedData/founderMonitorPersistedBoundary';
 import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
 import { getExactMenuListSubscriptionScope } from '../billing/subscriptionScope';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
+import {
+    buildFounderMonitorScopeKey,
+    parseFounderMonitorSupportTicketScope,
+    parseFounderOnboardingTransitionScope,
+} from './founderMonitorScopeBoundary';
+import { resolveFounderOnboardingTransitionCompletion } from './founderOnboardingTransitionCompletionBoundary';
 
 const logger = functions.logger;
 const INDIA_OFFSET_MS = 330 * 60 * 1000;
@@ -223,7 +231,7 @@ async function readCollection(collectionName: string, limit: number, orderField?
             collectionName,
             orderField: orderField || null,
             limit,
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedFunctionsErrorName(error) || typeof error,
         });
         return null;
     }
@@ -240,7 +248,7 @@ async function readMenuListSubscriptions() {
     } catch (error) {
         logger.warn('[FounderMonitor] MenuList subscription read failed', {
             limit: SUBSCRIPTION_LIMIT,
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedFunctionsErrorName(error) || typeof error,
         });
         return null;
     }
@@ -251,7 +259,10 @@ function appendUniqueCleanId(value: unknown, target: string[]) {
     if (id && !target.includes(id)) target.push(id);
 }
 
-function summarizeDailyMovements(docs: FirebaseFirestore.QueryDocumentSnapshot[]) {
+function summarizeDailyMovements(
+    docs: FirebaseFirestore.QueryDocumentSnapshot[],
+    expectedBusinessDayKey: string,
+) {
     const initial: DailyMovementSummary = {
         cashCollectedPaise: 0,
         churnedMrrPaise: 0,
@@ -266,10 +277,19 @@ function summarizeDailyMovements(docs: FirebaseFirestore.QueryDocumentSnapshot[]
         refundAmountPaise: 0,
     };
 
-    return docs.reduce((acc, doc) => {
-        const data = doc.data() || {};
-        const amount = safeNumber(data.amountPaise);
-        const kind = cleanText(data.kind, 80);
+    let invalidMovementCount = 0;
+    const summary = docs.reduce((acc, doc) => {
+        const data = projectFounderRevenueMovementRow({
+            data: doc.data(),
+            documentId: doc.id,
+            expectedBusinessDayKey,
+        });
+        if (!data) {
+            invalidMovementCount += 1;
+            return acc;
+        }
+        const amount = data.amountPaise;
+        const kind = data.kind;
         if (kind === 'cash_collected') acc.cashCollectedPaise += amount;
         if (kind === 'failed_payment') {
             acc.failedPaymentAmountPaise += amount;
@@ -278,8 +298,8 @@ function summarizeDailyMovements(docs: FirebaseFirestore.QueryDocumentSnapshot[]
         if (kind === 'new_mrr') {
             acc.newMrrPaise += amount;
             acc.netNewMrrPaise += amount;
-            appendUniqueCleanId(data.storeId || data.sId, acc.newStoreIds);
-            appendUniqueCleanId(data.tenantId || data.tId, acc.newTenantIds);
+            appendUniqueCleanId(data.storeId, acc.newStoreIds);
+            appendUniqueCleanId(data.tenantId, acc.newTenantIds);
         }
         if (kind === 'churn') {
             acc.churnedMrrPaise += amount;
@@ -296,18 +316,26 @@ function summarizeDailyMovements(docs: FirebaseFirestore.QueryDocumentSnapshot[]
         }
         return acc;
     }, initial);
+    return { invalidMovementCount, summary };
 }
 
-function buildTransitionCompletionPayload(candidate: OnboardingTransitionCandidate) {
+function buildTransitionCompletionPayload(
+    candidate: OnboardingTransitionCandidate,
+    completion: {
+        firstLiveAt: Date;
+        paymentAt: Date;
+        timeToLiveHours: number;
+    },
+) {
     const payload: Record<string, any> = {
-        firstLiveAt: Timestamp.fromDate(candidate.firstLiveAt),
+        firstLiveAt: Timestamp.fromDate(completion.firstLiveAt),
         modifiedOn: FieldValue.serverTimestamp(),
-        paymentAt: Timestamp.fromDate(candidate.paymentAt),
+        paymentAt: Timestamp.fromDate(completion.paymentAt),
         source: 'menulistMaintenanceScheduler:founderMonitorSnapshot',
         storeId: candidate.storeId,
         subscriptionId: candidate.subscriptionId,
         tenantId: candidate.tenantId,
-        timeToLiveHours: candidate.timeToLiveHours,
+        timeToLiveHours: completion.timeToLiveHours,
         sId: candidate.storeId,
         tId: candidate.tenantId,
     };
@@ -331,16 +359,46 @@ async function writeOnboardingTransitionCompletions(candidates: OnboardingTransi
         };
     }
 
-    const batch = db.batch();
-    writable.forEach((candidate) => {
-        const ref = db.collection(DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS).doc(candidate.storeId);
-        batch.set(ref, buildTransitionCompletionPayload(candidate), { merge: true });
+    const result = await db.runTransaction(async (transaction) => {
+        const rows = await Promise.all(writable.map(async (candidate) => {
+            const ref = db.collection(DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS).doc(candidate.storeId);
+            return {
+                candidate,
+                ref,
+                snapshot: await transaction.get(ref),
+            };
+        }));
+        let scopeConflictCount = 0;
+        let writeCount = 0;
+        rows.forEach(({ candidate, ref, snapshot }) => {
+            const completion = resolveFounderOnboardingTransitionCompletion({
+                candidate,
+                currentData: snapshot.exists ? snapshot.data() : undefined,
+                documentId: ref.id,
+            });
+            if (completion.status === 'scope_conflict') {
+                scopeConflictCount += 1;
+                return;
+            }
+            if (completion.status === 'already_complete') return;
+            transaction.set(
+                ref,
+                buildTransitionCompletionPayload(candidate, completion),
+                { merge: true },
+            );
+            writeCount += 1;
+        });
+        return { scopeConflictCount, writeCount };
     });
-    await batch.commit();
+    if (result.scopeConflictCount > 0) {
+        logger.error('[FounderMonitor] Conflicting onboarding transitions were not overwritten', {
+            scopeConflictCount: result.scopeConflictCount,
+        });
+    }
 
     const pendingCount = candidates.filter((candidate) => !candidate.hasCompleteTransition).length;
     return {
-        writeCount: writable.length,
+        writeCount: result.writeCount,
         writeCapped: pendingCount > writable.length,
     };
 }
@@ -419,7 +477,7 @@ async function emitFounderMonitorRiskAlerts(params: {
     await Promise.all(alerts.map((alert) => createAlert(alert).catch((error) => {
         logger.error('[FounderMonitor] Failed to create risk alert', {
             title: alert.title,
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedFunctionsErrorName(error) || typeof error,
         });
     })));
 }
@@ -450,7 +508,10 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
     const subscriptionReadCapped = (subscriptionSnap?.size || 0) >= SUBSCRIPTION_LIMIT;
     const supportReadCapped = (supportSnap?.size || 0) >= SUPPORT_TICKET_LIMIT;
     const movementReadCapped = todayMovementSnap.size >= MOVEMENT_RECONCILE_LIMIT;
+    const onboardingTransitionReadUnavailable = onboardingTransitionSnap === null;
     const onboardingTransitionReadCapped = (onboardingTransitionSnap?.size || 0) >= ONBOARDING_TRANSITION_LIMIT;
+    const onboardingTransitionReadComplete = !onboardingTransitionReadUnavailable
+        && !onboardingTransitionReadCapped;
 
     const subscriptions: SnapshotDocumentData[] = (subscriptionSnap?.docs || []).flatMap((doc) => {
         const data = (doc.data() || {}) as Record<string, any>;
@@ -478,32 +539,37 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
     (supportSnap?.docs || []).forEach((doc) => {
         const data = doc.data() || {};
         if (data.deleted) return;
-        const storeId = cleanText(data.sId || data.storeId, 80);
-        if (!storeId) return;
+        const scope = parseFounderMonitorSupportTicketScope(data);
+        if (!scope) return;
+        const scopeKey = buildFounderMonitorScopeKey(scope);
         const status = normalizeStatus(data.status || 'Open');
         const priority = normalizeStatus(data.priority || 'Normal');
         const open = !['closed', 'resolved'].includes(status);
         const critical = open && ['high', 'urgent', 'critical'].includes(priority);
-        const current = supportByStore.get(storeId) || { open: 0, critical: 0, recent: 0 };
+        const current = supportByStore.get(scopeKey) || { open: 0, critical: 0, recent: 0 };
         if (open) current.open += 1;
         if (critical) current.critical += 1;
         if (isToday(getDocumentDate(data), todayKey)) current.recent += 1;
-        supportByStore.set(storeId, current);
+        supportByStore.set(scopeKey, current);
     });
 
     const onboardingTransitionByStore = new Map<string, SnapshotDocumentData>();
     const completedTimeToLiveHoursByStore = new Map<string, number>();
     (onboardingTransitionSnap?.docs || []).forEach((doc) => {
         const data = doc.data() || {};
-        const storeId = cleanText(data.storeId || data.sId || doc.id, 80);
-        if (!storeId) return;
-        onboardingTransitionByStore.set(storeId, {
+        const scope = parseFounderOnboardingTransitionScope(doc.id, data);
+        if (!scope) return;
+        onboardingTransitionByStore.set(scope.storeId, {
             ...data,
             id: doc.id,
+            storeId: scope.storeId,
+            sId: scope.storeId,
+            tenantId: scope.tenantId,
+            tId: scope.tenantId,
         });
         const timeToLiveHours = finiteNumberOrNull(data.timeToLiveHours);
         if (timeToLiveHours !== null) {
-            completedTimeToLiveHoursByStore.set(storeId, timeToLiveHours);
+            completedTimeToLiveHoursByStore.set(scope.storeId, timeToLiveHours);
         }
     });
 
@@ -521,6 +587,7 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
     let scoredStores = 0;
     let totalTruthScore = 0;
     const onboardingTransitionCandidates: OnboardingTransitionCandidate[] = [];
+    const matchedSupportCounts: Array<{ open: number; critical: number; recent: number }> = [];
 
     const storeRows = Object.entries(storesSummary).map(([storeId, summaryValue]) => {
         const summary = summaryValue;
@@ -536,8 +603,19 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
         const hasPlan = Boolean(summary.activePlanType) || Boolean(subscription && (isActiveSubscription(subscription) || isPastDueSubscription(subscription)));
         const paying = Boolean(subscription && (isActiveSubscription(subscription) || isPastDueSubscription(subscription)));
         const stale = truth.staleFlag === true || (publishAgeDays !== null && publishAgeDays > 90);
-        const supportCounts = supportByStore.get(storeId) || { open: 0, critical: 0, recent: 0 };
-        const onboardingTransition = onboardingTransitionByStore.get(storeId);
+        const supportCounts = supportByStore.get(buildFounderMonitorScopeKey({
+            tenantId: summary.tId,
+            storeId,
+        })) || { open: 0, critical: 0, recent: 0 };
+        matchedSupportCounts.push(supportCounts);
+        const storedOnboardingTransition = onboardingTransitionByStore.get(storeId);
+        const onboardingTransition = storedOnboardingTransition
+            && (
+                storedOnboardingTransition.tenantId === null
+                || storedOnboardingTransition.tenantId === summary.tId
+            )
+            ? storedOnboardingTransition
+            : undefined;
         const transitionPaymentAt = toDate(onboardingTransition?.paymentAt)
             || toDate(subscription?.subscriptionStartDate)
             || getDocumentDate(subscription || {});
@@ -559,7 +637,14 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
             if (paying && truthScore < 70) payingStoresBelow70 += 1;
         }
         if (active && hasPublishedMenu && hasPlan && !stale && (truthScore === null || truthScore >= 70)) trustedLiveStores += 1;
-        if (active && hasPlan && hasPublishedMenu && lastPublishedAt && transitionPaymentAt) {
+        if (
+            active
+            && hasPlan
+            && hasPublishedMenu
+            && lastPublishedAt
+            && transitionPaymentAt
+            && (onboardingTransition || onboardingTransitionReadComplete)
+        ) {
             const timeToLiveHours = transitionTimeToLiveHours !== null
                 ? transitionTimeToLiveHours
                 : hoursBetween(transitionPaymentAt, lastPublishedAt);
@@ -570,7 +655,7 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
                 paymentAt: transitionPaymentAt,
                 storeId,
                 subscriptionId: cleanText(subscription?.id || subscription?.providerSubscriptionId, 160) || cleanText(onboardingTransition?.subscriptionId, 160) || null,
-                tenantId: cleanText(summary.tId || summary.tenantId || onboardingTransition?.tenantId, 80) || null,
+                tenantId: summary.tId,
                 timeToLiveHours,
                 transitionExists: Boolean(onboardingTransition),
             });
@@ -587,7 +672,7 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
 
         return {
             id: storeId,
-            tenantId: cleanText(summary.tId || summary.tenantId, 80),
+            tenantId: summary.tId,
             tenantName: cleanText(summary.tenantName || 'Tenant not recorded', 120),
             storeId,
             storeName: cleanText(summary.name || summary.storeName || `Store ${storeId}`, 120),
@@ -619,7 +704,14 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
     const churnedSubscriptions = subscriptions.filter(isChurnedSubscription);
     const currentMrrPaise = activeSubscriptions.reduce((sum, subscription) => sum + getSubscriptionMrrPaise(subscription), 0);
     const pastDueMrrPaise = pastDueSubscriptions.reduce((sum, subscription) => sum + getSubscriptionMrrPaise(subscription), 0);
-    const dailyRevenue = summarizeDailyMovements(todayMovementSnap.docs);
+    const dailyMovementProjection = summarizeDailyMovements(todayMovementSnap.docs, todayKey);
+    const dailyRevenue = dailyMovementProjection.summary;
+    if (dailyMovementProjection.invalidMovementCount > 0) {
+        logger.error('[FounderMonitor] Invalid persisted revenue movements were excluded', {
+            businessDayKey: todayKey,
+            invalidMovementCount: dailyMovementProjection.invalidMovementCount,
+        });
+    }
     const completedTimeToLiveHours = Array.from(completedTimeToLiveHoursByStore.values())
         .filter((value) => Number.isFinite(value));
     const averageTimeToLiveHours = completedTimeToLiveHours.length > 0
@@ -628,7 +720,7 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
     const transitionWritePlan = onboardingTransitionCandidates
         .filter((candidate) => !candidate.hasCompleteTransition);
 
-    const supportCounts = Array.from(supportByStore.values());
+    const supportCounts = matchedSupportCounts;
     const dataGaps = [
         ...(completedTimeToLiveHours.length === 0 ? [{
             id: 'time-to-live-ledger-warming',
@@ -640,6 +732,12 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
             id: 'onboarding-transition-read-capped',
             label: 'Onboarding transition read reached the safety cap',
             detail: `Time-to-live calculation used ${ONBOARDING_TRANSITION_LIMIT} onboarding transition documents.`,
+            severity: 'watch',
+        }] : []),
+        ...(onboardingTransitionReadUnavailable ? [{
+            id: 'onboarding-transition-read-unavailable',
+            label: 'Onboarding transition read was unavailable',
+            detail: 'Existing transition truth could not be verified, so the scheduler did not infer or overwrite missing transition documents.',
             severity: 'watch',
         }] : []),
         ...(transitionWritePlan.length > ONBOARDING_TRANSITION_WRITE_LIMIT ? [{
@@ -664,6 +762,12 @@ export async function rebuildFounderMonitorSnapshotLogic(): Promise<ReconcileRes
             id: 'daily-movement-read-capped',
             label: 'Daily revenue movement read reached the safety cap',
             detail: `Daily reconciliation used ${MOVEMENT_RECONCILE_LIMIT} founder revenue movements for ${todayKey}. Runtime counters remain the live revenue source.`,
+            severity: 'watch',
+        }] : []),
+        ...(dailyMovementProjection.invalidMovementCount > 0 ? [{
+            id: 'invalid-daily-revenue-movements',
+            label: 'Invalid revenue movements were excluded',
+            detail: `${dailyMovementProjection.invalidMovementCount} malformed or conflicting movement document(s) were excluded from ${todayKey} reconciliation.`,
             severity: 'watch',
         }] : []),
     ];

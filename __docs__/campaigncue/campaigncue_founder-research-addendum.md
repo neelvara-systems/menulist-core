@@ -128,6 +128,40 @@ Implementation boundary:
 - no new collection, overview read, listener, Storage object, Cloud Function, provider call, or social integration is added;
 - model-assisted classification remains disabled until CampaignCue-specific capacity accounting, SAFE_MODE, rate limits, candidate validation, and cost reporting are active.
 
+## July 28, 2026 Distribution 101 Review
+
+The complete cross-product verdict is maintained in the [Product Portfolio
+Distribution Insight
+Ledger](../strategy/product-portfolio-distribution-insight-ledger.md).
+
+Useful CampaignCue translation:
+
+| External principle | CampaignCue fit |
+| --- | --- |
+| Match one audience to one product problem. | A future CampaignCue GTM path must choose a specific local-business operator or agency workflow; it must not build a generic marketing/creator audience. |
+| Package before production. | Keep intended buyer, channel, promise, first frame/title, source fact, proof, and CTA visible before a Campaign Pack or video/UGC brief is prepared. |
+| Teach a sub-problem the product solves. | Demonstrate how a checked business fact becomes an export-ready WhatsApp, Google/local, social/print, creator, or staff handoff without inventing facts or promising provider posting. |
+| Reuse one source across channels. | Continue the existing source-to-channel pack, Pattern Cue, Campaign Pack ZIP, Trust Center, and result-receipt model. Native derivatives remain separately reviewed outputs. |
+| Measure business outcomes. | Use qualified workspace interest and, after launch, source-backed pack creation/use and result receipts. Do not equate views, clicks, copies, or exports with bookings, orders, revenue, or ROI. |
+
+Current decision:
+
+- keep this as `DEFERRED_REFERENCE` for CampaignCue public GTM;
+- do not create accounts, publish a campaign, or change public claims from this
+  research alone;
+- keep export/download as the active delivery boundary;
+- keep direct posting, provider connections, paid mutation, automated
+  distribution, and billing-disabled claims blocked;
+- reject fake-US/proxy account setup, aged or bought accounts, algorithm
+  guarantees, spam-volume posting, engagement manipulation, competitor copying,
+  and undisclosed affiliate or creator arrangements;
+- revalidate the channel plan when the public site, billing, product proof, and
+  founder launch decision are ready.
+
+Cost impact: documentation only. No Firestore read/write/delete, Storage object,
+Cloud Function, provider call, route, feature flag, scheduler, Firebase deploy,
+Vercel deploy, or production build is added.
+
 ## Required Product Principles
 
 1. **Export-first is not a weakness.** Manual download/export/share is a core product path because local channels and APIs are inconsistent.

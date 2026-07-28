@@ -12,7 +12,10 @@ import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionMani
 import { getAnswerlatticeScopeLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { getAnswerlatticeArticleEmbeddingInput } from '@lib/answerlattice/embeddingSourceBoundary';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+} from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin as db } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { callGeminiEmbeddingWithMetadata } from '@lib/vectorEmbeddings';
 import crypto from 'crypto';
@@ -65,8 +68,8 @@ const parseArticle = (snapshot: FirebaseFirestore.DocumentSnapshot, scope: Artic
     const data = snapshot.data() || {};
     const articleId = normalizeAnswerlatticeKbArticleId(snapshot.id);
     const storedId = normalizeAnswerlatticeKbArticleId(data.id ?? snapshot.id);
-    const tId = normalizeAnswerlatticeScopeDocumentId(data.tId ?? data.tenantId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(data.sId ?? data.storeId);
+    const tId = normalizeConsistentAnswerlatticeScopeDocumentIds([data.tId, data.tenantId]);
+    const sId = normalizeConsistentAnswerlatticeScopeDocumentIds([data.sId, data.storeId]);
     const pId = data.pId ?? data.productId;
     const title = cleanText(data.title, 300);
     if (

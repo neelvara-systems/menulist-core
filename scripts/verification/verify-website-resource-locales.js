@@ -245,6 +245,7 @@ function verifyDefaultResourceRoutes() {
   const hubRoute = read('src/app/(website)/resources/page.tsx');
   const articleRoute = read('src/app/(website)/resources/[slug]/page.tsx');
   const shell = read('src/components/website/resources/ResourcePageShell.tsx');
+  const resourceIndex = read('src/content/websiteResources/index.ts');
   const articleSection = read('src/components/website/resources/ArticleSection.tsx');
   const defaultRoutes = [
     ['default resource hub route', hubRoute],
@@ -262,6 +263,16 @@ function verifyDefaultResourceRoutes() {
   assertIncludes(shell, `lang={WEBSITE_RESOURCE_DEFAULT_LOCALE}`, 'default resource locale boundary language wrapper');
   assertIncludes(shell, `dir="ltr"`, 'default resource locale boundary direction');
   assertIncludes(shell, 'public/locales/menulist.ai/en-US.json', 'default resource locale boundary messages');
+  assertIncludes(
+    resourceIndex,
+    '.filter((related): related is WebsiteResourceArticle => Boolean(related))',
+    'related resource article runtime type predicate',
+  );
+  assertNotIncludes(
+    resourceIndex,
+    '.filter(Boolean) as WebsiteResourceArticle[]',
+    'related resource article unchecked assertion',
+  );
   assertIncludes(articleSection, 'copyResourceChecklistToClipboard', 'resource article checklist copy helper');
   assertIncludes(articleSection, 'website_resource_checklist_copy_unavailable', 'resource article checklist clipboard unavailable code');
   assertIncludes(articleSection, 'website_resource_checklist_copy_failed', 'resource article checklist copy diagnostics');

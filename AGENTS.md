@@ -269,8 +269,9 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Auth**: NextAuth.js 4.24.15.
 - **Runtime**: Root Node 22 with `.nvmrc` pinned to 22.23.1.
 - **PWA runtime**: Serwist 9.5.12 with isolated owner/customer/MyCodex worker contracts; do not restore `next-pwa` or the retired root `worker/index.js`.
-- **Backend**: Root Firebase client 11.7.3 and Firebase Admin 14.2.0 through modular entry points; MenuList, Answerlattice, and SignalDesk Functions pin Firebase Admin 13.10.0 and Firebase Functions 6.6.0 through modular entry points.
-- **AI SDK**: `@google/genai` 0.12.0.
+- **Backend**: Root Firebase client 11.7.3 and Firebase Admin 14.2.0 through modular entry points; MenuList, Answerlattice, and SignalDesk Functions pin Firebase Admin 13.10.0 and stable Firebase Functions 7.3.0 through modular entry points. Answerlattice CI pins Firebase CLI 15.24.0; do not install Firebase Functions release candidates.
+- **AI SDK**: `@google/genai` 2.13.0 in the root app, MenuList Functions, and Answerlattice Functions.
+- **Gemini runtime contract**: Active text routes use explicit stable IDs from `src/data/shared/geminiRuntime.ts`: `gemini-3.5-flash-lite` for high-throughput structured work, `gemini-3.6-flash` for complex or escalation work, and `gemini-3.5-flash` for balanced work. Active image routes use `gemini-3.1-flash-lite-image` or `gemini-3.1-flash-image`. Never use `*-latest`, preview, experimental, or retired model IDs for provider calls. Every `generateContent` call must pass through the shared compatibility compiler, which removes deprecated sampling and unsupported candidate fields for every admitted Gemini 3.x model and rejects prefilled model turns where disallowed, `thinkingBudget`, incomplete function responses, and unknown model IDs before a paid call.
 - **Editors**: Tiptap v2.11.0 and Fabric.js 7.4.0; Fabric ships its own types.
 - **Styling**: Tailwind CSS for mobile, SASS/SCSS for desktop.
 

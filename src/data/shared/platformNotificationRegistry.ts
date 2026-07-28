@@ -64,6 +64,7 @@ export const PLATFORM_NOTIFICATION_TRIGGER_TYPES = {
   ANSWERLATTICE_COVERAGE_CRITICAL: 'ANSWERLATTICE_COVERAGE_CRITICAL',
   ANSWERLATTICE_INTEGRATION_FAILURE: 'ANSWERLATTICE_INTEGRATION_FAILURE',
   MANUAL_PLATFORM_ALERT: 'MANUAL_PLATFORM_ALERT',
+  CRITICAL_SYSTEM_ERROR: 'CRITICAL_SYSTEM_ERROR',
   UNKNOWN_SYSTEM_ALERT: 'UNKNOWN_SYSTEM_ALERT',
 } as const;
 
@@ -371,6 +372,18 @@ export const PLATFORM_NOTIFICATION_REGISTRY: PlatformNotificationRegistryEntry[]
     cooldownMinutes: 0,
     immediate: true,
     runbook: '/ops/platform-notifications.',
+  },
+  {
+    triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.CRITICAL_SYSTEM_ERROR,
+    productId: 'PLATFORM',
+    category: 'system',
+    severity: 'critical',
+    title: 'Critical system error',
+    description: 'A deduplicated critical runtime error requires operator review.',
+    defaultChannels: P1_CHANNELS,
+    cooldownMinutes: 60,
+    immediate: true,
+    runbook: 'Open systemErrors and correlate the function and bounded failure code.',
   },
   {
     triggerType: PLATFORM_NOTIFICATION_TRIGGER_TYPES.UNKNOWN_SYSTEM_ALERT,

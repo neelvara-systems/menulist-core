@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { MenuCardDensity, MenuCardExportPreset, MenuCardExportSettings } from '../models/exportTypes';
+import type { MenuCardExportSettings } from '../models/exportTypes';
 
 type MenuCardAdvisorSettingsInput = Partial<Pick<
     MenuCardExportSettings,
@@ -60,12 +60,16 @@ function boundedText(value: unknown, fallback: string, maxLength: number): strin
     return (text || fallback).slice(0, maxLength);
 }
 
-export function isMenuCardAdvisorPreset(value: string): value is MenuCardExportPreset {
+export function isMenuCardAdvisorPreset(value: string): value is MenuCardDesignAdvisorPreset {
     return isAllowedPreset(value);
 }
 
-export function isMenuCardAdvisorDensity(value: string): value is MenuCardDensity {
+export function isMenuCardAdvisorDensity(value: string): value is MenuCardDesignAdvisorDensity {
     return isAllowedDensity(value);
+}
+
+export function isMenuCardAdvisorStyle(value: string): value is MenuCardDesignAdvisorStyle {
+    return isAllowedStyle(value);
 }
 
 export function normalizeMenuCardDesignAdvice(

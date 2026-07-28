@@ -31,3 +31,18 @@ export const isMenuListSubscriptionEntitledForTenant = (
     const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscription);
     return Boolean(expectedTenantId && subscriptionScope?.tenantId === expectedTenantId);
 };
+
+export const isMenuListSubscriptionInExpectedEntitlementScope = (
+    subscription: unknown,
+    expectedScope: { tenantId: unknown; storeId: unknown },
+): boolean => {
+    const expectedTenantId = normalizeBillingSubscriptionScopeDocumentId(expectedScope.tenantId)?.numericId;
+    const expectedStoreId = normalizeBillingSubscriptionScopeDocumentId(expectedScope.storeId)?.numericId;
+    const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscription);
+    return Boolean(
+        expectedTenantId
+        && expectedStoreId
+        && subscriptionScope?.tenantId === expectedTenantId
+        && subscriptionScope.storeId === expectedStoreId
+    );
+};

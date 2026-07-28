@@ -8,6 +8,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { buildAnswerlatticeHookScopeKey } from '@lib/answerlattice/hookScopeBoundary';
 import {
     getPendingCandidates,
     rejectCandidateStatus,
@@ -16,7 +17,8 @@ import {
 } from '@database/answerlattice/entityCandidates';
 import { AnswerlatticeEntityCandidate } from '@type/answerlattice';
 import { message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 
 const ANSWERLATTICE_ENTITY_CANDIDATES_LOAD_FAILED = 'Could not load candidates';
 const ANSWERLATTICE_ENTITY_CANDIDATE_REJECT_FAILED = 'Could not reject candidate';
@@ -34,56 +36,100 @@ interface UseEntityCandidatesReturn {
 }
 
 export function useEntityCandidates(tId: number, sId: number): UseEntityCandidatesReturn {
+    const session = useClientAuthSession();
     const [candidates, setCandidates] = useState<AnswerlatticeEntityCandidate[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const requestedScopeKey = buildAnswerlatticeHookScopeKey(tId, sId);
+    const sessionScopeKey = buildAnswerlatticeHookScopeKey(session?.tId, session?.sId);
+    const scopeKey = requestedScopeKey === sessionScopeKey ? requestedScopeKey : null;
+    const scopeKeyRef = useRef(scopeKey);
+    const latestRefreshRef = useRef(0);
+    const mutationInFlightRef = useRef(false);
+    scopeKeyRef.current = scopeKey;
 
     const refresh = useCallback(async () => {
-        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY || !tId || !sId) return;
+        const requestScopeKey = scopeKey;
+        const requestId = latestRefreshRef.current + 1;
+        latestRefreshRef.current = requestId;
+        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY || !requestScopeKey) {
+            setCandidates([]);
+            setLoading(false);
+            setError(null);
+            return;
+        }
 
         setLoading(true);
         setError(null);
         try {
             const result = await getPendingCandidates(tId, sId);
+            if (scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId) return;
             setCandidates(result || []);
         } catch {
+            if (scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId) return;
             setError(ANSWERLATTICE_ENTITY_CANDIDATES_LOAD_FAILED);
         } finally {
-            setLoading(false);
+            if (scopeKeyRef.current === requestScopeKey && latestRefreshRef.current === requestId) {
+                setLoading(false);
+            }
         }
-    }, [tId, sId]);
+    }, [scopeKey, tId, sId]);
 
     useEffect(() => {
         refresh();
     }, [refresh]);
 
     const reject = useCallback(async (candidateId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return;
+        mutationInFlightRef.current = true;
         try {
             await rejectCandidateStatus(candidateId);
+            if (scopeKeyRef.current !== operationScopeKey) return;
             message.success('Candidate rejected');
             await refresh();
         } catch {
-            message.error(ANSWERLATTICE_ENTITY_CANDIDATE_REJECT_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_ENTITY_CANDIDATE_REJECT_FAILED);
+            }
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 
     const promote = useCallback(async (candidateId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return;
+        mutationInFlightRef.current = true;
         try {
             await promoteCandidate(candidateId, tId, sId);
+            if (scopeKeyRef.current !== operationScopeKey) return;
             message.success('Candidate promoted to entity');
             await refresh();
         } catch {
-            message.error(ANSWERLATTICE_ENTITY_CANDIDATE_PROMOTE_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_ENTITY_CANDIDATE_PROMOTE_FAILED);
+            }
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [tId, sId, refresh]);
 
     const merge = useCallback(async (candidateId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return;
+        mutationInFlightRef.current = true;
         try {
             await mergeCandidateStatus(candidateId);
+            if (scopeKeyRef.current !== operationScopeKey) return;
             message.success('Candidate marked as merged');
             await refresh();
         } catch {
-            message.error(ANSWERLATTICE_ENTITY_CANDIDATE_MERGE_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_ENTITY_CANDIDATE_MERGE_FAILED);
+            }
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 

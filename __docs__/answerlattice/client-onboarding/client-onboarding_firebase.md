@@ -76,7 +76,7 @@ Answerlattice onboarding writes subscription records with both compatibility and
 - `pId: 'AL'`
 - `productId: 'AL'`
 
-All provisioning tenant/store/user ownership checks and every existing `subscriptions/{providerSubscriptionId}` mutation require both product aliases plus present, agreeing numeric `tId/tenantId` and `sId/storeId` scope. Conflicting or incomplete legacy rows remain unchanged for investigation; they are never reclaimed or cancelled by onboarding compensation.
+All provisioning tenant/store/user ownership checks, every proposed pending-subscription payload, and every existing `subscriptions/{providerSubscriptionId}` mutation require both product aliases plus agreeing numeric `tId/tenantId` and `sId/storeId` scope. The final write derives all four workspace aliases from the validated provisioning scope; contradictory payloads fail before the transaction, leaving subscription, store summary, widget-key state, and onboarding status unchanged. Conflicting or incomplete legacy rows remain unchanged for investigation; they are never reclaimed or cancelled by onboarding compensation.
 
 The `stores/{sId}.answerlatticeSubscription` summary stores the active provider subscription id. Billing screens use that summary to direct-read `subscriptions/{subscriptionId}` instead of scanning subscriptions by status/date. This keeps the first billing load to one store read plus one subscription read in the normal path.
 
@@ -106,6 +106,7 @@ The import flow must use Answerlattice session scope and `answerlatticeStorage` 
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-28 | 1.8.3 | Documented exact pending-subscription payload admission, canonical four-alias projection, and no-write behavior on scope conflict |
 | 2026-07-19 | 1.8.2 | Corrected workspace-profile cost and atomic downstream synchronization after the Feature 29 audit |
 | 2026-07-19 | 1.8.1 | Documented duplicate-email read cap, terminal-checkout compensation, known-provider preservation, retry-field cleanup, and zero-read URL/response hardening |
 | 2026-07-19 | 1.8.0 | Replaced the obsolete two-read estimate with the shared allocator/finalization cost boundary and documented durable provider-recovery, entitlement, summary, and transaction-retry behavior |

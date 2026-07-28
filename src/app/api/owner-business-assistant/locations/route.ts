@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { parseSummaryStores } from '@lib/firestore/parseSummaryStores';
 import { getMappedStoreIdsForUser, isPlatformStoreAccessUser } from '@lib/multiOutlet/storeSwitchAccess';
@@ -26,7 +27,7 @@ import { withAuth } from '@/middleware/auth';
 
 const buildSessionUserForStoreAccess = (session: any, sId: string | number) => ({
   ...(session?.user || {}),
-  platformRole: session?.platformRole || session?.user?.platformRole,
+  platformRole: resolveExactSessionPlatformRole(session) || undefined,
   storeId: session?.user?.storeId || session?.sId || sId,
   storeIds: session?.user?.storeIds || session?.storeIds,
   stores: session?.user?.stores || session?.stores,
@@ -39,6 +40,18 @@ const STATUS_RANK: Record<OwnerBusinessHealthStatus, number> = {
   insufficient_data: 3,
   not_ready: 4,
   stable: 5,
+};
+const OWNER_BUSINESS_LOCATIONS_PRIVATE_RESPONSE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+  'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const privateJson = (body: unknown, init: ResponseInit = {}) => {
+  const headers = new Headers(init.headers);
+  Object.entries(OWNER_BUSINESS_LOCATIONS_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+    headers.set(name, value);
+  });
+  return NextResponse.json(body, { ...init, headers });
 };
 
 const isOwnerBusinessHealthStatus = (value: unknown): value is OwnerBusinessHealthStatus =>
@@ -90,7 +103,7 @@ const normalizeLocationStore = (value: unknown): OwnerBusinessMultiLocationStore
 
 export const GET = withAuth(async (request: NextRequest, session) => {
   if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_MULTI_LOCATION) {
-    return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
+    return privateJson({ error: 'Feature disabled' }, { status: 404 });
   }
 
   const rateLimit = await applyOwnerBusinessAssistantRateLimit({
@@ -105,7 +118,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     .pick({ storeId: true })
     .safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
   if (!parsedScope.success) {
-    return NextResponse.json({ error: 'Invalid query', details: getSafeZodValidationDetails(parsedScope.error) }, { status: 400 });
+    return privateJson({ error: 'Invalid query', details: getSafeZodValidationDetails(parsedScope.error) }, { status: 400 });
   }
 
   const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId);
@@ -156,7 +169,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
       return STATUS_RANK[left.status] - STATUS_RANK[right.status];
     });
 
-  return NextResponse.json({
+  return privateJson({
     data: {
       generatedAt: summarySnap.exists ? summarySnap.data()?.generatedAt || null : null,
       stores,

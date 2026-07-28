@@ -17,10 +17,17 @@ import {
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    normalizeAnswerlatticeKnowledgeIntakePublicUrl,
+    resolveAnswerlatticeKnowledgeIntakeDiscoveredUrl,
+    serializeAnswerlatticeKnowledgeIntakeValue,
+} from '@lib/answerlattice/knowledgeIntakeDiscoveryContracts';
+import {
     redactAnswerlatticeIntakeText,
     sanitizeAnswerlatticeIntakeMetadata,
 } from '@lib/answerlattice/knowledgeIntakePrivacy';
 import {
+    getAnswerlatticeKnowledgeIntakeTimestampMillis,
+    normalizeAnswerlatticeKnowledgeIntakeScope,
     parseAnswerlatticeIntakeReviewItem,
     parseAnswerlatticeKnowledgeIntakeJob,
     parseAnswerlatticeKnowledgeIntakeSummary,
@@ -40,7 +47,6 @@ import {
 } from '@lib/answerlattice/intakeUsageLedger';
 import { rebuildProductSurfaceContentSummaryServer } from '@lib/answerlattice/productSurfaceContentServer';
 import { validateProcedure } from '@lib/answerlattice/procedureValidation';
-import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
     fetchBoundedPublicText,
@@ -58,10 +64,18 @@ import {
     ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE,
     ANSWERLATTICE_MUTATION_STATUS,
     ANSWERLATTICE_MUTATION_TYPE,
+    ANSWERLATTICE_SOURCE_ACCESS_SCOPE,
+    ANSWERLATTICE_SOURCE_APPROVAL_STATUS,
+    ANSWERLATTICE_SOURCE_AUTHORITY,
+    ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY,
     type AnswerlatticeIntakeReviewItem,
     type AnswerlatticeKnowledgeIntakeBundle,
     type AnswerlatticeKnowledgeIntakeJob,
     type AnswerlatticeKnowledgeSource,
+    type AnswerlatticeSourceAccessScope,
+    type AnswerlatticeSourceApprovalStatus,
+    type AnswerlatticeSourceAuthority,
+    type AnswerlatticeSourceCitationEligibility,
 } from '@type/answerlattice';
 import { admin } from '@lib/firebase/firebaseAdminCompat';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -100,6 +114,26 @@ type AddSourceInput = {
     metadata?: Record<string, any>;
 };
 
+export type UpdateSourceGovernanceInput = {
+    requestId: string;
+    authority: AnswerlatticeSourceAuthority;
+    owner?: string | null;
+    approvalStatus: AnswerlatticeSourceApprovalStatus;
+    accessScope: AnswerlatticeSourceAccessScope;
+    citationEligibility: AnswerlatticeSourceCitationEligibility;
+    effectiveDate?: string | null;
+    reviewDate?: string | null;
+    applicability: {
+        products?: string[];
+        plans?: string[];
+        roles?: string[];
+        regions?: string[];
+        versions?: string[];
+    };
+    conflictSourceIds?: string[];
+    notes?: string | null;
+};
+
 type ProcessMediaSourceInput = {
     title?: string;
     fileName?: string;
@@ -135,6 +169,7 @@ const JOBS = DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS;
 const SOURCES = DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_SOURCES;
 const REVIEW_ITEMS = DB_COLLECTIONS.ANSWERLATTICE_INTAKE_REVIEW_ITEMS;
 const SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
+const AUDIT_LOGS = DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS;
 
 const DEFAULT_CATEGORY_ID = 'answerlattice-intake';
 const DEFAULT_SECTION_ID = 'support-starter';
@@ -155,7 +190,11 @@ const INTAKE_AUDIO_MIME_TYPES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav',
 const INTAKE_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/x-m4v', 'video/quicktime', 'video/webm', 'video/ogg']);
 
 export const getKnowledgeIntakeSummaryDocId = (tId: number, sId: number) =>
-    `knowledgeIntakeSummary_${Number(tId)}_${Number(sId)}`;
+    (() => {
+        const scope = normalizeAnswerlatticeKnowledgeIntakeScope(tId, sId);
+        if (!scope) throw new Error('Answerlattice workspace is not available.');
+        return `knowledgeIntakeSummary_${scope.tId}_${scope.sId}`;
+    })();
 
 const getKnowledgeIntakePublishFailureMessage = (publishedCount: number): string => (
     publishedCount > 0
@@ -170,18 +209,17 @@ const assertEnabled = () => {
 };
 
 const assertDb = () => {
-    if (!db || typeof (db as any).collection !== 'function') {
+    if (!db || typeof db.collection !== 'function') {
         throw new Error('Answerlattice Firebase is not configured.');
     }
 };
 
 const assertScope = (scope: IntakeScope) => {
-    const tId = Number(scope.tId);
-    const sId = Number(scope.sId);
-    if (!Number.isSafeInteger(tId) || !Number.isSafeInteger(sId) || tId <= 0 || sId <= 0) {
+    const normalizedScope = normalizeAnswerlatticeKnowledgeIntakeScope(scope.tId, scope.sId);
+    if (!normalizedScope) {
         throw new Error('Answerlattice workspace is not available.');
     }
-    return { tId, sId };
+    return normalizedScope;
 };
 
 const now = () => Timestamp.now();
@@ -219,7 +257,7 @@ const cleanIdList = (value: unknown, maxItems: number) =>
 
 const cleanIntakeSourceIds = (
     value: unknown,
-    maxItems = ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_SOURCE_IDS,
+    maxItems: number = ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_SOURCE_IDS,
 ) => {
     if (!Array.isArray(value)) return [];
     return Array.from(new Set(value
@@ -254,6 +292,10 @@ const actorFields = (actor?: IntakeActor) => ({
 const mutableActorFields = (actor?: IntakeActor) => ({
     modifiedBy: cleanText(actor?.email || actor?.name || actor?.id, 160) || 'answerlattice',
 });
+
+const getActorLabel = (actor?: IntakeActor) => (
+    cleanText(actor?.email || actor?.name || actor?.id, 180) || 'answerlattice'
+);
 
 const requireKnowledgeIntakeJobId = (jobId: string) => {
     const normalizedJobId = normalizeAnswerlatticeKnowledgeIntakeJobId(jobId);
@@ -319,8 +361,8 @@ const buildKnowledgeSourceId = (jobId: string, contentHash: string) =>
 const buildSummaryPatch = (scope: IntakeScope, patch: Record<string, any>) => ({
     schemaVersion: 1,
     pId: PRODUCT_IDS.ANSWERLATTICE,
-    tId: Number(scope.tId),
-    sId: Number(scope.sId),
+    tId: scope.tId,
+    sId: scope.sId,
     lastUpdated: now(),
     ...patch,
 });
@@ -464,8 +506,8 @@ export async function createKnowledgeIntakeJob(scopeInput: IntakeScope, input: C
         title,
         status: ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.COLLECTING,
         description: cleanText(input.description, 500),
-        productWebsiteUrl: normalizePublicUrl(input.productWebsiteUrl),
-        appUrl: normalizePublicUrl(input.appUrl),
+        productWebsiteUrl: normalizeAnswerlatticeKnowledgeIntakePublicUrl(input.productWebsiteUrl),
+        appUrl: normalizeAnswerlatticeKnowledgeIntakePublicUrl(input.appUrl),
         targetAudience: cleanText(input.targetAudience, 160) || null,
         defaultCategoryId: DEFAULT_CATEGORY_ID,
         defaultCategoryTitle: DEFAULT_CATEGORY_TITLE,
@@ -616,7 +658,7 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
     assertJobCanAcceptSource(job);
 
     const normalizedInputOriginUrl = input.originUrl
-        ? normalizePublicUrl(input.originUrl)
+        ? normalizeAnswerlatticeKnowledgeIntakePublicUrl(input.originUrl)
         : null;
     if (input.originUrl && !normalizedInputOriginUrl) {
         throw new Error('Use a public URL without credentials or sensitive query parameters.');
@@ -633,7 +675,9 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
         || redactAnswerlatticeIntakeText(cleanLongText(fetched.text || input.contentText, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS));
     const contentText = preparedRepeatedReply?.contentText
         || cleanLongText(redacted.text, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_TEXT_CHARS);
-    const normalizedOriginUrl = normalizePublicUrl(fetched.finalUrl || normalizedInputOriginUrl);
+    const normalizedOriginUrl = normalizeAnswerlatticeKnowledgeIntakePublicUrl(
+        fetched.finalUrl || normalizedInputOriginUrl,
+    );
     const computedContentHash = sha256([
         sourceType,
         normalizedOriginUrl || '',
@@ -718,6 +762,360 @@ export async function addKnowledgeSource(scopeInput: IntakeScope, jobId: string,
     return duplicate || source;
 }
 
+const cleanGovernanceList = (value: unknown) => {
+    const seen = new Set<string>();
+    return (Array.isArray(value) ? value : [])
+        .map(item => cleanText(item, 80))
+        .filter((item) => {
+            if (!item) return false;
+            const key = item.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .sort((left, right) => left.localeCompare(right))
+        .slice(0, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_APPLICABILITY_ITEMS);
+};
+
+const normalizeGovernanceDate = (value: unknown): string | null => {
+    const normalized = cleanText(value, 10);
+    if (!normalized) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+        throw new Error('Use a valid source governance date.');
+    }
+    const parsed = new Date(`${normalized}T00:00:00.000Z`);
+    if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== normalized) {
+        throw new Error('Use a valid source governance date.');
+    }
+    return normalized;
+};
+
+const normalizeGovernanceEnum = <T extends string>(
+    value: unknown,
+    allowed: readonly T[],
+    message: string,
+): T => {
+    if (typeof value === 'string' && allowed.includes(value as T)) return value as T;
+    throw new Error(message);
+};
+
+const normalizeSourceGovernanceInput = (
+    sourceId: string,
+    input: UpdateSourceGovernanceInput,
+) => {
+    const authority = normalizeGovernanceEnum(
+        input.authority,
+        Object.values(ANSWERLATTICE_SOURCE_AUTHORITY),
+        'Use a valid source authority.',
+    );
+    const approvalStatus = normalizeGovernanceEnum(
+        input.approvalStatus,
+        Object.values(ANSWERLATTICE_SOURCE_APPROVAL_STATUS),
+        'Use a valid source approval status.',
+    );
+    const accessScope = normalizeGovernanceEnum(
+        input.accessScope,
+        Object.values(ANSWERLATTICE_SOURCE_ACCESS_SCOPE),
+        'Use a valid source access scope.',
+    );
+    const citationEligibility = normalizeGovernanceEnum(
+        input.citationEligibility,
+        Object.values(ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY),
+        'Use a valid source citation setting.',
+    );
+    if (
+        citationEligibility === ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY.PUBLIC
+        && accessScope !== ANSWERLATTICE_SOURCE_ACCESS_SCOPE.PUBLIC
+    ) {
+        throw new Error('Only public sources can be publicly citable.');
+    }
+    if (
+        (
+            approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.EXCLUDED
+            || approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.SUPERSEDED
+        )
+        && citationEligibility !== ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY.NOT_CITABLE
+    ) {
+        throw new Error('Excluded or superseded sources must not be citable.');
+    }
+
+    const effectiveDate = normalizeGovernanceDate(input.effectiveDate);
+    const reviewDate = normalizeGovernanceDate(input.reviewDate);
+    if (effectiveDate && reviewDate && reviewDate < effectiveDate) {
+        throw new Error('Source review date cannot be before its effective date.');
+    }
+
+    const conflictSourceIds = cleanIntakeSourceIds(
+        input.conflictSourceIds,
+        ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_CONFLICTS,
+    ).sort();
+    if (conflictSourceIds.includes(sourceId)) {
+        throw new Error('A source cannot conflict with itself.');
+    }
+
+    return {
+        authority,
+        owner: cleanText(input.owner, 160) || null,
+        approvalStatus,
+        accessScope,
+        citationEligibility,
+        effectiveDate,
+        reviewDate,
+        applicability: {
+            products: cleanGovernanceList(input.applicability?.products),
+            plans: cleanGovernanceList(input.applicability?.plans),
+            roles: cleanGovernanceList(input.applicability?.roles),
+            regions: cleanGovernanceList(input.applicability?.regions),
+            versions: cleanGovernanceList(input.applicability?.versions),
+        },
+        conflictSourceIds,
+        notes: cleanLongText(
+            input.notes,
+            ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_NOTES_CHARS,
+        ) || null,
+    };
+};
+
+export async function updateKnowledgeSourceGovernance(
+    scopeInput: IntakeScope,
+    jobId: string,
+    sourceId: string,
+    input: UpdateSourceGovernanceInput,
+    actor?: IntakeActor,
+) {
+    assertEnabled();
+    if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE) {
+        throw new Error('Answerlattice source governance is not enabled.');
+    }
+    assertDb();
+    const scope = assertScope(scopeInput);
+    const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
+    const normalizedSourceId = requireKnowledgeIntakeSourceId(sourceId);
+    const requestId = cleanText(input.requestId, 80);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+        throw new Error('Use a valid source governance request identifier.');
+    }
+
+    const normalizedGovernance = normalizeSourceGovernanceInput(normalizedSourceId, input);
+    const requestFingerprint = sha256(JSON.stringify(normalizedGovernance));
+    const governanceAuditId = `source_governance_${sha256([
+        scope.tId,
+        scope.sId,
+        normalizedSourceId,
+        requestId,
+    ].join(':')).slice(0, 40)}`;
+    const targetRef = sourceRef(normalizedSourceId);
+    const auditRef = db.collection(AUDIT_LOGS).doc(governanceAuditId);
+    const reviewedOn = now();
+    const reviewedBy = getActorLabel(actor);
+
+    return db.runTransaction(async (transaction) => {
+        const [targetSnapshot, auditSnapshot] = await Promise.all([
+            transaction.get(targetRef),
+            transaction.get(auditRef),
+        ]);
+        if (!targetSnapshot.exists) throw new Error('Knowledge source not found.');
+        const currentSource = assertIntakeDocumentScope(
+            parseAnswerlatticeKnowledgeSource(targetSnapshot.data(), targetSnapshot.id),
+            scope,
+            'Knowledge source is not available.',
+        );
+        if (currentSource.jobId !== normalizedJobId) {
+            throw new Error('Knowledge source is not available for this intake job.');
+        }
+
+        if (auditSnapshot.exists) {
+            const audit = auditSnapshot.data() || {};
+            if (
+                audit.pId !== PRODUCT_IDS.ANSWERLATTICE
+                || audit.tId !== scope.tId
+                || audit.sId !== scope.sId
+                || audit.entityType !== 'knowledgeSource'
+                || audit.entityId !== normalizedSourceId
+                || audit.requestFingerprint !== requestFingerprint
+            ) {
+                throw new Error('Source governance request conflicts with an earlier request.');
+            }
+            const replayNewState = (
+                audit.newState
+                && typeof audit.newState === 'object'
+                && !Array.isArray(audit.newState)
+            )
+                ? audit.newState as Record<string, unknown>
+                : {};
+            const replayReciprocalUpdates = Array.isArray(replayNewState.reciprocalConflictUpdates)
+                ? replayNewState.reciprocalConflictUpdates
+                : [];
+            const replayReciprocalSourceIds = cleanIntakeSourceIds(
+                replayReciprocalUpdates.map((update) => (
+                    update
+                    && typeof update === 'object'
+                    && !Array.isArray(update)
+                        ? (update as Record<string, unknown>).sourceId
+                        : null
+                )),
+                ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_CONFLICTS * 2,
+            ).filter(conflictSourceId => conflictSourceId !== normalizedSourceId);
+            const replayReciprocalSnapshots = await Promise.all(
+                replayReciprocalSourceIds.map(conflictSourceId => transaction.get(sourceRef(conflictSourceId))),
+            );
+            const replayReciprocalGovernanceUpdates = replayReciprocalSnapshots.map((snapshot, index) => {
+                if (!snapshot.exists) throw new Error('Source governance replay is not available.');
+                const replaySource = assertIntakeDocumentScope(
+                    parseAnswerlatticeKnowledgeSource(snapshot.data(), snapshot.id),
+                    scope,
+                    'Source governance replay is not available.',
+                );
+                if (
+                    replaySource.jobId !== normalizedJobId
+                    || replaySource.id !== replayReciprocalSourceIds[index]
+                    || !replaySource.governance
+                ) {
+                    throw new Error('Source governance replay is not available.');
+                }
+                return {
+                    sourceId: replaySource.id,
+                    governance: replaySource.governance,
+                };
+            });
+            return {
+                source: currentSource,
+                governanceUpdates: [
+                    ...(currentSource.governance
+                        ? [{ sourceId: currentSource.id, governance: currentSource.governance }]
+                        : []),
+                    ...replayReciprocalGovernanceUpdates,
+                ],
+            };
+        }
+
+        const previousConflictSourceIds = cleanIntakeSourceIds(
+            currentSource.governance?.conflictSourceIds,
+            ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_CONFLICTS,
+        ).sort();
+        const conflictSourceIdsToRead = Array.from(new Set([
+            ...previousConflictSourceIds,
+            ...normalizedGovernance.conflictSourceIds,
+        ])).sort();
+        const conflictSnapshots = await Promise.all(
+            conflictSourceIdsToRead.map(conflictSourceId => transaction.get(sourceRef(conflictSourceId))),
+        );
+        const conflictSources = conflictSnapshots.map((snapshot, index) => {
+            if (!snapshot.exists) throw new Error('Conflicting knowledge source not found.');
+            const conflictSource = assertIntakeDocumentScope(
+                parseAnswerlatticeKnowledgeSource(snapshot.data(), snapshot.id),
+                scope,
+                'Conflicting knowledge source is not available.',
+            );
+            if (
+                conflictSource.jobId !== normalizedJobId
+                || conflictSource.id !== conflictSourceIdsToRead[index]
+            ) {
+                throw new Error('Conflicting knowledge source is not available for this intake job.');
+            }
+            return conflictSource;
+        });
+
+        const governance = {
+            ...normalizedGovernance,
+            reviewedBy,
+            reviewedOn: reviewedOn as any,
+        };
+        const reciprocalAuditUpdates: Array<{ sourceId: string; conflictSourceIds: string[] }> = [];
+        const reciprocalGovernanceUpdates = conflictSources.flatMap((conflictSource) => {
+            const shouldContainTarget = normalizedGovernance.conflictSourceIds.includes(conflictSource.id);
+            if (shouldContainTarget && !conflictSource.governance) {
+                throw new Error('Review every conflicting source before linking it.');
+            }
+            if (!conflictSource.governance) return [];
+
+            const currentReciprocalIds = cleanIntakeSourceIds(
+                conflictSource.governance.conflictSourceIds,
+                ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_CONFLICTS,
+            ).sort();
+            const currentlyContainsTarget = currentReciprocalIds.includes(normalizedSourceId);
+            let nextReciprocalIds = currentReciprocalIds;
+            if (shouldContainTarget && !currentlyContainsTarget) {
+                nextReciprocalIds = [...currentReciprocalIds, normalizedSourceId].sort();
+                if (
+                    nextReciprocalIds.length
+                    > ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_CONFLICTS
+                ) {
+                    throw new Error(
+                        `A conflicting source already has ${ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_CONFLICTS} unresolved conflicts.`,
+                    );
+                }
+            } else if (!shouldContainTarget && currentlyContainsTarget) {
+                nextReciprocalIds = currentReciprocalIds.filter(id => id !== normalizedSourceId);
+            }
+
+            const reciprocalGovernance = (
+                nextReciprocalIds === currentReciprocalIds
+                    ? conflictSource.governance
+                    : {
+                        ...conflictSource.governance,
+                        conflictSourceIds: nextReciprocalIds,
+                        reviewedBy,
+                        reviewedOn: reviewedOn as any,
+                    }
+            );
+            if (nextReciprocalIds !== currentReciprocalIds) {
+                transaction.update(sourceRef(conflictSource.id), {
+                    governance: reciprocalGovernance,
+                    modifiedOn: reviewedOn,
+                    ...mutableActorFields(actor),
+                });
+                reciprocalAuditUpdates.push({
+                    sourceId: conflictSource.id,
+                    conflictSourceIds: nextReciprocalIds,
+                });
+            }
+            return [{
+                sourceId: conflictSource.id,
+                governance: reciprocalGovernance,
+            }];
+        });
+
+        transaction.update(targetRef, {
+            governance,
+            modifiedOn: reviewedOn,
+            ...mutableActorFields(actor),
+        });
+        transaction.create(auditRef, {
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: scope.tId,
+            sId: scope.sId,
+            action: 'knowledge_source_governance_updated',
+            entityType: 'knowledgeSource',
+            entityId: normalizedSourceId,
+            previousState: {
+                governance: currentSource.governance || null,
+            },
+            newState: {
+                governance,
+                reciprocalConflictUpdates: reciprocalAuditUpdates,
+            },
+            performedBy: reviewedBy,
+            requestId,
+            requestFingerprint,
+            timestamp: reviewedOn,
+            createdOn: reviewedOn,
+        });
+        return {
+            source: {
+                ...currentSource,
+                governance,
+                modifiedOn: reviewedOn as any,
+                ...mutableActorFields(actor),
+            },
+            governanceUpdates: [
+                { sourceId: normalizedSourceId, governance },
+                ...reciprocalGovernanceUpdates,
+            ],
+        };
+    });
+}
+
 async function claimKnowledgeIntakeMediaSource(params: {
     actor?: IntakeActor;
     contentHash: string;
@@ -759,10 +1157,9 @@ async function claimKnowledgeIntakeMediaSource(params: {
             if (existing.status === 'ready') {
                 return { claimId: null, duplicate: { ...existing, duplicate: true } };
             }
-            const leaseExpiry = existing.processingRun?.leaseExpiresAt
-                && typeof (existing.processingRun.leaseExpiresAt as any).toMillis === 'function'
-                ? (existing.processingRun.leaseExpiresAt as any).toMillis()
-                : 0;
+            const leaseExpiry = getAnswerlatticeKnowledgeIntakeTimestampMillis(
+                existing.processingRun?.leaseExpiresAt,
+            ) || 0;
             if (existing.status === 'processing' && leaseExpiry > Date.now()) {
                 throw new Error('Media extraction for this file is already running.');
             }
@@ -1254,6 +1651,34 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
         ) {
             throw new Error('Add a supported answer before accepting a canonical answer proposal.');
         }
+        if (
+            FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE
+            && nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL
+            && nextStatus === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED
+        ) {
+            const evidenceSourceIds = getReviewItemSourceIds(current);
+            if (!evidenceSourceIds.length) {
+                throw new Error('Add reviewed source evidence before accepting a canonical answer proposal.');
+            }
+            const evidenceSnapshots = await Promise.all(
+                evidenceSourceIds.map(evidenceSourceId => tx.get(sourceRef(evidenceSourceId))),
+            );
+            const evidenceIsGoverned = evidenceSnapshots.every((sourceSnapshot, index) => {
+                if (!sourceSnapshot.exists) return false;
+                const source = assertIntakeDocumentScope(
+                    parseAnswerlatticeKnowledgeSource(sourceSnapshot.data(), sourceSnapshot.id),
+                    scope,
+                    'Knowledge source is not available.',
+                );
+                return source.id === evidenceSourceIds[index]
+                    && source.jobId === normalizedJobId
+                    && source.governance?.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.APPROVED
+                    && source.governance.conflictSourceIds.length === 0;
+            });
+            if (!evidenceIsGoverned) {
+                throw new Error('Review every linked source and resolve its conflicts before accepting this canonical answer proposal.');
+            }
+        }
         const modifiedAt = now();
         tx.set(ref, {
             ...patch,
@@ -1329,16 +1754,13 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             'Knowledge intake job is not available.',
         );
         const currentRun = currentJob.analysisRun;
-        const leaseExpiry = currentRun?.leaseExpiresAt && typeof (currentRun.leaseExpiresAt as any).toMillis === 'function'
-            ? (currentRun.leaseExpiresAt as any).toMillis()
-            : 0;
+        const leaseExpiry = getAnswerlatticeKnowledgeIntakeTimestampMillis(currentRun?.leaseExpiresAt) || 0;
         if (currentRun?.status === 'processing' && leaseExpiry > Date.now()) {
             throw new Error('Knowledge intake analysis is already running.');
         }
-        const launchPackLeaseExpiry = currentJob.launchPackRun?.leaseExpiresAt
-            && typeof (currentJob.launchPackRun.leaseExpiresAt as any).toMillis === 'function'
-            ? (currentJob.launchPackRun.leaseExpiresAt as any).toMillis()
-            : 0;
+        const launchPackLeaseExpiry = getAnswerlatticeKnowledgeIntakeTimestampMillis(
+            currentJob.launchPackRun?.leaseExpiresAt,
+        ) || 0;
         if (currentJob.launchPackRun?.status === 'processing' && launchPackLeaseExpiry > Date.now()) {
             throw new Error('Product-specific starter pack generation is already running.');
         }
@@ -1491,7 +1913,17 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
     }
 }
 
-export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: string, itemIds?: string[], actor?: IntakeActor) {
+type KnowledgeIntakePublishDependencies = {
+    rebuildContextSummary?: typeof rebuildProductSurfaceContentSummaryServer;
+};
+
+export async function publishKnowledgeIntakeJob(
+    scopeInput: IntakeScope,
+    jobId: string,
+    itemIds?: string[],
+    actor?: IntakeActor,
+    dependencies: KnowledgeIntakePublishDependencies = {},
+) {
     assertEnabled();
     assertDb();
     const scope = assertScope(scopeInput);
@@ -1517,10 +1949,9 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             scope,
             'Knowledge intake job is not available.',
         );
-        const leaseExpiry = currentJob.publishRun?.leaseExpiresAt
-            && typeof (currentJob.publishRun.leaseExpiresAt as any).toMillis === 'function'
-            ? (currentJob.publishRun.leaseExpiresAt as any).toMillis()
-            : 0;
+        const leaseExpiry = getAnswerlatticeKnowledgeIntakeTimestampMillis(
+            currentJob.publishRun?.leaseExpiresAt,
+        ) || 0;
         if (currentJob.publishRun?.status === 'processing' && leaseExpiry > Date.now()) {
             throw new Error('Knowledge intake publishing is already running.');
         }
@@ -1549,14 +1980,58 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
     });
 
     const published: Array<{ itemId: string; target: string; id: string }> = [];
-    const segments = new Set<AnswerlatticePublicCacheSegment>();
+    const pendingFinalizations: Array<{
+        item: AnswerlatticeIntakeReviewItem;
+        id: string;
+        segments: AnswerlatticePublicCacheSegment[];
+    }> = [];
 
     try {
         for (const item of acceptedItems) {
             const result = await publishReviewItem(scope, claimedJob, item, actor);
             if (result) {
-                published.push({ itemId: item.id, target: item.target, id: result.id });
-                result.segments.forEach(segment => segments.add(segment));
+                if (item.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL) {
+                    published.push({ itemId: item.id, target: item.target, id: result.id });
+                } else {
+                    pendingFinalizations.push({ item, id: result.id, segments: result.segments });
+                }
+            }
+        }
+
+        if (pendingFinalizations.length > 0) {
+            await (dependencies.rebuildContextSummary || rebuildProductSurfaceContentSummaryServer)({
+                tId: scope.tId,
+                sId: scope.sId,
+                reason: 'knowledge_intake_publish',
+            });
+            for (const pending of pendingFinalizations) {
+                await finalizePublishedReviewItem(
+                    scope,
+                    pending.item,
+                    pending.id,
+                    pending.item.target,
+                    pending.segments,
+                );
+                published.push({
+                    itemId: pending.item.id,
+                    target: pending.item.target,
+                    id: pending.id,
+                });
+                if (pending.item.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.KB_ARTICLE) {
+                    await embedAnswerlatticeArticle({
+                        actor,
+                        articleId: pending.id,
+                        scope,
+                        source: 'answerlattice_knowledge_intake_publish',
+                    }).catch((error) => {
+                        logAnswerlatticeKnowledgeIntakeFailure(
+                            '[Answerlattice Intake] Article embedding failed after publish',
+                            'answerlattice_intake_article_embedding_failed',
+                            error,
+                            { articleId: pending.id, scope },
+                        );
+                    });
+                }
             }
         }
 
@@ -1627,25 +2102,6 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             }), { merge: true });
         });
 
-        await rebuildProductSurfaceContentSummaryServer({
-            tId: scope.tId,
-            sId: scope.sId,
-            reason: 'knowledge_intake_publish',
-        }).catch((error) => logAnswerlatticeKnowledgeIntakeFailure(
-            '[Answerlattice Intake] Context summary rebuild failed after publish',
-            'answerlattice_intake_context_summary_rebuild_failed',
-            error,
-            { scope },
-        ));
-        await Promise.all(Array.from(segments).map(segment => revalidateAnswerlatticePublicCache(scope.tId, scope.sId, segment))).catch((cacheError) => {
-            logAnswerlatticeKnowledgeIntakeFailure(
-                '[Answerlattice Intake] Public cache revalidation failed after publish',
-                'answerlattice_intake_publish_cache_revalidation_failed',
-                cacheError,
-                { cacheSegment: Array.from(segments)[0], jobId: normalizedJobId, scope },
-            );
-        });
-
         return { published };
     } catch (error) {
         const failedAt = now();
@@ -1657,16 +2113,6 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             });
             return null;
         });
-
-        if (segments.size > 0) {
-            await Promise.all(Array.from(segments).map(segment => revalidateAnswerlatticePublicCache(scope.tId, scope.sId, segment))).catch((cacheError) => {
-                logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Public cache revalidation failed after partial publish failure', 'answerlattice_intake_publish_cache_revalidation_failed', cacheError, {
-                    cacheSegment: Array.from(segments)[0],
-                    jobId: normalizedJobId,
-                    scope,
-                });
-            });
-        }
 
         await db.runTransaction(async (tx) => {
             const [currentJobSnap, currentSummarySnap] = await Promise.all([
@@ -1734,10 +2180,17 @@ export async function publishKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
 
 async function loadItemsForPublish(scope: IntakeScope, jobId: string, itemIds?: string[]) {
     const normalizedJobId = requireKnowledgeIntakeJobId(jobId);
-    if (Array.isArray(itemIds) && itemIds.length > 0) {
-        const normalizedItemIds = Array.from(new Set(itemIds
-            .slice(0, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_PUBLISH_ITEMS)
-            .map(id => requireKnowledgeIntakeReviewItemId(id))));
+    if (Array.isArray(itemIds)) {
+        if (
+            itemIds.length === 0
+            || itemIds.length > ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_PUBLISH_ITEMS
+        ) {
+            throw new Error('Select at least one review item within the publish limit.');
+        }
+        const normalizedItemIds = itemIds.map(id => requireKnowledgeIntakeReviewItemId(id));
+        if (new Set(normalizedItemIds).size !== normalizedItemIds.length) {
+            throw new Error('Select each review item only once.');
+        }
         const docs = await Promise.all(normalizedItemIds.map(id => reviewItemRef(id).get()));
         const accepted = docs
             .filter(snap => snap.exists)
@@ -1792,9 +2245,6 @@ async function publishReviewItem(
     if (current.jobId !== job.id) throw new Error('Review item is not available for this intake job.');
     item = current;
     if (item.status !== ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED) return null;
-    if (item.publishTargetId) {
-        return { id: item.publishTargetId, segments: [] };
-    }
 
     if (item.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.KB_ARTICLE) {
         return publishArticle(scope, job, item, actor);
@@ -1812,6 +2262,65 @@ async function publishReviewItem(
         throw new Error('Changelog entries are owner-managed. Use the Changelog screen to publish release notes.');
     }
     return null;
+}
+
+async function finalizePublishedReviewItem(
+    scope: IntakeScope,
+    item: AnswerlatticeIntakeReviewItem,
+    targetId: string,
+    target: AnswerlatticeIntakeReviewItem['target'],
+    segments: AnswerlatticePublicCacheSegment[],
+) {
+    if (target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.KB_ARTICLE) {
+        await bumpAnswerlatticeCacheVersionAdmin(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
+            reason: 'knowledge_intake_article_publish',
+            sourceId: targetId,
+            sourceType: 'kb_article',
+        });
+        await markAnswerlatticeCompiledContextSourceChangedAdmin('docsNav', scope.tId, scope.sId, {
+            reason: 'knowledge_intake_article_publish',
+            sourceId: targetId,
+            sourceType: 'kb_article',
+        });
+    } else if (target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.FAQ) {
+        await bumpAnswerlatticeCacheVersionAdmin(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
+            reason: 'knowledge_intake_faq_publish',
+            sourceId: targetId,
+            sourceType: 'answerlattice_faq',
+        });
+    } else if (target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.PRODUCT_SURFACE) {
+        await markAnswerlatticeCompiledContextSourceChangedAdmin('surfaces', scope.tId, scope.sId, {
+            reason: 'knowledge_intake_surface_publish',
+            sourceId: targetId,
+            sourceType: 'answerlattice_productSurfaces',
+        });
+    }
+    await Promise.all(
+        segments.map(segment => revalidateAnswerlatticePublicCache(scope.tId, scope.sId, segment)),
+    );
+    await db.runTransaction(async (tx) => {
+        const reviewSnap = await tx.get(reviewItemRef(item.id));
+        if (!reviewSnap.exists) throw new Error('Review item not found.');
+        const current = assertIntakeDocumentScope(
+            parseAnswerlatticeIntakeReviewItem(reviewSnap.data(), reviewSnap.id),
+            scope,
+            'Review item is not available.',
+        );
+        if (
+            current.jobId !== item.jobId
+            || current.target !== target
+            || current.status !== ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED
+            || current.publishTargetId !== targetId
+        ) {
+            throw new Error('Review item publish state changed before completion.');
+        }
+        const publishedAt = now();
+        tx.set(reviewItemRef(current.id), {
+            status: ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED,
+            publishedOn: publishedAt,
+            modifiedOn: publishedAt,
+        }, { merge: true });
+    });
 }
 
 async function publishArticle(scope: IntakeScope, job: AnswerlatticeKnowledgeIntakeJob, item: AnswerlatticeIntakeReviewItem, actor?: IntakeActor) {
@@ -1887,9 +2396,7 @@ async function publishArticle(scope: IntakeScope, job: AnswerlatticeKnowledgeInt
                 throw new Error('Knowledge intake article target conflicts with existing content.');
             }
             tx.set(reviewItemRef(currentItem.id), {
-                status: ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED,
                 publishTargetId: articleDoc.id,
-                publishedOn: now(),
                 modifiedOn: now(),
             }, { merge: true });
             return;
@@ -1959,38 +2466,13 @@ async function publishArticle(scope: IntakeScope, job: AnswerlatticeKnowledgeInt
         }, { merge: true });
         tx.create(articleDoc, articleData);
         tx.set(reviewItemRef(currentItem.id), {
-            status: ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED,
             publishTargetId: articleDoc.id,
-            publishedOn: now(),
             modifiedOn: now(),
         }, { merge: true });
     });
 
-    await bumpAnswerlatticeCacheVersionAdmin(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
-        reason: 'knowledge_intake_article_publish',
-        sourceId: articleDoc.id,
-        sourceType: 'kb_article',
-    });
-    await markAnswerlatticeCompiledContextSourceChangedAdmin('docsNav', scope.tId, scope.sId, {
-        reason: 'knowledge_intake_article_publish',
-        sourceId: articleDoc.id,
-        sourceType: 'kb_article',
-    });
-    await embedAnswerlatticeArticle({
-        actor,
-        articleId: articleDoc.id,
-        scope,
-        source: 'answerlattice_knowledge_intake_publish',
-    }).catch((error) => {
-        logAnswerlatticeKnowledgeIntakeFailure(
-            '[Answerlattice Intake] Article embedding failed after publish',
-            'answerlattice_intake_article_embedding_failed',
-            error,
-            { articleId: articleDoc.id, scope },
-        );
-    });
-
-    return { id: articleDoc.id, segments: ['kb', 'context'] as AnswerlatticePublicCacheSegment[] };
+    const segments = ['kb', 'context'] as AnswerlatticePublicCacheSegment[];
+    return { id: articleDoc.id, segments };
 }
 
 async function publishFaq(scope: IntakeScope, item: AnswerlatticeIntakeReviewItem, actor?: IntakeActor) {
@@ -2051,20 +2533,13 @@ async function publishFaq(scope: IntakeScope, item: AnswerlatticeIntakeReviewIte
                 ...actorFields(actor),
             });
         }
-        const publishedAt = now();
         tx.set(reviewItemRef(current.id), {
-            status: ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED,
             publishTargetId: faqId,
-            publishedOn: publishedAt,
-            modifiedOn: publishedAt,
+            modifiedOn: now(),
         }, { merge: true });
     });
-    await bumpAnswerlatticeCacheVersionAdmin(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
-        reason: 'knowledge_intake_faq_publish',
-        sourceId: faqId,
-        sourceType: 'answerlattice_faq',
-    });
-    return { id: faqId, segments: ['faqs', 'kb', 'context'] as AnswerlatticePublicCacheSegment[] };
+    const segments = ['faqs', 'kb', 'context'] as AnswerlatticePublicCacheSegment[];
+    return { id: faqId, segments };
 }
 
 async function publishSurface(scope: IntakeScope, item: AnswerlatticeIntakeReviewItem, actor?: IntakeActor) {
@@ -2127,21 +2602,14 @@ async function publishSurface(scope: IntakeScope, item: AnswerlatticeIntakeRevie
                 ...actorFields(actor),
             });
         }
-        const publishedAt = now();
         tx.set(reviewItemRef(current.id), {
-            status: ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED,
             publishTargetId: targetId,
-            publishedOn: publishedAt,
-            modifiedOn: publishedAt,
+            modifiedOn: now(),
         }, { merge: true });
         return targetId;
     });
-    await markAnswerlatticeCompiledContextSourceChangedAdmin('surfaces', scope.tId, scope.sId, {
-        reason: 'knowledge_intake_surface_publish',
-        sourceId: surfaceId,
-        sourceType: 'answerlattice_productSurfaces',
-    });
-    return { id: surfaceId, segments: ['context'] as AnswerlatticePublicCacheSegment[] };
+    const segments = ['context'] as AnswerlatticePublicCacheSegment[];
+    return { id: surfaceId, segments };
 }
 
 async function publishCanonicalProposal(scope: IntakeScope, item: AnswerlatticeIntakeReviewItem, actor?: IntakeActor) {
@@ -2181,6 +2649,26 @@ async function publishCanonicalProposal(scope: IntakeScope, item: AnswerlatticeI
         }
         if (evidenceSourceIds.length === 0) {
             throw new Error('Add approved source evidence before publishing a canonical answer proposal.');
+        }
+        if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE) {
+            const evidenceSnapshots = await Promise.all(
+                evidenceSourceIds.map(evidenceSourceId => tx.get(sourceRef(evidenceSourceId))),
+            );
+            const evidenceIsGoverned = evidenceSnapshots.every((sourceSnapshot, index) => {
+                if (!sourceSnapshot.exists) return false;
+                const source = assertIntakeDocumentScope(
+                    parseAnswerlatticeKnowledgeSource(sourceSnapshot.data(), sourceSnapshot.id),
+                    scope,
+                    'Knowledge source is not available.',
+                );
+                return source.id === evidenceSourceIds[index]
+                    && source.jobId === current.jobId
+                    && source.governance?.approvalStatus === ANSWERLATTICE_SOURCE_APPROVAL_STATUS.APPROVED
+                    && source.governance.conflictSourceIds.length === 0;
+            });
+            if (!evidenceIsGoverned) {
+                throw new Error('Review every linked source and resolve its conflicts before publishing this canonical answer proposal.');
+            }
         }
         if (proposalSnap.exists) {
             const existing = proposalSnap.data() || {};
@@ -2652,34 +3140,12 @@ function buildTiptapDoc(text: string) {
 }
 
 function getKnowledgeBaseCategoriesDocId(tId?: unknown, sId?: unknown) {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (Number.isFinite(tenantId) && Number.isFinite(storeId) && tenantId > 0 && storeId > 0) {
-        return `categories_${tenantId}_${storeId}`;
-    }
-    return 'categories';
-}
-
-function normalizePublicUrl(value: unknown): string | null {
-    if (typeof value !== 'string' || !value.trim()) return null;
-    try {
-        const url = new URL(value.trim());
-        if (!['http:', 'https:'].includes(url.protocol)) return null;
-        url.hash = '';
-        Array.from(url.searchParams.keys()).forEach((key) => {
-            if (/^(utm_|fbclid$|gclid$|msclkid$|yclid$)/i.test(key)) {
-                url.searchParams.delete(key);
-            }
-        });
-        url.searchParams.sort();
-        return normalizeAnswerlatticePublicCitationUrl(url.toString());
-    } catch {
-        return null;
-    }
+    const scope = normalizeAnswerlatticeKnowledgeIntakeScope(tId, sId);
+    return scope ? `categories_${scope.tId}_${scope.sId}` : 'categories';
 }
 
 async function assertSafePublicUrl(rawUrl: string) {
-    const normalized = normalizePublicUrl(rawUrl);
+    const normalized = normalizeAnswerlatticeKnowledgeIntakePublicUrl(rawUrl);
     if (!normalized) throw new Error('Use a valid public http(s) URL.');
     return resolvePublicHttpTarget(normalized);
 }
@@ -2733,34 +3199,26 @@ export async function discoverKnowledgeIntakeLinks(rawUrl: string) {
     }
     const root = await assertSafePublicUrl(rawUrl);
     const discovered = new Map<string, { url: string; title: string; role: string; reason: string }>();
+    let discoveryPageUrl = root.url.toString();
 
     const add = (candidate: string, title = '', reason = 'Found on page') => {
-        try {
-            const url = new URL(candidate, root.url.origin);
-            if (url.origin !== root.url.origin) return;
-            if (!['http:', 'https:'].includes(url.protocol)) return;
-            url.hash = '';
-            Array.from(url.searchParams.keys()).forEach((key) => {
-                if (/^(utm_|fbclid$|gclid$|msclkid$|yclid$)/i.test(key)) {
-                    url.searchParams.delete(key);
-                }
-            });
-            url.searchParams.sort();
-            const normalized = normalizePublicUrl(url.toString());
-            if (!normalized) return;
-            if (discovered.has(normalized)) return;
-            discovered.set(normalized, {
-                url: normalized,
-                title: cleanText(title || url.pathname || url.hostname, 120),
-                role: classifyUrl(normalized),
-                reason,
-            });
-        } catch {
-            // ignore malformed links
-        }
+        const normalized = resolveAnswerlatticeKnowledgeIntakeDiscoveredUrl(
+            candidate,
+            discoveryPageUrl,
+            root.url.origin,
+        );
+        if (!normalized || discovered.has(normalized)) return;
+        const url = new URL(normalized);
+        discovered.set(normalized, {
+            url: normalized,
+            title: cleanText(title || url.pathname || url.hostname, 120),
+            role: classifyUrl(normalized),
+            reason,
+        });
     };
 
     const page = await fetchWithCap(root).catch(() => null);
+    discoveryPageUrl = page?.finalUrl || discoveryPageUrl;
     add(root.url.toString(), extractTitle(page?.text || '') || 'Home', 'Starting URL');
     if (page?.text) {
         extractLinks(page.text).forEach(link => add(link.href, link.text, 'Linked from starting page'));
@@ -2826,11 +3284,5 @@ function classifyUrl(value: string) {
 }
 
 export function serializeIntakeValue(value: any): any {
-    if (!value) return value;
-    if (typeof value?.toDate === 'function') return value.toDate().toISOString();
-    if (Array.isArray(value)) return value.map(serializeIntakeValue);
-    if (typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value).map(([key, val]) => [key, serializeIntakeValue(val)]));
-    }
-    return value;
+    return serializeAnswerlatticeKnowledgeIntakeValue(value);
 }

@@ -6,18 +6,13 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const ROOT = path.resolve(__dirname, '..', '..');
 const SOURCE_SVG = path.join(ROOT, 'public', 'neelvara-logo.svg');
 
-const MASTER_VIEWBOX = '68 0 487 320';
-const SQUARE_VIEWBOX = '68 -83.5 487 487';
-const MASTER_PNG_SIZE = { width: 578, height: 328 };
+const MASTER_VIEWBOX = '0 0 1135 686';
+const SQUARE_VIEWBOX = '0 -224.5 1135 1135';
+const MASTER_PNG_SIZE = { width: 1135, height: 686 };
 const ICON_SIZES = [96, 128, 180, 192, 512];
 const OG_SIZE = { width: 1200, height: 630 };
-const OG_LOGO_BOX = { width: 770, height: 506 };
-
-const CANONICAL_PATHS = [
-  'M101 139 L445 27 C461 22 474 31 480 51 L506 149 C512 169 504 183 490 187 L166 291 C149 296 134 286 128 269 L100 174 C95 157 96 145 101 139 Z',
-  'M230 121 L506 158 C523 160 531 175 527 194 L516 258 C512 278 499 290 481 288 L218 252 C201 250 192 236 195 219 L209 148 C212 130 221 120 230 121 Z',
-  'M145 94 L309 174 C324 181 329 195 323 213 L309 239 C302 257 286 267 270 259 L106 179 C95 174 92 159 99 140 L113 114 C121 97 132 88 145 94 Z',
-];
+const OG_LOGO_BOX = { width: 900, height: 544 };
+const APPROVED_COLORS = ['#2384FF', '#1457D9', '#2737C8', '#6542E8'];
 
 function assert(condition, message) {
   if (!condition) {
@@ -34,13 +29,18 @@ function extractPaths(svg) {
 }
 
 function validateSource(svg) {
-  assert(svg.includes(`viewBox="${MASTER_VIEWBOX}"`), `Source logo must use balanced viewBox ${MASTER_VIEWBOX}`);
+  assert(svg.includes('width="1135" height="686"'), 'Source logo intrinsic size must remain 1135x686');
+  assert(svg.includes(`viewBox="${MASTER_VIEWBOX}"`), `Source logo must use supplied viewBox ${MASTER_VIEWBOX}`);
   assert(!/<image\b|data:image|base64/i.test(svg), 'Source logo must remain a true vector without embedded images');
+  assert(!/\btransform=/.test(svg), 'Source logo geometry must not be transformed');
 
   const paths = extractPaths(svg);
-  assert(paths.length === CANONICAL_PATHS.length, 'Source logo must contain exactly three paths');
-  CANONICAL_PATHS.forEach((expected, index) => {
-    assert(paths[index] === expected, `Source logo path ${index + 1} geometry changed`);
+  assert(paths.length === 1, 'Source logo must contain the supplied single compound path');
+  assert(svg.includes('id="neelvaraGradient"'), 'Source logo must retain the supplied gradient');
+  assert(svg.includes('fill="url(#neelvaraGradient)"'), 'Source logo path must use the supplied gradient');
+  assert(svg.includes('fill-rule="evenodd"'), 'Source logo path must retain its even-odd fill rule');
+  APPROVED_COLORS.forEach((color) => {
+    assert(svg.includes(color), `Source logo is missing supplied color ${color}`);
   });
 }
 
@@ -50,23 +50,14 @@ function extractSection(svg, pattern, label) {
   return match[0];
 }
 
-function buildSquareSvg(sourceSvg, faviconOptimized = false) {
+function buildSquareSvg(sourceSvg) {
   const defs = extractSection(sourceSvg, /<defs>[\s\S]*?<\/defs>/, 'gradient definitions');
-  let group = extractSection(sourceSvg, /<g\b[\s\S]*?<\/g>/, 'path group');
-
-  if (faviconOptimized) {
-    group = group
-      .replace('fill-opacity="0.48"', 'fill-opacity="0.68"')
-      .replace('fill-opacity="0.47"', 'fill-opacity="0.66"')
-      .replace('fill-opacity="0.46"', 'fill-opacity="0.64"')
-      .replaceAll('stroke-opacity="0.86"', 'stroke-opacity="1"')
-      .replaceAll('stroke-width="2.1"', 'stroke-width="14"');
-  }
+  const pathElement = extractSection(sourceSvg, /<path\b[\s\S]*?\/>/, 'compound logo path');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="${SQUARE_VIEWBOX}" shape-rendering="geometricPrecision">
   <title>Neelvara Systems</title>
   ${defs}
-  ${group}
+  ${pathElement}
 </svg>
 `;
 }
@@ -129,7 +120,7 @@ async function main() {
   validateSource(sourceSvg);
 
   const squareSvg = buildSquareSvg(sourceSvg);
-  const faviconSvg = buildSquareSvg(sourceSvg, true);
+  const faviconSvg = squareSvg;
 
   writeFile('public/neelvara-favicon.svg', faviconSvg);
   writeFile(

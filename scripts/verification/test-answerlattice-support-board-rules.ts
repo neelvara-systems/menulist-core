@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { deleteDoc, doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-support-board-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -30,6 +31,7 @@ async function run(): Promise<void> {
     };
     try {
         await testEnv.withSecurityRulesDisabled(async context => {
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
             await setDoc(doc(context.firestore(), cardPath), {
                 pId: 'AL', tId: 1, sId: 101,
                 title: 'Review support gap', description: '',
@@ -139,6 +141,21 @@ async function run(): Promise<void> {
             role: 'SUPPORT',
             uId: 'support-1',
         }));
+        await assertFails(updateDoc(doc(supportDb, cardPath), {
+            status: 'draft_ready',
+            statuses: [{
+                ...nextStatus,
+                status: 'draft_ready',
+                createdBy: {
+                    ...nextStatus.createdBy,
+                    id: 'another-user',
+                },
+            }, nextStatus, initialStatus],
+            modifiedOn: Timestamp.now(),
+            modifiedBy: 'Support One',
+            role: 'SUPPORT',
+            uId: 'support-1',
+        }));
         const note = {
             id: 'note-1',
             text: 'Check the current billing policy.',
@@ -150,6 +167,15 @@ async function run(): Promise<void> {
         await assertSucceeds(updateDoc(doc(supportDb, cardPath), {
             notes: [note],
             notesCount: 1,
+            lastNoteAt: note.createdAt,
+            modifiedOn: Timestamp.now(),
+            modifiedBy: 'Support One',
+            role: 'SUPPORT',
+            uId: 'support-1',
+        }));
+        await assertFails(updateDoc(doc(supportDb, cardPath), {
+            notes: [{ ...note, id: 'note-forged', authorId: 'another-user' }, note],
+            notesCount: 2,
             lastNoteAt: note.createdAt,
             modifiedOn: Timestamp.now(),
             modifiedBy: 'Support One',

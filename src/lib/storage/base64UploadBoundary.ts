@@ -4,7 +4,8 @@ export type SupportedBase64UploadFileType =
     | 'pdf' | 'doc' | 'docx' | 'txt'
     | 'application/pdf' | 'application/msword'
     | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    | 'text/plain'
+    | 'application/json' | 'application/xml'
+    | 'text/plain' | 'text/markdown' | 'text/csv' | 'text/html' | 'text/xml'
     | 'ttf' | 'otf' | 'woff' | 'woff2'
     | 'font/ttf' | 'font/otf' | 'font/woff' | 'font/woff2'
     | 'application/font-woff' | 'application/font-sfnt'
@@ -21,7 +22,9 @@ const MEBIBYTE = 1024 * 1024;
 
 const MAX_BYTES_BY_CONTENT_TYPE: Readonly<Record<string, number>> = {
     'application/msword': 50 * MEBIBYTE,
+    'application/json': 10 * MEBIBYTE,
     'application/pdf': 50 * MEBIBYTE,
+    'application/xml': 10 * MEBIBYTE,
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 50 * MEBIBYTE,
     'font/otf': 10 * MEBIBYTE,
     'font/ttf': 10 * MEBIBYTE,
@@ -33,6 +36,10 @@ const MAX_BYTES_BY_CONTENT_TYPE: Readonly<Record<string, number>> = {
     'image/svg+xml': 4 * MEBIBYTE,
     'image/webp': 10 * MEBIBYTE,
     'text/plain': 5 * MEBIBYTE,
+    'text/markdown': 10 * MEBIBYTE,
+    'text/csv': 10 * MEBIBYTE,
+    'text/html': 10 * MEBIBYTE,
+    'text/xml': 10 * MEBIBYTE,
 };
 
 const TYPE_CONFIG = new Map<string, Pick<Base64UploadConfig, 'contentType' | 'extension'>>([
@@ -62,6 +69,12 @@ const TYPE_CONFIG = new Map<string, Pick<Base64UploadConfig, 'contentType' | 'ex
     }],
     ['txt', { contentType: 'text/plain', extension: '.txt' }],
     ['text/plain', { contentType: 'text/plain', extension: '.txt' }],
+    ['application/json', { contentType: 'application/json', extension: '.json' }],
+    ['application/xml', { contentType: 'application/xml', extension: '.xml' }],
+    ['text/markdown', { contentType: 'text/markdown', extension: '.md' }],
+    ['text/csv', { contentType: 'text/csv', extension: '.csv' }],
+    ['text/html', { contentType: 'text/html', extension: '.html' }],
+    ['text/xml', { contentType: 'text/xml', extension: '.xml' }],
     ['ttf', { contentType: 'font/ttf', extension: '.ttf' }],
     ['font/ttf', { contentType: 'font/ttf', extension: '.ttf' }],
     ['application/font-sfnt', { contentType: 'font/ttf', extension: '.ttf' }],
@@ -156,10 +169,22 @@ const hasExpectedSignature = (payload: string, contentType: string): boolean => 
     if (contentType === 'font/otf') return startsWith(bytes, [0x4f, 0x54, 0x54, 0x4f]);
     if (contentType === 'font/woff') return startsWith(bytes, [0x77, 0x4f, 0x46, 0x46]);
     if (contentType === 'font/woff2') return startsWith(bytes, [0x77, 0x4f, 0x46, 0x32]);
-    if (contentType === 'text/plain') {
+    if (
+        contentType === 'text/plain'
+        || contentType === 'text/markdown'
+        || contentType === 'text/csv'
+        || contentType === 'text/html'
+        || contentType === 'text/xml'
+        || contentType === 'application/xml'
+        || contentType === 'application/json'
+    ) {
         try {
             const text = new TextDecoder('utf-8', { fatal: true }).decode(decodeBase64Bytes(payload));
-            return !text.includes('\0');
+            if (text.includes('\0')) return false;
+            if (contentType === 'application/json') {
+                JSON.parse(text);
+            }
+            return true;
         } catch {
             return false;
         }

@@ -140,7 +140,19 @@ function verifySourceBoundary() {
   );
   assert(suggestRoute.includes("logRuntimeFailure('review_reply_generation_failed'"), 'provider fallback must emit bounded failure diagnostics');
   assert(suggestRoute.includes('usedFallback: true'), 'provider fallback diagnostics must identify fallback use');
+  assert(
+    /match \/reviews\/\{tId\}\/\{sId\}\/\{docId\} \{[\s\S]{0,300}allow read, write: if false;/.test(firestoreRules),
+    'dormant raw reviews must remain denied to every browser identity',
+  );
   assert(firestoreRules.includes('match /reviewsState/{docId}'), 'review state rules must use the flat collection');
+  assert(
+    /match \/reviewsState\/\{docId\} \{[\s\S]{0,400}allow read, write: if false;/.test(firestoreRules),
+    'review state documents must remain Admin-SDK-only so browsers cannot bypass the boolean-only API projection',
+  );
+  assert(
+    statesRoute.includes('data: { hasBlockActive, hasEscalationActive }'),
+    'review state API must retain the boolean-only owner projection',
+  );
   assert(statesRoute.includes('.collection(DB_COLLECTIONS.REVIEWS_STATE)'), 'review state route must use the canonical flat collection');
   assert(statesRoute.includes('.where("tId", "==", tenantId)'), 'review state route must scope the flat collection by tenant');
   assert(statesRoute.includes('.where("sId", "==", storeId)'), 'review state route must scope the flat collection by store');

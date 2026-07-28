@@ -87,7 +87,7 @@ When this card is visible, the older mobile Today empty prompt (`No today action
 | Requirement | Rule |
 | --- | --- |
 | Touch target size | Minimum 44px for copy/share/mark-used actions. |
-| Component system | Use `antd-mobile` and Tailwind mobile styling. |
+| Component system | Use the existing mobile `../antd` wrapper components and current Tailwind-driven mobile shell styling; do not add `antd-mobile` without a separate dependency/freeze decision. |
 | Copy | Plain owner language. Avoid marketing jargon and internal terms. |
 | Loading | Show immediate feedback after copy/share/generate. |
 | Editing | No long rich editor on mobile. Short optional tweak only if unavoidable. |
@@ -199,6 +199,10 @@ Mobile does not need every desktop layout control, but it must support the core 
 
 Copy behavior must not depend only on the browser Clipboard API. Mobile copy uses a textarea fallback when the Clipboard API is blocked, slow, or unavailable. Copied feedback and GrowthOS export recording must wait for Clipboard API success or acknowledged textarea fallback success; failed handoff diagnostics include only clipboard/fallback support booleans and bounded output metadata.
 
+Mobile keeps a synchronous pending-operation set for refresh, generation, and
+per-kit/output export recording. This closes the gap before React loading state
+renders, so a fast double tap cannot start two owner mutations.
+
 ## 6. Mobile Copy Rules
 
 Use:
@@ -246,6 +250,8 @@ Required before activation:
 - Staff Brief copy/share/mark-used works in one or two taps
 - refresh failure keeps latest loaded kit visible
 - stale price/availability-sensitive output cannot be silently reused
+- fast repeated taps settle one refresh/generate/export operation while the first is pending
+- switching tenant/store never reuses another scope's summary cache entry
 
 ## 8. Mobile Cost
 

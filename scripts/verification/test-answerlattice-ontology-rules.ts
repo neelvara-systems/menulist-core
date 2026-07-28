@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-ontology-rules';
@@ -17,6 +18,7 @@ async function run(): Promise<void> {
     try {
         await testEnv.withSecurityRulesDisabled(async (context) => {
             const db = context.firestore();
+            await seedActiveAnswerlatticeRuleWorkspace(db);
             await setDoc(doc(db, 'answerlattice_entities', 'entity-1'), {
                 pId: 'AL', tId: 1, sId: 101, type: 'feature', name: 'Billing', slug: 'billing',
                 description: 'Billing feature.', status: 'active', currentVersion: 1_000_000,

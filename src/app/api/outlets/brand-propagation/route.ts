@@ -4,6 +4,8 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { runStorePublicTruthPostCommitEffects } from '@lib/cache/storePublicTruthPostCommit';
 import {
@@ -36,6 +38,25 @@ const BRAND_PROPAGATION_MAX_BODY_BYTES = 8 * 1024;
 const MAX_BRAND_PROPAGATION_OUTLETS = 200;
 const BRAND_PROPAGATION_EFFECT_CHUNK_SIZE = 20;
 const BRAND_PROPAGATION_SCOPE_CHANGED_CODE = 'BRAND_PROPAGATION_SCOPE_CHANGED';
+const BRAND_PROPAGATION_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+function applyPrivateResponseHeaders<T extends Response>(response: T): T {
+    Object.entries(BRAND_PROPAGATION_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+}
+
+function privateJson(body: unknown, init: ResponseInit = {}) {
+    const headers = new Headers(init.headers);
+    Object.entries(BRAND_PROPAGATION_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return NextResponse.json(body, { ...init, headers });
+}
 
 class BrandPropagationScopeChangedError extends Error {
     readonly code = BRAND_PROPAGATION_SCOPE_CHANGED_CODE;
@@ -76,47 +97,59 @@ const schema = z.object({
 }).strict();
 
 const isPlatformSession = (session: any): boolean => (
-    session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-    || session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
 );
 
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
-        return NextResponse.json({ error: 'Multi-outlet disabled' }, { status: 403 });
+        return privateJson({ error: 'Multi-outlet disabled' }, { status: 403 });
     }
 
     const platformSession = isPlatformSession(session);
     const sessionScope = getOutletSessionScope(session);
     if (!platformSession && !sessionScope) {
-        return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+        return privateJson({ error: 'Not onboarded' }, { status: 400 });
     }
 
+    const platformActorId = platformSession ? resolveCurrentSessionUserDocumentId(session) : null;
+    if (platformSession && !platformActorId) {
+        return privateJson({ error: 'Forbidden' }, { status: 403 });
+    }
     const limiterScope = platformSession
-        ? session.uId || session.user?.id || 'platform'
+        ? platformActorId!
         : sessionScope!.tenantDocumentId;
     const limiterHash = hashPublicRateLimitValue(limiterScope);
     const rateLimit = await checkRateLimit({
         key: `outlet-brand-propagation:${limiterHash}`,
         limit: 30,
         window: 3600,
+        failClosedOnProviderError: true,
     });
     if (!rateLimit.allowed) {
-        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+        const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+        return privateJson(
+            {
+                error: providerUnavailable
+                    ? 'Brand propagation is temporarily unavailable'
+                    : 'Too many requests',
+            },
+            { status: providerUnavailable ? 503 : 429 },
+        );
     }
 
     const bodyResult = await readBoundedJsonBody(request, BRAND_PROPAGATION_MAX_BODY_BYTES, {
         invalidJsonMessage: 'Invalid input',
     });
-    if (bodyResult.ok === false) return bodyResult.response;
+    if (bodyResult.ok === false) return applyPrivateResponseHeaders(bodyResult.response);
     const validation = validateAPIInput(schema, bodyResult.data);
     if (!validation.success) {
-        return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+        return privateJson({ error: 'Invalid input' }, { status: 400 });
     }
 
     const tenantScope = normalizeMultiOutletNumericDocumentId(validation.data.tenantId);
     const masterStoreScope = normalizeMultiOutletNumericDocumentId(validation.data.masterStoreId);
     if (!tenantScope || !masterStoreScope) {
-        return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+        return privateJson({ error: 'Invalid input' }, { status: 400 });
     }
     if (
         !platformSession
@@ -131,7 +164,7 @@ export const POST = withAuth(async (request, session) => {
             )
         )
     ) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        return privateJson({ error: 'Forbidden' }, { status: 403 });
     }
 
     const failureContext: MultiOutletLogContext = {
@@ -148,13 +181,13 @@ export const POST = withAuth(async (request, session) => {
         const masterStore = masterStoreSnap.data();
         if (
             !masterStoreSnap.exists
-            || Number(masterStore?.tenantId) !== tenantScope.numericId
+            || masterStore?.tenantId !== tenantScope.numericId
             || masterStore?.isMaster !== true
             || masterStore?.active === false
             || masterStore?.deleted === true
             || isPlatformEntityBlocked(masterStore)
         ) {
-            return NextResponse.json({ error: 'Master store not found' }, { status: 404 });
+            return privateJson({ error: 'Master store not found' }, { status: 404 });
         }
 
         const permissionError = requireAnyStorePermissionForStoreData(
@@ -166,11 +199,11 @@ export const POST = withAuth(async (request, session) => {
             masterStoreScope.numericId,
             tenantScope.numericId,
         );
-        if (permissionError) return permissionError;
+        if (permissionError) return applyPrivateResponseHeaders(permissionError);
 
         const fields = normalizeMasterStorePropagationFields(Object.keys(validation.data.values));
         if (fields.length === 0) {
-            return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+            return privateJson({ error: 'Invalid input' }, { status: 400 });
         }
         const propagatedValues = buildBrandPropagationValues(validation.data.values, fields);
         const summaryValues = buildStoreSummaryBrandPropagationValues(propagatedValues);
@@ -189,7 +222,7 @@ export const POST = withAuth(async (request, session) => {
             if (
                 !freshMasterSnap.exists
                 || !freshTenantSnap.exists
-                || Number(freshMaster.tenantId) !== tenantScope.numericId
+                || freshMaster.tenantId !== tenantScope.numericId
                 || freshMaster.isMaster !== true
                 || freshMaster.active === false
                 || freshMaster.deleted === true
@@ -242,7 +275,7 @@ export const POST = withAuth(async (request, session) => {
                 const storeData = storeDoc?.data();
                 if (
                     !storeDoc
-                    || Number(storeData?.tenantId) !== tenantScope.numericId
+                    || storeData?.tenantId !== tenantScope.numericId
                     || storeData?.isMaster === true
                     || storeData?.active === false
                     || storeData?.deleted === true
@@ -305,7 +338,7 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        return NextResponse.json({
+        return privateJson({
             effectsPending: postCommit.effectsPending,
             failedEffectCount: postCommit.failedEffectCount,
             failed: 0,
@@ -315,9 +348,9 @@ export const POST = withAuth(async (request, session) => {
         });
     } catch (error) {
         if (isBrandPropagationScopeChangedError(error)) {
-            return NextResponse.json({ error: 'Brand propagation scope changed' }, { status: 409 });
+            return privateJson({ error: 'Brand propagation scope changed' }, { status: 409 });
         }
         logMultiOutletFailure('multi_outlet_brand_propagation_failed', error, failureContext);
-        return NextResponse.json({ error: 'Brand propagation failed' }, { status: 500 });
+        return privateJson({ error: 'Brand propagation failed' }, { status: 500 });
     }
 });

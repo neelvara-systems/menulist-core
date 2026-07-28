@@ -18,8 +18,6 @@ export type AnswerlatticeWidgetKeyRecord = {
     name: string;
     keyPrefix: string;
     keySuffix?: string | null;
-    encryptedKey?: string | null;
-    encryptionVersion?: string | null;
     status: AnswerlatticeWidgetKeyStatus;
     productId: typeof PRODUCT_IDS.ANSWERLATTICE;
     purpose: 'answerlattice_widget';
@@ -111,8 +109,6 @@ const normalizeRecord = (
         name: normalizeAnswerlatticeWidgetKeyName(rawRecord.name || fallback.name),
         keyPrefix,
         keySuffix,
-        encryptedKey: safeString(rawRecord.encryptedKey) || null,
-        encryptionVersion: safeString(rawRecord.encryptionVersion) || null,
         status: rawRecord.status === 'revoked' ? 'revoked' : 'active',
         productId: PRODUCT_IDS.ANSWERLATTICE,
         purpose: 'answerlattice_widget',
@@ -294,8 +290,6 @@ export const buildAnswerlatticeWidgetApiStateWithNewKey = (params: {
         name: normalizeAnswerlatticeWidgetKeyName(params.name),
         keyPrefix: params.apiKey.slice(0, 7),
         keySuffix: params.apiKey.slice(-4),
-        encryptedKey: null,
-        encryptionVersion: null,
         status: 'active',
         productId: PRODUCT_IDS.ANSWERLATTICE,
         purpose: 'answerlattice_widget',

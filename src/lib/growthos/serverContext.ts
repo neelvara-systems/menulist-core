@@ -89,7 +89,10 @@ export async function loadGrowthOSServerContext(params: {
     });
 
     if (!snapshot.projectData || !snapshot.facts) {
-        const summary = await readGrowthOSSummaryServer(params.session.sId);
+        const summary = await readGrowthOSSummaryServer({
+            storeId: params.session.sId,
+            tenantId: params.session.tId,
+        });
         return {
             actions: [],
             entitlement,
@@ -100,7 +103,10 @@ export async function loadGrowthOSServerContext(params: {
     }
 
     const actions = rankGrowthOSActions(snapshot.facts);
-    const summary = await readGrowthOSSummaryServer(params.session.sId);
+    const summary = await readGrowthOSSummaryServer({
+        storeId: params.session.sId,
+        tenantId: params.session.tId,
+    });
 
     return {
         actions,

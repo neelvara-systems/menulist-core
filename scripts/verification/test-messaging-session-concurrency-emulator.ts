@@ -154,6 +154,10 @@ async function verifyAtomicSessionAdmission(): Promise<void> {
   assert.equal(rate.get("activeSessionId"), firstSessionId);
   assert.equal(rate.get("sessionsToday"), 1);
   assert.equal(rate.get("sessionsThisWeek"), 1);
+  const firstExpiresAt = rate.get("expiresAt");
+  assert.equal(typeof firstExpiresAt?.toMillis, "function");
+  assert.ok(firstExpiresAt.toMillis() > Date.now() + 89 * 24 * 60 * 60 * 1000);
+  assert.ok(firstExpiresAt.toMillis() <= Date.now() + 91 * 24 * 60 * 60 * 1000);
 
   await active.docs[0].ref.update({ state: "EXPIRED" });
   await createSessionWithId(

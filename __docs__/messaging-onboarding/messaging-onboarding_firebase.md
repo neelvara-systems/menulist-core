@@ -80,7 +80,7 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 | Read session for preview page      | `messagingOnboardingSessions`   | Preview page load              | Per preview view | 1         | Direct doc                                    | Server-side read in Next.js; rate-limited per session/IP before the read |
 | Read extraction job result         | `menuImageProcessingJobs`       | After extraction completes     | Per extraction   | 1         | Direct doc                                    | Polls/listens for job completion                          |
 | Read platform counter floors       | `platformSummary/summary`, legacy `default`, `storesSummary` | Publish pipeline | Per publish | 3 + bounded occupied-candidate probes | Direct docs | Inside Firestore transaction; exact numeric values only |
-| Health snapshot control            | `systemHealth/messaging_onboarding_control` | Intake processor | First 4 minutes of each UTC hour; at most 48 checks/day on the 2-minute cadence | 1 | Direct doc | Existing transaction lease remains final authority; idle runs outside the window make no health-control read |
+| Health snapshot control            | `systemHealth/messaging_onboarding_control` | Intake processor | First 4 minutes of each UTC hour; at most 48 checks/day on the 2-minute cadence | 1 | Direct doc | Transaction claim persists an opaque lease ID. Snapshot write and control settlement share one transaction that requires the same current lease ID; stale workers cannot publish, clear a replacement lease, regress `lastSnapshotId`, or emit alerts. Idle runs outside the window make no health-control read. |
 | Health/cost sample                 | Sessions + events + `systemHealth` | Health monitor | Hourly | Up to 200 sessions + 1000 events + 250 live sessions | Single-field/composite indexes | Bounded sample for cost, publish rate, failure, and retained-source storage monitoring |
 
 ### Writes
@@ -96,7 +96,7 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 | Update session (extraction result) | `messagingOnboardingSessions`   | After extraction completes       | Per session     | 1            | extractedMenuData, extractedProjectFiles, qualityScore     | Heavy write (~10-80 KB depending on menu size and per-file extraction data) |
 | Update session (published result)  | `messagingOnboardingSessions`   | After publish                    | Per publish     | 1            | publishedResult, state=LIVE, delete extractedProjectFiles  | Final update happens inside the publish transaction           |
 | Mark preview viewed                | `messagingOnboardingSessions` + `messagingOnboardingEvents` | First preview view only | 0-1 per session | 1 session merge + 1 event | `previewViewedAt`, `PREVIEW_VIEWED` | Repeated page refreshes do not create repeated preview-view events |
-| Create/update rate limit           | `messagingOnboardingRateLimits` | Session creation                 | Per new session | 1 in session transaction | Counters plus active session pointer | Small doc. Key = SHA-256 of `{provider}:{userId}`             |
+| Create/update rate limit           | `messagingOnboardingRateLimits` | Session creation, extraction quota, cooldown | Per admitted mutation | 1 in owning transaction | Counters, active session pointer, 90-day `expiresAt` | Small doc. Key = SHA-256 of `{provider}:{userId}`; legacy rows gain expiry on their next admitted write |
 | Create extraction job              | `menuImageProcessingJobs`       | After asset validation           | Per extraction  | 1            | Full job doc, `source`, `skipProjectSave`                 | Triggers existing processMenuImagesJob CF without temp project save |
 | Create tenant                      | `tenants`                       | Publish pipeline                 | Per publish     | 1            | Full doc                                                  | Inside Firestore transaction                                  |
 | Create store                       | `stores`                        | Publish pipeline                 | Per publish     | 1            | Full doc                                                  | Inside Firestore transaction, includes roles, timeSlotPresets |
@@ -112,8 +112,8 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 | Operation                 | Collection                      | Trigger            | Frequency | Docs Deleted           | Soft/Hard                           | Notes                                   |
 | ------------------------- | ------------------------------- | ------------------ | --------- | ---------------------- | ----------------------------------- | --------------------------------------- |
 | Cleanup expired sessions  | `messagingOnboardingSessions`   | Daily scheduler    | Daily     | 0-50                   | Hard delete (after 30 days archive) | Sessions older than 30 days past expiry |
-| Reset rate limit counters | `messagingOnboardingRateLimits` | Daily/weekly reset | Daily     | 0 (update, not delete) | N/A                                 | Reset counters, keep doc                |
-| Expire inbound queue docs | `messagingOnboardingInboundMessages` | Firestore TTL on `expiresAt` plus daily scheduler fallback | Continuous + daily | 0-100/day via scheduler fallback | TTL/hard delete | 30-day retention for processed/failed queue docs; scheduler fallback prevents buildup if TTL is delayed |
+| Expire inactive rate-limit rows | `messagingOnboardingRateLimits` | Firestore TTL on `expiresAt` | Continuous after 90 days of inactivity | N/A | TTL delete | Current session/quota/cooldown writes refresh expiry; all enforced windows are shorter than retention |
+| Expire inbound queue docs | `messagingOnboardingInboundMessages` | Firestore TTL on `expiresAt` plus daily scheduler fallback | Continuous + daily | 0-100/day via scheduler fallback | TTL/hard delete | 30-day retention for processed/failed queue docs; scheduler fallback continues while the product flag is disabled so a rollout pause cannot extend payload retention |
 | Expire tracking events    | `messagingOnboardingEvents`     | Firestore TTL on `expiresAt` | Continuous | N/A | TTL delete | 30-day retention for lifecycle events written by shared logger and API routes |
 
 ---
@@ -151,6 +151,8 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 | Finalize queued message | `messagingOnboardingInboundMessages` | Success/failure         | Per message  | 1            | Token-bound PROCESSED or retry/FAILED with backoff. |
 
 **Retention:** queue docs set `expiresAt` for 30-day TTL. Enable Firestore TTL on `messagingOnboardingInboundMessages.expiresAt` via `scripts/setup-firestore-ttl.sh`. `menulistMaintenanceScheduler.messaging_session_cleanup` also deletes up to 100 expired inbound docs per daily run as a bounded fallback.
+
+**Feature-independent lifecycle:** `ENABLE_MESSAGING_ONBOARDING` gates new product activity and the 12-hour provider reminder, but it does not gate expiry, terminal-session/Storage cleanup, durable upload cleanup, or inbound-message deletion. Disabling the feature cannot pause declared retention obligations.
 
 ---
 
@@ -232,6 +234,7 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 - **Single collection for all providers** — No per-provider collection overhead, simpler queries
 - **Extraction-only project save skip** — Messaging jobs set `skipProjectSave: true`, so shared extraction avoids the manual-dashboard temp project read/write/verify/delete cycle
 - **Hourly health snapshots** — Cost and failure scans are bounded and hourly. The control lease is checked only during the first four UTC minutes of the hour, reducing the enabled idle control path from about 720 reads/day to at most 48 without a new task or document.
+- **Exact snapshot and isolated alert settlement** — Each deterministic hourly `systemHealth/messaging_onboarding_{hour}` document is a complete snapshot and exact-replaces stale/unknown fields. Threshold alerts are independent derived effects: every admitted alert is attempted even when another alert write fails, and each failure emits bounded alert-key/severity diagnostics without misreporting the committed snapshot as failed.
 - **Outbound retry observability** — Preview, publish-confirmation, and fix delivery helpers return sent/error counts to the consolidated scheduler. Successful outbound work becomes meaningful activity, and provider query/send failures contribute to the existing health error metric instead of being logged as a quiet successful run.
 - **Published source retention monitor** — Published media is retained because projects reference it; `systemHealth` samples retained bytes and raises alerts instead of deleting live source files blindly
 

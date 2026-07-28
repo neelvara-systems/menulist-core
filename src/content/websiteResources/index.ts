@@ -61,7 +61,7 @@ export function getWebsiteRelatedResourceArticles(
     const articles = getWebsiteResourceArticles(locale);
     return article.relatedSlugs
         .map((slug) => articles.find((related) => related.slug === slug))
-        .filter(Boolean) as WebsiteResourceArticle[];
+        .filter((related): related is WebsiteResourceArticle => Boolean(related));
 }
 
 export function getWebsiteResourceSlugs(): string[] {

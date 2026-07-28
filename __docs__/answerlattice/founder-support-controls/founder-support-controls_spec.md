@@ -33,6 +33,9 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 - Test traffic is marked as test traffic and excluded from production search history, signals, conversations, friction, coverage, and ROI.
 - The UI shows pass/fail, source, answer/version, evidence outcome, bounded reference IDs, risk level, proof status, and duration.
 - A run is `blocked` when any critical case fails, `review` when only standard cases fail, and `ready` when every case passes. This is an advisory release-proof state, not an automated deployment gate.
+- **Current limitation:** the implemented evaluator does not independently reject an all-passing critical case whose actual source is `rag`.
+- **Admitted hardening:** critical proof may pass only when the actual route is `canonical`, `faq`, `escalation`, or `no_answer` and every configured assertion passes. An actual `rag` route always fails a critical case with an explicit deterministic reason. This remains pending until the focused implementation pass is completed.
+- New or edited critical cases must not select `rag` as their expected route after that hardening. Previously stored critical-RAG cases remain readable, but their next run is blocked rather than silently migrated or treated as corrupt.
 - Deterministic checks validate the configured answer contract. They do not independently establish semantic factual correctness, completeness, or customer resolution.
 - The retained run records the exact test-suite revision used. Any later case edit makes that run historical until the current suite is rerun.
 - A request ID is idempotent only for the same run kind, mode, ordered selected cases, suite revision, and release ID. Reusing it for different inputs fails with a conflict instead of returning unrelated evidence.
@@ -128,6 +131,13 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 
 ## Non-Goals
 
+- A second Critical Answer Test Suite beside the existing Answer Tests runtime.
+- Multi-turn conversation simulation, generated question variants, or a free-form scenario language.
+- Four-level criticality, per-variant readiness, or an averaged quality score.
+- A model-assisted judge, semantic claim extractor, or model-authored blocking baseline.
+- Candidate/release/production environment infrastructure beyond the shipped production run, bounded in-memory proposal preview, and release-linked check.
+- Scheduled nightly or weekly suite execution.
+- Per-test/per-assertion Firestore documents, immutable Storage artifacts, or a new compact dashboard document.
 - Full status pages, subscriber notifications, or incident response management.
 - Session replay capture or product analytics.
 - Customer CRM, public roadmap, or issue prioritization by revenue.
@@ -140,6 +150,7 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 ## Success Criteria
 
 - A founder can create five priority questions, mark material cases critical, require known article references where applicable, and run a canonical-only test in one session.
+- After the admitted hardening, an actual provider-backed RAG route cannot produce passing critical proof, including for a legacy critical-RAG case.
 - Legacy test suites load unchanged while new runs retain deterministic evidence and proof-status fields.
 - Current proof is shown only when retained evidence uses the current suite revision and current source versions.
 - A release can check only its affected cases without a broad scan.
@@ -152,4 +163,4 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 
 ## Suggestions And Discussion Items
 
-No unresolved architecture decision remains. Native mobile SDKs, full status pages, session replay, inbound email, CRM, and project-management expansion are intentionally excluded by doctrine.
+The only admitted Feature 5 code change is deterministic critical-RAG proof blocking with backward-compatible owner guidance. Structured fact assertions should be reconsidered only after real founder suites show material correctness failures that cannot be expressed with the existing source, answer/FAQ ID, plan/role context, required/blocked phrase, confidence, reference, abstention, and escalation contracts. Native mobile SDKs, multi-turn simulation, model judging, scheduled suites, Storage artifacts, full status pages, session replay, inbound email, CRM, and project-management expansion remain excluded.

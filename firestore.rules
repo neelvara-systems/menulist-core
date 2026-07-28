@@ -16,8 +16,12 @@ service cloud.firestore {
     
     // Projects Metadata - Multi-tenant isolated project metadata
     match /projectsMetadata/{tId}/{sId}/{projectId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isTenantAdmin(tId, sId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      // Retired pricing-integrity scaffold only. Active project truth is
+      // /projects and must pass its publication/cache/multi-location pipeline.
+      allow write: if false;
     }
 
     // Legacy flat Projects Data - read-only compatibility for old project docs.
@@ -34,40 +38,42 @@ service cloud.firestore {
       allow read: if isAuthenticated() && belongsToTenant(tId);
 
       // Create: Normal tenant admin check (new projects have no masterProjectId yet)
-      allow create: if isTenantAdmin(tId, sId);
+      allow create: if isTenantAdmin(tId, sId)
+                    && isValidProjectCreateIdentity(tId, sId, projectId);
 
       // Update: If linked to master, restrict what can be modified
       allow update: if isTenantAdmin(tId, sId)
-                    && isValidOutletUpdate();
+                    && isValidOutletUpdate(tId, sId);
 
-      // Delete: Normal tenant admin check (deletion protected in DAL via hasLinkedOutlets)
-      allow delete: if isTenantAdmin(tId, sId);
+      // Project deletion is a protected server-side soft-delete transaction.
+      // Direct hard deletes would bypass linked-outlet, special-menu, summary,
+      // cache and restoration contracts.
+      allow delete: if false;
     }
 
     // Legacy alias kept for older project-data paths.
     match /projectsData/{tId}/{sId}/{projectId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      
-      // Create: Normal tenant admin check (new projects have no masterProjectId yet)
-      allow create: if isTenantAdmin(tId, sId);
-      
-      // Update: If linked to master, restrict what can be modified
-      allow update: if isTenantAdmin(tId, sId)
-                    && isValidOutletUpdate();
-      
-      // Delete: Normal tenant admin check (deletion protected in DAL via hasLinkedOutlets)
-      allow delete: if isTenantAdmin(tId, sId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      // Read-only compatibility. Browser writes would create a parallel menu
+      // truth outside active project validation, cache and publication effects.
+      allow write: if false;
     }
     
     // Changelog Pages - Require authentication & tenant match
     match /tenants/{tId}/stores/{sId}/changelogPages/{pageId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
       allow write: if isTenantAdmin(tId, sId);
     }
     
     // All tenant documents - Default secure access
     match /tenants/{tId}/stores/{sId}/{document=**} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
       allow write: if isTenantAdmin(tId, sId);
     }
     
@@ -139,16 +145,34 @@ service cloud.firestore {
     // Tenants - tenant-scoped client reads, owner/platform controlled writes
     match /tenants/{tenantId} {
       allow read: if isAuthenticated()
-        && (isPlatformAdmin() || belongsToTenantById(tenantId));
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenantById(tenantId)
+            && (
+              !isAnswerlatticeProductDocument(resource.data)
+              || (
+                request.auth.token.get('storeId', null) != null
+                && isAnswerlatticeActiveWorkspace(
+                  tenantId,
+                  request.auth.token.get('storeId', null)
+                )
+              )
+            )
+          )
+        );
       allow create: if isAuthenticated() && isPlatformAdmin();
       allow update: if isAuthenticated()
         && isValidStoreUrlAnchorUpdate()
         && (
           isPlatformAdmin()
           || (
-            belongsToTenantById(tenantId)
+            !isAnswerlatticeProductDocument(resource.data)
+            && !isAnswerlatticeProductDocument(request.resource.data)
+            && belongsToTenantById(tenantId)
             && hasTenantWriteRole()
             && string(request.resource.data.tenantId) == string(resource.data.tenantId)
+            && preservesTenantServerManagedFields()
           )
         );
       allow delete: if false;
@@ -162,6 +186,10 @@ service cloud.firestore {
           || (
             belongsToTenantById(resource.data.tenantId)
             && belongsToStoreById(storeId)
+            && (
+              !isAnswerlatticeProductDocument(resource.data)
+              || isAnswerlatticeActiveWorkspace(resource.data.tenantId, storeId)
+            )
           )
         );
       allow create: if isAuthenticated()
@@ -170,7 +198,8 @@ service cloud.firestore {
         && (
           isPlatformAdmin()
           || (
-            belongsToTenantById(request.resource.data.tenantId)
+            !isAnswerlatticeProductDocument(request.resource.data)
+            && belongsToTenantById(request.resource.data.tenantId)
             && isTenantAdmin(request.resource.data.tenantId, storeId)
             && string(request.resource.data.storeId) == string(storeId)
           )
@@ -181,7 +210,9 @@ service cloud.firestore {
         && (
           isPlatformAdmin()
           || (
-            belongsToTenantById(resource.data.tenantId)
+            !isAnswerlatticeProductDocument(resource.data)
+            && !isAnswerlatticeProductDocument(request.resource.data)
+            && belongsToTenantById(resource.data.tenantId)
             && belongsToTenantById(request.resource.data.tenantId)
             && belongsToStoreById(storeId)
             && hasTenantWriteRole()
@@ -663,52 +694,68 @@ service cloud.firestore {
     // Client DAL uses path: {collection}/{tId}/{sId}/{docId}
     // ═══════════════════════════════════════════════════════════
     
-    // Todos — Owner task management
+    // Todos — retired read-only compatibility data. No active owner surface or
+    // DAL consumes these open-schema rows; parallel task truth is forbidden.
     match /todos/{tId}/{sId}/{docId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isTenantAdmin(tId, sId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if false;
     }
     
-    // Todos Metadata — Config (statuses, tags)
+    // Todos Metadata — retired read-only compatibility config.
     match /todosMetadata/{path1}/{tId}/{sId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isTenantAdmin(tId, sId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if false;
     }
     
     // Notes — Owner notes
     match /notes/{tId}/{sId}/{docId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isTenantAdmin(tId, sId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      // Retired compatibility data. No active owner surface or DAL consumes
+      // this open-schema collection; new parallel note truth is forbidden.
+      allow write: if false;
     }
     
     // Notes Metadata — Config (categories)
     match /notesMetadata/{path1}/{tId}/{sId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isTenantAdmin(tId, sId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
+      allow write: if false;
     }
     
     // Campaigns — Social content management
     match /campaigns/{tId}/{sId}/{docId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
       allow write: if isTenantAdmin(tId, sId);
     }
     
     // Campaign Exports — Generated campaign assets
     match /campaignExports/{tId}/{sId}/{docId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow read: if isAuthenticated()
+        && belongsToTenant(tId)
+        && belongsToStoreById(sId);
       allow write: if isTenantAdmin(tId, sId);
     }
 
     // GrowthOS Kits — paid add-on generated artifacts
     match /growthosKits/{tId}/{sId}/{docId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isPlatformAdmin();
+      // Full generated artifacts are entitlement-gated by authenticated server
+      // routes. Browser access would bypass that paid-feature boundary.
+      allow read, write: if false;
     }
 
     // GrowthOS Exports — execution signals only
     match /growthosExports/{tId}/{sId}/{docId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if isPlatformAdmin();
+      // Execution history is server-owned and has no direct browser consumer.
+      allow read, write: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -877,10 +924,22 @@ service cloud.firestore {
     // PUBLIC / STATIC READ COLLECTIONS
     // ═══════════════════════════════════════════════════════════
     
-    // Pricing Plans — Public read, no client writes
+    // Pricing Plans — active plans are public; platform admins maintain the catalog
     match /pricingPlans/{docId} {
-      allow read: if isPlatformAdmin() || isPublicPricingPlan(resource.data);
-      allow create, update: if isPlatformAdmin() && isPublicPricingPlan(request.resource.data);
+      allow get: if isPlatformAdmin()
+        || (isPublicPricingPlan(resource.data) && resource.data.active == true);
+      allow list: if request.query.limit != null
+        && request.query.limit <= 101
+        && (
+          isPlatformAdmin()
+          || (
+            resource.data.active == true
+            && resource.data.publicSafe == true
+          )
+        );
+      allow create, update: if isPlatformAdmin()
+        && isPublicPricingPlan(request.resource.data)
+        && request.resource.data.publicSafe == true;
       allow delete: if false;
     }
     
@@ -905,9 +964,15 @@ service cloud.firestore {
     }
 
     // Shared static assets/font presets — read by owner tools, maintained by platform
+    // @firestore-collection-evidence STATIC_ASSET_COLLECTIONS.GRAPHICS operations=security-rule
+    // @firestore-collection-evidence STATIC_ASSET_COLLECTIONS.ILLUSTRATIONS operations=security-rule
+    // @firestore-collection-evidence STATIC_ASSET_COLLECTIONS.IMAGES operations=security-rule
+    // @firestore-collection-evidence FONT_PRESET_ASSET_COLLECTION operations=security-rule
     match /common/assets/{assetType}/{docId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isPlatformAdmin();
+      allow create, update: if isPlatformAdmin()
+        && isValidCommonAssetDocument(request.resource.data, assetType);
+      allow delete: if isPlatformAdmin();
     }
     
     // Legacy flat feedback paths are retained for platform-only reads. Current
@@ -1011,20 +1076,20 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     
     match /applicationLogs/{docId} {
-      allow create: if isAuthenticated();
-      allow read, update, delete: if false;
+      // Active browser logging uses Realtime Database. Firestore copies are
+      // server-owned operational records and must not accept arbitrary client
+      // payloads or create-cost abuse.
+      allow read, write: if false;
     }
     
     match /errorLogs/{docId} {
-      allow create: if isAuthenticated();
-      allow read, update, delete: if false;
+      allow read, write: if false;
     }
     
-    // AI Help Center Feedback — Authenticated write
+    // Reserved AI Help Center feedback namespace. There is no active producer
+    // or consumer; keep browser access closed until a complete contract exists.
     match /aiHelpCenterFeedback/{docId} {
-      allow read: if isAuthenticated() && isPlatformAdmin();
-      allow create: if isTenantStoreCreate(request.resource.data);
-      allow update, delete: if false;
+      allow read, write: if false;
     }
     
     // ═══════════════════════════════════════════════════════════
@@ -1047,6 +1112,13 @@ service cloud.firestore {
     // ═══════════════════════════════════════════════════════════
     
     match /authSecurityEvents/{docId} {
+      allow read, write: if false;
+    }
+
+    // Public-routing rename evidence is written only by the platform-authenticated
+    // Admin SDK route. Even platform client sessions cannot read, forge, or erase
+    // the durable legal/support acknowledgement ledger.
+    match /subdomainRenameLog/{docId} {
       allow read, write: if false;
     }
     
@@ -1119,24 +1191,27 @@ service cloud.firestore {
       allow read, write: if false;
     }
     
-    // Reviews & Reputation — Server-only writes, auth reads
+    // Reviews & Reputation — dormant reserved namespace. There is no current
+    // ingestion, DAL, owner surface, or public consumer; activation requires a
+    // reviewed runtime schema and dedicated authorization tests.
     match /reviews/{tId}/{sId}/{docId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
-      allow write: if false;
+      allow read, write: if false;
     }
     
     match /reviewsState/{docId} {
-      allow read: if isAuthenticated()
-        && (isPlatformAdmin() || isTenantStoreDoc(resource.data));
-      allow write: if false;
+      // Server-only. The authenticated API deliberately projects these
+      // documents to two booleans; direct browser reads would bypass that
+      // private-field boundary and expose classifier/trigger metadata.
+      allow read, write: if false;
     }
     
-    // Compliance Pages — public read, API/Admin-only writes.
+    // Compliance Pages are rendered by the server. Direct browser reads would
+    // expose internal tenant/store identifiers and permit collection scans.
     // Owner mutations must cross the authenticated, permissioned, rate-limited,
     // validated and sanitized /api/compliance boundary.
     // @see __docs__/compliance-pages/
     match /compliancePages/{docId} {
-      allow read: if true;
+      allow read: if false;
       allow write: if false;
     }
     
@@ -1252,13 +1327,28 @@ service cloud.firestore {
     }
 
     function hasServerManagedStoreApiCredentials(data) {
-      return data.keys().hasAny(['publicApi', 'answerlatticeWidgetApi']);
+      return data.keys().hasAny([
+        'publicApi',
+        'answerlatticeWidgetApi',
+        'widgetAllowedOrigins',
+        'widgetConfig',
+        'widgetConfigSchemaVersion',
+        'widgetConfigUpdatedAt',
+        'widgetConfigVersion',
+        'widgetRuntimeStatus'
+      ]);
     }
 
     function preservesServerManagedStoreApiCredentials(before, after) {
       return !after.diff(before).affectedKeys().hasAny([
         'publicApi',
-        'answerlatticeWidgetApi'
+        'answerlatticeWidgetApi',
+        'widgetAllowedOrigins',
+        'widgetConfig',
+        'widgetConfigSchemaVersion',
+        'widgetConfigUpdatedAt',
+        'widgetConfigVersion',
+        'widgetRuntimeStatus'
       ]);
     }
 
@@ -2296,6 +2386,21 @@ service cloud.firestore {
       return !(wasPublished && changingSubdomain);
     }
 
+    function preservesTenantServerManagedFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'pId',
+        'active',
+        'deleted',
+        'deletedAt',
+        'authDisabled',
+        'blocked',
+        'tenantBlocked',
+        'blockDetails',
+        'outletCreationLock',
+        'outletCreationLockAt'
+      ]);
+    }
+
     function docIdMatchesCurrentTenantStore(docId) {
       return request.auth != null
         && request.auth.token.tenantId != null
@@ -2377,6 +2482,95 @@ service cloud.firestore {
         && request.auth.token.get('platformRole', null) in ['PLATFORM', 'PLATFORM_SUPPORT'];
     }
 
+    function hasValidCommonAssetMetadata(data) {
+      return (!data.keys().hasAny(['pId']) || (data.pId is string && data.pId.size() > 0 && data.pId.size() <= 32))
+        && (!data.keys().hasAny(['sId']) || data.sId is int || data.sId is string)
+        && (!data.keys().hasAny(['tId']) || data.tId is int || data.tId is string)
+        && (!data.keys().hasAny(['role']) || (data.role is string && data.role.size() > 0 && data.role.size() <= 64))
+        && (!data.keys().hasAny(['uId']) || data.uId is int || data.uId is string)
+        && (!data.keys().hasAny(['createdBy']) || (data.createdBy is string && data.createdBy.size() <= 160))
+        && (!data.keys().hasAny(['modifiedBy']) || (data.modifiedBy is string && data.modifiedBy.size() <= 160))
+        && (!data.keys().hasAny(['createdOn']) || data.createdOn is timestamp)
+        && (!data.keys().hasAny(['modifiedOn']) || data.modifiedOn is timestamp);
+    }
+
+    function isValidCommonFontPreset(data) {
+      return data.keys().hasOnly([
+          'blackTextUrl', 'code', 'createdBy', 'createdOn', 'fileUrl',
+          'fontSize', 'height', 'index', 'modifiedBy', 'modifiedOn',
+          'name', 'pId', 'role', 'sId', 'size', 'tId', 'type', 'uId',
+          'whiteTextUrl', 'width'
+        ])
+        && data.keys().hasAll([
+          'blackTextUrl', 'code', 'fileUrl', 'index', 'name', 'size',
+          'type', 'whiteTextUrl'
+        ])
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 160
+        && data.code is string
+        && data.code.matches('^[A-Za-z0-9_-]{1,128}$')
+        && data.blackTextUrl is string
+        && data.blackTextUrl.size() <= 300000
+        && data.whiteTextUrl is string
+        && data.whiteTextUrl.size() <= 300000
+        && (data.size is int || (data.size is string && data.size.size() <= 64))
+        && data.type in [
+          '.otf', '.ttf', '.woff', '.woff2',
+          'application/font-sfnt', 'application/font-woff',
+          'application/x-font-opentype', 'application/x-font-ttf',
+          'font/otf', 'font/ttf', 'font/woff', 'font/woff2',
+          'otf', 'ttf', 'woff', 'woff2'
+        ]
+        && data.fileUrl is string
+        && data.fileUrl.size() > 0
+        && data.fileUrl.size() <= 4096
+        && data.index is int
+        && data.index >= 0
+        && data.index < 500
+        && (!data.keys().hasAny(['fontSize']) || (data.fontSize is number && data.fontSize >= 8 && data.fontSize <= 240))
+        && (!data.keys().hasAny(['width']) || (data.width is number && data.width >= 1 && data.width <= 2000))
+        && (!data.keys().hasAny(['height']) || (data.height is number && data.height >= 1 && data.height <= 2000))
+        && hasValidCommonAssetMetadata(data);
+    }
+
+    function isValidCommonAssetCategory(data) {
+      return data.keys().hasOnly([
+          'active', 'createdBy', 'createdOn', 'items', 'modifiedBy',
+          'modifiedOn', 'name', 'pId', 'preview', 'previewType', 'role',
+          'sId', 'subCategories', 'tId', 'tags', 'uId'
+        ])
+        && data.keys().hasAll([
+          'active', 'items', 'name', 'preview', 'previewType',
+          'subCategories', 'tags'
+        ])
+        && data.active is bool
+        && data.name is string
+        && data.name.size() <= 160
+        && data.preview is string
+        && data.preview.size() <= 4096
+        && data.previewType in [
+          'gif', 'image/gif', 'image/jpeg', 'image/png', 'image/svg+xml',
+          'image/webp', 'jpeg', 'png', 'svg', 'webp'
+        ]
+        && data.tags is string
+        && data.tags.size() <= 2000
+        && data.subCategories is list
+        && data.subCategories.size() <= 1000
+        && data.items is list
+        && data.items.size() <= 1000
+        && hasValidCommonAssetMetadata(data);
+    }
+
+    function isValidCommonAssetDocument(data, assetType) {
+      return assetType == 'fontPreset'
+        ? isValidCommonFontPreset(data)
+        : (
+          assetType in ['graphics', 'illustrations', 'images']
+          && isValidCommonAssetCategory(data)
+        );
+    }
+
     function isPublicPricingPlan(data) {
       return data.keys().hasOnly([
           'active',
@@ -2389,6 +2583,7 @@ service cloud.firestore {
           'periodicity',
           'planType',
           'price',
+          'publicSafe',
           'razorpayPlanId',
           'recommended',
           'version'
@@ -2424,6 +2619,7 @@ service cloud.firestore {
         && data.price >= 0
         && data.version is int
         && data.version >= 1
+        && (!data.keys().hasAny(['publicSafe']) || data.publicSafe == true)
         && (!data.keys().hasAny(['razorpayPlanId']) || (data.razorpayPlanId is string && data.razorpayPlanId.size() > 0 && data.razorpayPlanId.size() <= 128))
         && (!data.keys().hasAny(['recommended']) || data.recommended is bool);
     }
@@ -2855,7 +3051,7 @@ service cloud.firestore {
 
     function isAnswerlatticeTenantSummaryScopeStable() {
       return isAnswerlatticeTenantMember(resource.data)
-        && isAnswerlatticeTenantMember(request.resource.data)
+        && request.resource.data.pId == resource.data.pId
         && request.resource.data.tId == resource.data.tId
         && request.resource.data.sId == resource.data.sId;
     }
@@ -3333,6 +3529,10 @@ service cloud.firestore {
         && actor.id is string
         && actor.id.size() > 0
         && actor.id.size() <= 100
+        && (
+          actor.id == request.auth.uid
+          || actor.id == request.auth.token.get('uId', '')
+        )
         && actor.name is string
         && actor.name.size() > 0
         && actor.name.size() <= 100
@@ -3367,6 +3567,10 @@ service cloud.firestore {
         && note.authorId is string
         && note.authorId.size() > 0
         && note.authorId.size() <= 100
+        && (
+          note.authorId == request.auth.uid
+          || note.authorId == request.auth.token.get('uId', '')
+        )
         && note.authorName is string
         && note.authorName.size() > 0
         && note.authorName.size() <= 100
@@ -3917,7 +4121,23 @@ service cloud.firestore {
         && request.auth.token.get('tenantId', null) != null
         && request.auth.token.get('storeId', null) != null
         && string(data.tId) == string(request.auth.token.get('tenantId', null))
-        && string(data.sId) == string(request.auth.token.get('storeId', null));
+        && string(data.sId) == string(request.auth.token.get('storeId', null))
+        && isAnswerlatticeActiveWorkspace(data.tId, data.sId);
+    }
+
+    function isAnswerlatticeProductDocument(data) {
+      return data.get('pId', null) == 'AL'
+        || data.get('productId', null) == 'AL';
+    }
+
+    function isAnswerlatticeActiveWorkspace(tId, sId) {
+      let store = get(/databases/$(database)/documents/stores/$(sId));
+      return store.data.pId == 'AL'
+        && string(store.data.tId) == string(tId)
+        && string(store.data.sId) == string(sId)
+        && store.data.get('active', false) == true
+        && store.data.deleted != true
+        && store.data.authDisabled != true;
     }
 
     function answerlatticeCacheVersionKeys() {
@@ -3967,7 +4187,7 @@ service cloud.firestore {
           isPlatformAdmin()
           || (
             isAnswerlatticeTenantMember(resource.data)
-            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.pId == resource.data.pId
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId
           )
@@ -4045,7 +4265,7 @@ service cloud.firestore {
           isPlatformAdmin()
           || (
             isAnswerlatticeTenantMember(resource.data)
-            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.pId == resource.data.pId
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId
             && hasAnswerlatticePermission(permission)
@@ -4059,7 +4279,7 @@ service cloud.firestore {
           isPlatformAdmin()
           || (
             isAnswerlatticeTenantMember(resource.data)
-            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.pId == resource.data.pId
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId
             && hasAnswerlatticeKnowledgeControlPermission()
@@ -4087,7 +4307,6 @@ service cloud.firestore {
           isPlatformSupportOperator()
           || (
             isAnswerlatticeTenantMember(resource.data)
-            && isAnswerlatticeTenantMember(request.resource.data)
             && request.resource.data.pId == resource.data.pId
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId
@@ -4253,27 +4472,96 @@ service cloud.firestore {
     
     // Check if update is valid for outlet projects
     // If project has masterProjectId, block writes to extractedData and files
-    function isValidOutletUpdate() {
+    function isValidNewMasterProjectReference(tId, sId, masterProjectId) {
+      let segments = masterProjectId is string ? masterProjectId.split('-') : [];
+      let masterStoreId = segments.size() >= 3 ? segments[segments.size() - 1] : '';
+      let masterPath = /databases/$(database)/documents/projects/$(tId)/$(masterStoreId)/$(masterProjectId);
+      return masterProjectId is string
+        && masterProjectId.size() > 0
+        && masterProjectId.size() <= 160
+        && masterStoreId.matches('^[1-9][0-9]*$')
+        && masterProjectId.matches('^' + string(tId) + '-.+-' + masterStoreId + '$')
+        && string(masterStoreId) != string(sId)
+        && exists(masterPath)
+        && get(masterPath).data.get('active', true) != false
+        && get(masterPath).data.get('deleted', false) != true
+        && get(masterPath).data.get('masterProjectId', null) == null
+        && (
+          !get(masterPath).data.keys().hasAny(['files'])
+          || (
+            get(masterPath).data.files is list
+            && get(masterPath).data.files.size() <= 1
+          )
+        );
+    }
+
+    function isValidProjectCreateIdentity(tId, sId, projectId) {
+      let data = request.resource.data;
+      let hasMasterReference = data.keys().hasAny(['masterProjectId'])
+        && data.masterProjectId != null;
+      return (!data.keys().hasAny(['projectId']) || string(data.projectId) == string(projectId))
+        && (!data.keys().hasAny(['tId']) || string(data.tId) == string(tId))
+        && (!data.keys().hasAny(['tenantId']) || string(data.tenantId) == string(tId))
+        && (!data.keys().hasAny(['tenantID']) || string(data.tenantID) == string(tId))
+        && (!data.keys().hasAny(['sId']) || string(data.sId) == string(sId))
+        && (!data.keys().hasAny(['storeId']) || string(data.storeId) == string(sId))
+        && (!data.keys().hasAny(['storeID']) || string(data.storeID) == string(sId))
+        && (
+          !hasMasterReference
+          || (
+            (!data.keys().hasAny(['isMaster']) || data.isMaster != true)
+            && (
+              !data.keys().hasAny(['files'])
+              || (data.files is list && data.files.size() <= 1)
+            )
+            && isValidNewMasterProjectReference(tId, sId, data.masterProjectId)
+          )
+        );
+    }
+
+    function isValidOutletUpdate(tId, sId) {
       // If NOT linked to master (no masterProjectId), allow all writes
       let hasMasterProjectId = resource.data.keys().hasAny(['masterProjectId']);
       let isLinkedToMaster = hasMasterProjectId && resource.data.masterProjectId != null;
-      // If linked to master, only allow writes to safe fields:
-      // - overrides (price, availability, active overrides)
-      // - themeConfig (if permissions allow - checked in DAL)
-      // - published status
-      // - metadata fields (modifiedOn, etc.)
-      // 
-      // Block writes that modify:
-      // - files[] (contains extractedData with master items)
-      // - masterProjectId (cannot self-unlink)
-      let filesUnchanged = !request.resource.data.diff(resource.data).affectedKeys().hasAny(['files']);
+      let willLinkToMaster = request.resource.data.keys().hasAny(['masterProjectId'])
+        && request.resource.data.masterProjectId != null;
+      let willSoftDelete = request.resource.data.get('deleted', false) == true
+        && resource.data.get('deleted', false) != true;
+      let identityUnchanged = !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'projectId', 'tId', 'tenantId', 'tenantID', 'sId', 'storeId', 'storeID'
+      ]);
+      // Linked-outlet mutations require transaction-current master/policy
+      // validation plus summary/cache effects in the protected outlet-save
+      // route. Firestore rules cannot validate every dynamic override-map
+      // value, so an already-linked document is server-write-only.
       let masterIdUnchanged = !isLinkedToMaster
-        || (
+        ? (
+          !willLinkToMaster
+          || (
+            (!request.resource.data.keys().hasAny(['isMaster']) || request.resource.data.isMaster != true)
+            && (
+              !request.resource.data.keys().hasAny(['files'])
+              || (
+                request.resource.data.files is list
+                && request.resource.data.files.size() <= 1
+              )
+            )
+            && isValidNewMasterProjectReference(
+              tId,
+              sId,
+              request.resource.data.masterProjectId
+            )
+          )
+        )
+        : (
           request.resource.data.keys().hasAny(['masterProjectId'])
           && request.resource.data.masterProjectId == resource.data.masterProjectId
         );
       
-      return !isLinkedToMaster || (filesUnchanged && masterIdUnchanged);
+      return identityUnchanged
+        && masterIdUnchanged
+        && !willSoftDelete
+        && !isLinkedToMaster;
     }
   }
 }

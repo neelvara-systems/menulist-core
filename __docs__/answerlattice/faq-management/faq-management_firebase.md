@@ -116,7 +116,7 @@ The public FAQ and product-surface summary reads sort in Firestore before applyi
 
 FAQ regeneration is not automatic on every article save. Article saves mark linked FAQs as `needs_review`; owners run `Refresh FAQ suggestions` only when they want new draft suggestions. This avoids repeated AI calls during normal editing and protects owner-reviewed FAQ content from automatic replacement.
 
-FAQ generation completion breadcrumbs, route failures, and best-effort AI-operation log failures use fixed-code bounded diagnostics with tenant/store/article presence and length metadata only. This adds no Firestore reads/writes and does not change the owner-triggered generation cost shape.
+FAQ generation completion breadcrumbs, route failures, and failure-contained AI-operation log failures use fixed-code bounded diagnostics with tenant/store/article presence and length metadata only. The route awaits that best-effort log settlement before returning, and rejects oversized provider text before parsing. This changes no owner-triggered generation read/write shape beyond making the existing operation-log attempt reliably settle.
 
 FAQ generation uses the app-side Answerlattice Gemini gateway and the `ANSWERLATTICE_GEMINI_AI_KEY*` pool only. It does not import the default MenuList Gemini client or fall back to `GEMINI_AI_KEY*`; missing Answerlattice provider configuration fails before provider work and FAQ writes.
 

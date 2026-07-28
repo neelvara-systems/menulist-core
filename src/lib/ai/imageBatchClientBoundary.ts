@@ -385,6 +385,33 @@ export function isImageBatchOwnerVisibleStatus(
         && OWNER_VISIBLE_STATUS_VALUES.has(value as BatchImageGenerationJobStatusType);
 }
 
+function getImageBatchJobSortTime(job: BatchImageGenerationJobType): number {
+    const timestamps = [
+        job.modifiedOn,
+        job.createdOn,
+        ...job.statusHistory.map((entry) => entry.createdOn),
+    ].map((value) => {
+        const normalized = normalizeDateLike(value);
+        return normalized ? new Date(normalized).getTime() : 0;
+    });
+
+    return Math.max(0, ...timestamps);
+}
+
+/**
+ * Keeps an older active job visible when a newer overlapping job has already
+ * reached an owner-hidden terminal state. Overlap can occur across browser tabs,
+ * so selecting the newest row before filtering is not a safe projection.
+ */
+export function selectLatestOwnerVisibleImageBatchJob(
+    jobs: BatchImageGenerationJobType[],
+): BatchImageGenerationJobType | null {
+    return [...jobs]
+        .filter((job) => isImageBatchOwnerVisibleStatus(job.status))
+        .sort((left, right) => getImageBatchJobSortTime(right) - getImageBatchJobSortTime(left))[0]
+        || null;
+}
+
 export function shouldApplyImageBatchListenerSnapshot(
     source: 'legacy' | 'primary',
     primaryHasJob: boolean,

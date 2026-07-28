@@ -1,8 +1,13 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
+import {
+    isSensitiveStoreRecordInScope,
+    resolveSensitiveSessionStoreScope,
+} from '@lib/security/sensitiveStoreScope';
 import {
     getBoundedSecurityRouteContext,
     getBoundedSecurityStringContext,
@@ -18,8 +23,7 @@ export type GoogleAnalyticsScopeDocumentId = {
 };
 
 function isPlatformSession(session: any): boolean {
-    return session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-        || session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE;
+    return resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE;
 }
 
 export function normalizeGoogleAnalyticsPropertyId(rawPropertyId: string | null | undefined): string | null {
@@ -57,11 +61,14 @@ export async function requireConfiguredGoogleAnalyticsProperty(
 
     if (isPlatformSession(session)) return null;
 
-    const tenantScope = normalizeGoogleAnalyticsScopeDocumentId(session?.tId ?? session?.user?.tenantId);
-    const storeScope = normalizeGoogleAnalyticsScopeDocumentId(session?.sId ?? session?.user?.storeId);
-    if (!tenantScope || !storeScope) {
+    const sessionScope = resolveSensitiveSessionStoreScope({
+        tenantValues: [session?.tId, session?.user?.tenantId],
+        storeValues: [session?.sId, session?.user?.storeId],
+    });
+    if (!sessionScope) {
         return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
     }
+    const { storeScope, tenantScope } = sessionScope;
     const tenantId = tenantScope.numericId;
     const storeId = storeScope.numericId;
 
@@ -79,7 +86,15 @@ export async function requireConfiguredGoogleAnalyticsProperty(
         .map(normalizeGoogleAnalyticsPropertyId)
         .filter(Boolean);
 
-    if (!storeDoc.exists || Number(storeData?.tenantId) !== tenantId || !allowedPropertyIds.includes(requestedPropertyId)) {
+    if (
+        !storeDoc.exists
+        || !isSensitiveStoreRecordInScope({
+            storeData,
+            storeDocumentId: storeScope.documentId,
+            tenantDocumentId: tenantScope.documentId,
+        })
+        || !allowedPropertyIds.includes(requestedPropertyId)
+    ) {
         logger.security('Authorization Failed - Analytics Property Mismatch', {
             ...getBoundedSecurityRouteContext(session, request),
             ...getBoundedSecurityStringContext('endpoint', request.nextUrl.pathname),

@@ -85,7 +85,11 @@ function verifySearchBoundary() {
   assertIncludes(searchResponse, 'readJsonResponseWithLimit<unknown>', 'Help Center browser bounded response parser');
   assertIncludes(searchResponse, 'isHelpCenterSearchResponse', 'Help Center browser response shape guard');
   assertIncludes(searchResponse, 'normalizeAnswerlatticePublicRelatedContent', 'Help Center related-content response normalizer');
-  assertIncludes(searchResponse, 'value.answerSource.length <= 32', 'Help Center answer-source response bound');
+  assertIncludes(
+    searchResponse,
+    "['cache', 'canonical', 'empty', 'faq', 'rag'].includes(String(value.answerSource))",
+    'Help Center answer-source response allowlist',
+  );
   assertIncludes(messageBubble, 'helpCenterArticleRouting(articleId)', 'Help Chat related articles use internal Help Center routes');
   assertNotIncludes(messageBubble, 'window.open(articleUrl', 'Help Chat must not open response-supplied article URLs');
   assertNotIncludes(messageBubble, "getBoundedHelpChatStringContext('articleUrl'", 'Help Chat must not log response-supplied article URLs');

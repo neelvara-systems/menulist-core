@@ -662,9 +662,7 @@ export const appendChatSessionMessages = async (
             if (!chatSessionImagesBelongToScope({ messages: incomingMessages }, context.scope)) {
                 throw new Error('answerlattice_chat_image_scope_invalid');
             }
-            let wrote = false;
-            let removedImageUrls: string[] = [];
-            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+            const transactionResult = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const sessionRef = getDocRef(normalizedSessionId);
                 const sessionSnapshot = await transaction.get(sessionRef);
                 if (!sessionSnapshot.exists()) throw new Error('answerlattice_chat_session_not_found');
@@ -688,14 +686,16 @@ export const appendChatSessionMessages = async (
                 if (current.mode === 'assistant' && nextMode === 'qna') {
                     throw new Error('answerlattice_chat_mode_transition_invalid');
                 }
-                if (additions.length === 0 && nextMode === current.mode) return;
+                if (additions.length === 0 && nextMode === current.mode) {
+                    return { wrote: false, removedImageUrls: [] };
+                }
                 const candidateMessages = [
                     ...current.messages,
                     ...additions,
                 ];
                 const nextMessages = normalizeAnswerlatticeChatMessagesForStorage(candidateMessages);
                 const retainedIds = new Set(nextMessages.map((message) => message.id));
-                removedImageUrls = filterUnreferencedAnswerlatticeChatImageUrls(collectAnswerlatticeChatImageUrls({
+                const removedImageUrls = filterUnreferencedAnswerlatticeChatImageUrls(collectAnswerlatticeChatImageUrls({
                     messages: candidateMessages.filter((message) => !retainedIds.has(message.id)),
                 }), { messages: nextMessages });
                 transaction.update(sessionRef, {
@@ -707,8 +707,9 @@ export const appendChatSessionMessages = async (
                     modifiedBy: context.userName,
                     modifiedOn: Timestamp.now(),
                 });
-                wrote = true;
+                return { wrote: true, removedImageUrls };
             });
+            const { wrote, removedImageUrls } = transactionResult;
             if (wrote) deferPersistedChatImageCleanup(removedImageUrls, 'append_compaction');
             return {
                 sessionId: normalizedSessionId,

@@ -1,4 +1,9 @@
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import {
+    getBoundedErrorNumericField,
+    getBoundedErrorStatus,
+    getBoundedNumericLogValue,
+} from '@lib/monitoring/boundedLogContext';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { normalizeAnswerlatticePublicRelatedContent } from '@lib/answerlattice/productSurfaceContent';
 import {
@@ -236,8 +241,7 @@ const getRejectedResponseCode = (payload: unknown): string => {
 
 const getRetryAfter = (payload: unknown): number | undefined => {
     if (!isRecord(payload)) return undefined;
-    const retryAfter = Number(payload.retryAfter);
-    return Number.isFinite(retryAfter) ? retryAfter : undefined;
+    return getBoundedNumericLogValue(payload.retryAfter);
 };
 
 const createHelpCenterSearchClientError = (
@@ -258,11 +262,11 @@ export const getHelpCenterSearchClientFailureMessage = (
     error: unknown,
     fallbackMessage = 'Search failed. Please try again.',
 ): string => {
-    const status = Number((error as HelpCenterSearchClientError | undefined)?.status);
+    const status = getBoundedErrorStatus(error);
     if (status !== 429) return fallbackMessage;
 
-    const retryAfter = Number((error as HelpCenterSearchClientError | undefined)?.retryAfter || 60);
-    return `You've reached the request limit. Please wait ${Number.isFinite(retryAfter) ? retryAfter : 60} seconds before trying again.`;
+    const retryAfter = getBoundedErrorNumericField(error, 'retryAfter') ?? 60;
+    return `You've reached the request limit. Please wait ${retryAfter} seconds before trying again.`;
 };
 
 export const readHelpCenterSearchResponse = async (

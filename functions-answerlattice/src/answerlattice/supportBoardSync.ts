@@ -17,6 +17,7 @@ import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBounda
 import { type AnswerlatticeSchedulerReadObserver } from './schedulerReadTelemetry';
 import { classifySupportBoardSearchEvidence } from './supportBoardEvidence';
 import { loadAnswerlatticeSupportBoardCoreCounts } from './supportBoardSummary';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 const PRODUCT_ID = 'AL';
 const ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED = 'ANSWERLATTICE_SUPPORT_BOARD_SYNC_FAILED';
@@ -115,15 +116,11 @@ function getSupportBoardSourceErrorContext(error: unknown): {
     sourceErrorCode: string | number | null;
     sourceStatusCode: number | null;
 } {
-    const source = error && typeof error === 'object' ? error as Record<string, unknown> : {};
-    const sourceStatusCode = typeof source.status === 'number'
-        ? source.status
-        : (typeof source.statusCode === 'number' ? source.statusCode : null);
-
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: typeof source.name === 'string' ? source.name : null,
-        sourceErrorCode: typeof source.code === 'string' || typeof source.code === 'number' ? source.code : null,
-        sourceStatusCode,
+        sourceErrorName: context.sourceErrorName ?? null,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceStatusCode: context.sourceStatusCode ?? null,
     };
 }
 

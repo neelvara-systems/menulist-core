@@ -22,6 +22,7 @@ Widget security uses the responsive Access & Security panel with 44px create, ro
 ## Required Mobile Behavior
 
 - Answer Tests render as cards with question, expected result, critical/evidence badges, a wrapping current First 10 proof alert, historical latest-run proof, and 44px actions.
+- After critical-RAG hardening, selecting **Critical** disables provider fallback as an expected route and presents the same concise explanation as desktop. A legacy critical-RAG case remains visible and its blocked result explains that critical proof requires approved truth or a safe fallback.
 - A suite-revision mismatch renders a text-labelled stale warning above the historical result; stale state never relies on color alone.
 - Test creation/editing uses a full-screen responsive modal with single-column fields.
 - Run progress does not resize the page and results remain readable without horizontal scrolling.
@@ -45,3 +46,5 @@ Widget security uses the responsive Access & Security panel with 44px create, ro
 ## Shared Logic
 
 Desktop and mobile use the same APIs, hooks, validation, permissions, and data contracts. No mobile-specific Firebase reads or writes are permitted.
+
+Feature 5 does not admit multi-turn test authoring, variant management, run-environment selectors, or detailed artifact inspection on mobile. The current single-case card model remains the complete mobile surface.

@@ -25,6 +25,8 @@
 | ONB-18 | Product URL uses non-HTTP scheme or embedded credentials | Reject before account/provider work | Client + runtime source gate |
 | ONB-19 | Multiple Answerlattice users share normalized email | Fail closed; never choose an arbitrary user record | Runtime source gate |
 | ONB-20 | New attempt follows compensated failure | Clear stale provider ID/recovery/cancellation fields before provider work | Runtime source gate |
+| ONB-21 | Persisted amount or provider installment count is a string, boolean, fraction, zero or non-finite value | Fail closed; do not coerce or persist billing truth | Contract + runtime source gate |
+| ONB-22 | Recovery timestamp has coercible members, invalid Date, hostile getter or throwing `toMillis` | Treat timestamp as unavailable without throwing or changing recovery timing | Contract |
 
 ## Required Local Gates
 

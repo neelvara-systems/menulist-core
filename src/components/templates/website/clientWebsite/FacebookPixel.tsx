@@ -1,13 +1,21 @@
 'use client'
 import { StoreDataType } from '@type/platform/store';
 import Script from 'next/script';
-import { useEffect } from 'react';
 
 declare global {
     interface Window {
-        fbq: (...args: any[]) => void;
+        fbq: FacebookPixelFunction;
     }
 }
+
+type FacebookPixelFunction = {
+    (...args: unknown[]): void;
+    callMethod?: (...args: unknown[]) => void;
+    push: FacebookPixelFunction;
+    loaded: boolean;
+    version: string;
+    queue: unknown[][];
+};
 
 interface FacebookPixelProps {
     storeDetails?: StoreDataType;
@@ -22,27 +30,6 @@ const getSafeMetaPixelId = (value?: string | null): string | null => {
 
 const FacebookPixel = ({ storeDetails }: FacebookPixelProps) => {
     const pixelId = getSafeMetaPixelId(storeDetails?.analytics?.facebookPixelId);
-
-    useEffect(() => {
-        if (!pixelId) return;
-
-        if (typeof window.fbq !== 'function') {
-            const fbq = function fbq() {
-                // @ts-ignore
-                fbq.callMethod ? fbq.callMethod.apply(fbq, arguments) : fbq.queue.push(arguments);
-            };
-
-            // @ts-ignore
-            fbq.push = fbq;
-            // @ts-ignore
-            fbq.loaded = true;
-            // @ts-ignore
-            fbq.version = '2.0';
-            // @ts-ignore
-            fbq.queue = [];
-            window.fbq = fbq as typeof window.fbq;
-        }
-    }, [pixelId]);
 
     if (!pixelId) return null;
 
@@ -82,7 +69,7 @@ const FacebookPixel = ({ storeDetails }: FacebookPixelProps) => {
 export default FacebookPixel;
 
 // Utility functions for tracking specific events
-export const trackFBEvent = (eventName: string, params?: Record<string, any>) => {
+export const trackFBEvent = (eventName: string, params?: Record<string, unknown>) => {
     if (typeof window.fbq === 'function') {
         window.fbq('track', eventName, params);
     }

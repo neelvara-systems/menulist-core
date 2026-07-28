@@ -37,7 +37,12 @@ export type AnswerlatticeProviderSubscriptionCandidate = {
     total_count?: number;
 };
 
-const normalizeString = (value: unknown) => String(value || '').trim();
+const normalizeString = (value: unknown): string => {
+    if (typeof value === 'string') return value.trim();
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    if (typeof value === 'boolean') return String(value);
+    return '';
+};
 const ANSWERLATTICE_TERMINAL_PROVIDER_SUBSCRIPTION_STATUSES = new Set([
     'cancelled',
     'completed',
@@ -65,32 +70,54 @@ export function buildAnswerlatticeOnboardingRequestFingerprint(
 }
 
 export function getAnswerlatticeOnboardingTimestampMillis(value: unknown): number {
-    if (!value) return 0;
-    if (value instanceof Date) return value.getTime();
-    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-    if (typeof value === 'string') {
-        const parsed = Date.parse(value);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-    if (typeof value !== 'object' || Array.isArray(value)) return 0;
+    try {
+        if (!value) return 0;
+        if (value instanceof Date) {
+            const millis = value.getTime();
+            return Number.isFinite(millis) ? millis : 0;
+        }
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+        if (typeof value === 'string') {
+            const parsed = Date.parse(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+        if (typeof value !== 'object' || Array.isArray(value)) return 0;
 
-    const timestamp = value as {
-        _nanoseconds?: unknown;
-        _seconds?: unknown;
-        nanoseconds?: unknown;
-        seconds?: unknown;
-        toMillis?: unknown;
-    };
-    if (typeof timestamp.toMillis === 'function') {
-        const millis = Number(timestamp.toMillis.call(value));
-        return Number.isFinite(millis) ? millis : 0;
-    }
+        const timestamp = value as {
+            _nanoseconds?: unknown;
+            _seconds?: unknown;
+            nanoseconds?: unknown;
+            seconds?: unknown;
+            toMillis?: unknown;
+        };
+        const toMillis = timestamp.toMillis;
+        if (typeof toMillis === 'function') {
+            const millis = toMillis.call(value);
+            return typeof millis === 'number' && Number.isFinite(millis) ? millis : 0;
+        }
 
-    const seconds = Number(timestamp.seconds ?? timestamp._seconds);
-    const nanoseconds = Number(timestamp.nanoseconds ?? timestamp._nanoseconds ?? 0);
-    if (!Number.isFinite(seconds) || !Number.isFinite(nanoseconds)) return 0;
-    return (seconds * 1000) + Math.floor(nanoseconds / 1_000_000);
+        const seconds = timestamp.seconds ?? timestamp._seconds;
+        const nanoseconds = timestamp.nanoseconds ?? timestamp._nanoseconds ?? 0;
+        if (
+            typeof seconds !== 'number'
+            || !Number.isSafeInteger(seconds)
+            || typeof nanoseconds !== 'number'
+            || !Number.isSafeInteger(nanoseconds)
+            || nanoseconds < 0
+            || nanoseconds > 999_999_999
+        ) return 0;
+        const millis = (seconds * 1000) + Math.floor(nanoseconds / 1_000_000);
+        return Number.isSafeInteger(millis) ? millis : 0;
+    } catch {
+        return 0;
+    }
 }
+
+export const getAnswerlatticeOnboardingPositiveInteger = (value: unknown): number | null => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+        ? value
+        : null
+);
 
 export function findAnswerlatticeProviderSubscriptionForAttempt(params: {
     attemptId: string;
@@ -115,7 +142,10 @@ export function findAnswerlatticeProviderSubscriptionForAttempt(params: {
             });
     });
 
-    matches.sort((left, right) => Number(right.created_at || 0) - Number(left.created_at || 0));
+    matches.sort((left, right) => (
+        (typeof right.created_at === 'number' && Number.isFinite(right.created_at) ? right.created_at : 0)
+        - (typeof left.created_at === 'number' && Number.isFinite(left.created_at) ? left.created_at : 0)
+    ));
     return matches[0] || null;
 }
 

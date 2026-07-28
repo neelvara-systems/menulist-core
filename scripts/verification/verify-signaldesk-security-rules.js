@@ -8,6 +8,9 @@ const firestoreRules = fs.readFileSync(path.join(ROOT, "firestore-signaldesk.rul
 const storageRules = fs.readFileSync(path.join(ROOT, "storage-signaldesk.rules"), "utf8");
 
 const summaryCollections = [
+  "signaldeskRolePolicies",
+  "signaldeskFoundationSummaries",
+  "signaldeskAiEvalSummaries",
   "signaldeskControlRoomSummaries",
   "signaldeskQueueSummaries",
   "signaldeskChannelHealthSummaries",
@@ -303,6 +306,9 @@ async function verifyRulesUnitSemantics() {
         setDoc(doc(firestore, "signaldeskControlRoomSummaries/dashboard"), { pId: "SD", status: "ready" }),
         setDoc(doc(firestore, "signaldeskControlRoomSummaries/dashboard_missing_product"), { status: "ready" }),
         setDoc(doc(firestore, "signaldeskControlRoomSummaries/dashboard_foreign_product"), { pId: "AL", status: "ready" }),
+        setDoc(doc(firestore, "signaldeskRolePolicies/current"), { pId: "SD", version: 1 }),
+        setDoc(doc(firestore, "signaldeskFoundationSummaries/current"), { pId: "SD", status: "ready" }),
+        setDoc(doc(firestore, "signaldeskAiEvalSummaries/current"), { pId: "SD", status: "ready" }),
         setDoc(doc(firestore, "signaldeskRevenueAccounts/account_summary"), { pId: "SD", revenueAccountId: "account_summary" }),
         setDoc(doc(firestore, "signaldeskCommercialOpportunities/opportunity_summary"), { pId: "SD", opportunityId: "opportunity_summary" }),
         setDoc(doc(firestore, "signaldeskCommercialOffers/offer_summary"), { pId: "SD", commercialOfferId: "offer_summary" }),
@@ -397,6 +403,15 @@ async function verifyRulesUnitSemantics() {
     await assertFails(getDoc(doc(platformAdmin.firestore(), "signaldeskTeamMembers/missing-product-member")));
     await assertFails(getDoc(doc(platformAdmin.firestore(), "signaldeskTeamMembers/foreign-product-member")));
     await assertFails(getDocs(collection(platformAdmin.firestore(), "signaldeskTeamMembers")));
+    for (const collectionName of [
+      "signaldeskRolePolicies",
+      "signaldeskFoundationSummaries",
+      "signaldeskAiEvalSummaries",
+    ]) {
+      await assertFails(getDoc(doc(activeMember.firestore(), `${collectionName}/current`)));
+      await assertSucceeds(getDoc(doc(platformAdmin.firestore(), `${collectionName}/current`)));
+      await assertFails(setDoc(doc(platformAdmin.firestore(), `${collectionName}/client_write`), { pId: "SD" }));
+    }
     await assertSucceeds(getDocs(query(
       collection(platformAdmin.firestore(), "signaldeskTeamMembers"),
       where("pId", "==", "SD"),

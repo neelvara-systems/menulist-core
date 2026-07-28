@@ -61,8 +61,7 @@ export const updateAiSearchHistoryWithFeedback = async (data: Partial<AiSearchHi
                 throw new Error('ai_search_history_feedback_scope_missing');
             }
             const feedback = normalizeAnswerlatticeChatFeedback(data, Timestamp.now());
-            let wrote = false;
-            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+            const wrote = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const searchHistoryRef = await getDocRef(searchHistoryId);
                 const snapshot = await transaction.get(searchHistoryRef);
                 if (!snapshot.exists()) throw new Error('ai_search_history_not_found');
@@ -87,7 +86,7 @@ export const updateAiSearchHistoryWithFeedback = async (data: Partial<AiSearchHi
                     if (JSON.stringify(existingComparable) !== JSON.stringify(nextComparable)) {
                         throw new Error('ai_search_history_feedback_already_submitted');
                     }
-                    return;
+                    return false;
                 }
                 transaction.update(searchHistoryRef, {
                     ...feedback,
@@ -97,7 +96,7 @@ export const updateAiSearchHistoryWithFeedback = async (data: Partial<AiSearchHi
                     modifiedBy: actorName,
                     modifiedOn: Timestamp.now(),
                 });
-                wrote = true;
+                return true;
             });
             return {
                 searchHistoryId,

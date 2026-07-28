@@ -17,6 +17,7 @@
 import * as Sentry from '@sentry/node';
 import * as functions from 'firebase-functions';
 import { isFunctionFeatureEnabled } from '../constants/features';
+import { getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus , getBoundedFunctionsErrorName} from '../utils/boundedErrorContext';
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -113,23 +114,17 @@ function summarizeFunctionSentryValue(kind: string, value: unknown): string {
 }
 
 function getSentryErrorCode(error: Error): string {
-    const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
-    return String(record.code ?? record.status ?? record.statusCode ?? '').toUpperCase();
+    return getBoundedFunctionsErrorCode(error) || 'unknown';
 }
 
 function getFunctionSentryErrorStatus(error: Error): number | undefined {
-    const record = error as Error & { status?: unknown; statusCode?: unknown };
-    const status = Number(record.status ?? record.statusCode);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedFunctionsErrorStatus(error);
 }
 
 function getFunctionSentryErrorContext(error: Error): Record<string, unknown> {
-    const record = error as Error & { code?: unknown };
     return {
-        sourceErrorCode: record.code === undefined || record.code === null
-            ? undefined
-            : String(record.code).slice(0, 64),
-        sourceErrorName: (error.name || 'Error').slice(0, 80),
+        sourceErrorCode: getBoundedFunctionsErrorCode(error),
+        sourceErrorName: getBoundedFunctionsErrorName(error) || 'Error',
         sourceStatusCode: getFunctionSentryErrorStatus(error),
         messagePresent: typeof error.message === 'string' && error.message.length > 0,
         messageLength: typeof error.message === 'string' ? error.message.length : 0,
@@ -432,7 +427,7 @@ export function setProcessingContext(context: {
 export function addBreadcrumb(
     message: string,
     category: string = 'function',
-    data?: Record<string, any>,
+    data?: Record<string, unknown>,
     level: Sentry.SeverityLevel = 'info'
 ): void {
     if (!isInitialized) return;
@@ -498,7 +493,7 @@ export function captureException(
     error: Error | unknown,
     context?: {
         operation?: string;
-        details?: Record<string, any>;
+        details?: Record<string, unknown>;
         level?: Sentry.SeverityLevel;
     }
 ): string | undefined {
@@ -522,7 +517,7 @@ export function captureException(
 export function captureMessage(
     message: string,
     level: Sentry.SeverityLevel = 'info',
-    extra?: Record<string, any>
+    extra?: Record<string, unknown>
 ): string | undefined {
     if (!isInitialized) return undefined;
 

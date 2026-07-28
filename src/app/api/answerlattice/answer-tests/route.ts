@@ -3,7 +3,11 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeActivationAnswerTestSummary } from '@lib/answerlattice/activationAnswerTestSummary';
 import {
     AnswerlatticeAnswerTestSaveSchema,
@@ -31,10 +35,7 @@ import { withAuth } from '../../../../middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../readRateLimit';
 
 const ANSWER_TEST_SAVE_MAX_BODY_BYTES = 256 * 1024;
-const PRIVATE_NO_STORE_HEADERS = {
-    'Cache-Control': 'private, no-store',
-    'X-Content-Type-Options': 'nosniff',
-};
+const PRIVATE_NO_STORE_HEADERS = ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS;
 
 const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
     response.headers.set('Cache-Control', PRIVATE_NO_STORE_HEADERS['Cache-Control']);
@@ -116,7 +117,10 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
         );
     }
-    const userId = session.uId || session.user?.id || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
+    }
     try {
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
         const rateLimit = await checkRateLimit({
@@ -127,11 +131,17 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
                 sessionScope.storeId,
             ),
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             return NextResponse.json(
-                { error: 'Too many changes. Please try again shortly.' },
-                { status: 429, headers: PRIVATE_NO_STORE_HEADERS },
+                {
+                    error: providerUnavailable
+                        ? 'Answer test changes are temporarily unavailable. Please try again shortly.'
+                        : 'Too many changes. Please try again shortly.',
+                },
+                { status: providerUnavailable ? 503 : 429, headers: PRIVATE_NO_STORE_HEADERS },
             );
         }
     } catch (error) {

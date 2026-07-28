@@ -11,6 +11,7 @@ import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl
 import {
     buildHostedHelpRegistryDoc,
     resolveAnswerlatticeHostedHelpRegistryScope,
+    shouldRemoveCompensatedHostedHelpProviderDomain,
     type AnswerlatticeHostedHelpRegistryStatus,
     revalidateAnswerlatticeHostedHelpDomain,
 } from '@lib/answerlattice/hostedHelpServer';
@@ -29,6 +30,11 @@ import {
 } from '@lib/domains/vercelDomains';
 import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import {
+    getBoundedErrorCodeAtPath,
+    getBoundedErrorNumberAtPath,
+    getUnknownObjectValueAtPath,
+} from '@lib/monitoring/boundedLogContext';
 import { checkRateLimit } from '@lib/rateLimit';
 import { isReservedCustomDomainClaimCandidate } from '@lib/routing/customDomainClaim';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -54,21 +60,22 @@ const registryScopeMatches = (registry: Record<string, any> | null | undefined, 
     return registryScope?.tenantId === scope.tenantId && registryScope.storeId === scope.storeId;
 };
 
-const getHostedHelpProviderErrorContext = (data: any): Record<string, boolean | number | string | null> => {
-    const nestedError = data?.error && typeof data.error === 'object' ? data.error : null;
-    const message = typeof nestedError?.message === 'string'
-        ? nestedError.message
-        : typeof data?.error === 'string'
-            ? data.error
+const getHostedHelpProviderErrorContext = (data: unknown): Record<string, boolean | number | string | null> => {
+    const nestedMessage = getUnknownObjectValueAtPath(data, ['error', 'message']);
+    const directError = getUnknownObjectValueAtPath(data, ['error']);
+    const message = typeof nestedMessage === 'string'
+        ? nestedMessage
+        : typeof directError === 'string'
+            ? directError
             : '';
-    const code = typeof nestedError?.code === 'string' || typeof nestedError?.code === 'number'
-        ? String(nestedError.code).slice(0, 80)
-        : null;
-    const status = Number(data?.status ?? nestedError?.status ?? nestedError?.statusCode);
+    const code = getBoundedErrorCodeAtPath(data, ['error', 'code']) ?? null;
+    const status = getBoundedErrorNumberAtPath(data, ['status'])
+        ?? getBoundedErrorNumberAtPath(data, ['error', 'status'])
+        ?? getBoundedErrorNumberAtPath(data, ['error', 'statusCode']);
 
     return {
         providerCode: code,
-        providerStatus: Number.isFinite(status) ? status : null,
+        providerStatus: status ?? null,
         providerMessagePresent: message.length > 0,
         providerMessageLength: message.length,
     };
@@ -132,16 +139,40 @@ const removeHostedHelpProviderDomain = async (params: {
 };
 
 const compensateHostedHelpProviderChanges = async (params: {
+    db: any;
     addedDomains: string[];
     removedDomains: string[];
     scope: { tenantId: number; storeId: number };
 }): Promise<void> => {
     await Promise.all([
-        ...params.addedDomains.map(domain => removeHostedHelpProviderDomain({
-            domain,
-            scope: params.scope,
-            failureCode: 'answerlattice_hosted_help_provider_compensation_failed',
-        })),
+        ...params.addedDomains.map(async domain => {
+            try {
+                const registrySnapshot = await params.db
+                    .collection(DB_COLLECTIONS.ANSWERLATTICE_PUBLIC_HELP_SITES)
+                    .doc(domain)
+                    .get();
+                if (!shouldRemoveCompensatedHostedHelpProviderDomain(registrySnapshot.exists)) {
+                    logRuntimeDiagnostic('answerlattice_hosted_help_provider_compensation_preserved_claim', {
+                        ...getBoundedRuntimeStringContext('tenantId', params.scope.tenantId),
+                        ...getBoundedRuntimeStringContext('storeId', params.scope.storeId),
+                        ...getBoundedRuntimeStringContext('domain', domain),
+                    });
+                    return true;
+                }
+            } catch (error) {
+                logRuntimeFailure('answerlattice_hosted_help_provider_compensation_registry_read_failed', error, {
+                    ...getBoundedRuntimeStringContext('tenantId', params.scope.tenantId),
+                    ...getBoundedRuntimeStringContext('storeId', params.scope.storeId),
+                    ...getBoundedRuntimeStringContext('domain', domain),
+                });
+                return false;
+            }
+            return removeHostedHelpProviderDomain({
+                domain,
+                scope: params.scope,
+                failureCode: 'answerlattice_hosted_help_provider_compensation_failed',
+            });
+        }),
         ...params.removedDomains.map(async domain => {
             try {
                 const addResult = await addDomainToVercelProject(domain);
@@ -218,13 +249,6 @@ const getHostedHelpDomainStatuses = async (
         return getRegistryStatus(domain, registry);
     });
 };
-
-const isRateLimitUnavailable = (rateLimitResult: { allowed: boolean; current: number; remaining: number }, limit: number) => (
-    rateLimitResult.allowed
-    && FEATURE_FLAGS.ENABLE_RATE_LIMITING
-    && rateLimitResult.current === 0
-    && rateLimitResult.remaining === limit
-);
 
 const buildStatusPatch = (params: {
     verified: boolean;
@@ -399,8 +423,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 key: buildAnswerlatticeRateLimitKey('answerlattice-hosted-help-domain-refresh', scope.storeId),
                 limit: rateLimitConfig.limit,
                 window: rateLimitConfig.window,
+                failClosedOnProviderError: true,
             });
-            if (isRateLimitUnavailable(rateLimitResult, rateLimitConfig.limit)) {
+            if (!rateLimitResult.allowed && rateLimitResult.reason === 'provider_unavailable') {
                 return NextResponse.json(
                     { error: 'Hosted help domain checks are temporarily unavailable' },
                     { status: 503, headers: { 'Cache-Control': 'no-store' } },
@@ -456,8 +481,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
         key: buildAnswerlatticeRateLimitKey('answerlattice-hosted-help-settings', scope.storeId),
         limit: rateLimitConfig.limit,
         window: rateLimitConfig.window,
+        failClosedOnProviderError: true,
     });
-    if (isRateLimitUnavailable(rateLimitResult, rateLimitConfig.limit)) {
+    if (!rateLimitResult.allowed && rateLimitResult.reason === 'provider_unavailable') {
         return NextResponse.json(
             { error: 'Hosted help settings are temporarily unavailable' },
             { status: 503, headers: { 'Cache-Control': 'no-store' } },
@@ -573,6 +599,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
                     ...getBoundedRuntimeStringContext('domain', domain),
                 });
                 await compensateHostedHelpProviderChanges({
+                    db,
                     addedDomains: providerAddedDomains,
                     removedDomains: providerRemovedDomains,
                     scope,
@@ -592,6 +619,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
                     ...getHostedHelpProviderErrorContext(addResult.data),
                 });
                 await compensateHostedHelpProviderChanges({
+                    db,
                     addedDomains: providerAddedDomains,
                     removedDomains: providerRemovedDomains,
                     scope,
@@ -639,6 +667,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             });
             if (!removed) {
                 await compensateHostedHelpProviderChanges({
+                    db,
                     addedDomains: providerAddedDomains,
                     removedDomains: providerRemovedDomains,
                     scope,
@@ -732,6 +761,7 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             });
         } catch (error) {
             await compensateHostedHelpProviderChanges({
+                db,
                 addedDomains: providerAddedDomains,
                 removedDomains: providerRemovedDomains,
                 scope,

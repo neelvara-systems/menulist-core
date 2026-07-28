@@ -12,6 +12,7 @@ import {
     type SignalDeskTargetImportRow,
 } from "@lib/signaldesk/targetContracts";
 import type { SignalDeskSourceProviderId } from "@type/signaldesk";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 type SourceProviderInput = {
     city?: string;
@@ -167,7 +168,7 @@ const providerFetch = async (provider: SignalDeskSourceProviderId, url: string, 
     try {
         return await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
     } catch (error) {
-        if (error instanceof Error && (error.name === "AbortError" || error.name === "TimeoutError")) {
+        if (["AbortError", "TimeoutError"].includes(getBoundedErrorName(error) || "")) {
             throw new Error(SOURCE_PROVIDER_TIMEOUT);
         }
         logRuntimeFailure("signaldesk_source_provider_request_failed", error, {

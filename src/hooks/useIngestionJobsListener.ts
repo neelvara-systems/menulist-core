@@ -1,15 +1,16 @@
 'use client';
 
 import { getIngestionJobCollectionRef } from '@database/kb-generation/jobs';
+import { buildAnswerlatticeHookScopeKey } from '@lib/answerlattice/hookScopeBoundary';
 import { getBoundedHookStringContext, logHookDiagnostic, logHookFailure } from '@hook/hookDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { triggerFinalizePublish } from '@lib/firebase/functions';
-import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
 import { message } from 'antd';
 import { onSnapshot } from 'firebase/firestore';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type IngestionJobsScope = {
     tId?: number | string | null;
@@ -27,13 +28,24 @@ const getIngestionJobsListenerLogContext = (
 export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
     const [activeJob, setActiveJob] = useState<IngestionJob | null>(null);
     const dispatch = useAppDispatch();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const session = useClientAuthSession();
     const unsubscribeRef = useRef<(() => void) | null>(null);
-    const tenantId = Number(scope?.tId ?? storeDetails?.tenantId);
-    const storeId = Number(scope?.sId ?? storeDetails?.storeId);
+    const latestListenerRef = useRef(0);
+    const requestedScopeKey = buildAnswerlatticeHookScopeKey(scope?.tId, scope?.sId);
+    const sessionScopeKey = buildAnswerlatticeHookScopeKey(session?.tId, session?.sId);
+    const hasExactScope = requestedScopeKey !== null && requestedScopeKey === sessionScopeKey;
+    const tenantId = hasExactScope ? Number(scope?.tId) : 0;
+    const storeId = hasExactScope ? Number(scope?.sId) : 0;
 
     useEffect(() => {
-        if (!Number.isFinite(tenantId) || !Number.isFinite(storeId) || tenantId <= 0 || storeId <= 0) return;
+        const listenerId = latestListenerRef.current + 1;
+        latestListenerRef.current = listenerId;
+        if (!hasExactScope || tenantId <= 0 || storeId <= 0) {
+            unsubscribeRef.current?.();
+            unsubscribeRef.current = null;
+            setActiveJob(null);
+            return;
+        }
         if (unsubscribeRef.current) unsubscribeRef.current();
 
         const loaderId = 'ingestion-jobs-listener';
@@ -44,6 +56,7 @@ export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
             const jobsCollectionRef = getIngestionJobCollectionRef({ tId: tenantId, sId: storeId });
 
             const unsubscribe = onSnapshot(jobsCollectionRef, async (querySnapshot) => {
+                if (latestListenerRef.current !== listenerId) return;
                 const jobsData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as IngestionJob));
                 const currentActiveJob = jobsData.length > 0 ? jobsData[0] : null;
                 if (currentActiveJob) {
@@ -55,10 +68,12 @@ export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
                         ...getBoundedHookStringContext('jobStatus', currentActiveJob.status),
                     }, { developmentOnly: true });
                 }
+                if (latestListenerRef.current !== listenerId) return;
                 setActiveJob(currentActiveJob);
                 dispatch(stopLoader(loaderId));
             },
                 (error) => {
+                    if (latestListenerRef.current !== listenerId) return;
                     logHookFailure('ingestion_jobs_listener_snapshot_failed', error, getIngestionJobsListenerLogContext(tenantId, storeId));
                     message.error('Failed to fetch real-time job updates.');
                     dispatch(stopLoader(loaderId));
@@ -73,12 +88,14 @@ export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
         }
 
         return () => {
+            latestListenerRef.current += 1;
             if (unsubscribeRef.current) {
                 unsubscribeRef.current();
+                unsubscribeRef.current = null;
             }
             dispatch(stopLoader(loaderId));
         };
-    }, [storeId, tenantId, dispatch]);
+    }, [hasExactScope, storeId, tenantId, dispatch]);
 
     return { activeJob };
 };

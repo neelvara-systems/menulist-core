@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../..');
 const outputDir = path.join(repoRoot, 'public/images/website/product-proof');
 const notesDir = path.join(repoRoot, '__docs__/main-website/asset-production/stage-08-product-proof');
+const generationDate = new Date().toISOString().slice(0, 10);
 
 let menuListLogoImage = null;
 
@@ -491,7 +492,7 @@ async function main() {
   const note = [
     '# Stage 8 Product Proof Demo Asset Pack',
     '',
-    'Generated: 2026-07-10',
+    `Generated: ${generationDate}`,
     '',
     'This pack adds market-first product proof images for the current MenuList website pass. The assets use fictional demo data for The Daily Plate and are not real customer screenshots, testimonials, customer proof, or live usage evidence.',
     '',

@@ -4,7 +4,7 @@
 **Feature Flag:** `ENABLE_OPS_ALERTS: true` in current app source
 **Priority:** 🔴 P0 — Verify configured delivery before launch
 **Created:** February 20, 2026  
-**Last Updated:** July 13, 2026
+**Last Updated:** July 28, 2026
 **Source:** ChatGPT launch infra review → Cascade critical review
 
 ---
@@ -21,6 +21,8 @@ July 13 ops-boundary audit: SAFE_MODE, deploy-mute, and platform-notification AP
 
 The clean-room replay follow-up also makes acknowledgement no-write when already acknowledged and requires stable action IDs for manual handoff/manual alert creation. An identical manual-alert request resolves to the deterministic existing `systemAlerts` document and does not repeat external delivery.
 
+July 28 alert-contract audit: Cloud Functions alert creation now claims one deterministic rolling-cooldown bucket transactionally, including the previous bucket at the time boundary. Concurrent/retried emitters therefore create and deliver at most one identical alert in the configured trigger window. Every current app/Functions writer stores the canonical alert shape plus a 90-day `expiresAt`; critical system errors use that same writer instead of a partial legacy document.
+
 ---
 
 ## One-Liner
@@ -36,14 +38,14 @@ Existing alert framework (functions/src/monitoring/alerts.ts)
           └─→ Founder receives push notification on phone
 ```
 
-**Key Insight:** The alert rules, cooldown logic, and severity classification already exist in `functions/src/monitoring/alerts.ts`. What's missing is the **delivery mechanism** — the code that actually sends the alert somewhere. Currently there are `// TODO: Send notification` comments.
+**Key Insight:** Trigger classification and cooldowns are owned by the byte-identical platform-notification registry. Functions atomically claim cooldown identity before writing and delivery; the app helper accepts deterministic document IDs for replay-sensitive API actions.
 
 ## What Already Exists
 
 | Component             | Status     | Location                             |
 | --------------------- | ---------- | ------------------------------------ |
-| Alert rules | ✅ BUILT | `functions/src/monitoring/alerts.ts` |
-| Alert cooldown logic | ✅ BUILT | `checkCooldown()` in alerts.ts |
+| Trigger classification | ✅ BUILT | Shared platform-notification registry |
+| Alert cooldown logic | ✅ BUILT | Transactional current/previous bucket claim in `alerts.ts` |
 | Alert creation | ✅ BUILT | App and Functions alert helpers |
 | Alert acknowledgment | ✅ BUILT | Platform notification ops route/helper |
 | Alert delivery | ✅ BUILT / configuration-gated | Telegram plus configured platform email/WhatsApp delivery helpers |

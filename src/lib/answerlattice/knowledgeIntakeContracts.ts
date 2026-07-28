@@ -11,6 +11,10 @@ import {
     ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS,
     ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS,
     ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE,
+    ANSWERLATTICE_SOURCE_ACCESS_SCOPE,
+    ANSWERLATTICE_SOURCE_APPROVAL_STATUS,
+    ANSWERLATTICE_SOURCE_AUTHORITY,
+    ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY,
     type AnswerlatticeIntakeReviewItem,
     type AnswerlatticeKnowledgeIntakeBundle,
     type AnswerlatticeKnowledgeIntakeJob,
@@ -25,17 +29,104 @@ const boundedId = z.string().trim().min(1).max(180);
 const intakeJobId = boundedId.refine(value => normalizeAnswerlatticeKnowledgeIntakeJobId(value) === value);
 const intakeSourceId = boundedId.refine(value => normalizeAnswerlatticeKnowledgeIntakeSourceId(value) === value);
 const intakeReviewItemId = boundedId.refine(value => normalizeAnswerlatticeKnowledgeIntakeReviewItemId(value) === value);
-const timestampLike = z.custom<unknown>((value) => {
-    if (value === undefined || value === null) return true;
-    if (value instanceof Date) return Number.isFinite(value.getTime());
-    if (typeof value === 'number') return Number.isFinite(value);
-    if (typeof value === 'string') return Number.isFinite(Date.parse(value));
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    const candidate = value as { seconds?: unknown; toDate?: unknown; toMillis?: unknown };
-    return typeof candidate.toDate === 'function'
-        || typeof candidate.toMillis === 'function'
-        || (typeof candidate.seconds === 'number' && Number.isFinite(candidate.seconds));
-}, 'Invalid timestamp');
+export const normalizeAnswerlatticeKnowledgeIntakeScope = (
+    tId: unknown,
+    sId: unknown,
+): { tId: number; sId: number } | null => (
+    typeof tId === 'number'
+    && Number.isSafeInteger(tId)
+    && tId > 0
+    && typeof sId === 'number'
+    && Number.isSafeInteger(sId)
+    && sId > 0
+        ? { tId, sId }
+        : null
+);
+
+export const getAnswerlatticeKnowledgeIntakeTimestampMillis = (value: unknown): number | null => {
+    try {
+        if (value instanceof Date) {
+            const millis = value.getTime();
+            return Number.isFinite(millis) ? millis : null;
+        }
+        if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+        if (typeof value === 'string') {
+            const millis = Date.parse(value);
+            return Number.isFinite(millis) ? millis : null;
+        }
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+
+        const toMillis = Reflect.get(value, 'toMillis');
+        if (typeof toMillis === 'function') {
+            const millis = Reflect.apply(toMillis, value, []);
+            return typeof millis === 'number' && Number.isFinite(millis) ? millis : null;
+        }
+
+        const toDate = Reflect.get(value, 'toDate');
+        if (typeof toDate === 'function') {
+            const date = Reflect.apply(toDate, value, []);
+            return date instanceof Date && Number.isFinite(date.getTime()) ? date.getTime() : null;
+        }
+
+        const seconds = Reflect.get(value, 'seconds');
+        if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return null;
+        const nanoseconds = Reflect.get(value, 'nanoseconds');
+        if (
+            nanoseconds !== undefined
+            && (
+                typeof nanoseconds !== 'number'
+                || !Number.isInteger(nanoseconds)
+                || nanoseconds < 0
+                || nanoseconds >= 1_000_000_000
+            )
+        ) return null;
+        const millis = (seconds * 1000) + ((nanoseconds || 0) / 1_000_000);
+        return Number.isFinite(millis) ? millis : null;
+    } catch {
+        return null;
+    }
+};
+
+const timestampLike = z.custom<unknown>((value) => (
+    value === undefined
+    || value === null
+    || getAnswerlatticeKnowledgeIntakeTimestampMillis(value) !== null
+), 'Invalid timestamp');
+const dateOnly = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}, 'Invalid date');
+const sourceGovernanceApplicabilityList = z.array(z.string().trim().min(1).max(80))
+    .max(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_APPLICABILITY_ITEMS);
+const sourceGovernanceApplicability = z.object({
+    products: sourceGovernanceApplicabilityList,
+    plans: sourceGovernanceApplicabilityList,
+    roles: sourceGovernanceApplicabilityList,
+    regions: sourceGovernanceApplicabilityList,
+    versions: sourceGovernanceApplicabilityList,
+}).strict();
+
+export const AnswerlatticeSourceGovernanceInputSchema = z.object({
+    requestId: z.string().uuid(),
+    authority: z.enum(Object.values(ANSWERLATTICE_SOURCE_AUTHORITY) as [string, ...string[]]),
+    owner: z.string().trim().max(160).nullable().optional(),
+    approvalStatus: z.enum(Object.values(ANSWERLATTICE_SOURCE_APPROVAL_STATUS) as [string, ...string[]]),
+    accessScope: z.enum(Object.values(ANSWERLATTICE_SOURCE_ACCESS_SCOPE) as [string, ...string[]]),
+    citationEligibility: z.enum(Object.values(ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY) as [string, ...string[]]),
+    effectiveDate: dateOnly.nullable().optional(),
+    reviewDate: dateOnly.nullable().optional(),
+    applicability: sourceGovernanceApplicability,
+    conflictSourceIds: z.array(intakeSourceId)
+        .max(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_CONFLICTS),
+    notes: z.string().trim().max(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_SOURCE_GOVERNANCE_NOTES_CHARS).nullable().optional(),
+}).strict();
+
+export const AnswerlatticeSourceGovernanceSchema = AnswerlatticeSourceGovernanceInputSchema.omit({
+    requestId: true,
+}).extend({
+    reviewedBy: z.string().trim().min(1).max(180),
+    reviewedOn: timestampLike,
+}).strict();
 
 const answerlatticeIdentity = {
     pId: z.literal(PRODUCT_IDS.ANSWERLATTICE),
@@ -120,6 +211,7 @@ export const AnswerlatticeKnowledgeSourceSchema = z.object({
     contextKeys: z.array(z.string().max(100)).max(20).optional(),
     entityIds: z.array(z.string().max(180)).max(25).optional(),
     metadata: z.record(z.unknown()).optional(),
+    governance: AnswerlatticeSourceGovernanceSchema.optional(),
     processingRun: z.object({
         id: boundedId,
         status: z.enum(['processing', 'completed', 'failed']),
@@ -228,6 +320,16 @@ export const AnswerlatticeKnowledgeIntakeBundleSchema = z.object({
     sources: z.array(AnswerlatticeKnowledgeSourceSchema),
     reviewItems: z.array(AnswerlatticeIntakeReviewItemSchema),
 });
+
+export const AnswerlatticeKnowledgeIntakePublishRequestSchema = z.object({
+    itemIds: z.array(intakeReviewItemId)
+        .min(1)
+        .max(ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_PUBLISH_ITEMS)
+        .refine(itemIds => new Set(itemIds).size === itemIds.length, {
+            message: 'Review item IDs must be unique.',
+        })
+        .optional(),
+}).strict().optional();
 
 function assertStoredDocumentId(data: unknown, documentId: string, label: string): void {
     if (!data || typeof data !== 'object' || Array.isArray(data)) {

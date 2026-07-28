@@ -22,6 +22,7 @@ import {
 import { getDirectVerifiedPaidOwnerReferralWallet } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { isOwnerReferralAcquisitionEnabledForStore } from '@lib/ownerReferral/ownerReferralFeature';
 import type { OwnerReferralDocument } from '@lib/ownerReferral/ownerReferralTypes';
+import { resolveStorePermissionSessionScope } from '@lib/permissions/scopeDocumentId';
 import { NextRequest, NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { verifyTenantAccess, withAuth } from 'src/middleware/auth';
@@ -52,8 +53,9 @@ const timestampToIso = (value: unknown): string | null => {
 };
 
 export const GET = withAuth(async (request: NextRequest, session) => {
-    const tenantId = asPositiveInteger(session.user.tenantId ?? session.tId);
-    const storeId = asPositiveInteger(session.user.storeId ?? session.sId);
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    const tenantId = asPositiveInteger(sessionScope?.tenantScope.numericId);
+    const storeId = asPositiveInteger(sessionScope?.storeScope.numericId);
     if (!tenantId || !storeId || !isOwnerReferralAcquisitionEnabledForStore(storeId)) return unavailable();
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: 'Forbidden - Access denied' }, { status: 403 });

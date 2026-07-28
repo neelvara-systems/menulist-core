@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { isDeepStrictEqual } = require('node:util');
 const {
   parse,
   TYPE,
@@ -455,6 +456,13 @@ function providerMetadata() {
       generation: 'greedy; no_repeat_ngram_size=3; repetition_penalty=1.1; max_decoding_length=256; token-preserving segment fallback',
     },
   };
+}
+
+function assertProviderMetadata(actual) {
+  assert(
+    isDeepStrictEqual(actual, providerMetadata()),
+    'Semantic translation provider metadata does not match the pinned local model contract',
+  );
 }
 
 function originalSlice(source, element) {
@@ -969,6 +977,7 @@ function applyQualityResults(locales, sourceOwner, results) {
     results.sourceOwnerSha256 === mapDigest(sourceOwner),
     'Semantic quality results were generated for a different en-US owner source',
   );
+  assertProviderMetadata(results.providers);
 
   const evidence = readJson(EVIDENCE_PATH);
   assert(
@@ -1107,6 +1116,7 @@ function applyResults(locales, sourceOwner, work, results) {
     results.sourceOwnerSha256 === mapDigest(sourceOwner),
     'Semantic translation results were generated for a different en-US owner source',
   );
+  assertProviderMetadata(results.providers);
 
   const localeEvidence = {};
   const localeMessages = new Map();
@@ -1271,7 +1281,9 @@ if (require.main === module) main();
 module.exports = {
   MAX_TRANSLATION_LENGTH_RATIO,
   MIN_TRANSLATION_LENGTH_RATIO,
+  assertProviderMetadata,
   isProtectedInvariant,
   isReviewedExactOverride,
+  providerMetadata,
   translationLengthRatio,
 };

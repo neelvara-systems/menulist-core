@@ -63,15 +63,14 @@ const notFoundHtml = `<!doctype html>
       color-scheme: light;
       --bg: #f7f9fc;
       --text: #071323;
+      --on-accent: #ffffff;
       --muted: #5d6678;
       --line: rgba(7, 19, 35, 0.12);
       --surface: rgba(255, 255, 255, 0.82);
-      --blue: #6f86e2;
-      --clear: #9fc6f6;
-      --indigo: #8798e7;
-      --violet: #b7acef;
-      --frost: #a9c2f5;
-      --lavender: #d9cbf3;
+      --blue: #1457d9;
+      --clear: #2384ff;
+      --indigo: #2737c8;
+      --violet: #6542e8;
       --glass: rgba(255, 255, 255, 0.7);
     }
     * { box-sizing: border-box; }
@@ -112,11 +111,11 @@ const notFoundHtml = `<!doctype html>
     body::before {
       inset: -10%;
       background:
-        radial-gradient(42% 34% at 8% 12%, rgba(159, 198, 246, 0.2), transparent 62%),
-        radial-gradient(34% 28% at 86% 16%, rgba(169, 194, 245, 0.24), transparent 64%),
-        radial-gradient(38% 30% at 18% 82%, rgba(111, 134, 226, 0.14), transparent 62%),
-        radial-gradient(34% 28% at 78% 78%, rgba(183, 172, 239, 0.12), transparent 62%),
-        radial-gradient(30% 24% at 54% 44%, rgba(217, 203, 243, 0.28), transparent 70%);
+        radial-gradient(42% 34% at 8% 12%, rgba(35, 132, 255, 0.2), transparent 62%),
+        radial-gradient(34% 28% at 86% 16%, rgba(35, 132, 255, 0.16), transparent 64%),
+        radial-gradient(38% 30% at 18% 82%, rgba(20, 87, 217, 0.14), transparent 62%),
+        radial-gradient(34% 28% at 78% 78%, rgba(101, 66, 232, 0.12), transparent 62%),
+        radial-gradient(30% 24% at 54% 44%, rgba(39, 55, 200, 0.12), transparent 70%);
       filter: blur(66px) saturate(112%);
     }
     body::after {
@@ -201,8 +200,8 @@ const notFoundHtml = `<!doctype html>
     }
     a:first-child {
       border-color: var(--blue);
-      background: linear-gradient(135deg, var(--clear), var(--frost), var(--indigo), var(--lavender));
-      color: var(--text);
+      background: linear-gradient(135deg, var(--blue), var(--indigo), var(--violet));
+      color: var(--on-accent);
     }
     .product-shortcuts {
       grid-column: 1 / -1;
@@ -238,31 +237,22 @@ const notFoundHtml = `<!doctype html>
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
     }
     .prism-visual {
-      position: relative;
       min-height: 190px;
       margin: 20px;
-      overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 18px;
       background:
-        radial-gradient(72% 70% at 18% 20%, rgba(159, 198, 246, 0.16), transparent 68%),
-        radial-gradient(64% 62% at 80% 78%, rgba(217, 203, 243, 0.28), transparent 68%),
+        radial-gradient(72% 70% at 18% 20%, rgba(35, 132, 255, 0.12), transparent 68%),
+        radial-gradient(64% 62% at 80% 78%, rgba(101, 66, 232, 0.12), transparent 68%),
         rgba(255, 255, 255, 0.46);
+      display: grid;
+      place-items: center;
     }
-    .prism-visual span {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 70%;
-      height: 34%;
-      border: 1px solid rgba(111, 134, 226, 0.48);
-      border-radius: 26px;
-      background: linear-gradient(112deg, rgba(169, 194, 245, 0.4), rgba(156, 168, 236, 0.34), rgba(217, 203, 243, 0.38));
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
-      transform: translate(-50%, -50%) rotate(-17deg);
+    .prism-visual img {
+      display: block;
+      width: min(72%, 280px);
+      height: auto;
     }
-    .prism-visual span:nth-child(2) { width: 62%; transform: translate(-43%, -33%) rotate(8deg); }
-    .prism-visual span:nth-child(3) { width: 42%; height: 30%; transform: translate(-62%, -10%) rotate(31deg); }
     .route-list {
       display: grid;
       gap: 10px;
@@ -306,9 +296,7 @@ const notFoundHtml = `<!doctype html>
       </div>
       <aside class="prism-panel glass" aria-label="Recovery routes">
         <div class="prism-visual" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
+          <img src="/neelvara-logo.svg" alt="" />
         </div>
         <div class="route-list">
           <div>Home</div>

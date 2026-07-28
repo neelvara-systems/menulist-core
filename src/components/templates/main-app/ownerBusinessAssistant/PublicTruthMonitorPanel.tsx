@@ -42,9 +42,11 @@ function downloadTextFile(filename: string, text: string) {
 export function PublicTruthMonitorPanel({
   selectedProjectId,
   storeId,
+  tenantId,
 }: {
   selectedProjectId?: string | null;
   storeId?: string | number | null;
+  tenantId?: string | number | null;
 }) {
   const isEnabled = FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS
     && FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_OWNER_CHECK
@@ -53,6 +55,7 @@ export function PublicTruthMonitorPanel({
     enabled: isEnabled,
     selectedProjectId,
     storeId,
+    tenantId,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);

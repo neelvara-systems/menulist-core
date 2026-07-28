@@ -2,7 +2,14 @@
 
 import fs from 'fs';
 import path from 'path';
-import * as firebaseAdminSdk from 'firebase-admin';
+import {
+    deleteApp as deleteAdminApp,
+    initializeApp as initializeAdminApp,
+} from 'firebase-admin/app';
+import {
+    getFirestore as getAdminFirestore,
+    Timestamp,
+} from 'firebase-admin/firestore';
 import {
     assertFails,
     assertSucceeds,
@@ -27,6 +34,7 @@ import {
 } from '../../src/lib/platform/platformCounterAllocator';
 import { resolvePlatformCounterFloor } from '../../src/data/shared/platformCounterBoundary';
 import {
+    normalizeStoreSummaryNumericAliases,
     normalizeStoreSummaryNumericDocumentId,
     normalizeStoreSummaryDate,
     normalizePlatformStoreSummaryIdentity,
@@ -135,6 +143,30 @@ async function run(): Promise<void> {
     assert(
         normalizePlatformStoreSummaryIdentity('201', { storeId: 202, tenantId: 101 }) === null,
         'Canonical store backfill identity must reject a conflicting embedded store ID',
+    );
+    assert(
+        normalizeStoreSummaryNumericAliases([101, '101']) === '101',
+        'Numeric and string compatibility aliases must agree exactly',
+    );
+    assert(
+        normalizeStoreSummaryNumericAliases([101, 102]) === null,
+        'Conflicting tenant aliases must fail closed',
+    );
+    assert(
+        normalizePlatformStoreSummaryIdentity('201', {
+            storeId: 201,
+            sId: 202,
+            tenantId: 101,
+        }) === null,
+        'Canonical store identity must reject conflicting embedded store aliases',
+    );
+    assert(
+        normalizePlatformStoreSummaryIdentity('201', {
+            storeId: 201,
+            tenantId: 101,
+            tId: 102,
+        }) === null,
+        'Canonical store identity must reject conflicting embedded tenant aliases',
     );
     assert(
         normalizeStoreSummaryNumericDocumentId('__proto__') === null,
@@ -410,11 +442,11 @@ async function run(): Promise<void> {
             await deleteApp(platformApp);
         }
 
-        const adminApp = firebaseAdminSdk.initializeApp(
+        const adminApp = initializeAdminApp(
             { projectId: PROJECT_ID },
             `platform-counter-admin-${Date.now()}`,
         );
-        const adminDb = firebaseAdminSdk.firestore(adminApp);
+        const adminDb = getAdminFirestore(adminApp);
         try {
             const createOnboardingScope = (businessName: string) => adminDb.runTransaction(
                 (transaction) => createTenantStoreInTransaction(transaction, adminDb, {
@@ -468,7 +500,7 @@ async function run(): Promise<void> {
                 adminDb.collection('stores').doc('302').set({ active: true, storeId: 302, tenantId: 202 }),
             ]);
             const claimExistingStore = (storeId: string, tenantId: string) => adminDb.runTransaction(async (transaction) => {
-                const now = firebaseAdminSdk.firestore.Timestamp.now();
+                const now = Timestamp.now();
                 const reservation = await readSubdomainReservationInTransaction({
                     db: adminDb,
                     nowMillis: now.toMillis(),
@@ -509,7 +541,7 @@ async function run(): Promise<void> {
                 subdomain: string,
                 nowMillis: number,
             ) => adminDb.runTransaction(async (transaction) => {
-                const now = firebaseAdminSdk.firestore.Timestamp.fromMillis(nowMillis);
+                const now = Timestamp.fromMillis(nowMillis);
                 const reservation = await readSubdomainReservationInTransaction({
                     db: adminDb,
                     nowMillis,
@@ -547,8 +579,8 @@ async function run(): Promise<void> {
                 redirectStartedAt,
             );
             await adminDb.runTransaction(async (transaction) => {
-                const now = firebaseAdminSdk.firestore.Timestamp.fromMillis(redirectStartedAt + 1);
-                const expiresAt = firebaseAdminSdk.firestore.Timestamp.fromMillis(redirectExpiresAtMillis);
+                const now = Timestamp.fromMillis(redirectStartedAt + 1);
+                const expiresAt = Timestamp.fromMillis(redirectExpiresAtMillis);
                 const replacementReservation = await readSubdomainReservationInTransaction({
                     db: adminDb,
                     nowMillis: now.toMillis(),
@@ -632,7 +664,7 @@ async function run(): Promise<void> {
                 releasedAtMillis - 1,
             );
             await adminDb.runTransaction(async (transaction) => {
-                const now = firebaseAdminSdk.firestore.Timestamp.fromMillis(releasedAtMillis);
+                const now = Timestamp.fromMillis(releasedAtMillis);
                 const replacementReservation = await readSubdomainReservationInTransaction({
                     db: adminDb,
                     nowMillis: releasedAtMillis,
@@ -676,7 +708,7 @@ async function run(): Promise<void> {
                 saturationBatch.set(adminDb.collection('stores').doc(String(600 + index)), {
                     active: true,
                     previousSubdomains: [{
-                        expiresAt: firebaseAdminSdk.firestore.Timestamp.fromMillis(releasedAtMillis - 1),
+                        expiresAt: Timestamp.fromMillis(releasedAtMillis - 1),
                         subdomain: saturatedSubdomain,
                     }],
                     previousSubdomainSlugs: [saturatedSubdomain],
@@ -706,6 +738,13 @@ async function run(): Promise<void> {
                 adminDb.collection('stores').doc('813').set({ active: true, storeId: 813, tenantId: 912 }),
                 adminDb.collection('stores').doc('814').set({ active: true, storeId: 814, tenantId: 913 }),
                 adminDb.collection('stores').doc('815').set({ active: true, storeId: 815, tenantId: 913 }),
+                adminDb.collection('stores').doc('816').set({
+                    active: true,
+                    isMaster: true,
+                    storeId: 816,
+                    tenantId: 914,
+                    tId: 915,
+                }),
             ]);
             const readSubdomainOwnerStore = (storeId: string, tenantId: string) => adminDb.runTransaction(
                 (transaction) => readSubdomainOwnerStoreInTransaction({
@@ -742,6 +781,17 @@ async function run(): Promise<void> {
                 ambiguousLegacyStoreBlocked,
                 'Legacy multi-store topology without a master marker must fail closed',
             );
+            let conflictingTenantAliasesBlocked = false;
+            try {
+                await readSubdomainOwnerStore('816', '914');
+            } catch (error) {
+                conflictingTenantAliasesBlocked = isSubdomainOwnerScopeError(error)
+                    && error.reason === 'INVALID_SCOPE';
+            }
+            assert(
+                conflictingTenantAliasesBlocked,
+                'Conflicting persisted tenant aliases must fail closed before subdomain ownership',
+            );
 
             await Promise.all([
                 adminDb.collection('stores').doc('801').set({ active: true, storeId: 801, tenantId: 901 }),
@@ -749,7 +799,7 @@ async function run(): Promise<void> {
                 adminDb.collection('stores').doc('803').set({ active: true, storeId: 803, tenantId: 902 }),
             ]);
             const claimOutletSlug = (storeId: string, tenantId: string) => adminDb.runTransaction(async (transaction) => {
-                const now = firebaseAdminSdk.firestore.Timestamp.now();
+                const now = Timestamp.now();
                 const reservation = await readOutletSlugReservationInTransaction({
                     db: adminDb,
                     outletSlug: 'shared-outlet',
@@ -800,7 +850,7 @@ async function run(): Promise<void> {
             const tenant901OwnerId = tenant901OutletStores.docs[0].id;
             const tenant901ReplacementId = tenant901OwnerId === '801' ? '802' : '801';
             await adminDb.runTransaction(async (transaction) => {
-                const now = firebaseAdminSdk.firestore.Timestamp.now();
+                const now = Timestamp.now();
                 const claimRef = adminDb.collection('platformSummary')
                     .doc(getOutletSlugClaimDocumentId('901', 'shared-outlet'));
                 await transaction.get(claimRef);
@@ -821,7 +871,7 @@ async function run(): Promise<void> {
                 'Deactivation release must permit a different active outlet to claim the path',
             );
         } finally {
-            await adminApp.delete();
+            await deleteAdminApp(adminApp);
         }
 
         console.log('storesSummary Firestore identity-boundary tests passed.');

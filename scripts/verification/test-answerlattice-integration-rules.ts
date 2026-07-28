@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-integration-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -25,6 +26,7 @@ async function run(): Promise<void> {
     try {
         await testEnv.withSecurityRulesDisabled(async context => {
             const adminDb = context.firestore();
+            await seedActiveAnswerlatticeRuleWorkspace(adminDb);
             await setDoc(doc(adminDb, configPath), {
                 pId: 'AL', tId: 1, sId: 101,
                 slack: { enabled: true, webhookUrl: 'https://hooks.slack.com/services/secret', eventFilters: [] },

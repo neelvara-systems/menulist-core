@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../..');
 const publicDir = path.join(repoRoot, 'public/images/website');
 const notesDir = path.join(repoRoot, '__docs__/main-website/asset-production/stage-06-3');
+const generationDate = new Date().toISOString().slice(0, 10);
 
 let menuListLogoImage = null;
 
@@ -1027,7 +1028,7 @@ async function main() {
   const note = [
     '# Stage 6.3 P0 Fictional Demo Asset Pack',
     '',
-    'Generated: 2026-05-21',
+    `Generated: ${generationDate}`,
     '',
     'These public website assets use a fictional founder-approved MenuList demo business. They intentionally avoid real customer names, unapproved extracted third-party menu data, private phone numbers, private addresses, real customer metrics, and external-platform auto-sync claims.',
     '',

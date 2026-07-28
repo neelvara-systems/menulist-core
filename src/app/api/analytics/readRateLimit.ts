@@ -1,19 +1,19 @@
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { getSessionProviderScopeKey } from '@lib/multiOutlet/sessionProviderScopeBoundary';
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 export async function applyAnalyticsReadRateLimit(session: any, routeKey: string) {
     const rateLimitConfig = getRateLimitForFeature('DATA_READ');
-    const userId = session?.uId || session?.user?.id || 'unknown';
-    const tenantId = session?.tId || session?.user?.tenantId || 'unknown';
-    const storeId = session?.sId || session?.user?.storeId || 'unknown';
-    const userRateLimitHash = hashPublicRateLimitValue(userId);
-    const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);
-    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+    const sessionScopeKey = getSessionProviderScopeKey(session);
+    if (!sessionScopeKey) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const sessionScopeHash = hashPublicRateLimitValue(sessionScopeKey);
 
     const rateLimit = await checkRateLimit({
-        key: `analytics-read:${routeKey}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
+        key: `analytics-read:${routeKey}:${sessionScopeHash}`,
         ...rateLimitConfig,
     });
 

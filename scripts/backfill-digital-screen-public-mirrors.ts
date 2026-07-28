@@ -11,8 +11,8 @@
  *   npm run backfill:digital-screen-public-mirrors -- --project-id menulist-qa --all-screens --write --confirm-project menulist-qa
  */
 
-import * as admin from 'firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../src/constants/database';
 
 const args = process.argv.slice(2);
@@ -56,14 +56,15 @@ function isTimestampLike(value: unknown): boolean {
     return Boolean(value && typeof (value as { toMillis?: unknown }).toMillis === 'function');
 }
 
-function buildPublicMirror(
+export function buildDigitalScreenPublicMirror(
     storeId: string,
     screen: Record<string, unknown>,
 ): Record<string, unknown> | null {
     const token = typeof screen.screenToken === 'string' ? screen.screenToken : '';
-    const contentVersion = Number(screen.contentVersion);
+    const contentVersion = screen.contentVersion;
     if (
         !SCREEN_TOKEN_PATTERN.test(token)
+        || typeof contentVersion !== 'number'
         || !Number.isInteger(contentVersion)
         || contentVersion < 1
         || !isTimestampLike(screen.lastContentChangeAt)
@@ -127,8 +128,8 @@ async function main() {
         throw new Error(`Refusing write: pass --confirm-project ${projectId}.`);
     }
 
-    if (!admin.apps.length) admin.initializeApp({ projectId });
-    const db = admin.firestore();
+    if (!getApps().length) initializeApp({ projectId });
+    const db = getFirestore();
 
     console.log(`Project: ${projectId}`);
     console.log(`Mode: ${write ? 'WRITE' : 'DRY RUN'}`);
@@ -146,7 +147,7 @@ async function main() {
         const resolvedStoreId = idMatch?.[1] || '';
         const screen = summary.data()?.screen as Record<string, unknown> | undefined;
         const publicMirror = resolvedStoreId && screen
-            ? buildPublicMirror(resolvedStoreId, screen)
+            ? buildDigitalScreenPublicMirror(resolvedStoreId, screen)
             : null;
 
         if (!publicMirror) {
@@ -183,7 +184,9 @@ async function main() {
     console.log(`Mirrors written: ${written}`);
 }
 
-main().catch((error) => {
-    console.error('digital_screen_public_mirror_backfill_failed', JSON.stringify(getErrorSummary(error)));
-    process.exitCode = 1;
-});
+if (require.main === module) {
+    main().catch((error) => {
+        console.error('digital_screen_public_mirror_backfill_failed', JSON.stringify(getErrorSummary(error)));
+        process.exitCode = 1;
+    });
+}

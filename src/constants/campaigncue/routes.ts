@@ -44,6 +44,17 @@ export function getCampaignCueCueLayersExportApiPath(designId: string): string {
     return `${CAMPAIGNCUE_API_ROUTES.CUE_LAYERS_DESIGNS}/${encodeURIComponent(designId)}/exports`;
 }
 
-export function buildCampaignCueAuthLaunchUrl(signInUrl: string): string {
-    return `${signInUrl}?product=${CAMPAIGNCUE_SIGNIN_PRODUCT_PARAM}`;
+export function buildCampaignCueAuthLaunchUrl(
+    signInUrl: string,
+    callbackUrl?: string,
+): string {
+    const params = new URLSearchParams({
+        product: CAMPAIGNCUE_SIGNIN_PRODUCT_PARAM,
+    });
+    if (callbackUrl) {
+        params.set("callbackUrl", callbackUrl);
+    }
+
+    const separator = signInUrl.includes("?") ? "&" : "?";
+    return `${signInUrl}${separator}${params.toString()}`;
 }

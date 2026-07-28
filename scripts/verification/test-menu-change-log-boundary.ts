@@ -1,6 +1,8 @@
 #!/usr/bin/env ts-node
 
 import assert from 'node:assert/strict';
+import { Timestamp } from 'firebase/firestore';
+import { normalizeStoredMenuChange } from '../../src/database/menuChangeLog';
 import {
     createMenuChangeLogDebounceKey,
     createMenuChangeLogPendingKey,
@@ -137,6 +139,53 @@ async function run(): Promise<void> {
             `query limit must reject ${String(invalid)}`,
         );
     }
+
+    const storedTimestamp = Timestamp.fromMillis(1_700_000_000_000);
+    const storedEntry = {
+        projectId: 'project-1',
+        itemId: 'item-1',
+        changeType: 'PRICE',
+        oldValue: '10.00',
+        newValue: '12.00',
+        changedBy: 'OWNER',
+        timestamp: storedTimestamp,
+        tId: 1,
+        sId: 101,
+    };
+    assert.deepEqual(
+        normalizeStoredMenuChange('event-1', storedEntry, scope),
+        { id: 'event-1', ...storedEntry },
+        'persisted event projection must preserve exact admitted scope and fields',
+    );
+    assert.equal(
+        normalizeStoredMenuChange('event-foreign', { ...storedEntry, sId: 102 }, scope),
+        null,
+        'persisted event projection must reject embedded foreign scope',
+    );
+    assert.equal(
+        normalizeStoredMenuChange('event-missing-scope', {
+            ...storedEntry,
+            tId: undefined,
+        }, scope),
+        null,
+        'persisted event projection must reject missing scope aliases',
+    );
+    assert.equal(
+        normalizeStoredMenuChange('event-unsafe-project', {
+            ...storedEntry,
+            projectId: 'foreign/project',
+        }, scope),
+        null,
+        'persisted event projection must reject path-shaped project identity',
+    );
+    assert.equal(
+        normalizeStoredMenuChange('event-unsafe-item', {
+            ...storedEntry,
+            itemId: 'x'.repeat(181),
+        }, scope),
+        null,
+        'persisted event projection must reject oversized optional identity',
+    );
 
     process.stdout.write('Menu change log boundary tests passed.\n');
 }

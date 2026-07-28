@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const projectId = process.env.GCLOUD_PROJECT || 'demo-answerlattice-release-rules';
 const root = path.resolve(__dirname, '..', '..');
@@ -23,6 +24,7 @@ async function run(): Promise<void> {
             createdOn: now, createdBy: 'Owner', modifiedOn: now, modifiedBy: 'Owner',
         };
         await environment.withSecurityRulesDisabled(async (context) => {
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
             await setDoc(doc(context.firestore(), 'answerlattice_releases', 'release-1'), release);
         });
         const ownerDb = environment.authenticatedContext('owner-1', {

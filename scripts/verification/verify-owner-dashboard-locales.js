@@ -12,8 +12,10 @@ const {
 const {
   MAX_TRANSLATION_LENGTH_RATIO,
   MIN_TRANSLATION_LENGTH_RATIO,
+  assertProviderMetadata,
   isProtectedInvariant,
   isReviewedExactOverride,
+  providerMetadata,
   translationLengthRatio,
 } = require('../localization/owner-locale-semantic');
 
@@ -114,6 +116,25 @@ function assertVariablesMatch(locale, key, source, translated) {
 }
 
 const locales = parseLocaleRegistry();
+const pinnedProviderMetadata = providerMetadata();
+assertProviderMetadata(pinnedProviderMetadata);
+assert(
+  (() => {
+    try {
+      assertProviderMetadata({
+        ...pinnedProviderMetadata,
+        madlad400: {
+          ...pinnedProviderMetadata.madlad400,
+          revision: 'untrusted-revision',
+        },
+      });
+      return false;
+    } catch {
+      return true;
+    }
+  })(),
+  'Semantic result admission must reject changed provider provenance',
+);
 const localeFiles = fs.readdirSync(LOCALE_DIR)
   .filter((file) => file.endsWith('.json'))
   .map((file) => file.replace(/\.json$/, ''))

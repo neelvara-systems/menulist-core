@@ -34,7 +34,10 @@ export async function POST(request: NextRequest) {
             invalidRequestMessage: "Invalid outcome request",
             tooLargeMessage: "Outcome request body too large",
         });
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) {
+            bodyResult.response.headers.set("Cache-Control", "no-store");
+            return bodyResult.response;
+        }
         const result = await processSignalDeskOutcomeBridge({
             rawBody: bodyResult.body,
             requestHeaders: request.headers,

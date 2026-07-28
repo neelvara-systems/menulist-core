@@ -4,6 +4,10 @@ import {
     ECOMSAI_PLATFORM_USER_ROLE,
 } from '@constant/user';
 import { isAnswerlatticeProductHostname } from '@constant/answerlattice/domains';
+import {
+    resolveExactSessionPlatformRole,
+    resolveExactSessionStoreRole,
+} from '@lib/auth/sessionPlatformRole';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 
@@ -239,11 +243,7 @@ export function getAnswerlatticeScopedSession<T extends Record<string, any> | nu
 }
 
 export function canUseAnswerlatticeManagement(sessionOrUser: any): boolean {
-    const platformRole = String(
-        sessionOrUser?.platformRole
-        || sessionOrUser?.user?.platformRole
-        || ''
-    ).toUpperCase();
+    const platformRole = resolveExactSessionPlatformRole(sessionOrUser);
     if (platformRole === ECOMSAI_PLATFORM_USER_ROLE || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE) {
         return true;
     }
@@ -254,6 +254,6 @@ export function canUseAnswerlatticeManagement(sessionOrUser: any): boolean {
         || normalizeProductId((scopedSession as any)?.user?.productId);
     if (productId !== PRODUCT_IDS.ANSWERLATTICE) return false;
 
-    const role = String((scopedSession as any)?.role || (scopedSession as any)?.user?.role || '').toLowerCase();
+    const role = String(resolveExactSessionStoreRole(scopedSession) || '').toLowerCase();
     return ['owner', 'admin', 'manager'].includes(role);
 }

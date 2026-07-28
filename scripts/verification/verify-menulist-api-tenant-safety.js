@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const ts = require('typescript');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const failures = [];
@@ -204,10 +205,42 @@ function getImportedNames(importClause) {
     .filter(Boolean);
 }
 
+function inspectDirectHttpsCallableInvocations(relativePath, content) {
+  const sourceFile = ts.createSourceFile(
+    relativePath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    relativePath.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const callableNames = [];
+  let invalidInvocationCount = 0;
+  let invocationCount = 0;
+
+  const visit = (node) => {
+    if (
+      ts.isCallExpression(node)
+      && ts.isIdentifier(node.expression)
+      && node.expression.text === 'httpsCallable'
+    ) {
+      invocationCount += 1;
+      const callableName = node.arguments[1];
+      if (callableName && ts.isStringLiteralLike(callableName)) {
+        callableNames.push(callableName.text);
+      } else {
+        invalidInvocationCount += 1;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+
+  return { callableNames, invalidInvocationCount, invocationCount };
+}
+
 function verifyBrowserDirectFirebaseFunctionsCallableBoundary() {
   const staticImportPattern = /import\s+(type\s+)?([^;]*?)\s+from\s+['"](?:firebase\/functions|@firebase\/functions)['"]\s*;?/g;
   const dynamicImportPattern = /(?:const|let|var)\s+\{\s*([^}]+?)\s*\}\s*=\s*(?:await\s+)?import\(\s*['"](?:firebase\/functions|@firebase\/functions)['"]\s*\)/g;
-  const callableNamePattern = /httpsCallable\s*\([^,]+,\s*['"]([^'"]+)['"]/g;
 
   listMenuListBrowserSurfaceFiles().forEach((relativePath) => {
     const content = read(relativePath);
@@ -218,6 +251,10 @@ function verifyBrowserDirectFirebaseFunctionsCallableBoundary() {
       if (match[1]) continue;
       importsFirebaseFunctionsDirectly = true;
       const importedNames = getImportedNames(match[2]);
+      assert(
+        !/\bhttpsCallable\s+as\s+\w+/.test(match[2]),
+        `${relativePath} must not alias httpsCallable because callable-name inspection requires the canonical local identifier`,
+      );
 
       assert(
         importedNames.length > 0,
@@ -249,14 +286,43 @@ function verifyBrowserDirectFirebaseFunctionsCallableBoundary() {
       `${relativePath} must not call Firebase Functions directly from browser code; use an API route or approved helper`,
     );
 
-    for (const match of content.matchAll(callableNamePattern)) {
-      const callableName = match[1];
+    const callableInspection = inspectDirectHttpsCallableInvocations(relativePath, content);
+    assert(
+      callableInspection.invalidInvocationCount === 0,
+      `${relativePath} must pass every direct httpsCallable target as a string literal`,
+    );
+    if (content.includes('httpsCallable')) {
+      assert(
+        callableInspection.invocationCount > 0,
+        `${relativePath} must expose at least one inspectable direct httpsCallable invocation`,
+      );
+    }
+    callableInspection.callableNames.forEach((callableName) => {
       assert(
         Boolean(allowlist?.callables.has(callableName)),
         `${relativePath} must not call Firebase callable ${callableName} outside the platform recovery allowlist`,
       );
-    }
+    });
   });
+
+  const genericFixture = inspectDirectHttpsCallableInvocations(
+    'fixture.ts',
+    "httpsCallable<{ id: string }, void>(getFunctions(), 'allowedCallable');",
+  );
+  assert(
+    genericFixture.invocationCount === 1
+      && genericFixture.invalidInvocationCount === 0
+      && genericFixture.callableNames[0] === 'allowedCallable',
+    'Firebase callable verifier must inspect generic calls with literal targets',
+  );
+  const dynamicFixture = inspectDirectHttpsCallableInvocations(
+    'fixture.ts',
+    'httpsCallable(getFunctions(), callableName);',
+  );
+  assert(
+    dynamicFixture.invocationCount === 1 && dynamicFixture.invalidInvocationCount === 1,
+    'Firebase callable verifier must reject dynamic callable targets',
+  );
 }
 
 function verifyBrowserDirectFirebaseFunctionsCallableBoundaryDocs() {
@@ -320,6 +386,27 @@ function verifyNoApiRouteConsoleCalls() {
       `${route} must use secure/logger wrappers instead of direct route-level console calls`,
     );
   });
+}
+
+function verifyNoUnreviewedAliasedApiMethodExports() {
+  const allowedAliasedMethodRoutes = new Set([
+    'src/app/api/auth/[...nextauth]/route.ts',
+  ]);
+  const aliasedMethodExportPattern = /\bexport\s*\{[^}]*\b(?:GET|POST|PUT|PATCH|DELETE)\b[^}]*\}/s;
+
+  listRouteFiles('src/app/api').forEach((route) => {
+    const content = read(route);
+    if (!aliasedMethodExportPattern.test(content)) return;
+    assert(
+      allowedAliasedMethodRoutes.has(route),
+      `${route} uses an aliased HTTP method export that bypasses normal read/mutation admission classification`,
+    );
+  });
+
+  assert(
+    aliasedMethodExportPattern.test('export { handler as GET, handler as POST };'),
+    'API method export verifier must detect aliased route methods',
+  );
 }
 
 function hasMutatingRouteExport(content) {
@@ -403,7 +490,9 @@ function verifyCoreAuthHelpers() {
     'src/middleware/auth.ts',
     [
       'export function verifyTenantAccess',
-      'session.tId == null || requestedTenantId == null',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'const requestTenantScope = normalizeStorePermissionScopeDocumentId(requestedTenantId);',
+      'const requestStoreScope = normalizeStorePermissionScopeDocumentId(requestedStoreId);',
       'getAuthMiddlewareSecurityContext',
       'getBoundedSecurityRouteContext(session, request)',
       "getBoundedSecurityStringContext('endpoint', request.nextUrl.pathname)",
@@ -412,6 +501,12 @@ function verifyCoreAuthHelpers() {
       'Horizontal Privilege Escalation Attempt - Store',
       'attemptedTenantId: requestTenantId',
       'attemptedStoreId: requestStoreId',
+      'resolveExactSessionPlatformRole(session)',
+      'resolveExactSessionStoreRole(session)',
+      'resolveCurrentSessionUserDocumentId(session)',
+      'Authorization Failed - Actor Identity',
+      'sessionPlatformRole !== options.requiredPlatformRole',
+      'sessionStoreRole !== options.requiredRole',
     ],
     'withAuth tenant/store access helper',
   );
@@ -421,6 +516,8 @@ function verifyCoreAuthHelpers() {
   assert(!authMiddleware.includes("userAgent: request.headers.get('user-agent')"), 'auth middleware must not log raw user agents in security events');
   assert(!authMiddleware.includes('userId: session.user?.id || session.uId,\n                email: session.user?.email'), 'auth middleware tenant/store violations must not log raw user IDs or emails');
   assert(!authMiddleware.includes('email: session.user?.email,\n                tenantId: session.tId'), 'auth middleware tenant/store violations must not log raw emails or tenant IDs');
+  assert(!authMiddleware.includes("session.user.platformRole !== options.requiredPlatformRole"), 'withAuth must not authorize from one conflicting platform-role alias');
+  assert(!authMiddleware.includes('session.user.role !== options.requiredRole'), 'withAuth must not authorize from one conflicting store-role alias');
 
   assertIncludes(
     'src/app/api/auth/access-status/route.ts',
@@ -433,13 +530,18 @@ function verifyCoreAuthHelpers() {
       'const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
       'key: `${ACCESS_STATUS_RATE_LIMIT_KEY}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`',
-      '"Cache-Control": "no-store, max-age=0"',
+      '"Cache-Control", "private, no-store, max-age=0"',
+      '"X-Content-Type-Options", "nosniff"',
+      'failClosedOnProviderError: true',
+      'rateLimit.reason === "provider_unavailable"',
       '"X-RateLimit-Limit": String(rateLimitConfig.limit)',
       'logger.security("Rate Limit Exceeded - Session Access Check"',
       'getBoundedSecurityRouteContext(session, request)',
       'getBoundedRuntimeStringContext("tenantId", tenantId)',
       'getBoundedRuntimeStringContext("storeId", storeId)',
       'getCurrentUserSnapshot(session)',
+      'const userId = resolveCurrentSessionUserDocumentId(session);',
+      'getUniqueAuthUserByEmailFromCollection(',
       'getEntityData(DB_COLLECTIONS.TENANTS',
       'getEntityData(DB_COLLECTIONS.STORES',
       'isPlatformAccessSession(session, userData)',
@@ -447,7 +549,7 @@ function verifyCoreAuthHelpers() {
       'return invalidAccess(request, session, "STORE_NOT_FOUND"',
       'if (!platformAccessSession && store.data && !tenant.documentId)',
       'return invalidAccess(request, session, "STORE_TENANT_MISMATCH"',
-      'isStoreOwnedByTenant(store.data, tenant.documentId)',
+      'isAccessStatusStoreOwnedByTenant(store.data, tenant.documentId)',
       'return invalidAccess(request, session, "SESSION_REVOKED"',
     ],
     'session access-status read limiter and access boundary',
@@ -467,9 +569,12 @@ function verifyCoreAuthHelpers() {
   assert(!accessStatusRoute.includes('tenantId: userData.tenantId'), 'access-status route must not log raw tenant IDs');
   assert(!accessStatusRoute.includes('storeId: userData.storeId'), 'access-status route must not log raw store IDs');
   assert(!accessStatusRoute.includes('buildSecurityContext'), 'access-status route must not spread raw session security context into security logs');
+  assert(!accessStatusRoute.includes('const userId = session?.uId || session?.user?.id;'), 'access-status route must not select the first conflicting session user alias');
+  assert(!accessStatusRoute.includes('.limit(1)'), 'access-status route must not select an arbitrary persisted email identity');
   assert(accessStatusRoute.includes('documentId === rawDocumentId && isValidFirestoreDocumentId(documentId)'), 'access-status route must reject whitespace-mutated user/tenant/store document IDs before Firestore reads');
-  assert(accessStatusRoute.includes('const isStoreOwnedByTenant'), 'access-status route must define a store-to-tenant ownership check');
-  assert(accessStatusRoute.includes('storeTenantDocumentId === tenantDocumentId'), 'access-status route must compare normalized store tenant ownership to the checked tenant');
+  assert(accessStatusRoute.includes('resolveAccessStatusPreferredScope('), 'access-status route must reconcile persisted and session scope aliases');
+  assert(accessStatusRoute.includes('isAccessStatusEntityIdentityConsistent('), 'access-status route must reconcile tenant/store embedded identity aliases');
+  assert(accessStatusRoute.includes('isAccessStatusStoreOwnedByTenant('), 'access-status route must compare every persisted store tenant alias to the checked tenant');
   assert(accessStatusRoute.includes('if (!platformAccessSession && store.data && !tenant.documentId)'), 'access-status route must fail non-platform store-scoped sessions that omit tenant context');
   assertOrder(
     'src/app/api/auth/access-status/route.ts',
@@ -500,15 +605,15 @@ function verifyCoreAuthHelpers() {
       'const sessionScope = resolveStorePermissionSessionScope(session);',
       'const { storeScope, tenantScope } = sessionScope;',
       'const storeScope = normalizeStorePermissionScopeDocumentId(storeId);',
-      'const tenantScope = normalizeStorePermissionScopeDocumentId(tenantId);',
+      'tenantId ?? sessionScope?.tenantScope.documentId',
       '.doc(storeScope.documentId)',
       'export async function requireAnyStorePermissionForStore',
+      'isStorePermissionDataInScope(storeData, storeScope, tenantScope)',
       'import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";',
       'const isStorePermissionTargetBlocked = (storeData: any): boolean => (',
       'storeData?.active === false',
       'storeData?.deleted === true',
       'isPlatformEntityBlocked(storeData)',
-      'Number(storeData?.tenantId) !== tenantScope.numericId || isStorePermissionTargetBlocked(storeData)',
       'normalizeStorePermissionScopeDocumentId(store?.storeId)?.numericId === storeScope.numericId',
       'if (isPlatformSession(session)) return null;',
       'requireAnyStorePermissionForStoreData',
@@ -571,8 +676,9 @@ function verifyCoreAuthHelpers() {
     'src/lib/ai-menu-manager/apiGuards.ts',
     [
       'resolveAiMenuManagerSelectedStoreScope',
-      'normalizeAiMenuManagerScopeDocumentId(session?.tId || session?.user?.tenantId)',
-      'normalizeAiMenuManagerScopeDocumentId(session?.sId || session?.user?.storeId)',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'normalizeAiMenuManagerScopeDocumentId(sessionScope?.tenantScope.documentId)',
+      'normalizeAiMenuManagerScopeDocumentId(sessionScope?.storeScope.documentId)',
       'const selectedStoreScope = hasRequestedStoreId',
       'normalizeAiMenuManagerScopeDocumentId(requestedStoreId)',
       'canUserAccessStore({ sessionUser, storeId: selectedStoreScope.numericId })',
@@ -593,6 +699,8 @@ function verifyCoreAuthHelpers() {
     'AI Menu Manager selected-store scope guard',
   );
   const aiMenuManagerApiGuards = read('src/lib/ai-menu-manager/apiGuards.ts');
+  assert(!aiMenuManagerApiGuards.includes('session?.tId || session?.user?.tenantId'), 'AI Menu Manager API guards must not select one session tenant alias');
+  assert(!aiMenuManagerApiGuards.includes('session?.sId || session?.user?.storeId'), 'AI Menu Manager API guards must not select one session store alias');
   assert(!aiMenuManagerApiGuards.includes('key: `${params.keyPrefix}:${userId || \'unknown\'}:${tId || \'_\'}:${sId || \'_\'}`'), 'AI Menu Manager API guards must not store raw user/tenant/store IDs in rate-limit keys');
   assert(!aiMenuManagerApiGuards.includes('attemptedStoreId: selectedStoreId'), 'AI Menu Manager API guards must not raw-log selected-store violation store IDs');
   assert(!aiMenuManagerApiGuards.includes('sessionStoreId: sId'), 'AI Menu Manager API guards must not raw-log selected-store violation session store IDs');
@@ -1056,7 +1164,15 @@ function verifyCallerSuppliedTenantStoreRoutes() {
   assert(!menuLinkImportRoute.includes('key: `menu-link-import:${ids.uId}:${ids.tId}:${ids.sId}`'), 'menu link import must not store raw user/tenant/store IDs in rate-limit keys');
   assert(!menuLinkImportRoute.includes('Promise.allSettled(createdStoragePaths.map((path) => storageAdmin.bucket().file(path).delete'), 'menu link import must not silently swallow storage cleanup failures');
   assert(!menuLinkImportRoute.includes('artifactRef.set('), 'menu link import must not create artifact metadata outside the active-job transaction');
-  assert(!menuLinkImportRoute.includes('await artifactRef.create('), 'menu link import must not create artifact metadata outside the active-job transaction');
+  assertIncludes(
+    'src/app/api/menu-link-imports/route.ts',
+    [
+      'async function persistMenuLinkImportCleanupRecord(',
+      'await artifactRef.create(artifactData);',
+      'menu_link_import_cleanup_record_failed',
+    ],
+    'menu link import failed-storage-cleanup recovery record',
+  );
   assertIncludes(
     'src/lib/menu-link-import/client.ts',
     [
@@ -1203,6 +1319,9 @@ function verifyCallerSuppliedTenantStoreRoutes() {
 	      '...MASTER_JOB_STATUS_REQUEST_POLICY',
 	      "getBoundedHookStringContext('masterProjectId', masterProjectId)",
 	      "getBoundedHookStringContext('outletProjectId', outletProjectId)",
+	      'const unavailableMasterJobStatus = (): MasterJobStatus => ({',
+	      'isMasterJobActive: true,',
+	      'setStatus(unavailableMasterJobStatus());',
 	    ],
     'master job status hook bounded diagnostics',
   );
@@ -1211,6 +1330,7 @@ function verifyCallerSuppliedTenantStoreRoutes() {
   assert(!masterJobStatusHook.includes('error?.message || String(error)'), 'master job status hook must not log raw exception text');
   assert(!masterJobStatusHook.includes('const data = await response.json()'), 'master job status hook must not use direct unbounded response parsing');
   assert(!masterJobStatusHook.includes('.json().catch'), 'master job status hook must not silently swallow response parsing failures');
+  assert(!masterJobStatusHook.includes('fail open'), 'master job status uncertainty must not unblock outlet editing');
 }
 
 function verifyPosSyncOwnerSafeFailureContract() {
@@ -1410,7 +1530,8 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
       'import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";',
       'normalizeMultiOutletProjectId(project.projectId)',
       'normalizeMultiOutletProjectId(project.masterProjectId)',
-      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);',
+      'const outletSessionScope = getOutletSessionScope(session);',
+      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(outletSessionScope?.storeDocumentId);',
       'linked_outlet_save_invalid_session_store_scope',
       'const currentStoreId = currentStoreScope.numericId;',
       'isValidFirestoreDocumentId',
@@ -1421,9 +1542,9 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
       'outletProjectRef.tId !== masterProjectRef.tId',
       'outletProjectRef.sId === masterProjectRef.sId',
       'const outletPolicy = requireLinkedOutletAuthority({',
-      'Number(callerStore?.tenantId) !== tenantId',
-      'Number(outletStore?.tenantId) !== tenantId',
-      'Number(masterStore?.tenantId) !== tenantId',
+      'isStorePermissionDataInScope(callerStore, callerStoreScope, tenantScope)',
+      'isStorePermissionDataInScope(outletStore, outletStoreScope, tenantScope)',
+      'isStorePermissionDataInScope(masterStore, masterStoreScope, tenantScope)',
       'const callerIsInTenant = tenantStores.some',
       'const targetIsInTenant = tenantStores.some',
       'const masterIsInTenant = tenantStores.some',
@@ -1686,8 +1807,14 @@ function verifySessionScopedPublicTruthRoutes() {
       'const tenantScope = normalizeStorePermissionScopeDocumentId(session.tId);',
       'const currentStoreScope = normalizeStorePermissionScopeDocumentId(session.sId);',
       'verifyTenantAccess(session, tenantScope.numericId, currentStoreScope.numericId, request)',
-      'const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");',
+      'const sessionUserId = resolveCurrentSessionUserDocumentId(session);',
+      'if (!sessionUserId)',
+      'const userRateLimitHash = hashPublicRateLimitValue(sessionUserId);',
       'key: `switch-store:${userRateLimitHash}`',
+      'failClosedOnProviderError: true',
+      'rateLimit.reason === "provider_unavailable"',
+      '"Cache-Control": "private, no-store, max-age=0"',
+      '"X-Content-Type-Options": "nosniff"',
       'readBoundedJsonBody(request, SWITCH_STORE_MAX_BODY_BYTES',
       'const targetStoreScope = normalizeStorePermissionScopeDocumentId(targetStoreId);',
       'getBoundedSecurityRouteContext(session, request)',
@@ -1696,7 +1823,7 @@ function verifySessionScopedPublicTruthRoutes() {
       'const tenantData = tenantSnap.exists ? tenantSnap.data() : null;',
       'if (!tenantData || isPlatformEntityBlocked(tenantData))',
       'const targetStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(targetStoreScope.documentId).get();',
-      'Number(targetStoreData.tenantId) !== tenantScope.numericId',
+      'targetStoreData.tenantId !== tenantScope.numericId',
       'normalizeStorePermissionScopeDocumentId(store.storeId)?.numericId === targetStoreScope.numericId',
       'targetStoreData.active === false',
       'targetStoreData.deleted === true',
@@ -1710,6 +1837,7 @@ function verifySessionScopedPublicTruthRoutes() {
   assert(!read('src/app/api/auth/switch-store/route.ts').includes('db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantId}`).get()'), 'switch-store must not read tenant through raw session tenant IDs');
   assert(!read('src/app/api/auth/switch-store/route.ts').includes('db.doc(`${DB_COLLECTIONS.STORES}/${targetStoreId}`).get()'), 'switch-store must not read target store through raw request target IDs');
   assert(!read('src/app/api/auth/switch-store/route.ts').includes('Number(s.storeId) === targetStoreScope.numericId'), 'switch-store must not coerce tenant-list store IDs');
+  assert(!read('src/app/api/auth/switch-store/route.ts').includes('Number(targetStoreData.tenantId)'), 'switch-store must not coerce persisted target-store tenant authority');
   const storeSwitchAccess = read('src/lib/multiOutlet/storeSwitchAccess.ts');
   assert(storeSwitchAccess.includes('normalizeStoreSwitchStoreId'), 'shared store-switch access must expose exact store ID normalization');
   assert(storeSwitchAccess.includes("if (!/^[1-9]\\d*$/.test(raw)) return null;"), 'shared store-switch access must require canonical positive decimal IDs');
@@ -1784,7 +1912,9 @@ function verifySessionScopedPublicTruthRoutes() {
       'let existingSummaryProjectsForDefaultDemotion: Record<string, any> = {};',
       'existingSummaryProjectsForDefaultDemotion = existingSummaryDoc.exists',
       'Object.entries(existingSummaryProjectsForDefaultDemotion).forEach',
-      'storeTenantId !== tenantId',
+      'const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([',
+      'storeTenantScope?.numericId !== tenantId',
+      'normalizeMenuListPublicEntityIdentityAliases(storeIdentityAliases)?.numericId !== storeId',
       'storeData.active === false',
       'storeData.deleted === true',
       'isPlatformEntityBlocked(storeData)',
@@ -2166,7 +2296,7 @@ function verifySessionScopedPublicTruthRoutes() {
       'OverrideSchema.safeParse(body)',
       'sanitizeComplianceContent(content)',
       'saveComplianceOverrideServer(sId, tId, type, sanitized)',
-      'deleteComplianceOverrideServer(sId, type)',
+      'deleteComplianceOverrideServer(sId, tId, type)',
     ],
     'compliance page session-scoped override guard',
   );
@@ -2321,6 +2451,7 @@ function verifyPlatformAdminMutationBoundedBodies() {
     'src/app/api/admin/subdomains/rename/route.ts',
     [
       "requiredPlatformRole: 'PLATFORM'",
+      "import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';",
       "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
       "import { checkRateLimit } from '@lib/rateLimit';",
       "import { getRateLimitForFeature } from '@lib/rateLimit/configs';",
@@ -2328,6 +2459,7 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'getBoundedSecurityRouteContext',
       "const ADMIN_SUBDOMAIN_RENAME_RATE_LIMIT_KEY = 'admin-subdomain-rename';",
       'function getAdminSubdomainRenameOperatorId(session: any): string',
+      "return resolveCurrentSessionUserDocumentId(session) || 'invalid-platform-operator';",
       'function normalizeAdminSubdomainRenameScopeDocumentId(value: unknown): AdminSubdomainRenameScopeDocumentId | null',
       'Number.isSafeInteger(numericId)',
       'String(numericId) !== documentId',
@@ -2342,7 +2474,8 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'const tenantId = tenantScope.numericId;',
       'const storeIdStr = storeScope.documentId;',
       'db.collection(DB_COLLECTIONS.STORES).doc(storeIdStr)',
-      'normalizeStoreSummaryNumericDocumentId(store?.tenantId ?? store?.tId) !== tenantScope.documentId',
+      'normalizeStoreSummaryNumericAliases([store?.tenantId, store?.tId]) !== tenantScope.documentId',
+      'normalizeStoreSummaryNumericAliases([freshStore.tenantId, freshStore.tId]) !== tenantScope.documentId',
       'const renameResult = await db.runTransaction(async (tx) => {',
       'const freshStoreSnap = await tx.get(storeRef);',
       'readSubdomainReservationInTransaction({',
@@ -2363,6 +2496,7 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'auditIdPresent: auditRef.id.length > 0',
       'previousSubdomainLength: renameResult.previousSubdomain.length',
       'historyEntryCount: renameResult.historyEntryCount',
+      'operatorUserId: getAdminSubdomainRenameOperatorId(session)',
       "getBoundedSecurityStringContext('storeId', storeIdStr)",
     ],
     'admin subdomain rename platform, public-cache, and bounded-diagnostics guard',
@@ -2433,6 +2567,9 @@ function verifyPlatformAdminMutationBoundedBodies() {
   assert(!adminSubdomainRenameRoute.includes('const storeIdStr = String(storeId);'), 'admin subdomain rename must not coerce raw store IDs into doc refs');
   assert(!adminSubdomainRenameRoute.includes('db.doc(`${DB_COLLECTIONS.STORES}/${storeIdStr}`)'), 'admin subdomain rename must not build store refs with raw doc path strings');
   assert(!adminSubdomainRenameRoute.includes('Number(store?.tenantId) !== Number(tenantId)'), 'admin subdomain rename must not compare raw tenant numbers after validation');
+  assert(!adminSubdomainRenameRoute.includes('store?.tenantId ?? store?.tId'), 'admin subdomain rename must reject conflicting persisted tenant aliases');
+  assert(!adminSubdomainRenameRoute.includes('operatorUserId: session?.user?.id || null'), 'admin subdomain rename audit records must use the exact admitted platform actor identity');
+  assert(!adminSubdomainRenameRoute.includes('session?.user?.email || \'platform\''), 'admin subdomain rename rate-limit and audit identity must not fall back to email');
   assert(!adminSubdomainRenameRoute.includes('const directCollision = await db'), 'admin subdomain rename must centralize direct collision reads in the transactional claim boundary');
   assert(!adminSubdomainRenameRoute.includes('const chainCollision = await db'), 'admin subdomain rename must centralize rename-history reads in the transactional claim boundary');
   assert(!adminSubdomainRenameRoute.includes('request.json()'), 'admin subdomain rename must not parse unbounded JSON');
@@ -2844,7 +2981,9 @@ function verifyAuthClaimAndCacheBoundaries() {
       "import { hashPublicRateLimitValue } from 'src/middleware/publicApi';",
       "const SET_CLAIMS_RATE_LIMIT_KEY = 'auth-set-claims';",
       "const rateLimitConfig = getRateLimitForFeature('AUTH_CLAIM_SYNC');",
-      'const setClaimsUserRateLimitHash = hashPublicRateLimitValue(session.uId || session.user.id || session.user.email);',
+      'const sessionUserId = resolveCurrentSessionUserDocumentId(session);',
+      'if (!sessionUserId)',
+      'const setClaimsUserRateLimitHash = hashPublicRateLimitValue(sessionUserId);',
       'key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${setClaimsUserRateLimitHash}`',
       "logger.security('Rate Limit Exceeded - Set Claims'",
       'readOptionalBoundedJsonBody(request, SET_CLAIMS_MAX_BODY_BYTES',
@@ -2909,12 +3048,11 @@ function verifyAuthClaimAndCacheBoundaries() {
     [
       'function normalizeStoreId',
       'return STORE_ID_PATTERN.test(normalized) ? normalized : null;',
-      'function canRevalidateStore',
-      'if (isPlatformSession(session)) return true;',
-      'return getSessionStoreIds(session).has(storeId);',
+      'sessionAccess = session ? resolveMenuRevalidationSessionAccess(session) : null;',
+      "if (authMode === 'session' && !sessionAccess)",
       'const storeId = normalizeStoreId(body.storeId);',
       'if (!storeId)',
-      'if (!canRevalidateStore(session, storeId))',
+      'if (sessionAccess && !canMenuRevalidationSessionAccessStore(sessionAccess, storeId))',
       'tags = [`menu-store-${storeId}`, `store-${storeId}`, \'client-stores\', \'screen-data\'];',
     ],
     'menu revalidation store shorthand auth boundary',
@@ -2933,8 +3071,9 @@ function verifyAuthClaimAndCacheBoundaries() {
       'VALID_TAG_PATTERNS.some(pattern => pattern.test(tag))',
       'validTagPatterns: VALID_TAG_DESCRIPTIONS',
       'readBoundedJsonBody(request, MENU_REVALIDATE_MAX_BODY_BYTES',
-      'if (session && !isPlatformSession(session))',
+      'if (sessionAccess && !sessionAccess.platformSession)',
       'return NextResponse.json({ error: "Forbidden" }, { status: 403 });',
+      'tId: sessionAccess?.tenantId',
       'invalidateOwnerBusinessAssistantPacketCache',
     ],
     'menu revalidation explicit tag and assistant-cache boundary',
@@ -2993,6 +3132,20 @@ function verifyAuthClaimAndCacheBoundaries() {
   assert(revalidateLowercaseChangelog.includes('Menu Cache Revalidation Rate-Limit Boundary'), 'Lowercase changelog must record menu revalidation limiter');
   assert(!revalidateMenuRoute.includes('tag.startsWith(prefix)'), 'menu revalidation must not accept arbitrary prefixed cache tags');
   assert(!revalidateMenuRoute.includes('sId: String(body.storeId).trim()'), 'menu revalidation assistant cache must use normalized store id');
+  assert(!revalidateMenuRoute.includes('session?.user?.platformRole === \'PLATFORM\' || session?.platformRole === \'PLATFORM\''), 'menu revalidation must not elevate one conflicting platform-role alias');
+  assert(!revalidateMenuRoute.includes('(session as any)?.tId || (session as any)?.user?.tenantId'), 'menu revalidation assistant cache must not select one conflicting tenant alias');
+  assertIncludes(
+    'src/lib/cache/menuRevalidationSessionAccess.ts',
+    [
+      "import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';",
+      'resolveStorePermissionSessionScope(source)',
+      'const platformRole = resolveExactSessionPlatformRole(source);',
+      'if (platformRole === null) return null;',
+      'allowedStoreIds.add(normalized.documentId);',
+      'return access.platformSession || access.allowedStoreIds.has(storeId);',
+    ],
+    'menu revalidation exact session access projection',
+  );
 }
 
 function verifyPublicTruthMutationBoundedBodies() {
@@ -3015,12 +3168,10 @@ function verifyPublicTruthMutationBoundedBodies() {
   boundedRoutes.forEach((route) => {
     const content = read(route);
     assert(!content.includes('request.json()'), `${route} must not parse unbounded JSON`);
-    assertIncludes(
-      route,
-      [
-        'readBoundedJsonBody',
-        'if (bodyResult.ok === false) return bodyResult.response;',
-      ],
+    assert(content.includes('readBoundedJsonBody'), `${route} bounded JSON body reader`);
+    assert(
+      content.includes('if (bodyResult.ok === false) return bodyResult.response;')
+        || content.includes('if (bodyResult.ok === false) return applyPrivateResponseHeaders(bodyResult.response);'),
       `${route} bounded JSON body guard`,
     );
   });
@@ -3030,6 +3181,10 @@ function verifyPublicTruthMutationBoundedBodies() {
     [
       'export const POST = withAuth(async (request, session) => {',
       'key: `tenant-name:${limiterHash}`',
+      'failClosedOnProviderError: true',
+      "rateLimit.reason === 'provider_unavailable'",
+      "'Cache-Control': 'private, no-store, max-age=0'",
+      "'X-Content-Type-Options': 'nosniff'",
       'readBoundedJsonBody(request, TENANT_NAME_MAX_BODY_BYTES',
       'validateAPIInput(schema, bodyResult.data)',
       'sessionScope.tenantDocumentId !== tenantDocumentId',
@@ -3181,7 +3336,8 @@ function verifyPublicTruthMutationBoundedBodies() {
       'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
       'export function normalizeOutletDocumentId(value: unknown): string | null',
       'return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;',
-      'export function getOutletSessionScope(session: any): OutletSessionScope | null',
+      'export function getOutletSessionScope(session: unknown): OutletSessionScope | null',
+      'normalized.every((value) => value?.documentId === first.documentId)',
       'tenantDocumentId: tenantId.documentId',
       'storeDocumentId: storeId.documentId',
     ],
@@ -3305,7 +3461,8 @@ function verifyPublicTruthMutationBoundedBodies() {
       'const bodyResult = await readBoundedJsonBody(request, OUTLET_SAVE_MAX_BODY_BYTES',
       'const validation = validateAPIInput(schema, body);',
       'normalizeMultiOutletProjectId(project.projectId)',
-      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);',
+      'const outletSessionScope = getOutletSessionScope(session);',
+      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(outletSessionScope?.storeDocumentId);',
       'verifyTenantAccess(session, tenantId, currentStoreId, request)',
       'const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");',
       'const projectRateLimitHash = hashPublicRateLimitValue(project.projectId);',
@@ -3560,9 +3717,14 @@ function verifyPublicCustomerSignalBoundedBodies() {
     'src/app/api/public/analytics/track/route.ts',
     [
       'const storeSnap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId).get();',
+      'const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([',
+      'storeTenantScope?.documentId !== tenantId',
+      'normalizeMenuListPublicEntityIdentityAliases(storeIdentityAliases)?.documentId !== storeId',
       'if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) return null;',
       'const tenantSnap = await firestoreAdmin.collection(DB_COLLECTIONS.TENANTS).doc(tenantId).get();',
       'const tenant = tenantSnap.data();',
+      'const tenantIdentityAliases = [tenant?.tenantId, tenant?.tId]',
+      'normalizeMenuListPublicEntityIdentityAliases(tenantIdentityAliases)?.documentId !== tenantId',
       'tenant?.active === false',
       'tenant?.deleted === true',
       'isPlatformEntityBlocked(tenant)',
@@ -3588,6 +3750,7 @@ function verifyPublicCustomerSignalBoundedBodies() {
     [
       "import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';",
       "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
+      "import { normalizeMenuListPublicEntityIdentityAliases } from '@lib/publicTruth/entityEligibility';",
       'function normalizePublicAnalyticsNumericDocumentId(value: unknown): PublicAnalyticsNumericDocumentId | null',
       'documentId !== raw || !/^\\d+$/.test(documentId) || !isValidFirestoreDocumentId(documentId)',
       'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
@@ -3697,6 +3860,7 @@ function verifyPublicCustomerSignalBoundedBodies() {
       "logGuestFeedbackFailure('public_guest_feedback_scope_verification_failed'",
       "logGuestFeedbackFailure('public_guest_feedback_submit_failed'",
       "import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';",
+      "import { normalizeMenuListPublicEntityIdentityAliases } from '@lib/publicTruth/entityEligibility';",
       'const projectId = normalizeGuestFeedbackProjectId(data.projectId);',
       'const tenantScope = normalizeGuestFeedbackNumericDocumentId(data.tId);',
       'const storeScope = normalizeGuestFeedbackNumericDocumentId(data.sId);',
@@ -3838,8 +4002,10 @@ function verifyAnalyticsErrorBoundary() {
       'return normalized ? `properties/${normalized}` : null;',
       'export function normalizeGoogleAnalyticsScopeDocumentId(value: unknown): GoogleAnalyticsScopeDocumentId | null {',
       'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
-      'const tenantScope = normalizeGoogleAnalyticsScopeDocumentId(session?.tId ?? session?.user?.tenantId);',
-      'const storeScope = normalizeGoogleAnalyticsScopeDocumentId(session?.sId ?? session?.user?.storeId);',
+      'const sessionScope = resolveSensitiveSessionStoreScope({',
+      'tenantValues: [session?.tId, session?.user?.tenantId],',
+      'storeValues: [session?.sId, session?.user?.storeId],',
+      'isSensitiveStoreRecordInScope({',
       '.doc(storeScope.documentId)',
     ],
     'analytics Google provider property resource boundary',
@@ -3924,11 +4090,12 @@ function verifyAnalyticsErrorBoundary() {
     'src/app/api/analytics/readRateLimit.ts',
     [
       "getRateLimitForFeature('DATA_READ')",
+      "import { getSessionProviderScopeKey } from '@lib/multiOutlet/sessionProviderScopeBoundary';",
+      'const sessionScopeKey = getSessionProviderScopeKey(session);',
+      "return NextResponse.json({ error: 'Forbidden' }, { status: 403 });",
       'checkRateLimit({',
-      'const userRateLimitHash = hashPublicRateLimitValue(userId);',
-      'const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);',
-      'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
-      'key: `analytics-read:${routeKey}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`',
+      'const sessionScopeHash = hashPublicRateLimitValue(sessionScopeKey);',
+      'key: `analytics-read:${routeKey}:${sessionScopeHash}`',
       "'Retry-After': String(waitSeconds)",
       "'X-RateLimit-Limit': String(rateLimitConfig.limit)",
       "'X-RateLimit-Remaining': String(rateLimit.remaining)",
@@ -3937,6 +4104,8 @@ function verifyAnalyticsErrorBoundary() {
     'analytics shared read rate limiter',
   );
   assert(!read('src/app/api/analytics/readRateLimit.ts').includes('key: `analytics-read:${routeKey}:${userId}:${tenantId}:${storeId}`'), 'analytics shared read limiter must not store raw user/tenant/store IDs in rate-limit keys');
+  assert(!read('src/app/api/analytics/readRateLimit.ts').includes("session?.tId || session?.user?.tenantId || 'unknown'"), 'analytics shared read limiter must not select one tenant alias');
+  assert(!read('src/app/api/analytics/readRateLimit.ts').includes("session?.sId || session?.user?.storeId || 'unknown'"), 'analytics shared read limiter must not select one store alias');
 
   legacyAnalyticsRoutes.forEach(([relPath, failureCode, routeKey]) => {
     const legacyRoute = read(relPath);
@@ -4042,8 +4211,9 @@ function verifyAnalyticsErrorBoundary() {
       "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
       'function normalizeAiOperationHistoryScopeDocumentId(value: unknown): AiOperationHistoryScopeDocumentId | null',
       'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
-      'const tenantScope = normalizeAiOperationHistoryScopeDocumentId(session.tId || session.user?.tenantId);',
-      'const storeScope = normalizeAiOperationHistoryScopeDocumentId(session.sId || session.user?.storeId);',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'const tenantScope = normalizeAiOperationHistoryScopeDocumentId(sessionScope?.tenantScope.documentId);',
+      'const storeScope = normalizeAiOperationHistoryScopeDocumentId(sessionScope?.storeScope.documentId);',
       'const tenantId = tenantScope.documentId;',
       'const storeId = storeScope.documentId;',
       'const dateRange = normalizeAiOperationHistoryDateRange(startDate, endDate);',
@@ -4055,16 +4225,26 @@ function verifyAnalyticsErrorBoundary() {
       'cursorCreatedOn: cursorDoc?.get(\'createdOn\')',
       'cursorExists: Boolean(cursorDoc)',
       'cursorRequested: Boolean(cursorId)',
-      "return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });",
+      "return privateJson({ error: 'Invalid cursor' }, { status: 400 });",
       'const userRateLimitHash = hashPublicRateLimitValue(userId);',
       'const tenantRateLimitHash = hashPublicRateLimitValue(tenantId);',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
       'key: `ai-operations:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`',
+      'failClosedOnProviderError: true',
+      "rateLimit.reason === 'provider_unavailable'",
+      "'Cache-Control': 'private, no-store, max-age=0'",
+      "'X-Content-Type-Options': 'nosniff'",
       "logger.security('Rate Limit Exceeded', {",
       '...getAiOperationsReadLogContext(request, session',
     ],
     'AI operations read hashed limiter and bounded rate-limit diagnostics',
   );
+  assert(!aiOperationsRoute.includes('session.tId || session.user?.tenantId'), 'AI operations route must not select one session tenant alias');
+  assert(
+    (aiOperationsRoute.match(/return NextResponse\.json\(/g) || []).length === 1,
+    'AI operations route must keep NextResponse.json encapsulated by its private response boundary',
+  );
+  assert(!aiOperationsRoute.includes('session.sId || session.user?.storeId'), 'AI operations route must not select one session store alias');
   assert(aiOperationHistoryQuery.includes("import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';"), 'AI operation history query helper must import shared Firestore document ID guard');
   assert(aiOperationHistoryQuery.includes('AI_OPERATION_CURSOR_ID_PATTERN = /^[A-Za-z0-9_-]{1,160}$/'), 'AI operation history query helper must validate simple Firestore cursor IDs');
   assert(aiOperationHistoryQuery.includes('AI_OPERATION_CURSOR_ID_PATTERN.test(cursorId) && isValidFirestoreDocumentId(cursorId)'), 'AI operation history query helper must reject reserved or path-shaped Firestore cursor IDs');
@@ -4374,8 +4554,9 @@ function verifyAnalyticsErrorBoundary() {
     [
       'normalizeMultiOutletNumericDocumentId',
       'normalizeMultiOutletProjectId',
-      'const getSessionTenantScope = (session: SessionLike): MultiOutletNumericDocumentId | null => (',
-      'const getSessionStoreScope = (session: SessionLike): MultiOutletNumericDocumentId | null => (',
+      'const sessionScope = getOutletSessionScope(session);',
+      'const tenantScope = normalizeMultiOutletNumericDocumentId(sessionScope?.tenantDocumentId);',
+      'const storeScope = normalizeMultiOutletNumericDocumentId(sessionScope?.storeDocumentId);',
       'const projectScope = normalizeMultiOutletProjectId(projectId);',
       'projectScope.tId !== tenantScope.numericId',
       'projectScope.sId !== storeScope.numericId',
@@ -4384,7 +4565,8 @@ function verifyAnalyticsErrorBoundary() {
       'masterProjectScope.tId !== tenantScope.numericId',
       'masterProjectScope.sId === storeScope.numericId',
       '.doc(`${DB_COLLECTIONS.STORES}/${masterProjectScope.storeDocumentId}`)',
-      'const masterTenantScope = normalizeMultiOutletNumericDocumentId(masterStoreSnap.data()?.tenantId);',
+      'const masterTenantScope = resolveStorePermissionScopeDocumentIdAliases([',
+      'masterStoreSnap.data()?.tId,',
       'masterTenantScope.numericId !== tenantScope.numericId',
     ],
     'linked outlet AI policy scope boundary',
@@ -4995,6 +5177,7 @@ function verifyAnalyticsErrorBoundary() {
     'src/app/api/analytics/owner-action/mark-done/route.ts',
     [
       "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
+      "import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';",
       'const MarkDoneProjectIdSchema = z.string()',
       ".regex(/^[A-Za-z0-9_-]+$/)",
       ".refine(isValidFirestoreDocumentId, 'Invalid project ID')",
@@ -5007,9 +5190,12 @@ function verifyAnalyticsErrorBoundary() {
       "logAnalyticsFailure('owner_action_mark_done_invalid_dashboard_doc_id'",
       "import { markOwnerActionDoneTransaction } from '@lib/analytics/ownerActionReceiptTransaction';",
       'const outcome = await markOwnerActionDoneTransaction(admin.firestore(), {',
-      'const tenantId = normalizeMarkDoneScopeDocumentId(rawTenantId);',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'const rawTenantId = sessionScope?.tenantScope.documentId;',
+      'const rawStoreId = sessionScope?.storeScope.documentId;',
+      'const userId = resolveCurrentSessionUserDocumentId(session);',
       'const storeId = normalizeMarkDoneScopeDocumentId(rawStoreId);',
-      'if (!tenantId || !storeId)',
+      'if (!tenantId || !storeId || !userId)',
       "logAnalyticsFailure('owner_action_mark_done_invalid_session_scope'",
       "return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });",
     ],
@@ -5018,9 +5204,11 @@ function verifyAnalyticsErrorBoundary() {
   assertOrder(
     'src/app/api/analytics/owner-action/mark-done/route.ts',
     [
-      "const rawTenantId = session.tId || session.user?.tenantId || '';",
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'const rawTenantId = sessionScope?.tenantScope.documentId;',
       'const tenantId = normalizeMarkDoneScopeDocumentId(rawTenantId);',
-      'if (!tenantId || !storeId)',
+      'const userId = resolveCurrentSessionUserDocumentId(session);',
+      'if (!tenantId || !storeId || !userId)',
       "const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');",
       'const bodyResult = await readBoundedJsonBody',
       'const validation = MarkDoneSchema.safeParse(bodyResult.data);',
@@ -5036,6 +5224,9 @@ function verifyAnalyticsErrorBoundary() {
   assert(!ownerActionMarkDoneRoute.includes('if (!isValidFirestoreDocumentId(tenantId) || !isValidFirestoreDocumentId(storeId))'), 'owner dashboard action mark-done session scope must not rely on trim-tolerant direct document-ID checks');
   assert(!ownerActionMarkDoneRoute.includes('projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/)'), 'owner dashboard action mark-done projectId must not keep regex-only validation');
   assert(!ownerActionMarkDoneRoute.includes('const dashboardRef = admin.firestore().collection(DB_COLLECTIONS.ANALYTICS).doc(`${tenantId}_${storeId}_${projectId}_dashboard_summary`)'), 'owner dashboard action mark-done must keep the dashboard doc id inspectable before Firestore access');
+  assert(!ownerActionMarkDoneRoute.includes("session.tId || session.user?.tenantId || ''"), 'owner dashboard action mark-done must not select one tenant alias');
+  assert(!ownerActionMarkDoneRoute.includes("session.sId || session.user?.storeId || ''"), 'owner dashboard action mark-done must not select one store alias');
+  assert(!ownerActionMarkDoneRoute.includes("String(session.uId || session.user?.id || 'unknown')"), 'owner dashboard action mark-done must not select one actor alias');
   assert(!ownerActionMarkDoneRoute.includes('await dashboardRef.get();'), 'owner dashboard action mark-done must not read outside its receipt transaction');
   assert(!ownerActionMarkDoneRoute.includes('await dashboardRef.update(updates);'), 'owner dashboard action mark-done must not write outside its receipt transaction');
   [
@@ -5180,6 +5371,20 @@ function verifyOwnerUtilitySecureLogging() {
   const functionsOperations = read('functions/src/triggers/operations.ts');
   const functionsMasterScheduler = read('functions/src/schedulers/masterScheduler.ts');
   const functionsDecisionBlocks = read('functions/src/decisionBlocksScoring.ts');
+  [
+    'normalizeOwnerNotificationNumericScopeAliases([',
+    'storeData?.tId,',
+    'storeData?.tenantId,',
+    'storedTenantScope?.documentId !== tId',
+    'normalizeOwnerNotificationNumericScopeAliases(storedStoreAliases)?.documentId !== sId',
+  ].forEach((token) => assert(
+    functionsDecisionBlocks.includes(token),
+    `Decision Blocks callable store scope must include ${token}`,
+  ));
+  assert(
+    !functionsDecisionBlocks.includes("String(storeData?.tId || storeData?.tenantId || '')"),
+    'Decision Blocks callable store scope must reject conflicting tenant aliases',
+  );
   assertIncludes(
     'src/data/shared/ownerNotificationDeliveryBoundary.ts',
     [
@@ -5194,12 +5399,22 @@ function verifyOwnerUtilitySecureLogging() {
     'src/lib/owner-notifications/recipientResolver.ts',
     [
       'event.workspaceId ?? event.storeId',
-      'workspaceData?.tenantId ?? workspaceData?.tId',
+      'normalizeOwnerNotificationDocumentIdAliases([',
+      'workspaceData?.tenantId,',
+      'workspaceData?.tId,',
       'storedTenantDocumentId === tenantDocumentId',
-      'storeData?.tenantId ?? storeData?.tId',
+      'normalizeOwnerNotificationNumericScopeAliases([',
+      'storeData?.tenantId,',
+      'storeData?.tId,',
       'storedTenantScope?.numericId === tenantScope.numericId',
     ],
     'owner notification recipient tenant boundary',
+  );
+  const ownerNotificationRecipient = read('src/lib/owner-notifications/recipientResolver.ts');
+  assert(
+    !ownerNotificationRecipient.includes('workspaceData?.tenantId ?? workspaceData?.tId')
+      && !ownerNotificationRecipient.includes('storeData?.tenantId ?? storeData?.tId'),
+    'Owner notification recipient scope must reject conflicting persisted tenant aliases',
   );
   assertIncludes(
     'src/lib/owner-notifications/index.ts',
@@ -5234,7 +5449,9 @@ function verifyOwnerUtilitySecureLogging() {
       'const existing = await tx.get(eventRef);',
       'if (!existing.exists) tx.create(eventRef, eventDoc);',
       'const event = await claimOwnerNotificationEvent(eventRef);',
-      'normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId)',
+      'const tenantAliases = [data.tenantId, data.tId]',
+      'normalizeOwnerNotificationNumericScopeAliases(tenantAliases)',
+      'storedTenantScope?.numericId !== tenantScope.numericId',
     ],
     'Functions owner notification transactional tenant boundary',
   );
@@ -6171,14 +6388,14 @@ function verifyOwnerUtilitySecureLogging() {
       'function isSafeEventMetadataKey',
       'const BOUNDED_EVENT_METADATA_KEYS = new Set',
       'metadataDroppedCount',
-      'code: String(error.code).slice(0, 96)',
+      'code: error.code.slice(0, 96)',
 	      'retryable: error.retryable === true',
 	      'metadata: sanitizeEventMetadata(params.metadata)',
 	      'MSG_ONBOARDING_EVENT_WRITE_FAILED',
 	      'MSG_ONBOARDING_EVENT_PREPARE_FAILED',
 	      'function getEventLoggerErrorContext',
-	      '(error.name || "Error").slice(0, 80)',
-	      'String(code).slice(0, 64)',
+	      'getBoundedFunctionsErrorName(error)',
+	      'getBoundedFunctionsErrorCode(error)',
 	    ]],
 	    ['functions/src/messagingOnboarding/inboundQueue.ts', [
 	      'const INBOUND_PROCESSING_FAILED_CODE = "INBOUND_PROCESSING_FAILED";',
@@ -6196,8 +6413,8 @@ function verifyOwnerUtilitySecureLogging() {
 	      'snapshot.get("processingToken") !== claim.processingToken',
 	      'resetCount,',
 	      'staleWindowMs: STALE_PROCESSING_MS',
-	      '(error.name || "Error").slice(0, 80)',
-	      'String(code).slice(0, 64)',
+	      'getBoundedFunctionsErrorName(error)',
+	      'getBoundedFunctionsErrorCode(error)',
 	    ]],
     ['functions/src/messagingOnboarding/webhookHandler.ts', [
       'const WEBHOOK_QUEUE_FAILED_CODE = "WEBHOOK_QUEUE_FAILED";',
@@ -6235,12 +6452,19 @@ function verifyOwnerUtilitySecureLogging() {
 		    ]],
     ['functions/src/messagingOnboarding/healthMonitor.ts', [
       'MESSAGING_HEALTH_SNAPSHOT_WRITE_FAILED',
+      'MESSAGING_HEALTH_ALERT_EMIT_FAILED',
       'function getMessagingHealthErrorName',
       'function getMessagingHealthErrorCode',
       'function getMessagingHealthErrorContext',
       'errorName: getMessagingHealthErrorName(error)',
       'errorCode: getMessagingHealthErrorCode(error)',
       'getMessagingHealthErrorContext(error)',
+      '.doc(snapshotId)',
+      'transaction.set(snapshotRef, snapshot);',
+      'isMessagingHealthLeaseOwner(currentControl.data(), computeLeaseId)',
+      'export async function emitHealthAlerts(',
+      'failedAlerts += 1;',
+      'alertKey: alert.key,',
     ]],
 		    ['functions/src/messagingOnboarding/intakeProcessor.ts', [
 		      'const INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE = "INTAKE_PROVIDER_MESSAGE_SEND_FAILED";',
@@ -6251,8 +6475,8 @@ function verifyOwnerUtilitySecureLogging() {
 		      'async function releasePendingMessageLease',
 	      'getIntakeProcessorIdLogContext("sessionId", doc.id)',
 	      'getIntakeProcessorIdLogContext("sessionId", session.sessionId)',
-	      '(error.name || "Error").slice(0, 80)',
-	      'String(code).slice(0, 64)',
+	      'getBoundedFunctionsErrorName(error)',
+	      'getBoundedFunctionsErrorCode(error)',
 	      'code: "GEMINI_API_ERROR"',
 		      'logger.warn("[IntakeProcessor] Non-blocking provider message send failed"',
 		      'failureCode: INTAKE_PROVIDER_MESSAGE_SEND_FAILED_CODE',
@@ -6429,9 +6653,9 @@ function verifyOwnerUtilitySecureLogging() {
 	      'sourceErrorStatus: getCleanupErrorStatus(error)',
     ]],
     ['functions/src/messaging/messagingEngine.ts', [
-      "(error.name || 'Error').slice(0, 80)",
-      'String(record.code).slice(0, 64)',
-      'String(status).slice(0, 32)',
+      'getBoundedFunctionsErrorName(error)',
+      'getBoundedFunctionsErrorCode(error)',
+      'getBoundedFunctionsErrorStatus(error)',
       'function getMessagingIdLogContext',
       'function getMessagingOperationLogContext',
       "getMessagingIdLogContext('storeId', context.storeId)",
@@ -6447,8 +6671,8 @@ function verifyOwnerUtilitySecureLogging() {
       'function getMessagingTriggerErrorContext',
       'failureCode: MSG_EXTRACTION_WATCHER_FAILED',
       "...getMessagingTriggerStringContext('jobId', event.params.jobId)",
-      'String(code).slice(0, 64)',
-      "return (error.name || 'Error').slice(0, 80)",
+      'getBoundedFunctionsErrorCode(error)',
+      "return getBoundedFunctionsErrorName(error) || 'Error'",
     ]],
     ['functions/src/messagingOnboarding/extractionWatcher.ts', [
       'EXTRACTION_PREVIEW_SEND_FAILED_CODE',
@@ -6470,7 +6694,7 @@ function verifyOwnerUtilitySecureLogging() {
       'function getAiProviderHealthFailureCode',
       'error: failureCode',
       'failureCode,',
-      'sourceErrorName: error instanceof Error ? (error.name ||',
+      'sourceErrorName: getBoundedFunctionsErrorName(error)',
       'export async function replaceAiProviderHealthState',
       '.doc(HEALTH_DOC_ID).set(details);',
       'await replaceAiProviderHealthState(details);',
@@ -6542,7 +6766,35 @@ function verifyOwnerUtilitySecureLogging() {
 
   {
     const operations = read('functions/src/triggers/operations.ts');
+    const sharedTriggers = read('functions/src/triggers/shared.ts');
+    const callableScopeAccess = read('functions/src/utils/callableScopeAccess.ts');
     const publishVerification = read('functions/src/monitoring/publishVerification.ts');
+    [
+      'normalizeOwnerNotificationNumericScopeAliases([',
+      'token.tenantId,',
+      'token.tId,',
+      'const directAliases = [token.storeId, token.sId];',
+      'normalizeOwnerNotificationNumericScopeAliases(directAliases)',
+      'normalizeOwnerNotificationNumericScopeDocumentId(value)',
+      'token.storeIds.length > MAX_CALLABLE_STORE_IDS',
+    ].forEach((token) => assert(
+      callableScopeAccess.includes(token),
+      `Functions callable scope boundary must include ${token}`,
+    ));
+    [operations, sharedTriggers].forEach((source) => {
+      assert(
+        source.includes('hasCallableTenantStoreAccess('),
+        'Functions callable trigger must use exact shared tenant/store access',
+      );
+      assert(
+        !source.includes('token.tenantId || token.tId'),
+        'Functions callable trigger must reject conflicting tenant aliases',
+      );
+      assert(
+        !source.includes('token.storeId || token.sId'),
+        'Functions callable trigger must reject conflicting store aliases',
+      );
+    });
     const deliveryCalls = operations.split('sendLifecycleMessage({').length - 1;
     const awaitedDeliveryCalls = operations.split('await sendLifecycleMessage({').length - 1;
     assert(deliveryCalls >= 2, 'verifyMenuPublish must retain both lifecycle delivery branches');
@@ -6580,7 +6832,9 @@ function verifyOwnerUtilitySecureLogging() {
       "if (parsed.protocol !== 'https:') return null;",
       'hostname === `${subdomain}.${baseDomain}`',
       "if (currentPlatformRole === 'PLATFORM') return true;",
-      'normalizeOwnerNotificationNumericScopeDocumentId(candidate)?.documentId === storeId',
+      'normalizeOwnerNotificationNumericScopeAliases(tenantAliases)?.documentId !== tenantId',
+      'normalizeOwnerNotificationNumericScopeAliases(storedStoreAliases)?.documentId !== storeId',
+      'normalizeOwnerNotificationNumericScopeAliases(directStoreAliases)',
       'readStoredConsecutiveFailures(currentHealth.consecutiveFailures)',
       'transaction.set(storeRef, {',
     ].forEach((token) => assert(
@@ -6614,8 +6868,8 @@ function verifyOwnerUtilitySecureLogging() {
       'const projectsSnapshot = await transaction.get(projectsQuery);',
       'projectsSnapshot.size > MAX_FORCE_REPUBLISH_PROJECTS',
       'projectData.deleted === true || projectData.active === false',
-      'normalizeOwnerNotificationNumericScopeDocumentId(embeddedTenant)?.documentId',
-      'normalizeOwnerNotificationNumericScopeDocumentId(embeddedStore)?.documentId',
+      'normalizeOwnerNotificationNumericScopeAliases(embeddedTenantAliases)?.documentId',
+      'normalizeOwnerNotificationNumericScopeAliases(embeddedStoreAliases)?.documentId',
       'activeProjects.forEach((projectDoc) => {',
       'transaction.update(projectDoc.ref, {',
       'projectIds: activeProjects.map((projectDoc) => projectDoc.id).sort()',
@@ -6715,6 +6969,10 @@ function verifyOwnerUtilitySecureLogging() {
   {
     const platformNotificationDelivery = read('functions/src/monitoring/platformNotificationDelivery.ts');
     assert(
+      !platformNotificationDelivery.includes('metadata?: Record<string, any>'),
+      'Functions platform alert payload metadata must stay at an unknown runtime boundary',
+    );
+    assert(
       !platformNotificationDelivery.includes("`Scope: tenant=${alert.tId || 'system'} store=${alert.sId || 'system'}`"),
       'platform alert delivery copy must not render raw tenant/store scope identifiers',
     );
@@ -6733,6 +6991,10 @@ function verifyOwnerUtilitySecureLogging() {
   }
   {
     const appPlatformNotificationDelivery = read('src/lib/ops/platformNotificationDelivery.ts');
+    assert(
+      !appPlatformNotificationDelivery.includes('metadata?: Record<string, any>'),
+      'App platform alert payload metadata must stay at an unknown runtime boundary',
+    );
     assert(
       !appPlatformNotificationDelivery.includes("`Scope: tenant=${alert.tId || 'system'} store=${alert.sId || 'system'}`"),
       'app-side platform alert delivery copy must not render raw tenant/store scope identifiers',
@@ -7054,10 +7316,14 @@ function verifyOwnerUtilitySecureLogging() {
       'OwnerBusinessAssistantFeedbackRequestSchema.safeParse(bodyResult.data)',
       'const docId = `${parsed.data.answerId}_${scope.userId || \'unknown\'}`;',
       'if (!isValidFirestoreDocumentId(docId)) {',
-      'firestoreAdmin.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK).doc(docId).set',
+      'const feedbackRecord = buildOwnerBusinessAssistantFeedbackRecord({',
+      '.collection(DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_FEEDBACK)',
+      '.doc(docId)',
+      '.set(feedbackRecord);',
     ],
     'Owner Business Assistant feedback answer ID boundary before feedback document write',
   );
+  assert(!ownerBusinessAssistantFeedbackRoute.includes('.set(feedbackRecord, { merge: true })'), 'Owner Business Assistant replacement feedback must not retain omitted reason/question fields');
   assertOrder(
     'src/app/api/owner-business-assistant/thread/[threadId]/route.ts',
     [
@@ -7396,12 +7662,8 @@ function verifyOwnerUtilitySecureLogging() {
     ]],
     ['src/lib/pricing/pdfQueue.ts', [
       'pricing_pdf_regen_disabled',
-      'pricing_pdf_regen_debounce_reset',
-      'pricing_pdf_regen_scheduled',
-      'pricing_pdf_regen_job_created',
       'logPricingDiagnostic',
-      "getBoundedPricingStringContext(\"projectId\", projectId)",
-      "getBoundedPricingStringContext(\"jobId\", jobRef.id)",
+      "getBoundedPricingStringContext(\"projectId\", params.projectId)",
     ]],
   ].forEach(([relPath, required]) => {
     assertIncludes(relPath, required, `${relPath} bounded pricing diagnostics`);
@@ -7875,10 +8137,11 @@ function verifyPaymentMutationBoundedJson() {
 	      "import { isValidFirestoreDocumentId } from \"@lib/firebase/firestoreDocumentId\";",
 	      'export function normalizeBillingMutationScopeDocumentId(value: unknown): BillingMutationScopeDocumentId | null {',
 	      'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
-	      'const tenantScope = normalizeBillingMutationScopeDocumentId(tenantId);',
-	      'const storeScope = normalizeBillingMutationScopeDocumentId(storeId);',
+	      'const sessionScope = resolveSensitiveSessionStoreScope({',
+	      'tenantValues: [session?.tId, session?.user?.tenantId],',
+	      'storeValues: [session?.sId, session?.user?.storeId],',
 	      'doc(storeScope.documentId)',
-	      'Number(storeData?.tenantId) !== tenantScope.numericId',
+	      'isSensitiveStoreRecordInScope({',
 	      'getBoundedRazorpaySecurityContext',
 	      "getBoundedRazorpayStringContext('billingStoreId', storeId)",
 	      "getBoundedRazorpayStringContext('roleId', roleId)",
@@ -7957,9 +8220,9 @@ function verifyPaymentMutationBoundedJson() {
       'BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED',
       'function getReconciliationStringContext',
       'function getReconciliationErrorContext',
-      "(error.name || 'Error').slice(0, 80)",
-      'String(record.code).slice(0, 64)',
-      'String(status).slice(0, 32)',
+      'getBoundedFunctionsErrorName(error)',
+      'getBoundedFunctionsErrorCode(error)',
+      'getBoundedFunctionsErrorStatus(error)',
       'function getReconciliationSubscriptionLogContext',
       'function getReconciliationUpdateLogContext',
       'function getTransitionLogContext',
@@ -8005,9 +8268,9 @@ function verifyPaymentMutationBoundedJson() {
     'functions/src/lib/circuitBreaker.ts',
     [
       'function getCircuitBreakerErrorContext',
-      "(error.name || 'Error').slice(0, 80)",
-      'String(record.code).slice(0, 64)',
-      'String(status).slice(0, 32)',
+      'getBoundedFunctionsErrorName(error)',
+      'getBoundedFunctionsErrorCode(error)',
+      'getBoundedFunctionsErrorStatus(error)',
       '...getCircuitBreakerErrorContext(error)',
     ],
     'Functions circuit breaker bounded diagnostics',
@@ -8456,12 +8719,12 @@ function verifyPaymentMutationBoundedJson() {
     'src/lib/billing/billingAccess.ts',
     [
       'import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";',
-      'const tenantId = session?.user?.tenantId ?? session?.tId;',
-      'const tenantScope = normalizeBillingMutationScopeDocumentId(tenantId);',
-      'const storeScope = normalizeBillingMutationScopeDocumentId(storeId);',
+      'const sessionScope = resolveSensitiveSessionStoreScope({',
+      'tenantValues: [session?.tId, session?.user?.tenantId],',
+      'storeValues: [session?.sId, session?.user?.storeId],',
       'Missing tenant, store, or role for billing mutation',
       "getBoundedRazorpayStringContext('billingTenantId', tenantId)",
-      'Number(storeData?.tenantId) !== tenantScope.numericId',
+      'isSensitiveStoreRecordInScope({',
       'doc(storeScope.documentId)',
       'storeData.active === false',
       'storeData.deleted === true',
@@ -8475,7 +8738,7 @@ function verifyPaymentMutationBoundedJson() {
     '__docs__/razorpay/razorpay_impl.md',
     [
       'Authenticated MenuList billing mutations use `canManageBillingMutation()`',
-      '`normalizeBillingMutationScopeDocumentId()` validates the session tenant/store scope',
+      'Every supplied session tenant/store alias must normalize and agree',
     ],
     'Razorpay implementation billing mutation scope boundary',
   );
@@ -8872,6 +9135,15 @@ function verifyPaymentMutationBoundedJson() {
     [
       "getRateLimitForFeature('DATA_READ')",
       'checkRateLimit({',
+      "export const RESELLER_PRIVATE_RESPONSE_HEADERS = {",
+      "'Cache-Control': 'private, no-store'",
+      "'X-Content-Type-Options': 'nosniff'",
+      'export const resellerPrivateJson = (',
+      'const headers = new Headers(init.headers);',
+      'Object.entries(RESELLER_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {',
+      'headers.set(name, value);',
+      'return NextResponse.json(body, {',
+      'headers,',
       'const userRateLimitHash = hashPublicRateLimitValue(userId);',
       'const resellerProfileRateLimitHash = hashPublicRateLimitValue(resellerProfileId);',
       'key: `reseller-read:${routeKey}:${userRateLimitHash}:${resellerProfileRateLimitHash}`',
@@ -8882,7 +9154,11 @@ function verifyPaymentMutationBoundedJson() {
     ],
     'reseller shared read rate limiter',
   );
-  assert(!read('src/app/api/reseller/readRateLimit.ts').includes('key: `reseller-read:${routeKey}:${userId}:${resellerProfileId}`'), 'reseller shared read limiter must not store raw user/profile IDs in rate-limit keys');
+  {
+    const readRateLimit = read('src/app/api/reseller/readRateLimit.ts');
+    assert(!readRateLimit.includes('key: `reseller-read:${routeKey}:${userId}:${resellerProfileId}`'), 'reseller shared read limiter must not store raw user/profile IDs in rate-limit keys');
+    assert(!readRateLimit.includes('...Object.fromEntries(new Headers(init.headers).entries())'), 'reseller private response headers must not be caller-overridable');
+  }
   [
     {
       route: 'src/app/api/reseller/profile/route.ts',
@@ -8892,12 +9168,12 @@ function verifyPaymentMutationBoundedJson() {
     {
       route: 'src/app/api/reseller/clients/route.ts',
       key: 'clients',
-      before: 'const isPlatform = session.user.platformRole',
+      before: 'const isPlatform = resolveExactSessionPlatformRole(session)',
     },
     {
       route: 'src/app/api/reseller/monthly-summary/route.ts',
       key: 'monthly-summary',
-      before: 'const isPlatform = session.user.platformRole',
+      before: 'const isPlatform = resolveExactSessionPlatformRole(session)',
     },
     {
       route: 'src/app/api/reseller/manage/route.ts',
@@ -8920,6 +9196,11 @@ function verifyPaymentMutationBoundedJson() {
         before,
       ],
       `${route} reseller read limiter before Firestore reads`,
+    );
+    assertIncludes(
+      route,
+      ['resellerPrivateJson', 'from "../readRateLimit"'],
+      `${route} reseller private response boundary`,
     );
   });
   assertIncludes(
@@ -9698,6 +9979,9 @@ function verifyStaffTenantBoundary() {
       'const storeScope = normalizeStaffStoreScopeDocumentId(input.storeId);',
       '.doc(storeScope.documentId)',
       'const getAuthority = async (session: any, tenantId: number, targetStoreIds: number[])',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'const sessionTenantId = sessionScope?.tenantScope.numericId ?? null;',
+      'const sessionStoreId = sessionScope?.storeScope.numericId ?? null;',
       'sessionTenantId !== tenantId',
       'const isEligibleStaffTargetStore = (',
       'store?.active !== false',
@@ -9746,6 +10030,8 @@ function verifyStaffTenantBoundary() {
   assert(!staffHelper.includes('Number(doc.data()?.tenantId) === tenantId'), 'staff list tenant filtering must not coerce persisted tenant IDs');
   assert(!staffHelper.includes('Number(existingData.tenantId) !== input.tenantId'), 'staff mutation tenant checks must not coerce persisted tenant IDs');
   assert(!staffHelper.includes('Number(store?.storeId) === sessionStoreId'), 'staff authority role lookup must not coerce mapped store IDs');
+  assert(!staffHelper.includes('session?.tId ?? session?.user?.tenantId'), 'staff authority must not select one session tenant alias');
+  assert(!staffHelper.includes('session?.sId ?? session?.user?.storeId'), 'staff authority must not select one session store alias');
   [
     'STAFF_PASSCODE_RESET_LEASE_MS',
     'passcodeResetPending: {',
@@ -9780,11 +10066,27 @@ function verifyStaffTenantBoundary() {
     ],
     'staff create Auth compensation order',
   );
+  [
+    'const STAFF_EMAIL_QUERY_LIMIT = 2;',
+    '.limit(STAFF_EMAIL_QUERY_LIMIT)',
+    'existingUserQuery.size > 1',
+    '"EMAIL_RECORD_AMBIGUOUS"',
+  ].forEach((token) => assert(staffHelper.includes(token), `staff helper must fail closed on ambiguous email authority through ${token}`));
   assert(!staffHelper.includes('.doc(String(input.storeId))'), 'staff role mutation writes must not use raw store IDs');
   ['store.active === false', 'store.deleted === true', 'isPlatformEntityBlocked(store)']
     .forEach((token) => assert(staffConcurrencyBoundary.includes(token), `staff role transaction must reject unsafe stores through ${token}`));
   assert(staffConcurrencyBoundary.includes("throw new StaffConcurrencyError('LAST_OWNER')"), 'staff transaction boundary must preserve one active owner');
   assert(staffConcurrencyBoundary.includes("throw new StaffConcurrencyError('ROLE_IN_USE')"), 'staff transaction boundary must reject deactivating assigned roles');
+  assert(staffConcurrencyBoundary.includes('const MAX_STAFF_ACCESS_ASSIGNMENTS = 500;'), 'staff access-state initialization and persistence must use a closed assignment ceiling');
+  assert(staffConcurrencyBoundary.includes('const parseAccessState = ('), 'staff concurrency guard documents must re-enter an exact runtime projector');
+  assert(staffConcurrencyBoundary.includes('data.tenantId !== tenantId'), 'staff concurrency guard must require exact persisted tenant identity');
+  assert(staffConcurrencyBoundary.includes('data.storeId !== storeId'), 'staff concurrency guard must require exact persisted store identity');
+  assert(staffConcurrencyBoundary.includes('!Number.isSafeInteger(data.revision)'), 'staff concurrency guard revisions must reject coercible persisted values');
+  assert(staffConcurrencyBoundary.includes('assignments.has(userId)'), 'staff concurrency guard must reject duplicate persisted user assignments');
+  assert(staffConcurrencyBoundary.includes('.limit(MAX_STAFF_ACCESS_ASSIGNMENTS + 1)'), 'staff access-state bootstrap queries must use an explicit overflow probe');
+  assert(staffConcurrencyBoundary.includes(".where('tenantId', '==', value)"), 'staff access-state bootstrap must scan bounded tenant truth rather than depend on denormalized store aliases');
+  assert(!staffConcurrencyBoundary.includes(".where('storeIds', 'array-contains', value)"), 'staff access-state bootstrap must not omit legacy mappings when storeIds is stale or missing');
+  assert(!staffConcurrencyBoundary.includes('revision: Number('), 'staff concurrency guard revisions must not use numeric coercion');
 
   assertIncludes(
     '__docs__/roles-permissions/roles-permissions_impl.md',
@@ -9867,7 +10169,9 @@ function verifyStaffAndProfileHelperBodyAdmission() {
   assert(staffHelper.includes('readBoundedJsonBody'), 'staff helper must use bounded JSON body parsing');
   assert(staffHelper.includes('const STAFF_MUTATION_MAX_BODY_BYTES = 16 * 1024;'), 'staff helper must cap mutation JSON bodies at 16KB');
   assert(staffHelper.includes('const readStaffMutationBody = (request: NextRequest) => readBoundedJsonBody('), 'staff helper must centralize mutation body admission');
-  assert(staffHelper.includes('const identityKey = hashPublicRateLimitValue(session?.uId || session?.user?.id || getRequestIp(request));'), 'staff helper must hash actor/IP rate-limit key material');
+  assert(staffHelper.includes('const sessionUserId = resolveCurrentSessionUserDocumentId(session);'), 'staff helper must resolve exact actor rate-limit identity');
+  assert(staffHelper.includes('if (!sessionUserId)'), 'staff helper must reject ambiguous actor rate-limit identity');
+  assert(staffHelper.includes('const identityKey = hashPublicRateLimitValue(sessionUserId);'), 'staff helper must hash exact actor rate-limit key material');
   assert(staffHelper.includes('const key = `${keyPrefix}:${identityKey}`;'), 'staff helper must build rate-limit keys from normalized identity material');
   assert((staffHelper.match(/readStaffMutationBody\(request\)/g) || []).length >= 5, 'staff create/update/reset/signout/role save must use bounded body admission');
   assert(!staffHelper.includes('request.json()'), 'staff helper must not parse unbounded JSON');
@@ -9932,7 +10236,7 @@ function verifyStaffAndProfileHelperBodyAdmission() {
       [
         'const USER_PROFILE_UPDATE_MAX_BODY_BYTES = 4 * 1024;',
         'function normalizeProfileUserDocumentId(value: unknown): string | null',
-        'const userId = normalizeProfileUserDocumentId(session?.uId || session?.user?.id);',
+        'const userId = normalizeProfileUserDocumentId(resolveCurrentSessionUserDocumentId(session));',
         'const userRateLimitHash = hashPublicRateLimitValue(userId);',
         'const profileWriteLimit = await checkRateLimit({',
         'key: `profile-update:${userRateLimitHash}`',
@@ -10049,6 +10353,7 @@ function verifyAuthAccountClientResponseDiagnostics() {
   const claimAccountRoute = read('src/app/api/auth/claim-account/route.ts');
   const getActiveSessionHelper = read('src/lib/auth/getActiveSession.ts');
   const firebaseAuthSyncHelper = read('src/lib/auth/firebaseAuthSync.ts');
+  const firebaseAuthSessionScope = read('src/lib/auth/firebaseAuthSessionScope.ts');
   const loginPage = read('src/components/templates/loginPage/index.tsx');
   const phoneOtpPanel = read('src/components/auth/PhoneOtpAuthPanel.tsx');
   const sessionExpiryMonitor = read('src/components/auth/SessionExpiryMonitor.tsx');
@@ -10082,6 +10387,19 @@ function verifyAuthAccountClientResponseDiagnostics() {
   });
   assert(firebaseAuthSyncHelper.includes('firebaseClaimsMatchTargetStore(refreshedToken?.claims, targetStoreId)'), 'Firebase auth claim refresh must verify target-store acknowledgement before active browser context changes');
   assert(firebaseAuthSyncHelper.includes('firebase_auth_claims_refresh_mismatch'), 'Firebase auth claim refresh must code target-store acknowledgement failures');
+  assert(firebaseAuthSyncHelper.includes('resolveFirebaseAuthSessionScopeState'), 'Firebase auth sync must use exact session scope state');
+  assert(firebaseAuthSyncHelper.includes("sessionScope.status === 'invalid'"), 'Firebase auth sync must distinguish conflicting scope from absent onboarding');
+  assert(firebaseAuthSyncHelper.includes('firebase_auth_sync_invalid_session_scope'), 'Firebase auth sync must code contradictory session scope');
+  assert(!firebaseAuthSyncHelper.includes('session?.user?.tenantId ?? session?.tId'), 'Firebase auth sync must not select one tenant alias');
+  assert(!firebaseAuthSyncHelper.includes('session?.user?.storeId ?? session?.sId'), 'Firebase auth sync must not select one store alias');
+  [
+    'resolveStorePermissionSessionScope(source)',
+    "status: 'absent'",
+    "status: 'invalid'",
+    "status: 'valid'",
+    'source.user?.tId',
+    'source.user?.sId',
+  ].forEach((token) => assert(firebaseAuthSessionScope.includes(token), `Firebase auth exact session scope boundary missing ${token}`));
   assert(authAccountResponses.includes('readJsonResponseWithLimit<unknown>'), 'auth account client responses must parse through the bounded response reader');
   assert(authAccountResponses.includes('auth_account_response_parse_failed'), 'auth account client responses must log malformed or oversized response parsing failures');
   assert(authAccountResponses.includes('auth_account_response_invalid'), 'auth account client responses must log invalid successful response envelopes');
@@ -10300,6 +10618,7 @@ verifyBrowserDirectFirebaseFunctionsCallableBoundaryDocs();
 verifyNoApiDirectBodyParsers();
 verifyNoApiRawZodFlattenDetails();
 verifyNoApiRouteConsoleCalls();
+verifyNoUnreviewedAliasedApiMethodExports();
 verifyMenuListMutatingApiAdmissionGuards();
 verifyMenuListReadApiAdmissionGuards();
 verifyCoreAuthHelpers();

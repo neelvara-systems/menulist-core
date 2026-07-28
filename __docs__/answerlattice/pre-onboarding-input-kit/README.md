@@ -153,9 +153,10 @@ Expected flow:
 2. Agent creates a `*-answerlattice-pre-onboarding-inputs/` folder.
 3. Client reviews the folder for private data and correctness.
 4. Client uploads selected sources through Answerlattice Knowledge Intake.
-5. Answerlattice creates review drafts.
-6. Owner approves KB/FAQ/product-surface/canonical proposal outputs.
-7. Live support is enabled only after coverage tests pass.
+5. During controlled Source Governance rollout, the owner can carry the package's authority, approval, access, citation, applicability, date, and conflict decisions onto each imported source.
+6. Answerlattice creates review drafts.
+7. Owner approves KB/FAQ/product-surface/canonical proposal outputs; canonical proposals require approved, conflict-free evidence when Source Governance is enabled.
+8. Live support is enabled only after coverage tests pass.
 
 ## Version History
 
@@ -170,3 +171,4 @@ Expected flow:
 | 2026-05-31 | Promoted `/pre-onboarding` as the main public entry across header, homepage, resources, get-started, mobile navigation, and footer. |
 | 2026-07-19 | Aligned generated payloads with the strict Knowledge Intake API, added source authority/conflict and private-source permission contracts, and hardened Markdown responses plus dialog focus behavior. |
 | 2026-07-20 | Reconciled the MenuList reference package with the current 26-source contract, strict add-source API, canonical host, feature inventory, legal/billing truth, and live-support coverage verifier. |
+| 2026-07-26 | Linked the existing source-evidence map to the controlled Source Governance review and documented the canonical evidence gate. |

@@ -8,6 +8,12 @@
 - Show customers only explicitly published notes.
 - Recover failed publication as a draft instead of exposing a partial release.
 
+After the pre-activation preview is implemented and verified, public copy may
+also say:
+
+- Review directly affected approved answers and linked critical tests before
+  activating a versioned release.
+
 ## Proof required before quantified claims
 
 - Real customer release-to-review timing.
@@ -22,5 +28,9 @@
 - "Detects every impacted answer."
 - "A complete public status page."
 - "Automatically approves updated answers."
+- "Checks every article, workflow, surface, and support dependency."
+- "Proves support is ready for deployment."
+- "Activates future approved truth automatically."
+- "Shows that a release caused a support regression."
 
 The defensible promise is controlled propagation and review, not autonomous truth.

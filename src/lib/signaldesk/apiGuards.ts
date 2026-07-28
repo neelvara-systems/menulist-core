@@ -16,6 +16,26 @@ const SIGNALDESK_JSON_BODY_MAX_BYTES = 256 * 1024;
 
 export type SignalDeskLogContext = Record<string, boolean | number | string | null | undefined>;
 
+export function getSignalDeskRateLimitFailureDecision(input: {
+    now?: number;
+    reason?: unknown;
+    resetAt?: unknown;
+}) {
+    const now = typeof input.now === "number" && Number.isFinite(input.now)
+        ? input.now
+        : Date.now();
+    const resetAt = typeof input.resetAt === "number" && Number.isFinite(input.resetAt)
+        ? input.resetAt
+        : now + 1000;
+    const providerUnavailable = input.reason === "provider_unavailable";
+    return {
+        code: providerUnavailable ? "RATE_LIMIT_UNAVAILABLE" as const : "RATE_LIMITED" as const,
+        providerUnavailable,
+        retryAfter: Math.max(1, Math.ceil((resetAt - now) / 1000)),
+        status: providerUnavailable ? 503 as const : 429 as const,
+    };
+}
+
 export const getBoundedSignalDeskStringContext = (
     label: string,
     value: unknown,
@@ -119,33 +139,44 @@ export async function applySignalDeskRateLimit(params: {
     const rateLimit = await checkRateLimit({
         key: `${SIGNALDESK_RATE_LIMIT_NAMESPACE}:${params.keyPrefix}:${identityKey}`,
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
 
     if (rateLimit.allowed) return null;
 
-    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
-    logger.security("Rate Limit Exceeded - SignalDesk", {
+    const decision = getSignalDeskRateLimitFailureDecision({
+        reason: rateLimit.reason,
+        resetAt: rateLimit.resetAt,
+    });
+    logger.security(decision.providerUnavailable
+        ? "Rate Limit Provider Unavailable - SignalDesk"
+        : "Rate Limit Exceeded - SignalDesk", {
         ...getSignalDeskSecurityLogContext(params.session, params.request, {
             ...getBoundedSignalDeskStringContext("feature", params.feature),
         }),
         limit: rateLimitConfig.limit,
-        waitSeconds,
+        waitSeconds: decision.retryAfter,
         window: rateLimitConfig.window,
     }, "medium");
 
     return NextResponse.json(
         {
-            error: `Too many requests. Please wait ${waitSeconds} seconds.`,
-            retryAfter: waitSeconds,
-            resetAt: rateLimit.resetAt,
+            error: decision.providerUnavailable
+                ? "SignalDesk request protection is temporarily unavailable. Please try again shortly."
+                : `Too many requests. Please wait ${decision.retryAfter} seconds.`,
+            code: decision.code,
+            retryAfter: decision.retryAfter,
+            ...(decision.providerUnavailable ? {} : { resetAt: rateLimit.resetAt }),
         },
         {
-            status: 429,
+            status: decision.status,
             headers: {
-                "Retry-After": String(waitSeconds),
+                "Retry-After": String(decision.retryAfter),
                 "X-RateLimit-Limit": String(rateLimitConfig.limit),
-                "X-RateLimit-Remaining": String(rateLimit.remaining),
-                "X-RateLimit-Reset": String(rateLimit.resetAt),
+                ...(decision.providerUnavailable ? {} : {
+                    "X-RateLimit-Remaining": String(rateLimit.remaining),
+                    "X-RateLimit-Reset": String(rateLimit.resetAt),
+                }),
             },
         },
     );

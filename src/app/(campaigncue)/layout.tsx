@@ -3,6 +3,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { APP_THEME_COLOR } from "@constant/common";
 import { SIGNIN_URL } from "@constant/urls";
 import { authOptions } from "@lib/auth";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH,
@@ -59,12 +60,13 @@ export default async function CampaignCueAppLayout({ children }: { children: Rea
         const callbackUrl = isCampaignCueProductHostname(host)
             ? CAMPAIGNCUE_WORKSPACE_PATH
             : CAMPAIGNCUE_APP_INTERNAL_WORKSPACE_PATH;
-        redirect(`${buildCampaignCueAuthLaunchUrl(SIGNIN_URL)}&callbackUrl=${encodeURIComponent(callbackUrl)}`);
+        redirect(buildCampaignCueAuthLaunchUrl(SIGNIN_URL, callbackUrl));
     }
 
     if (
+        !resolveCurrentSessionUserDocumentId(session) ||
         session.user?.active === false
-        || (session.user as any)?.deleted === true
+        || session.user?.deleted === true
         || session.user?.isVerified === false
         || isPlatformEntityBlocked(session.user)
     ) {

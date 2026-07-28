@@ -16,6 +16,7 @@ import {
 import { validateNetworkTargetUrl } from "../../../utils/networkTarget";
 import { RETENTION, UPLOAD_LIMITS } from "../../constants";
 import { IMessagingProvider } from "../IMessagingProvider";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode } from '../../../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const GRAPH_API_VERSION = "v21.0";
@@ -49,15 +50,11 @@ function getWhatsAppStringLogContext(
 }
 
 function getWhatsAppErrorName(error: unknown): string {
-  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
-  return typeof error;
+    return getBoundedFunctionsErrorName(error) || 'Error';
 }
 
 function getWhatsAppErrorCode(error: unknown): string | undefined {
-  if (!(error instanceof Error)) return undefined;
-  const code = (error as { code?: unknown }).code;
-  if (code === undefined || code === null) return undefined;
-  return String(code).slice(0, 64);
+    return getBoundedFunctionsErrorCode(error);
 }
 
 function getWhatsAppErrorContext(error: unknown): Record<string, string | undefined> {

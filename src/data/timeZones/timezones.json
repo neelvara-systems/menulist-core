@@ -1,5 +1,9 @@
 [
   {
+    "label": "UTC (GMT+00:00)",
+    "tzCode": "UTC"
+  },
+  {
     "label": "Pacific/Midway (GMT-11:00)",
     "tzCode": "Pacific/Midway"
   },
@@ -1092,8 +1096,8 @@
     "tzCode": "Europe/Vilnius"
   },
   {
-    "label": "Europe/Zaporizhzhia (GMT+02:00)",
-    "tzCode": "Europe/Zaporizhzhia"
+    "label": "Europe/Zaporozhye (GMT+02:00)",
+    "tzCode": "Europe/Zaporozhye"
   },
   {
     "label": "Africa/Addis_Ababa (GMT+03:00)",

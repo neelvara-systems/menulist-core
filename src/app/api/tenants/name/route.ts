@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { getOutletSessionScope } from '@lib/multiOutlet/outletSessionScope';
 import { runTenantNamePostCommitEffects } from '@lib/multiTenant/tenantNamePostCommit';
@@ -23,6 +25,25 @@ import { withAuth } from '../../../../middleware/auth';
 const TENANT_NAME_MAX_BODY_BYTES = 32 * 1024;
 const MAX_TENANT_NAME_STORES = 200;
 const TENANT_NAME_EFFECT_CHUNK_SIZE = 20;
+const TENANT_NAME_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+function applyPrivateResponseHeaders<T extends Response>(response: T): T {
+    Object.entries(TENANT_NAME_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+}
+
+function privateJson(body: unknown, init: ResponseInit = {}) {
+    const headers = new Headers(init.headers);
+    Object.entries(TENANT_NAME_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return NextResponse.json(body, { ...init, headers });
+}
 const storeListNameSchema = z.object({
     name: z.string().trim().min(1).max(200).optional(),
     storeId: z.union([z.string().regex(/^[1-9][0-9]*$/), z.number().int().positive()]),
@@ -34,39 +55,53 @@ const schema = z.object({
 }).strict();
 
 const isPlatformSession = (session: any): boolean => (
-    session?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
-    || session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE
+    resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
 );
 
 export const POST = withAuth(async (request, session) => {
     const platformSession = isPlatformSession(session);
     const sessionScope = getOutletSessionScope(session);
     if (!platformSession && !sessionScope) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        return privateJson({ error: 'Forbidden' }, { status: 403 });
+    }
+    const platformActorId = platformSession ? resolveCurrentSessionUserDocumentId(session) : null;
+    if (platformSession && !platformActorId) {
+        return privateJson({ error: 'Forbidden' }, { status: 403 });
     }
     const limiterHash = hashPublicRateLimitValue(platformSession
-        ? session?.uId || session?.user?.id || 'platform'
+        ? platformActorId!
         : `${sessionScope!.tenantDocumentId}:${sessionScope!.storeDocumentId}`);
     const rateLimit = await checkRateLimit({
         key: `tenant-name:${limiterHash}`,
         limit: 20,
         window: 3600,
+        failClosedOnProviderError: true,
     });
-    if (!rateLimit.allowed) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    if (!rateLimit.allowed) {
+        const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+        return privateJson(
+            {
+                error: providerUnavailable
+                    ? 'Tenant name update is temporarily unavailable'
+                    : 'Too many requests',
+            },
+            { status: providerUnavailable ? 503 : 429 },
+        );
+    }
 
     const bodyResult = await readBoundedJsonBody(request, TENANT_NAME_MAX_BODY_BYTES, {
         invalidJsonMessage: 'Invalid input',
     });
-    if (bodyResult.ok === false) return bodyResult.response;
+    if (bodyResult.ok === false) return applyPrivateResponseHeaders(bodyResult.response);
     const validation = validateAPIInput(schema, bodyResult.data);
-    if (!validation.success) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    if (!validation.success) return privateJson({ error: 'Invalid input' }, { status: 400 });
 
     const tenantDocumentId = String(validation.data.tenantId);
     if (String(Number(tenantDocumentId)) !== tenantDocumentId || !Number.isSafeInteger(Number(tenantDocumentId))) {
-        return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+        return privateJson({ error: 'Invalid input' }, { status: 400 });
     }
     if (!platformSession && (!sessionScope || sessionScope.tenantDocumentId !== tenantDocumentId)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        return privateJson({ error: 'Forbidden' }, { status: 403 });
     }
 
     const db = admin.firestore();
@@ -82,7 +117,7 @@ export const POST = withAuth(async (request, session) => {
             sessionScope!.storeId,
             sessionScope!.tenantId,
         );
-        if (permissionError) return permissionError;
+        if (permissionError) return applyPrivateResponseHeaders(permissionError);
     }
 
     let committed = false;
@@ -180,7 +215,7 @@ export const POST = withAuth(async (request, session) => {
                 storeCount: result.storeIds.length,
             });
         }
-        return NextResponse.json({
+        return privateJson({
             effectsPending: postCommit.effectsPending,
             failedEffectCount: postCommit.failedEffectCount,
             name: validation.data.name,
@@ -195,6 +230,6 @@ export const POST = withAuth(async (request, session) => {
             storeCount: validation.data.storesList?.length || 0,
             tenantNameLength: validation.data.name.length,
         });
-        return NextResponse.json({ error: 'Tenant name update failed' }, { status: committed ? 500 : 409 });
+        return privateJson({ error: 'Tenant name update failed' }, { status: committed ? 500 : 409 });
     }
 });

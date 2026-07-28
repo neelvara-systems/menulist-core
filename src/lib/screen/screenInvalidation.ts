@@ -12,6 +12,7 @@ import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
 import { getPublicScreenStateDocRef, toPublicScreenState } from "@lib/screen/publicScreenState";
 import { secureError } from "@lib/security/secureLogger";
 import type { ScreenMenuProjection } from "@type/campaigns";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 type ScreenContentTouchOptions = {
     projectId?: string | number | null;
@@ -26,9 +27,7 @@ type PendingScreenContentTouch = {
 
 const pendingScreenTouches = new Map<string, PendingScreenContentTouch>();
 
-const getLogErrorName = (error: unknown): string => (
-    error instanceof Error ? error.name : typeof error
-);
+const getLogErrorName = (error: unknown): string => getBoundedErrorName(error) || typeof error;
 
 const logScreenInvalidationFailure = (
     failureCode: string,

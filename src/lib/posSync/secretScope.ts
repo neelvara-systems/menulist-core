@@ -1,4 +1,4 @@
-import { normalizePosSyncNumericDocumentId } from '@lib/posSync/posSyncDocumentId';
+import { resolvePosSyncNumericDocumentIdAliases } from '@lib/posSync/posSyncDocumentId';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 
 type PosSyncScopeEntity = Record<string, unknown>;
@@ -26,7 +26,10 @@ export function isPosSyncSecretScopeCurrent(params: {
     }
     const store = params.store as PosSyncScopeEntity;
     const tenant = params.tenant as PosSyncScopeEntity;
-    const persistedTenant = normalizePosSyncNumericDocumentId(store.tenantId ?? store.tId);
+    const persistedTenant = resolvePosSyncNumericDocumentIdAliases([
+        store.tenantId,
+        store.tId,
+    ]);
 
     return persistedTenant?.documentId === params.tenantDocumentId
         && !isUnavailable(store)

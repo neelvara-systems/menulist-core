@@ -22,6 +22,19 @@
 | FDB-018 | All six documents exist but contain no useful evidence | Brief remains `insufficient_data`. |
 | FDB-019 | Summary timestamp is more than five minutes in the future | Source is invalid and cannot support a confident action. |
 | FDB-020 | Browser receives malformed, oversized, redirected, or wrong-enum response | Fixed retry state renders; no server payload is trusted. |
+| FDB-021 | Friction summary contains a ranked top entity | Brief and bounded friction answer name that entity, show its seven-day question/escalation/low-confidence evidence, and route to the existing Friction view without another read. |
+| FDB-022 | Complete current packet has no qualifying condition | Daily Brief returns zero action cards and says nothing needs the owner's decision. |
+| FDB-023 | Packet is healthy but no action slots are used | Generic release and cost reminders remain outside the ranked action list. |
+| FDB-024 | Only generic Knowledge Intake backlog exists | No Daily Brief action appears unless Activation or an upstream qualified support-truth condition requires the review. |
+| FDB-025 | Support Board summary reports high-priority cards | Brief admits one bounded high-priority Support Board action without reading card documents. |
+| FDB-026 | Uncovered entities exist without drift, exposure, sensitive-topic, or failing-outcome evidence | The card cannot be labeled critical solely from the count. |
+| FDB-027 | Friction summary is LOW or MODERATE with no escalation | No friction action is admitted merely because a signal exists. |
+| FDB-028 | Friction summary is HIGH or the top entity has escalations | One evidence-backed friction action may be admitted and routes to Friction. |
+| FDB-029 | More candidate actions exist than the caller can open | Permission filtering occurs before the four-action cap, so an allowed lower-ranked action can still appear. |
+| FDB-030 | Owner resolves a linked source condition and refreshes after its compact summary changes | The action disappears without a Daily Brief completion write. |
+| FDB-031 | Owner opens or refreshes Daily Brief | No action, seen, handled, snooze, dismissal, or audit document is written. |
+| FDB-032 | Top failing entity is present in Trust Metrics | It can support bounded card evidence but cannot establish autonomous root cause or sensitive severity. |
+| FDB-033 | Only a generic release reminder or credit reminder is available | Zero action cards are returned; `I shipped a change` and cost guidance remain separate controls. |
 
 ## Regression Checks
 
@@ -33,3 +46,5 @@
 - `npm run test:answerlattice-owner-support-assistant-contracts`
 - `npm run test:answerlattice-chat-analytics-contracts`
 - `npm run test:answerlattice-chat-analytics:scheduler`
+- `git diff --check`
+- `npm run docs:check-links`

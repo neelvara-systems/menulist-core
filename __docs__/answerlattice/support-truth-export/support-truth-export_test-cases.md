@@ -18,23 +18,28 @@
 11. AI translations without `reviewedAt` are absent.
 12. Included translations omit `reviewedBy` and other actor identity.
 13. Changelog `entityChanges` and `releaseId` survive export.
+14. A nested changelog page with wrong product/tenant/workspace identity fails the complete export.
+15. Missing `published: true` and versioned entries without a valid release link are absent.
 
 ## Privacy And Completeness
 
-14. Nested embeddings, `pId`, `tId`, `sId`, `uId`, actor fields, trace IDs, request IDs, source context, and raw source containers are absent.
-15. Tickets, chats, feedback, audit rows, and unrestricted source records are never queried.
-16. Exactly-at-cap input succeeds.
-17. Cap-plus-one input fails with the exact section.
-18. Serialized output above 8 MiB fails without a partial package.
-19. Section ordering is stable.
+16. Nested embeddings, `pId`, `tId`, `sId`, `uId`, actor fields, trace IDs, request IDs, source context, and raw source containers are absent.
+17. Tickets, chats, feedback, audit rows, and unrestricted source records are never queried.
+18. Exactly-at-cap input succeeds.
+19. Cap-plus-one input fails with the exact section.
+20. Serialized output above 8 MiB fails without a partial package.
+21. Section ordering is stable.
+22. Hostile/invalid timestamp values become unavailable without failing the package.
+23. Numeric strings/booleans do not become portable numeric truth.
 
 ## Audit And Delivery
 
-20. One successful package creates exactly one metadata-only audit row.
-21. Exported answer/article text is not duplicated in audit state.
-22. Clients cannot forge `support_truth_export_generated` in dedicated or shared rules.
-23. Audit failure prevents file delivery.
-24. Browser body reading is bounded and does not use `response.blob()`.
+24. One successful package creates exactly one metadata-only audit row.
+25. Exported answer/article text is not duplicated in audit state.
+26. Clients cannot forge `support_truth_export_generated` in dedicated or shared rules.
+27. Audit failure prevents file delivery.
+28. Browser body reading is bounded and does not use `response.blob()`.
+29. Rapid duplicate clicks start one request; workspace transition/unmount aborts it and suppresses former-workspace settlement.
 
 ## Commands
 

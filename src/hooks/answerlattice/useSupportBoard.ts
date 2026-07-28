@@ -16,6 +16,7 @@ import { getStoresTickets } from '@database/tickets';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
+import { buildAnswerlatticeHookScopeKey } from '@lib/answerlattice/hookScopeBoundary';
 import {
     ANSWERLATTICE_MUTATION_STATUS,
     ANSWERLATTICE_MUTATION_TYPE,
@@ -31,7 +32,8 @@ import {
 } from '@type/answerlattice';
 import { SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, type SupportTicketType } from '@type/supportTicket';
 import { message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
 
 type Actor = {
     id: string;
@@ -247,17 +249,26 @@ const cardInputFromSignal = (signal: AnswerlatticeSignalEvent, tId: number, sId:
 };
 
 export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null) {
+    const session = useClientAuthSession();
     const [cards, setCards] = useState<AnswerlatticeSupportBoardCard[]>([]);
     const [summary, setSummary] = useState<AnswerlatticeSupportBoardSummary | null>(null);
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const requestedScopeKey = buildAnswerlatticeHookScopeKey(tId, sId);
+    const sessionScopeKey = buildAnswerlatticeHookScopeKey(session?.tId, session?.sId);
+    const scopeKey = requestedScopeKey === sessionScopeKey ? requestedScopeKey : null;
+    const scopeKeyRef = useRef(scopeKey);
+    const latestRefreshRef = useRef(0);
+    const savingInFlightRef = useRef(false);
+    const syncingInFlightRef = useRef(false);
+    scopeKeyRef.current = scopeKey;
 
     const enabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD === true;
     const sourceSyncEnabled = enabled && Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC);
     const nightlySummaryEnabled = enabled && Boolean(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY);
-    const hasScope = Boolean(tId && sId);
+    const hasScope = Boolean(scopeKey);
 
     const existingSourceKeys = useMemo(() => {
         const keys = new Set<string>();
@@ -269,9 +280,14 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
     }, [cards]);
 
     const refresh = useCallback(async () => {
-        if (!enabled || !tId || !sId) {
+        const requestScopeKey = scopeKey;
+        const requestId = latestRefreshRef.current + 1;
+        latestRefreshRef.current = requestId;
+        if (!enabled || !requestScopeKey || !tId || !sId) {
             setCards([]);
             setSummary(null);
+            setLoading(false);
+            setError(null);
             return;
         }
 
@@ -284,22 +300,33 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                     ? loadSupportBoardSummary(tId, sId)
                     : Promise.resolve(null),
             ]);
+            if (scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId) return;
             setCards(result || []);
             setSummary(nextSummary);
         } catch {
+            if (scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId) return;
             setError(ANSWERLATTICE_SUPPORT_BOARD_LOAD_FAILED);
             message.error(ANSWERLATTICE_SUPPORT_BOARD_LOAD_FAILED);
         } finally {
-            setLoading(false);
+            if (scopeKeyRef.current === requestScopeKey && latestRefreshRef.current === requestId) {
+                setLoading(false);
+            }
         }
-    }, [enabled, nightlySummaryEnabled, sId, tId]);
+    }, [enabled, nightlySummaryEnabled, scopeKey, sId, tId]);
 
     useEffect(() => {
         refresh();
     }, [refresh]);
 
+    useEffect(() => {
+        setSaving(false);
+        setSyncing(false);
+    }, [scopeKey]);
+
     const createCard = useCallback(async (input: Omit<CreateAnswerlatticeSupportBoardCardInput, 'tId' | 'sId'>) => {
-        if (!tId || !sId) return null;
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || !tId || !sId || savingInFlightRef.current) return null;
+        savingInFlightRef.current = true;
         setSaving(true);
         try {
             const created = await createAnswerlatticeSupportBoardCard({
@@ -308,29 +335,40 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 tId,
                 sId,
             });
+            if (scopeKeyRef.current !== operationScopeKey) return null;
             message.success('Support card created');
             await refresh();
             return created;
         } catch {
-            message.error(ANSWERLATTICE_SUPPORT_BOARD_CARD_CREATE_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_SUPPORT_BOARD_CARD_CREATE_FAILED);
+            }
             return null;
         } finally {
-            setSaving(false);
+            savingInFlightRef.current = false;
+            if (scopeKeyRef.current === operationScopeKey) setSaving(false);
         }
     }, [actor, refresh, sId, tId]);
 
     const updateCard = useCallback(async (cardId: string, patch: UpdateAnswerlatticeSupportBoardCardInput) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || savingInFlightRef.current) return;
+        savingInFlightRef.current = true;
         setSaving(true);
         try {
             await updateAnswerlatticeSupportBoardCard(cardId, {
                 ...patch,
                 ...(patch.status ? getActorStatusMeta(actor, 'Status updated from Support Board') : {}),
             });
+            if (scopeKeyRef.current !== operationScopeKey) return;
             await refresh();
         } catch {
-            message.error(ANSWERLATTICE_SUPPORT_BOARD_CARD_UPDATE_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_SUPPORT_BOARD_CARD_UPDATE_FAILED);
+            }
         } finally {
-            setSaving(false);
+            savingInFlightRef.current = false;
+            if (scopeKeyRef.current === operationScopeKey) setSaving(false);
         }
     }, [actor, refresh]);
 
@@ -339,6 +377,9 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
     }, [updateCard]);
 
     const addNote = useCallback(async (cardId: string, text: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || savingInFlightRef.current) return;
+        savingInFlightRef.current = true;
         setSaving(true);
         try {
             await addAnswerlatticeSupportBoardNote(cardId, {
@@ -346,32 +387,43 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 authorId: actor?.id || 'unknown',
                 authorName: actor?.name || 'Team member',
             });
+            if (scopeKeyRef.current !== operationScopeKey) return;
             message.success('Internal note added');
             await refresh();
         } catch {
-            message.error(ANSWERLATTICE_SUPPORT_BOARD_NOTE_ADD_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_SUPPORT_BOARD_NOTE_ADD_FAILED);
+            }
         } finally {
-            setSaving(false);
+            savingInFlightRef.current = false;
+            if (scopeKeyRef.current === operationScopeKey) setSaving(false);
         }
     }, [actor?.id, actor?.name, refresh]);
 
     const redactSourceIdentity = useCallback(async (cardId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || savingInFlightRef.current) return false;
+        savingInFlightRef.current = true;
         setSaving(true);
         try {
             const redacted = await redactAnswerlatticeSupportBoardSourceIdentity(cardId, {
                 id: actor?.id || 'unknown',
                 name: actor?.name || 'Team member',
             });
+            if (scopeKeyRef.current !== operationScopeKey) return false;
             if (redacted) {
                 message.success('Source customer details removed');
                 await refresh();
             }
             return redacted;
         } catch {
-            message.error('Could not remove source customer details');
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error('Could not remove source customer details');
+            }
             return false;
         } finally {
-            setSaving(false);
+            savingInFlightRef.current = false;
+            if (scopeKeyRef.current === operationScopeKey) setSaving(false);
         }
     }, [actor?.id, actor?.name, refresh]);
 
@@ -380,7 +432,9 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             message.info('Ticket sync is disabled for this workspace');
             return 0;
         }
-        if (!tId || !sId) return 0;
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || !tId || !sId || syncingInFlightRef.current) return 0;
+        syncingInFlightRef.current = true;
         setSyncing(true);
         try {
             const tickets = await getStoresTickets(50) as SupportTicketType[];
@@ -394,6 +448,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 }));
 
             const created = await createAnswerlatticeSupportBoardCards(inputs);
+            if (scopeKeyRef.current !== operationScopeKey) return 0;
             if (created.length > 0) {
                 message.success(`${created.length} ticket${created.length === 1 ? '' : 's'} added to Support Board`);
                 await refresh();
@@ -402,10 +457,13 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             }
             return created.length;
         } catch {
-            message.error(ANSWERLATTICE_SUPPORT_BOARD_TICKET_SYNC_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_SUPPORT_BOARD_TICKET_SYNC_FAILED);
+            }
             return 0;
         } finally {
-            setSyncing(false);
+            syncingInFlightRef.current = false;
+            if (scopeKeyRef.current === operationScopeKey) setSyncing(false);
         }
     }, [actor, existingSourceKeys, refresh, sId, sourceSyncEnabled, tId]);
 
@@ -414,7 +472,9 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             message.info('Signal sync is disabled for this workspace');
             return 0;
         }
-        if (!tId || !sId) return 0;
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || !tId || !sId || syncingInFlightRef.current) return 0;
+        syncingInFlightRef.current = true;
         setSyncing(true);
         try {
             const signals = await getRecentSignalEvents(tId, sId, 14, 50);
@@ -428,6 +488,7 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 }));
 
             const created = await createAnswerlatticeSupportBoardCards(inputs);
+            if (scopeKeyRef.current !== operationScopeKey) return 0;
             if (created.length > 0) {
                 message.success(`${created.length} support signal${created.length === 1 ? '' : 's'} added to Support Board`);
                 await refresh();
@@ -436,21 +497,26 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
             }
             return created.length;
         } catch {
-            message.error(ANSWERLATTICE_SUPPORT_BOARD_SIGNAL_SYNC_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_SUPPORT_BOARD_SIGNAL_SYNC_FAILED);
+            }
             return 0;
         } finally {
-            setSyncing(false);
+            syncingInFlightRef.current = false;
+            if (scopeKeyRef.current === operationScopeKey) setSyncing(false);
         }
     }, [actor, existingSourceKeys, refresh, sId, sourceSyncEnabled, tId]);
 
     const createAnswerProposal = useCallback(async (card: AnswerlatticeSupportBoardCard) => {
-        if (!tId || !sId) return;
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || !tId || !sId || savingInFlightRef.current) return;
         const relatedEntityId = normalizeAnswerlatticeResolvedEntityId(card.relatedEntityId);
         if (!relatedEntityId) {
             message.warning('Add a related entity before creating an answer proposal');
             return;
         }
 
+        savingInFlightRef.current = true;
         setSaving(true);
         try {
             const proposal = await addMutationProposal({
@@ -483,12 +549,14 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 confidenceScore: 0.55,
                 status: ANSWERLATTICE_MUTATION_STATUS.PENDING_REVIEW,
             });
+            if (scopeKeyRef.current !== operationScopeKey) return;
 
             await updateAnswerlatticeSupportBoardCard(card.id, {
                 status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.DRAFT_READY,
                 relatedProposalId: proposal.id,
                 ...getActorStatusMeta(actor, 'Answer proposal created'),
             });
+            if (scopeKeyRef.current !== operationScopeKey) return;
 
             let noteAdded = true;
             try {
@@ -509,14 +577,19 @@ export function useSupportBoard(tId?: number, sId?: number, actor?: Actor | null
                 );
             }
 
-            message.success(noteAdded
-                ? 'Answer proposal created'
-                : 'Answer proposal created; private board note was not added');
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.success(noteAdded
+                    ? 'Answer proposal created'
+                    : 'Answer proposal created; private board note was not added');
+            }
             await refresh();
         } catch {
-            message.error(ANSWERLATTICE_SUPPORT_BOARD_PROPOSAL_CREATE_FAILED);
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(ANSWERLATTICE_SUPPORT_BOARD_PROPOSAL_CREATE_FAILED);
+            }
         } finally {
-            setSaving(false);
+            savingInFlightRef.current = false;
+            if (scopeKeyRef.current === operationScopeKey) setSaving(false);
         }
     }, [actor, refresh, sId, tId]);
 

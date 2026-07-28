@@ -23,6 +23,7 @@ import {
     getAnswerlatticeScopedSession,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
+import { resolveExactSessionStoreRole } from '@lib/auth/sessionPlatformRole';
 import { checkAIOperationLimit } from '@lib/rateLimit/helpers';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -34,6 +35,11 @@ import { writeLogEntry } from 'logs/utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
 const HELP_CENTER_SEARCH_MAX_BODY_BYTES = 64 * 1024;
@@ -45,32 +51,16 @@ const searchJsonResponse = (body: unknown, init: ResponseInit = {}) => NextRespo
     },
 });
 
-type HelpCenterSearchErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
-
 const getHelpCenterSearchErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getHelpCenterSearchErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as HelpCenterSearchErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getHelpCenterSearchErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as HelpCenterSearchErrorLike).status
-        : (error as HelpCenterSearchErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 const getHelpCenterSearchFailureLogData = (
@@ -142,7 +132,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             try {
                 const { AnswerlatticeContextSchema } = await import('@lib/validation/contextSchema');
                 const parsedContext = AnswerlatticeContextSchema.parse(candidateProductContext);
-                const trustedSessionRole = session?.user?.role || session?.role;
+                const trustedSessionRole = resolveExactSessionStoreRole(session);
                 productContext = {
                     ...parsedContext,
                     ...(trustedSessionRole ? { userRole: String(trustedSessionRole).trim().toLowerCase() } : {}),

@@ -11,4 +11,16 @@ Mobile requirements:
 - keep the AI-assisted summary visibly advisory;
 - do not add mobile-only raw signal queries, listeners, or notification claims.
 
+The admitted later code pass should replace the horizontally dependent evidence
+table with a stacked top-area list at narrow widths when the component
+breakdown is shown. The list must preserve:
+
+- entity name and type;
+- exact evidence total;
+- ticket, negative-feedback, escalation, and canonical-miss components;
+- completed-window comparison;
+- one clear review destination.
+
+Do not render a journey canvas, heatmap, or compressed product tree on mobile.
+
 A future notification should be considered only after real founders demonstrate that a high-confidence emerging issue requires action away from the desktop workflow. The current feature remains a review surface, not an interruptive alert system.

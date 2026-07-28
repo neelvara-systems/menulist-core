@@ -107,7 +107,9 @@ function getBatchWorkerLogContext({
         ...getBoundedRuntimeStringContext('itemName', itemName),
         ...getBoundedRuntimeStringContext('tenantId', tId),
         ...getBoundedRuntimeStringContext('storeId', sId),
-        jobStatus: status === undefined || status === null ? undefined : String(status).slice(0, 48),
+        jobStatus: typeof status === 'string'
+            ? status.slice(0, 48)
+            : (typeof status === 'number' && Number.isFinite(status) ? status.toString().slice(0, 48) : undefined),
     };
 }
 

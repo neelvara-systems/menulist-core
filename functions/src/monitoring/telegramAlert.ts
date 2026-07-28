@@ -15,6 +15,7 @@
  */
 
 import * as functions from 'firebase-functions';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 // ================================================================
 // TYPES
@@ -42,7 +43,7 @@ function getErrorLogContext(error: unknown): { name?: string; code?: string; sta
 
   const record = error as Record<string, unknown>;
   return {
-    name: error instanceof Error ? error.name : undefined,
+    name: getBoundedFunctionsErrorName(error),
     code: typeof record.code === 'string' ? record.code : undefined,
     status: typeof record.status === 'number' ? record.status : undefined,
   };

@@ -570,6 +570,15 @@ const designAdvisorClient = fs.readFileSync(path.join(root, 'src/services/ai/men
   "content: 'Share cancelled'",
   "share ? 'Could not share file' : 'Could not create file'",
   'storeRouteKey',
+  'currentArtifactScopeRef',
+  'currentAdviceSourceHashRef',
+  'adviceInFlightRef',
+  'artifactInFlightRef',
+  'currentAdviceSourceHashRef.current !== requestSourceHash',
+  'currentArtifactScopeRef.current !== operationScope',
+  'isMenuCardAdvisorPreset(settings.preset)',
+  'isMenuCardAdvisorStyle(settings.styleId)',
+  'isMenuCardAdvisorDensity(settings.density)',
 ].forEach((token) => {
   if (!controller.includes(token)) failures.push(`Shared controller missing token: ${token}`);
 });
@@ -579,6 +588,16 @@ if (controller.includes('getProjectsListWithoutLoader')) {
 if (controller.includes('setAdviceError(error.message)')) {
   failures.push('Shared controller must not render raw Menu Card advice exception messages');
 }
+[
+  'settings.preset as any',
+  'settings.styleId as any',
+  'settings.density as any',
+  'shareMenuCardArtifact(artifact as any',
+  'downloadMenuCardArtifact(artifact as any',
+  'artifact: artifact as any',
+].forEach((token) => {
+  if (controller.includes(token)) failures.push(`Shared controller must not widen validated export contracts through ${token}`);
+});
 
 [
   "import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';",
@@ -1388,7 +1407,12 @@ const browserFileShare = fs.readFileSync(path.join(root, 'src/lib/export/browser
 const localExportHistory = fs.readFileSync(path.join(root, 'src/lib/export/localExportHistory.ts'), 'utf8');
 [
   'resolveLocalExportStorageScope',
-  "return tenantId && storeId ? `${tenantId}:${storeId}` : ''",
+  'resolveStorePermissionScopeDocumentIdAliases([',
+  'source?.tenantId,',
+  'source?.tId,',
+  'source?.storeId,',
+  'source?.sId,',
+  '`${tenantScope.documentId}:${storeScope.documentId}`',
   'readLocalPdfDownloadAt',
   'recordLocalPdfDownload',
   "localPdfKey('download', storageScope, projectId)",

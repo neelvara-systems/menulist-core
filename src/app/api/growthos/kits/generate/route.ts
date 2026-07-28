@@ -1,7 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import {
+    GROWTHOS_SOURCE_FACTS_CHANGED,
     buildGrowthOSKitId,
+    readGrowthOSKitServer,
     toGrowthOSAdminTimestamp,
     writeGrowthOSKitAndSummaryServer,
 } from "@database/growthos/server";
@@ -69,6 +71,34 @@ export const POST = withAuth(async (request, session) => {
             }, { status: context.entitlement.reason === "feature_off" ? 404 : 403 });
         }
 
+        const kitId = buildGrowthOSKitId(session.tId, session.sId, validation.data.operationId);
+        const replayKit = await readGrowthOSKitServer({
+            kitId,
+            tId: session.tId,
+            sId: session.sId,
+        });
+        if (replayKit) {
+            if (
+                replayKit.operationId !== validation.data.operationId
+                || replayKit.projectId !== projectId
+                || (
+                    validation.data.actionId !== undefined
+                    && replayKit.actionId !== validation.data.actionId
+                )
+            ) {
+                return NextResponse.json({ error: "Growth Kit operation conflict" }, { status: 409 });
+            }
+            if (!context.summary) {
+                return NextResponse.json({ error: "Growth Kit summary unavailable" }, { status: 409 });
+            }
+            return NextResponse.json({
+                data: {
+                    kit: replayKit,
+                    summary: context.summary,
+                },
+            }, { status: 200 });
+        }
+
         if (!context.facts || !context.actions.length) {
             return NextResponse.json({
                 error: "No Growth Kit available",
@@ -87,7 +117,8 @@ export const POST = withAuth(async (request, session) => {
         const kit = buildGrowthOSKit({
             action,
             facts: context.facts,
-            kitId: buildGrowthOSKitId(session.tId, session.sId),
+            kitId,
+            operationId: validation.data.operationId,
             timestampFactory: toGrowthOSAdminTimestamp,
         });
         const summary = {
@@ -112,10 +143,21 @@ export const POST = withAuth(async (request, session) => {
                 isStale: false,
             },
         };
-        await writeGrowthOSKitAndSummaryServer(kit, summary);
+        const persisted = await writeGrowthOSKitAndSummaryServer(kit, summary);
 
-        return NextResponse.json({ data: { kit, summary } }, { status: 200 });
+        return NextResponse.json({
+            data: {
+                kit: persisted.kit,
+                summary: persisted.summary,
+            },
+        }, { status: 200 });
     } catch (error) {
+        if (error instanceof Error && error.message === GROWTHOS_SOURCE_FACTS_CHANGED) {
+            return NextResponse.json({
+                error: "Menu details changed",
+                message: "Check the menu again before creating this Sales Pack.",
+            }, { status: 409 });
+        }
         logGrowthOSApiFailure("GrowthOS Generate API error", "growthos_generate_api_failed", error, {
             endpoint: "/api/growthos/kits/generate",
             ...getGrowthOSBoundedStringContext("userId", session?.uId || session?.user?.id),

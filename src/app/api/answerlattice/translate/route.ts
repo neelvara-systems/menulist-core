@@ -19,6 +19,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_TEXT_MODEL } from '@constant/answerlattice/ai';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
@@ -38,7 +39,10 @@ import {
     normalizeAnswerlatticeKbArticleId,
 } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -123,11 +127,14 @@ const getTranslationResponseText = (response: any): BoundedTranslationProviderRe
 export const POST = withAuth(async (request: NextRequest, session) => {
     let tenantIdForLog: number | string | undefined;
     let storeIdForLog: number | string | undefined;
-    const userIdForLog = session.uId || session.user?.id;
+    const userIdForLog = resolveCurrentSessionUserDocumentId(session);
     let articleIdForLog: string | undefined;
     let targetLocaleForLog: string | undefined;
 
     try {
+        if (!userIdForLog) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_MULTI_LANGUAGE) {
             return translationJson({ error: 'Multi-language is not enabled.' }, 403);
         }
@@ -151,7 +158,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // Rate limiting
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
         const rateLimitResult = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey('answerlattice-translate', userIdForLog || 'unknown', sessionScope.tenantId, sessionScope.storeId),
+            key: buildAnswerlatticeRateLimitKey('answerlattice-translate', userIdForLog, sessionScope.tenantId, sessionScope.storeId),
             ...rateLimitConfig,
             failClosedOnProviderError: true,
         });
@@ -213,8 +220,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const article = articleDoc.data() as Record<string, unknown>;
-        const articleTenantId = normalizeAnswerlatticeScopeDocumentId(article.tId ?? article.tenantId);
-        const articleStoreId = normalizeAnswerlatticeScopeDocumentId(article.sId ?? article.storeId);
+        const articleTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+            article.tId,
+            article.tenantId,
+        ]);
+        const articleStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+            article.sId,
+            article.storeId,
+        ]);
         if (
             article.pId !== PRODUCT_IDS.ANSWERLATTICE ||
             !articleTenantId ||
@@ -280,17 +293,19 @@ Respond in this exact JSON format:
 {
   "translatedTitle": "...",
   "translatedContent": "..."
-}`;
+        }`;
 
         const operationStart = Date.now();
-        const response = await answerlatticeGenAIClient.models.generateContent({
-            model: ANSWERLATTICE_TEXT_MODEL,
-            contents: prompt,
-        });
+        let response: unknown;
         let translatedTitle = '';
         let translatedContent = '';
-        let operationOutcome = 'provider_completed';
+        let operationOutcome = 'provider_failed';
         try {
+            response = await answerlatticeGenAIClient.models.generateContent({
+                model: ANSWERLATTICE_TEXT_MODEL,
+                contents: prompt,
+            });
+            operationOutcome = 'provider_completed';
             const responseTextResult = getTranslationResponseText(response);
             if (responseTextResult.truncated) {
                 throw new AnswerlatticeTranslationProviderOutputError('ANSWERLATTICE_TRANSLATION_RESPONSE_TOO_LARGE');
@@ -316,8 +331,14 @@ Respond in this exact JSON format:
                 }
 
                 const currentArticle = currentSnapshot.data() as Record<string, unknown>;
-                const currentTenantId = normalizeAnswerlatticeScopeDocumentId(currentArticle.tId ?? currentArticle.tenantId);
-                const currentStoreId = normalizeAnswerlatticeScopeDocumentId(currentArticle.sId ?? currentArticle.storeId);
+                const currentTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+                    currentArticle.tId,
+                    currentArticle.tenantId,
+                ]);
+                const currentStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+                    currentArticle.sId,
+                    currentArticle.storeId,
+                ]);
                 if (
                     currentArticle.pId !== PRODUCT_IDS.ANSWERLATTICE
                     || currentTenantId !== sessionScope.tenantId
@@ -362,7 +383,7 @@ Respond in this exact JSON format:
                     : 'draft_save_failed';
             throw error;
         } finally {
-            recordAnswerlatticeAiOperation({
+            await recordAnswerlatticeAiOperation({
                 tId: sessionScope.tenantId,
                 sId: sessionScope.storeId,
             }, {

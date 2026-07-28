@@ -1,5 +1,7 @@
 # Digital Screens — Technical Implementation
 
+July 28, 2026 persisted-identity correction: public screen resolution and the daily seen transaction reconcile all supplied store tenant aliases before tenant reads, menu projection, or liveness writes. Contradictory `tenantId`/`tId` persistence fails closed.
+
 **Created:** January 4, 2026
 **Status:** 🔒 **v2.3 LOCKED — Controlled owner testing ready; full production certification pending the overall MenuList audit.**
 **Last Audit:** July 16, 2026 (token-free get-only listener mirror, kill-switch coverage, permission parity, retryable seen failure, expired-slide pruning, cache preservation, and guarded mirror migration)

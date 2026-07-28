@@ -7,12 +7,17 @@ const {
     recordTaskOutcomeForTest,
     replaceBillingHealthStateForTest,
     runOwnerNotificationRetentionCleanupForTest,
-} = require('../../functions/lib/functions/src/schedulers/menulistMaintenanceScheduler.js');
-const { firestoreAdmin } = require('../../functions/lib/functions/src/firebaseAdmin.js');
+} = require('../../functions/lib/schedulers/menulistMaintenanceScheduler.js');
+const { firestoreAdmin } = require('../../functions/lib/firebaseAdmin.js');
 const {
     getOwnerNotificationDigest,
+    processOwnerNotificationEvent,
     retryFailedOwnerNotifications,
-} = require('../../functions/lib/functions/src/ownerNotifications/processor.js');
+} = require('../../functions/lib/ownerNotifications/processor.js');
+const {
+    projectOwnerNotificationPersistedEvent,
+} = require('../../functions/lib/sharedData/ownerNotificationDeliveryBoundary.js');
+const { createHash } = require('node:crypto');
 const { createRequire } = require('node:module');
 const requireFromFunctions = createRequire(require.resolve('../../functions/package.json'));
 const { FieldValue, Timestamp } = requireFromFunctions('firebase-admin/firestore');
@@ -22,6 +27,12 @@ const STATE_DOCUMENT = 'menulistMaintenanceScheduler';
 const LOCK_DOCUMENT = 'menulistMaintenanceTaskLock_lease_ownership_test';
 const BILLING_HEALTH_DOCUMENT = 'billing';
 const MINUTE_MS = 60 * 1000;
+const OWNER_NOTIFICATION_TENANT_ID = '101';
+const OWNER_NOTIFICATION_STORE_ID = '202';
+
+function sha256(value: string): string {
+    return createHash('sha256').update(value).digest('hex');
+}
 
 const task = {
     name: 'lease_ownership_test',
@@ -38,6 +49,7 @@ async function resetState(): Promise<void> {
         firestoreAdmin.recursiveDelete(firestoreAdmin.collection('ownerNotificationEvents')),
         firestoreAdmin.recursiveDelete(firestoreAdmin.collection('ownerNotificationDeliveries')),
         firestoreAdmin.recursiveDelete(firestoreAdmin.collection('ownerNotificationRateLimits')),
+        firestoreAdmin.collection('stores').doc(OWNER_NOTIFICATION_STORE_ID).delete(),
     ]);
 }
 
@@ -134,10 +146,30 @@ async function run(): Promise<void> {
         await firestoreAdmin.collection(collectionName).doc('ml-expired').set({ productId: 'ML', expiresAt: expiredAt });
         await firestoreAdmin.collection(collectionName).doc('al-expired').set({ productId: 'AL', expiresAt: expiredAt });
     }
+    const legacyExpiredAt = Timestamp.fromDate(new Date('2026-05-01T00:00:00.000Z'));
+    const cleanupNow = Timestamp.fromDate(new Date('2026-07-22T00:00:00.000Z'));
+    for (const [collectionName, timestampField] of [
+        ['ownerNotificationEvents', 'createdAt'],
+        ['ownerNotificationDeliveries', 'createdAt'],
+        ['ownerNotificationRateLimits', 'updatedAt'],
+    ] as const) {
+        await firestoreAdmin.collection(collectionName).doc('ml-legacy-expired').set({
+            productId: 'ML',
+            [timestampField]: legacyExpiredAt,
+        });
+        await firestoreAdmin.collection(collectionName).doc('al-legacy-expired').set({
+            productId: 'AL',
+            [timestampField]: legacyExpiredAt,
+        });
+        await firestoreAdmin.collection(collectionName).doc('ml-legacy-current').set({
+            productId: 'ML',
+            [timestampField]: cleanupNow,
+        });
+    }
     const notificationCleanup = await runOwnerNotificationRetentionCleanupForTest(
-        Timestamp.fromDate(new Date('2026-07-22T00:00:00.000Z')),
+        cleanupNow,
     );
-    assert.equal(notificationCleanup.details?.deleted, 3);
+    assert.equal(notificationCleanup.details?.deleted, 6);
     for (const collectionName of [
         'ownerNotificationEvents',
         'ownerNotificationDeliveries',
@@ -145,6 +177,9 @@ async function run(): Promise<void> {
     ]) {
         assert.equal((await firestoreAdmin.collection(collectionName).doc('ml-expired').get()).exists, false);
         assert.equal((await firestoreAdmin.collection(collectionName).doc('al-expired').get()).exists, true);
+        assert.equal((await firestoreAdmin.collection(collectionName).doc('ml-legacy-expired').get()).exists, false);
+        assert.equal((await firestoreAdmin.collection(collectionName).doc('al-legacy-expired').get()).exists, true);
+        assert.equal((await firestoreAdmin.collection(collectionName).doc('ml-legacy-current').get()).exists, true);
     }
 
     const recent = Timestamp.now();
@@ -163,7 +198,7 @@ async function run(): Promise<void> {
         updatedAt: recent,
     });
     const retryResult = await retryFailedOwnerNotifications();
-    assert.deepEqual(retryResult, { retried: 0, succeeded: 0 });
+    assert.deepEqual(retryResult, { retried: 0, succeeded: 0, ambiguous: 0 });
     for (let index = 0; index < 20; index += 1) {
         const foreign = (await firestoreAdmin.collection('ownerNotificationEvents')
             .doc(`al-failed-${String(index).padStart(2, '0')}`).get()).data();
@@ -181,6 +216,220 @@ async function run(): Promise<void> {
         productId: 'AL', status: 'failed', createdAt: recent,
     });
     assert.deepEqual(await getOwnerNotificationDigest(), { sent: 1, failed: 0, total: 1 });
+
+    const notificationNow = Timestamp.now();
+    const notificationEmail = 'owner@example.com';
+    await firestoreAdmin.collection('stores').doc(OWNER_NOTIFICATION_STORE_ID).set({
+        tenantId: Number(OWNER_NOTIFICATION_TENANT_ID),
+        storeId: Number(OWNER_NOTIFICATION_STORE_ID),
+        name: 'Owner Store',
+        email: notificationEmail,
+    });
+
+    const malformedRetryReferenceId = 'menu_publish_malformed_retry';
+    const malformedRetryDedupeKey = [
+        'ML',
+        'STORE_PUBLISHED',
+        OWNER_NOTIFICATION_TENANT_ID,
+        OWNER_NOTIFICATION_STORE_ID,
+        malformedRetryReferenceId,
+    ].join('|');
+    const malformedRetryEventId = sha256(malformedRetryDedupeKey).slice(0, 40);
+    await firestoreAdmin.collection('ownerNotificationEvents').doc(malformedRetryEventId).set({
+        productId: 'ML',
+        triggerType: 'STORE_PUBLISHED',
+        tenantId: OWNER_NOTIFICATION_TENANT_ID,
+        storeId: OWNER_NOTIFICATION_STORE_ID,
+        referenceId: malformedRetryReferenceId,
+        dedupeKey: malformedRetryDedupeKey,
+        recipientRole: 'primary_owner',
+        metadata: {},
+        priority: 'required',
+        status: 'failed',
+        source: { runtime: 'functions', path: 'test' },
+        createdAt: notificationNow,
+        updatedAt: notificationNow,
+        processingAttempt: 1,
+        retryCount: '1',
+    });
+    assert.deepEqual(
+        await retryFailedOwnerNotifications(),
+        { retried: 0, succeeded: 0, ambiguous: 0 },
+    );
+    const malformedRetryEvent = (await firestoreAdmin.collection('ownerNotificationEvents')
+        .doc(malformedRetryEventId).get()).data() || {};
+    assert.equal(malformedRetryEvent.status, 'failed');
+    assert.equal(malformedRetryEvent.processingAttempt, 1);
+    assert.equal(malformedRetryEvent.retryCount, '1');
+    assert.equal(malformedRetryEvent.retriedAt, undefined);
+
+    const staleReferenceId = 'menu_publish_stale_processing';
+    const staleDedupeKey = [
+        'ML',
+        'STORE_PUBLISHED',
+        OWNER_NOTIFICATION_TENANT_ID,
+        OWNER_NOTIFICATION_STORE_ID,
+        staleReferenceId,
+    ].join('|');
+    const staleEventId = sha256(staleDedupeKey).slice(0, 40);
+    const staleProcessingAt = Timestamp.fromMillis(Date.now() - 16 * MINUTE_MS);
+    await firestoreAdmin.collection('ownerNotificationEvents').doc(staleEventId).set({
+        productId: 'ML',
+        triggerType: 'STORE_PUBLISHED',
+        tenantId: OWNER_NOTIFICATION_TENANT_ID,
+        storeId: OWNER_NOTIFICATION_STORE_ID,
+        referenceId: staleReferenceId,
+        dedupeKey: staleDedupeKey,
+        recipientRole: 'primary_owner',
+        metadata: {},
+        priority: 'required',
+        status: 'processing',
+        source: { runtime: 'functions', path: 'test' },
+        createdAt: staleProcessingAt,
+        updatedAt: staleProcessingAt,
+        processingStartedAt: staleProcessingAt,
+        processingAttempt: 1,
+    });
+    assert.deepEqual(
+        await retryFailedOwnerNotifications(),
+        { retried: 0, succeeded: 0, ambiguous: 1 },
+    );
+    const staleEvent = (await firestoreAdmin.collection('ownerNotificationEvents')
+        .doc(staleEventId).get()).data() || {};
+    assert.equal(staleEvent.status, 'failed');
+    assert.equal(staleEvent.error, 'owner_notification_processing_outcome_ambiguous');
+    assert.equal(staleEvent.processingAttempt, 2);
+    assert.equal(staleEvent.retryCount, 1);
+
+    const malformedDedupeEventId = 'malformed-dedupe';
+    await firestoreAdmin.collection('ownerNotificationEvents').doc(malformedDedupeEventId).set({
+        productId: 'ML',
+        triggerType: 'MENU_PUBLISHED',
+        tenantId: OWNER_NOTIFICATION_TENANT_ID,
+        storeId: OWNER_NOTIFICATION_STORE_ID,
+        referenceId: 'menu_publish_1',
+        dedupeKey: 'ML|MENU_PUBLISHED|101|999|menu_publish_1',
+        recipientRole: 'primary_owner',
+        metadata: {},
+        priority: 'required',
+        status: 'failed',
+        source: { runtime: 'functions', path: 'test' },
+        createdAt: notificationNow,
+        updatedAt: notificationNow,
+        processingAttempt: 1,
+    });
+    assert.equal(await processOwnerNotificationEvent(malformedDedupeEventId), false);
+    const malformedDedupeEvent = (await firestoreAdmin.collection('ownerNotificationEvents')
+        .doc(malformedDedupeEventId).get()).data() || {};
+    assert.equal(malformedDedupeEvent.status, 'failed');
+    assert.equal(malformedDedupeEvent.processingAttempt, 1);
+
+    const ambiguousReferenceId = 'menu_publish_ambiguous';
+    const ambiguousDedupeKey = [
+        'ML',
+        'STORE_PUBLISHED',
+        OWNER_NOTIFICATION_TENANT_ID,
+        OWNER_NOTIFICATION_STORE_ID,
+        ambiguousReferenceId,
+    ].join('|');
+    const ambiguousEventId = sha256(ambiguousDedupeKey).slice(0, 40);
+    await firestoreAdmin.collection('ownerNotificationEvents').doc(ambiguousEventId).set({
+        productId: 'ML',
+        triggerType: 'STORE_PUBLISHED',
+        tenantId: OWNER_NOTIFICATION_TENANT_ID,
+        storeId: OWNER_NOTIFICATION_STORE_ID,
+        referenceId: ambiguousReferenceId,
+        dedupeKey: ambiguousDedupeKey,
+        recipientRole: 'primary_owner',
+        metadata: {},
+        priority: 'required',
+        status: 'failed',
+        source: { runtime: 'functions', path: 'test' },
+        createdAt: notificationNow,
+        updatedAt: notificationNow,
+        processingAttempt: 1,
+    });
+    const ambiguousRecipientHash = sha256(notificationEmail);
+    const ambiguousDeliveryId = sha256(`${ambiguousEventId}|email|${ambiguousRecipientHash}`).slice(0, 40);
+    await firestoreAdmin.collection('ownerNotificationDeliveries').doc(ambiguousDeliveryId).set({
+        eventId: ambiguousEventId,
+        productId: 'ML',
+        triggerType: 'STORE_PUBLISHED',
+        channel: 'email',
+        recipientRole: 'primary_owner',
+        recipientHash: ambiguousRecipientHash,
+        recipientMasked: 'ow***@example.com',
+        status: 'sending',
+        subject: 'existing ambiguous send',
+        templateKey: 'menulist.menu_published',
+        templateVersion: '2026-06-02',
+        providerMessageId: null,
+        error: null,
+        attempt: 1,
+        createdAt: notificationNow,
+        lastAttemptAt: notificationNow,
+        sentAt: null,
+    });
+    assert.equal(await processOwnerNotificationEvent(ambiguousEventId), false);
+    const ambiguousDelivery = (await firestoreAdmin.collection('ownerNotificationDeliveries')
+        .doc(ambiguousDeliveryId).get()).data() || {};
+    assert.equal(ambiguousDelivery.status, 'sending');
+    assert.equal(ambiguousDelivery.attempt, 1);
+    const ambiguousEvent = (await firestoreAdmin.collection('ownerNotificationEvents')
+        .doc(ambiguousEventId).get()).data() || {};
+    assert.equal(ambiguousEvent.status, 'failed');
+    assert.equal(ambiguousEvent.processingAttempt, 2);
+
+    const rateLimitedReferenceId = 'menu_publish_rate_limit';
+    const rateLimitedDedupeKey = [
+        'ML',
+        'STORE_PUBLISHED',
+        OWNER_NOTIFICATION_TENANT_ID,
+        OWNER_NOTIFICATION_STORE_ID,
+        rateLimitedReferenceId,
+    ].join('|');
+    const rateLimitedEventId = sha256(rateLimitedDedupeKey).slice(0, 40);
+    await firestoreAdmin.collection('ownerNotificationEvents').doc(rateLimitedEventId).set({
+        productId: 'ML',
+        triggerType: 'STORE_PUBLISHED',
+        tenantId: OWNER_NOTIFICATION_TENANT_ID,
+        storeId: OWNER_NOTIFICATION_STORE_ID,
+        referenceId: rateLimitedReferenceId,
+        dedupeKey: rateLimitedDedupeKey,
+        recipientRole: 'primary_owner',
+        metadata: {},
+        priority: 'required',
+        status: 'pending',
+        source: { runtime: 'functions', path: 'test' },
+        createdAt: notificationNow,
+        updatedAt: notificationNow,
+    });
+    const persistedRateLimitedEvent = (await firestoreAdmin.collection('ownerNotificationEvents')
+        .doc(rateLimitedEventId).get()).data();
+    assert.ok(projectOwnerNotificationPersistedEvent(persistedRateLimitedEvent, 'ML'));
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const recipientLimitId = sha256(['ML', 'email', ambiguousRecipientHash, dateKey].join('|')).slice(0, 40);
+    await firestoreAdmin.collection('ownerNotificationRateLimits').doc(recipientLimitId).set({
+        productId: 'ML',
+        channel: 'email',
+        recipientHash: ambiguousRecipientHash,
+        dateKey,
+        count: '0',
+        updatedAt: notificationNow,
+    });
+    assert.equal(await processOwnerNotificationEvent(rateLimitedEventId), false);
+    const malformedLimit = (await firestoreAdmin.collection('ownerNotificationRateLimits')
+        .doc(recipientLimitId).get()).data() || {};
+    assert.equal(malformedLimit.count, '0');
+    const rateLimitedEvent = (await firestoreAdmin.collection('ownerNotificationEvents')
+        .doc(rateLimitedEventId).get()).data() || {};
+    assert.equal(rateLimitedEvent.status, 'skipped');
+    const rateLimitedDeliveries = await firestoreAdmin.collection('ownerNotificationDeliveries')
+        .where('eventId', '==', rateLimitedEventId)
+        .limit(2)
+        .get();
+    assert.equal(rateLimitedDeliveries.size, 1);
+    assert.equal(rateLimitedDeliveries.docs[0].data().status, 'rate_limited');
 
     await resetState();
     process.stdout.write('Maintenance task lease emulator tests passed.\n');

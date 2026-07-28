@@ -2,7 +2,18 @@ import { SUCCESS_RESPONSE } from "@constant/common";
 import { DB_COLLECTIONS, FONT_PRESET_ASSET_COLLECTION } from "@constant/database";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage, { type SupportedFileType } from "@database/storage/uploadBase64ToStorage";
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc, writeBatch } from "@firebase/firestore";
+import {
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    limit as firestoreLimit,
+    query as firestoreQuery,
+    updateDoc,
+    writeBatch,
+} from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -18,6 +29,9 @@ const FIREBASE_STORAGE_DOWNLOAD_HOSTS = new Set([
     'firebasestorage.googleapis.com',
     'storage.googleapis.com',
 ]);
+const MAX_FONT_PRESETS = 500;
+const MAX_FONT_PREVIEW_LENGTH = 300_000;
+const MAX_FONT_URL_LENGTH = 4_096;
 
 const getCollectionRef = () => collection(firebaseClient, COLLECTION);
 
@@ -68,6 +82,9 @@ const normalizeFontPreset = (value: unknown, documentId?: string): FontPresetsTy
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const font = value as Partial<FontPresetsType>;
     const id = documentId || font.id;
+    const fontSize = font.fontSize;
+    const width = font.width;
+    const height = font.height;
     if (
         (id !== undefined && !isValidFirestoreDocumentId(String(id)))
         || typeof font.name !== 'string'
@@ -76,24 +93,30 @@ const normalizeFontPreset = (value: unknown, documentId?: string): FontPresetsTy
         || typeof font.code !== 'string'
         || !/^[A-Za-z0-9_-]{1,128}$/.test(font.code)
         || typeof font.blackTextUrl !== 'string'
+        || font.blackTextUrl.length > MAX_FONT_PREVIEW_LENGTH
         || typeof font.whiteTextUrl !== 'string'
+        || font.whiteTextUrl.length > MAX_FONT_PREVIEW_LENGTH
         || !(
-            typeof font.size === 'string'
-            || (typeof font.size === 'number' && Number.isFinite(font.size) && font.size >= 0)
+            (typeof font.size === 'string' && font.size.length <= 64)
+            || (typeof font.size === 'number' && Number.isSafeInteger(font.size) && font.size >= 0)
         )
         || typeof font.type !== 'string'
         || !normalizeFontFileType(font.type)
         || !isFirebaseStorageReference(font.fileUrl)
+        || font.fileUrl.length > MAX_FONT_URL_LENGTH
         || !Number.isSafeInteger(font.index)
         || Number(font.index) < 0
+        || Number(font.index) >= MAX_FONT_PRESETS
+        || (fontSize !== undefined && (!Number.isFinite(fontSize) || fontSize < 8 || fontSize > 240))
+        || (width !== undefined && (!Number.isFinite(width) || width < 1 || width > 2_000))
+        || (height !== undefined && (!Number.isFinite(height) || height < 1 || height > 2_000))
     ) {
         return null;
     }
 
     return {
-        ...font,
         ...(id !== undefined ? { id: String(id) } : {}),
-        name: font.name,
+        name: font.name.trim(),
         code: font.code,
         blackTextUrl: font.blackTextUrl,
         whiteTextUrl: font.whiteTextUrl,
@@ -101,6 +124,9 @@ const normalizeFontPreset = (value: unknown, documentId?: string): FontPresetsTy
         type: font.type,
         fileUrl: font.fileUrl,
         index: font.index,
+        ...(fontSize !== undefined ? { fontSize } : {}),
+        ...(width !== undefined ? { width } : {}),
+        ...(height !== undefined ? { height } : {}),
     };
 };
 
@@ -259,7 +285,18 @@ export const sortFontsPresets = async (updatedList: FontPresetsType[]) => {
 export const getFontPresets = async (): Promise<FontPresetsType[]> => {
     return await apiCallComposer(
         async () => {
-            const querySnapshot = await getDocs(getCollectionRef());
+            const querySnapshot = await getDocs(firestoreQuery(
+                getCollectionRef(),
+                firestoreLimit(MAX_FONT_PRESETS + 1),
+            ));
+            if (querySnapshot.size > MAX_FONT_PRESETS) {
+                logStaticAssetDiagnostic('font_preset_document_limit_exceeded', {
+                    entityType: 'fontPreset',
+                    documentCount: querySnapshot.size,
+                    documentLimit: MAX_FONT_PRESETS,
+                });
+                throw new Error('font_preset_document_limit_exceeded');
+            }
             return querySnapshot.docs.flatMap((fontDoc) => {
                 const normalized = normalizeFontPreset(fontDoc.data(), fontDoc.id);
                 if (normalized) return [normalized];

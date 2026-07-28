@@ -5,7 +5,7 @@ import {
     getCachedLatestChangelogPage,
     getCachedPublishedFaqs,
 } from '@lib/answerlattice/publicContentCache';
-import { renderPublicTiptapHtml } from '@lib/answerlattice/publicRichText';
+import { renderPublicTiptapArticle } from '@lib/answerlattice/publicRichText';
 import { resolveHostedHelpSiteByDomain } from '@lib/answerlattice/hostedHelpServer';
 import {
     buildHostedHelpArticlePath,
@@ -141,16 +141,20 @@ const compactChangelogForClient = (page: ChangelogPage | null): HostedHelpChange
     };
 };
 
-const compactArticleForClient = (article: AnswerlatticePublicArticle): HostedHelpArticle => ({
-    id: article.id,
-    active: true,
-    title: article.title,
-    index: Number(article.index || 0),
-    url: article.url || article.id,
-    categoryTitle: article.categoryTitle,
-    sectionTitle: article.sectionTitle,
-    safeHtml: renderPublicTiptapHtml(article.content),
-});
+const compactArticleForClient = (article: AnswerlatticePublicArticle): HostedHelpArticle => {
+    const rendered = renderPublicTiptapArticle(article.content);
+    return {
+        id: article.id,
+        active: true,
+        title: article.title,
+        index: Number(article.index || 0),
+        url: article.url || article.id,
+        categoryTitle: article.categoryTitle,
+        sectionTitle: article.sectionTitle,
+        safeHtml: rendered.safeHtml,
+        outline: rendered.outline,
+    };
+};
 
 const compactSiteForClient = (site: Awaited<ReturnType<typeof resolveHostedHelpSiteByDomain>>): HostedHelpSiteView => ({
     domain: site?.domain || '',

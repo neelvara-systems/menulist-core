@@ -1,35 +1,24 @@
 import { logger } from "@lib/monitoring/logger";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import type { NextRequest } from "next/server";
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 type GrowthOSDiagnosticContext = Record<string, boolean | number | string | null | undefined>;
 
-type GrowthOSSourceErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
-
 const getGrowthOSSourceErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || "Error";
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getGrowthOSSourceErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== "object" || !("code" in error)) return undefined;
-    const code = (error as GrowthOSSourceErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getGrowthOSSourceErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== "object") return undefined;
-    const statusValue = "status" in error
-        ? (error as GrowthOSSourceErrorLike).status
-        : (error as GrowthOSSourceErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export const getGrowthOSBoundedStringContext = (

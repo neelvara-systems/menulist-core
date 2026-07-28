@@ -1,5 +1,7 @@
 # Help Center — Technical Implementation Blueprint
 
+July 28, 2026 persisted-scope correction: article entity extraction, FAQ generation, translation and embedding reconcile every supplied `tId`/`tenantId` and `sId`/`storeId` alias before provider work or mutation. Knowledge DAL session scope and article reads apply the same exact agreement; conflicting aliases fail closed.
+
 > **Version:** 1.2.0
 > **Last Updated:** 2026-07-18
 > **Audience:** Developers
@@ -554,10 +556,13 @@ This retained MenuList implementation documents historical recovery behavior onl
 
 ### 5.5 KB Quality
 
-**File:** `functions/src/analytics/kbQuality.ts`
-**Runtime status:** Dormant compatibility source; not scheduled or exported.
+**Runtime status:** Retired MenuList compatibility source; no implementation,
+provider helper, scheduler export, or health-check consumer remains.
 
-This retained MenuList implementation and its `insights/{tId}/stores/{sId}/ai/kbQuality` write shape are historical compatibility source, not current Answerlattice runtime truth.
+The former MenuList worker scanned the retired nested `knowledgeBase`
+namespace and could not safely represent the dedicated Answerlattice product.
+Current Answerlattice knowledge and support intelligence remain in
+`functions-answerlattice/`; the old source must not be restored or reconnected.
 
 ### 5.6 Weekly Narrative
 
@@ -568,9 +573,14 @@ This retained MenuList Gemini narrative worker is not active. Dedicated Answerla
 
 ### 5.7 Negative Feedback Alert
 
-**File:** `functions/src/negativeFeedbackAlert.ts`
+**Runtime status:** Retired MenuList compatibility source; no source file, export, or deployed trigger remains.
 
-Alerts on negative feedback patterns.
+The former `functions/src/negativeFeedbackAlert.ts` watched the shared MenuList
+`chatSessions` namespace and cannot be reactivated without violating the
+dedicated Answerlattice runtime boundary. Current Answerlattice feedback,
+review, escalation, and notification flows remain in the dedicated product
+implementation. `negativeFeedbackAlerts` stays client-denied only for
+historical-row containment; it is not current application truth.
 
 ---
 
@@ -675,6 +685,8 @@ Recently Viewed is a versioned Answerlattice browser-state envelope scoped by ex
 The shared callable client wrapper in `src/lib/firebase/functions.ts` also uses bounded secure diagnostics for Answerlattice manual re-embed and approved-job publish trigger failures. `regenerateEmbedding` and `publishApprovedJobFn` failures log normalized `answerlattice_*_callable_failed` codes with bounded article/job metadata and source error name/code/status only; they do not direct-console raw callable/provider errors or publish payload contents.
 
 Server-side KB callable, task worker, and publish finalizer implementations in `functions/src/logic/regenerateEmbedding.ts`, `functions/src/logic/publishApprovedJob.ts`, `functions/src/logic/embedArticleWorker.ts`, `functions/src/logic/finalizePublish.ts`, `functions-answerlattice/src/logic/regenerateEmbedding.ts`, `functions-answerlattice/src/logic/publishApprovedJob.ts`, and `functions-answerlattice/src/logic/embedArticleWorker.ts` use stable `ANSWERLATTICE_*` failure codes, bounded article/job ID length metadata, and source error name/code/status only. Failed publish records keep the existing `errorMessage` field but store fixed `Publishing failed` / `Finalize publish failed` text instead of raw provider/runtime exception text.
+
+Those workers also use the byte-identical shared/dedicated Answerlattice persisted-identity boundary. Every supplied `tId`/`tenantId` and `sId`/`storeId` alias must normalize to the same positive safe integer, and every supplied `pId`/`productId` alias must equal `AL`, before an article or job may be embedded, generated, dispatched, finalized, or mutated. Single-alias legacy documents remain readable; contradictory aliases fail closed.
 
 The shared production and dev trigger wrappers in `functions/src/triggers/production.ts` and `functions/src/dev-triggers.ts` also log bounded job/request metadata only for KB generation and publish finalization. They do not log raw job IDs, raw dev request payloads, or caught error objects.
 

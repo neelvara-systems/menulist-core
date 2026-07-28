@@ -172,6 +172,38 @@ function verifyWebsiteSocialMetadataBoundary() {
   );
 }
 
+function verifyWebsiteAuditHardeningBoundary() {
+  const websiteLayout = read('src/app/(website)/layout.tsx');
+  const productPathProvider = read('src/components/website/shared/WebsiteProductPathProvider.tsx');
+  const footer = read('src/components/website/Footer.tsx');
+  const stickyCta = read('src/components/website/shared/StickyCta.tsx');
+  const websiteStyles = read('src/styles/website.css');
+  const englishLocale = read('public/locales/menulist.ai/en-US.json');
+  const hindiLocale = read('public/locales/menulist.ai/hi-IN.json');
+
+  assertNotIncludes(websiteLayout, "from 'next/headers'", 'MenuList website layout');
+  assertIncludes(productPathProvider, 'const pathname = usePathname();', 'MenuList website path provider');
+  assertIncludes(
+    productPathProvider,
+    "pathname === '/ml' || pathname?.startsWith('/ml/') ? '/ml' : ''",
+    'MenuList website path provider',
+  );
+  assertNotIncludes(footer, 'https://twitter.com/menulistai', 'MenuList website footer');
+  assertIncludes(
+    stickyCta,
+    "window.matchMedia('(min-width: 1024px) and (min-height: 780px)')",
+    'MenuList sticky CTA viewport boundary',
+  );
+  assertIncludes(
+    websiteStyles,
+    'grid-template-columns: repeat(3, minmax(0, 1fr));',
+    'MenuList customer-link card grid',
+  );
+  assertIncludes(englishLocale, '"successTitle": "Message received"', 'English contact acknowledgement');
+  assertIncludes(englishLocale, '"heroTitle": "How MenuList helps protect "', 'English trust headline');
+  assertIncludes(hindiLocale, '"successTitle": "मैसेज मिल गया"', 'Hindi contact acknowledgement');
+}
+
 function verifyMountedHomepageBoundary() {
   const homepage = read(HOMEPAGE);
   const mountedFiles = new Set([HOMEPAGE]);
@@ -574,6 +606,34 @@ function verifyPricingPublicCopyBoundary() {
   const englishCreateMenuPreview = englishLocale.Website?.CreateMenuPreview;
 
   assertIncludes(
+    industries,
+    'export type WebsiteIndustrySlug = (typeof WEBSITE_INDUSTRY_SLUGS)[number];',
+    'Website industry closed slug contract',
+  );
+  assertIncludes(
+    industries,
+    'export function getRequiredWebsiteIndustryPage(slug: WebsiteIndustrySlug): WebsiteIndustryPage',
+    'Website industry required lookup contract',
+  );
+  [
+    'restaurants',
+    'cafes-bakeries',
+    'takeaway-cloud-kitchens',
+    'multi-location-food-businesses',
+    'salons-spas',
+    'service-list-businesses',
+    'local-service-businesses',
+  ].forEach((slug) => {
+    const route = read(`src/app/(website)/industries/${slug}/page.tsx`);
+    assertIncludes(
+      route,
+      `getRequiredWebsiteIndustryPage('${slug}')`,
+      `Website industry ${slug} required route lookup`,
+    );
+    assertNotIncludes(route, `getWebsiteIndustryPage('${slug}')!`, `Website industry ${slug} non-null assertion`);
+  });
+
+  assertIncludes(
     pricingFaq,
     "{ category: 'gettingStarted', key: 'dayEight' }",
     'Pricing FAQ seven-day setup boundary',
@@ -654,7 +714,12 @@ function verifyWebsiteAliasAndLocaleRoutingBoundary() {
   const languageSwitcher = read('src/components/website/shared/WebsiteLanguageSwitcher.tsx');
   const header = read('src/components/website/Header.tsx');
   const createMenuClient = read('src/app/(website)/create-menu/CreateMenuClient.tsx');
+  const createMenuPreviewPage = read('src/app/(website)/create-menu/preview/[draftId]/page.tsx');
+  const createMenuSuccessPage = read('src/app/(website)/create-menu/success/page.tsx');
   const ownerLayout = read('src/app/(main)/layout.tsx');
+  const ownerLayoutWrapper = read('src/components/antdComponent/layoutWrapper/index.tsx');
+  const legacyHeadMetaTags = read('src/components/organisms/headMetaTags/index.tsx');
+  const legacyMetaDefaults = read('src/constants/defaultValues.ts');
 
   [
     "'/faq'",
@@ -691,10 +756,36 @@ function verifyWebsiteAliasAndLocaleRoutingBoundary() {
     'nocache: true',
   ].forEach((token) => assertIncludes(ownerLayout, token, 'MenuList protected owner metadata boundary'));
   [
+    'index: false',
+    'follow: false',
+    'nocache: true',
+    'noimageindex: true',
+    "'max-image-preview': 'none'",
+    "'max-snippet': 0",
+  ].forEach((token) => {
+    assertIncludes(createMenuPreviewPage, token, 'MenuList private draft-preview metadata boundary');
+    assertIncludes(createMenuSuccessPage, token, 'MenuList private publish-success metadata boundary');
+  });
+  [
     'MenuList AI Dashboard Main',
     'The everything app',
     '🄴🄲🄾🄼🅂🄰🄸',
   ].forEach((token) => assertNotIncludes(ownerLayout, token, 'MenuList protected owner stale metadata boundary'));
+  assertNotIncludes(ownerLayoutWrapper, 'HeadMetaTags', 'Protected owner shell must not override noindex App Router metadata with client next/head tags');
+  [
+    'The Jawed Habib',
+    'Best Respark in the world',
+    'Ecoms.ai Salon',
+    'content="Respark"',
+  ].forEach((token) => {
+    assertNotIncludes(legacyHeadMetaTags, token, 'Legacy head helper stale product metadata');
+    assertNotIncludes(legacyMetaDefaults, token, 'Legacy metadata default stale product metadata');
+  });
+  [
+    'MENULIST_SITE_TITLE',
+    'MENULIST_SITE_DESCRIPTION',
+    'MENULIST_SITE_IMAGE',
+  ].forEach((token) => assertIncludes(legacyMetaDefaults, token, 'Legacy metadata defaults derive from the MenuList website source of truth'));
 }
 
 function verifyWebsiteLegalRuntimeTruthBoundary() {
@@ -979,10 +1070,11 @@ function verifyDocsBoundary() {
   const changelog = read('__docs__/changelog.md');
 
   [
-    '3.6.115 (Website Truth and Owner Journey Audit)',
-    'The owner journey now advertises only supported intake',
-    'A monitored general-enquiry consumer/alert and response owner remain production-owner work',
-    'No extraction, publish, cache, subscription, Razorpay, owner data, Firebase, Cloud Function, provider, dependency, Vercel deployment, or production build contract changed',
+    'Version 3.6.118 closes the locally actionable findings from the July website audit',
+    'Version 3.6.115 remains Website Truth and Owner Journey Audit',
+    'the supported public entry is a photo/image upload or an owned public menu/service-list/image/PDF link',
+    'accepted MenuList contact rows can now be reviewed manually by a verified platform operator at `/ops/website-enquiries`',
+    'No public form, extraction, publishing, pricing/payment, owner data, Firebase rule/index, Cloud Function, dependency, production build, Vercel deployment, or domain contract changed',
   ].forEach((token) => assertIncludes(mainWebsiteReadme, token, 'Main website owner-journey canonical boundary'));
   [
     '`WebsiteProductPathProvider` is the canonical browser routing boundary',
@@ -991,7 +1083,7 @@ function verifyDocsBoundary() {
   ].forEach((token) => assertIncludes(mainWebsiteImpl, token, 'Main website alias and paid-cycle implementation docs'));
   [
     'The v3.6.115 audit aligns the complete acquisition journey with current runtime',
-    'The general `/contact` success state is intentionally bounded to persisted acknowledgement',
+    'The general `/contact` success state confirms successful admission and availability in the private platform inbox',
     'Protected owner pages emit `noindex, nofollow, nocache`',
   ].forEach((token) => assertIncludes(mainWebsiteImpl, token, 'Main website owner-journey implementation docs'));
   [
@@ -1358,6 +1450,7 @@ function verifyDocsBoundary() {
 
 verifyPackageScript();
 verifyWebsiteSocialMetadataBoundary();
+verifyWebsiteAuditHardeningBoundary();
 verifyMountedHomepageBoundary();
 verifyLocaleAndDiscoveryCopy();
 verifyWhatsAppOnboardingFailClosedBoundary();

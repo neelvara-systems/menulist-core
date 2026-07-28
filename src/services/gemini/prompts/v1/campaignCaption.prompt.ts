@@ -80,7 +80,7 @@ function getSafeSurface(value: CampaignCaptionInput['surface']) {
         : 'whatsapp_status';
 }
 
-export const CAMPAIGN_CAPTION_PROMPT_V1: GeminiPrompt = {
+export const CAMPAIGN_CAPTION_PROMPT_V1: GeminiPrompt<CampaignCaptionInput> = {
     version: {
         version: 'v1',
         createdAt: '2026-01-03',

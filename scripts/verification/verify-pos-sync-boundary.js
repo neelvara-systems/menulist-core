@@ -488,10 +488,14 @@ function verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRule
   [
     'export function resolvePosSyncSecretInTransaction',
     'DB_COLLECTIONS.POS_SYNC_SECRETS',
-    "migrationSource: serverSecret ? (serverData?.migrationSource || 'server') : 'store.posSync.webhookSecret'",
+    'projectPosSyncSecretDocument(',
+    "migrationSource: serverSecret ? 'server' : 'store.posSync.webhookSecret'",
     "'posSync.webhookSecret': admin.firestore.FieldValue.delete()",
     "'posSync.secretVersion': version",
   ].forEach((token) => assertIncludes(secretStore, token, 'POS server secret store'));
+  assertNotIncludes(secretStore, '}, { merge: true });', 'POS secret migration must exact-replace the private document');
+  assertIncludes(secretRoute, 'projectPosSyncSecretDocument(', 'POS rotation must project current persisted secret metadata');
+  assertNotIncludes(secretRoute, 'secretSnapshot.data()?.createdBy || actorId', 'POS rotation must not trust raw persisted actor metadata');
 
   [
     'match /posSyncSecrets/{docId}',
@@ -610,6 +614,7 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'the current project snapshot, increments `posSync.menuVersion`',
     'Deploying rules before the app would break the previous client-side secret write flow',
     'No unused queue collection or queue type remains in active source',
+    'persisted row carrying a contradictory product, tenant, or store identity is',
   ].forEach((token) => assertIncludes(implDoc, token, 'POS implementation boundary docs'));
 
   [
@@ -625,6 +630,7 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'Typical post-migration path',
     'No Storage bucket, Firestore index, Cloud Function, scheduler, or delivery queue is added',
     'The legacy secret boundary is not safe to deploy ahead of a compatible secret API/UI',
+    'Admin readers do not trust the deterministic path alone',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'POS Firebase boundary docs'));
 
   [
@@ -702,7 +708,9 @@ function verifyPosSyncBoundary() {
   verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync, secretRoute);
   verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRules, databaseConstants, posSyncTypes, storeTypes);
   [
-    'normalizePosSyncNumericDocumentId(store.tenantId ?? store.tId)',
+    'resolvePosSyncNumericDocumentIdAliases([',
+    'store.tenantId,',
+    'store.tId,',
     'persistedTenant?.documentId === params.tenantDocumentId',
     '!isUnavailable(store)',
     '!isUnavailable(tenant)',

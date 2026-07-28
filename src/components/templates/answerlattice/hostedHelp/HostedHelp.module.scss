@@ -153,6 +153,46 @@
   grid-template-columns: minmax(0, 1fr) 280px;
 }
 
+.articleLayoutMap {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.articleModeTabs {
+  background: var(--hosted-help-card-bg);
+  border: 1px solid var(--hosted-help-border);
+  display: inline-flex;
+  gap: 2px;
+  margin: 12px 0 16px;
+  padding: 3px;
+}
+
+.articleModeTab {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--hosted-help-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
+.articleModeTab:hover,
+.articleModeTab:focus-visible {
+  color: var(--hosted-help-active-text);
+  outline: 2px solid var(--hosted-help-active-bg);
+  outline-offset: -2px;
+}
+
+.articleModeTabActive {
+  background: var(--hosted-help-active-bg);
+  color: var(--hosted-help-active-text);
+}
+
 .article {
   background: var(--hosted-help-card-bg);
   border: 1px solid var(--hosted-help-border);
@@ -291,6 +331,16 @@
 
   .article {
     padding: 20px;
+  }
+
+  .articleModeTabs {
+    display: flex;
+  }
+
+  .articleModeTab {
+    flex: 1;
+    justify-content: center;
+    min-height: 44px;
   }
 
   .sidePanel {

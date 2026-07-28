@@ -5,7 +5,7 @@
 
 import { GeminiPrompt } from '../types';
 
-export const FEEDBACK_ANALYSIS_PROMPT_V1: GeminiPrompt = {
+export const FEEDBACK_ANALYSIS_PROMPT_V1: GeminiPrompt<{ feedbacks: unknown[] }> = {
   version: {
     version: 'v1',
     createdAt: '2025-10-28',
@@ -29,7 +29,7 @@ Guidelines:
 - Consider both explicit feedback (thumbs down) and implicit signals (regenerations, query patterns)
 - Use data-driven language with specific numbers when possible`,
 
-  user: (data: { feedbacks: any[] }) => {
+  user: (data) => {
     const { feedbacks } = data;
     
     return `Analyze the following customer feedback data from the last 24 hours:

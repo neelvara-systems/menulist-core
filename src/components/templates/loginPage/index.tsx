@@ -10,6 +10,11 @@ import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 import { useAppSelector } from "@hook/useAppSelector";
 import { canUseAnswerlatticeManagement, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import {
+  clearPendingClaimToken,
+  readPendingClaimToken,
+  writePendingClaimToken,
+} from '@lib/auth/pendingClaimStorage';
 import { firebaseAuth } from "@lib/firebase/firebaseClient";
 import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
@@ -427,9 +432,8 @@ function LoginPage() {
   useEffect(() => {
     if (!FEATURE_FLAGS.ENABLE_CLAIM_ACCOUNT) return;
     const claimToken = searchParams?.get('claim');
-    if (claimToken && claimToken.length >= 20) {
-      // Store claim token for post-OAuth processing
-      localStorage.setItem('pendingClaimToken', claimToken);
+    clearPendingClaimToken(window.localStorage);
+    if (writePendingClaimToken(window.sessionStorage, claimToken)) {
       // Validate the token and get business info
       const validateClaimToken = async () => {
         try {
@@ -455,10 +459,10 @@ function LoginPage() {
               );
             }
             // Token invalid/expired — clear it, let normal login proceed
-            localStorage.removeItem('pendingClaimToken');
+            clearPendingClaimToken(window.sessionStorage);
           }
         } catch {
-          localStorage.removeItem('pendingClaimToken');
+          clearPendingClaimToken(window.sessionStorage);
         }
       };
       validateClaimToken();
@@ -552,7 +556,7 @@ function LoginPage() {
         };
 
         // Claim account flow: If there's a pending claim token, link accounts before redirecting
-        const pendingClaim = localStorage.getItem('pendingClaimToken');
+        const pendingClaim = readPendingClaimToken(window.sessionStorage);
         if (pendingClaim && claimProcessingRef.current) return;
         if (pendingClaim) {
           claimProcessingRef.current = true;
@@ -572,7 +576,7 @@ function LoginPage() {
             );
 
             if (claimRes.ok && isSuccessfulClaimAccountResponse(claimData, 'google')) {
-              localStorage.removeItem('pendingClaimToken');
+              clearPendingClaimToken(window.sessionStorage);
               await updateSession();
               await syncFirebaseAuthForCurrentSession();
               dispatch(showSuccessToast("Your business has been linked to your Google account!"));
@@ -584,10 +588,10 @@ function LoginPage() {
                 logClaimAccountResponseInvalid(claimData, 'google', claimContext);
               }
               // Claim failed — clear token, continue to dashboard normally
-              localStorage.removeItem('pendingClaimToken');
+              clearPendingClaimToken(window.sessionStorage);
             }
           } catch {
-            localStorage.removeItem('pendingClaimToken');
+            clearPendingClaimToken(window.sessionStorage);
           } finally {
             claimProcessingRef.current = false;
             setClaimProcessing(false);
@@ -608,7 +612,7 @@ function LoginPage() {
     const requestId = "LoginPage:claimEmailSetup";
     try {
       dispatch(startLoader(requestId));
-      const claimToken = localStorage.getItem('pendingClaimToken');
+      const claimToken = readPendingClaimToken(window.sessionStorage);
       if (!claimToken) {
         dispatch(showErrorToast('Claim token missing. Please use the link from your message.'));
         return;
@@ -633,7 +637,7 @@ function LoginPage() {
       );
 
       if (res.ok && isSuccessfulClaimAccountResponse(data, 'email-password')) {
-        localStorage.removeItem('pendingClaimToken');
+        clearPendingClaimToken(window.sessionStorage);
         setClaimSetupSuccess(true);
         setClaimSetupLoginLabel('your email and password');
         dispatch(showSuccessToast('Account created! You can now log in.'));
@@ -657,7 +661,7 @@ function LoginPage() {
     const requestId = "LoginPage:claimPhoneSetup";
     try {
       dispatch(startLoader(requestId));
-      const claimToken = localStorage.getItem('pendingClaimToken');
+      const claimToken = readPendingClaimToken(window.sessionStorage);
       if (!claimToken) {
         dispatch(showErrorToast('Claim token missing. Please use the link from your message.'));
         return;
@@ -682,7 +686,7 @@ function LoginPage() {
       );
 
       if (res.ok && isSuccessfulClaimAccountResponse(data, 'whatsapp-phone')) {
-        localStorage.removeItem('pendingClaimToken');
+        clearPendingClaimToken(window.sessionStorage);
         setClaimSetupSuccess(true);
         setClaimSetupLoginLabel('your WhatsApp number and passcode');
         dispatch(showSuccessToast('Account created! You can now log in.'));

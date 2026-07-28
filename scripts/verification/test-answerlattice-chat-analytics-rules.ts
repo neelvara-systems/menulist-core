@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const RULES_FILE = process.env.ANSWERLATTICE_RULES_FILE || 'firestore-answerlattice.rules';
@@ -18,6 +19,7 @@ async function run(): Promise<void> {
     });
     try {
         await testEnv.withSecurityRulesDisabled(async (context) => {
+            await seedActiveAnswerlatticeRuleWorkspace(context.firestore());
             await setDoc(doc(context.firestore(), 'chatAnalytics', '1_101_2026-07-10'), {
                 pId: 'AL', tId: 1, sId: 101, date: '2026-07-10', totalChats: 1,
             });

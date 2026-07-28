@@ -2,6 +2,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
@@ -16,6 +17,7 @@ import {
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { getBoundedErrorStringField } from '@lib/monitoring/boundedLogContext';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { NextRequest, NextResponse } from 'next/server';
@@ -77,6 +79,17 @@ const ANSWERLATTICE_KNOWLEDGE_INTAKE_CLIENT_ERROR_PATTERNS = [
     /^Knowledge intake (?:article|FAQ) target conflicts with existing content\.$/,
     /^Knowledge intake canonical proposal conflicts with existing governance work\.$/,
     /^A product surface already exists for this route\. Review it before importing another\.$/,
+    /^Add reviewed source evidence before accepting a canonical answer proposal\.$/,
+    /^Review every linked source and resolve its conflicts before accepting this canonical answer proposal\.$/,
+    /^Review every linked source and resolve its conflicts before publishing this canonical answer proposal\.$/,
+    /^Only public sources can be publicly citable\.$/,
+    /^Excluded or superseded sources must not be citable\.$/,
+    /^Source review date cannot be before its effective date\.$/,
+    /^A source cannot conflict with itself\.$/,
+    /^Review every conflicting source before linking it\.$/,
+    /^A conflicting source already has \d+ unresolved conflicts\.$/,
+    /^Use a valid source governance request identifier\.$/,
+    /^Use a valid source (?:governance date|authority|approval status|access scope|citation setting)\.$/,
     /^Knowledge base navigation is too large to add another imported article safely\.$/,
     /^Add one repeated question and a reusable answer before importing a repeated reply\.$/,
     /^File signature does not match a supported intake media type\.$/,
@@ -132,6 +145,19 @@ export function getAnswerlatticeKnowledgeIntakeErrorStatus(error: unknown): numb
         || message.includes('one intake job can hold up to')
         || message.includes('no readable text')
         || message.includes('no support-relevant text')
+        || message.includes('review every linked source')
+        || message.includes('reviewed source evidence')
+        || message.includes('publicly citable')
+        || message.includes('must not be citable')
+        || message.includes('review date')
+        || message.includes('source cannot conflict with itself')
+        || message.includes('conflicting source')
+        || message.includes('source governance request identifier')
+        || message.includes('valid source governance')
+        || message.includes('valid source authority')
+        || message.includes('valid source approval')
+        || message.includes('valid source access')
+        || message.includes('valid source citation')
     ) {
         return 400;
     }
@@ -141,7 +167,7 @@ export function getAnswerlatticeKnowledgeIntakeErrorStatus(error: unknown): numb
 export function getAnswerlatticeKnowledgeIntakeClientErrorMessage(error: unknown, fallback: string): string {
     const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
     if (status >= 500 || !(error instanceof Error)) return fallback;
-    const message = String(error.message || '').replace(/\s+/g, ' ').trim();
+    const message = (getBoundedErrorStringField(error, 'message', 500) || '').replace(/\s+/g, ' ').trim();
     if (!message) return fallback;
     return ANSWERLATTICE_KNOWLEDGE_INTAKE_CLIENT_ERROR_PATTERNS.some(pattern => pattern.test(message))
         ? message
@@ -168,14 +194,27 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
     if (!tId || !sId) {
         return { response: NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 400 }) };
     }
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) {
+        return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+    }
 
     if (options.rateLimitKey && options.rateLimit && options.rateWindow) {
         const rateLimit = await checkRateLimit({
-            key: buildAnswerlatticeRateLimitKey(options.rateLimitKey, tId, sId),
+            key: buildAnswerlatticeRateLimitKey(options.rateLimitKey, actorId, tId, sId),
             limit: options.rateLimit,
             window: options.rateWindow,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            if (rateLimit.reason === 'provider_unavailable') {
+                return {
+                    response: NextResponse.json(
+                        { error: 'Knowledge Intake is temporarily unavailable. Please try again later.' },
+                        { headers: { 'Cache-Control': 'private, no-store' }, status: 503 },
+                    ),
+                };
+            }
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
             logger.security('Rate Limit Exceeded - Answerlattice Knowledge Intake', {
                 ...getAnswerlatticeSecurityLogContext(session, request, request.nextUrl.pathname, {
@@ -229,7 +268,7 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
         context: {
             scope: { tId, sId },
             actor: {
-                id: session?.uId || session?.user?.id || null,
+                id: actorId,
                 name: session?.user?.name || session?.user?.email || null,
                 email: session?.user?.email || null,
             },

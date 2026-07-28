@@ -68,8 +68,12 @@ const getContentFeedbackRequestId = (key: string, fingerprint: string) => {
 };
 
 const normalizePositiveContentFeedbackScopeId = (value: unknown): number | null => {
-    const parsed = Number(value);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+    const raw = typeof value === 'number' || typeof value === 'string'
+        ? String(value)
+        : '';
+    if (!/^[1-9]\d*$/.test(raw)) return null;
+    const parsed = Number(raw);
+    return Number.isSafeInteger(parsed) && String(parsed) === raw ? parsed : null;
 };
 
 const normalizeOptionalContentFeedbackText = (
@@ -85,36 +89,40 @@ const normalizeOptionalContentFeedbackText = (
 const normalizeContentFeedbackSourceContext = (value: unknown): SourceContext | null | undefined => {
     if (value === undefined || value === null) return undefined;
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const record = value as Record<string, unknown>;
-    const allowedKeys = new Set(['uId', 'name', 'email', 'phone', 'pId', 'tId', 'sId']);
-    if (Object.keys(record).some(key => !allowedKeys.has(key))) return null;
-    const uId = typeof record.uId === 'string' || typeof record.uId === 'number' ? record.uId : null;
-    const name = normalizeOptionalContentFeedbackText(record.name, 160);
-    const email = record.email === '' ? '' : normalizeOptionalContentFeedbackText(record.email, 180);
-    const phone = normalizeOptionalContentFeedbackText(record.phone, 80);
-    const pId = typeof record.pId === 'string'
-        && Object.values(PRODUCT_IDS).some(productId => productId === record.pId)
-        ? record.pId as ProductId
-        : record.pId === undefined ? undefined : null;
-    const tId = record.tId === undefined ? undefined : normalizePositiveContentFeedbackScopeId(record.tId);
-    const sId = record.sId === undefined ? undefined : normalizePositiveContentFeedbackScopeId(record.sId);
-    if (uId === null
-        || !name
-        || email === null
-        || email === undefined
-        || phone === null
-        || pId === null
-        || tId === null
-        || sId === null) return null;
-    return {
-        uId,
-        name,
-        email,
-        ...(phone ? { phone } : {}),
-        ...(pId ? { pId } : {}),
-        ...(tId ? { tId } : {}),
-        ...(sId ? { sId } : {}),
-    };
+    try {
+        const record = value as Record<string, unknown>;
+        const allowedKeys = new Set(['uId', 'name', 'email', 'phone', 'pId', 'tId', 'sId']);
+        if (Object.keys(record).some(key => !allowedKeys.has(key))) return null;
+        const uId = typeof record.uId === 'string' || typeof record.uId === 'number' ? record.uId : null;
+        const name = normalizeOptionalContentFeedbackText(record.name, 160);
+        const email = record.email === '' ? '' : normalizeOptionalContentFeedbackText(record.email, 180);
+        const phone = normalizeOptionalContentFeedbackText(record.phone, 80);
+        const pId = typeof record.pId === 'string'
+            && Object.values(PRODUCT_IDS).some(productId => productId === record.pId)
+            ? record.pId as ProductId
+            : record.pId === undefined ? undefined : null;
+        const tId = record.tId === undefined ? undefined : normalizePositiveContentFeedbackScopeId(record.tId);
+        const sId = record.sId === undefined ? undefined : normalizePositiveContentFeedbackScopeId(record.sId);
+        if (uId === null
+            || !name
+            || email === null
+            || email === undefined
+            || phone === null
+            || pId === null
+            || tId === null
+            || sId === null) return null;
+        return {
+            uId,
+            name,
+            email,
+            ...(phone ? { phone } : {}),
+            ...(pId ? { pId } : {}),
+            ...(tId ? { tId } : {}),
+            ...(sId ? { sId } : {}),
+        };
+    } catch {
+        return null;
+    }
 };
 
 export const normalizeContentFeedbackItem = (value: unknown): ContentFeedbackItem | null => {

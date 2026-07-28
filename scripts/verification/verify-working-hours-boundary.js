@@ -56,7 +56,7 @@ function verifyFirestoreCostBoundary(firestoreIndexesJson) {
 
 function verifyStoreDal(storesDal, presetBoundary, cascadeReconciler) {
   [
-    'export const updateStore = async (data: any) => {',
+    'export const updateStore = async (data: StoreMutationData) => {',
     'normalizeWorkingHoursUpdate',
     "throw new Error('store_working_hours_day_invalid')",
     "throw new Error('store_working_hours_range_invalid')",

@@ -15,6 +15,11 @@ import {
     KB_CATEGORIES_COLLECTION,
 } from '../types';
 import { normalizeFinalCategories } from './publishApprovedJob';
+import { getBoundedFunctionsErrorCode } from '../utils/boundedErrorContext';
+import {
+    hasExactStoredAnswerlatticeProductAliases,
+    parseStoredAnswerlatticeScopeAliases,
+} from '../answerlattice/scopeBoundary';
 
 const PRODUCT_ID = 'AL';
 const MAX_EMBEDDING_ARTICLES_PER_JOB = 100;
@@ -89,10 +94,8 @@ function collectLegacyPendingIds(categories: unknown): string[] | null {
 
 function parsePublishingJob(jobId: string, data: FirebaseFirestore.DocumentData | undefined): PublishingJob | null {
     if (!data) return null;
-    const tId = normalizeScopeId(data.tId ?? data.tenantId);
-    const sId = normalizeScopeId(data.sId ?? data.storeId);
-    const pId = data.pId ?? data.productId;
-    if (!tId || !sId || pId !== PRODUCT_ID) return null;
+    const scope = parseStoredAnswerlatticeScopeAliases(data);
+    if (!scope || !hasExactStoredAnswerlatticeProductAliases(data)) return null;
     const articleIds = normalizeIdList(data.articleIds);
     const pendingIds = normalizeIdList(data.embeddingPendingArticleIds);
     const completedIds = normalizeIdList(data.embeddingCompletedArticleIds);
@@ -125,8 +128,8 @@ function parsePublishingJob(jobId: string, data: FirebaseFirestore.DocumentData 
     const embeddingRunId = persistedRunId
         || `legacy_${createHash('sha256').update(jobId).digest('hex').slice(0, 32)}`;
     return {
-        tId,
-        sId,
+        tId: scope.tId,
+        sId: scope.sId,
         status: typeof data.status === 'string' ? data.status : '',
         articleIds,
         pendingIds: legacyPendingIds,
@@ -179,9 +182,9 @@ function getOwnedGeneratedFaqIds(articleId: string, value: unknown): string[] {
 
 function isTaskAlreadyExists(error: unknown): boolean {
     if (!error || typeof error !== 'object') return false;
-    const rawCode = (error as { code?: unknown }).code;
-    if (rawCode === 6) return true;
-    const code = String(rawCode || '').toLowerCase();
+    const rawCode = getBoundedFunctionsErrorCode(error);
+    if (rawCode === '6') return true;
+    const code = (rawCode || '').toLowerCase();
     return code.includes('task-already-exists') || code.includes('already-exists');
 }
 

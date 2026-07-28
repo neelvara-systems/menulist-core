@@ -230,13 +230,17 @@ Server sequence:
 1. `withAuth()`.
 2. Feature flag check.
 3. Resolve Answerlattice scoped session from server-side session, not request body; malformed tenant/store scope fails before assistant context reads.
-4. Apply the hashed workspace/user rate limit before the Firestore-backed permission check.
+4. Apply the hashed workspace/user rate limit before the Firestore-backed permission check. Distributed limiter uncertainty fails closed with a private/no-store `503`; established quota exhaustion remains `429`.
 5. Require `MANAGE_SUPPORT`.
 6. Read at most 4 KiB and Zod-validate a strict 3-500 character question.
 7. Classify one of the ten bounded intents.
 8. Read or reuse the six-document compact summary packet.
 9. Build a deterministic answer with evidence and governed route links.
 10. Return a private `no-store` response.
+
+Browser state is keyed to the active Answerlattice tenant/workspace. The client clears the prior brief and answer immediately on a scope transition, cancels superseded requests, and allows only the latest mounted request to settle.
+
+Compact-summary metrics are noncoercing: only bounded nonnegative safe integers become owner counts. Source timestamps must normalize from a valid string, `Date`, or failure-contained Timestamp-like object to canonical ISO; malformed and throwing legacy/provider values are treated as unavailable rather than presented or allowed to fail the brief.
 
 The live endpoint does not fetch bounded detail, call an LLM, record an AI operation, or write assistant state.
 

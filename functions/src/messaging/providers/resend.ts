@@ -17,6 +17,7 @@
 import * as nodemailer from 'nodemailer';
 import * as functions from 'firebase-functions';
 import { ProviderSendResult } from '../types';
+import { getBoundedFunctionsErrorName } from '../../utils/boundedErrorContext';
 
 const DEFAULT_FROM = 'MenuList <system@menulist.ai>';
 const SMTP_NOT_CONFIGURED_ERROR = 'SMTP_NOT_CONFIGURED';
@@ -42,7 +43,7 @@ function getSmtpErrorContext(error: unknown): {
 
   const record = error as Record<string, unknown>;
   return {
-    name: error instanceof Error ? error.name : undefined,
+    name: getBoundedFunctionsErrorName(error),
     code: typeof record.code === 'string' ? record.code : undefined,
     responseCode: typeof record.responseCode === 'number' ? record.responseCode : undefined,
     command: typeof record.command === 'string' ? record.command : undefined,

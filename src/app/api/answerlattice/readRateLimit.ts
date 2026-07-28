@@ -4,6 +4,9 @@ import {
     getBoundedAnswerlatticeStringContext,
 } from '@lib/answerlattice/diagnostics';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import { getAnswerlatticeDashboardReadRateLimitDecision } from '@lib/answerlattice/dashboardReadRateLimitPolicy';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS } from '@lib/answerlattice/accessControl';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
@@ -16,18 +19,31 @@ export async function applyAnswerlatticeDashboardReadRateLimit(
 ) {
     const rateLimitConfig = getRateLimitForFeature('DATA_READ');
     const scope = resolveAnswerlatticeSessionScope(session);
-    const userId = session?.uId || session?.user?.id || 'unknown';
-    const tenantId = scope?.tenantId || session?.tId || session?.user?.tenantId || 'unknown';
-    const storeId = scope?.storeId || session?.sId || session?.user?.storeId || 'unknown';
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!scope || !userId) {
+        return NextResponse.json(
+            { error: 'Forbidden' },
+            { headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, status: 403 },
+        );
+    }
+    const tenantId = scope.tenantId;
+    const storeId = scope.storeId;
 
     const rateLimit = await checkRateLimit({
         key: buildAnswerlatticeRateLimitKey(`answerlattice-dashboard-read:${routeKey}`, userId, tenantId, storeId),
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
 
-    if (rateLimit.allowed) return null;
+    const decision = getAnswerlatticeDashboardReadRateLimitDecision(rateLimit);
+    if (decision.kind === 'allow') return null;
+    if (decision.kind === 'provider_unavailable') {
+        return NextResponse.json(
+            { error: 'This workspace view is temporarily unavailable. Please try again later.' },
+            { headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS, status: decision.status },
+        );
+    }
 
-    const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
     logger.security('Rate Limit Exceeded - Answerlattice Dashboard Read', {
         ...getAnswerlatticeSecurityLogContext(session, request, request.nextUrl.pathname, {
             ...getBoundedAnswerlatticeStringContext('routeKey', routeKey),
@@ -36,25 +52,26 @@ export async function applyAnswerlatticeDashboardReadRateLimit(
             ...getBoundedAnswerlatticeStringContext('userId', userId),
         }),
         limit: rateLimitConfig.limit,
-        waitSeconds,
+        waitSeconds: decision.retryAfterSeconds,
         window: rateLimitConfig.window,
     }, 'medium');
 
     return NextResponse.json(
         {
             error: 'Too many requests. Please try again later.',
-            retryAfter: waitSeconds,
-            resetAt: rateLimit.resetAt,
+            retryAfter: decision.retryAfterSeconds,
+            resetAt: decision.resetAt,
         },
         {
             headers: {
+                ...ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
                 'Cache-Control': 'private, no-store',
-                'Retry-After': String(waitSeconds),
+                'Retry-After': String(decision.retryAfterSeconds),
                 'X-RateLimit-Limit': String(rateLimitConfig.limit),
-                'X-RateLimit-Remaining': String(rateLimit.remaining),
-                'X-RateLimit-Reset': String(rateLimit.resetAt),
+                'X-RateLimit-Remaining': String(decision.remaining),
+                'X-RateLimit-Reset': String(decision.resetAt),
             },
-            status: 429,
+            status: decision.status,
         },
     );
 }

@@ -17,6 +17,7 @@ import {
     ECOMSAI_PLATFORM_USER_ROLE,
 } from '@constant/user';
 import { formatStaffLoginId, getDisplayEmail, isInternalAuthEmail, normalizeStaffLoginUsername } from '@lib/auth/loginIdentifiers';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { AuthUserIdentityConflictError, getAuthUserByEmail } from '@lib/auth/serverUserContext';
 import {
     ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
@@ -32,6 +33,7 @@ import {
     logAnswerlatticeDiagnostic,
     logAnswerlatticeFailure,
 } from '@lib/answerlattice/diagnostics';
+import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
     normalizeAnswerlatticeStaffUserId,
@@ -282,12 +284,6 @@ const sanitizeFirestoreValue = <T>(value: T) => sanitizeForFirestore(value, {
     undefinedObjectValue: 'omit',
 });
 
-const getRequestIp = (request: NextRequest) => (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || request.headers.get('x-real-ip')
-    || 'unknown'
-);
-
 const applyRateLimit = async (
     request: NextRequest,
     session: any,
@@ -295,8 +291,12 @@ const applyRateLimit = async (
     keyPrefix: string,
 ) => {
     const config = getRateLimitForFeature(feature);
+    const sessionUserId = resolveCurrentSessionUserDocumentId(session);
+    if (!sessionUserId) {
+        return privateJson({ error: 'Forbidden' }, 403);
+    }
     const result = await checkRateLimit({
-        key: buildAnswerlatticeRateLimitKey(keyPrefix, session?.uId || session?.user?.id || getRequestIp(request)),
+        key: buildAnswerlatticeRateLimitKey(keyPrefix, sessionUserId),
         ...config,
     });
     if (result.allowed) return null;
@@ -647,9 +647,7 @@ const cleanupUnadoptedDefaultFirebaseUser = async (params: {
     }
 };
 
-const getErrorCode = (error: unknown): string => (
-    error && typeof error === 'object' && 'code' in error ? String(error.code || '') : ''
-);
+const getErrorCode = (error: unknown): string => getBoundedErrorCode(error) || '';
 
 const revokeDefaultFirebaseRefreshTokens = async (
     data: Record<string, unknown>,
@@ -757,6 +755,59 @@ const readAnswerlatticeStaffClaimStoreProjection = async (params: {
             storeIsActive,
             tenantId: params.state.tenantId,
         }),
+        storeIsActive,
+    };
+};
+
+const readAnswerlatticeStaffClaimProjectionForActiveMembership = async (params: {
+    accountActive: boolean;
+    currentClaimStoreId?: unknown;
+    db: FirebaseFirestore.Firestore;
+    fallbackStoreId: number;
+    platformRole: string;
+    preferredStoreId?: unknown;
+    state: ReturnType<typeof readAnswerlatticeStaffAccessState> & {};
+}) => {
+    const preferredMembership = selectAnswerlatticeStaffClaimMembership(params.state, {
+        currentClaimStoreId: params.currentClaimStoreId,
+        preferredStoreId: params.preferredStoreId,
+    });
+    const orderedMemberships = [
+        ...(preferredMembership ? [preferredMembership] : []),
+        ...params.state.memberships.filter(
+            membership => membership.storeId !== preferredMembership?.storeId,
+        ),
+    ];
+    const projections = await Promise.all(orderedMemberships.map(async membership => ({
+        membership,
+        projection: await readAnswerlatticeStaffClaimStoreProjection({
+            accountActive: params.accountActive,
+            db: params.db,
+            platformRole: params.platformRole,
+            roleId: membership.role,
+            state: params.state,
+            storeId: membership.storeId,
+        }),
+    })));
+    const selected = projections.find(item => item.projection.storeIsActive)
+        || projections[0];
+    if (selected) return selected;
+
+    const membership = {
+        name: '',
+        role: DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF,
+        storeId: params.fallbackStoreId,
+    };
+    return {
+        membership,
+        projection: await readAnswerlatticeStaffClaimStoreProjection({
+            accountActive: params.accountActive,
+            db: params.db,
+            platformRole: params.platformRole,
+            roleId: membership.role,
+            state: params.state,
+            storeId: membership.storeId,
+        }),
     };
 };
 
@@ -786,14 +837,19 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
         } | null = null;
         try {
             const answerlatticeUser = await answerlatticeAuthAdmin.getUserByEmail(email);
-            const selectedMembership = selectAnswerlatticeStaffClaimMembership(state, {
+            const selected = await readAnswerlatticeStaffClaimProjectionForActiveMembership({
+                accountActive: active,
                 currentClaimStoreId: answerlatticeUser.customClaims?.storeId,
+                db,
+                fallbackStoreId: params.fallbackStoreId,
+                platformRole,
                 preferredStoreId: params.fallbackStoreId,
+                state,
             });
-            const storeId = selectedMembership?.storeId || params.fallbackStoreId;
-            const roleId = selectedMembership?.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
-            const expectedClaimRoleId = active ? roleId : 'inactive';
-            const expectedClaimStoreIds = active ? [String(storeId)] : [];
+            const storeId = selected.membership.storeId;
+            const claimState = selected.projection;
+            const expectedClaimRoleId = claimState.claimAccess.roleId;
+            const expectedClaimStoreIds = claimState.claimAccess.storeIds;
             const currentStoreIds = Array.isArray(answerlatticeUser.customClaims?.storeIds)
                 ? answerlatticeUser.customClaims.storeIds.map((value: unknown) => String(value))
                 : [];
@@ -806,16 +862,12 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
                 || String(answerlatticeUser.customClaims?.platformRole || '') !== platformRole
                 || String(answerlatticeUser.customClaims?.uId || '') !== normalizedUserId
                 || JSON.stringify(currentStoreIds) !== JSON.stringify(expectedClaimStoreIds);
-            const disabledNeedsUpdate = answerlatticeUser.disabled === active;
+            const authIdentityActive = active && (
+                selected.projection.storeIsActive
+                || isPlatformRole(platformRole)
+            );
+            const disabledNeedsUpdate = answerlatticeUser.disabled === authIdentityActive;
             if (claimsNeedUpdate) {
-                const claimState = await readAnswerlatticeStaffClaimStoreProjection({
-                    accountActive: active,
-                    db,
-                    platformRole,
-                    roleId,
-                    state,
-                    storeId,
-                });
                 await answerlatticeAuthAdmin.setCustomUserClaims(answerlatticeUser.uid, {
                     accessRevision: state.accessRevision,
                     admin: claimState.adminClaim,
@@ -834,7 +886,9 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
                 };
             }
             if (disabledNeedsUpdate) {
-                await answerlatticeAuthAdmin.updateUser(answerlatticeUser.uid, { disabled: !active });
+                await answerlatticeAuthAdmin.updateUser(answerlatticeUser.uid, {
+                    disabled: !authIdentityActive,
+                });
             }
             if (claimsNeedUpdate || disabledNeedsUpdate || params.forceRevoke) {
                 await answerlatticeAuthAdmin.revokeRefreshTokens(answerlatticeUser.uid);
@@ -844,35 +898,32 @@ const syncAnswerlatticeAuthClaimsForStaffUser = async (params: {
             return;
         }
 
-        const refreshed = await getAnswerlatticeUserById(normalizedUserId);
-        const refreshedData = getRecord(refreshed?.data);
+        const refreshedUser = await getAnswerlatticeUserById(normalizedUserId);
+        const refreshedData = getRecord(refreshedUser?.data);
         const refreshedState = readAnswerlatticeStaffAccessState(refreshedData);
         if (!refreshedState) throw new Error('ANSWERLATTICE_STAFF_CLAIM_SYNC_STATE_INVALID');
         if (refreshedState.accessRevision !== state.accessRevision) continue;
         if (!synchronizedClaimState) return;
 
-        const refreshedMembership = selectAnswerlatticeStaffClaimMembership(refreshedState, {
-            currentClaimStoreId: synchronizedClaimState.storeId,
-            preferredStoreId: params.fallbackStoreId,
-        });
-        const refreshedStoreId = refreshedMembership?.storeId || params.fallbackStoreId;
-        const refreshedRoleId = refreshedMembership?.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
-        const refreshedPlatformRole = normalizeAnswerlatticeStaffClaimPlatformRole(refreshedData.platformRole);
         const refreshedActive = refreshedData.active !== false
             && refreshedData.deleted !== true
             && refreshedData.authDisabled !== true
             && refreshedState.memberships.length > 0;
-        const refreshedClaimState = await readAnswerlatticeStaffClaimStoreProjection({
+        const refreshedPlatformRole = normalizeAnswerlatticeStaffClaimPlatformRole(
+            refreshedData.platformRole,
+        );
+        const refreshedProjection = await readAnswerlatticeStaffClaimProjectionForActiveMembership({
             accountActive: refreshedActive,
+            currentClaimStoreId: synchronizedClaimState.storeId,
             db,
+            fallbackStoreId: params.fallbackStoreId,
             platformRole: refreshedPlatformRole,
-            roleId: refreshedRoleId,
+            preferredStoreId: params.fallbackStoreId,
             state: refreshedState,
-            storeId: refreshedStoreId,
         });
         if (
-            refreshedStoreId === synchronizedClaimState.storeId
-            && refreshedClaimState.signature === synchronizedClaimState.signature
+            refreshedProjection.membership.storeId === synchronizedClaimState.storeId
+            && refreshedProjection.projection.signature === synchronizedClaimState.signature
         ) {
             return;
         }
@@ -898,7 +949,7 @@ const syncAnswerlatticeAuthClaimsForRoleMembers = async (params: {
     }
 };
 
-const repairAnswerlatticeStaffAccessProjections = async (params: {
+export const repairAnswerlatticeStaffAccessProjections = async (params: {
     data: Record<string, unknown>;
     fallbackStoreId: number;
     forceClaimsRevoke?: boolean;
@@ -942,6 +993,7 @@ const repairAnswerlatticeStaffAccessProjections = async (params: {
             name: 'answerlattice_auth_claims',
             run: () => syncAnswerlatticeAuthClaimsForStaffUser({
                 fallbackStoreId: params.fallbackStoreId,
+                forceClaimsRefresh: params.forceClaimsRevoke,
                 forceRevoke: params.forceClaimsRevoke,
                 userId: params.userId,
             }),
@@ -989,7 +1041,7 @@ const validateRoleForAssignment = (
 const ensureNotSelfDestructive = (session: any, targetUserId: string, targetEmail?: unknown) => {
     if (isAnswerlatticeStaffSelfTarget({
         sessionEmail: session?.user?.email,
-        sessionUserId: session?.uId || session?.user?.id,
+        sessionUserId: resolveCurrentSessionUserDocumentId(session),
         targetEmail,
         targetUserId,
     })) {
@@ -1063,6 +1115,8 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
     if (!verifyStaffFeature()) return jsonError('Answerlattice staff access is not enabled.', 403, 'FEATURE_DISABLED');
     const rateLimit = await applyRateLimit(request, session, 'AUTH_SENSITIVE', 'answerlattice-staff-create');
     if (rateLimit) return rateLimit;
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
     const { access, response } = await requireAnswerlatticeTeamPermission(request, session);
     if (response) return response;
@@ -1293,7 +1347,7 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
             await db.collection(DB_COLLECTIONS.USERS).doc(userId).set({
                 passwordResetEmailSentAt: now,
                 passwordResetRequestedAt: now,
-                passwordResetRequestedBy: session?.uId || session?.user?.id,
+                passwordResetRequestedBy: actorId,
             }, { merge: true });
         }
     }
@@ -1328,6 +1382,8 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
     if (!verifyStaffFeature()) return jsonError('Answerlattice staff access is not enabled.', 403, 'FEATURE_DISABLED');
     const rateLimit = await applyRateLimit(request, session, 'DATA_WRITE', 'answerlattice-staff-update');
     if (rateLimit) return rateLimit;
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
     const { access, response } = await requireAnswerlatticeTeamPermission(request, session);
     if (response) return response;
@@ -1411,7 +1467,7 @@ export const updateAnswerlatticeStaffUser = async (request: NextRequest, session
         phoneNumber: normalizedPhone ? normalizedPhone.phoneNumber : input.phoneNumber,
         phoneUsername: normalizedPhone ? normalizedPhone.phoneUsername : undefined,
         sessionRevokedAt: input.active === false ? now : undefined,
-        sessionRevokedBy: input.active === false ? session?.uId || session?.user?.id : undefined,
+        sessionRevokedBy: input.active === false ? actorId : undefined,
         sessionRevokedByEmail: input.active === false ? session?.user?.email : undefined,
         sessionRevokedReason: input.active === false ? 'answerlattice_staff_deactivated' : undefined,
     });
@@ -1477,6 +1533,8 @@ export const removeAnswerlatticeStaffUser = async (request: NextRequest, session
     if (!verifyStaffFeature()) return jsonError('Answerlattice staff access is not enabled.', 403, 'FEATURE_DISABLED');
     const rateLimit = await applyRateLimit(request, session, 'DATA_WRITE', 'answerlattice-staff-remove');
     if (rateLimit) return rateLimit;
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
     const { access, response } = await requireAnswerlatticeTeamPermission(request, session);
     if (response) return response;
@@ -1550,7 +1608,7 @@ export const removeAnswerlatticeStaffUser = async (request: NextRequest, session
             deactivationUpdate: sanitizeFirestoreValue({
                 deletedAt: now,
                 sessionRevokedAt: now,
-                sessionRevokedBy: session?.uId || session?.user?.id,
+                sessionRevokedBy: actorId,
                 sessionRevokedByEmail: session?.user?.email,
                 sessionRevokedReason: 'answerlattice_staff_removed',
             }),
@@ -1559,7 +1617,7 @@ export const removeAnswerlatticeStaffUser = async (request: NextRequest, session
                 modifiedBy: session?.user?.email,
                 modifiedOn: now,
                 workspaceAccessRemovedAt: now,
-                workspaceAccessRemovedBy: session?.uId || session?.user?.id,
+                workspaceAccessRemovedBy: actorId,
                 workspaceAccessRemovedStoreId: access.scope.storeId,
             }),
             storeId: access.scope.storeId,
@@ -1607,6 +1665,8 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
     if (!verifyStaffFeature()) return jsonError('Answerlattice staff access is not enabled.', 403, 'FEATURE_DISABLED');
     const rateLimit = await applyRateLimit(request, session, 'AUTH_SENSITIVE', 'answerlattice-staff-password-reset');
     if (rateLimit) return rateLimit;
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
     const { access, response } = await requireAnswerlatticeTeamPermission(request, session);
     if (response) return response;
@@ -1687,11 +1747,11 @@ export const requestAnswerlatticeStaffPasswordReset = async (request: NextReques
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         passcodeResetAt: now,
-        passcodeResetBy: session?.uId || session?.user?.id,
+        passcodeResetBy: actorId,
         passwordResetRequestedAt: now,
-        passwordResetRequestedBy: session?.uId || session?.user?.id,
+        passwordResetRequestedBy: actorId,
         sessionRevokedAt: now,
-        sessionRevokedBy: session?.uId || session?.user?.id,
+        sessionRevokedBy: actorId,
         sessionRevokedByEmail: session?.user?.email,
         sessionRevokedReason: 'answerlattice_staff_passcode_reset',
         staffLoginId: loginId,
@@ -1732,6 +1792,8 @@ export const forceSignOutAnswerlatticeStaffUser = async (request: NextRequest, s
     if (!verifyStaffFeature()) return jsonError('Answerlattice staff access is not enabled.', 403, 'FEATURE_DISABLED');
     const rateLimit = await applyRateLimit(request, session, 'AUTH_SENSITIVE', 'answerlattice-staff-force-signout');
     if (rateLimit) return rateLimit;
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return jsonError('Forbidden', 403, 'FORBIDDEN');
 
     const { access, response } = await requireAnswerlatticeTeamPermission(request, session);
     if (response) return response;
@@ -1817,7 +1879,7 @@ export const forceSignOutAnswerlatticeStaffUser = async (request: NextRequest, s
         modifiedBy: session?.user?.email,
         modifiedOn: now,
         sessionRevokedAt: now,
-        sessionRevokedBy: session?.uId || session?.user?.id,
+        sessionRevokedBy: actorId,
         sessionRevokedByEmail: session?.user?.email,
         sessionRevokedReason: 'owner_force_signout',
     }));

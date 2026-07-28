@@ -179,6 +179,12 @@ async function run(): Promise<void> {
         await assertFails(setDoc(doc(ownerDb, 'aiMenuManagerProposals', 'amm_prop_aaaaaaaaaaaaaaaaaaaaaaaaaaaa'), {
             proposalId: 'amm_prop_aaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         }));
+        await assertFails(setDoc(doc(ownerDb, 'aiMenuManagerRules', 'owner-rule'), {
+            ruleId: 'owner-rule',
+            tId,
+            sId,
+        }));
+        await assertFails(getDoc(doc(ownerDb, 'aiMenuManagerRules', 'owner-rule')));
 
         await testEnv.withSecurityRulesDisabled(async (context) => {
             await setDoc(

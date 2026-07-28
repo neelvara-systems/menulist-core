@@ -133,6 +133,7 @@ function verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly() {
 const projectsDal = read('src/database/projects/index.ts');
 const staticAssetsDal = read('src/database/static/static.ts');
 const fontPresetsDal = read('src/database/static/fontPresets.ts');
+const platformFontPresets = read('src/components/templates/platform/fontPresets/index.tsx');
 const base64StorageHelper = read('src/database/storage/uploadBase64ToStorage.ts');
 const base64UploadBoundary = read('src/lib/storage/base64UploadBoundary.ts');
 const blobStorageHelper = read('src/database/storage/uploadBlobToStorage.ts');
@@ -149,13 +150,13 @@ const desktopBusinessSettings = read('src/components/templates/main-app/business
 const storesDal = read('src/database/stores/index.tsx');
 const desktopOfficialPage = read('src/components/templates/main-app/projects/b2cView/index.tsx');
 const mobileOfficialPage = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
+const platformAssets = read('src/components/templates/platform/assets/index.tsx');
 const platformAssetDetails = read('src/components/templates/platform/assets/detailsModal.tsx');
 const projectImageGeneration = read('src/lib/image/projectImageGeneration.ts');
 const storagePathGenerator = read('src/lib/storage/pathGenerator.ts');
-const notesDal = read('src/database/notes/index.ts');
-const noteAttachmentBoundary = read('src/lib/notes/noteAttachmentBoundary.ts');
 const tenantsDal = read('src/database/tenants/index.tsx');
 const blogsDal = read('src/database/blogs/index.ts');
+const blogBoundary = read('src/lib/blogs/blogBoundary.ts');
 const storageReplacementBoundary = read('src/lib/storage/replacementUploadBoundary.ts');
 const ticketsDal = read('src/database/tickets/index.ts');
 const ticketAttachmentBoundary = read('src/lib/answerlattice/supportTicketAttachmentBoundary.ts');
@@ -220,12 +221,17 @@ assert(
   'preconditionOpts: { ifGenerationMatch: 0 }',
   'isAdminImmutableObjectCreateConflict(error)',
   'adminImmutableObjectMatchesUpload(existingMetadata',
+  'normalizeAdminImmutableObjectSize(existing.size)',
   'if (existing.cacheControl !== expected.cacheControl) return false;',
   'getAdminImmutableObjectDownloadToken(existingMetadata)',
   "throw new Error('storage_immutable_object_identity_mismatch')",
 ].forEach((token) => {
   assert(adminImmutableObject.includes(token), `Admin immutable Storage boundary includes ${token}`);
 });
+assert(
+  !adminImmutableObject.includes('Number(existing.size)'),
+  'Admin immutable Storage boundary must not coerce provider size metadata',
+);
 assert(
   adminMediaUpload.includes('createOrReuseAdminImmutableObject({'),
   'batch Admin media uploads preserve bytes and download tokens on deterministic retry',
@@ -303,60 +309,21 @@ assert(
   assert(!storagePathGenerator.includes(token), `shared Storage path generator rejects retired fallback token ${token}`);
 });
 
-[
-  'const requireNoteDocumentId = (value: unknown): string =>',
-  'buildNoteAttachmentFileId({',
-  "attemptId: createRuntimeId('upload')",
-  'const storageFileId = `${requireNoteDocumentId(noteId)}/${fileId}`;',
-  'docRef.id,',
-  'documentUpdate = composeRequestBody({ documents }, session, { isNew: false });',
-  "await cleanupNoteAttachments(uploadedUrls, 'create');",
-  "await cleanupNoteAttachments(uploadedUrls, 'update');",
-  'const attachmentUrls = await runTransaction(firebaseClient, async (transaction) => {',
-  'const noteSnapshot = await transaction.get(noteRef);',
-  'const ownedUrls = collectNoteAttachmentUrls(noteSnapshot.data())',
-  'removedAttachmentUrls = await runTransaction(firebaseClient, async (transaction) => {',
-  "deferPersistedNoteAttachmentCleanup(removedAttachmentUrls, 'update_removed');",
-  'transaction.delete(noteRef);',
-  "deferPersistedNoteAttachmentCleanup(attachmentUrls, 'delete');",
-  "logRuntimeFailure('note_create_compensation_failed'",
-].forEach((token) => {
-  assert(notesDal.includes(token), `notes attachment lifecycle uses captured scoped path/compensation token ${token}`);
-});
-[
-  'export const buildNoteAttachmentFileId = ({',
-  "throw new TypeError('invalid_note_attachment_attempt_id');",
-  'export const collectNoteAttachmentUrls = (note: unknown): string[] =>',
-  'export const getRemovedNoteAttachmentUrls = ({',
-  'export const getNoteAttachmentCommitStatus = (',
-].forEach((token) => {
-  assert(noteAttachmentBoundary.includes(token), `note attachment boundary includes ${token}`);
-});
 assert(
-  !notesDal.includes('const docId = `${data.id}/${fileId}`;'),
-  'notes attachment path must not read an omitted data.id field',
+  !fs.existsSync(path.join(repoRoot, 'src/database/notes/index.ts')),
+  'retired generic Notes DAL must remain absent',
+);
+assert(
+  !fs.existsSync(path.join(repoRoot, 'src/lib/notes/noteAttachmentBoundary.ts')),
+  'retired generic Notes attachment helper must remain absent',
 );
 [
-  'getDocFromServer(getDocRef(session, noteId))',
-  "getNoteAttachmentCommitStatus(currentNote, uploadedUrls)",
-  "note_attachment_persistence_outcome_ambiguous",
-  "note_update_removed_attachment_cleanup_deferred",
-  "note_attachment_cleanup_deferred_shared_reference",
+  'match /notes/documents/{tId}/{sId}/{noteId}/{fileId}',
+  'allow create, update: if false;',
+  'allow delete: if belongsToStore(tId, sId);',
 ].forEach((token) => {
-  assert(notesDal.includes(token), `notes ambiguous persistence boundary includes ${token}`);
+  assert(storageRules.includes(token), `retired Notes Storage boundary includes ${token}`);
 });
-assert(
-  !notesDal.includes('await updateNote({ documents: submitData.documents, id: docRef.id })'),
-  'note create must not re-resolve active session through updateNote after its first write',
-);
-assert(
-  !notesDal.includes("cleanupNoteAttachments(removedAttachmentUrls, 'update_removed')"),
-  'note update must not delete persisted attachments using one-note reference truth',
-);
-assert(
-  !notesDal.includes("cleanupNoteAttachments(attachmentUrls, 'delete')"),
-  'note delete must not delete persisted attachments using one-note reference truth',
-);
 
 assert(
   !staticAssetsDal.includes('menulist-qa.appspot.com'),
@@ -374,6 +341,10 @@ assert(
   "'static_asset_persisted_file_cleanup_deferred_shared_reference'",
   "'static_asset_pre_persist_preview_cleanup_failed'",
   "'static_asset_ambiguous_write_preview_retained'",
+  'const MAX_ASSET_DOCUMENTS = 1000;',
+  'firestoreLimit(MAX_ASSET_DOCUMENTS + 1)',
+  'if (querySnapshot.size > MAX_ASSET_DOCUMENTS)',
+  "'static_asset_document_limit_exceeded'",
   'const result = await persist(prepared.data);',
   '[prepared.previousPreview]',
 ].forEach((token) => {
@@ -399,6 +370,18 @@ assert(
   !platformAssetDetails.includes('isSvg() ? selectedFile.textContent : selectedFile.src'),
   'platform asset editor must pass its canonical data URL instead of raw SVG XML',
 );
+[
+  [platformAssets, '.splice(scId, 1)'],
+  [platformAssetDetails, '.splice(scId, 1)'],
+  [platformAssets, '.splice(iIndex, 1)'],
+  [platformAssetDetails, '.splice(iIndex, 1)'],
+  [platformAssetDetails, 'items[iIndex] ='],
+].forEach(([source, token]) => {
+  assert(
+    !source.includes(token),
+    `platform asset local reconciliation must not apply a missing findIndex result through ${token}`,
+  );
+});
 
 [
   "| 'ttf' | 'otf' | 'woff' | 'woff2'",
@@ -438,9 +421,17 @@ assert(
   'await deleteDoc(fontRef);',
   'deferPersistedFontFileCleanup(current?.fileUrl, fontId);',
   'font_preset_sort_set_mismatch',
+  'const MAX_FONT_PRESETS = 500;',
+  'firestoreLimit(MAX_FONT_PRESETS + 1)',
+  "'font_preset_document_limit_exceeded'",
+  '...(fontSize !== undefined ? { fontSize } : {}),',
 ].forEach((token) => {
   assert(fontPresetsDal.includes(token), `font preset persistence/storage boundary includes ${token}`);
 });
+assert(
+  !fontPresetsDal.includes('        ...font,\n'),
+  'font preset runtime projection must not retain unknown persisted or caller-controlled fields',
+);
 assert(!fontPresetsDal.includes('type: "jpeg"'), 'font preset uploads must not be mislabeled as JPEG');
 assert(
   !fontPresetsDal.includes("cleanupFontFile(current.fileUrl, 'font_preset_replaced_file_cleanup_failed'"),
@@ -450,6 +441,16 @@ assert(
   !fontPresetsDal.includes('current?.fileUrl || src'),
   'font preset delete must never trust caller-supplied Storage deletion authority',
 );
+[
+  'platform_font_preset_local_state_missing',
+  'fontsListCopy.splice(index, 1)',
+  'fontsList.sort(',
+].forEach((token) => {
+  assert(
+    !platformFontPresets.includes(token),
+    `font preset post-commit reconciliation must not retain ${token}`,
+  );
+});
 
 [
   'buildSupportTicketAttachmentFileId({',
@@ -507,6 +508,26 @@ assert(
   "commitState: 'committed'",
 ].forEach((token) => {
   assert(blogsDal.includes(token), `blog image replacement lifecycle includes ${token}`);
+});
+const blogCollectionEvidenceAnnotation =
+  '// @firestore-' + 'collection-evidence DB_COLLECTIONS.BLOGS operations=read/query|write';
+[
+  blogCollectionEvidenceAnnotation,
+  'limit(BLOG_QUERY_MAX_RESULTS + 1)',
+  'assertBlogQueryWithinLimit(querySnapshot.size)',
+  'normalizeBlogImageUrl(imageToUpdate)',
+  'getBlogById = async (id: string | number)',
+].forEach((token) => {
+  assert(blogsDal.includes(token), `blog DAL preserves bounded public-data token ${token}`);
+});
+[
+  'export const BLOG_QUERY_MAX_RESULTS = 100;',
+  'normalizeBlogDocumentId',
+  'normalizeBlogStoreId',
+  'assertBlogQueryWithinLimit',
+  'normalizeBlogImageUrl',
+].forEach((token) => {
+  assert(blogBoundary.includes(token), `blog runtime boundary exports ${token}`);
 });
 assert(
   blogsDal.indexOf("if (commitState === 'committed')") < blogsDal.indexOf('const targets = getStorageReplacementCleanupTargets'),
@@ -566,7 +587,7 @@ assert(
 );
 assert(
   storageRules.includes('match /MenuListAi/project/files/{fileId}'),
-  'Storage rules still acknowledge legacy project files path for read compatibility',
+  'Storage rules still acknowledge legacy project files path for explicit denial',
 );
 const legacyProjectPathMatches = [
   'match /MenuListAi/project/files/{fileId}',
@@ -576,19 +597,19 @@ const legacyProjectPathMatches = [
 ];
 
 legacyProjectPathMatches.forEach((token) => {
-  assert(storageRules.includes(token), `Storage rules retain legacy project path read match ${token}`);
+  assert(storageRules.includes(token), `Storage rules retain legacy project path denial match ${token}`);
   assert(
-    new RegExp(`${escapeRegExp(token)}\\s*\\{[\\s\\S]*?allow read: if isAuthenticated\\(\\);[\\s\\S]*?allow write, delete: if false;[\\s\\S]*?\\}`).test(storageRules),
-    `Storage rules keep legacy project path read-only for ${token}`,
+    new RegExp(`${escapeRegExp(token)}\\s*\\{[\\s\\S]*?allow read, write, delete: if false;[\\s\\S]*?\\}`).test(storageRules),
+    `Storage rules deny all direct legacy project access for ${token}`,
   );
 });
 assert(
-  storageRules.includes('LEGACY PROJECT STORAGE PATTERN (READ-ONLY CUTOVER)'),
-  'Storage rules label legacy project paths as read-only cutover',
+  storageRules.includes('LEGACY PROJECT STORAGE PATTERN (SERVER-MEDIATED CUTOVER)'),
+  'Storage rules label legacy project paths as server-mediated cutover',
 );
 assert(
-  storageRules.includes('allow write, delete: if false;'),
-  'Storage rules block legacy project path writes and deletes',
+  (storageRules.match(/allow read, write, delete: if false;/g) || []).length >= legacyProjectPathMatches.length,
+  'Storage rules block legacy project path reads, writes, and deletes',
 );
 [
   'allow write: if isAuthenticated() && isValidImageOrDocumentUpload();',
@@ -597,14 +618,9 @@ assert(
 ].forEach((token) => {
   assert(!storageRules.includes(token), `Storage rules must not permit legacy project path mutation token ${token}`);
 });
-assert(
-  (storageRules.match(/allow write, delete: if false;/g) || []).length >= legacyProjectPathMatches.length,
-  'Storage rules keep read-only legacy project mutation blocks',
-);
-
 [
-  'current project fallback uploads write tenant-scoped paths',
-  'legacy project Storage paths are read-only',
+  'New project uploads use `projects/files/{tId}/{sId}/{fileId}`',
+  'legacy project Storage paths deny direct client access',
 ].forEach((token) => {
   assert(tracker.includes(token), `infrastructure tracker documents storage-path token ${token}`);
 });
@@ -612,14 +628,15 @@ assert(
 [
   'projects/files/{tId}/{sId}/{fileId}',
   'Legacy files may still exist under `MenuListAi/project/files/`',
+  'denies direct client reads, writes, and deletes',
 ].forEach((token) => {
   assert(uploadImpl.includes(token), `upload-file processing docs document storage-path token ${token}`);
 });
 
 [
-  'July 2026 hardening note',
-  'active project fallback uploads now route through `generateStoragePath()`',
-  'Legacy project Storage paths are read-only',
+  'July 2026 deep-audit correction',
+  'active project fallback uploads route through `generateStoragePath()`',
+  'denies direct client reads, writes, and deletes',
 ].forEach((token) => {
   assert(extractionSecurityAudit.includes(token), `extraction security audit documents storage-path token ${token}`);
 });
@@ -668,7 +685,7 @@ assert(
 );
 
 assert(
-  packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js && npm run test:storage-path-boundary && npm run test:storage-delete-boundary && npm run test:legacy-storage-upload-boundary && npm run test:storage-replacement-boundary && npm run test:storage-cleanup-results && npm run test:base64-upload-boundary && npm run test:admin-immutable-object-boundary && npm run test:note-attachment-boundary && npm run test:ticket-attachment-boundary && npm run test:obp-media-reference-boundary && npm run test:menulist-media-storage-rules',
+  packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js && npm run test:storage-path-boundary && npm run test:storage-delete-boundary && npm run test:legacy-storage-upload-boundary && npm run test:storage-replacement-boundary && npm run test:storage-cleanup-results && npm run test:base64-upload-boundary && npm run test:admin-immutable-object-boundary && npm run test:ticket-attachment-boundary && npm run test:obp-media-reference-boundary && npm run test:menulist-media-storage-rules',
   'package.json exposes verify:storage-paths',
 );
 assert(
@@ -694,10 +711,6 @@ assert(
 assert(
   packageJson.scripts?.['test:admin-immutable-object-boundary']?.includes('scripts/verification/test-admin-immutable-object-boundary.ts'),
   'package.json exposes the Admin immutable object regression',
-);
-assert(
-  packageJson.scripts?.['test:note-attachment-boundary']?.includes('scripts/verification/test-note-attachment-boundary.ts'),
-  'package.json exposes the note attachment ownership regression',
 );
 assert(
   packageJson.scripts?.['test:ticket-attachment-boundary']?.includes('scripts/verification/test-ticket-attachment-boundary.ts'),

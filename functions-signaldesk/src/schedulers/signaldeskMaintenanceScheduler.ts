@@ -6,6 +6,10 @@ import { SIGNALDESK_COLLECTIONS } from "../constants/database";
 import { FUNCTION_FLAGS } from "../constants/features";
 import { db as defaultDb } from "../firebaseAdmin";
 import {
+  getBoundedFunctionsErrorCode,
+  getBoundedFunctionsErrorName,
+} from "../utils/boundedErrorContext";
+import {
   runSignalDeskProofPermissionLifecycle,
   SignalDeskProofPermissionLifecycleResult,
 } from "./proofPermissionLifecycle";
@@ -86,12 +90,10 @@ const sourceErrorContext = (error: unknown): {
   sourceErrorCode?: string;
   sourceErrorName: string;
 } => {
-  if (!error || typeof error !== "object") return { sourceErrorName: typeof error };
-  const source = error as { code?: unknown; name?: unknown };
   return {
-    sourceErrorName: typeof source.name === "string" ? source.name.slice(0, 80) : "Error",
-    ...(typeof source.code === "string" || typeof source.code === "number"
-      ? { sourceErrorCode: String(source.code).slice(0, 80) }
+    sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
+    ...(getBoundedFunctionsErrorCode(error)
+      ? { sourceErrorCode: getBoundedFunctionsErrorCode(error) }
       : {}),
   };
 };

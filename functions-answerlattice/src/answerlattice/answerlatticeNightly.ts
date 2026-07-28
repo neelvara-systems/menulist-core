@@ -58,12 +58,21 @@ import {
 import { syncChatAnalyticsNightly } from './chatAnalyticsAggregation';
 import { calculateConfirmedResolutionMetrics } from './confirmedResolution';
 import { syncAnswerlatticeChatIntelligence } from './chatIntelligence';
+import {
+    areAnswerlatticeCompiledSourceVersionsValid,
+    getAnswerlatticeSourceVersionsDocId,
+    normalizeCompiledSourceVersions,
+} from './compiledContextVersions';
 import { repairCompiledContextBundle } from './contextBundleBuilder';
 import {
     cleanupAnswerlatticeOperationalRetention,
     getAnswerlatticeRetentionFields,
 } from './dataRetention';
 import { normalizeAnswerlatticeResolvedFunctionEntityId } from './entityIdBoundary';
+import {
+    hashAnswerlatticeEntityGraphPayload,
+    isCurrentAnswerlatticeEntityGraphIndex,
+} from './entityGraphIndexState';
 import { generateDraftsForNewProposals } from './draftGenerator';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
@@ -78,6 +87,7 @@ import {
     type AnswerlatticeSchedulerReadWindow,
 } from './schedulerReadTelemetry';
 import { syncSupportBoardNightly } from './supportBoardSync';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 import {
     AnswerlatticeTenantStore,
     readAnswerlatticeTenantSummaryRegistry,
@@ -222,16 +232,11 @@ function getAnswerlatticeSchedulerSourceErrorContext(error: unknown): {
     sourceErrorCode: string | null;
     sourceStatusCode: number | null;
 } {
-    const source = error as { name?: unknown; code?: unknown; status?: unknown; statusCode?: unknown };
-    const status = typeof source?.status === 'number'
-        ? source.status
-        : typeof source?.statusCode === 'number'
-            ? source.statusCode
-            : null;
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        sourceErrorName: typeof source?.name === 'string' ? source.name : typeof error,
-        sourceErrorCode: typeof source?.code === 'string' || typeof source?.code === 'number' ? String(source.code) : null,
-        sourceStatusCode: status,
+        sourceErrorName: context.sourceErrorName || typeof error,
+        sourceErrorCode: context.sourceErrorCode ?? null,
+        sourceStatusCode: context.sourceStatusCode ?? null,
     };
 }
 
@@ -1760,23 +1765,11 @@ interface GraphRebuildResult {
     unchanged?: boolean;
 }
 
-function stableStringify(value: any): string {
-    if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-    if (value && typeof value === 'object') {
-        return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
-    }
-    return JSON.stringify(value);
-}
-
-function hashGraphPayload(value: any): string {
-    return createHash('sha256').update(stableStringify(value)).digest('hex');
-}
-
 /**
  * Rebuild the precomputed entity graph index for a tenant.
  * Reads entities + relations, builds a flat map, writes to platformSummary.
  * 
- * Cost: bounded entity + relation + answer reads plus one existing summary read.
+ * Cost: bounded entity + relation + answer reads plus source-version and existing-summary point reads.
  * Writes only when the deterministic source hash changes or tenant metadata is missing.
  */
 async function rebuildEntityGraphIndex(
@@ -1785,6 +1778,34 @@ async function rebuildEntityGraphIndex(
     readObserver?: AnswerlatticeSchedulerReadObserver,
 ): Promise<GraphRebuildResult> {
     const result: GraphRebuildResult = { rebuilt: false, entityCount: 0, relationCount: 0, orphanRelations: 0 };
+
+    // Snapshot invalidation counters before the graph queries. A concurrent
+    // mutation after this point will make the completed summary stale.
+    const sourceVersionsSnap = await db
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(getAnswerlatticeSourceVersionsDocId(tId, sId))
+        .get();
+    readObserver?.record({
+        source: DB_COLLECTIONS.PLATFORM_SUMMARY,
+        window: 'entity_graph_source_versions',
+        documentsReturned: sourceVersionsSnap.exists ? 1 : 0,
+        queryLimit: 1,
+    });
+    const rawSourceVersions = sourceVersionsSnap.exists ? sourceVersionsSnap.data() : null;
+    if (rawSourceVersions && (
+        rawSourceVersions.pId !== 'AL'
+        || rawSourceVersions.tId !== tId
+        || rawSourceVersions.sId !== sId
+        || !areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersions)
+    )) {
+        throw new Error('Answerlattice graph source versions are invalid; existing graph index was preserved.');
+    }
+    const normalizedSourceVersions = normalizeCompiledSourceVersions(rawSourceVersions);
+    const graphSourceVersions = {
+        entities: normalizedSourceVersions.entities || 0,
+        entityRelations: normalizedSourceVersions.entityRelations || 0,
+        canonical: normalizedSourceVersions.canonical || 0,
+    };
 
     // 1. Load active entities
     const entitiesSnap = await db
@@ -1803,18 +1824,23 @@ async function rebuildEntityGraphIndex(
         saturated: entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant,
     });
 
-    if (entitiesSnap.empty) return result;
     if (entitiesSnap.size > SCHEDULER_LIMITS.entitiesPerTenant) {
         throw new Error('Answerlattice graph entity limit exceeded; existing graph index was preserved.');
     }
 
-    const entityMap = new Map<string, { name: string; type: string }>();
+    const entityMap = new Map<string, { name: string; type: string; currentVersion?: number }>();
     for (const doc of entitiesSnap.docs) {
         const data = doc.data();
         if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) {
             throw new Error('Answerlattice graph entity scope is invalid; existing graph index was preserved.');
         }
-        entityMap.set(doc.id, { name: data.name, type: data.type });
+        entityMap.set(doc.id, {
+            name: data.name,
+            type: data.type,
+            ...(Number.isSafeInteger(data.currentVersion) && data.currentVersion > 0
+                ? { currentVersion: data.currentVersion }
+                : {}),
+        });
     }
     result.entityCount = entityMap.size;
 
@@ -1862,6 +1888,8 @@ async function rebuildEntityGraphIndex(
     }
 
     const answerCountByEntity = new Map<string, number>();
+    const driftedAnswerCountByEntity = new Map<string, number>();
+    const reviewRequiredAnswerCountByEntity = new Map<string, number>();
     for (const doc of answersSnap.docs) {
         const data = doc.data();
         if (data.pId !== 'AL' || data.tId !== tId || data.sId !== sId) {
@@ -1870,6 +1898,12 @@ async function rebuildEntityGraphIndex(
         const entityIds = normalizeAnswerlatticeFunctionEntityIds(data.scope?.entityIds);
         for (const entityId of entityIds) {
             answerCountByEntity.set(entityId, (answerCountByEntity.get(entityId) || 0) + 1);
+            if (data.governance?.driftFlag === true) {
+                driftedAnswerCountByEntity.set(entityId, (driftedAnswerCountByEntity.get(entityId) || 0) + 1);
+            }
+            if (data.governance?.reviewRequired === true) {
+                reviewRequiredAnswerCountByEntity.set(entityId, (reviewRequiredAnswerCountByEntity.get(entityId) || 0) + 1);
+            }
         }
     }
 
@@ -1877,9 +1911,14 @@ async function rebuildEntityGraphIndex(
     const graph: Record<string, {
         name: string;
         type: string;
+        currentVersion?: number;
         related: string[];
         relationTypes: Record<string, string[]>;
+        outgoingRelationTypes: Record<string, string[]>;
+        incomingRelationTypes: Record<string, string[]>;
         answerCount: number;
+        driftedAnswerCount: number;
+        reviewRequiredAnswerCount: number;
     }> = {};
 
     // Initialize nodes for all active entities
@@ -1887,9 +1926,14 @@ async function rebuildEntityGraphIndex(
         graph[entityId] = {
             name: entity.name,
             type: entity.type,
+            ...(entity.currentVersion ? { currentVersion: entity.currentVersion } : {}),
             related: [],
             relationTypes: {},
+            outgoingRelationTypes: {},
+            incomingRelationTypes: {},
             answerCount: answerCountByEntity.get(entityId) || 0,
+            driftedAnswerCount: driftedAnswerCountByEntity.get(entityId) || 0,
+            reviewRequiredAnswerCount: reviewRequiredAnswerCountByEntity.get(entityId) || 0,
         };
     }
 
@@ -1920,6 +1964,12 @@ async function rebuildEntityGraphIndex(
             if (!graph[fromId].relationTypes[relType].includes(toId)) {
                 graph[fromId].relationTypes[relType].push(toId);
             }
+            if (!graph[fromId].outgoingRelationTypes[relType]) {
+                graph[fromId].outgoingRelationTypes[relType] = [];
+            }
+            if (!graph[fromId].outgoingRelationTypes[relType].includes(toId)) {
+                graph[fromId].outgoingRelationTypes[relType].push(toId);
+            }
         }
 
         // Add reverse reference to toEntity's graph node
@@ -1927,12 +1977,18 @@ async function rebuildEntityGraphIndex(
             if (!graph[toId].related.includes(fromId)) {
                 graph[toId].related.push(fromId);
             }
-            // Reverse relation stored under same type for discoverability
+            // Keep the legacy bidirectional type map for existing consumers.
             if (!graph[toId].relationTypes[relType]) {
                 graph[toId].relationTypes[relType] = [];
             }
             if (!graph[toId].relationTypes[relType].includes(fromId)) {
                 graph[toId].relationTypes[relType].push(fromId);
+            }
+            if (!graph[toId].incomingRelationTypes[relType]) {
+                graph[toId].incomingRelationTypes[relType] = [];
+            }
+            if (!graph[toId].incomingRelationTypes[relType].includes(fromId)) {
+                graph[toId].incomingRelationTypes[relType].push(fromId);
             }
         }
     }
@@ -1942,37 +1998,40 @@ async function rebuildEntityGraphIndex(
         Object.keys(node.relationTypes).forEach(relationType => {
             node.relationTypes[relationType].sort();
         });
+        Object.keys(node.outgoingRelationTypes).forEach(relationType => {
+            node.outgoingRelationTypes[relationType].sort();
+        });
+        Object.keys(node.incomingRelationTypes).forEach(relationType => {
+            node.incomingRelationTypes[relationType].sort();
+        });
     });
 
     // 5. Write graph index to platformSummary
     const docKey = `entityGraphIndex_${tId}_${sId}`;
     const existingDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(docKey).get();
     const existingData = existingDoc.exists ? existingDoc.data() || {} : {};
-    const previousVersion = existingDoc.exists ? (existingData.version || 0) : 0;
+    const previousVersion = Number.isSafeInteger(existingData.version) && existingData.version > 0
+        ? existingData.version
+        : 0;
     const preservedInteractionRules = existingDoc.exists && existingData.interactionRules
         ? existingData.interactionRules
         : undefined;
-    const sourceHash = hashGraphPayload({
+    const graphPayload = {
         entityCount: result.entityCount,
         relationCount: result.relationCount,
         graph,
+        sourceVersions: graphSourceVersions,
         interactionRules: preservedInteractionRules || [],
-    });
-    const missingScopeMetadata = existingDoc.exists && (
-        existingData.pId !== 'AL'
-        || existingData.tId !== tId
-        || existingData.sId !== sId
-    );
+    };
+    const sourceHash = hashAnswerlatticeEntityGraphPayload(graphPayload);
 
-    if (existingDoc.exists && existingData.sourceHash === sourceHash) {
-        if (missingScopeMetadata) {
-            await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(docKey).set({
-                pId: 'AL',
-                tId,
-                sId,
-                metadataBackfilledAt: Timestamp.now(),
-            }, { merge: true });
-        }
+    if (existingDoc.exists && isCurrentAnswerlatticeEntityGraphIndex(existingData, {
+        tId,
+        sId,
+        payload: graphPayload,
+        sourceHash,
+        preservesInteractionRules: Boolean(preservedInteractionRules),
+    })) {
         result.unchanged = true;
         return result;
     }
@@ -1987,6 +2046,7 @@ async function rebuildEntityGraphIndex(
         relationCount: result.relationCount,
         sourceHash,
         graph,
+        sourceVersions: graphSourceVersions,
         // interactionRules are authored separately — preserve them if they exist
         ...(preservedInteractionRules
             ? { interactionRules: preservedInteractionRules }

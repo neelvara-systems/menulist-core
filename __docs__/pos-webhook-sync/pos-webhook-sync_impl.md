@@ -101,6 +101,14 @@ Firestore rules deny every client read/write. Next.js routes use Admin SDK after
 
 The function runs from secret read, connection test, and live delivery. If both server and legacy values exist, the server document is authoritative and the legacy field is removed.
 
+Every canonical server-secret read first projects an exact `pId: 'ML'`, numeric
+tenant/store identity, positive safe-integer version, and bounded secret. A
+persisted row carrying a contradictory product, tenant, or store identity is
+rejected. Legacy server rows that omit identity fields remain compatible and
+are exact-rewritten with the canonical identity on the next migration-capable
+read. Migration and rotation exact-replace the private secret document so
+unknown persisted fields are not retained.
+
 ### Secret route
 
 `GET` accepts strict query IDs and returns the current secret to an authorized integration manager. Compact and nested authenticated tenant/store aliases must agree with the requested scope. The secret transaction reads the current tenant as well as the store and secret, rejecting inactive, deleted, blocked, or tenant-mismatched scope before reveal, migration, ensure, or rotation. `POST` accepts a bounded strict body:

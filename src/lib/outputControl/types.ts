@@ -34,7 +34,7 @@ export interface HoursConfidenceInput {
     /** Store's working hours (day → time range) */
     workingHours?: Record<string, string>;
     /** When workingHours was last updated (Firestore Timestamp or Date-like) */
-    hoursLastUpdatedAt?: any;
+    hoursLastUpdatedAt?: unknown;
     /** Store timezone (IANA) */
     timeZone?: string;
 }

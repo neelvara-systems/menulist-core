@@ -229,7 +229,7 @@ function isSupportedExtractionMimeType(type: string, source: "menu_link_import" 
 function normalizeTargetLanguages(languages: Array<{ code: string; name: string }>): Array<{ code: string; name: string }> {
   const knownByCode = new Map(GlobalLanguagesList.map((language) => [language.code, language]));
   const requestedCodes = languages
-    .map((language) => String(language.code || "").trim().toLowerCase())
+    .map((language) => language.code.trim().toLowerCase())
     .filter((code) => knownByCode.has(code));
 
   return normalizeProjectLanguages(requestedCodes)

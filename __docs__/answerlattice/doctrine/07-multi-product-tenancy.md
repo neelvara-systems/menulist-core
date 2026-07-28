@@ -413,15 +413,14 @@ dashboard/
 | `logic/embedArticleWorker.ts`  | KB article vector embedding (task queue)                          |
 | `logic/regenerateEmbedding.ts` | KB embedding regeneration (callable)                              |
 | `logic/publishApprovedJob.ts`  | KB ingestion publish (callable)                                   |
-| `analytics/kbQuality.ts`       | Dormant MenuList compatibility implementation. It is not scheduled or exported; dedicated deterministic chat intelligence runs in `functions-answerlattice/`. |
-| `services/gemini/kbQuality.ts` | Dormant MenuList compatibility provider helper. It has no active scheduler/export path and is not part of Answerlattice runtime truth. |
+| Retired MenuList KB Quality source | The former worker and provider helper were removed; dedicated deterministic chat intelligence runs in `functions-answerlattice/`. |
 | `types/knowledgeBase.types.ts` | KB types                                                          |
 
 ### MenuList Functions (stay in `functions/`)
 
 Everything else: menu processing, analytics, messaging, billing, monitoring, decision blocks scoring, customer analytics, alert escalation, admin tools.
 
-Dormant MenuList chat-monitoring compatibility boundary: the old Feedback Intelligence, KB Quality, Weekly Narrative, and Health Signals implementations remain as unreferenced recovery/history code in `functions/src/`, but the active MenuList scheduler records those task names as `moved_to_answerlattice_runtime` and performs no related reads, provider calls, or writes. Dedicated Answerlattice nightly aggregation and deterministic `chat_intelligence` now own current feedback/weekly output in the Answerlattice project. Do not reconnect the dormant MenuList workers or describe them as active runtime.
+Dormant MenuList chat-monitoring compatibility boundary: the old Feedback Intelligence, Weekly Narrative, and Health Signals implementations remain as unreferenced recovery/history code in `functions/src/`. The former KB Quality worker, provider helper, and legacy support health check are retired and absent. The active MenuList scheduler records the legacy task names as `moved_to_answerlattice_runtime` and performs no related reads, provider calls, or writes. Dedicated Answerlattice nightly aggregation and deterministic `chat_intelligence` now own current feedback/weekly output in the Answerlattice project. Do not reconnect dormant MenuList workers or restore the retired KB path.
 
 ### Unified Scheduler Split
 

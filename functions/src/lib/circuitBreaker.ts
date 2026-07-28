@@ -18,6 +18,11 @@
 import * as functions from 'firebase-functions';
 import { CIRCUIT_BREAKER_CONFIG } from '../constants/ai';
 import { isFunctionFeatureEnabled } from '../constants/features';
+import {
+    getBoundedFunctionsErrorCode,
+    getBoundedFunctionsErrorName,
+    getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
 
 type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
@@ -47,16 +52,14 @@ const DEFAULT_OPTIONS: Required<CircuitBreakerOptions> = {
 
 function getCircuitBreakerErrorContext(error: unknown): Record<string, string> {
     if (error instanceof Error) {
-        const record = error as Error & { code?: unknown; status?: unknown; statusCode?: unknown };
-        const status = record.status ?? record.statusCode;
+        const sourceErrorCode = getBoundedFunctionsErrorCode(error);
+        const sourceErrorStatus = getBoundedFunctionsErrorStatus(error);
 
         return {
-            sourceErrorName: (error.name || 'Error').slice(0, 80),
-            ...(record.code === undefined || record.code === null ? {} : {
-                sourceErrorCode: String(record.code).slice(0, 64),
-            }),
-            ...(status === undefined || status === null ? {} : {
-                sourceErrorStatus: String(status).slice(0, 32),
+            sourceErrorName: getBoundedFunctionsErrorName(error) || 'Error',
+            ...(sourceErrorCode === undefined ? {} : { sourceErrorCode }),
+            ...(sourceErrorStatus === undefined ? {} : {
+                sourceErrorStatus: sourceErrorStatus.toString(),
             }),
         };
     }

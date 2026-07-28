@@ -16,6 +16,8 @@ Structured pre-launch verification checklist. Run through each section before on
 
 For the remaining external/runtime gates that local source checks cannot prove, use [External Certification Runbook](./external-certification-runbook.md).
 
+For the July 2026 Gemini, Firebase Functions/CLI, Firebase Extensions, Upstash, Storage lifecycle, and dependency-audit decisions, use [July 2026 Stack Change Readiness](./july-2026-stack-change-readiness.md).
+
 For active outages, security events, wrong public truth, billing/provider failures, or rollback decisions, use the [MenuList Incident Response Runbook](./incident-response-runbook.md). The incident runbook governs response work only; it does not replace launch certification evidence.
 
 Status meaning: ✅ means the repository, static configuration, or documented platform capability is currently confirmed for that row. It does not override missing deploy, provider, browser/device, owner-controlled setup, or production-host evidence. When a row depends on those external conditions, the matching External Certification Runbook gate remains the launch authority.
@@ -53,6 +55,9 @@ Do not convert this table into ✅ status until the corresponding runbook gate h
 | Cloud Billing export to BigQuery configured | ☐ | Pre-production cost visibility. Enable Standard + Detailed usage export for billing account `Firebase Payment` into `menulist.cloud_billing_export` or a dedicated FinOps project. |
 | Gemini staging/production keys isolated | ☐ | Dedicated restricted keys per environment; do not share local/staging/prod |
 | Gemini quota/budget monitoring configured | ☐ | Check model/project quota and budget alerts before launch |
+| Gemini 3 request/model migration source gate | ✅ | `npm run verify:gemini-runtime-migration` guards SDK 2.13.0, explicit stable model IDs, the byte-identical request compiler, gateway use, and SignalDesk persisted-route safety. QA provider smoke remains external. |
+| Firebase Extensions inventory | ☐ | Run `npm run audit:firebase-extensions` while authenticated. The July 26 attempt checked all eight QA/production product targets and was blocked by missing Firebase login; do not infer that no extensions exist. |
+| Firebase Functions SDK/CLI alignment | ✅ | All three Functions packages pin stable `firebase-functions` 7.3.0; Answerlattice CI pins Firebase CLI 15.24.0. QA deploy evidence remains pending. |
 | SAFE_MODE circuit breaker verified | ☐ | Core code exists and menu extraction worker coverage is source-gated. Before launch, verify `/ops` toggle, AI route `503`, public menu/OBP unaffected, budget webhook activation, deployed worker behavior, and any newly added direct Function paths. |
 | Environment variables set in Vercel | ☐ | All secrets configured |
 | Dependency/package freeze gate passes | ✅ | `npm run verify:dependency-freeze` pins root, MenuList Functions, and Answerlattice Functions package declarations to their existing lockfile-resolved versions and blocks drift from the current runtime set. |
@@ -68,7 +73,7 @@ Do not convert this table into ✅ status until the corresponding runbook gate h
 |-------|--------|-------|
 | Firestore security rules deployed | ☐ | Use `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json` after targeted validation passes; production rules deploy requires QA evidence and explicit production approval. |
 | No public write access in rules | ✅ | Verified in SS audit (Feb 7) |
-| Rate limiting active (Upstash) | ☐ | `ENABLE_RATE_LIMITING: true` and protected public flows fail closed in source, but target credentials, live Upstash behavior, limits, and outage handling still need non-production verification. |
+| Rate limiting active (Upstash) | ☐ | Atomic sliding-window logic, bounded timeout/circuit breaker, and fail-closed expensive/mutation paths are source-gated by `npm run verify:provider-resilience`. Run `npm run verify:upstash-readiness` with target credentials and confirm Marketplace origin in the Upstash console. |
 | Sentry configured (prod project) | ☐ | Source integration and production env templates exist; the production DSN, release/source-map association, and captured test event still need target verification. |
 | HTTPS enforced | ☐ | Middleware configures HSTS for production responses, but Gate 8 must verify production HTTP-to-HTTPS behavior, TLS, and the delivered HSTS header. |
 | CSP headers active | ✅ | Middleware.ts |
@@ -147,7 +152,7 @@ Each must:
 
 | Check | Status | Notes |
 |-------|--------|-------|
-| Firestore daily export configured | ☐ | Firebase Console → Extensions or scheduled export |
+| Firestore daily export configured | ☐ | Use an owned scheduled export workflow. Do not add a Firebase Extension for this dependency. |
 | Export verified (can restore) | ☐ | Test restore to staging |
 | Storage backup strategy defined | ☐ | Images in Firebase Storage with bucket versioning |
 

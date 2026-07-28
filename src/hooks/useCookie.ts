@@ -1,39 +1,73 @@
-import React, { useState } from "react";
-/**
-* Custom hook to retrieve and store cookies for our application.
-* @param {String} key The key to store our data to
-* @param {String} defaultValue The default value to return in case the cookie doesn't exist
-*/
-const useCookie = (key, defaultValue) => {
-    const getCookie = () => getItem(key) || defaultValue;
-    const [cookie, setCookie] = useState(getCookie());
-    const updateCookie = (value, numberOfDays) => {
+'use client';
+
+import { useState } from 'react';
+
+export const parseCookieItem = <T,>(cookieHeader: string, key: string): T | undefined => {
+    if (!key) return undefined;
+    const encodedName = `${encodeURIComponent(key)}=`;
+    const match = cookieHeader
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(encodedName));
+    if (!match) return undefined;
+
+    try {
+        return JSON.parse(decodeURIComponent(match.slice(encodedName.length))) as T;
+    } catch {
+        return undefined;
+    }
+};
+
+const getCookieItem = <T,>(key: string): T | undefined => (
+    typeof document === 'undefined' ? undefined : parseCookieItem<T>(document.cookie, key)
+);
+
+export const serializeCookieItem = <T,>(
+    key: string,
+    value: T,
+    numberOfDays: number,
+    nowMs = Date.now(),
+): string | null => {
+    if (
+        !key
+        || !Number.isFinite(numberOfDays)
+        || numberOfDays <= 0
+        || !Number.isFinite(nowMs)
+    ) {
+        return null;
+    }
+
+    try {
+        const expiresAt = new Date(nowMs + (numberOfDays * 24 * 60 * 60 * 1000));
+        const serializedValue = JSON.stringify(value);
+        if (serializedValue === undefined) return null;
+        return `${encodeURIComponent(key)}=${encodeURIComponent(serializedValue)}; expires=${expiresAt.toUTCString()}; path=/; SameSite=Lax`;
+    } catch {
+        return null;
+    }
+};
+
+const setCookieItem = <T,>(key: string, value: T, numberOfDays: number): boolean => {
+    if (typeof document === 'undefined') return false;
+    const serialized = serializeCookieItem(key, value, numberOfDays);
+    if (!serialized) return false;
+    document.cookie = serialized;
+    return true;
+};
+
+const useCookie = <T,>(
+    key: string,
+    defaultValue: T,
+): readonly [T, (value: T, numberOfDays: number) => boolean] => {
+    const [cookie, setCookie] = useState<T>(() => getCookieItem<T>(key) ?? defaultValue);
+
+    const updateCookie = (value: T, numberOfDays: number): boolean => {
+        if (!setCookieItem(key, value, numberOfDays)) return false;
         setCookie(value);
-        setItem(key, value, numberOfDays);
+        return true;
     };
-    return [cookie, updateCookie];
+
+    return [cookie, updateCookie] as const;
 };
+
 export default useCookie;
-
-const setItem = (key, value, numberOfDays) => {
-    const now = new Date();
-    now.setTime(now.getTime() + (numberOfDays * 60 * 60 * 24 * 1000));
-    document.cookie = `${key}=${JSON.stringify(value)}; expires=${now.toUTCString()}; path=/`;
-};
-
-const getItem = (key) => {
-    let value: any = null;
-    var name = key + "=";
-    var decodedCookie = decodeURIComponent(window.document.cookie);
-    var ca = decodedCookie.split(';');
-    ca && ca.map((dataString) => {
-        //remove spaces from string at starting
-        while (dataString.charAt(0) == ' ') {
-            dataString = dataString.substring(1);
-        }
-        if (dataString.indexOf(name) == 0) {
-            value = dataString.substring(name.length, dataString.length);
-        }
-    })
-    return value ? JSON.parse(value) : '';
-}

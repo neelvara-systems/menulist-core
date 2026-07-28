@@ -105,23 +105,38 @@ export const RESELLER_CAPS = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-const normalizeLocationCount = (locationCount?: number): number => {
-    const count = Number(locationCount || 1);
-    return Number.isFinite(count) && count > 0 ? Math.floor(count) : 1;
+const normalizeLocationCount = (locationCount?: unknown): number => {
+    return Number.isSafeInteger(locationCount) && Number(locationCount) > 0
+        ? Number(locationCount)
+        : 1;
 };
 
-const toDate = (value: any): Date | null => {
-    if (!value) return null;
-    if (value instanceof Date) return value;
-    if (typeof value?.toDate === 'function') return value.toDate();
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+const toDate = (value: unknown): Date | null => {
+    try {
+        if (!value) return null;
+        const candidate = value instanceof Date
+            ? value
+            : typeof (value as { toDate?: unknown })?.toDate === 'function'
+                ? (value as { toDate: () => unknown }).toDate()
+                : value;
+        const parsed = candidate instanceof Date
+            ? candidate
+            : typeof candidate === 'string' || typeof candidate === 'number'
+                ? new Date(candidate)
+                : null;
+        return parsed && Number.isFinite(parsed.getTime()) ? parsed : null;
+    } catch {
+        return null;
+    }
 };
 
 /** Calculate total amount for offline prepaid (tier × duration × locations). */
 export function calculateOfflineAmount(tierId: string, durationMonths: number, locationCount: number = 1): number {
     const tier = RESELLER_PRICING_TIERS.find(t => t.id === tierId);
     if (!tier) throw new Error(`Unknown pricing tier: ${tierId}`);
+    if (!Number.isSafeInteger(durationMonths) || durationMonths <= 0) {
+        throw new Error('Invalid prepaid duration.');
+    }
     return tier.monthlyPriceINR * durationMonths * normalizeLocationCount(locationCount);
 }
 
@@ -133,18 +148,22 @@ export function calculateOfflineAmount(tierId: string, durationMonths: number, l
 export function calculateOfflineLocationTopup(params: {
     locationCount?: number;
     pricingTier: string;
-    validUntil: any;
+    validUntil: unknown;
     now?: Date;
 }): { amountPaise: number; daysRemaining: number; locationCount: number } {
     const tier = RESELLER_PRICING_TIERS.find(t => t.id === params.pricingTier);
     if (!tier) throw new Error(`Unknown pricing tier: ${params.pricingTier}`);
 
-    const now = params.now || new Date();
+    const now = toDate(params.now || new Date());
     const validUntil = toDate(params.validUntil);
+    const locationCount = normalizeLocationCount(params.locationCount);
+    if (!now || !validUntil) {
+        return { amountPaise: 0, daysRemaining: 0, locationCount };
+    }
+
     const daysRemaining = validUntil
         ? Math.max(0, Math.ceil((validUntil.getTime() - now.getTime()) / MS_PER_DAY))
         : 0;
-    const locationCount = normalizeLocationCount(params.locationCount);
     const dailyAmount = tier.monthlyPriceINR / 30;
 
     return {

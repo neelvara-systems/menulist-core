@@ -16,6 +16,7 @@ import {
 } from '@lib/answerlattice/signalIdentity';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import type { AnswerlatticeSignalType } from '@type/answerlattice';
 
@@ -25,11 +26,12 @@ const cleanSignalText = (value: unknown, maxLength = 500): string => (
     redactAnswerlatticeSupportEvidenceText(value, maxLength)
 );
 
-const isAlreadyExistsError = (error: any): boolean => (
-    error?.code === 6
-    || error?.code === 'already-exists'
-    || String(error?.code || '').toUpperCase().includes('ALREADY_EXISTS')
-);
+const isAlreadyExistsError = (error: unknown): boolean => {
+    const code = getBoundedErrorCode(error);
+    return code === '6'
+        || code === 'already-exists'
+        || Boolean(code?.toUpperCase().includes('ALREADY_EXISTS'));
+};
 
 const persistAnswerlatticeServerSignal = async (
     params: AnswerlatticeSignalPersistenceParams,

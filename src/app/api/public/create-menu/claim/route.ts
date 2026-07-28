@@ -27,6 +27,7 @@ import { admin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { normalizeGrowthAcquisitionAttribution } from '@lib/growth/acquisitionAttribution';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { normalizeMenuListPublicEntityIdentityAliases } from '@lib/publicTruth/entityEligibility';
 import { mceValidate, toMCEMetadata } from '@lib/mce';
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
@@ -464,9 +465,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 existingSummaryProjectsForDefaultDemotion = existingSummaryDoc.exists
                     ? parseSummaryProjects(existingSummaryDoc.data())
                     : {};
-                const storeTenantId = Number(storeData.tenantId ?? storeData.tId ?? 0);
+                const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([
+                    storeData.tenantId,
+                    storeData.tId,
+                ]);
+                const storeIdentityAliases = [storeData.storeId, storeData.sId]
+                    .filter((value) => value !== undefined && value !== null);
                 if (
-                    storeTenantId !== tenantId
+                    storeTenantScope?.numericId !== tenantId
+                    || (
+                        storeIdentityAliases.length > 0
+                        && normalizeMenuListPublicEntityIdentityAliases(storeIdentityAliases)?.numericId !== storeId
+                    )
                     || storeData.active === false
                     || storeData.deleted === true
                     || isPlatformEntityBlocked(storeData)

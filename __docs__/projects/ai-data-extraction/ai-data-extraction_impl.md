@@ -697,6 +697,7 @@ Full ChatGPT extraction prompt discussion reviewed against codebase. **~80% redu
 | **Extraction Learning Loop** | ✅ Done (10.2) | `EXTRACTION_CORRECTION` in menuChangeLog. Nightly aggregation.                               |
 | **Circuit Breaker**          | ✅ Done        | `functions/src/lib/circuitBreaker.ts`. Feature flag `ENABLE_CIRCUIT_BREAKER`.                |
 | **Rate Limiting**            | ✅ Done        | Upstash Redis. 5 req/min per project for expensive AI.                                       |
+| **Failed-batch source identity** | ✅ Done | Partial provider failures report each uploaded file's preserved original `sourceFileIndex`; review/retry never reconstructs identity from batch position. |
 
 ### Remaining Improvements (Not Yet Implemented)
 

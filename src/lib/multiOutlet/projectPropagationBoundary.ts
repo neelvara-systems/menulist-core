@@ -1,5 +1,5 @@
 import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
-import { hashString } from "@util/hash";
+import { v5 as uuidv5 } from "uuid";
 
 export const MAX_PROJECT_PROPAGATION_STORES = 200;
 
@@ -92,7 +92,8 @@ export function buildDeterministicOutletProjectId(params: {
         return null;
     }
 
-    const projectId = `${tenantScope.documentId}-linked-${hashString(masterScope.projectId)}-${outletScope.documentId}`;
+    const masterIdentity = uuidv5(masterScope.projectId, uuidv5.URL).replaceAll("-", "");
+    const projectId = `${tenantScope.documentId}-linked-${masterIdentity}-${outletScope.documentId}`;
     const projectScope = normalizeMultiOutletProjectId(projectId);
     return projectScope
         && projectScope.tenantDocumentId === tenantScope.documentId

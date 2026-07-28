@@ -1,4 +1,8 @@
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 
 type HookLogContext = Record<string, boolean | number | string | null | undefined>;
@@ -11,16 +15,11 @@ export const getBoundedHookStringContext = (
 };
 
 const getHookErrorName = (error: unknown): string | undefined => {
-  if (error === undefined) return undefined;
-  if (error instanceof Error) return error.name || 'Error';
-  return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getHookErrorCode = (error: unknown): string | undefined => {
-  if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-  const code = (error as { code?: unknown }).code;
-  if (code === undefined || code === null) return undefined;
-  return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 export const logHookFailure = (

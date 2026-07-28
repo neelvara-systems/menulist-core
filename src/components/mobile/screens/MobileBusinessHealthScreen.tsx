@@ -472,6 +472,7 @@ export default function MobileBusinessHealthScreen({ onBack, onOpenMenuTab, onOp
                 <MobilePublicTruthMonitorCard
                     selectedProjectId={scopedProjectId}
                     storeId={storeDetails?.storeId}
+                    tenantId={tenantDetails?.tenantId || storeDetails?.tenantId}
                 />
 
                 {isHealthReady && analyticsMetrics.length ? (

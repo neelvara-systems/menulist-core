@@ -16,7 +16,7 @@ Relevant fields include:
 - `widgetRuntimeStatus`;
 - `answerlatticeWidgetApi`.
 
-`answerlatticeWidgetApi` stores active key hashes and bounded metadata. Raw `al_*` keys are returned once and are not stored for later recovery.
+`answerlatticeWidgetApi` stores active key hashes and bounded metadata. Raw `al_*` keys are returned once and are not stored for later recovery. Historical `encryptedKey` and `encryptionVersion` fields are ignored by normalization and are removed the next time a legitimate key mutation rewrites the bounded state; no cleanup-only write is introduced.
 
 Managed key records are authoritative only with exact active/revoked status, Answerlattice product, widget purpose, and known nonempty unique scopes. A malformed managed record is not upgraded into an active credential, and the top-level legacy hash fallback is available only when the managed `keyHashes` representation is absent.
 
@@ -25,7 +25,7 @@ Managed key records are authoritative only with exact active/revoked status, Ans
 | Operation | Firestore shape | Cost control |
 |---|---|---|
 | Read widget settings | One scoped store read when not already resolved by the request path | Authenticated, rate-limited, private no-store response |
-| Save widget settings | At most one store merge | Normalized no-op saves skip the write |
+| Save widget settings | One transactional store read and at most one store write | Exact retries/no-op saves and stale conflicts use zero writes; concurrent contention may cause a bounded transaction retry |
 | Generate key | One transactional store read/write | Key records remain bounded |
 | Rename key | One transactional store read/write | Opaque key ID; no raw-key read |
 | Revoke key | One transactional store read/write | Hash removed from active lookup; only bounded recent revoked records retained |
@@ -64,6 +64,7 @@ The recent widget activity panel uses `aiSearchHistory` index shape `pId + tId +
 
 - Dashboard access is enforced by authenticated server routes, exact Answerlattice session scope, and `canManageWidget`.
 - Dedicated Firestore rules allow only scoped reads of the store from supported clients and deny direct client writes to widget configuration and credentials.
+- Shared Firestore rules preserve `answerlatticeWidgetApi`, `widgetConfig`, `widgetAllowedOrigins`, schema/version/update fields, and `widgetRuntimeStatus` as server-managed fields. Direct browser writes cannot bypass validation or weaken the origin allowlist.
 - Public widget access is mediated by server routes; a connected source or syntactically valid key is not sufficient by itself.
 - Widget-key resolution requires all supplied product, tenant, store, and document-path aliases on `stores/{sId}` to agree before the scope can reach tokens, reads, writes, or caches.
 - `publicApi` and `answerlatticeWidgetApi` credentials remain separate.
@@ -86,4 +87,4 @@ Revocation is therefore bounded, not globally instantaneous. Public claims must 
 
 ## Deployment
 
-The restart-462 credential-scope repair changes app/server routes only. Restart 463 changes the existing Answerlattice scheduled compiled-context builder and therefore requires an authorized QA deploy of `functions:answerlatticeNightly`. No Firestore rules, indexes, or Storage rules changed.
+The July 26 Feature 15 refresh changes shared `firestore.rules`. It adds no index, Storage rule, Cloud Function, collection, or scheduler. The dedicated Answerlattice rules require no change because direct store writes are already denied. The scoped `firebase deploy --only firestore:rules --project menulist-qa` attempt stopped before upload with `Failed to authenticate, have you run firebase login?`; no remote shared-rules revision changed.

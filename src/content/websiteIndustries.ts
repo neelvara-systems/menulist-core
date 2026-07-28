@@ -1,3 +1,15 @@
+export const WEBSITE_INDUSTRY_SLUGS = [
+    'restaurants',
+    'cafes-bakeries',
+    'takeaway-cloud-kitchens',
+    'multi-location-food-businesses',
+    'salons-spas',
+    'service-list-businesses',
+    'local-service-businesses',
+] as const;
+
+export type WebsiteIndustrySlug = (typeof WEBSITE_INDUSTRY_SLUGS)[number];
+
 export type WebsiteIndustryPage = {
     audience: string;
     canonicalPath: string;
@@ -27,7 +39,7 @@ export type WebsiteIndustryPage = {
     }>;
     secondaryCtaLabel: string;
     secondaryCtaPath: string;
-    slug: string;
+    slug: WebsiteIndustrySlug;
     title: string;
 };
 
@@ -348,4 +360,12 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
 
 export function getWebsiteIndustryPage(slug: string): WebsiteIndustryPage | undefined {
     return websiteIndustryPages.find((page) => page.slug === slug);
+}
+
+export function getRequiredWebsiteIndustryPage(slug: WebsiteIndustrySlug): WebsiteIndustryPage {
+    const page = getWebsiteIndustryPage(slug);
+    if (!page) {
+        throw new Error(`Missing required website industry page: ${slug}`);
+    }
+    return page;
 }

@@ -3,6 +3,7 @@ import {
     CAMPAIGNCUE_ASSET_ID_PREFIX,
     CAMPAIGNCUE_COLLECTIONS,
     CAMPAIGNCUE_EVENT_ID_PREFIX,
+    CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS,
     CAMPAIGNCUE_PAGE_SIZE,
 } from "@constant/campaigncue/database";
 import {
@@ -14,6 +15,7 @@ import {
     campaigncueFirestoreAdmin as firestoreAdmin,
     campaigncueStorageAdmin,
 } from "@lib/firebase/campaigncueFirebaseAdmin";
+import { sanitizeForFirestore as sanitizeFirestoreValue } from "@lib/firestore/sanitizeForFirestore";
 import type {
     CampaignCueCueLayerAutosaveInput,
     CampaignCueCueLayerExportInput,
@@ -40,6 +42,7 @@ import {
     logCampaignCueServerError,
     type CampaignCueSessionScope,
 } from "../server";
+import { assertCampaignCueWorkspaceRecordScope } from "../workspaceScope";
 import { buildCampaignCueCueLayerProjection } from "./editorProjection";
 import {
     assertCampaignCueCueLayerDocumentScope,
@@ -74,17 +77,10 @@ import {
 
 const nowTimestamp = () => admin.firestore.Timestamp.now();
 const CUE_LAYERS_IDEMPOTENCY_LEASE_MS = 5 * 60 * 1000;
-const sanitizeForAdminFirestore = (value: any): any => {
-    if (value === undefined) return null;
-    if (value === null) return null;
-    if (typeof value !== "object") return value;
-    if (typeof value?.toDate === "function" && typeof value?.seconds === "number") {
-        return admin.firestore.Timestamp.fromDate(value.toDate());
-    }
-    if (value instanceof Date) return admin.firestore.Timestamp.fromDate(value);
-    if (Array.isArray(value)) return value.map(sanitizeForAdminFirestore);
-    return Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, sanitizeForAdminFirestore(nested)]));
-};
+const sanitizeForAdminFirestore = (value: unknown) => sanitizeFirestoreValue(value, {
+    dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
+    undefinedObjectValue: "omit",
+});
 
 const workspaceRef = (workspaceId: string) => (
     firestoreAdmin.collection(CAMPAIGNCUE_COLLECTIONS.WORKSPACES).doc(workspaceId)
@@ -93,6 +89,18 @@ const workspaceRef = (workspaceId: string) => (
 const workspaceSubcollection = (workspaceId: string, collection: string) => (
     workspaceRef(workspaceId).collection(collection)
 );
+
+async function assertCurrentCueLayersWorkspaceAccess(
+    transaction: FirebaseFirestore.Transaction,
+    scope: CampaignCueSessionScope,
+    workspaceId: string,
+) {
+    const currentWorkspaceSnap = await transaction.get(workspaceRef(workspaceId));
+    return assertCampaignCueWorkspaceRecordScope(
+        currentWorkspaceSnap.exists ? currentWorkspaceSnap.data() : null,
+        { ...scope, workspaceId },
+    );
+}
 
 const jsonBuffer = (value: unknown) => Buffer.from(JSON.stringify(value, null, 2), "utf8");
 
@@ -221,6 +229,35 @@ async function deleteStorageObjectBestEffort(path: string, cleanupTarget: string
     }
 }
 
+async function withUncommittedStorageCleanup<T>(
+    cleanupTarget: string,
+    operation: (
+        recordUploadedPath: (path: string) => void,
+        markCommitted: () => void,
+    ) => Promise<T>,
+): Promise<T> {
+    const uploadedPaths: string[] = [];
+    let committed = false;
+    try {
+        return await operation(
+            (path) => uploadedPaths.push(path),
+            () => {
+                committed = true;
+            },
+        );
+    } catch (error) {
+        if (!committed) {
+            await Promise.all(
+                uploadedPaths
+                    .slice()
+                    .reverse()
+                    .map((path) => deleteStorageObjectBestEffort(path, cleanupTarget)),
+            );
+        }
+        throw error;
+    }
+}
+
 async function readJsonArtifact(path: string, maxBytes: number): Promise<unknown> {
     const stream = campaigncueStorageAdmin.bucket().file(path).createReadStream();
     const chunks: Buffer[] = [];
@@ -322,17 +359,19 @@ async function hydrateDocumentAssets(documentValue: CreativeEditorDocument, laye
 
 async function claimCueLayersIdempotency(params: {
     action: string;
-    idempotencyKey?: string;
+    idempotencyKey: string;
     requestHash: string;
     scope: CampaignCueSessionScope;
     workspaceId: string;
 }) {
-    if (!params.idempotencyKey) return { claimId: null, ref: null, replay: null };
     const ref = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.idempotencyKey);
     const claimId = buildCampaignCueCueLayerId("claim");
     const nowMillis = Date.now();
     const result = await firestoreAdmin.runTransaction(async (transaction) => {
-        const snap = await transaction.get(ref);
+        const [snap] = await Promise.all([
+            transaction.get(ref),
+            assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, params.workspaceId),
+        ]);
         const expected = {
             action: params.action,
             actorId: params.scope.userId,
@@ -356,6 +395,7 @@ async function claimCueLayersIdempotency(params: {
             createdAt: snap.exists ? snap.data()?.createdAt || now : now,
             updatedAt: now,
             leaseExpiresAt: admin.firestore.Timestamp.fromMillis(nowMillis + CUE_LAYERS_IDEMPOTENCY_LEASE_MS),
+            expiresAt: admin.firestore.Timestamp.fromMillis(nowMillis + CAMPAIGNCUE_IDEMPOTENCY_RETENTION_MS),
         }));
         return { claimId, replay: null };
     });
@@ -537,6 +577,9 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         return { boot, design: boot.design, job };
     }
 
+    return withUncommittedStorageCleanup(
+        "cue_layers_upload",
+        async (recordUploadedPath, markCommitted) => {
     const designId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.DESIGN);
     const jobId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.JOB);
     const sourcePackageId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.SOURCE_PACKAGE);
@@ -562,6 +605,7 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         },
         path: originalPath,
     });
+    recordUploadedPath(originalPath);
     const originalAsset = buildCueLayerAssetRef({
         contentType: parsed.mimeType,
         height,
@@ -625,6 +669,7 @@ export async function createCampaignCueCueLayerUploadServer(params: {
             },
         },
     });
+    recordUploadedPath(sourcePackageAsset.storagePath);
 
     const built = buildCampaignCueCueLayerProjection({
         businessBrain,
@@ -643,6 +688,7 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         scope: assetScope,
         value: built.layerIndex,
     });
+    recordUploadedPath(layerIndexAsset.storagePath);
     const editorSnapshotAsset = await uploadJsonArtifact({
         assetId: versionId,
         path: buildCueLayersStoragePaths.editorDocumentSnapshot(workspaceId, designId, versionId),
@@ -650,6 +696,7 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         scope: assetScope,
         value: dehydrateCampaignCueCueLayerDocumentAssets(built.document, collectLayerAssetIds(built.layerIndex)),
     });
+    recordUploadedPath(editorSnapshotAsset.storagePath);
     const now = nowTimestamp();
     const design: CampaignCueCueLayerDesign = {
         createdAt: now,
@@ -701,8 +748,11 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         workspaceId,
     };
     await firestoreAdmin.runTransaction(async (transaction) => {
-        if (idempotency.ref && idempotency.claimId) {
-            const idempotencySnap = await transaction.get(idempotency.ref);
+        const [, idempotencySnap] = await Promise.all([
+            assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, workspaceId),
+            idempotency.ref && idempotency.claimId ? transaction.get(idempotency.ref) : Promise.resolve(null),
+        ]);
+        if (idempotencySnap && idempotency.claimId) {
             assertCampaignCueCueLayersClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
                 action: idempotencyAction,
                 actorId: params.scope.userId,
@@ -733,6 +783,7 @@ export async function createCampaignCueCueLayerUploadServer(params: {
             }), { merge: true });
         }
     });
+    markCommitted();
     const hydratedDocument = await hydrateDocumentAssets(built.document, built.layerIndex);
     return {
         boot: {
@@ -743,6 +794,8 @@ export async function createCampaignCueCueLayerUploadServer(params: {
         design,
         job,
     };
+        },
+    );
 }
 
 async function getCueLayerDesign(params: { designId: string; scope: CampaignCueSessionScope }) {
@@ -879,9 +932,14 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
         },
     });
     const designRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS).doc(design.id);
-    const committedDesign = await firestoreAdmin.runTransaction(async (transaction) => {
-        const currentSnap = await transaction.get(designRef);
-        const idempotencySnap = idempotency.ref ? await transaction.get(idempotency.ref) : null;
+    let committedDesign: CampaignCueCueLayerDesign | null;
+    try {
+        committedDesign = await firestoreAdmin.runTransaction(async (transaction) => {
+        const [currentSnap, idempotencySnap] = await Promise.all([
+            transaction.get(designRef),
+            idempotency.ref ? transaction.get(idempotency.ref) : Promise.resolve(null),
+            assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, workspaceId),
+        ]);
         if (idempotencySnap && idempotency.claimId) {
             assertCampaignCueCueLayersClaimOwnership(idempotencySnap.data(), {
                 action: idempotencyAction,
@@ -948,7 +1006,11 @@ export async function autosaveCampaignCueCueLayerDesignServer(params: {
             ...currentDesign,
             ...update,
         } as CampaignCueCueLayerDesign;
-    });
+        });
+    } catch (error) {
+        await deleteStorageObjectBestEffort(documentAsset.storagePath, "autosave_snapshot");
+        throw error;
+    }
     if (!committedDesign) {
         await deleteStorageObjectBestEffort(documentAsset.storagePath, "autosave_snapshot");
         return { error: "This design changed in another session. Refresh before saving.", status: 409 as const };
@@ -1027,8 +1089,11 @@ export async function repairCampaignCueCueLayerDesignServer(params: {
     const repairId = buildCampaignCueCueLayerId(CAMPAIGNCUE_CUE_LAYER_ID_PREFIXES.REPAIR);
     const designRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS).doc(design.id);
     const committed = await firestoreAdmin.runTransaction(async (transaction) => {
-        const currentSnap = await transaction.get(designRef);
-        const idempotencySnap = idempotency.ref ? await transaction.get(idempotency.ref) : null;
+        const [currentSnap, idempotencySnap] = await Promise.all([
+            transaction.get(designRef),
+            idempotency.ref ? transaction.get(idempotency.ref) : Promise.resolve(null),
+            assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, workspaceId),
+        ]);
         if (idempotencySnap && idempotency.claimId) {
             assertCampaignCueCueLayersClaimOwnership(idempotencySnap.data(), {
                 action: idempotencyAction,
@@ -1222,6 +1287,7 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
         tags: ["cue-layers", params.input.format],
         file: {
             storagePath: exportOutputPath,
+            storageGeneration: exportUpload.generation,
             mimeType: renderedExport.mimeType,
             sizeBytes: exportUpload.size,
         },
@@ -1230,9 +1296,14 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
         updatedAt: now,
     };
     const designRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_DESIGNS).doc(design.id);
-    const committed = await firestoreAdmin.runTransaction(async (transaction) => {
-        const currentSnap = await transaction.get(designRef);
-        const idempotencySnap = idempotency.ref ? await transaction.get(idempotency.ref) : null;
+    let committed: boolean;
+    try {
+        committed = await firestoreAdmin.runTransaction(async (transaction) => {
+        const [currentSnap, idempotencySnap] = await Promise.all([
+            transaction.get(designRef),
+            idempotency.ref ? transaction.get(idempotency.ref) : Promise.resolve(null),
+            assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, workspaceId),
+        ]);
         if (idempotencySnap && idempotency.claimId) {
             assertCampaignCueCueLayersClaimOwnership(idempotencySnap.data(), {
                 action: idempotencyAction,
@@ -1302,8 +1373,12 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
                 secondaryResultId: asset.id,
             }), { merge: true });
         }
-        return true;
-    });
+            return true;
+        });
+    } catch (error) {
+        await deleteStorageObjectBestEffort(exportOutputPath, "export_output");
+        throw error;
+    }
     if (!committed) {
         await deleteStorageObjectBestEffort(exportOutputPath, "stale_export_output");
         return { error: "Save the latest edit before exporting.", status: 409 as const };

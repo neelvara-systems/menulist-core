@@ -205,6 +205,22 @@ async function main() {
     role: "founder-admin",
   });
   createdMemberIds.add(selfMember.teamMemberId);
+  const selfMemberReplay = await upsertSignalDeskTeamMemberServer(founderAccess, {
+    active: true,
+    email: founderAccess.email,
+    name: "Founder Access",
+    role: "founder-admin",
+  });
+  assert.equal(selfMemberReplay.updatedAt, selfMember.updatedAt, "Exact team-member replay rewrote access authority");
+  const selfMemberRef = memberRef(selfMember.teamMemberId);
+  await selfMemberRef.set({ stalePrivateField: "must-be-removed" }, { merge: true });
+  await upsertSignalDeskTeamMemberServer(founderAccess, {
+    active: true,
+    email: founderAccess.email,
+    name: "Founder Access",
+    role: "founder-admin",
+  });
+  assert.equal((await selfMemberRef.get()).data()?.stalePrivateField, undefined, "Team-member refresh retained stale access fields");
   await expectCode("Changed email bypassed self-deactivation guard", () => upsertSignalDeskTeamMemberServer(founderAccess, {
     active: false,
     email: "changed-founder@example.invalid",

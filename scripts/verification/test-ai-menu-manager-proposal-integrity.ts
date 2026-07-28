@@ -191,6 +191,21 @@ function run(): void {
         ...executed,
         receipt: { ...receipt, actionType: 'item_price_update' },
     }, proposalId), null);
+    const cancelledReceipt = buildAiMenuManagerReceipt({
+        proposalId,
+        actionType: pending.actionType,
+        projectId,
+        status: 'cancelled',
+        title: pending.cardPayload.title,
+        message: 'No MenuList action was taken.',
+        executedAt: '2026-07-13T10:11:00.000Z',
+    });
+    assert.equal(normalizeAiMenuManagerProposalSnapshot({
+        ...pending,
+        status: 'cancelled',
+        cardPayload: { ...pending.cardPayload, status: 'cancelled' },
+        receipt: cancelledReceipt,
+    }, proposalId), null, 'server proposal snapshots must not inherit client-only cancelled receipts');
     assert.equal(normalizeAiMenuManagerProposalSnapshot({
         ...executed,
         receipt: { ...receipt, projectId: undefined },

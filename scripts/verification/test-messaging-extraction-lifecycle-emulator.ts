@@ -145,6 +145,10 @@ async function verifyLifecycleSerializes(): Promise<void> {
   assert.equal(processingSession.get("processingRuns"), 1);
   const rate = await rates.doc(getUserHash(session.providerUserId)).get();
   assert.equal(rate.get("processingRunsThisWeek"), 1);
+  const rateExpiresAt = rate.get("expiresAt");
+  assert.equal(typeof rateExpiresAt?.toMillis, "function");
+  assert.ok(rateExpiresAt.toMillis() > Date.now() + 89 * 24 * 60 * 60 * 1000);
+  assert.ok(rateExpiresAt.toMillis() <= Date.now() + 91 * 24 * 60 * 60 * 1000);
 
   const staleFailure = await finalizeMessagingExtractionFailure({
     jobId: "wrong-job",

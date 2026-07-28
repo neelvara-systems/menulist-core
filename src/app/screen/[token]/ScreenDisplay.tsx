@@ -39,10 +39,6 @@ const SCREEN_SEEN_REQUEST_POLICY = {
     redirect: 'manual' as RequestRedirect,
 };
 
-// Bind guardedReload to this component's identity for unique localStorage key
-const guardedReload = () => _guardedReload('screen');
-const guardedReloadWithJitter = () => _guardedReloadWithJitter('screen');
-
 interface ScreenDisplayProps {
     initialData: {
         slides: ScreenSlide[];
@@ -216,7 +212,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                 if (snapshot.exists()) {
                     const docData = snapshot.data();
                     if (docData.enabled !== true) {
-                        guardedReload();
+                        _guardedReload('screen', token);
                         return;
                     }
                     const newVersion = docData.contentVersion || 1;
@@ -225,7 +221,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                     // Only reload if content version changed (real update)
                     if (newVersion > currentVersion) {
                         // Per ChatGPT review v3: Use jitter to prevent mass reload spikes
-                        guardedReloadWithJitter();
+                        _guardedReloadWithJitter('screen', token);
                     }
                 }
             },
@@ -249,7 +245,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     useEffect(() => {
         const fallbackRefresh = setInterval(() => {
             if (state.isOffline) {
-                guardedReload();
+                _guardedReload('screen', token);
             }
         }, 30 * 60 * 1000); // 30 minutes
 
@@ -264,7 +260,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     useEffect(() => {
         const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
         const proactiveRefresh = setInterval(() => {
-            guardedReload();
+            _guardedReload('screen', token);
         }, SIX_HOURS_MS);
 
         return () => clearInterval(proactiveRefresh);

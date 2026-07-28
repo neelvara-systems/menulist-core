@@ -18,6 +18,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/scopeDocumentId";
+import { normalizeMenuListPublicEntityIdentityAliases } from "@lib/publicTruth/entityEligibility";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
@@ -79,9 +80,10 @@ const commitCurrentScreenSeen = async (params: {
         ]);
         const screen = screenSnapshot.data()?.screen;
         const storeData = storeSnapshot.data();
-        const tenantScope = normalizeStorePermissionScopeDocumentId(
-            storeData?.tenantId ?? storeData?.tId,
-        );
+        const tenantScope = normalizeMenuListPublicEntityIdentityAliases([
+            storeData?.tenantId,
+            storeData?.tId,
+        ]);
         if (
             !screenSnapshot.exists
             || screen?.screenToken !== params.token

@@ -153,9 +153,9 @@ function verifyMobileShellRouteMap() {
   assertIncludes(mobileShell, "return HELP_CENTER_TAB_TO_MORE_SCREEN[tab] || 'answerlatticeHelp';", 'MobileShell help-center tab fallback');
   assertIncludes(mobileShell, "buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' | 'history', moreScreen: MoreSubScreen)", 'MobileShell hash builder must preserve Today dashboard/history and More sub-screen state');
   assertIncludes(mobileShell, "data-mobile-shell-scroll=\"true\"", 'MobileShell must expose the scroll container for owner-mobile QA harnesses');
-  assertIncludes(mobileNavigation, 'aria-label="Primary mobile navigation"', 'Mobile navigation landmark label');
+  assertIncludes(mobileNavigation, "aria-label={t('ariaLabel')}", 'Localized mobile navigation landmark label');
   assertIncludes(mobileNavigation, 'role="navigation"', 'Mobile navigation landmark role');
-  assertIncludes(mobileNavigation, 'aria-label={tab.title}', 'Mobile navigation accessible tab label');
+  assertIncludes(mobileNavigation, 'aria-label={title}', 'Localized mobile navigation accessible tab label');
   assertIncludes(mobileNavigation, 'aria-pressed={isActive}', 'Mobile navigation active tab state');
 
   [

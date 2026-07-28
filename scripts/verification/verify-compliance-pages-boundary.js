@@ -81,6 +81,37 @@ function verifySanitizerRuntime() {
   );
 }
 
+function verifyPersistedOverrideRuntime() {
+  const { projectComplianceOverride } = require(path.join(
+    ROOT,
+    'src/database/compliance/complianceOverrideBoundary.ts',
+  ));
+  const modifiedOn = { toMillis: () => 1_700_000_000_000 };
+  const valid = projectComplianceOverride({
+    sId: 202,
+    tId: 101,
+    privacyOverride: 'Owner-reviewed privacy policy text.',
+    modifiedOn,
+  }, '202', '101');
+  assert(valid?.sId === '202' && valid?.tId === '101', 'persisted override must normalize exact scope');
+  assert(
+    projectComplianceOverride({ ...valid, tId: 999 }, '202', '101') === null,
+    'persisted override must reject cross-tenant scope',
+  );
+  assert(
+    projectComplianceOverride({ ...valid, sId: 203 }, '202', '101') === null,
+    'persisted override must reject cross-store scope',
+  );
+  assert(
+    projectComplianceOverride({ ...valid, privacyOverride: 'x'.repeat(15001) }, '202', '101') === null,
+    'persisted override must reject oversized public content',
+  );
+  assert(
+    projectComplianceOverride({ ...valid, modifiedOn: { toMillis: () => Number.NaN } }, '202', '101') === null,
+    'persisted override must reject malformed timestamps',
+  );
+}
+
 function verifyTemplatesRuntime() {
   const {
     composeComplianceContent,
@@ -158,7 +189,7 @@ function verifyApiBoundary() {
   assertIncludes(route, 'getSafeZodValidationDetails(validation.error)', 'Compliance API safe validation details');
   assertIncludes(route, 'sanitizeComplianceContent(content)', 'Compliance API sanitizer');
   assertIncludes(route, 'saveComplianceOverrideServer(sId, tId, type, sanitized)', 'Compliance API server-side save DAL');
-  assertIncludes(route, 'deleteComplianceOverrideServer(sId, type)', 'Compliance API server-side reset DAL');
+  assertIncludes(route, 'deleteComplianceOverrideServer(sId, tId, type)', 'Compliance API server-side reset DAL');
   assertIncludes(route, 'revalidateCompliancePublicCache(sId, tId)', 'Compliance API public cache invalidation');
   assertIncludes(route, 'refreshPending,', 'Compliance API cache follow-up acknowledgement');
   assertIncludes(route, 'compliance_store_scope_mismatch', 'Compliance API tenant/store identity mismatch boundary');
@@ -191,8 +222,11 @@ function verifyApiBoundary() {
   assertNotIncludes(serverDal, 'firestoreAdmin.collection(COLLECTION).doc(String(sId))', 'Compliance server DAL must not build refs from raw String(sId)');
   assertIncludes(serverDal, 'admin.firestore.FieldValue.delete()', 'Compliance server DAL reset deletes override field');
   assertIncludes(serverDal, 'getCachedComplianceOverridesServer', 'Compliance server DAL cached public override reader');
+  assertIncludes(serverDal, 'projectComplianceOverride(docSnap.data(), documentId, tenantId)', 'Compliance server DAL persisted scope projector');
+  assertIncludes(serverDal, 'firestoreAdmin.runTransaction(async (transaction)', 'Compliance server DAL transaction-current mutation');
+  assertIncludes(serverDal, 'if (!current.exists) return;', 'Compliance reset must not create an orphan row');
   assertIncludes(serverDal, 'unstable_cache(', 'Compliance server DAL Next data cache boundary');
-  assertIncludes(serverDal, "['public-compliance-overrides', documentId]", 'Compliance server DAL store-scoped cache key');
+  assertIncludes(serverDal, "['public-compliance-overrides', tenantId, documentId]", 'Compliance server DAL tenant/store-scoped cache key');
   assertIncludes(serverDal, '{ revalidate: 60, tags: [getComplianceCacheTag(documentId)] }', 'Compliance server DAL tagged 60-second cache');
   assert(
     !fs.existsSync(path.join(ROOT, 'src/database/compliance/index.ts')),
@@ -225,7 +259,9 @@ function verifyPublicRouteBoundary() {
   assertIncludes(renderer, 'const complianceStoreDocumentId = normalizePublicComplianceStoreDocumentId(sId);', 'Compliance renderer normalizes store document ID before override read');
   assertIncludes(renderer, 'extractComplianceInputs(storeData)', 'Compliance renderer input extraction');
   assertIncludes(renderer, 'generateComplianceContent(type, inputs)', 'Compliance renderer template generation');
-  assertIncludes(renderer, 'getCachedComplianceOverridesServer(complianceStoreDocumentId)', 'Compliance renderer cached override read');
+  assertIncludes(renderer, 'const complianceTenantDocumentId = normalizePublicComplianceStoreDocumentId(tId);', 'Compliance renderer tenant document ID guard');
+  assertIncludes(renderer, 'getCachedComplianceOverridesServer(', 'Compliance renderer cached override read');
+  assertIncludes(renderer, 'complianceTenantDocumentId,', 'Compliance renderer expected tenant scope');
   assertIncludes(renderer, 'composeComplianceContent(systemContent, customContent)', 'Compliance renderer override composition');
   assertIncludes(renderer, 'public_compliance_invalid_store_scope', 'Compliance renderer invalid store scope diagnostic');
   assertIncludes(renderer, 'public_compliance_override_read_failed', 'Compliance renderer bounded override-read diagnostics');
@@ -317,7 +353,8 @@ function verifyRulesAndConstantsBoundary() {
   assertIncludes(features, '- OBP/menu footers expose the enabled policy links', 'Compliance feature flag docs footer links');
 
   assertIncludes(rules, 'match /compliancePages/{docId}', 'Firestore compliancePages rule');
-  assertIncludes(rules, 'allow read: if true;', 'Firestore compliancePages public read');
+  assertIncludes(rules, 'Direct browser reads would', 'Firestore compliancePages server-render rationale');
+  assertOccurrenceAtLeast(rules, 'allow read: if false;', 1, 'Firestore compliancePages direct read denial');
   assertIncludes(rules, 'allow write: if false;', 'Firestore compliancePages server-only write boundary');
   assertNotIncludes(rules, 'canWriteCompliancePage', 'Firestore compliancePages must not retain a direct client write helper');
 }
@@ -404,6 +441,7 @@ function verifyDocsBoundary() {
 function verifyCompliancePagesBoundary() {
   verifyPackageScript();
   verifySanitizerRuntime();
+  verifyPersistedOverrideRuntime();
   verifyTemplatesRuntime();
   verifyApiBoundary();
   verifyPublicRouteBoundary();

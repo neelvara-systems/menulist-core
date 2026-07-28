@@ -114,6 +114,33 @@ function verifyRoute(route) {
   ].forEach((token) => assertNotIncludes(route, token, 'Founder Monitor API read-only boundary'));
 }
 
+function verifyPersistedBoundary(source, functionsSource, wrapper, test) {
+  assert(source === functionsSource, 'Founder Monitor persisted boundary must remain byte-identical across app and Functions');
+  assertIncludes(
+    wrapper,
+    "from '@data/shared/founderMonitorPersistedBoundary';",
+    'Founder Monitor app boundary wrapper',
+  );
+  [
+    'export function readFounderMonitorPersistedInteger(',
+    'typeof value !==',
+    'Number.isSafeInteger(value)',
+    'export function projectFounderRevenueMovementRow(',
+    'Number.isSafeInteger(amountPaise)',
+    "data.pId !== 'ML' || data.productId !== 'ML'",
+    'data.businessDayKey !== params.expectedBusinessDayKey',
+    'compactTenantId !== tenantId',
+    'compactStoreId !== storeId',
+  ].forEach((token) => assertIncludes(source, token, 'Founder Monitor persisted boundary'));
+  [
+    'coercible financial amounts must fail closed',
+    'conflicting persisted scope aliases must fail closed',
+    'conflicting product identity must fail closed',
+    'conflicting business-day identity must fail closed',
+    'coercible summary counters must fail visibly',
+  ].forEach((token) => assertIncludes(test, token, 'Founder Monitor persisted boundary regression'));
+}
+
 function verifyDal(dal) {
   [
     "const FOUNDER_MONITOR_LOAD_FAILED = 'Failed to load founder monitor';",
@@ -349,7 +376,7 @@ function verifyRazorpayRuntime(webhook, verifySubscription, verifyTopup, cancelS
   ].forEach((token) => assertIncludes(productBillingServer, token, 'Upgrade subscription Founder Monitor transactional replacement metadata'));
 }
 
-function verifyScheduler(functionConstants, scheduler, snapshotScheduler) {
+function verifyScheduler(functionConstants, scheduler, snapshotScheduler, transitionCompletionBoundary) {
   [
     "FOUNDER_REVENUE_MOVEMENTS: 'founderRevenueMovements'",
     "FOUNDER_ONBOARDING_TRANSITIONS: 'founderOnboardingTransitions'",
@@ -367,6 +394,11 @@ function verifyScheduler(functionConstants, scheduler, snapshotScheduler) {
     'const MOVEMENT_RECONCILE_LIMIT = 500;',
     'const ONBOARDING_TRANSITION_LIMIT = 500;',
     'const ONBOARDING_TRANSITION_WRITE_LIMIT = 50;',
+    'parseFounderMonitorSupportTicketScope(data)',
+    'buildFounderMonitorScopeKey(scope)',
+    'parseFounderOnboardingTransitionScope(doc.id, data)',
+    'storedOnboardingTransition.tenantId === summary.tId',
+    'const supportCounts = matchedSupportCounts;',
     "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get()",
     'function isRecordedDistributionValue(value: unknown): boolean',
     'function hasDistributionSurface(summary: Record<string, any>): boolean',
@@ -374,8 +406,8 @@ function verifyScheduler(functionConstants, scheduler, snapshotScheduler) {
     'const distributionReady = hasDistributionSurface(summary);',
     'newStoreIds: string[];',
     'newTenantIds: string[];',
-    'appendUniqueCleanId(data.storeId || data.sId, acc.newStoreIds)',
-    'appendUniqueCleanId(data.tenantId || data.tId, acc.newTenantIds)',
+    'appendUniqueCleanId(data.storeId, acc.newStoreIds)',
+    'appendUniqueCleanId(data.tenantId, acc.newTenantIds)',
     'db.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS)',
     'DB_COLLECTIONS.FOUNDER_ONBOARDING_TRANSITIONS',
     ".where('businessDayKey', '==', todayKey)",
@@ -388,9 +420,46 @@ function verifyScheduler(functionConstants, scheduler, snapshotScheduler) {
     ".doc('founderMonitorRevenue').set(revenueReconciliationPayload, { merge: true })",
     ".doc(`founderMonitorRevenueDaily_${todayKey}`).set({",
     'const subscriptionReadCapped =',
+    'const onboardingTransitionReadUnavailable =',
+    'const onboardingTransitionReadComplete =',
+    '&& (onboardingTransition || onboardingTransitionReadComplete)',
+    'resolveFounderOnboardingTransitionCompletion({',
+    'await db.runTransaction(async (transaction) => {',
+    'snapshot: await transaction.get(ref)',
+    'Conflicting onboarding transitions were not overwritten',
+    'onboarding-transition-read-unavailable',
     'reconciliationLimited: subscriptionReadCapped',
     'Transaction-time revenue remains the live revenue source.',
+    'projectFounderRevenueMovementRow({',
+    'expectedBusinessDayKey',
+    'invalidMovementCount',
+    'Invalid persisted revenue movements were excluded',
+    'invalid-daily-revenue-movements',
   ].forEach((token) => assertIncludes(snapshotScheduler, token, 'Founder Monitor snapshot scheduler'));
+
+  [
+    'safeNumber(data.amountPaise)',
+    'appendUniqueCleanId(data.storeId || data.sId',
+    'appendUniqueCleanId(data.tenantId || data.tId',
+    'data.sId || data.storeId',
+    'data.storeId || data.sId || doc.id',
+    'summary.tId || summary.tenantId',
+  ].forEach((token) => assertNotIncludes(snapshotScheduler, token, 'Founder Monitor persisted movement scheduler boundary'));
+
+  [
+    'export function resolveFounderOnboardingTransitionCompletion',
+    "| { status: 'already_complete' }",
+    "| { status: 'scope_conflict' }",
+    'parseFounderOnboardingTransitionScope(documentId, currentData)',
+    "return { status: 'scope_conflict' };",
+    "return { status: 'already_complete' };",
+    'const paymentAt = currentPaymentAt || candidate.paymentAt;',
+    'const firstLiveAt = currentFirstLiveAt || candidate.firstLiveAt;',
+  ].forEach((token) => assertIncludes(
+    transitionCompletionBoundary,
+    token,
+    'Founder onboarding transition completion boundary',
+  ));
 
   [
     'const STORE_DOC_LIMIT = 500;',
@@ -438,13 +507,42 @@ function verifyBackfillScript(backfillScript) {
   [
     'scripts/backfill-founder-revenue-read-model.ts',
     "const SOURCE = 'scripts/backfill-founder-revenue-read-model';",
-    "const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;",
+    "const projectId = getArg(argv, '--project-id') || process.env.FIREBASE_PROJECT_ID;",
     "throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running Founder Monitor revenue backfill.');",
-    "const write = hasFlag('--write');",
-    "const confirmedProjectId = getArg('--confirm-project');",
+    "const ALLOWED_PROJECT_IDS = new Set(['menulist-qa', 'menulist']);",
+    'if (!ALLOWED_PROJECT_IDS.has(projectId))',
+    'Refusing Founder Monitor revenue backfill for non-MenuList project',
+    "const write = hasFlag(argv, '--write');",
+    "const confirmedProjectId = getArg(argv, '--confirm-project');",
     'Refusing write: pass --confirm-project ${projectId}',
-    "hasFlag('--all-founder-revenue')",
-    "admin.initializeApp({ projectId });",
+    "hasFlag(argv, '--all-founder-revenue')",
+    'function positiveSafeInteger(value: unknown): number | null',
+    "if (typeof value !== 'string') return '';",
+    'export function toBackfillDate(value: unknown): Date | null',
+    'return date instanceof Date && Number.isFinite(date.getTime()) ? date : null;',
+    'function getDocumentDate(data: Record<string, unknown>): Date | null',
+    'if (!occurredAt) return null;',
+    'if (amountPaise == null || currency == null) return null;',
+    'export function shouldReplaceLatestMovement(',
+    'return occurredAt.getTime() > existingAt.getTime();',
+    'export function shouldReplaceFirstPayment(',
+    'return !existingAt || occurredAt.getTime() < existingAt.getTime();',
+    'const summaryLatest = shouldReplaceLatestMovement(summarySnap.data(), occurredAt, movementId);',
+    'const dailyLatest = shouldReplaceLatestMovement(dailySnap.data(), occurredAt, movementId);',
+    'shouldReplaceFirstPayment(transitionSnap?.data(), occurredAt)',
+    'export async function readSourceDocuments(',
+    'query.orderBy(FieldPath.documentId()).limit(scanAll ? pageSize : pageSize + 1)',
+    'if (cursor) pageQuery = pageQuery.startAfter(cursor);',
+    'return { documents, truncated: snapshot.size > pageSize };',
+    'sourceTruncated:',
+    "if (require.main === module) {",
+    "import { initializeApp } from 'firebase-admin/app';",
+    'FieldPath,',
+    'FieldValue,',
+    'getFirestore,',
+    'Timestamp,',
+    'const app = initializeApp({ projectId });',
+    'const db = getFirestore(app);',
     'Mode: ${write ?',
     'movementFromSubscription',
     'movementsFromPaymentTransaction',
@@ -466,6 +564,12 @@ function verifyBackfillScript(backfillScript) {
     'To apply after backup/review',
   ].forEach((token) => assertIncludes(backfillScript, token, 'Founder revenue backfill script'));
   assertNotIncludes(backfillScript, 'data.productId || data.pId || PRODUCT_ID', 'Founder revenue backfill must not infer alias-less product identity');
+  [
+    'Number(value || 0)',
+    "String(value || '')",
+    '|| new Date()',
+    'candidate.amountPaise >= 0',
+  ].forEach((token) => assertNotIncludes(backfillScript, token, 'Founder revenue backfill strict input boundary'));
 }
 
 function verifyDesktop(component) {
@@ -629,6 +733,12 @@ function main() {
     'Growth intelligence emulator must isolate both CLI and child process from inherited Google credentials',
   );
   verifyRoute(read('src/app/api/platform/founder-monitor/route.ts'));
+  verifyPersistedBoundary(
+    read('src/data/shared/founderMonitorPersistedBoundary.ts'),
+    read('functions/src/sharedData/founderMonitorPersistedBoundary.ts'),
+    read('src/lib/ops/founderMonitorPersistedBoundary.ts'),
+    read('scripts/verification/test-founder-monitor-persisted-boundary.ts'),
+  );
   verifyDal(read('src/database/ops/founderMonitor.ts'));
   verifyRevenueReadModel(
     read('src/lib/ops/founderRevenueReadModel.ts'),
@@ -646,6 +756,7 @@ function main() {
     read('functions/src/constants/database.ts'),
     read('functions/src/schedulers/menulistMaintenanceScheduler.ts'),
     read('functions/src/schedulers/founderMonitorSnapshot.ts'),
+    read('functions/src/schedulers/founderOnboardingTransitionCompletionBoundary.ts'),
   );
   verifyStoresSummaryContract(
     read('src/database/platformSummary/index.ts'),

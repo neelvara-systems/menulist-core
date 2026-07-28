@@ -36,12 +36,16 @@ function legacyProjectBelongsToSession(params: {
 }): boolean {
     const expectedTenantId = String(params.tId);
     const expectedStoreId = String(params.sId);
-    const projectTenantId = params.projectData?.tId ?? params.projectData?.tenantId;
-    const projectStoreId = params.projectData?.sId ?? params.projectData?.storeId;
+    const tenantAliases = [params.projectData?.tId, params.projectData?.tenantId]
+        .filter((value) => value !== undefined && value !== null);
+    const storeAliases = [params.projectData?.sId, params.projectData?.storeId]
+        .filter((value) => value !== undefined && value !== null);
+    const projectTenantScope = normalizePublicTruthMonitorScopeAliases(tenantAliases);
+    const projectStoreScope = normalizePublicTruthMonitorScopeAliases(storeAliases);
 
-    if (projectTenantId != null && String(projectTenantId) !== expectedTenantId) return false;
-    if (projectStoreId != null && String(projectStoreId) !== expectedStoreId) return false;
-    if (projectTenantId != null && projectStoreId != null) return true;
+    if (tenantAliases.length > 0 && projectTenantScope !== expectedTenantId) return false;
+    if (storeAliases.length > 0 && projectStoreScope !== expectedStoreId) return false;
+    if (projectTenantScope && projectStoreScope) return true;
 
     const projectId = String(params.projectData?.projectId || params.projectId);
     return projectId === `${expectedTenantId}-default-${expectedStoreId}`
@@ -58,6 +62,16 @@ function normalizePublicTruthMonitorScopeDocumentId(value: unknown): string | nu
     const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
     const documentId = raw.trim();
     return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function normalizePublicTruthMonitorScopeAliases(values: readonly unknown[]): string | null {
+    const present = values.filter((value) => value !== undefined && value !== null);
+    if (present.length === 0) return null;
+    const normalized = present.map(normalizePublicTruthMonitorScopeDocumentId);
+    const expected = normalized[0];
+    return expected && normalized.every((value) => value === expected)
+        ? expected
+        : null;
 }
 
 function normalizeSelectableProject(

@@ -50,6 +50,7 @@ const REQUIRED_FILES = [
   'src/lib/public-truth-tools/publicTruthMonitorServerScope.ts',
   'src/lib/public-truth-tools/serverPublicTruthMonitorEntitlements.ts',
   'src/lib/public-truth-tools/publicTruthMonitorReport.ts',
+  'src/lib/public-truth-tools/publicTruthMonitorClientContracts.ts',
   'src/lib/validation/publicTruthMonitorSchemas.ts',
   'src/database/publicTruthMonitor/server.ts',
   'src/database/publicTruthMonitor/index.ts',
@@ -59,6 +60,7 @@ const REQUIRED_FILES = [
   'src/components/templates/main-app/ownerBusinessAssistant/PublicTruthMonitorPanel.tsx',
   'src/components/mobile/components/MobilePublicTruthMonitorCard.tsx',
   'scripts/verification/test-public-truth-monitor-server-scope.ts',
+  'scripts/verification/test-public-truth-monitor-client-contracts.ts',
   'scripts/verification/verify-public-truth-monitor-addon.js',
   '__docs__/menulist-tools/public-truth-monitor-addon/README.md',
   '__docs__/menulist-tools/public-truth-monitor-addon/public-truth-monitor-addon_spec.md',
@@ -80,6 +82,7 @@ const entitlement = read('src/lib/public-truth-tools/publicTruthMonitorEntitleme
 const serverScope = read('src/lib/public-truth-tools/publicTruthMonitorServerScope.ts');
 const serverEntitlement = read('src/lib/public-truth-tools/serverPublicTruthMonitorEntitlements.ts');
 const report = read('src/lib/public-truth-tools/publicTruthMonitorReport.ts');
+const clientContracts = read('src/lib/public-truth-tools/publicTruthMonitorClientContracts.ts');
 const validation = read('src/lib/validation/publicTruthMonitorSchemas.ts');
 const serverDal = read('src/database/publicTruthMonitor/server.ts');
 const clientDal = read('src/database/publicTruthMonitor/index.ts');
@@ -98,7 +101,7 @@ const changelog = read('__docs__/changelog.md');
 const aggregateVerifier = read('scripts/verification/verify-public-truth-tools.js');
 
 assert(
-  packageJson.scripts['verify:public-truth-monitor-addon'] === 'node scripts/verification/verify-public-truth-monitor-addon.js',
+  packageJson.scripts['verify:public-truth-monitor-addon'] === 'node scripts/verification/verify-public-truth-monitor-addon.js && npm run test:public-truth-monitor-client-contracts',
   'verify:public-truth-monitor-addon package script must be registered',
 );
 
@@ -161,6 +164,10 @@ assertIncludes(serverDal, 'return documentId === raw && isValidFirestoreDocument
 assertIncludes(serverDal, 'const projectId = normalizePublicTruthMonitorDocumentId(project.projectId);', 'project picker normalizes persisted summary project IDs');
 assertIncludes(serverDal, 'const selectedProjectIdDocumentId = normalizePublicTruthMonitorDocumentId(selectedProjectId);', 'project picker normalizes selected project ID');
 assertIncludes(serverDal, 'const projectId = normalizePublicTruthMonitorDocumentId(params.projectId);', 'project reader normalizes project IDs before Firestore reads');
+assertIncludes(serverDal, 'normalizePublicTruthMonitorScopeAliases(tenantAliases)', 'legacy project reader rejects conflicting tenant aliases');
+assertIncludes(serverDal, 'normalizePublicTruthMonitorScopeAliases(storeAliases)', 'legacy project reader rejects conflicting store aliases');
+assertNotIncludes(serverDal, 'params.projectData?.tId ?? params.projectData?.tenantId', 'legacy project reader must not prefer one conflicting tenant alias');
+assertNotIncludes(serverDal, 'params.projectData?.sId ?? params.projectData?.storeId', 'legacy project reader must not prefer one conflicting store alias');
 assertIncludes(serverDal, 'if (!projectId) return null;', 'project reader rejects malformed project IDs before Firestore reads');
 assertNotIncludes(serverDal, '.doc(params.projectId)', 'project reader must not use raw request project ID in document refs');
 assertOrder(
@@ -228,15 +235,23 @@ assertIncludes(serverDal, 'transaction.set(summaryRef', 'server DAL writes summa
 assertIncludes(clientDal, '/api/public-truth-monitor/summary', 'client summary endpoint');
 assertIncludes(clientDal, '/api/public-truth-monitor/refresh', 'client refresh endpoint');
 assertIncludes(clientDal, 'readJsonResponseWithLimit', 'bounded client response parser');
+assertIncludes(clientDal, 'parsePublicTruthMonitorClientData', 'runtime client response validator');
+assertNotIncludes(clientDal, 'payload as T', 'client response must not use unchecked generic assertion');
 assertNotIncludes(clientDal, 'getDoc(', 'client monitor DAL must not read Firestore directly');
 assertNotIncludes(clientDal, 'firebaseClient', 'client monitor DAL must not use Firebase client directly');
 assertIncludes(hook, 'useSWR', 'shared hook');
+assertIncludes(hook, 'getPublicTruthMonitorClientCacheKey(scope)', 'tenant and store scoped SWR key');
+assertIncludes(clientContracts, 'return ["publicTruthMonitorSummary", scope.tenantId, scope.storeId] as const;', 'tenant and store cache identity');
+assertIncludes(clientContracts, 'parsed.summary.tId !== expectedScope.tenantId', 'response tenant scope match');
+assertIncludes(clientContracts, 'parsed.summary.sId !== expectedScope.storeId', 'response store scope match');
 
 assertIncludes(desktopPage, 'PublicTruthMonitorPanel', 'Business Health desktop panel mount');
+assertIncludes(desktopPage, 'tenantId={tenantDetails?.tenantId || storeDetails?.tenantId}', 'desktop tenant scope propagation');
 assertIncludes(desktopPanel, 'Public truth history', 'desktop owner copy');
 assertIncludes(desktopPanel, 'Download report', 'desktop export action');
 assertIncludes(desktopPanel, 'Run check', 'desktop refresh action');
 assertIncludes(mobileScreen, 'MobilePublicTruthMonitorCard', 'Business Health mobile card mount');
+assertIncludes(mobileScreen, 'tenantId={tenantDetails?.tenantId || storeDetails?.tenantId}', 'mobile tenant scope propagation');
 assertIncludes(mobileCard, 'Public truth history', 'mobile owner copy');
 assertIncludes(mobileCard, 'minHeight: 44', 'mobile touch target');
 

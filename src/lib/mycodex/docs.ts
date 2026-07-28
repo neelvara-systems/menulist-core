@@ -20,6 +20,7 @@ interface ResolvedMyCodexDocument {
 }
 
 const HIDDEN_DOC_ENTRIES = new Set(['node_modules', 'archive', 'raw-data']);
+export const MYCODEX_MARKDOWN_MAX_BYTES = 4 * 1024 * 1024;
 
 export const getMyCodexDocsDir = () => path.resolve(process.cwd(), '__docs__');
 
@@ -54,7 +55,7 @@ export async function getMyCodexDocsTree(
         const nodes: MyCodexDocNode[] = [];
 
         for (const item of items) {
-            if (!isVisibleDocsEntry(item.name)) {
+            if (!isVisibleDocsEntry(item.name) || item.isSymbolicLink()) {
                 continue;
             }
 
@@ -102,15 +103,27 @@ async function getReadableMarkdownFile(targetPath: string, docsDir: string): Pro
     }
 
     try {
-        const stat = await fs.stat(/* turbopackIgnore: true */ resolvedPath);
-        if (stat.isFile() && resolvedPath.endsWith('.md')) {
-            return resolvedPath;
+        const [canonicalDocsDir, canonicalTargetPath] = await Promise.all([
+            fs.realpath(/* turbopackIgnore: true */ docsDir),
+            fs.realpath(/* turbopackIgnore: true */ resolvedPath),
+        ]);
+        if (!isInsideDocsDir(canonicalDocsDir, canonicalTargetPath)) {
+            return null;
+        }
+
+        const stat = await fs.stat(/* turbopackIgnore: true */ canonicalTargetPath);
+        if (
+            stat.isFile()
+            && canonicalTargetPath.endsWith('.md')
+            && stat.size <= MYCODEX_MARKDOWN_MAX_BYTES
+        ) {
+            return canonicalTargetPath;
         }
 
         if (stat.isDirectory()) {
             const candidates = [
-                path.join(/* turbopackIgnore: true */ resolvedPath, 'README.md'),
-                path.join(/* turbopackIgnore: true */ resolvedPath, 'index.md'),
+                path.join(/* turbopackIgnore: true */ canonicalTargetPath, 'README.md'),
+                path.join(/* turbopackIgnore: true */ canonicalTargetPath, 'index.md'),
             ];
 
             for (const candidate of candidates) {
@@ -133,15 +146,24 @@ async function getDirectoryIndexMarkdown(directoryPath: string, docsDir: string,
     }
 
     try {
-        const stat = await fs.stat(/* turbopackIgnore: true */ resolvedPath);
+        const [canonicalDocsDir, canonicalTargetPath] = await Promise.all([
+            fs.realpath(/* turbopackIgnore: true */ docsDir),
+            fs.realpath(/* turbopackIgnore: true */ resolvedPath),
+        ]);
+        if (!isInsideDocsDir(canonicalDocsDir, canonicalTargetPath)) {
+            return null;
+        }
+
+        const stat = await fs.stat(/* turbopackIgnore: true */ canonicalTargetPath);
         if (!stat.isDirectory()) {
             return null;
         }
 
-        const items = await fs.readdir(/* turbopackIgnore: true */ resolvedPath, { withFileTypes: true });
+        const items = await fs.readdir(/* turbopackIgnore: true */ canonicalTargetPath, { withFileTypes: true });
         const visibleItems = items
             .filter(item => (
                 isVisibleDocsEntry(item.name)
+                && !item.isSymbolicLink()
                 && (item.isDirectory() || item.name.endsWith('.md'))
             ))
             .sort((a, b) => {

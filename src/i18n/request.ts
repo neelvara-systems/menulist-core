@@ -14,6 +14,7 @@ import Negotiator from 'negotiator';
 import { IntlErrorCode } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
 import { cookies, headers } from 'next/headers';
+import { getBoundedErrorStringField } from '@lib/monitoring/boundedLogContext';
 import arSA from '../../public/locales/menulist.ai/ar-SA.json';
 import asIN from '../../public/locales/menulist.ai/as-IN.json';
 import bnIN from '../../public/locales/menulist.ai/bn-IN.json';
@@ -138,9 +139,7 @@ function deepMerge(source: Record<string, any>, target: Record<string, any>): Re
 }
 
 function isNextInternalControlError(error: unknown): boolean {
-    const digest = error && typeof error === 'object' && 'digest' in error
-        ? String((error as { digest?: unknown }).digest)
-        : '';
+    const digest = getBoundedErrorStringField(error, 'digest', 128) || '';
 
     return digest === 'DYNAMIC_SERVER_USAGE'
         || digest === 'NEXT_NOT_FOUND'

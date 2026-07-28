@@ -6,7 +6,6 @@ import { REFRESH_INTERVALS } from '@constant/metrics';
 import { applyStoreBusinessAttributeDefaults, assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import GlobalLanguagesList from '@data/languages';
 import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, updateSpecialMenuProject, uploadFile } from '@database/projects';
-import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -15,6 +14,7 @@ import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import { useMenuProcessingJob } from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { MenuFileToProcess } from '@lib/firebase/menuProcessing';
 import {
     getBoundedMenuProcessingStringContext,
@@ -270,22 +270,41 @@ function ProjectsPage() {
     // T4-N-04: divergence advisory modal (G-13) copy.
     const tDivergence = useTranslations('Projects.divergence');
     const loggedInSession = useClientAuthSession();
+    const { tenantDetails, storeDetails, setStoreDetails, activeSubscription, activeSubscriptionLoading, userPermissions, isMasterUser } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const sessionTenantId = storeDetails?.tenantId || loggedInSession?.tId;
+    const sessionStoreId = storeDetails?.storeId || loggedInSession?.sId;
+    const pendingQualityActionStorageKey = getTenantStoreStorageKey(
+        PENDING_QUALITY_ACTION_STORAGE_KEY,
+        sessionTenantId,
+        sessionStoreId,
+    );
+    const activeProcessingJobStorageKey = getTenantStoreStorageKey(
+        'menulist:activeProcessingJobId',
+        sessionTenantId,
+        sessionStoreId,
+    );
     const { hasMounted } = useDeviceType();
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
     const [fileProcessingId, setFileProcessingId] = useState(null)
     const [currentView, setCurrentView] = useState(1);
-    const [pendingQualityAction, setPendingQualityAction] = useState<PendingQualityAction | null>(() => {
-        if (typeof window === 'undefined') return null;
+    const [pendingQualityAction, setPendingQualityAction] = useState<PendingQualityAction | null>(null);
+    useEffect(() => {
+        setPendingQualityAction(null);
+        if (typeof window === 'undefined' || !pendingQualityActionStorageKey) return;
         try {
-            const raw = window.sessionStorage.getItem(PENDING_QUALITY_ACTION_STORAGE_KEY);
-            if (!raw) return null;
+            const raw = window.sessionStorage.getItem(pendingQualityActionStorageKey);
+            window.sessionStorage.removeItem(PENDING_QUALITY_ACTION_STORAGE_KEY);
+            if (!raw) return;
             const parsed = JSON.parse(raw);
-            if (!parsed?.action || typeof parsed.createdAt !== 'number') return null;
-            return parsed;
+            if (!parsed?.action || typeof parsed.createdAt !== 'number') {
+                window.sessionStorage.removeItem(pendingQualityActionStorageKey);
+                return;
+            }
+            setPendingQualityAction(parsed);
         } catch {
-            return null;
+            window.sessionStorage.removeItem(pendingQualityActionStorageKey);
         }
-    });
+    }, [pendingQualityActionStorageKey]);
     const deepLinkIntentHandledRef = useRef<string | null>(null);
     const projectIdQuery = searchParams.get('projectId') || '';
     const viewQuery = searchParams.get('view') || '';
@@ -296,7 +315,6 @@ function ProjectsPage() {
     const b2cViewRef = useRef<B2CViewRef>(null);
     const [activeBatchImageJob, setActiveBatchImageJob] = useState<BatchImageGenerationJobType | null>(null);
     const [pdfFiles, setPdfFiles] = useState<{ images: ConvertedImageType[]; action: string } | null>({ images: [], action: "" });
-    const { tenantDetails, storeDetails, setStoreDetails, activeSubscription, activeSubscriptionLoading, userPermissions, isMasterUser } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true;
     const canManageStore = userPermissions?.canManageStore === true;
     const canTranslatePublicContent = userPermissions?.canGenerateDescriptions === true;
@@ -310,7 +328,6 @@ function ProjectsPage() {
     }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
     const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
     const canDeactivateLinkedProjects = !outletPolicy || outletPolicy.allowProjectDeactivate !== false;
-    const skipLinkedOutletDeleteCheck = !canHaveLinkedOutlets(tenantDetails as any);
     const [pdfPagesCount, setPdfPagesCount] = useState(null);
     const cancelPdfRef = useRef(false); // Ref for immediate access in async operations
     const dispatch = useAppDispatch()
@@ -337,41 +354,43 @@ function ProjectsPage() {
     const [menuLinkImportModalOpen, setMenuLinkImportModalOpen] = useState(false);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
     const clearPendingQualityAction = useCallback(() => {
-        if (typeof window !== 'undefined') {
-            window.sessionStorage.removeItem(PENDING_QUALITY_ACTION_STORAGE_KEY);
+        if (typeof window !== 'undefined' && pendingQualityActionStorageKey) {
+            window.sessionStorage.removeItem(pendingQualityActionStorageKey);
         }
         setPendingQualityAction(null);
-    }, []);
+    }, [pendingQualityActionStorageKey]);
 
     // Job Queue: Track active menu processing job
     // Persist in sessionStorage so it survives page reloads mid-processing
-    const [activeProcessingJobId, setActiveProcessingJobIdState] = useState<string | null>(() => {
-        if (typeof window !== 'undefined') {
+    const [activeProcessingJobId, setActiveProcessingJobIdState] = useState<string | null>(null);
+    useEffect(() => {
+        setActiveProcessingJobIdState(null);
+        if (typeof window !== 'undefined' && activeProcessingJobStorageKey) {
             clearExpiredMenuProcessingJobDismissals();
             const dismissedJobIds = new Set(getDismissedMenuProcessingJobIds());
-            const storedJobId = sessionStorage.getItem('activeProcessingJobId');
+            const storedJobId = sessionStorage.getItem(activeProcessingJobStorageKey);
+            sessionStorage.removeItem('activeProcessingJobId');
 
             if (storedJobId && dismissedJobIds.has(storedJobId)) {
-                sessionStorage.removeItem('activeProcessingJobId');
-                return null;
+                sessionStorage.removeItem(activeProcessingJobStorageKey);
+                return;
             }
 
-            return storedJobId || null;
+            setActiveProcessingJobIdState(storedJobId || null);
         }
-        return null;
-    });
+    }, [activeProcessingJobStorageKey]);
     const setActiveProcessingJobId = useCallback((id: string | null) => {
         setActiveProcessingJobIdState(id);
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && activeProcessingJobStorageKey) {
             if (id) {
-                sessionStorage.setItem('activeProcessingJobId', id);
+                sessionStorage.setItem(activeProcessingJobStorageKey, id);
             } else {
-                sessionStorage.removeItem('activeProcessingJobId');
+                sessionStorage.removeItem(activeProcessingJobStorageKey);
             }
 
             clearExpiredMenuProcessingJobDismissals();
         }
-    }, []);
+    }, [activeProcessingJobStorageKey]);
 
     // Duplicate modal state
     const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
@@ -478,7 +497,7 @@ function ProjectsPage() {
         selectedProjectStoreId === String(effectiveStoreId),
     );
     const projectDataCacheKey = shouldEnableDesktopProjectsData && selectedProjectMatchesStore && selectedProject?.projectId
-        ? `project-${effectiveStoreId}-${selectedProject.projectId}`
+        ? `project-${effectiveTenantId}-${effectiveStoreId}-${selectedProject.projectId}`
         : null;
 
     // Fetch projects list with SWR (automatic caching & deduplication)
@@ -577,9 +596,11 @@ function ProjectsPage() {
         };
         setPendingQualityAction(nextAction);
         if (typeof window !== 'undefined') {
-            window.sessionStorage.setItem(PENDING_QUALITY_ACTION_STORAGE_KEY, JSON.stringify(nextAction));
+            if (pendingQualityActionStorageKey) {
+                window.sessionStorage.setItem(pendingQualityActionStorageKey, JSON.stringify(nextAction));
+            }
         }
-    }, [focusQuery, projectIdQuery, projectsList, qualityActionQuery, selectedProject, viewQuery]);
+    }, [focusQuery, pendingQualityActionStorageKey, projectIdQuery, projectsList, qualityActionQuery, selectedProject, viewQuery]);
 
     useEffect(() => {
         setSelectedProject(null);
@@ -1357,7 +1378,7 @@ function ProjectsPage() {
                 }
 
                 dispatch(startLoader("Deleting project"))
-                const deleteResult = await deleteProject(editingProject.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+                const deleteResult = await deleteProject(editingProject.projectId);
                 assertProjectDeleteSucceeded(
                     deleteResult,
                     editingProject.projectId,
@@ -1380,7 +1401,6 @@ function ProjectsPage() {
                 logProjectPageFailure('projects_page_modal_delete_failed', error, {
                     ...getProjectPageProjectLogContext(editingProject.projectId, (editingProject as any).masterProjectId),
                     ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
-                    skipLinkedOutletDeleteCheck,
                     canDeactivateLinkedProjects,
                 });
                 message.error(`Failed to delete ${labels.offeringPhrase}`);
@@ -1521,7 +1541,7 @@ function ProjectsPage() {
             }
 
             dispatch(startLoader("Deleting project"));
-            const deleteResult = await deleteProject(project.projectId, { skipLinkedOutletCheck: skipLinkedOutletDeleteCheck });
+            const deleteResult = await deleteProject(project.projectId);
             assertProjectDeleteSucceeded(
                 deleteResult,
                 project.projectId,
@@ -1549,7 +1569,6 @@ function ProjectsPage() {
             logProjectPageFailure('projects_page_selector_delete_failed', error, {
                 ...getProjectPageProjectLogContext(project.projectId, (project as any).masterProjectId),
                 ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
-                skipLinkedOutletDeleteCheck,
                 canDeactivateLinkedProjects,
             });
             message.error(`Failed to delete ${labels.offeringPhrase}`);

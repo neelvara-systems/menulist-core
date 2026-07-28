@@ -53,15 +53,15 @@ Middleware uses the shared product-site rewrite flow plus one narrow Neelvara pa
 | `src/app/sites/neelvara/sitemap.xml/route.ts` | Product-domain sitemap response |
 | `src/app/sites/neelvara/.well-known/security.txt/route.ts` | Static security-contact discovery response |
 | `src/app/sites/neelvara/styles.css` | Scoped current-color Neelvara Prism tokens, fixed mesh/grain background, glass primitives, prism panels, and responsive layout |
-| `public/neelvara-logo.svg` | True-vector Neelvara source logo using the supplied three-path geometry, the frosted parent-brand glass palette, and a balanced `68 0 487 320` source canvas for site chrome, footer identity, 404, and structured data |
-| `public/neelvara-logo.png` | Transparent compatibility render generated from the balanced true-vector SVG while retaining its established `578x328` PNG dimensions |
-| `public/neelvara-favicon.svg` | Square true-vector SVG favicon using the exact source paths, gradients, colors, positions, and angles with small-size-only opacity and outline strengthening |
-| `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | Contrast-tuned PNG favicon fallbacks centered on transparent square canvases |
-| `public/neelvara-apple-touch-icon.png` | Apple touch icon derivative from the refined mark |
-| `public/neelvara-icon-96.png`, `public/neelvara-icon-128.png`, `public/neelvara-icon-180.png`, `public/neelvara-icon-192.png`, `public/neelvara-icon-512.png`, `public/neelvara-icon.png` | Transparent app/manifest icon canvases using the refined mark without a visible frame |
-| `public/neelvara-og-image.png` | Open Graph image using the refined glass-prism mark |
+| `public/neelvara-logo.svg` | Uploaded true-vector Neelvara source logo preserved byte-for-byte, with its single compound path, exact four-stop blue-to-violet gradient, and supplied `0 0 1135 686` canvas used by site chrome, footer identity, 404, and structured data |
+| `public/neelvara-logo.png` | Transparent `1135x686` compatibility render generated from the exact source SVG |
+| `public/neelvara-favicon.svg` | Square true-vector favicon wrapper reusing the exact source compound path and gradient without transforms or color changes |
+| `public/neelvara-favicon-16.png`, `public/neelvara-favicon-32.png` | PNG favicon fallbacks centered on transparent square canvases |
+| `public/neelvara-apple-touch-icon.png` | Apple touch icon derivative from the supplied mark |
+| `public/neelvara-icon-96.png`, `public/neelvara-icon-128.png`, `public/neelvara-icon-180.png`, `public/neelvara-icon-192.png`, `public/neelvara-icon-512.png`, `public/neelvara-icon.png` | Transparent app/manifest icon canvases using the supplied mark without a visible frame |
+| `public/neelvara-og-image.png` | Transparent Open Graph derivative using the supplied mark |
 | `scripts/website-assets/generate-neelvara-logo-assets.js` | Reproducible generator for the favicon SVG, PNG logo, favicon fallbacks, touch/manifest icons, and Open Graph derivative |
-| `scripts/verification/verify-neelvara-logo-assets.js` | Geometry, palette, transparency, dimensions, optical-centering, small-size contrast, manifest, metadata, 404, and structured-data reference verifier |
+| `scripts/verification/verify-neelvara-logo-assets.js` | Source-hash, compound-path, palette, transparency, dimensions, optical-centering, small-size contrast, manifest, metadata, 404, and structured-data reference verifier |
 
 ---
 
@@ -104,12 +104,12 @@ The visual implementation now follows the current-color Neelvara Prism glass par
 - fixed restrained mesh and SVG grain layer behind every section
 - shared glass primitive for header, factual reference summaries, comparison tables, product cards, contact cards, policy rows, and CTA bands
 - shared page Prism panels on Products, Contact, About, Legal, Privacy, Terms, and not-found routes
-- homepage Prism rhythm includes a split hero, factual company reference summary, entity ledger, operating principles, relationship statement, product lineup, comparison table, contact routing, CTA, and footer
-- full-width light product band with an unframed section header and two individual product cards; card accents reuse each product logo's approved colors
+- homepage Prism rhythm includes a logo-led split hero, entity ledger, editorial operating rows, relationship statement, high-contrast product lineup, comparison table, contact routing, CTA, and footer
+- full-width dark product band with an unframed section header and two individual light product cards; card accents reuse each product logo's approved colors
 - Products uses exact two-track grids for the two-product lineup: compact product-map nodes above two equal detail cards, with no empty third track or repeated map summary copy
 - Akshar-only typography across display headings, body copy, buttons, labels, legal pages, product cards, and inline 404 output; `Inter` remains the first fallback in the font stack
 - floating pill navigation with local-prefix-aware links for `/__neelvara` and `/nv`; primary header nav shows Products, About, and Contact only
-- home page anatomy: floating nav, split hero, company reference summary, entity ledger, operating principles, relationship statement, product lineup, comparison table, contact routing cards, CTA, footer
+- home page anatomy: floating nav, logo-led split hero, entity ledger, editorial operating rows, relationship statement, high-contrast product lineup, comparison table, contact routing cards, CTA, footer
 - About, Legal, Privacy, and Terms inherit the same mesh/glass shell, split page hero, factual reference panel, horizontal content rows, policy dates where applicable, and page-specific final CTAs
 - Products and Contact use custom page flows with the same Prism hero/panel treatment for product relationship explanation and inquiry routing
 - the hero uses one factual company-reference panel and then flows into the compact entity ledger without a decorative dashboard mock

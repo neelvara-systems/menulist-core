@@ -20,9 +20,11 @@ import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotif
 import {
   normalizeOwnerNotificationDocumentId,
   normalizeOwnerNotificationNumericScopeDocumentId,
+  normalizeOwnerNotificationNumericScopeAliases,
 } from '../sharedData/ownerNotificationDeliveryBoundary';
 import { validateNetworkTargetUrl } from '../utils/networkTarget';
 import { createAlert } from './alerts';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const PUBLISH_VERIFICATION_FAILED_ALERT_MESSAGE = 'A published menu failed health verification. Review the store health record and bounded verification metadata.';
@@ -80,7 +82,7 @@ function getErrorLogContext(error: unknown): { name?: string; code?: string; sta
 
   const record = error as Record<string, unknown>;
   return {
-    name: error instanceof Error ? error.name : undefined,
+    name: getBoundedFunctionsErrorName(error),
     code: typeof record.code === 'string' ? record.code : undefined,
     status: typeof record.status === 'number' ? record.status : undefined,
   };
@@ -183,22 +185,46 @@ function isActiveCanonicalPublishScope(
     || userData.productId === 'AL'
   ) return false;
 
-  const storedTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(
-    storeData.tenantId ?? storeData.tId,
-  );
+  const tenantAliases = [tenantData.tenantId, tenantData.tId];
+  if (
+    tenantAliases.some((value) => value !== undefined && value !== null)
+    && normalizeOwnerNotificationNumericScopeAliases(tenantAliases)?.documentId !== tenantId
+  ) return false;
+
+  const storedTenantScope = normalizeOwnerNotificationNumericScopeAliases([
+    storeData.tenantId,
+    storeData.tId,
+  ]);
   if (storedTenantScope?.documentId !== tenantId) return false;
+  const storedStoreAliases = [storeData.storeId, storeData.sId];
+  if (
+    storedStoreAliases.some((value) => value !== undefined && value !== null)
+    && normalizeOwnerNotificationNumericScopeAliases(storedStoreAliases)?.documentId !== storeId
+  ) return false;
+  const userProductAliases = [userData.pId, userData.productId]
+    .filter((value) => value !== undefined && value !== null);
+  if (userProductAliases.some((value) => value !== 'ML')) return false;
   if (!isPublicMenuUrlInStoreScope(storeData, options.publicMenuUrl)) return false;
 
   const currentPlatformRole = String(userData.platformRole ?? '').toUpperCase();
   if (options.requirePlatformAuthority === true) return currentPlatformRole === 'PLATFORM';
   if (currentPlatformRole === 'PLATFORM') return true;
 
-  const userTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(
-    userData.tenantId ?? userData.tId,
-  );
+  const userTenantScope = normalizeOwnerNotificationNumericScopeAliases([
+    userData.tenantId,
+    userData.tId,
+  ]);
   if (userTenantScope?.documentId !== tenantId) return false;
 
-  const storeCandidates: unknown[] = [userData.storeId, userData.sId];
+  const directStoreAliases = [userData.storeId, userData.sId];
+  const directStoreScope = directStoreAliases.some((value) => value !== undefined && value !== null)
+    ? normalizeOwnerNotificationNumericScopeAliases(directStoreAliases)
+    : null;
+  if (
+    directStoreAliases.some((value) => value !== undefined && value !== null)
+    && !directStoreScope
+  ) return false;
+  const storeCandidates: unknown[] = directStoreScope ? [directStoreScope.documentId] : [];
   if (Array.isArray(userData.storeIds)) storeCandidates.push(...userData.storeIds);
   if (Array.isArray(userData.stores)) {
     userData.stores.forEach((mapping) => {
@@ -373,15 +399,15 @@ export async function forceRepublishActiveProjects(
     const activeProjects = projectsSnapshot.docs.filter((projectDoc) => {
       const projectData = projectDoc.data() as Record<string, unknown>;
       if (projectData.deleted === true || projectData.active === false) return false;
-      const embeddedTenant = projectData.tenantId ?? projectData.tId;
-      const embeddedStore = projectData.storeId ?? projectData.sId;
+      const embeddedTenantAliases = [projectData.tenantId, projectData.tId];
+      const embeddedStoreAliases = [projectData.storeId, projectData.sId];
       if (
-        embeddedTenant !== undefined
-        && normalizeOwnerNotificationNumericScopeDocumentId(embeddedTenant)?.documentId !== tenantScope.documentId
+        embeddedTenantAliases.some((value) => value !== undefined && value !== null)
+        && normalizeOwnerNotificationNumericScopeAliases(embeddedTenantAliases)?.documentId !== tenantScope.documentId
       ) return false;
       if (
-        embeddedStore !== undefined
-        && normalizeOwnerNotificationNumericScopeDocumentId(embeddedStore)?.documentId !== storeScope.documentId
+        embeddedStoreAliases.some((value) => value !== undefined && value !== null)
+        && normalizeOwnerNotificationNumericScopeAliases(embeddedStoreAliases)?.documentId !== storeScope.documentId
       ) return false;
       return normalizeOwnerNotificationDocumentId(projectDoc.id) === projectDoc.id;
     });

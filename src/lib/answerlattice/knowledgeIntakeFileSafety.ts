@@ -9,10 +9,18 @@ type ZipEntrySizeMetadata = {
 export function assertAnswerlatticeDocxEntryIsBounded(
     metadata: ZipEntrySizeMetadata | null | undefined,
 ) {
-    const compressedSize = Number(metadata?.compressedSize);
-    const uncompressedSize = Number(metadata?.uncompressedSize);
+    let compressedSize: unknown;
+    let uncompressedSize: unknown;
+    try {
+        compressedSize = metadata?.compressedSize;
+        uncompressedSize = metadata?.uncompressedSize;
+    } catch {
+        throw new Error('DOCX size metadata is not available.');
+    }
     if (
-        !Number.isSafeInteger(compressedSize)
+        typeof compressedSize !== 'number'
+        || typeof uncompressedSize !== 'number'
+        || !Number.isSafeInteger(compressedSize)
         || !Number.isSafeInteger(uncompressedSize)
         || compressedSize < 0
         || uncompressedSize <= 0

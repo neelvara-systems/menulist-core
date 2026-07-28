@@ -30,6 +30,11 @@ const expectedMetadata: AdminImmutableObjectMetadata = {
 assert.equal(isAdminImmutableObjectCreateConflict({ code: 412 }), true);
 assert.equal(isAdminImmutableObjectCreateConflict({ statusCode: '412' }), true);
 assert.equal(isAdminImmutableObjectCreateConflict({ code: 403 }), false);
+assert.equal(isAdminImmutableObjectCreateConflict({
+    get code() {
+        throw new Error('provider code getter must be contained');
+    },
+}), false);
 assert.equal(adminImmutableObjectMatchesUpload(expectedMetadata, {
     buffer,
     cacheControl: 'public,max-age=31536000,immutable',
@@ -37,6 +42,23 @@ assert.equal(adminImmutableObjectMatchesUpload(expectedMetadata, {
     customMetadata,
 }), true);
 assert.equal(adminImmutableObjectMatchesUpload({ ...expectedMetadata, size: buffer.length + 1 }, {
+    buffer,
+    cacheControl: 'public,max-age=31536000,immutable',
+    contentType: 'image/webp',
+    customMetadata,
+}), false);
+assert.equal(adminImmutableObjectMatchesUpload({
+    ...expectedMetadata,
+    get size(): number {
+        throw new Error('provider size getter must be contained');
+    },
+}, {
+    buffer,
+    cacheControl: 'public,max-age=31536000,immutable',
+    contentType: 'image/webp',
+    customMetadata,
+}), false);
+assert.equal(adminImmutableObjectMatchesUpload({ ...expectedMetadata, size: ' 14 ' }, {
     buffer,
     cacheControl: 'public,max-age=31536000,immutable',
     contentType: 'image/webp',
@@ -56,6 +78,11 @@ assert.equal(adminImmutableObjectMatchesUpload(expectedMetadata, {
 }), false);
 assert.equal(getAdminImmutableObjectDownloadToken(expectedMetadata), 'existing-token');
 assert.equal(getAdminImmutableObjectDownloadToken({ metadata: { firebaseStorageDownloadTokens: '' } }), null);
+assert.equal(getAdminImmutableObjectDownloadToken({
+    get metadata(): Record<string, string> {
+        throw new Error('provider metadata getter must be contained');
+    },
+}), null);
 assert.equal(
     buildAdminImmutableObjectDownloadUrl('bucket.example', 'media/menuItem/1/2/item/image.webp', 'token value'),
     'https://firebasestorage.googleapis.com/v0/b/bucket.example/o/media%2FmenuItem%2F1%2F2%2Fitem%2Fimage.webp?alt=media&token=token%20value',

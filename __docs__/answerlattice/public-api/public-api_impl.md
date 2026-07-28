@@ -1,7 +1,7 @@
 # Answerlattice Public API v1 - Implementation
 
 > **Status:** Implemented, locally audited, rollout-gated
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-07-26
 
 ## Connected File Map
 
@@ -32,6 +32,7 @@ flag + authenticated session
   -> fail-closed actor/workspace rate limit
   -> MANAGE_INTEGRATIONS permission
   -> strict bounded request
+  -> browser-retained request ID + cryptographic key candidate
   -> create/rotate or revoke
   -> active-workspace transaction
   -> stores.publicApi hash-only update/delete
@@ -39,7 +40,7 @@ flag + authenticated session
   -> strict private response
 ```
 
-One workspace has at most one active Public API credential. Generating a new key is rotation, not key proliferation. The raw key is generated server-side and returned only in the successful create/rotate response.
+One workspace has at most one active Public API credential. Generating a new key is rotation, not key proliferation. The authenticated browser creates a cryptographically random candidate and operation ID, retains both across an unchanged retry, and sends them only to the protected management route. Every status or mutation request also corroborates the workspace visible when the action began. The route compares that value with the authoritative session scope and returns `409` if the session changed; the client never treats the supplied scope as authority. The transaction persists only the hash and operation ID. An exact retry returns the committed summary without another write or audit; a reused operation ID with changed key/scopes returns `409`. The raw key is returned only in the successful create/rotate response.
 
 The persisted credential shape is:
 
@@ -50,11 +51,12 @@ The persisted credential shape is:
   createdAt: string;  // exact ISO timestamp
   productId: 'AL';
   purpose: 'answerlattice_public_api';
+  rotationRequestId: string; // UUID; retry identity, not secret material
   scopes: Array<'public:read' | 'signals:write' | 'mcp:read'>;
 }
 ```
 
-The browser never receives the hash. Audit records contain only prefix, timestamp, scopes, active state, actor, and tenant/workspace scope.
+The browser never receives the hash. Firestore never receives the raw key. Audit records contain only prefix, timestamp, scopes, active state, actor, and tenant/workspace scope. Management responses acknowledge the authoritative tenant/workspace scope. The screen renders status and the one-time secret only when that acknowledgement, current Answerlattice access scope, and current session scope agree; a workspace transition clears pending rotation identity and rejects stale asynchronous settlement.
 
 ## External Authentication Flow
 
@@ -72,7 +74,7 @@ The browser never receives the hash. Audit records contain only prefix, timestam
 `mcp:read` is deliberately separate from `public:read`. The MCP session exchange cannot turn an ordinary public-read credential into private compiled-context access.
 9. Retrieval or signal work begins.
 
-Key-management POST requests separately reject cross-origin browser submissions before permission or Firestore work.
+Key-management requests separately reject cross-origin browser submissions before permission or Firestore work, and require initiating-workspace corroboration before any credential read or write.
 
 ## Endpoint Contracts
 
@@ -84,17 +86,19 @@ Key-management POST requests separately reject cross-origin browser submissions 
 - Optional plan, role, and state: non-empty bounded IDs.
 - Optional context: `AnswerlatticeContextSchema`, only when context-aware support is enabled.
 - Runtime: `attemptCanonicalRetrieval()` only; no RAG/provider fallback.
-- Public projection: approved answer content, applicability, normalized citations, confidence, clarification, bounded governance flags, and timestamps.
-- Excluded: internal evidence IDs, drift reasons, audit records, raw source records, knowledge-graph expansion/interaction rules, and production debug traces.
+- Public projection: approved answer content, an existing-schema-validated guided procedure, explicit applicability-version fields, normalized citations, confidence, clarification, bounded governance flags, and timestamps.
+- Excluded: internal or future `productBinding` siblings, internal evidence IDs, drift reasons, audit records, raw source records, knowledge-graph expansion/interaction rules, and production debug traces.
+- Canonical ranking uses the same failure-contained timestamp boundary as serialization; malformed legacy validation time is ignored for recency rather than suppressing all otherwise valid canonical answers.
 
 ### Entities
 
 - Query allows known entity type, public status (`active` or `beta`), and limit 1-200.
 - Compiled private entity-index bundle is preferred only when both bundle flags are enabled and the manifest is ready.
-- Firestore fallback is capped and sorted deterministically.
+- Firestore fallback applies the admitted type and active/beta status predicates in Firestore before its cap, then sorts the admitted page deterministically. The type-plus-status index exists in both dedicated and shared manifests.
 - ETag is derived from stable payload fields and excludes `generatedAt`, so `If-None-Match` can return `304`.
 - `deprecated`, draft, and invalid entity rows are excluded.
 - The response reports `truncated` when the bounded source cannot prove completeness; v1 has no cursor pagination.
+- Shared public timestamp serialization accepts only valid ISO strings, `Date`, or timestamp-like `toDate`/`toMillis` results and returns `null` for malformed, throwing, or Proxy-backed legacy values.
 
 ### Signals
 
@@ -103,7 +107,8 @@ Key-management POST requests separately reject cross-origin browser submissions 
 - Allows only public support/friction signal types.
 - Requires a bounded idempotency key.
 - Optional entity ID must pass the shared governance ID boundary.
-- Metadata is capped to primitive values and reserved identity/source fields are stripped.
+- Metadata is unknown-typed at admission, capped to finite primitive values, and strips reserved identity/source fields without invoking object coercion.
+- Invalid dates, nonfinite numbers, cyclic values, throwing getters, and Proxy-backed containers cannot escape sanitization or identity derivation; process-local and durable deduplication use only the sanitized structure.
 - Server-owned source/request IDs are added after sanitization.
 - Exact replay is idempotent; changed replay content returns deterministic `409`.
 - A successful write returns `202`; it never mutates or publishes a canonical answer.

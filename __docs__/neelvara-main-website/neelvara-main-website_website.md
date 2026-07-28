@@ -70,29 +70,27 @@ Layout language:
 - glass panels with consistent stroke, blur, and inset highlight
 - current-color prism panels on major page heroes and not-found recovery
 - Akshar typography across display headlines, compact labels, and concise body copy, with Inter retained only as fallback
-- home page uses a split company hero, factual reference summary, compact company ledger, unframed operating principles, relationship statement, product lineup, boundary table, contact routing, CTA, and footer
+- home page uses a split company hero with an unframed source logo visual, compact company ledger, editorial operating rows, relationship statement, high-contrast product lineup, boundary table, contact routing, CTA, and footer
 - secondary pages use a two-column page hero with a factual reference panel and consistent horizontal content rows
 - decorative browser mocks, fake charts, marquees, numbered section labels, and duplicate summary-card grids are not part of the current public layout
 
 Logo rule:
 
-- use the glass-prism Neelvara mark with the supplied three-path geometry preserved
+- use the supplied continuous loop-and-arrow Neelvara mark
 - `public/neelvara-logo.svg` is the source website mark used in header, footer, 404, and structured data
-- the source SVG is a true vector file; path geometry must not be redrawn, filtered, simplified, or replaced by an embedded raster image
-- the master SVG uses the balanced `68 0 487 320` viewBox; this corrects transparent canvas padding without resizing, moving, rotating, or transforming any path
-- the approved logo palette is frosted periwinkle, muted blue-violet, and silver-lavender so the parent mark stays distinct from the product brands
+- the source SVG is the uploaded true-vector file preserved byte-for-byte; its compound path, gradient, stops, proportions, and canvas must not be redrawn, filtered, simplified, recolored, or replaced by an embedded raster image
+- the master SVG retains its supplied `0 0 1135 686` viewBox and balanced transparent padding
+- the approved logo palette is exactly Clear Blue `#2384FF`, Neel Blue `#1457D9`, Royal Indigo `#2737C8`, and Controlled Violet `#6542E8`
 - the visible website logo must not sit inside a square, rounded-rectangle, card, or boxed frame
 - PNG derivatives are only for browser/favicon, Open Graph, or platform compatibility surfaces
-- `public/neelvara-favicon.svg` is the preferred browser favicon and uses the exact three paths on a balanced transparent square canvas without path transforms
-- favicon-only fill opacity and outline strength may be increased for 16-32px legibility; path geometry, gradients, colors, relative placement, and angles remain locked
+- `public/neelvara-favicon.svg` is the preferred browser favicon and reuses the exact supplied compound path and gradient on a balanced transparent square canvas without path transforms or color changes
 - favicon PNG fallbacks, Apple touch icon, manifest PNG derivatives, the compatibility PNG, and the Open Graph image are generated with `npm run generate:neelvara-assets` and verified with `npm run verify:neelvara-logo-assets`
 - all generated derivatives must keep transparent corners, a centered silhouette, and no visible frame
 - wordmark/page text stays `#071323`
 
 Avoid:
 
-- cyan-heavy gradients
-- pure purple branding
+- colors outside the supplied four-stop logo gradient
 - direct product-brand logo recolors
 - rose, amber, peach, or warm SaaS palettes
 - black-only luxury styling
@@ -130,9 +128,9 @@ Purpose: establish entity identity, explain why the company exists, show the ope
 
 Required flow:
 
-1. Split hero: infrastructure headline, concise operating description, `View Products`, `Email Neelvara`, and a factual company reference summary.
+1. Split hero: infrastructure headline, concise operating description, `View Products`, `Email Neelvara`, and an unframed source-logo visual. The company facts belong in the ledger immediately below rather than a duplicate hero card.
 2. Entity ledger: company, operated products, and country.
-3. Operating approach: three unframed principles for company reference, independent product surfaces, and direct inquiry routing.
+3. Operating approach: an asymmetric editorial layout with three unframed rows for company reference, independent product surfaces, and direct inquiry routing.
 4. Company relationship statement using the canonical relationship sentence.
 5. Current products: two linked product cards with the actual MenuList and Answerlattice marks.
 6. Comparison/reference table separating company reference, product websites, and product apps.

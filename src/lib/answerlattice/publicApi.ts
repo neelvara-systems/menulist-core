@@ -1,5 +1,8 @@
 import { FEATURE_FLAGS } from '@config/features';
-import { isAnswerlatticePublicApiCredentialInScope } from '@lib/answerlattice/publicApiContracts';
+import {
+    isAnswerlatticePublicApiCredentialInScope,
+    toAnswerlatticePublicIsoTimestamp,
+} from '@lib/answerlattice/publicApiContracts';
 import { isAnswerlatticeActiveStoreInScope, normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { apiError, hashApiKey, logApiRequest, PublicApiCredentialScope, validatePublicApiKey } from '@lib/publicApi/auth';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -145,14 +148,4 @@ export async function authenticateAnswerlatticePublicApi(
     };
 }
 
-export function toIsoTimestamp(value: any): string | null {
-    if (!value) return null;
-    if (typeof value === 'string') {
-        const parsed = new Date(value);
-        return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-    }
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value.toDate === 'function') return value.toDate().toISOString();
-    if (typeof value.toMillis === 'function') return new Date(value.toMillis()).toISOString();
-    return null;
-}
+export const toIsoTimestamp = toAnswerlatticePublicIsoTimestamp;

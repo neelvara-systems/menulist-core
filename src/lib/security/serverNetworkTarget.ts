@@ -1,4 +1,5 @@
 import { lookup } from 'dns/promises';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const IPV4_PATTERN = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 const BLOCKED_HOSTNAMES = new Set([
@@ -98,7 +99,7 @@ export async function validateServerNetworkTargetUrl(
             valid: false,
             addressCount: 0,
             error: 'invalid_url',
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedErrorName(error) || typeof error,
         };
     }
 
@@ -137,7 +138,7 @@ export async function validateServerNetworkTargetUrl(
             valid: false,
             addressCount: 0,
             error: 'dns_lookup_failed',
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedErrorName(error) || typeof error,
         };
     }
 }

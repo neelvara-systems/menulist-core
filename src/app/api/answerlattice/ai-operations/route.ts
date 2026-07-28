@@ -1,6 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
+import { ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS } from '@lib/answerlattice/accessControl';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
@@ -26,6 +29,14 @@ const MAX_PAGE_SIZE = 50;
 const DEFAULT_PAGE_SIZE = 15;
 const FILTER_SCAN_LIMIT = 100;
 const MAX_FILTER_SCAN_DOCS = 500;
+
+function privateJson(body: unknown, init: ResponseInit = {}) {
+    const headers = new Headers(init.headers);
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return NextResponse.json(body, { ...init, headers });
+}
 
 const QuerySchema = z.object({
     action: z.string().trim().max(120).optional(),
@@ -196,7 +207,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     try {
         const validation = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()));
         if (!validation.success) {
-            return NextResponse.json(
+            return privateJson(
                 { error: 'Invalid query parameters', details: getSafeZodValidationDetails(validation.error) },
                 { status: 400 },
             );
@@ -204,7 +215,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         const scope = resolveAnswerlatticeSessionScope(session);
         if (!scope) {
-            return NextResponse.json({ error: 'Answerlattice account scope is missing' }, { status: 400 });
+            return privateJson({ error: 'Answerlattice account scope is missing' }, { status: 400 });
         }
 
         const tenantId = scope.tenantId;
@@ -212,14 +223,19 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         tenantIdForLog = tenantId;
         storeIdForLog = storeId;
         const rateLimitConfig = getRateLimitForFeature('DATA_READ');
-        const userId = session.uId || session.user?.id || 'unknown';
+        const userId = resolveCurrentSessionUserDocumentId(session);
+        if (!userId) {
+            return privateJson({ error: 'Forbidden' }, { status: 403 });
+        }
         userIdForLog = userId;
         const rateLimit = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey('answerlattice-ai-operations', userId, tenantId, storeId),
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
 
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
             logger.security('Rate Limit Exceeded', {
                 endpoint: '/api/answerlattice/ai-operations',
@@ -231,14 +247,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 window: rateLimitConfig.window,
             }, 'medium');
 
-            return NextResponse.json(
+            return privateJson(
                 {
-                    error: `Too many requests. Please wait ${waitSeconds} seconds.`,
+                    error: providerUnavailable
+                        ? 'AI operations are temporarily unavailable. Please try again later.'
+                        : `Too many requests. Please wait ${waitSeconds} seconds.`,
                     retryAfter: waitSeconds,
                     resetAt: rateLimit.resetAt,
                 },
                 {
-                    status: 429,
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'Retry-After': String(waitSeconds),
                         'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -252,7 +270,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_BILLING);
         if (permission.response) return permission.response;
 
-        const platformRole = session.platformRole || session.user?.platformRole;
+        const platformRole = resolveExactSessionPlatformRole(session);
+        if (platformRole === null) {
+            return privateJson({ error: 'Forbidden' }, { status: 403 });
+        }
         const isPlatform = platformRole === 'PLATFORM';
         const { action, cursorId, pageSize, startDate, endDate } = validation.data;
         actionForLog = action;
@@ -263,7 +284,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const dateRange = normalizeAiOperationHistoryDateRange(startDate, endDate);
 
         if (!dateRange) {
-            return NextResponse.json({ error: 'Invalid date filter' }, { status: 400 });
+            return privateJson({ error: 'Invalid date filter' }, { status: 400 });
         }
 
         let query: FirebaseFirestore.Query = answerlatticeFirestoreAdmin
@@ -286,7 +307,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             cursorRequested: Boolean(cursorId),
             dateRange,
         })) {
-            return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 });
+            return privateJson({ error: 'Invalid cursor' }, { status: 400 });
         }
 
         const result = action
@@ -307,7 +328,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 : sanitizeOwnerOperation(doc.id, doc.data())
         ));
 
-        return NextResponse.json({
+        return privateJson({
             data,
             hasMore: result.hasMore,
             lastVisibleDoc: result.lastVisibleDoc,
@@ -324,6 +345,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             hasStartDate: hasStartDateForLog,
             hasEndDate: hasEndDateForLog,
         });
-        return NextResponse.json({ error: 'Failed to load support credit usage' }, { status: 500 });
+        return privateJson({ error: 'Failed to load support credit usage' }, { status: 500 });
     }
 });

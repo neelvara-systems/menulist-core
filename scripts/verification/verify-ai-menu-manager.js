@@ -360,13 +360,18 @@ assert(sendCommandBlock.includes('reusableSession?.hasPendingOperations') && sen
 assert(clientDal.includes("executionMode: 'existing_server_api'"), 'Server-backed fallback cards must be represented with the existing_server_api execution mode');
 assert(clientDal.includes('const body: AiMenuManagerCommandRequest') && !clientDal.includes('body: JSON.stringify({\n            ...request'), 'AMM server fallback command must send only API fields, not the loaded project JSON');
 assert(completionBlock.includes('sessionSnapshot'), 'AMM completion/cancel must accept the loaded compact session snapshot');
-assert(completionBlock.includes('getMatchingOperationSessionSnapshot'), 'AMM completion/cancel must verify the loaded compact session scope before writing');
+assert(completionBlock.includes('getMatchingSessionForOperation'), 'AMM completion/cancel must verify transaction-current compact-session scope before pending or terminal replay handling');
+assert(completionBlock.includes('resolveAiMenuManagerTerminalReceiptGroup({') && completionBlock.includes('resolveAiMenuManagerTerminalReceipt({'), 'AMM direct completion and cancellation must replay current terminal receipts after a lost acknowledgement');
+assert(completionBlock.includes("expectedStatus: 'cancelled'") && completionBlock.includes("status: 'cancelled'"), 'AMM direct cancellation must persist and replay durable cancelled evidence');
 assert(completionBlock.includes('resolveCurrentAiMenuManagerOperationGroup({'), 'AMM grouped completion must resolve canonical persisted operation bodies inside the transaction');
 assert(completionBlock.includes('resolveCurrentAiMenuManagerOperation({'), 'AMM single completion must resolve the canonical persisted operation body inside the transaction');
 assert(completionBlock.includes("currentOperation.card.kind !== 'manual_task'") && completionBlock.includes("!currentOperation.card.actions.includes('mark_done')"), 'AMM manual completion must revalidate the current persisted card rather than caller-supplied card data');
 assert(pendingOperationIntegrity.includes('new Set(operationIds).size !== operationIds.length'), 'AMM grouped completion must reject duplicate requested operation IDs');
 assert(pendingOperationIntegrity.includes('fullPendingGroup.length !== currentOperations.length'), 'AMM grouped completion must reject partial current-group completion');
 assert(pendingOperationIntegrity.includes('operation.commandGroupSize !== fullPendingGroup.length'), 'AMM grouped completion must fail closed on inconsistent persisted group metadata');
+assert(pendingOperationIntegrity.includes('matches.length !== 1') && pendingOperationIntegrity.includes('TERMINAL_RECEIPT_MISMATCH_MESSAGE'), 'AMM terminal replay must reject duplicate or mismatched persisted receipts');
+assert(pendingOperationIntegrity.includes('params.pendingOperations?.some((operation)') && pendingOperationIntegrity.includes('operation.operationId === params.requestedOperation.operationId'), 'AMM terminal replay must reject contradictory pending and terminal truth for one operation');
+assert(pendingOperationIntegrity.includes('resolved.some((receipt) => receipt === null)'), 'AMM grouped terminal replay must reject partial receipt sets');
 assert(completionBlock.includes("params.operation.card.kind !== 'manual_task'") && completionBlock.includes("!params.operation.card.actions.includes('mark_done')"), 'AMM client completion must reject manual_task completion unless the card exposes manual completion');
 assert(completionBlock.includes('return runTransaction(firebaseClient, async (transaction) => {'), 'AMM completion/cancel must transactionally merge current compact truth');
 assert(completionBlock.includes('const sessionSnap = await transaction.get(sessionRef);'), 'AMM completion/cancel must read the compact session inside the write transaction');
@@ -1393,7 +1398,9 @@ assert(mobileShell.includes("FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER") && mobileShe
 
 const mobileNavigation = read('src/components/mobile/MobileNavigation.tsx');
 assert(mobileNavigation.includes("'aiMenuManager'"), 'MobileNavigation must include the Menu Manager tab key');
-assert(mobileNavigation.includes("title: 'Menu help'"), 'MobileNavigation must expose owner-friendly Menu help in the bottom tab bar');
+assert(mobileNavigation.includes("titleKey: 'menuHelp'"), 'MobileNavigation must expose localized owner-friendly Menu help in the bottom tab bar');
+const mobileNavigationEnUs = JSON.parse(read('public/locales/menulist.ai/en-US.json'));
+assert(mobileNavigationEnUs?.MobileNavigation?.menuHelp === 'Menu help', 'MobileNavigation English locale must retain owner-friendly Menu help copy');
 
 const mobileScreen = read('src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx');
 const mobileProposalCard = read('src/components/mobile/ai-menu-manager/MobileAiMenuCardStack.tsx');
@@ -1657,6 +1664,7 @@ assert(firestoreRules.includes('isValidAiMenuManagerSessionCounters') && firesto
 assert(firestoreRules.includes("counters[key] is int && counters[key] >= 0 && counters[key] <= 1000000000"), 'Firestore rules must reject malformed or unbounded compact-session counters');
 assert(aiMenuManagerRulesTest.includes("counters: { commands: '1' }") && aiMenuManagerRulesTest.includes('unknownCounter: 1'), 'AMM rules tests must reject wrong-type and unknown compact-session counters');
 assert(firestoreRules.includes('match /aiMenuManagerProposals/{proposalId}') && firestoreRules.includes('allow read, write: if false;'), 'AMM proposal docs must remain server/Admin-only');
+assert(firestoreRules.includes('match /aiMenuManagerRules/{ruleId}') && aiMenuManagerRulesTest.includes("doc(ownerDb, 'aiMenuManagerRules', 'owner-rule')"), 'AMM rule-ledger docs must remain server/Admin-only with emulator denial coverage');
 assert(proposalIntegrity.includes('normalizeAiMenuManagerProposalSnapshot'), 'AMM proposal snapshots must have one canonical runtime normalizer');
 assert(proposalIntegrity.includes('cardStatusMatchesProposal') && proposalIntegrity.includes('executionStatusMatchesProposal'), 'AMM proposal runtime normalization must enforce card and execution state coherence');
 assert(proposalIntegrity.includes('isAiMenuManagerPatchAllowedForAction') && proposalIntegrity.includes('normalizeExecutionDirective'), 'AMM proposal runtime normalization must validate executable patch and directive contracts');

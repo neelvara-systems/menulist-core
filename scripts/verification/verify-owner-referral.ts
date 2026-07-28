@@ -292,6 +292,13 @@ const verifyOwnerReferral = (): void => {
     includes(featureBoundary, 'isOwnerReferralPilotStoreAllowed', 'owner referral pilot boundary');
     includes(featureBoundary, 'isOwnerReferralPilotConfigured', 'owner referral configured-pilot boundary');
     includes(featureBoundary, 'isOwnerReferralAcquisitionEnabledForStore', 'owner referral store entry boundary');
+    [
+        "getTenantStoreStorageKey('owner-referral-scope'",
+        'scopeKeyRef.current !== requestScopeKey',
+        'setData(null)',
+        'loadInFlightRef.current',
+    ].forEach((token) => includes(referralHook, token, 'owner referral browser scope boundary'));
+    excludes(referralHook, 'storeDetails', 'owner referral browser scope boundary');
 
     [
         "createCipheriv('aes-256-gcm'",
@@ -370,7 +377,13 @@ const verifyOwnerReferral = (): void => {
         "status: 'prior_paid'",
         'snapshot.size >= OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT',
         'isPlatformEntityBlocked(storeData)',
+        'storeData.tenantId !== payload.referrerTenantId',
+        'storeData.storeId !== payload.referrerStoreId',
+        "typeof subscription.totalPaymentsMadeCount === 'number'",
+        'Number.isSafeInteger(subscription.totalPaymentsMadeCount)',
     ].forEach((token) => includes(attribution, token, 'owner referral attribution server'));
+    excludes(attribution, 'Number(storeData.tenantId)', 'attribution referrer exact tenant scope boundary');
+    excludes(attribution, 'Number(subscription.totalPaymentsMadeCount', 'attribution exact payment evidence boundary');
     includes(attribution, 'isOwnerReferralPilotStoreAllowed(payload.referrerStoreId)', 'attribution pilot boundary');
 
     [claimRoute, onboardingRoute, createSubscriptionRoute].forEach((route, index) => {
@@ -404,7 +417,14 @@ const verifyOwnerReferral = (): void => {
         'owner_referral_pending_repair_remaining',
         'isOwnerReferralStoreEligible',
         'isPlatformEntityBlocked(store)',
+        'getMenuListSubscriptionEntitlementScope(subscription)',
     ].forEach((token) => includes(settlement, token, 'atomic referral reward settlement'));
+    [
+        'Number(referrerSubscription.tenantId)',
+        'Number(referredSubscription.tenantId)',
+        'const normalizedTenantId = Number(tenantId)',
+        'const normalizedStoreId = Number(storeId)',
+    ].forEach((token) => excludes(settlement, token, 'atomic referral reward exact scope boundary'));
     excludes(settlement, 'DB_COLLECTIONS.TOPUPS', 'reward settlement must not look like a purchased pack');
     excludes(settlement, 'distribution', 'payment-only settlement');
     excludes(settlement, 'published', 'payment-only settlement');
@@ -415,6 +435,9 @@ const verifyOwnerReferral = (): void => {
     [
         'verifySaturatedHistoryFailsClosed',
         'verifyMalformedWalletBalanceFailsClosed',
+        'verifyConflictingWalletScopeFailsClosed',
+        'verifyReferrerStoreScopeRequiresExactScalars',
+        'verifyCoerciblePaymentCountCannotBlockAttribution',
         'verifyBlockedStoreCannotSettle',
         "error.message === 'owner_referral_wallet_credit_invalid'",
         "result === 'payment_pending'",

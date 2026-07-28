@@ -99,6 +99,7 @@ import OBPContent from "../obp/OBPContent";
 import OBPSkeleton from "../obp/OBPSkeleton";
 import MenuBreadcrumb from "./MenuBreadcrumb";
 import MenuNotFoundFallback from "./MenuNotFoundFallback";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 // Get tenant info from headers (set by middleware)
 // Shared helper used across client pages — see @lib/multiTenant/getTenantFromHeaders
@@ -244,7 +245,7 @@ const buildPublicMenuResolutionLogContext = (
         slugLength: slug.length,
         canonicalUrlPresent: Boolean(canonicalUrl),
         canonicalUrlLength: canonicalUrl.length,
-        errorName: metadata.error instanceof Error ? metadata.error.name : typeof metadata.error,
+        errorName: getBoundedErrorName(metadata.error) || typeof metadata.error,
     };
 };
 

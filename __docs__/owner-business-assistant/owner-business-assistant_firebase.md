@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Compact read-only model
-**Last Updated:** July 13, 2026
+**Last Updated:** July 27, 2026
 
 ## Cost Position
 
@@ -30,6 +30,8 @@ Every query must be tenant/store scoped and bounded.
 The scheduler treats `ownerBusinessHealthCurrent_*`, same-day `ownerBusinessHealthSnapshot_*`, and `ownerBusinessAnalyticsIndex_*` payloads as complete authoritative read models. Each run sanitizes and replaces those documents so an optional teaser, period, project summary, source reference, or legacy field that is no longer produced is removed rather than retained by Firestore merge semantics. `ownerBusinessHealthMultiLocation_*` is intentionally different: it merges only `stores.{sId}` plus current metadata so refreshing one location preserves every sibling location.
 
 Server reads do not cast these persisted documents into response types. `src/lib/ownerBusinessAssistant/readModelBoundary.ts` validates every supported nested structure, requires the stored tenant/store identity to match the requested document scope, and returns a schema-projected DTO. Firestore-only `kind`/`expiresAt` fields and unknown legacy fields are not copied into context packets or JSON responses. An invalid current document emits a bounded diagnostic and falls back to `not_ready`; an invalid analytics document becomes unavailable. Redis context-packet reads apply the same schemas and require packet, health, and cache-key tenant/store/project identity to agree before a cached packet is accepted.
+
+The scheduled guest-feedback input is also a persisted-data boundary. `buildOwnerBusinessFeedbackSummary.ts` admits only records whose tenant/store scope matches the query, document and project IDs are canonical, rating/status/attention/source invariants agree, creator is `guest`, timestamps are valid persisted timestamp values with expiry after creation, optional business dates are valid, and optional messages remain within the writer limit. Invalid or legacy-corrupt rows are omitted before counts, themes, source references, or owner-facing snippets are built, and one bounded `OWNER_BUSINESS_FEEDBACK_INVALID_RECORD` warning records only the invalid count, at most three document IDs, and the expected tenant/store scope. The query remains bounded to 81 reads and at most 80 admitted rows; this hardening adds no Firestore reads, writes, indexes, rules, or Storage operations.
 
 ## Removed Workflow Storage
 
@@ -71,6 +73,10 @@ Malformed, extra-field, or scope-mismatched Redis packets are treated as cache m
 
 Business Health scheduled work belongs in existing consolidated MenuList scheduler discipline with bounded reads, leases, and explicit cost notes. No standalone cleanup scheduler should exist for Business Health action records because those records are no longer produced.
 
+Retention is independent of feature activation. The existing daily `owner_business_assistant_cleanup` task always processes expiry markers for Business Health snapshots, answer events, feedback, and threads, even when the corresponding feature/write flags are disabled. Disabling an owner surface stops new writes but must not extend the declared retention of already-persisted private conversation or telemetry rows. Each family remains capped at 50 expiry-matched rows per leased run; no standalone scheduler or new index is required.
+
+Malformed persisted guest feedback is skipped inside the existing scoring run rather than failing the complete store job or becoming Business Health truth. This normalization executes after the tenant/store-scoped bounded query and before any derived read-model write.
+
 ## Storage
 
 Core Business Health uses no Firebase Storage. Generated images, imports, and heavy operation artifacts belong to Menu Manager or their existing feature-specific systems, not Business Health.
@@ -80,6 +86,8 @@ Core Business Health uses no Firebase Storage. Generated images, imports, and he
 Firestore rules should keep Business Health read models protected behind APIs unless an existing safe client-read pattern is explicitly documented.
 
 Direct client writes to Business Health monitor/thread/feedback docs must remain blocked unless the route is explicitly designed for that write. The feedback API route is the designed owner feedback write path: it rate-limits first, rejects bodies above 8KB before schema validation, verifies selected-store scope and `VIEW_ANALYTICS`, then writes one `ownerBusinessAssistantFeedback` document with a 90-day expiry.
+
+The deterministic answer/user feedback row is an exact replacement, not a merge. The server writes only the current validated `answerId`, `rating`, optional current `reason`/`question`, exact selected tenant/store/user identity, source, creation time and expiry. Re-submitting without optional text removes the former text instead of retaining it until cleanup. This changes no read count and retains one write per accepted submission.
 
 Thread ID admission is shape-bound. Browser-created thread IDs use the shared `oba_` runtime ID helper; answer requests, thread persistence, and `/api/owner-business-assistant/thread/{threadId}` reads reject malformed, whitespace-mutated, reserved, or path-shaped thread IDs before `ownerBusinessAssistantThreads` document reads/writes. `OwnerBusinessAssistantThreadIdSchema` does not trim before `normalizeOwnerBusinessAssistantThreadId(value) === value`. If localStorage contains a stale malformed thread ID, the browser hook replaces it with a fresh `oba_` ID before sending the answer request. This changes no normal thread read/write counts.
 

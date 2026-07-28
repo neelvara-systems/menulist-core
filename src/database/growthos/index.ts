@@ -6,6 +6,11 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { getGrowthOSBoundedStringContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
+import {
+    getGrowthOSClientScope,
+    projectGrowthOSSummaryForScope,
+    type GrowthOSClientScope,
+} from "@lib/growthos/clientContracts";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import type {
     GrowthOSDestination,
@@ -27,6 +32,17 @@ const GROWTHOS_CLIENT_REQUEST_POLICY: Pick<RequestInit, "cache" | "credentials" 
     credentials: "same-origin",
     redirect: "manual",
 };
+
+async function fetchGrowthOSIdempotentMutation(
+    input: RequestInfo | URL,
+    init: RequestInit,
+): Promise<Response> {
+    try {
+        return await fetch(input, init);
+    } catch {
+        return fetch(input, init);
+    }
+}
 
 type GrowthOSDataResponse<T> = {
     data: T;
@@ -79,13 +95,31 @@ async function parseResponse<T = unknown>(
     return payload as T;
 }
 
-export const getGrowthOSSummary = async (): Promise<GrowthOSSummaryDocument | null> => {
+export const getGrowthOSSummary = async (
+    expectedScope: GrowthOSClientScope,
+): Promise<GrowthOSSummaryDocument | null> => {
     if (!FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON) return null;
     return await apiCallComposer(
         async () => {
             const session = await getActiveSession();
+            const activeScope = getGrowthOSClientScope({
+                storeId: session?.sId,
+                tenantId: session?.tId,
+            });
+            if (
+                !activeScope
+                || activeScope.tId !== expectedScope.tId
+                || activeScope.sId !== expectedScope.sId
+            ) {
+                throw new Error("GrowthOS active scope changed");
+            }
             const snap = await getDoc(getGrowthOSSummaryDocRef(session));
-            return snap.exists() ? snap.data() as GrowthOSSummaryDocument : null;
+            if (!snap.exists()) return null;
+            const summary = projectGrowthOSSummaryForScope(snap.data(), expectedScope);
+            if (!summary) {
+                throw new Error("GrowthOS summary scope mismatch");
+            }
+            return summary;
         },
         null,
         "getGrowthOSSummary",
@@ -107,14 +141,17 @@ export const refreshGrowthOSActions = async (
 
 export const generateGrowthOSKit = async (params: {
     actionId?: string;
-    actionType?: string;
     projectId: string;
 }): Promise<GrowthOSGenerateResponse> => {
-    const response = await fetch("/api/growthos/kits/generate", {
+    const operationId = globalThis.crypto.randomUUID();
+    const response = await fetchGrowthOSIdempotentMutation("/api/growthos/kits/generate", {
         ...GROWTHOS_CLIENT_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
+        body: JSON.stringify({
+            ...params,
+            operationId,
+        }),
     });
     return parseResponse<GrowthOSGenerateResponse>(response, "Failed to create Growth Kit", "generate_kit");
 };
@@ -125,11 +162,15 @@ export const recordGrowthOSExport = async (params: {
     method: GrowthOSExportMethod;
     outputId?: string;
 }): Promise<GrowthOSExportResponse> => {
-    const response = await fetch("/api/growthos/kits/export", {
+    const operationId = globalThis.crypto.randomUUID();
+    const response = await fetchGrowthOSIdempotentMutation("/api/growthos/kits/export", {
         ...GROWTHOS_CLIENT_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
+        body: JSON.stringify({
+            ...params,
+            operationId,
+        }),
     });
     return parseResponse<GrowthOSExportResponse>(response, "Failed to record Growth Kit use", "record_export");
 };

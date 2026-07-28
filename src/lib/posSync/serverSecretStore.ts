@@ -1,20 +1,14 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin } from '@lib/firebase/firebaseAdmin';
-
-const POS_SYNC_SECRET_MAX_LENGTH = 512;
+import {
+    normalizePosSyncStoredSecret,
+    projectPosSyncSecretDocument,
+} from './secretDocumentBoundary';
 
 export type ResolvedPosSyncSecret = {
     secret: string;
     version: number;
 };
-
-function normalizeStoredSecret(value: unknown): string | null {
-    return typeof value === 'string'
-        && value.length > 0
-        && value.length <= POS_SYNC_SECRET_MAX_LENGTH
-        ? value
-        : null;
-}
 
 export function normalizePosSyncSecretVersion(value: unknown): number {
     return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : 0;
@@ -56,13 +50,18 @@ export function resolvePosSyncSecretInTransaction(params: {
     storeId: number;
 }): ResolvedPosSyncSecret | null {
     const serverData = params.secretSnapshot.data();
-    const serverSecret = normalizeStoredSecret(serverData?.secret);
-    const legacySecret = normalizeStoredSecret(params.storeData?.posSync?.webhookSecret);
+    const serverDocument = projectPosSyncSecretDocument(
+        serverData,
+        params.tenantId,
+        params.storeId,
+    );
+    const serverSecret = serverDocument?.secret || null;
+    const legacySecret = normalizePosSyncStoredSecret(params.storeData?.posSync?.webhookSecret);
     const secret = serverSecret || legacySecret;
     if (!secret) return null;
 
     const existingVersion = Math.max(
-        normalizePosSyncSecretVersion(serverData?.version),
+        serverDocument?.version || 0,
         normalizePosSyncSecretVersion(params.storeData?.posSync?.secretVersion),
     );
     const version = existingVersion || 1;
@@ -70,19 +69,25 @@ export function resolvePosSyncSecretInTransaction(params: {
 
     if (
         params.migrate !== false
-        && (!serverSecret || normalizePosSyncSecretVersion(serverData?.version) !== version)
+        && (
+            !serverSecret
+            || serverDocument?.version !== version
+            || serverDocument?.requiresRewrite === true
+        )
     ) {
         const now = admin.firestore.Timestamp.now();
         params.transaction.set(params.secretRef, {
-            createdOn: serverData?.createdOn || now,
+            createdOn: serverDocument?.createdOn instanceof admin.firestore.Timestamp
+                ? serverDocument.createdOn
+                : now,
             modifiedOn: now,
-            migrationSource: serverSecret ? (serverData?.migrationSource || 'server') : 'store.posSync.webhookSecret',
+            migrationSource: serverSecret ? 'server' : 'store.posSync.webhookSecret',
             pId: 'ML',
             sId: params.storeId,
             secret,
             tId: params.tenantId,
             version,
-        }, { merge: true });
+        });
     }
 
     if (

@@ -241,10 +241,7 @@ export async function POST(request: NextRequest) {
         const historyRef = answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
             .doc(searchHistoryId);
-        let historyData: Record<string, any> | null = null;
-        let feedbackCreated = false;
-        let authoritativeOutcome: 'resolved' | 'not_resolved' | null = null;
-        await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+        const transactionResult = await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
             const historyDoc = await transaction.get(historyRef);
             const current = historyDoc.exists ? historyDoc.data() : null;
             if (
@@ -254,20 +251,19 @@ export async function POST(request: NextRequest) {
                 || normalizeAnswerlatticeScopeDocumentId(current.sId) !== sId
                 || !isWidgetSearchHistoryRow(current)
                 || !isAnswerlatticeSearchHistoryAvailableForInteraction(current)
-            ) return;
-            historyData = current;
+            ) return null;
             const alreadySubmitted = typeof current.submittedAt !== 'undefined'
                 || typeof current.isGood === 'boolean';
             if (alreadySubmitted) {
-                authoritativeOutcome = current.resolutionOutcome === 'resolved' || current.resolutionOutcome === 'not_resolved'
+                const authoritativeOutcome = current.resolutionOutcome === 'resolved' || current.resolutionOutcome === 'not_resolved'
                     ? current.resolutionOutcome
                     : typeof current.isGood === 'boolean'
                         ? current.isGood ? 'resolved' : 'not_resolved'
                         : null;
-                return;
+                return { historyData: current, feedbackCreated: false, authoritativeOutcome };
             }
             const now = admin.firestore.Timestamp.now();
-            authoritativeOutcome = resolutionOutcome || (isGood ? 'resolved' : 'not_resolved');
+            const authoritativeOutcome = resolutionOutcome || (isGood ? 'resolved' : 'not_resolved');
             transaction.set(historyRef, {
                 isGood,
                 resolutionOutcome: authoritativeOutcome,
@@ -276,11 +272,12 @@ export async function POST(request: NextRequest) {
                 submittedAt: now,
                 modifiedOn: now,
             }, { merge: true });
-            feedbackCreated = true;
+            return { historyData: current, feedbackCreated: true, authoritativeOutcome };
         });
-        if (!historyData) {
+        if (!transactionResult?.historyData) {
             return jsonResponse(request, { error: 'Search record not found' }, { status: 404 });
         }
+        const { historyData, feedbackCreated, authoritativeOutcome } = transactionResult;
         if (!authoritativeOutcome) {
             return jsonResponse(request, { error: 'Feedback record is invalid' }, { status: 409 });
         }

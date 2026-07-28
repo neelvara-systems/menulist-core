@@ -57,6 +57,8 @@ function verifyFirestoreDocumentIdHelper(helper) {
     "id !== '.'",
     "id !== '..'",
     "!id.includes('/')",
+    'FIRESTORE_DOCUMENT_ID_MAX_UTF8_BYTES = 1_500',
+    'new TextEncoder().encode(id).byteLength <= FIRESTORE_DOCUMENT_ID_MAX_UTF8_BYTES',
     '!RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN.test(id)',
   ].forEach((token) => assertIncludes(helper, token, 'Firestore document ID helper'));
 }

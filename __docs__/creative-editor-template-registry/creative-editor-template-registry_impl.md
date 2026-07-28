@@ -84,7 +84,15 @@ creative-editor/templates/platform/{businessCategory}/{templateId}/document-{ver
 creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/document-{versionId}.json
 ```
 
-Template document saves and opens both enforce `MAX_DOCUMENT_BYTES` in `src/lib/creative-editor/templateRegistryDal.ts`. If a stored document blob exceeds the cap, the DAL throws the fixed `TEMPLATE_DOCUMENT_TOO_LARGE` local error before decoding JSON.
+Template document saves and opens both enforce `MAX_DOCUMENT_BYTES` in `src/lib/creative-editor/templateRegistryDal.ts`. If a stored document blob exceeds the cap, the DAL throws the fixed `TEMPLATE_DOCUMENT_TOO_LARGE` local error before decoding JSON. Open additionally validates the decoded payload with `creativeEditorDocumentSchema` and proves that `documentPath` belongs to the exact platform category/template or tenant/store/template scope before the Storage read.
+
+Tenant/store scope is projected by `templateRegistryScopeBoundary.ts`. Every
+present alias inside the selected store context (or session fallback) must
+normalize to the same exact positive Firestore document ID. Conflicting,
+malformed, or incomplete scope returns no registry account instead of being
+sanitized into a different document path. A selected multi-location store may
+legitimately differ from the session's default store; Firestore and Storage
+rules independently authorize that selected exact scope.
 
 User template previews use the same Storage store scope:
 

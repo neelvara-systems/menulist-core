@@ -365,7 +365,9 @@ async function run(): Promise<void> {
         monthlyCreditsAllowance: 10,
         pId: 'ML',
         productId: 'ML',
+        sId: 22,
         storeId: 22,
+        tId: 11,
         tenantId: 11,
         topUpCredits: 0,
     });
@@ -375,7 +377,9 @@ async function run(): Promise<void> {
         monthlyCreditsAllowance: 10,
         pId: 'ML',
         productId: 'ML',
+        sId: 22,
         storeId: 22,
+        tId: 11,
         tenantId: 11,
         topUpCredits: 0,
     } as unknown as FirestoreSubscriptionDoc;

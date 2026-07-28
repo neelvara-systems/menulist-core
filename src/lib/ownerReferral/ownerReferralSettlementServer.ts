@@ -23,6 +23,8 @@ import {
     hashOwnerReferralEvidence,
 } from './ownerReferralTokenServer';
 import type { OwnerReferralDocument, OwnerReferralScope } from './ownerReferralTypes';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
+import { getMenuListSubscriptionEntitlementScope } from '@lib/billing/menuListSubscriptionEntitlementBoundary';
 
 export type OwnerReferralPaymentEvidence = {
     paidAt: Date;
@@ -48,43 +50,60 @@ const isOwnerReferralSettlementPendingStatus = (value: unknown): boolean => (
     || value === OWNER_REFERRAL_STATUS.PAYMENT_PENDING
 );
 
-const timestampToMillis = (value: any): number | null => {
+const timestampToMillis = (value: unknown): number | null => {
     if (!value) return null;
     try {
         let parsed: number | null = null;
-        if (typeof value.toMillis === 'function') parsed = Number(value.toMillis());
-        else if (typeof value.toDate === 'function') parsed = Number(value.toDate().getTime());
-        else if (value instanceof Date) parsed = value.getTime();
-        else if (typeof value === 'string') parsed = Date.parse(value);
-        else if (typeof value === 'number') parsed = value;
-        else if (typeof value.seconds === 'number') parsed = value.seconds * 1000;
+        if (value instanceof Date) parsed = value.getTime();
+        else if (typeof value === 'object' && typeof Reflect.get(value, 'toMillis') === 'function') {
+            const candidate = Reflect.apply(Reflect.get(value, 'toMillis'), value, []);
+            parsed = typeof candidate === 'number' ? candidate : null;
+        } else if (typeof value === 'object' && typeof Reflect.get(value, 'toDate') === 'function') {
+            const candidate = Reflect.apply(Reflect.get(value, 'toDate'), value, []);
+            parsed = candidate instanceof Date ? candidate.getTime() : null;
+        }
         return parsed !== null && Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     } catch {
         return null;
     }
 };
 
-const isCurrentVerifiedPaidSubscription = (subscription: Record<string, any> | null | undefined): boolean => {
-    if (!subscription) return false;
-    if (subscription.pId !== DEFAULT_PRODUCT_ID || subscription.productId !== DEFAULT_PRODUCT_ID) return false;
-    if (!['active', 'past_due', 'cancelled', 'paused'].includes(String(subscription.status || ''))) return false;
+const isCurrentVerifiedPaidSubscription = (
+    subscription: unknown,
+    expectedScope: OwnerReferralScope,
+): boolean => {
+    if (!subscription || typeof subscription !== 'object' || Array.isArray(subscription)) return false;
+    const record = subscription as Record<string, unknown>;
+    const subscriptionScope = getMenuListSubscriptionEntitlementScope(subscription);
+    if (
+        subscriptionScope?.tenantId !== expectedScope.tenantId
+        || subscriptionScope.storeId !== expectedScope.storeId
+    ) return false;
+    if (
+        typeof record.status !== 'string'
+        || !['active', 'past_due', 'cancelled', 'paused'].includes(record.status)
+    ) return false;
 
-    const paidThrough = timestampToMillis(subscription.cycleEndDate ?? subscription.validUntil);
+    const paidThrough = timestampToMillis(record.cycleEndDate ?? record.validUntil);
     if (!paidThrough || paidThrough < Date.now()) return false;
 
-    if (subscription.billingMode === 'manual') {
-        return subscription.manualPaymentConfirmed === true;
+    if (record.billingMode === 'manual') {
+        return record.manualPaymentConfirmed === true;
     }
 
-    return Number(subscription.totalPaymentsMadeCount || 0) > 0
-        || (Array.isArray(subscription.billingHistory) && subscription.billingHistory.length > 0);
+    return (
+        typeof record.totalPaymentsMadeCount === 'number'
+        && Number.isSafeInteger(record.totalPaymentsMadeCount)
+        && record.totalPaymentsMadeCount > 0
+    )
+        || (Array.isArray(record.billingHistory) && record.billingHistory.length > 0);
 };
 
 export const getDirectVerifiedPaidOwnerReferralWallet = async (
     scope: OwnerReferralScope,
 ): Promise<PaidOwnerReferralWallet | null> => {
     const subscription = await getDirectActiveSubscriptionForStoreServer(scope.tenantId, scope.storeId);
-    if (!subscription?.id || !isCurrentVerifiedPaidSubscription(subscription as any)) return null;
+    if (!subscription?.id || !isCurrentVerifiedPaidSubscription(subscription, scope)) return null;
     return { id: subscription.id, subscription };
 };
 
@@ -100,15 +119,15 @@ const normalizeTopUpCredits = (value: unknown, creditsToAdd: number): number | n
 };
 
 const normalizeOwnerReferralScope = (tenantId: unknown, storeId: unknown): OwnerReferralScope | null => {
-    const normalizedTenantId = Number(tenantId);
-    const normalizedStoreId = Number(storeId);
     if (
-        !Number.isSafeInteger(normalizedTenantId)
-        || normalizedTenantId <= 0
-        || !Number.isSafeInteger(normalizedStoreId)
-        || normalizedStoreId <= 0
+        typeof tenantId !== 'number'
+        || !Number.isSafeInteger(tenantId)
+        || tenantId <= 0
+        || typeof storeId !== 'number'
+        || !Number.isSafeInteger(storeId)
+        || storeId <= 0
     ) return null;
-    return { tenantId: normalizedTenantId, storeId: normalizedStoreId };
+    return { tenantId, storeId };
 };
 
 const isOwnerReferralStoreEligible = (
@@ -118,8 +137,9 @@ const isOwnerReferralStoreEligible = (
     const store = snapshot.exists ? snapshot.data() : null;
     return Boolean(
         store
-        && Number(store.tenantId) === scope.tenantId
-        && Number(store.storeId ?? snapshot.id) === scope.storeId
+        && snapshot.id === String(scope.storeId)
+        && store.tenantId === scope.tenantId
+        && store.storeId === scope.storeId
         && store.active !== false
         && store.deleted !== true
         && !isPlatformEntityBlocked(store)
@@ -315,13 +335,9 @@ const settleOwnerReferral = async (params: {
         const referrerSubscription = referrerSubscriptionSnapshot.data() || {};
         const referredSubscription = referredSubscriptionSnapshot.data() || {};
         if (
-            !isCurrentVerifiedPaidSubscription(referrerSubscription)
-            || !isCurrentVerifiedPaidSubscription(referredSubscription)
+            !isCurrentVerifiedPaidSubscription(referrerSubscription, referrerScope)
+            || !isCurrentVerifiedPaidSubscription(referredSubscription, referredScope)
             || referrerSubscriptionSnapshot.id === referredSubscriptionSnapshot.id
-            || Number(referrerSubscription.tenantId) !== Number(referral.referrerTenantId)
-            || Number(referrerSubscription.storeId) !== Number(referral.referrerStoreId)
-            || Number(referredSubscription.tenantId) !== Number(referral.referredTenantId)
-            || Number(referredSubscription.storeId) !== Number(referral.referredStoreId)
             || !isOwnerReferralStoreEligible(currentReferrerStore, referrerScope)
             || !isOwnerReferralStoreEligible(currentReferredStore, referredScope)
         ) {
@@ -501,7 +517,7 @@ export const safelyRecordOwnerReferralPaymentAndRepair = async (params: {
                 source: normalizeEvidenceText(params.evidence.source, 80),
                 tenantId: params.paidScope.tenantId,
                 storeId: params.paidScope.storeId,
-                errorName: error instanceof Error ? error.name : 'unknown',
+                errorName: getBoundedErrorName(error) || 'unknown',
             },
         );
     }

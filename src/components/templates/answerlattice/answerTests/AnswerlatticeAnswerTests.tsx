@@ -9,6 +9,7 @@ import {
     ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES,
     ANSWERLATTICE_ANSWER_TEST_MAX_CASES,
     ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES,
+    AnswerlatticeAnswerTestRollbackResponseSchema,
     AnswerlatticeAnswerTestRunClientSchema,
     createEmptyAnswerlatticeAnswerTestSummary,
     isAnswerlatticeAnswerTestRunCurrent,
@@ -728,7 +729,10 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 }),
             });
             const payload = await readResponse(response);
-            if (!response.ok || !payload?.proposalId) throw new Error(getErrorMessage(payload, 'Could not create rollback proposal.'));
+            const parsedRollback = AnswerlatticeAnswerTestRollbackResponseSchema.safeParse(payload);
+            if (!response.ok || !parsedRollback.success) {
+                throw new Error(getErrorMessage(payload, 'Could not create rollback proposal.'));
+            }
             setRollbackResult(null);
             message.success('Rollback proposal added to the governance review queue.');
             router.push(getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE));

@@ -151,6 +151,15 @@ function testScopedBestEffortHistory(): void {
     const storeBScope = resolveLocalExportStorageScope({ tenantId: 2, storeId: 20 });
     assert.equal(storeAScope, '1:10');
     assert.equal(storeBScope, '2:20');
+    assert.equal(resolveLocalExportStorageScope({
+        tenantId: 1,
+        tId: '1',
+        storeId: 10,
+        sId: '10',
+    }), '1:10');
+    assert.equal(resolveLocalExportStorageScope({ tenantId: 1, tId: 2, storeId: 10 }), '');
+    assert.equal(resolveLocalExportStorageScope({ tenantId: 1, storeId: 10, sId: 20 }), '');
+    assert.equal(resolveLocalExportStorageScope({ tenantId: 1, tId: 'invalid', storeId: 10 }), '');
     assert.equal(resolveLocalExportStorageScope({ tId: ' 1', sId: 10 }), '');
     recordLocalPdfDownload(storeAScope, 'same-project-id', 'pdf-hash-1');
     assert.ok(readLocalPdfDownloadAt(storeAScope, 'same-project-id'));

@@ -12,7 +12,7 @@ function WebsiteBuilderHelp() {
             destroyOnHidden
             open={activePage == MODAL_PAGES_LIST.WEBSITE_BUILDER_HELP_PAGE}
             title="Design Help"
-            onCancel={() => dispatch(updateActiveModalPage(""))}
+            onCancel={() => dispatch(updateActiveModalPage(null))}
             styles={{
                 mask: { backdropFilter: 'blur(6px)' },
                 body: { maxWidth: '80vh' }

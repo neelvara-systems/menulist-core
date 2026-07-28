@@ -1,11 +1,13 @@
 import { axiosClient } from "@axiosClient/axiosClient";
 import { logAuthFailure } from "@lib/auth/authDiagnostics";
+import { getBoundedErrorNumberAtPath, getUnknownObjectValueAtPath } from '@lib/monitoring/boundedLogContext';
 
-const getAxiosResponseData = (error: any) => error?.response?.data ?? error;
-const getAxiosResponseStatus = (error: any): number | undefined => {
-    const status = Number(error?.response?.status);
-    return Number.isFinite(status) ? status : undefined;
-};
+const getAxiosResponseData = (error: unknown): unknown => (
+    getUnknownObjectValueAtPath(error, ['response', 'data']) ?? error
+);
+const getAxiosResponseStatus = (error: unknown): number | undefined => (
+    getBoundedErrorNumberAtPath(error, ['response', 'status'])
+);
 
 export const getUserByCredentials = (userDetails: any) => {
     return new Promise((res, rej) => {

@@ -365,16 +365,21 @@ const ProviderAccountSchema = z.object({
     credentialState: z.enum(["missing", "configured", "not_required"]),
     dailyBudgetUsd: z.number().min(0).max(10000),
     disabledReason: z.string().trim().max(500).optional(),
+    idempotencyKey: z.string().trim().min(8).max(180),
     monthlyBudgetUsd: z.number().min(0).max(100000),
     ownerApproved: z.boolean(),
     perRunBudgetUsd: z.number().min(0).max(1000),
     provider: ProviderIdSchema,
     status: z.enum(["approved", "blocked", "evaluation", "disabled"]),
     use: z.enum(["discovery", "enrichment", "verification", "research", "sender", "sequencer", "ai"]),
+}).refine((value) => value.perRunBudgetUsd <= value.dailyBudgetUsd && value.dailyBudgetUsd <= value.monthlyBudgetUsd, {
+    message: "Provider budgets must satisfy per-run <= daily <= monthly",
+    path: ["perRunBudgetUsd"],
 });
 
 const BudgetPolicySchema = z.object({
     dailyBudgetUsd: z.number().min(0).max(10000),
+    idempotencyKey: z.string().trim().min(8).max(180),
     monthlyBudgetUsd: z.number().min(0).max(100000),
     name: z.string().trim().min(2).max(120),
     perRunBudgetUsd: z.number().min(0).max(1000),
@@ -382,6 +387,9 @@ const BudgetPolicySchema = z.object({
     scope: z.enum(["global", "provider", "market-pod", "model-route", "sequencer", "trust-partner"]),
     scopeId: z.string().trim().max(160).optional(),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
+}).refine((value) => value.perRunBudgetUsd <= value.dailyBudgetUsd && value.dailyBudgetUsd <= value.monthlyBudgetUsd, {
+    message: "Policy budgets must satisfy per-run <= daily <= monthly",
+    path: ["perRunBudgetUsd"],
 });
 
 const ModelRouteSchema = z.object({
@@ -390,12 +398,17 @@ const ModelRouteSchema = z.object({
     defaultProvider: z.enum(["gemini", "openai", "anthropic"]),
     escalationModel: z.string().trim().max(120).optional(),
     escalationProvider: z.enum(["gemini", "openai", "anthropic"]).optional(),
+    idempotencyKey: z.string().trim().min(8).max(180),
     maxCostUsd: z.number().min(0).max(100),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
     task: z.enum(["score", "evidence", "draft", "reply-classification", "approval-packet", "weekly-strategist", "vendor-audit", "quality-critic"]),
+}).refine((value) => Boolean(value.escalationProvider) === Boolean(value.escalationModel), {
+    message: "Escalation provider and model must be supplied together",
+    path: ["escalationProvider"],
 });
 
 const EnrichmentWaterfallSchema = z.object({
+    idempotencyKey: z.string().trim().min(8).max(180),
     maxCostUsd: z.number().min(0).max(1000),
     maxCredits: z.number().int().min(1).max(50),
     name: z.string().trim().min(2).max(120),
@@ -406,10 +419,18 @@ const EnrichmentWaterfallSchema = z.object({
     status: z.enum(["active", "inactive", "hold", "blocked"]),
     stopCondition: z.enum(["first-verified", "first-candidate", "manual-review"]),
     verificationRequired: z.boolean(),
+}).superRefine((value, context) => {
+    if (new Set(value.providerOrder).size !== value.providerOrder.length) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "Provider order must not contain duplicates", path: ["providerOrder"] });
+    }
+    if (value.stopCondition === "first-verified" && !value.verificationRequired) {
+        context.addIssue({ code: z.ZodIssueCode.custom, message: "Verified stop condition requires verification", path: ["verificationRequired"] });
+    }
 });
 
 const AudienceSegmentSchema = z.object({
     criteriaSummary: z.string().trim().min(2).max(500),
+    idempotencyKey: z.string().trim().min(8).max(180),
     marketPodId: z.string().trim().max(160).optional(),
     name: z.string().trim().min(2).max(120),
     sourcePolicyId: z.string().trim().max(160).optional(),
@@ -429,6 +450,7 @@ const MarketPodReviewSchema = z.object({
 });
 
 const ProviderSourceRetentionRefreshSchema = z.object({
+    idempotencyKey: z.string().trim().min(8).max(180),
     notes: z.string().trim().max(500).optional(),
     providerSourceRetentionId: z.string().trim().min(3).max(180),
     status: z.enum(["refreshed", "refresh-due", "expired", "blocked"]),
@@ -439,6 +461,7 @@ const WeeklyStrategistMemoSchema = z.object({
 });
 
 const ProviderEvaluationSchema = z.object({
+    idempotencyKey: z.string().trim().min(8).max(180),
     provider: ProviderIdSchema,
     use: z.enum(["discovery", "enrichment", "verification", "research", "sender", "sequencer", "ai"]),
 });
@@ -474,14 +497,15 @@ const ConnectorSettingSchema = z.object({
     connectorKind: z.enum(["email-smtp", "meta-whatsapp", "meta-instagram", "meta-messenger", "smartlead", "apify"]),
     displayName: z.string().trim().min(2).max(120),
     fromName: z.string().trim().max(120).optional(),
+    idempotencyKey: z.string().trim().min(8).max(180),
     instagramPageId: z.string().trim().max(180).optional(),
     messengerPageId: z.string().trim().max(180).optional(),
     notes: z.string().trim().max(500).optional(),
-    phoneNumber: z.string().trim().max(80).optional(),
+    phoneNumber: z.string().trim().max(40).optional(),
     phoneNumberId: z.string().trim().max(180).optional(),
-    replyToEmail: z.string().trim().max(180).optional(),
+    replyToEmail: z.string().trim().email().max(180).optional(),
     senderDomain: z.string().trim().max(180).optional(),
-    senderEmail: z.string().trim().max(180).optional(),
+    senderEmail: z.string().trim().email().max(180).optional(),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
 });
 
@@ -1115,6 +1139,35 @@ const SIGNALDESK_MOBILE_ACTION_CLASS: Record<z.infer<typeof ActionEnvelopeSchema
 };
 
 const SAFE_ACTION_ERRORS = new Set([
+    "AUDIENCE_SEGMENT_IDEMPOTENCY_CONFLICT",
+    "AUDIENCE_SEGMENT_IDEMPOTENCY_KEY_REQUIRED",
+    "AUDIENCE_SEGMENT_MARKET_POD_INVALID",
+    "AUDIENCE_SEGMENT_MARKET_POD_NOT_FOUND",
+    "AUDIENCE_SEGMENT_REPLAY_MISSING",
+    "AUDIENCE_SEGMENT_SOURCE_POLICY_INVALID",
+    "AUDIENCE_SEGMENT_SOURCE_POLICY_NOT_FOUND",
+    "ENRICHMENT_WATERFALL_CONFIG_IDEMPOTENCY_CONFLICT",
+    "ENRICHMENT_WATERFALL_CONFIG_IDEMPOTENCY_KEY_REQUIRED",
+    "ENRICHMENT_WATERFALL_CONFIG_REPLAY_MISSING",
+    "ENRICHMENT_WATERFALL_CONFIG_SHAPE_INVALID",
+    "ENRICHMENT_WATERFALL_CONFIG_SOURCE_POLICY_INVALID",
+    "ENRICHMENT_WATERFALL_CONFIG_SOURCE_POLICY_NOT_FOUND",
+    "MODEL_ROUTE_IDEMPOTENCY_CONFLICT",
+    "MODEL_ROUTE_IDEMPOTENCY_KEY_REQUIRED",
+    "MODEL_ROUTE_CURRENT_SHAPE_INVALID",
+    "MODEL_ROUTE_REPLAY_MISSING",
+    "MODEL_ROUTE_SHAPE_INVALID",
+    "PROVIDER_ACCOUNT_IDEMPOTENCY_CONFLICT",
+    "PROVIDER_ACCOUNT_IDEMPOTENCY_KEY_REQUIRED",
+    "PROVIDER_ACCOUNT_REPLAY_MISSING",
+    "BUDGET_POLICY_IDEMPOTENCY_CONFLICT",
+    "BUDGET_POLICY_IDEMPOTENCY_KEY_REQUIRED",
+    "BUDGET_POLICY_REPLAY_MISSING",
+    "CONNECTOR_SETTING_CURRENT_SHAPE_INVALID",
+    "CONNECTOR_SETTING_IDEMPOTENCY_CONFLICT",
+    "CONNECTOR_SETTING_IDEMPOTENCY_KEY_REQUIRED",
+    "CONNECTOR_SETTING_REPLAY_MISSING",
+    "CONNECTOR_SETTING_SHAPE_INVALID",
     "Active source policy is required",
     "Active template is required",
     "Assisted handoff requires an approval for the selected channel",
@@ -1627,6 +1680,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     });
     if (!envelope.success) return envelope.response;
 
+    const rateLimit = await applySignalDeskRateLimit({
+        feature: envelope.data.action === "run-ai-volume-batch"
+            ? "BATCH_OPERATION"
+            : envelope.data.action === "score-target" || envelope.data.action === "run-ai-assist"
+                ? "AI_OPERATION"
+                : "DATA_WRITE",
+        keyPrefix: `action:${envelope.data.action}`,
+        request,
+        session,
+    });
+    if (rateLimit) return rateLimit;
+
     const accessResult = await requireSignalDeskAccess(request, session, permissionForAction(envelope.data.action));
     if ("response" in accessResult) return accessResult.response;
 
@@ -1639,18 +1704,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         return NextResponse.json({ actionClass, error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
     }
-
-    const rateLimit = await applySignalDeskRateLimit({
-        feature: envelope.data.action === "run-ai-volume-batch"
-            ? "BATCH_OPERATION"
-            : envelope.data.action === "score-target" || envelope.data.action === "run-ai-assist"
-                ? "AI_OPERATION"
-                : "DATA_WRITE",
-        keyPrefix: `action:${envelope.data.action}`,
-        request,
-        session,
-    });
-    if (rateLimit) return rateLimit;
 
     try {
         if (envelope.data.action === "seed-defaults") {
@@ -1830,7 +1883,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await runSignalDeskSourceProviderServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await runSignalDeskSourceProviderServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "run-ai-assist") {
             const payload = validatePayload(AiAssistSchema, envelope.data.payload, {
@@ -1839,7 +1892,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await runSignalDeskAiAssistServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await runSignalDeskAiAssistServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "run-ai-volume-batch") {
             const payload = validatePayload(AiVolumeBatchSchema, envelope.data.payload, {
@@ -1848,7 +1901,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await runSignalDeskAiVolumeBatchServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await runSignalDeskAiVolumeBatchServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-ai-shadow-run") {
             const payload = validatePayload(AiShadowReviewSchema, envelope.data.payload, {
@@ -1857,7 +1910,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskAiShadowRunServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await reviewSignalDeskAiShadowRunServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "prepare-channel-handoff") {
             const payload = validatePayload(ChannelActionSchema, envelope.data.payload, {
@@ -1907,7 +1960,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskProviderAccountServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskProviderAccountServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-budget-policy") {
             const payload = validatePayload(BudgetPolicySchema, envelope.data.payload, {
@@ -1916,7 +1969,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskBudgetPolicyServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskBudgetPolicyServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-connector-setting") {
             const payload = validatePayload(ConnectorSettingSchema, envelope.data.payload, {
@@ -1925,7 +1978,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskConnectorSettingServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskConnectorSettingServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-model-route") {
             const payload = validatePayload(ModelRouteSchema, envelope.data.payload, {
@@ -1934,7 +1987,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskModelRouteServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskModelRouteServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-enrichment-waterfall") {
             const payload = validatePayload(EnrichmentWaterfallSchema, envelope.data.payload, {
@@ -1943,7 +1996,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskEnrichmentWaterfallServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskEnrichmentWaterfallServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-audience-segment") {
             const payload = validatePayload(AudienceSegmentSchema, envelope.data.payload, {
@@ -1952,7 +2005,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskAudienceSegmentServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskAudienceSegmentServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "recommend-market-pod-plan") {
             const payload = validatePayload(MarketPodRecommendationSchema, envelope.data.payload, {
@@ -1961,7 +2014,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await recommendSignalDeskMarketPodPlanServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await recommendSignalDeskMarketPodPlanServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-market-pod") {
             const payload = validatePayload(MarketPodReviewSchema, envelope.data.payload, {
@@ -1970,7 +2023,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskMarketPodServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await reviewSignalDeskMarketPodServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-sender-domain") {
             const payload = validatePayload(SenderDomainSchema, envelope.data.payload, {
@@ -2001,7 +2054,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskSelfServiceCtaServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskSelfServiceCtaServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-daily-growth-mission") {
             const payload = validatePayload(DailyGrowthMissionSchema, envelope.data.payload, {
@@ -2010,7 +2063,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskDailyGrowthMissionServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskDailyGrowthMissionServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-growth-mission") {
             const payload = validatePayload(GrowthMissionReviewSchema, envelope.data.payload, {
@@ -2019,7 +2072,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskGrowthMissionServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await reviewSignalDeskGrowthMissionServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-experiment-card") {
             const payload = validatePayload(ExperimentCardSchema, envelope.data.payload, {
@@ -2028,7 +2081,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskExperimentCardServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskExperimentCardServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-experiment-card") {
             const payload = validatePayload(ExperimentReviewSchema, envelope.data.payload, {
@@ -2037,7 +2090,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskExperimentCardServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await reviewSignalDeskExperimentCardServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-offer-cta") {
             const payload = validatePayload(OfferCtaSchema, envelope.data.payload, {
@@ -2046,7 +2099,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskOfferCtaServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskOfferCtaServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "qualify-revenue-account") {
             const payload = validatePayload(RevenueAccountQualificationSchema, envelope.data.payload, {
@@ -2055,7 +2108,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await qualifySignalDeskRevenueAccountServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await qualifySignalDeskRevenueAccountServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-commercial-opportunity") {
             const payload = validatePayload(CommercialOpportunitySchema, envelope.data.payload, {
@@ -2064,7 +2117,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskCommercialOpportunityServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskCommercialOpportunityServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-commercial-offer") {
             const payload = validatePayload(CommercialOfferSchema, envelope.data.payload, {
@@ -2073,7 +2126,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskCommercialOfferServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskCommercialOfferServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-operating-envelope") {
             const payload = validatePayload(OperatingEnvelopeSchema, envelope.data.payload, {
@@ -2082,7 +2135,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskOperatingEnvelopeServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskOperatingEnvelopeServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "refresh-activation-watch") {
             const payload = validatePayload(ActivationWatchSchema, envelope.data.payload, {
@@ -2091,7 +2144,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await refreshSignalDeskActivationWatchServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await refreshSignalDeskActivationWatchServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-reply-playbook") {
             const payload = validatePayload(ReplyPlaybookSchema, envelope.data.payload, {
@@ -2100,7 +2153,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskReplyPlaybookServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskReplyPlaybookServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-source-quality-snapshot") {
             const payload = validatePayload(SourceQualitySnapshotSchema, envelope.data.payload, {
@@ -2109,7 +2162,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskSourceQualitySnapshotServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskSourceQualitySnapshotServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-research-agent-run") {
             const payload = validatePayload(ResearchAgentRunSchema, envelope.data.payload, {
@@ -2118,7 +2171,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskResearchAgentRunServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskResearchAgentRunServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "refresh-provider-source-retention") {
             const payload = validatePayload(ProviderSourceRetentionRefreshSchema, envelope.data.payload, {
@@ -2127,7 +2180,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await refreshSignalDeskProviderSourceRetentionServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await refreshSignalDeskProviderSourceRetentionServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-weekly-strategist-memo") {
             const payload = validatePayload(WeeklyStrategistMemoSchema, envelope.data.payload, {
@@ -2136,7 +2189,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskWeeklyStrategistMemoServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskWeeklyStrategistMemoServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-provider-evaluation") {
             const payload = validatePayload(ProviderEvaluationSchema, envelope.data.payload, {
@@ -2145,7 +2198,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskProviderEvaluationServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskProviderEvaluationServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "run-enrichment-waterfall") {
             const payload = validatePayload(RunWaterfallSchema, envelope.data.payload, {
@@ -2167,7 +2220,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskApprovalPacketServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskApprovalPacketServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-sequencer-handoff") {
             const payload = validatePayload(SequencerHandoffSchema, envelope.data.payload, {
@@ -2329,7 +2382,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskTrustPartnerProfileServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await upsertSignalDeskTrustPartnerProfileServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-trust-partner-niche-test") {
             const payload = validatePayload(TrustPartnerNicheTestSchema, envelope.data.payload, {
@@ -2338,7 +2391,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskTrustPartnerNicheTestServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskTrustPartnerNicheTestServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-trust-partner-brief") {
             const payload = validatePayload(TrustPartnerBriefSchema, envelope.data.payload, {
@@ -2347,7 +2400,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskTrustPartnerBriefServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await createSignalDeskTrustPartnerBriefServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-trust-partner-deal") {
             const payload = validatePayload(TrustPartnerDealSchema, envelope.data.payload, {
@@ -2356,7 +2409,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskTrustPartnerDealServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await reviewSignalDeskTrustPartnerDealServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "record-trust-partner-deliverable") {
             const payload = validatePayload(TrustPartnerDeliverableSchema, envelope.data.payload, {
@@ -2365,7 +2418,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await recordSignalDeskTrustPartnerDeliverableServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await recordSignalDeskTrustPartnerDeliverableServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "record-trust-partner-metrics") {
             const payload = validatePayload(TrustPartnerMetricsSchema, envelope.data.payload, {
@@ -2389,7 +2442,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskTrustPartnerRenewalServer(accessResult.access, payload.data as any) });
+            return NextResponse.json({ data: await reviewSignalDeskTrustPartnerRenewalServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-team-member") {
             const payload = validatePayload(TeamMemberSchema, envelope.data.payload, {

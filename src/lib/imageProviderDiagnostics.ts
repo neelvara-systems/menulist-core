@@ -1,15 +1,12 @@
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 import { secureError } from '@lib/security/secureLogger';
 
 type ImageProviderLogContext = Record<string, boolean | number | string | undefined>;
-
-type ImageProviderErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    response?: {
-        status?: unknown;
-    };
-};
 
 export const getBoundedImageProviderStringContext = (
     label: string,
@@ -19,23 +16,17 @@ export const getBoundedImageProviderStringContext = (
 };
 
 const getImageProviderErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getImageProviderErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as ImageProviderErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    const normalized = String(code).slice(0, 64);
+    const normalized = getBoundedErrorCode(error);
+    if (normalized === undefined) return undefined;
     return /^[a-zA-Z0-9._:/-]+$/.test(normalized) ? normalized : 'non_standard_code';
 };
 
 const getImageProviderErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const status = Number((error as ImageProviderErrorLike).status ?? (error as ImageProviderErrorLike).response?.status);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export const getImageProviderRequestLogContext = (payload: {

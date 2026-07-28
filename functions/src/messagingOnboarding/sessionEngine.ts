@@ -32,6 +32,7 @@ import {
   MESSAGES,
   PROCESSING,
   RATE_LIMITS,
+  RETENTION,
   TIMING,
   UPLOAD_LIMITS,
 } from "./constants";
@@ -40,6 +41,7 @@ import { normalizeMessagingPublishedResult } from "./publishedResultBoundary";
 import { IMessagingProvider } from "./providers/IMessagingProvider";
 import { validateMessagingUploadContent } from "./uploadContentValidation";
 import { drainMessagingPendingUploadCleanup } from "./uploadCleanup";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode } from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const db = firestoreAdmin;
@@ -172,15 +174,11 @@ function getSessionEngineIdLogContext(
 }
 
 function getSessionEngineErrorName(error: unknown): string {
-  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
-  return typeof error;
+    return getBoundedFunctionsErrorName(error) || 'Error';
 }
 
 function getSessionEngineErrorCode(error: unknown): string | undefined {
-  if (!(error instanceof Error)) return undefined;
-  const code = (error as { code?: unknown }).code;
-  if (code === undefined || code === null) return undefined;
-  return String(code).slice(0, 64);
+    return getBoundedFunctionsErrorCode(error);
 }
 
 function getSessionEngineErrorContext(error: unknown): Record<string, string | undefined> {
@@ -857,6 +855,7 @@ export async function createSessionWithId(
       activeSessionId: sessionId,
       cooldownUntil,
       dayResetAt,
+      expiresAt: Timestamp.fromMillis(nowMillis + RETENTION.RATE_LIMIT_TTL_MS),
       lastSessionAt: now,
       processingRunsThisWeek,
       sessionsToday: sessionsToday + 1,
@@ -1658,12 +1657,16 @@ async function recordInvalidUploadAttempt(
         if (!normalizeRateLimitDocument(rateLimitSnapshot.data(), userHash)) {
           throw new Error("MESSAGING_RATE_LIMIT_INVALID");
         }
-        transaction.update(rateLimitRef, { cooldownUntil });
+        transaction.update(rateLimitRef, {
+          cooldownUntil,
+          expiresAt: Timestamp.fromMillis(now.toMillis() + RETENTION.RATE_LIMIT_TTL_MS),
+        });
       } else {
         transaction.create(rateLimitRef, {
           activeSessionId: session.sessionId,
           cooldownUntil,
           dayResetAt: getNextMidnightUTC(),
+          expiresAt: Timestamp.fromMillis(now.toMillis() + RETENTION.RATE_LIMIT_TTL_MS),
           lastSessionAt: session.createdAt,
           processingRunsThisWeek: session.processingRuns,
           sessionsThisWeek: 1,

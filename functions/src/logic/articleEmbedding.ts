@@ -9,6 +9,11 @@ import {
 import { firestoreAdmin } from '../firebaseAdmin';
 import { KB_ARTICLES_COLLECTION, KnowledgeBaseArticleType } from '../types';
 import { genrateEmbedding } from '../utils/aiUtils';
+import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
+import {
+    hasExactStoredAnswerlatticeProductAliases,
+    parseStoredAnswerlatticeScopeAliases,
+} from '../answerlattice/scopeBoundary';
 import { getAnswerlatticeEmbeddingInput } from './embeddingSourceBoundary';
 import { getReusableEmbeddingVectorDimensions, isValidGeneratedEmbeddingVector } from './embeddingVectorBoundary';
 
@@ -29,14 +34,6 @@ function normalizeDocumentId(value: unknown): string | null {
     const id = value.trim();
     if (id !== value || !id || id.length > 180 || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) return null;
     return id;
-}
-
-function normalizeScopeId(value: unknown): number | null {
-    if (typeof value !== 'string' && typeof value !== 'number') return null;
-    const raw = String(value);
-    if (!/^[1-9]\d*$/.test(raw)) return null;
-    const id = Number(raw);
-    return Number.isSafeInteger(id) && id > 0 && String(id) === raw ? id : null;
 }
 
 function timestampMillis(value: unknown): number {
@@ -71,16 +68,13 @@ function parseStoredArticle(
     const data = snapshot.data() || {};
     const articleId = normalizeDocumentId(snapshot.id);
     const storedId = normalizeDocumentId(data.id ?? snapshot.id);
-    const tId = normalizeScopeId(data.tId ?? data.tenantId);
-    const sId = normalizeScopeId(data.sId ?? data.storeId);
-    const pId = data.pId ?? data.productId;
+    const scope = parseStoredAnswerlatticeScopeAliases(data);
     if (
         !articleId
         || storedId !== articleId
-        || pId !== PRODUCT_ID
-        || !tId
-        || !sId
-        || (expectedScope && (expectedScope.tId !== tId || expectedScope.sId !== sId))
+        || !hasExactStoredAnswerlatticeProductAliases(data)
+        || !scope
+        || (expectedScope && (expectedScope.tId !== scope.tId || expectedScope.sId !== scope.sId))
         || !cleanText(data.title, 300)
         || !data.content
     ) {
@@ -90,8 +84,8 @@ function parseStoredArticle(
         ...(data as KnowledgeBaseArticleType),
         id: articleId,
         pId: PRODUCT_ID,
-        tId,
-        sId,
+        tId: scope.tId,
+        sId: scope.sId,
     };
 }
 
@@ -243,7 +237,7 @@ export async function embedStoredAnswerlatticeArticle(params: {
             logger.error('[Answerlattice KB] Failed to persist article embedding failure state', {
                 failureCode: 'answerlattice_article_embedding_failure_state_write_failed',
                 articleIdLength: articleId.length,
-                sourceErrorName: stateError instanceof Error ? stateError.name : typeof stateError,
+                sourceErrorName: getBoundedFunctionsErrorName(stateError) || typeof stateError,
             });
         });
         throw error;

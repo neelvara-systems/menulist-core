@@ -24,6 +24,11 @@ import {
   validateMessagingStoredUploadRecord,
 } from "./assetStorageBoundary";
 import { shouldInlineAssetValidationFiles } from "./assetModelInputBoundary";
+import {
+  getBoundedFunctionsErrorCode,
+  getBoundedFunctionsErrorName,
+  getBoundedFunctionsErrorStatus,
+} from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const ASSET_VALIDATION_UPLOAD_FETCH_FAILED = "ASSET_VALIDATION_UPLOAD_FETCH_FAILED";
@@ -61,20 +66,15 @@ type UploadedAssetValidationFile = {
 };
 
 function getAssetIntelligenceErrorName(error: unknown): string {
-  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
-  return typeof error;
+    return getBoundedFunctionsErrorName(error) || 'Error';
 }
 
 function getAssetIntelligenceErrorCode(error: Error): string | undefined {
-  const code = (error as { code?: unknown }).code;
-  if (code === undefined || code === null) return undefined;
-  return String(code).slice(0, 64);
+    return getBoundedFunctionsErrorCode(error);
 }
 
 function getAssetIntelligenceStatusCode(error: Error): number | undefined {
-  const status = Number((error as { status?: unknown; statusCode?: unknown }).status
-    || (error as { statusCode?: unknown }).statusCode);
-  return Number.isFinite(status) ? status : undefined;
+  return getBoundedFunctionsErrorStatus(error);
 }
 
 function getAssetIntelligenceErrorContext(error: unknown): {

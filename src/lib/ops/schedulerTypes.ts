@@ -7,6 +7,8 @@
  * @see __docs__/decision-intelligence/decision-intelligence_impl.md
  */
 
+import type { Timestamp } from 'firebase/firestore';
+
 // ================================================================
 // SCHEDULER TASK TYPES
 // ================================================================
@@ -30,6 +32,29 @@ export type SchedulerTaskName =
   | 'kb_quality'
   | 'weekly_narrative'
   | 'health_signals'
+  | 'owner_business_health'
+  | 'kb_generation_watchdog'
+  | 'messaging_intake'
+  | 'menu_stuck_cleanup'
+  | 'special_menu_lifecycle'
+  | 'alert_escalation'
+  | 'founder_monitor_snapshot'
+  | 'chat_stats_aggregation'
+  | 'ai_provider_health_check'
+  | 'subscription_access_expiry'
+  | 'billing_health_snapshot'
+  | 'menu_old_cleanup'
+  | 'public_menu_draft_cleanup'
+  | 'messaging_session_cleanup'
+  | 'owner_business_assistant_cleanup'
+  | 'ai_operation_detail_cleanup'
+  | 'image_batch_job_retention_cleanup'
+  | 'ai_image_prompt_cache_cleanup'
+  | 'menu_snapshot_cleanup'
+  | 'owner_notification_retention_cleanup'
+  | 'feedback_event_retention_cleanup'
+  | 'scheduler_run_log_retention_cleanup'
+  | 'system_alert_retention_cleanup'
   // Historical MenuList run logs may contain this task. New Answerlattice runs
   // are owned by functions-answerlattice and should not be written here.
   | 'answerlattice_nightly';
@@ -45,7 +70,7 @@ export interface SchedulerTaskResult {
   name: SchedulerTaskName;
   status: 'success' | 'failed' | 'skipped';
   durationMs?: number;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   error?: string;
 }
 
@@ -57,9 +82,9 @@ export interface SchedulerRunLog {
   id?: string;
   trigger: SchedulerTrigger;
   triggeredBy: string;              // 'system' for scheduled, userId for manual
-  startedAt: any;                   // Firestore Timestamp
-  completedAt: any;                 // Firestore Timestamp
-  expiresAt?: any;                  // Firestore Timestamp for retention cleanup
+  startedAt: Timestamp;
+  completedAt: Timestamp | null;
+  expiresAt?: Timestamp;
   durationMs: number;
   status: SchedulerRunStatus;
 
@@ -95,11 +120,11 @@ export interface SchedulerRunLog {
     phase?: string;
     operation?: string;
     settlementDate?: string;
-    details?: Record<string, any>;
+    details?: Record<string, unknown>;
   }>;
 
   // Metadata
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ================================================================
@@ -129,8 +154,8 @@ export interface SchedulerSettlementState {
   phase?: string;
   lastAttemptedLocalDate?: string;
   lastSettledLocalDate?: string;
-  lastCompletedAt?: any;
-  updatedAt?: any;
+  lastCompletedAt?: Timestamp;
+  updatedAt?: Timestamp;
   error?: string;
 }
 

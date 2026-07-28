@@ -2469,6 +2469,27 @@ export const FEATURE_FLAGS = {
     ENABLE_ANSWERLATTICE_STAFF_ACCESS: true,
 
     /**
+     * Answerlattice Workspace Lifecycle
+     *
+     * true: Verified platform operators may close, recover, place a legal hold
+     *       on, or continue bounded erasure for one exact Answerlattice
+     *       workspace through the private platform API.
+     * false: The operator endpoint returns not found.
+     *
+     * This is intentionally not a self-service deletion surface. Closure
+     * revokes customer access and public credentials without changing billing.
+     * Erasure requires the recovery window, export decision, billing review,
+     * legal-hold check, and explicit retained-evidence acknowledgement.
+     *
+     * Cost model: operator-triggered only. Closure/recovery use bounded point
+     * reads and writes. Each erasure continuation scans and deletes at most one
+     * capped collection batch; no scheduler or listener is added.
+     *
+     * @see __docs__/answerlattice/workspace-lifecycle/
+     */
+    ENABLE_ANSWERLATTICE_WORKSPACE_LIFECYCLE: false,
+
+    /**
      * Answerlattice Weekly Digest Surface
      *
      * true: Answerlattice clients can review a deterministic completed-week digest
@@ -2655,6 +2676,26 @@ export const FEATURE_FLAGS = {
      * @see __docs__/answerlattice/knowledge-intake-command-center/
      */
     ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE: true,
+
+    /**
+     * Answerlattice Source Governance
+     *
+     * true: Knowledge Intake reviewers can record source authority, approval,
+     *       access, citation, applicability, review dates, and conflict links.
+     *       Canonical proposals require approved, conflict-free source evidence.
+     * false: Knowledge Intake retains its existing source and review behavior.
+     *
+     * Cost model: one explicit owner save reads the target and idempotency audit
+     * plus the bounded union of previous/next conflicts. It writes the target,
+     * one audit, and only reciprocal peers whose links changed. Common initial
+     * link saves are 2-7 reads/writes; replacing five links is at most 12/12.
+     * No listener, scheduler, AI call, connector, or new collection is added.
+     *
+     * Requires: ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE = true
+     *
+     * @see __docs__/answerlattice/source-governance/
+     */
+    ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE: false,
 
     /**
      * Answerlattice Repeated Reply Import
@@ -3129,6 +3170,24 @@ export const FEATURE_FLAGS = {
     ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH: true,
 
     /**
+     * Answerlattice Knowledge Map
+     *
+     * true: Knowledge Governance visualizes the existing tenant graph summary,
+     *       while published hosted-help articles expose a deterministic topic
+     *       map derived only from public heading and navigation data.
+     * false: The governance tab and hosted-help topic-map control are hidden.
+     *
+     * No collection, listener, AI call, embedding, or vector query is added.
+     * Owner cost is two parallel platformSummary point reads per load/manual
+     * refresh: the graph summary and existing source-version control document.
+     * Public article maps add zero incremental Firestore reads.
+     *
+     * Requires: ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH = true
+     * @see __docs__/answerlattice/knowledge-map/
+     */
+    ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP: true,
+
+    /**
      * Answerlattice Predictive Support (Proactive Help Triggers)
      *
      * true: Widget runtime can call predictive-help API on page entry.
@@ -3309,6 +3368,17 @@ export const FEATURE_FLAGS = {
     ENABLE_PUBLIC_TRUTH_CHECK_EXTERNAL_ADAPTERS: false,
     ENABLE_PUBLIC_TRUTH_CHECK_AI_READABILITY: false,
     ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK: false,
+
+    /**
+     * MenuList Website Enquiry Ops Dashboard
+     *
+     * Gives verified platform operators a bounded, manual-refresh inbox for
+     * enquiries already accepted by the public MenuList contact route.
+     *
+     * Cost: one current-user authorization read plus at most 120 recent
+     * landing-page enquiry reads per manual refresh. No listener or write.
+     */
+    ENABLE_WEBSITE_CONTACT_ENQUIRY_OPS_DASHBOARD: true,
 
     /**
      * Main Website Resources — public education and discovery layer

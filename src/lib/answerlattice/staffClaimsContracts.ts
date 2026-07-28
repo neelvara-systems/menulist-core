@@ -72,7 +72,7 @@ export const buildAnswerlatticeStaffClaimAccessProjection = (params: {
     storeIsActive: boolean;
 }) => ({
     roleId: params.accountActive && params.storeIsActive ? params.roleId : 'inactive',
-    storeIds: params.accountActive ? params.storeIds : [],
+    storeIds: params.accountActive && params.storeIsActive ? params.storeIds : [],
 });
 
 export const buildAnswerlatticeStaffClaimStateSignature = (params: {

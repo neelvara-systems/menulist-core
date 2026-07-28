@@ -1,14 +1,13 @@
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 
 export type AiServiceLogContext = Record<string, boolean | number | string | null | undefined>;
-
-type AiServiceErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
 
 type AiServiceResponseParserOptions = {
     context?: AiServiceLogContext;
@@ -31,25 +30,15 @@ export const getBoundedAiServiceStringContext = (
 };
 
 const getAiServiceErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getAiServiceErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as AiServiceErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getAiServiceErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as AiServiceErrorLike).status
-        : (error as AiServiceErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export const createAiServiceHttpError = (

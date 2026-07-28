@@ -1,6 +1,6 @@
 # Answerlattice Help Widget - Implementation
 
-> **Updated:** July 18, 2026
+> **Updated:** July 26, 2026
 > **Implementation status:** Verified in current source; live hosted behavior still requires authenticated deployment/browser evidence
 
 ## Connected Files
@@ -17,6 +17,7 @@
 ### Contracts And Storage
 
 - `src/lib/answerlattice/widgetConfig.ts`
+- `src/lib/answerlattice/widgetConfigStore.ts`
 - `src/lib/answerlattice/widgetKeyManager.ts`
 - `src/lib/answerlattice/widgetKeyStore.ts`
 - `src/lib/answerlattice/widgetRuntimeStatus.ts`
@@ -59,19 +60,21 @@ The widget activity timestamp boundary accepts Firestore Timestamp-like values, 
 
 ```text
 PUT /api/answerlattice/widget-config
--> canManageWidget
 -> exact scope
 -> fail-closed rate limit
+-> canManageWidget
 -> bounded 32 KiB JSON body
 -> strict config/origin/route validation
--> store ownership recheck
--> no-op equality check
--> merge widgetConfig + widgetAllowedOrigins + schema/version timestamps
+-> transaction reads and rechecks exact store ownership
+-> exact equality before revision check, so a lost-response retry is a no-op
+-> compare expectedConfigVersion with current widgetConfigVersion
+-> stale differing edit returns 409 without a write
+-> transactional widgetConfig + widgetAllowedOrigins + schema/version write
 -> mark compiled widgetConfig source stale best effort
 -> private no-store response
 ```
 
-The load normalizer is tolerant of bounded legacy values. The save contract is stricter: malformed origins and blocked routes reject the whole request instead of disappearing during normalization.
+The load normalizer is tolerant of bounded legacy values. The save contract is stricter: malformed origins and blocked routes reject the whole request instead of disappearing during normalization. The dashboard validates and retains `configVersion`, submits it as `expectedConfigVersion`, updates it only from an admitted response, and keeps the unsaved draft visible when a concurrent edit returns `409`.
 
 ## Widget Key Flow
 
@@ -94,6 +97,8 @@ The load normalizer is tolerant of bounded legacy values. The save contract is s
 5. Retain only the bounded newest revoked records.
 
 The management UI uses revoke. Copy after the initial browser session returns a controlled replacement-key instruction.
+
+Legacy managed records may still contain historical `encryptedKey` or `encryptionVersion` fields. Current normalization never returns or persists those fields; the next legitimate generate, rename, or revoke transaction rewrites the bounded key state without recoverable ciphertext. No cleanup-only write or migration job is added.
 
 ## Public Config Admission
 
@@ -201,6 +206,7 @@ The public config projects only the bounded launch fields in `AnswerlatticeWidge
 - Management APIs use `withAuth`, exact Answerlattice session scope, and `canManageWidget`.
 - Shared session scope accepts only exact positive numeric Firestore document IDs before widget activity reads, configuration reads, or key mutations.
 - Dedicated Firestore rules allow scoped reads of the store but deny client writes.
+- Shared Firestore rules preserve widget credentials, configuration, origins, schema/version fields, update time, and runtime status as server-managed fields while retaining ordinary owner store updates.
 - Widget runtime routes explicitly exclude `publicApi` credentials.
 - Public API and MCP routes reject widget-only credentials.
 - Keys are store-scoped and require all supplied `pId`/`productId`, `tId`/`tenantId`, `sId`/`storeId`/`id`, and document-path identities to agree, plus active/non-blocked entity state.
@@ -223,10 +229,12 @@ Browser config and predictive-session keys include the complete validated widget
 - `npm run test:answerlattice-widget-config-contracts`
 - `npm run test:answerlattice-widget-runtime-token`
 - `npm run test:answerlattice-widget-key:emulator`
+- `npm run test:answerlattice-public-api:rules`
+- `npm run test:answerlattice-public-api:shared-rules`
 - `npm run typecheck:answerlattice`
 - focused ESLint
 - `node scripts/verification/verify-answerlattice-runtime-truth.js`
 - `npm run verify:dependency-freeze`
 - `git diff --check`
 
-The restart-462 scope repair changes app/server routes only. Restart 463 also aligns the scheduled compiled-context builder, so an authorized Answerlattice QA deploy of `functions:answerlatticeNightly` is required. No Firestore rules, indexes, or Storage rules changed.
+The July 26 Feature 15 refresh changes the shared `firestore.rules` contract only; it adds no index, Storage rule, Cloud Function, collection, or scheduler. The dedicated Answerlattice rules were already fail-closed for direct store writes. The scoped `firebase deploy --only firestore:rules --project menulist-qa` attempt stopped before upload with `Failed to authenticate, have you run firebase login?`; no remote shared-rules revision changed.

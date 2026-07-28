@@ -26,10 +26,10 @@ No foundation collection may be created in `menulist-qa` or `menulist`. The docu
 | Collection | Purpose | Normal reads |
 | --- | --- | --- |
 | `signaldeskTeamMembers` | Internal user role assignments | Login/session bootstrap |
-| `signaldeskRolePolicies` | Role-permission matrix | Small policy list |
+| `signaldeskRolePolicies` | Reserved role-permission matrix namespace; no current runtime producer or consumer | None until separately activated |
 | `signaldeskAuditEvents` | Mutation/contact reveal/action audit | Admin audit page only |
 | `signaldeskKillSwitches` | Emergency controls | Control room and pre-action checks |
-| `signaldeskFoundationSummaries` | Control room summary | Dashboard read |
+| `signaldeskFoundationSummaries` | Reserved foundation-summary namespace; current dashboard uses its explicit control/queue/cost and scope documents instead | None until separately activated |
 | `signaldeskIncidents` | Foundation/security/channel incidents | Control room list |
 | `signaldeskIdempotencyKeys` | Retry, webhook, and mutation dedupe | Point lookup only |
 
@@ -51,7 +51,7 @@ No foundation collection may be created in `menulist-qa` or `menulist`. The docu
 - No real-time listener on audit events.
 - Audit history must paginate in 50-valid-event pages. Normal reads stop at 50 documents; extra bounded scans occur only to skip malformed/foreign rows and are diagnosed.
 - Dashboard reads summary docs.
-- Role policies should be small.
+- The reserved role-policy namespace must remain unused until a separately reviewed producer, projector and consumer replace current code-owned role admission.
 - Kill-switch checks should read compact docs.
 - Contact reveal must not write multiple audit records for one action.
 - A kill-switch retry must reuse its bounded actor/request key; exact and concurrent retries return the first result without another switch, audit, or claim write.
@@ -63,6 +63,7 @@ No foundation collection may be created in `menulist-qa` or `menulist`. The docu
 - The incident list is capped at 50, while `openIncidentCount` is computed only from strictly projected rows. The query reads at most 501 matching rows; more than 500 fails with a bounded diagnostic instead of counting unvalidated tail rows.
 - Role policy reads should be cached per server request where safe.
 - Do not cache current-user admission across requests. Revocation, block, deactivation, auth-disable, or role changes must take effect on the next protected request.
+- Protected overview, workspace, action and kill-switch requests apply their hashed actor/operation limiter before the current-user and membership reads above. Limiter-provider uncertainty returns a retryable `503` and performs no membership, permission, workflow or blocked-mobile-audit Firestore work; quota exhaustion returns `429`.
 - Membership queries are capped at two results because a second match is an authority conflict, not valid data to merge silently.
 - No real-time listener on team members, role policies, or incidents.
 - No foundation dashboard may read raw audit events by default.
@@ -88,7 +89,7 @@ Do not index:
 
 | Data | Default |
 | --- | --- |
-| Role policy | Until changed, keep version history |
+| Reserved role policy | No rows are produced today; define retention before activation |
 | Kill-switch audit | 24 months minimum |
 | Contact reveal audit | 24 months minimum |
 | Incident records | 24 months minimum |

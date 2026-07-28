@@ -1,13 +1,14 @@
-import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedLogValueContext,
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/sessionUserDocumentId';
+import { resolveStorePermissionSessionScope } from '@lib/permissions/scopeDocumentId';
 import { secureError } from '@lib/security/secureLogger';
 
 type RazorpayDiagnosticContext = Record<string, boolean | number | string | null | undefined>;
-
-type RazorpayErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
 
 export const getBoundedRazorpayStringContext = (
     label: string,
@@ -19,35 +20,28 @@ export const getBoundedRazorpayStringContext = (
 export const getBoundedRazorpaySecurityContext = (
     session: any,
     request?: Request,
-): RazorpayDiagnosticContext => ({
-    ...getBoundedRazorpayStringContext('userId', session?.user?.id || session?.uId || session?.userId),
-    ...getBoundedRazorpayStringContext('email', session?.user?.email),
-    ...getBoundedRazorpayStringContext('tenantId', session?.user?.tenantId || session?.tId),
-    ...getBoundedRazorpayStringContext('storeId', session?.user?.storeId || session?.sId),
-    ...getBoundedRazorpayStringContext('ip', request?.headers?.get('x-forwarded-for') || request?.headers?.get('x-real-ip')),
-    ...getBoundedRazorpayStringContext('userAgent', request?.headers?.get('user-agent')),
-});
+): RazorpayDiagnosticContext => {
+    const scope = resolveStorePermissionSessionScope(session);
+    return {
+        ...getBoundedRazorpayStringContext('userId', resolveCurrentSessionUserDocumentId(session)),
+        ...getBoundedRazorpayStringContext('email', session?.user?.email),
+        ...getBoundedRazorpayStringContext('tenantId', scope?.tenantScope.documentId),
+        ...getBoundedRazorpayStringContext('storeId', scope?.storeScope.documentId),
+        ...getBoundedRazorpayStringContext('ip', request?.headers?.get('x-forwarded-for') || request?.headers?.get('x-real-ip')),
+        ...getBoundedRazorpayStringContext('userAgent', request?.headers?.get('user-agent')),
+    };
+};
 
 const getRazorpayErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getRazorpayErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as RazorpayErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getRazorpayErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as RazorpayErrorLike).status
-        : (error as RazorpayErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 export const getRazorpayFailureLogData = (

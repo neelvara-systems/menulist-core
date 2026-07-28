@@ -2,6 +2,7 @@ import * as functions from "firebase-functions";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin, storageAdmin } from "../firebaseAdmin";
 import { normalizeMessagingPendingUploadCleanupPaths } from "../sharedData/messagingReplacementUploads";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode } from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const sessionsCol = DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS;
@@ -17,14 +18,12 @@ function logCleanupOperationFailure(
   operation: string,
   error: unknown,
 ): void {
-  const code = error instanceof Error
-    ? (error as { code?: unknown }).code
-    : undefined;
+  const code = getBoundedFunctionsErrorCode(error);
   logger.warn("[MessagingUploadCleanup] Cleanup operation failed", {
     ...cleanupLogContext(sessionId, count),
     operation,
-    sourceErrorCode: code === undefined ? undefined : String(code).slice(0, 64),
-    sourceErrorName: error instanceof Error ? (error.name || "Error").slice(0, 80) : typeof error,
+    sourceErrorCode: code,
+    sourceErrorName: getBoundedFunctionsErrorName(error) || typeof error,
   });
 }
 

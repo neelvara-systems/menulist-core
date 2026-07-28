@@ -2,11 +2,12 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { secureError } from "@lib/security/secureLogger";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 const SERVER_SCREEN_TOUCH_FAILED_CODE = "digital_screen_server_content_version_touch_failed";
 
 function getScreenTouchErrorName(error: unknown): string {
-    return error instanceof Error ? error.name || "Error" : typeof error;
+    return getBoundedErrorName(error) || typeof error;
 }
 
 function logServerScreenTouchFailure(

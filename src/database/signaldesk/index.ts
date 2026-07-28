@@ -17,6 +17,7 @@ import type {
     SignalDeskWorkspaceData,
     SignalDeskWorkspaceResponse,
 } from "@type/signaldesk";
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 export const getSignalDeskClientModeHeaders = (): Record<string, string> => {
     if (typeof window === "undefined") return {};
@@ -750,8 +751,7 @@ const getSignalDeskClientResponseLogContext = (
 });
 
 const isAbortError = (error: unknown): boolean => (
-    (error instanceof Error && error.name === "AbortError")
-    || (isRecord(error) && error.name === "AbortError")
+    getBoundedErrorName(error) === "AbortError"
 );
 
 const readSignalDeskClientProjectedDataResponse = async <T>(

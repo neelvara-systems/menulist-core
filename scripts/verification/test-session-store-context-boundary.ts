@@ -13,6 +13,11 @@ import {
     hasSessionProviderScopeChanged,
 } from '@lib/multiOutlet/sessionProviderScopeBoundary';
 import { isLegacySingleStoreMasterCandidate } from '@lib/multiOutlet/locationAccess';
+import { resolveFirebaseAuthSessionScopeState } from '@lib/auth/firebaseAuthSessionScope';
+import {
+    resolveExactSessionPlatformRole,
+    resolveExactSessionStoreRole,
+} from '@lib/auth/sessionPlatformRole';
 
 assert.equal(getActiveTenantStoreSummaryId({ active: true, storeId: 22 }), 22);
 assert.equal(getActiveTenantStoreSummaryId({ active: true, storeId: '22' }), 22);
@@ -86,6 +91,20 @@ assert.equal(getSessionProviderScopeKey({
     sId: 22,
     user: { id: 'user-a', tenantId: 99, storeId: 22 },
 }), null, 'conflicting tenant aliases cannot identify a provider scope');
+assert.equal(getSessionProviderScopeKey({
+    pId: 'ML',
+    tenantId: 12,
+    tId: 11,
+    sId: 22,
+    user: { id: 'user-a', tenantId: 11, storeId: 22 },
+}), null, 'conflicting root tenant aliases cannot identify an analytics/provider scope');
+assert.equal(getSessionProviderScopeKey({
+    pId: 'ML',
+    storeId: 23,
+    tId: 11,
+    sId: 22,
+    user: { id: 'user-a', tenantId: 11, storeId: 22 },
+}), null, 'conflicting root store aliases cannot identify an analytics/provider scope');
 const answerlatticeProviderSession = {
     pId: 'AL',
     productId: 'AL',
@@ -126,6 +145,53 @@ assert.equal(getMenuListSessionProviderScopeKey({
 assert.equal(getSubscriptionLoadScopeKey(11, 22), '11:22');
 assert.equal(getSubscriptionLoadScopeKey(12, 22), '12:22');
 assert.equal(getSubscriptionLoadScopeKey(' 11 ', 22), null);
+
+assert.deepEqual(resolveFirebaseAuthSessionScopeState({
+    tId: 11,
+    tenantId: '11',
+    sId: 22,
+    storeId: '22',
+    user: { tId: 11, tenantId: '11', sId: 22, storeId: '22' },
+}), { status: 'valid', tenantId: '11', storeId: '22' });
+assert.deepEqual(resolveFirebaseAuthSessionScopeState({ user: { id: 'not-onboarded' } }), { status: 'absent' });
+assert.deepEqual(resolveFirebaseAuthSessionScopeState({
+    tId: 11,
+    sId: 22,
+    user: { tenantId: 12, storeId: 22 },
+}), { status: 'invalid' }, 'Firebase claim sync must reject contradictory tenant aliases');
+assert.deepEqual(resolveFirebaseAuthSessionScopeState({
+    tId: 11,
+    sId: 22,
+    user: { tId: 11, tenantId: 11, sId: 23, storeId: 22 },
+}), { status: 'invalid' }, 'Firebase claim sync must reject every nested compact/verbose store conflict');
+assert.deepEqual(resolveFirebaseAuthSessionScopeState({
+    tId: 11,
+    user: { tenantId: 11 },
+}), { status: 'invalid' }, 'partially supplied Firebase claim scope must not look absent');
+
+assert.equal(resolveExactSessionPlatformRole({
+    platformRole: 'PLATFORM',
+    user: { platformRole: 'PLATFORM' },
+}), 'PLATFORM');
+assert.equal(resolveExactSessionPlatformRole({
+    platformRole: 'OWNER',
+    user: { platformRole: 'PLATFORM' },
+}), null, 'conflicting platform-role aliases must not authorize platform operations');
+assert.equal(resolveExactSessionPlatformRole({
+    user: { platformRole: 'PLATFORM' },
+}), 'PLATFORM');
+assert.equal(resolveExactSessionPlatformRole({
+    platformRole: '',
+    user: { platformRole: 'PLATFORM' },
+}), null, 'malformed present platform-role aliases must fail closed');
+assert.equal(resolveExactSessionStoreRole({
+    role: 'owner',
+    user: { role: 'owner' },
+}), 'owner');
+assert.equal(resolveExactSessionStoreRole({
+    role: 'staff',
+    user: { role: 'owner' },
+}), null, 'conflicting store-role aliases must not authorize role-restricted routes');
 
 const providerSource = fs.readFileSync(path.resolve(process.cwd(), 'src/providers/sessionProvider.tsx'), 'utf8');
 assert.match(providerSource, /getActiveTenantStoreSummaryId\(store\) === requestedStoreContextId/);

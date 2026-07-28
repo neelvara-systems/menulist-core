@@ -3,15 +3,45 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { formatStaffLoginId, normalizeStaffLoginUsername } from '@lib/auth/loginIdentifiers';
 import type { AnswerlatticeStaffStoreMembership } from '@lib/answerlattice/staffAccessContracts';
-import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    normalizeConsistentAnswerlatticeScopeDocumentIds,
+} from '@lib/answerlattice/sessionScope';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
-import { Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const getRecord = (value: unknown): Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
         ? value as Record<string, unknown>
         : {}
 );
+
+export const parseAnswerlatticeStaffBridgeAccountScope = (
+    account: Record<string, unknown>,
+): { tenantId: number; storeId: number | null } | null => {
+    const tenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
+        account.tenantId,
+        account.tId,
+    ]);
+    if (!tenantId) return null;
+    const suppliedStoreAliases = [account.storeId, account.sId]
+        .filter((value) => value !== undefined && value !== null);
+    const storeId = suppliedStoreAliases.length > 0
+        ? normalizeConsistentAnswerlatticeScopeDocumentIds(suppliedStoreAliases)
+        : null;
+    if (suppliedStoreAliases.length > 0 && !storeId) return null;
+    return { tenantId, storeId };
+};
+
+export const hasNoAnswerlatticeStaffBridgeMemberships = (
+    account: Record<string, unknown>,
+): boolean => {
+    const hasDirectStore = [account.storeId, account.sId]
+        .some((value) => value !== undefined && value !== null);
+    if (hasDirectStore) return false;
+    if (account.storeIds === undefined) return true;
+    return Array.isArray(account.storeIds) && account.storeIds.length === 0;
+};
 
 export const syncAnswerlatticeStaffProductAccountBridge = async (params: {
     accessRevision: number;
@@ -53,7 +83,8 @@ export const syncAnswerlatticeStaffProductAccountBridge = async (params: {
         const currentRevision = Math.max(currentAccountRevision, currentRootRevision);
         if (currentRevision > params.accessRevision) return false;
 
-        const currentAccountStoreId = normalizeAnswerlatticeScopeDocumentId(currentAccount.storeId ?? currentAccount.sId);
+        const currentAccountScope = parseAnswerlatticeStaffBridgeAccountScope(currentAccount);
+        const currentAccountStoreId = currentAccountScope?.storeId ?? null;
         const primaryMembership = params.primaryMembership
             || params.memberships.find(({ storeId }) => storeId === currentAccountStoreId)
             || params.memberships[0]
@@ -73,8 +104,12 @@ export const syncAnswerlatticeStaffProductAccountBridge = async (params: {
         const currentStoreIdsAreCanonical = Array.isArray(currentAccount.storeIds)
             && currentAccount.storeIds.length === nextStoreIds.length
             && currentAccount.storeIds.every((storeId, index) => storeId === nextStoreIds[index]);
-        const currentRootTenantId = normalizeAnswerlatticeScopeDocumentId(userData.tenantId ?? userData.tId);
-        const currentRootStoreId = normalizeAnswerlatticeScopeDocumentId(userData.storeId ?? userData.sId);
+        const hasRootScopeEvidence = [
+            userData.tenantId,
+            userData.tId,
+            userData.storeId,
+            userData.sId,
+        ].some((value) => value !== undefined && value !== null);
         const expectedFirebaseUid = params.firebaseUid || userData.firebaseUid;
         const loginUsername = normalizeStaffLoginUsername(
             params.loginUsername
@@ -87,7 +122,7 @@ export const syncAnswerlatticeStaffProductAccountBridge = async (params: {
             || (typeof userData.loginUsername === 'string' ? userData.loginUsername : ''),
         );
         const shouldSetRootAnswerlatticeScope = rootIsAnswerlattice
-            || (suppliedRootProductIds.length === 0 && !currentRootTenantId && !currentRootStoreId);
+            || (suppliedRootProductIds.length === 0 && !hasRootScopeEvidence);
         const rootScopeMatches = !shouldSetRootAnswerlatticeScope || (
             userData.active === accountActive
             && userData.authDisabled === !accountActive
@@ -168,6 +203,56 @@ export const syncAnswerlatticeStaffProductAccountBridge = async (params: {
             } : {}),
         }, { undefinedObjectValue: 'omit' });
         transaction.set(userRef, update, { merge: true });
+        return true;
+    });
+};
+
+export const eraseAnswerlatticeStaffProductAccountBridge = async (params: {
+    db: FirebaseFirestore.Firestore;
+    defaultUserId: string;
+    tenantId: number;
+}): Promise<boolean> => {
+    const userRef = params.db.collection(DB_COLLECTIONS.USERS).doc(params.defaultUserId);
+    return params.db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(userRef);
+        if (!snapshot.exists) return false;
+
+        const data = snapshot.data() || {};
+        const productAccounts = getRecord(data.productAccounts);
+        const account = getRecord(productAccounts[PRODUCT_IDS.ANSWERLATTICE]);
+        const accountScope = parseAnswerlatticeStaffBridgeAccountScope(account);
+        if (!accountScope || accountScope.tenantId !== params.tenantId) {
+            return false;
+        }
+        if (!hasNoAnswerlatticeStaffBridgeMemberships(account)) {
+            throw new Error('ANSWERLATTICE_PRODUCT_ACCOUNT_STILL_HAS_MEMBERSHIPS');
+        }
+
+        const suppliedRootProductIds = [data.pId, data.productId]
+            .filter((value) => value !== undefined);
+        const rootIsAnswerlattice = suppliedRootProductIds.length > 0
+            && suppliedRootProductIds.every((value) => value === PRODUCT_IDS.ANSWERLATTICE);
+        const update: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
+            [`productAccounts.${PRODUCT_IDS.ANSWERLATTICE}`]: FieldValue.delete(),
+            modifiedOn: Timestamp.now(),
+        };
+        if (rootIsAnswerlattice) {
+            [
+                'accessRevision',
+                'pId',
+                'productId',
+                'role',
+                'sId',
+                'storeId',
+                'storeIds',
+                'stores',
+                'tId',
+                'tenantId',
+            ].forEach((field) => {
+                update[field] = FieldValue.delete();
+            });
+        }
+        transaction.update(userRef, update);
         return true;
     });
 };

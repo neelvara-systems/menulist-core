@@ -530,7 +530,7 @@ assertCheck(
     && messagingPublishBoundary.includes('normalizeProjectFileIndex(source.index, fallbackIndex)')
     && messagingPublish.includes('runStorePublicTruthPostCommitEffects({')
     && messagingPublish.includes('invalidateAssistant: () => invalidateOwnerBusinessAssistantPacketCache({')
-    && messagingPublish.includes('revalidate: revalidateTag')
+    && messagingPublish.includes('revalidate: (tag) => revalidateTag(tag, { expire: 0 })')
     && messagingPublish.includes('touchScreen: () => touchDigitalScreenContentVersionForStoreServer(')
     && messagingPublish.includes('storeIds: [String(result.storeId)]')
     && messagingPublish.includes('tenantId: String(result.tenantId)')

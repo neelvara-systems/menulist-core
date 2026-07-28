@@ -7,6 +7,7 @@
 
 import { Timestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
+import { randomUUID } from "node:crypto";
 import { DB_COLLECTIONS } from "../constants/database";
 import { firestoreAdmin } from "../firebaseAdmin";
 import { createAlert } from "../monitoring/alerts";
@@ -17,26 +18,25 @@ import {
 } from "../types/messagingOnboarding.types";
 import { COST_MONITORING } from "./constants";
 import { normalizeMessagingPublishedResult } from "./publishedResultBoundary";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode } from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const db = firestoreAdmin;
 const MESSAGING_HEALTH_SNAPSHOT_WRITE_FAILED = "MESSAGING_HEALTH_SNAPSHOT_WRITE_FAILED";
+const MESSAGING_HEALTH_ALERT_EMIT_FAILED = "MESSAGING_HEALTH_ALERT_EMIT_FAILED";
 
 const HEALTH_CONTROL_DOC = "messaging_onboarding_control";
 const HEALTH_DOC_PREFIX = "messaging_onboarding";
 const HEALTH_COMPUTE_LEASE_MS = 15 * 60 * 1000;
 const HEALTH_CONTROL_CHECK_WINDOW_MINUTES = 4;
+const MAX_HEALTH_LEASE_ID_LENGTH = 80;
 
 function getMessagingHealthErrorName(error: unknown): string {
-  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
-  return typeof error;
+    return getBoundedFunctionsErrorName(error) || 'Error';
 }
 
 function getMessagingHealthErrorCode(error: unknown): string | undefined {
-  if (!(error instanceof Error)) return undefined;
-  const code = (error as { code?: unknown }).code;
-  if (code === undefined || code === null) return undefined;
-  return String(code).slice(0, 64);
+    return getBoundedFunctionsErrorCode(error);
 }
 
 function getMessagingHealthErrorContext(error: unknown): Record<string, string | undefined> {
@@ -52,7 +52,7 @@ export interface MessagingOnboardingRunMetrics {
   errors: number;
 }
 
-interface HealthAlert {
+export interface HealthAlert {
   key: string;
   severity: "warning" | "critical";
   title: string;
@@ -101,6 +101,20 @@ export function isMessagingHealthComputationDue(
   return !recentlyCompleted && !activeLease;
 }
 
+export function isMessagingHealthLeaseOwner(
+  control: unknown,
+  expectedLeaseId: string,
+): boolean {
+  if (
+    expectedLeaseId.length === 0
+    || expectedLeaseId.length > MAX_HEALTH_LEASE_ID_LENGTH
+    || expectedLeaseId.trim() !== expectedLeaseId
+  ) {
+    return false;
+  }
+  return isRecord(control) && control.computeLeaseId === expectedLeaseId;
+}
+
 export function shouldCheckMessagingOnboardingHealth(nowMillis: number): boolean {
   if (!Number.isFinite(nowMillis) || nowMillis < 0) return false;
   return new Date(nowMillis).getUTCMinutes() < HEALTH_CONTROL_CHECK_WINDOW_MINUTES;
@@ -142,6 +156,7 @@ export async function recordMessagingOnboardingHealth(
   const controlRef = db
     .collection(DB_COLLECTIONS.SYSTEM_HEALTH)
     .doc(HEALTH_CONTROL_DOC);
+  const computeLeaseId = randomUUID();
   let computationClaimed = false;
   try {
     if (
@@ -160,6 +175,7 @@ export async function recordMessagingOnboardingHealth(
       transaction.set(
         controlRef,
         {
+          computeLeaseId,
           computeLeaseUntil: Timestamp.fromMillis(now.toMillis() + HEALTH_COMPUTE_LEASE_MS),
           lastAttemptAt: now,
           lastRunMetrics: runMetrics,
@@ -176,36 +192,57 @@ export async function recordMessagingOnboardingHealth(
 
     const snapshot = await buildHealthSnapshot(runMetrics);
     const snapshotId = getHourlySnapshotId(snapshot.windowEnd.toDate());
-
-    await db
+    const snapshotRef = db
       .collection(DB_COLLECTIONS.SYSTEM_HEALTH)
-      .doc(snapshotId)
-      .set(snapshot, { merge: true });
+      .doc(snapshotId);
 
-    await controlRef.set(
-      {
-        computeLeaseUntil: null,
-        lastComputedAt: snapshot.windowEnd,
-        lastSnapshotId: snapshotId,
-        lastStatus: snapshot.status,
-        status: snapshot.status,
-        updatedAt: snapshot.windowEnd,
-      },
-      { merge: true },
-    );
+    const settled = await db.runTransaction(async (transaction) => {
+      const currentControl = await transaction.get(controlRef);
+      if (!isMessagingHealthLeaseOwner(currentControl.data(), computeLeaseId)) {
+        return false;
+      }
+      transaction.set(snapshotRef, snapshot);
+      transaction.set(
+        controlRef,
+        {
+          computeLeaseId: null,
+          computeLeaseUntil: null,
+          lastComputedAt: snapshot.windowEnd,
+          lastSnapshotId: snapshotId,
+          lastStatus: snapshot.status,
+          status: snapshot.status,
+          updatedAt: snapshot.windowEnd,
+        },
+        { merge: true },
+      );
+      return true;
+    });
     computationClaimed = false;
+    if (!settled) {
+      logger.warn("[MessagingHealth] Discarded stale health computation", {
+        failureCode: "MESSAGING_HEALTH_LEASE_OWNERSHIP_LOST",
+      });
+      return;
+    }
 
     await emitHealthAlerts(snapshot.alerts);
   } catch (error) {
     if (computationClaimed) {
       try {
         const failedAt = Timestamp.now();
-        await controlRef.set({
-          computeLeaseUntil: null,
-          lastFailureAt: failedAt,
-          status: "failed",
-          updatedAt: failedAt,
-        }, { merge: true });
+        await db.runTransaction(async (transaction) => {
+          const currentControl = await transaction.get(controlRef);
+          if (!isMessagingHealthLeaseOwner(currentControl.data(), computeLeaseId)) {
+            return;
+          }
+          transaction.set(controlRef, {
+            computeLeaseId: null,
+            computeLeaseUntil: null,
+            lastFailureAt: failedAt,
+            status: "failed",
+            updatedAt: failedAt,
+          }, { merge: true });
+        });
       } catch (releaseError) {
         logger.error("[MessagingHealth] Failed to release health computation lease", {
           failureCode: "MESSAGING_HEALTH_LEASE_RELEASE_FAILED",
@@ -497,7 +534,11 @@ function buildAlerts(params: {
   return alerts;
 }
 
-async function emitHealthAlerts(alerts: HealthAlert[]): Promise<void> {
+export async function emitHealthAlerts(
+  alerts: HealthAlert[],
+  alertWriter: typeof createAlert = createAlert,
+): Promise<number> {
+  let failedAlerts = 0;
   for (const alert of alerts) {
     const triggerType = alert.key.includes("cost")
       ? PLATFORM_NOTIFICATION_TRIGGER_TYPES.AI_COST_RUNAWAY
@@ -505,24 +546,35 @@ async function emitHealthAlerts(alerts: HealthAlert[]): Promise<void> {
         ? PLATFORM_NOTIFICATION_TRIGGER_TYPES.WHATSAPP_PROVIDER_FAILURE
         : PLATFORM_NOTIFICATION_TRIGGER_TYPES.WHATSAPP_ONBOARDING_QUEUE_STUCK;
 
-    await createAlert({
-      tId: "system",
-      sId: "system",
-      type: alert.key.includes("cost") ? "usage" : "health",
-      severity: alert.severity,
-      title: alert.title,
-      message: alert.message,
-      metadata: {
-        subsystem: "messaging_onboarding",
+    try {
+      await alertWriter({
+        tId: "system",
+        sId: "system",
+        type: alert.key.includes("cost") ? "usage" : "health",
+        severity: alert.severity,
+        title: alert.title,
+        message: alert.message,
+        metadata: {
+          subsystem: "messaging_onboarding",
+          alertKey: alert.key,
+          ...alert.metadata,
+        },
+        triggerType,
+        productId: "ML",
+        category: alert.key.includes("cost") ? "ai" : "extraction",
+        actionRequired: alert.severity === "critical",
+      });
+    } catch (error) {
+      failedAlerts += 1;
+      logger.error("[MessagingHealth] Failed to emit threshold alert", {
+        failureCode: MESSAGING_HEALTH_ALERT_EMIT_FAILED,
         alertKey: alert.key,
-        ...alert.metadata,
-      },
-      triggerType,
-      productId: "ML",
-      category: alert.key.includes("cost") ? "ai" : "extraction",
-      actionRequired: alert.severity === "critical",
-    });
+        severity: alert.severity,
+        ...getMessagingHealthErrorContext(error),
+      });
+    }
   }
+  return failedAlerts;
 }
 
 function getHourlySnapshotId(date: Date): string {

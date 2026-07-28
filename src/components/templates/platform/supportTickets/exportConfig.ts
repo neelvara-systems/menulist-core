@@ -1,6 +1,7 @@
 import {
     calculateSupportTicketSLAStatus,
     getFirstSupportTicketResponse,
+    getSupportTicketTimestampMillis,
     SUPPORT_TICKET_STATUS,
     SupportTicketType,
 } from '@type/supportTicket';
@@ -172,8 +173,15 @@ export const ticketAnalyticsColumns: CSVColumn<SupportTicketType>[] = [
             
             const firstAdminMessage = getFirstSupportTicketResponse(ticket);
             if (!firstAdminMessage) return 'N/A';
-            
-            const responseTime = firstAdminMessage.timestamp.toMillis() - ticket.createdOn.toMillis();
+
+            const createdOnMillis = getSupportTicketTimestampMillis(ticket.createdOn);
+            const responseMillis = getSupportTicketTimestampMillis(firstAdminMessage.timestamp);
+            if (
+                createdOnMillis === null
+                || responseMillis === null
+                || responseMillis < createdOnMillis
+            ) return 'N/A';
+            const responseTime = responseMillis - createdOnMillis;
             return Math.round(responseTime / (1000 * 60 * 60) * 100) / 100; // Hours with 2 decimals
         },
     },
@@ -193,8 +201,15 @@ export const ticketAnalyticsColumns: CSVColumn<SupportTicketType>[] = [
             );
             
             if (!resolvedStatus) return 'N/A';
-            
-            const resolutionTime = resolvedStatus.timestamp.seconds * 1000 - ticket.createdOn.toMillis();
+
+            const createdOnMillis = getSupportTicketTimestampMillis(ticket.createdOn);
+            const resolutionMillis = getSupportTicketTimestampMillis(resolvedStatus.timestamp);
+            if (
+                createdOnMillis === null
+                || resolutionMillis === null
+                || resolutionMillis < createdOnMillis
+            ) return 'N/A';
+            const resolutionTime = resolutionMillis - createdOnMillis;
             return Math.round(resolutionTime / (1000 * 60 * 60) * 100) / 100; // Hours with 2 decimals
         },
     },

@@ -811,6 +811,10 @@ service cloud.firestore {
         && actor.id is string
         && actor.id.size() > 0
         && actor.id.size() <= 100
+        && (
+          actor.id == request.auth.uid
+          || actor.id == request.auth.token.get('uId', '')
+        )
         && actor.name is string
         && actor.name.size() > 0
         && actor.name.size() <= 100
@@ -845,6 +849,10 @@ service cloud.firestore {
         && note.authorId is string
         && note.authorId.size() > 0
         && note.authorId.size() <= 100
+        && (
+          note.authorId == request.auth.uid
+          || note.authorId == request.auth.token.get('uId', '')
+        )
         && note.authorName is string
         && note.authorName.size() > 0
         && note.authorName.size() <= 100
@@ -1801,7 +1809,7 @@ service cloud.firestore {
 
     function isAnswerlatticeTenantSummaryScopeStable() {
       return isAnswerlatticeTenantMember(resource.data)
-        && isAnswerlatticeTenantMember(request.resource.data)
+        && request.resource.data.pId == resource.data.pId
         && request.resource.data.tId == resource.data.tId
         && request.resource.data.sId == resource.data.sId;
     }
@@ -1889,7 +1897,8 @@ service cloud.firestore {
         && request.auth.token.get('tenantId', null) != null
         && request.auth.token.get('storeId', null) != null
         && string(data.tId) == string(request.auth.token.get('tenantId', null))
-        && string(data.sId) == string(request.auth.token.get('storeId', null));
+        && string(data.sId) == string(request.auth.token.get('storeId', null))
+        && isAnswerlatticeActiveWorkspace(data.tId, data.sId);
     }
 
     function answerlatticeCacheVersionKeys() {
@@ -2246,6 +2255,10 @@ service cloud.firestore {
             && string(data.tenantId) == string(request.auth.token.tenantId)
             && string(data.storeId) == string(request.auth.token.storeId)
           )
+        )
+        && isAnswerlatticeActiveWorkspace(
+          data.keys().hasAny(['tId']) ? data.tId : data.tenantId,
+          data.keys().hasAny(['sId']) ? data.sId : data.storeId
         );
     }
 
@@ -2271,7 +2284,18 @@ service cloud.firestore {
         && request.auth.token.tenantId != null
         && request.auth.token.storeId != null
         && string(tId) == string(request.auth.token.tenantId)
-        && string(sId) == string(request.auth.token.storeId);
+        && string(sId) == string(request.auth.token.storeId)
+        && isAnswerlatticeActiveWorkspace(tId, sId);
+    }
+
+    function isAnswerlatticeActiveWorkspace(tId, sId) {
+      let store = get(/databases/$(database)/documents/stores/$(sId));
+      return store.data.pId == 'AL'
+        && string(store.data.tId) == string(tId)
+        && string(store.data.sId) == string(sId)
+        && store.data.get('active', false) == true
+        && store.data.deleted != true
+        && store.data.authDisabled != true;
     }
 
     function isAnswerlatticeScopedReadWithPermission(permission) {
@@ -2340,7 +2364,7 @@ service cloud.firestore {
           isPlatformAdmin()
           || (
             isAnswerlatticeTenantMember(resource.data)
-            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.pId == resource.data.pId
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId
             && hasAnswerlatticePermission(permission)
@@ -2354,7 +2378,7 @@ service cloud.firestore {
           isPlatformAdmin()
           || (
             isAnswerlatticeTenantMember(resource.data)
-            && isAnswerlatticeTenantMember(request.resource.data)
+            && request.resource.data.pId == resource.data.pId
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId
             && hasAnswerlatticeKnowledgeControlPermission()
@@ -2382,7 +2406,6 @@ service cloud.firestore {
           isPlatformSupportOperator()
           || (
             isAnswerlatticeTenantMember(resource.data)
-            && isAnswerlatticeTenantMember(request.resource.data)
             && request.resource.data.pId == resource.data.pId
             && request.resource.data.tId == resource.data.tId
             && request.resource.data.sId == resource.data.sId

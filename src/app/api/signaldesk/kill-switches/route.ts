@@ -49,12 +49,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
     const validatedInput = validation.data;
 
-    const permission: SignalDeskPermission = validatedInput.status === "active"
-        ? "kill-switch.activate"
-        : "kill-switch.deactivate";
-    const accessResult = await requireSignalDeskAccess(request, session, permission);
-    if ("response" in accessResult) return accessResult.response;
-
     const rateLimit = await applySignalDeskRateLimit({
         feature: "DATA_WRITE",
         keyPrefix: "kill-switch",
@@ -62,6 +56,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         session,
     });
     if (rateLimit) return rateLimit;
+
+    const permission: SignalDeskPermission = validatedInput.status === "active"
+        ? "kill-switch.activate"
+        : "kill-switch.deactivate";
+    const accessResult = await requireSignalDeskAccess(request, session, permission);
+    if ("response" in accessResult) return accessResult.response;
 
     if (
         isSignalDeskMobileRequest(request)

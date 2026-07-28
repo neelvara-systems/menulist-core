@@ -3,7 +3,7 @@ import path from "path";
 import { FEATURE_FLAGS } from "../../src/config/features";
 import { buildGrowthOSKit } from "../../src/lib/growthos/kitBuilder";
 import { guardGrowthOSOutput } from "../../src/lib/growthos/outputGuard";
-import { rankGrowthOSActions } from "../../src/lib/growthos/actionRanking";
+import { findGrowthOSAction, rankGrowthOSActions } from "../../src/lib/growthos/actionRanking";
 import { computeGrowthOSReadiness, isGrowthOSKitExpired } from "../../src/lib/growthos/readiness";
 import { evaluateGrowthOSEntitlement } from "../../src/lib/growthos/entitlements";
 import { guardGrowthOSReviewReply } from "../../src/lib/growthos/reviewGuard";
@@ -354,6 +354,7 @@ const kit = buildGrowthOSKit({
     action: actions[0],
     facts,
     kitId: "growthos_dry_run",
+    operationId: "00000000-0000-4000-8000-000000000001",
     now: new Date("2026-06-01T09:00:00.000Z"),
 });
 const publicOutputs = kit.outputs.filter((output: GrowthOSOutput) => output.destination !== "staff_brief");
@@ -372,12 +373,18 @@ const unsafeReply = guardGrowthOSReviewReply({
 const growthOSSchemas = fs.readFileSync(path.resolve("src/lib/validation/growthosSchemas.ts"), "utf8");
 const growthOSServerDal = fs.readFileSync(path.resolve("src/database/growthos/server.ts"), "utf8");
 const growthOSServerEntitlements = fs.readFileSync(path.resolve("src/lib/growthos/serverEntitlements.ts"), "utf8");
+const firestoreRules = fs.readFileSync(path.resolve("firestore.rules"), "utf8");
+const growthOSProjectReadBlock = growthOSServerDal.slice(
+    growthOSServerDal.indexOf("export async function readGrowthOSProjectDataServer"),
+    growthOSServerDal.indexOf("export async function readGrowthOSSummaryServer"),
+);
 const growthOSKitReadBlock = growthOSServerDal.slice(
     growthOSServerDal.indexOf("export async function readGrowthOSKitServer"),
     growthOSServerDal.indexOf("function statusForExportMethod"),
 );
 const growthOSImplDoc = fs.readFileSync(path.resolve("__docs__/growthos-addon/growthos-addon_impl.md"), "utf8");
 const growthOSFirebaseDoc = fs.readFileSync(path.resolve("__docs__/growthos-addon/growthos-addon_firebase.md"), "utf8");
+const growthOSTransactionEmulator = fs.readFileSync(path.resolve("scripts/verification/test-growthos-transactions-emulator.ts"), "utf8");
 const productionAudit = fs.readFileSync(path.resolve("__docs__/audits/menulist-production-readiness-audit.md"), "utf8");
 const changelog = fs.readFileSync(path.resolve("__docs__/changelog.md"), "utf8");
 const updatedFacts = buildGrowthOSSourceFacts({
@@ -502,6 +509,9 @@ const growthOSPage = fs.readFileSync(path.resolve("src/components/templates/main
 const growthOSMobileCard = fs.readFileSync(path.resolve("src/components/mobile/components/GrowthKitsMobileCard.tsx"), "utf8");
 const growthOSClientDal = fs.readFileSync(path.resolve("src/database/growthos/index.ts"), "utf8");
 const growthOSReviewSuggestRoute = fs.readFileSync(path.resolve("src/app/api/growthos/reviews/suggest/route.ts"), "utf8");
+const growthOSHook = fs.readFileSync(path.resolve("src/hooks/useGrowthOS.ts"), "utf8");
+const growthOSClientContracts = fs.readFileSync(path.resolve("src/lib/growthos/clientContracts.ts"), "utf8");
+const growthOSReadiness = fs.readFileSync(path.resolve("src/lib/growthos/readiness.ts"), "utf8");
 
 assertCheck(FEATURE_FLAGS.ENABLE_GROWTHOS_ADDON === true, "GrowthOS master flag is enabled");
 assertCheck(FEATURE_FLAGS.GROWTHOS_ADDON_ACCESS === "paid", "GrowthOS access defaults to paid plan gate");
@@ -604,11 +614,22 @@ withGrowthOSFlags({
     assertCheck(paidPlanOutsidePilot.allowed === false && paidPlanOutsidePilot.reason === "not_pilot_store", "GrowthOS pilot gate blocks paid stores outside allowlist");
 });
 assertCheck(facts.items.length === 3, "source facts read extracted menu items");
+assertCheck(
+    buildGrowthOSSourceFacts({
+        projectData: { files: { malformed: true }, name: { en: "Legacy menu" } },
+        projectId: "legacy-project",
+        sId: "dry-store",
+        storeData: { workingHours: { mon: { malformed: true } } },
+        tId: "dry-tenant",
+    }).items.length === 0,
+    "source facts contain malformed legacy arrays and hours without throwing",
+);
 assertCheck(facts.items.some((item) => item.name === "Free Dessert" && item.available === false), "source facts retain unavailable item for staff guardrails");
 assertCheck(readiness.status !== "blocked", "readiness allows available menu facts");
 assertCheck(actions.length >= 2, "ranking creates multiple owner actions");
 assertCheck(actions[0].itemName === "Paneer Power Bowl", "ranking prefers bestseller item");
 assertCheck(!actions.some((action) => action.itemName === "Free Dessert"), "ranking excludes unavailable item");
+assertCheck(findGrowthOSAction(actions, "unknown-action") === null, "generation rejects an unknown requested action instead of substituting another");
 assertCheck(publicOutputs.length === 6, "kit builds all public/manual destinations");
 assertCheck(publicOutputs.every((output) => output.preflight.status === "ready"), "public outputs pass preflight");
 assertCheck(publicOutputs.every((output) => !output.text.includes("Free Dessert")), "public outputs do not mention unavailable items");
@@ -618,6 +639,20 @@ assertCheck(blockedOutput.preflight.status === "blocked", "public guard blocks u
 assertCheck(Boolean(safeReply.reply), "review guard prepares low-risk reply");
 assertCheck(!unsafeReply.reply && unsafeReply.publicReplyRecommended === false, "review guard blocks food-safety public reply");
 assertCheck(hashGrowthOSSourceFacts(facts) !== hashGrowthOSSourceFacts(updatedFacts), "source hash changes when menu truth changes");
+assertCheck(
+    hashGrowthOSSourceFacts(facts) !== hashGrowthOSSourceFacts({
+        ...facts,
+        businessName: "Renamed Business",
+    }),
+    "source hash changes when owner-visible business truth changes",
+);
+assertCheck(
+    hashGrowthOSSourceFacts(facts) !== hashGrowthOSSourceFacts({
+        ...facts,
+        items: facts.items.map((item, index) => index === 0 ? { ...item, isBestSeller: false } : item),
+    }),
+    "source hash changes when action-ranking menu truth changes",
+);
 assertCheck(isGrowthOSKitExpired(new Date("2026-05-30T09:00:00.000Z").toISOString()) === true, "kit expiry marks old kit stale");
 assertCheck(strongActionTrigger.shouldSurface === true && strongActionTrigger.reason === "strong_menu_action", "Today Sales Pack surfaces strong menu actions");
 assertCheck(weakActionTrigger.shouldSurface === false && weakActionTrigger.reason === "none", "Today Sales Pack stays quiet for weak generic actions");
@@ -637,6 +672,9 @@ assertCheck(growthOSSchemas.includes('const growthOSKitIdSchema = z.string()'), 
 assertCheck(growthOSSchemas.includes('.refine(isValidFirestoreDocumentId, "Invalid kit ID")'), "GrowthOS kit IDs use shared Firestore document ID guard");
 assertCheck(growthOSSchemas.includes('projectId: growthOSProjectIdSchema'), "GrowthOS refresh/generate requests use project ID boundary");
 assertCheck(growthOSSchemas.includes('kitId: growthOSKitIdSchema'), "GrowthOS export requests use kit ID boundary");
+assertCheck((growthOSSchemas.match(/operationId: z\.string\(\)\.uuid\(\)/g) || []).length >= 2, "GrowthOS generate/export requests require UUID operation identity");
+assertCheck((growthOSSchemas.match(/\}\)\.strict\(\);/g) || []).length >= 4, "GrowthOS request schemas reject unexpected fields");
+assertCheck(!growthOSSchemas.includes("actionType: growthOSActionTypeSchema.optional()"), "GrowthOS generate schema does not accept an ignored action type");
 assertCheck(!growthOSSchemas.includes('projectId: z.string().min(1).max(100)'), "GrowthOS project IDs must not keep max-only validation");
 assertCheck(!growthOSSchemas.includes('kitId: z.string().min(1).max(200)'), "GrowthOS kit IDs must not keep max-only validation");
 assertCheck(growthOSServerDal.includes('function normalizeGrowthOSDocumentId(value: unknown): string | null'), "GrowthOS server DAL defines a shared document ID normalizer");
@@ -647,8 +685,13 @@ assertCheck(growthOSServerDal.includes('function requireGrowthOSScopeDocumentId(
 assertCheck(growthOSServerDal.includes('const projectId = normalizeGrowthOSDocumentId(params.projectId);'), "GrowthOS project reads normalize project IDs before Firestore reads");
 assertCheck(growthOSServerDal.includes('const tenantDocumentId = normalizeGrowthOSScopeDocumentId(params.tId);'), "GrowthOS project reads normalize tenant scope IDs before scoped reads");
 assertCheck(growthOSServerDal.includes('const storeDocumentId = normalizeGrowthOSScopeDocumentId(params.sId);'), "GrowthOS project reads normalize store scope IDs before scoped reads");
+assertCheck(growthOSServerDal.includes('normalizeGrowthOSScopeAliases(tenantAliases)'), "GrowthOS legacy project reads reject conflicting tenant aliases");
+assertCheck(growthOSServerDal.includes('normalizeGrowthOSScopeAliases(storeAliases)'), "GrowthOS legacy project reads reject conflicting store aliases");
+assertCheck(!growthOSServerDal.includes('params.projectData?.tId ?? params.projectData?.tenantId'), "GrowthOS legacy project reads must not prefer one conflicting tenant alias");
+assertCheck(growthOSTransactionEmulator.includes('GrowthOS must reject a legacy project with conflicting tenant aliases'), "GrowthOS legacy project alias conflict has emulator regression coverage");
+assertCheck(growthOSTransactionEmulator.includes('Public Truth Monitor must reject a legacy project with conflicting tenant aliases'), "Public Truth Monitor legacy project alias conflict has emulator regression coverage");
 assertTextOrder(
-    growthOSServerDal,
+    growthOSProjectReadBlock,
     'const projectId = normalizeGrowthOSDocumentId(params.projectId);',
     '.doc(projectId)',
     "GrowthOS project ID guard runs before project document reads",
@@ -656,8 +699,8 @@ assertTextOrder(
 assertCheck(growthOSServerDal.includes('const kitId = requireGrowthOSDocumentId(kit.id, "kit");'), "GrowthOS kit writes require normalized kit IDs before Firestore writes");
 assertCheck(growthOSServerDal.includes('const tenantDocumentId = requireGrowthOSScopeDocumentId(kit.tId, "tenant");'), "GrowthOS kit writes require tenant scope IDs before Firestore writes");
 assertCheck(growthOSServerDal.includes('const storeDocumentId = requireGrowthOSScopeDocumentId(kit.sId, "store");'), "GrowthOS kit writes require store scope IDs before Firestore writes");
-assertCheck(growthOSServerDal.includes('sanitizeForAdminFirestore({ ...kit, id: kitId })'), "GrowthOS kit writes persist the normalized kit ID");
-assertCheck(growthOSServerDal.includes('return `growthos_${tId}_${sId}_${randomUUID()}`;'), "GrowthOS kit IDs remain collision-resistant under concurrent generation");
+assertCheck(growthOSServerDal.includes("transaction.create(kitRef"), "GrowthOS kit writes use create-only transaction settlement");
+assertCheck(growthOSServerDal.includes('return `growthos_${tId}_${sId}_${requireGrowthOSDocumentId(operationId, "operation")}`;'), "GrowthOS kit IDs bind concurrent retries to one operation");
 assertCheck(
     growthOSServerDal.includes('summaryTenantDocumentId !== tenantDocumentId')
         && growthOSServerDal.includes('summaryStoreDocumentId !== storeDocumentId')
@@ -667,12 +710,25 @@ assertCheck(
 );
 assertCheck(
     growthOSServerDal.includes("export async function writeGrowthOSKitAndSummaryServer")
-        && growthOSServerDal.includes("batch.set(kitRef")
-        && growthOSServerDal.includes("batch.set(summaryRef")
-        && growthOSServerDal.includes("await batch.commit();"),
-    "GrowthOS kit and summary writes commit atomically",
+        && growthOSServerDal.includes("return firestoreAdmin.runTransaction(async (transaction)")
+        && growthOSServerDal.includes("transaction.create(kitRef")
+        && growthOSServerDal.includes("GrowthOS generation operation conflict"),
+    "GrowthOS kit and summary writes commit atomically with exact retry settlement",
 );
 assertCheck(growthOSServerDal.includes('const kitId = normalizeGrowthOSDocumentId(params.kitId);'), "GrowthOS kit reads normalize kit IDs before Firestore reads");
+for (const collectionName of ["growthosKits", "growthosExports"]) {
+    const ruleBlock = firestoreRules.match(
+        new RegExp(`match /${collectionName}/\\{tId\\}/\\{sId\\}/\\{docId\\} \\{([\\s\\S]*?)\\n    \\}`),
+    )?.[1] || "";
+    assertCheck(
+        ruleBlock.includes("allow read, write: if false;"),
+        `${collectionName} remains Admin-only so browser reads cannot bypass GrowthOS entitlement`,
+    );
+    assertCheck(
+        !ruleBlock.includes("belongsToTenant") && !ruleBlock.includes("isPlatformAdmin"),
+        `${collectionName} has no browser role or tenant-membership bypass`,
+    );
+}
 assertTextOrder(
     growthOSKitReadBlock,
     'const kitId = normalizeGrowthOSDocumentId(params.kitId);',
@@ -691,11 +747,33 @@ assertCheck(changelog.includes("GrowthOS Project And Kit ID Boundary"), "Changel
 assertCheck(growthOSReviewSuggestRoute.includes("hashPublicRateLimitValue"), "GrowthOS review guard hashes rate-limit key segments");
 assertCheck(growthOSReviewSuggestRoute.includes("userRateLimitHash"), "GrowthOS review guard computes hashed user limiter segment");
 assertCheck(growthOSReviewSuggestRoute.includes("tenantRateLimitHash"), "GrowthOS review guard computes hashed tenant limiter segment");
-assertCheck(growthOSReviewSuggestRoute.includes("key: `growthos-review:${userRateLimitHash}:${tenantRateLimitHash}`"), "GrowthOS review guard stores hashed limiter segments");
+assertCheck(growthOSReviewSuggestRoute.includes("storeRateLimitHash"), "GrowthOS review guard computes hashed store limiter segment");
+assertCheck(growthOSReviewSuggestRoute.includes("failClosedOnProviderError: true"), "GrowthOS review guard fails closed on limiter uncertainty");
+assertCheck(growthOSReviewSuggestRoute.includes("key: `growthos-review:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`"), "GrowthOS review guard stores hashed actor/workspace limiter segments");
 assertCheck(!growthOSReviewSuggestRoute.includes("key: `growthos-review:${session.uId || session.user?.id}:${session.tId}`"), "GrowthOS review guard does not store raw session identifiers in limiter keys");
+assertCheck(growthOSHook.includes("getGrowthOSSummaryCacheKey(scope)"), "GrowthOS SWR cache key includes exact tenant/store scope");
+assertCheck(!growthOSHook.includes('? "growthos-summary" : null'), "GrowthOS SWR must not use one global summary key");
+assertCheck(
+    growthOSPage.includes('["growthos-projects", clientScope.tId, clientScope.sId]'),
+    "GrowthOS project-list cache key includes exact tenant/store scope",
+);
+assertCheck(
+    growthOSPage.includes("setSelectedProjectId(null);")
+        && growthOSPage.includes("[clientScope?.sId, clientScope?.tId]"),
+    "GrowthOS desktop clears selected project when tenant/store scope changes",
+);
+assertCheck(growthOSClientDal.includes("projectGrowthOSSummaryForScope(snap.data(), expectedScope)"), "GrowthOS browser DAL projects and corroborates returned summary scope");
+assertCheck(growthOSClientContracts.includes('["growthos-summary", scope.tId, scope.sId] as const'), "GrowthOS summary cache identity includes tenant and store");
+assertCheck(growthOSReadiness.includes("export function getGrowthOSTimestampMillis(value: unknown)"), "GrowthOS expiry uses an unknown-input timestamp boundary");
+assertCheck(!growthOSReadiness.includes("expiresAt?: any"), "GrowthOS expiry no longer accepts an unchecked any boundary");
 assertCheck(deferredMatches.length === 0, "deferred GrowthOS scope has no provider, posting, offer, order, or ROI hooks", deferredMatches.join(", "));
 assertCheck(growthOSCmiConsumers.length === 0, "GrowthOS does not consume CMI/menuIntelligence until its own feature loop certifies that boundary", growthOSCmiConsumers.join(", "));
 assertCheck(growthOSPage.includes("GROWTHOS_REFRESH_FAILED_DESCRIPTION"), "GrowthOS owner failure notifications use fixed descriptions");
+assertCheck(
+    growthOSPage.includes("pendingOperationsRef.current.has(\"generate\")")
+        && growthOSPage.includes("pendingOperationsRef.current.has(operationKey)"),
+    "Desktop Growth Kits synchronously suppress duplicate pending mutations",
+);
 assertCheck(!growthOSPage.includes("(error as Error).message"), "GrowthOS owner failure notifications do not show raw exception messages");
 [
     "desktop_growthos_refresh_failed",
@@ -738,6 +816,11 @@ assertCheck(!growthOSPage.includes('onClick={() => copyToClipboard(reviewResult.
     assertCheck(growthOSMobileCard.includes(failureCode), `Mobile Growth Kits must log ${failureCode}`);
 });
 assertCheck(growthOSMobileCard.includes("mobile_growthos_copy_clipboard_unavailable"), "Mobile Growth Kits must define unavailable clipboard failure code");
+assertCheck(
+    growthOSMobileCard.includes("pendingOperationsRef.current.has('generate')")
+        && growthOSMobileCard.includes("pendingOperationsRef.current.has(operationKey)"),
+    "Mobile Growth Kits synchronously suppress duplicate pending mutations",
+);
 assertCheck(growthOSMobileCard.includes("mobile_growthos_copy_fallback_failed"), "Mobile Growth Kits must define fallback copy failure code");
 assertCheck(growthOSMobileCard.includes("hasMobileGrowthOSClipboardWrite"), "Mobile Growth Kits must check Clipboard API support");
 assertCheck(growthOSMobileCard.includes("hasMobileGrowthOSCopyFallback"), "Mobile Growth Kits must check textarea fallback support");
@@ -755,6 +838,7 @@ assertTextOrder(growthOSMobileCard, "if (!copied) throw new Error('mobile_growth
 assertCheck(!growthOSMobileCard.includes("(error as Error).message"), "Mobile Growth Kits failure toasts must not show raw exception messages");
 assertCheck(!growthOSClientDal.includes("payload?.message || payload?.error"), "GrowthOS client helper does not throw raw API response text");
 assertCheck(growthOSClientDal.includes("GROWTHOS_CLIENT_REQUEST_POLICY"), "GrowthOS client helper defines a shared browser request policy");
+assertCheck(growthOSClientDal.includes("fetchGrowthOSIdempotentMutation"), "GrowthOS client retries ambiguous generate/export transport once with one operation identity");
 assertCheck(growthOSClientDal.includes('cache: "no-store"'), "GrowthOS client requests bypass browser cache");
 assertCheck(growthOSClientDal.includes('credentials: "same-origin"'), "GrowthOS client requests keep credentials same-origin");
 assertCheck(growthOSClientDal.includes('redirect: "manual"'), "GrowthOS client requests do not follow redirects");

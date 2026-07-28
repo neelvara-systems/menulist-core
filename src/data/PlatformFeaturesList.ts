@@ -413,8 +413,8 @@ export const commonFeaturesList = {
             "valueLabel": "Included",
             "values": {
                 "starter": true,
-                "growth": true,
-                "scale": true
+                "pro": true,
+                "custom": true
             }
         },
         {
@@ -425,8 +425,8 @@ export const commonFeaturesList = {
             "valueLabel": "Included",
             "values": {
                 "starter": true,
-                "growth": true,
-                "scale": true
+                "pro": true,
+                "custom": true
             }
         },
     ]

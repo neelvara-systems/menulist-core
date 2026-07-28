@@ -102,16 +102,24 @@ contains(
   'English mobile discovery copy includes activation proof labels',
 );
 
-contains(
-  'public/locales/menulist.ai/hi-IN.json',
-  [
-    '"trackingNote": "Some steps are recorded by MenuList. External platforms are owner-confirmed."',
-    '"activationTitle": "Activation proof"',
-    '"activationHowKnown": "How we know: MenuList recorded {systemCount}, owner confirmed {ownerCount}."',
-    '"ownerConfirmed": "Owner confirmed"',
-    '"menuListRecorded": "MenuList"',
-  ],
-  'Hindi mobile discovery copy has the required activation proof keys',
+const hindiPresenceCopy = JSON.parse(read('public/locales/menulist.ai/hi-IN.json'))
+  .MobilePresenceMonitor;
+addCheck(
+  'Hindi mobile discovery copy has translated activation proof values and protected placeholders',
+  Boolean(
+    hindiPresenceCopy
+    && typeof hindiPresenceCopy.trackingNote === 'string'
+    && hindiPresenceCopy.trackingNote.includes('MenuList')
+    && typeof hindiPresenceCopy.activationTitle === 'string'
+    && hindiPresenceCopy.activationTitle.trim().length > 0
+    && typeof hindiPresenceCopy.activationHowKnown === 'string'
+    && hindiPresenceCopy.activationHowKnown.includes('MenuList')
+    && hindiPresenceCopy.activationHowKnown.includes('{systemCount}')
+    && hindiPresenceCopy.activationHowKnown.includes('{ownerCount}')
+    && typeof hindiPresenceCopy.ownerConfirmed === 'string'
+    && hindiPresenceCopy.ownerConfirmed.trim().length > 0
+    && hindiPresenceCopy.menuListRecorded === 'MenuList'
+  ),
 );
 
 contains(

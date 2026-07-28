@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getBoundedErrorCode } from '@lib/monitoring/boundedLogContext';
 import { buildAiMenuManagerReceipt } from '@lib/ai-menu-manager/receiptBuilder';
 import { sanitizeAiMenuManagerFirestoreValue } from '@lib/ai-menu-manager/firestoreSanitize';
 import { buildAiMenuManagerContextBaseHash, buildAiMenuManagerContextPacket } from '@lib/ai-menu-manager/contextPacket';
@@ -316,7 +317,7 @@ async function getLatestPendingAiMenuManagerSession(params: {
         if (snapshot.empty) return null;
         return normalizeAiMenuManagerSessionSnapshot(snapshot.docs[0].data());
     } catch (error) {
-        const code = String((error as { code?: unknown })?.code || '').toLowerCase();
+        const code = (getBoundedErrorCode(error) || '').toLowerCase();
         if (['9', 'failed-precondition', 'firestore/failed-precondition'].includes(code)) {
             logger.warn('AI Menu Manager pending recovery index is not ready');
             return null;

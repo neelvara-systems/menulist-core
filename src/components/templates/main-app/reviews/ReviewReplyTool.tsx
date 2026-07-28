@@ -14,6 +14,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
 import { getBoundedAiServiceStringContext, logAiServiceFailure } from '@services/ai/aiServiceDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { getBoundedErrorNumberAtPath, getBoundedErrorStatus } from '@lib/monitoring/boundedLogContext';
 import { Alert, Button, Card, Input, Rate, Space, Tag, Typography, theme, notification } from 'antd';
 import { useState } from 'react';
 import { LuCheck, LuCopy, LuMessageSquare, LuRefreshCw, LuSparkles } from 'react-icons/lu';
@@ -50,9 +51,9 @@ function createReviewReplyError(failureCode: string, status?: number): Error & {
     });
 }
 
-function getReviewReplyStatus(error: any): number | undefined {
-    const status = Number(error?.status ?? error?.statusCode ?? error?.response?.status);
-    return Number.isFinite(status) ? status : undefined;
+function getReviewReplyStatus(error: unknown): number | undefined {
+    return getBoundedErrorStatus(error)
+        ?? getBoundedErrorNumberAtPath(error, ['response', 'status']);
 }
 
 function isAcknowledgedReviewReplySuggestionResponse(

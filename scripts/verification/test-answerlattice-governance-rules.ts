@@ -15,6 +15,7 @@ import {
     updateDoc,
     writeBatch,
 } from 'firebase/firestore';
+import { seedActiveAnswerlatticeRuleWorkspace } from './answerlattice-rule-test-fixtures';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-answerlattice-governance-rules';
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -118,6 +119,7 @@ async function run(): Promise<void> {
 
         await testEnv.withSecurityRulesDisabled(async (context) => {
             const adminDb = context.firestore();
+            await seedActiveAnswerlatticeRuleWorkspace(adminDb);
             await setDoc(
                 doc(adminDb, 'answerlattice_canonicalAnswers', 'answer_existing'),
                 canonicalAnswer(),

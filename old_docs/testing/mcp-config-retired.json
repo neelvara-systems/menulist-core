@@ -1,0 +1,7 @@
+{
+  "retiredReason": "Unpinned npx MCP commands executed mutable remote packages. Use the current Codex browser tooling or an explicitly reviewed, locally installed, exactly pinned server.",
+  "retiredServers": [
+    "@modelcontextprotocol/server-puppeteer",
+    "chrome-devtools-mcp"
+  ]
+}

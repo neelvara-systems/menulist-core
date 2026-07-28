@@ -64,6 +64,7 @@ export interface MenuLanguage {
 }
 
 export interface MenuItemAttribute {
+    id: string;
     name: Record<string, string>;
     price?: number | string | null;
 }

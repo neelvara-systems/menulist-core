@@ -9,6 +9,7 @@ import {
 import { parseAnswerlatticeChangelogAction } from '@lib/answerlattice/changelogContracts';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { checkRateLimit } from '@lib/rateLimit';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -22,17 +23,26 @@ const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' };
 export const POST = withAuth(async (request: NextRequest, session) => {
     const scope = resolveAnswerlatticeSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400, headers: NO_STORE_HEADERS });
-    const userId = String(session.uId || session.user?.id || 'unknown');
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: NO_STORE_HEADERS });
+    }
 
     try {
         const rateLimit = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey('answerlattice-changelog', userId, scope.tenantId, scope.storeId),
             ...CHANGELOG_RATE_LIMIT,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             return NextResponse.json(
-                { error: 'Too many changelog actions. Please wait before trying again.' },
-                { status: 429, headers: NO_STORE_HEADERS },
+                {
+                    error: providerUnavailable
+                        ? 'Changelog actions are temporarily unavailable. Please try again later.'
+                        : 'Too many changelog actions. Please wait before trying again.',
+                },
+                { status: providerUnavailable ? 503 : 429, headers: NO_STORE_HEADERS },
             );
         }
         const permission = await requireAnswerlatticePermission(

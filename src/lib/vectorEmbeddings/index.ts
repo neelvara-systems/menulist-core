@@ -13,6 +13,11 @@ import {
 import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';
 import { AnswerlatticeVector as Vector } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { writeLogEntry } from 'logs/utils';
+import {
+    getBoundedErrorCode,
+    getBoundedErrorStatus,
+    getBoundedErrorName,
+} from '@lib/monitoring/boundedLogContext';
 
 export const EMBED_MODEL = ANSWERLATTICE_EMBEDDING_MODEL;
 export const EMBED_OUTPUT_DIMENSIONALITY = ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY;
@@ -43,32 +48,16 @@ type BoundedGeminiResponseText = {
     truncated: boolean;
 };
 
-type AnswerlatticeVectorErrorLike = Error & {
-    code?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-};
-
 const getAnswerlatticeVectorErrorName = (error: unknown): string | undefined => {
-    if (error === undefined) return undefined;
-    if (error instanceof Error) return error.name || 'Error';
-    return typeof error;
+    return getBoundedErrorName(error);
 };
 
 const getAnswerlatticeVectorErrorCode = (error: unknown): string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as AnswerlatticeVectorErrorLike).code;
-    if (code === undefined || code === null) return undefined;
-    return String(code).slice(0, 64);
+    return getBoundedErrorCode(error);
 };
 
 const getAnswerlatticeVectorErrorStatus = (error: unknown): number | undefined => {
-    if (!error || typeof error !== 'object') return undefined;
-    const statusValue = 'status' in error
-        ? (error as AnswerlatticeVectorErrorLike).status
-        : (error as AnswerlatticeVectorErrorLike).statusCode;
-    const status = Number(statusValue);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedErrorStatus(error);
 };
 
 const getAnswerlatticeVectorFailureLogData = (

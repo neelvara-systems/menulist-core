@@ -14,9 +14,17 @@ import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { getStorageReplacementCleanupTargets, type StorageReplacementCommitState } from "@lib/storage/replacementUploadBoundary";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import type { TenantDataType } from "@type/platform/tenant";
 
 const COLLECTION = DB_COLLECTIONS.TENANTS;
 const TENANT_NAME_RESPONSE_MAX_BYTES = 32 * 1024;
+type TenantMutationInput = Record<string, unknown> & {
+    imageToUpdate?: unknown;
+    imageType?: unknown;
+    name?: unknown;
+    storesList?: unknown;
+    tenantId?: string | number;
+};
 
 const cleanupTenantLogoReplacement = async ({
     commitState,
@@ -104,17 +112,68 @@ const getCollectionRef = () => {
     return collection(firebaseClient, COLLECTION)
 }
 
-const getDocRef = (docId: any) => {
+const getDocRef = (docId: string | number) => {
     return doc(firebaseClient, `${COLLECTION}`, `${docId}`)
 }
+
+const isTenantDataType = (value: unknown): value is TenantDataType & { id: string } => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const tenant = value as Record<string, unknown>;
+    return typeof tenant.id === 'string'
+        && typeof tenant.tenantKey === 'string'
+        && typeof tenant.active === 'boolean'
+        && typeof tenant.deleted === 'boolean'
+        && typeof tenant.name === 'string'
+        && typeof tenant.email === 'string'
+        && Array.isArray(tenant.storesList)
+        && tenant.storesList.every((entry) => {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+            const store = entry as Record<string, unknown>;
+            return typeof store.storeId === 'number'
+                && Number.isSafeInteger(store.storeId)
+                && store.storeId > 0
+                && typeof store.name === 'string'
+                && typeof store.storeKey === 'string';
+        });
+};
+
+export const normalizeTenantListDocument = (
+    documentId: string,
+    value: Record<string, unknown>,
+): (TenantDataType & { id: string }) | null => {
+    const storesList = (Array.isArray(value.storesList) ? value.storesList : [])
+        .flatMap((entry) => {
+            if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
+            const store = entry as Record<string, unknown>;
+            const storeId = Number(store.storeId);
+            if (!Number.isSafeInteger(storeId) || storeId <= 0) return [];
+            const name = typeof store.name === 'string' ? store.name : '';
+            const storeKey = typeof store.storeKey === 'string'
+                ? store.storeKey
+                : name.trim().toLowerCase().replaceAll(' ', '_');
+            return [{ ...store, name, storeId, storeKey }];
+        });
+    const candidate: unknown = {
+        ...value,
+        active: value.active !== false,
+        deleted: value.deleted === true,
+        email: typeof value.email === 'string' ? value.email : '',
+        id: documentId,
+        name: typeof value.name === 'string' ? value.name : '',
+        storesList,
+        tenantKey: typeof value.tenantKey === 'string' ? value.tenantKey : '',
+    };
+    return isTenantDataType(candidate) ? candidate : null;
+};
 
 export const getAllTenants = async () => {
     return await apiCallComposer(
         async () => {
             const querySnapshot = await getDocs(await getCollectionRef());
-            const list = [];
-            querySnapshot.forEach((doc) => {
-                list.push({ ...doc.data(), id: doc.id })
+            const list: Array<TenantDataType & { id: string }> = [];
+            querySnapshot.forEach((tenantDocument) => {
+                const tenant = normalizeTenantListDocument(tenantDocument.id, tenantDocument.data());
+                if (tenant) list.push(tenant);
             });
             return (list);
         },
@@ -128,14 +187,14 @@ export const getTenantByEmail = async (email: string) => {
     if (querySnapshot.empty) return null;
 
     const tenantDoc = querySnapshot.docs[0];
-    return { ...tenantDoc.data(), id: tenantDoc.id };
+    return normalizeTenantListDocument(tenantDoc.id, tenantDoc.data());
 }
 
 export const readTenantById = async (id: number) => {
     const collectionDocRef = await getDocRef(id);
     const docSnap = await getDoc(collectionDocRef);
     if (docSnap.exists()) {
-        return docSnap.data();
+        return normalizeTenantListDocument(docSnap.id, docSnap.data());
     }
     return null;
 }
@@ -147,34 +206,35 @@ export const getTenantById = async (id: number) => {
         "getTenantById"
     );
 }
-export const addTenant = async (data: any, from: string = "") => {
+export const addTenant = async (data: TenantMutationInput, from: string = "") => {
     return await apiCallComposer(
         async () => {
-
+            const nextData: TenantMutationInput = { ...data };
             let uploadedLogoUrl = '';
-            const imageToUpdate: unknown = data.imageToUpdate;
+            const imageToUpdate: unknown = nextData.imageToUpdate;
 
-            delete data.imageToUpdate;
-            delete data.imageType;
+            delete nextData.imageToUpdate;
+            delete nextData.imageType;
             if (from !== "onboarding") {
-                data.tenantId = await reserveNextPlatformEntityId('tenant');
+                nextData.tenantId = await reserveNextPlatformEntityId('tenant');
             }
-            const docId = data.tenantId//which is tenantId
+            const docId = nextData.tenantId;
+            if (docId === undefined) throw new Error('tenant_create_id_missing');
             const docRef = await getDocRef(`${docId}`);
             let persistenceAttempted = false;
 
             try {
                 if (isDataUrl(imageToUpdate)) {
                     uploadedLogoUrl = await uploadTenantLogo({ imageToUpdate, tenantId: docId });
-                    data.logo = uploadedLogoUrl;
+                    nextData.logo = uploadedLogoUrl;
                 } else if (typeof imageToUpdate === 'string' && imageToUpdate.trim()) {
-                    data.logo = imageToUpdate.trim();
+                    nextData.logo = imageToUpdate.trim();
                 }
-                data.storesList = [];
-                const composedData = await requestBodyComposer(data, { isNew: true });
+                nextData.storesList = [];
+                const composedData = await requestBodyComposer(nextData, { isNew: true });
                 persistenceAttempted = true;
                 await setDoc(docRef, composedData);
-                return ({ ...data, id: docId })
+                return ({ ...nextData, id: docId })
             } catch (error) {
                 await cleanupTenantLogoReplacement({
                     commitState: persistenceAttempted ? 'ambiguous' : 'not_persisted',
@@ -189,17 +249,18 @@ export const addTenant = async (data: any, from: string = "") => {
     );
 }
 
-export const updateTenant = async (data: any) => {
+export const updateTenant = async (data: TenantMutationInput & { tenantId: string | number }) => {
     return await apiCallComposer(
         async () => {
-            const docId = data.tenantId//which is tenantId
-            const nextTenantName = typeof data.name === 'string' ? data.name.trim() : '';
-            const imageToUpdate: unknown = data.imageToUpdate;
+            const nextData: TenantMutationInput & { tenantId: string | number } = { ...data };
+            const docId = nextData.tenantId;
+            const nextTenantName = typeof nextData.name === 'string' ? nextData.name.trim() : '';
+            const imageToUpdate: unknown = nextData.imageToUpdate;
             const hasLogoUpload = isDataUrl(imageToUpdate);
-            delete data.imageToUpdate;
-            delete data.imageType;
+            delete nextData.imageToUpdate;
+            delete nextData.imageType;
             let shouldPropagateTenantName = false;
-            let currentTenantData: any = null;
+            let currentTenantData: Record<string, unknown> | null = null;
             let uploadedLogoUrl = '';
             let previousLogoUrl: unknown;
             let logoPersistenceAttempted = false;
@@ -222,11 +283,11 @@ export const updateTenant = async (data: any) => {
                         imageToUpdate,
                         tenantId: docId,
                     });
-                    data.logo = uploadedLogoUrl;
+                    nextData.logo = uploadedLogoUrl;
                 }
                 if (shouldPropagateTenantName) {
-                    const sourceStoresList = Array.isArray(data.storesList)
-                        ? data.storesList
+                    const sourceStoresList = Array.isArray(nextData.storesList)
+                        ? nextData.storesList
                         : currentTenantData?.storesList;
                     await updateTenantNameAtomically({
                         name: nextTenantName,
@@ -234,7 +295,7 @@ export const updateTenant = async (data: any) => {
                         tenantId: docId,
                     });
                 }
-                const directTenantUpdate = { ...data };
+                const directTenantUpdate = { ...nextData };
                 if (shouldPropagateTenantName) {
                     delete directTenantUpdate.name;
                     delete directTenantUpdate.storesList;
@@ -258,7 +319,7 @@ export const updateTenant = async (data: any) => {
                 tenantId: docId,
                 uploadedUrl: uploadedLogoUrl,
             });
-            return data;
+            return nextData;
         },
         data,
         "updateTenant"

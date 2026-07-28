@@ -8,6 +8,7 @@ import {
 import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
 import { createFirebaseBootstrapError, logFirebaseBootstrapFailure } from "@lib/firebase/firebaseDiagnostics";
 import { firebaseClaimsMatchTargetStore } from "@lib/auth/firebaseClaimsAcknowledgement";
+import { resolveFirebaseAuthSessionScopeState } from "@lib/auth/firebaseAuthSessionScope";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";
@@ -112,25 +113,14 @@ const claimsUseCanonicalTenantStoreTypes = (claims: Record<string, unknown> | un
     && Array.isArray(claims?.storeIds)
 );
 
-const getSessionTenantId = (session: any) => (
-    session?.user?.tenantId ?? session?.tId ?? null
-);
-
-const getSessionStoreId = (session: any) => (
-    session?.user?.storeId ?? session?.sId ?? null
-);
-
 const claimsMatchSessionStore = (claims: Record<string, unknown> | undefined, session: any) => {
-    const tenantId = getSessionTenantId(session);
-    const storeId = getSessionStoreId(session);
-
-    if (tenantId === null || tenantId === undefined || storeId === null || storeId === undefined) {
-        return true;
-    }
+    const sessionScope = resolveFirebaseAuthSessionScopeState(session);
+    if (sessionScope.status === 'absent') return true;
+    if (sessionScope.status === 'invalid') return false;
 
     return claimsUseCanonicalTenantStoreTypes(claims)
-        && normalizeClaimValue(claims?.tenantId) === normalizeClaimValue(tenantId)
-        && normalizeClaimValue(claims?.storeId) === normalizeClaimValue(storeId);
+        && normalizeClaimValue(claims?.tenantId) === sessionScope.tenantId
+        && normalizeClaimValue(claims?.storeId) === sessionScope.storeId;
 };
 
 const sameEmail = (left?: string | null, right?: string | null) => (
@@ -155,16 +145,40 @@ const getEffectiveSessionForFirebaseAuth = (session: any) => {
         : outletScopedSession;
 };
 
+export function getFirebaseAuthSessionScopeKey(session: any): string | null {
+    const effectiveSession = getEffectiveSessionForFirebaseAuth(session);
+    const email = typeof effectiveSession?.user?.email === 'string'
+        ? effectiveSession.user.email.trim().toLowerCase()
+        : '';
+    const sessionScope = resolveFirebaseAuthSessionScopeState(effectiveSession);
+    if (!email || sessionScope.status !== 'valid') {
+        return null;
+    }
+
+    return [
+        shouldUseAnswerlatticeScope(effectiveSession) ? PRODUCT_IDS.ANSWERLATTICE : PRODUCT_IDS.MENULIST,
+        email,
+        sessionScope.tenantId,
+        sessionScope.storeId,
+    ].join(':');
+}
+
 async function runFirebaseAuthSync(session: any): Promise<FirebaseAuthSyncResult> {
     if (typeof window === "undefined") return { ready: true };
     if (!session?.user?.email) return { ready: false };
     const isAnswerlatticeScope = shouldUseAnswerlatticeScope(session);
 
-    const tenantId = getSessionTenantId(session);
-    const storeId = getSessionStoreId(session);
-    if (tenantId === null || tenantId === undefined || storeId === null || storeId === undefined) {
+    const sessionScope = resolveFirebaseAuthSessionScopeState(session);
+    if (sessionScope.status === 'invalid') {
+        throw createFirebaseBootstrapError(
+            'Firebase Auth sync failed',
+            'firebase_auth_sync_invalid_session_scope',
+        );
+    }
+    if (sessionScope.status === 'absent') {
         return { ready: true };
     }
+    const { tenantId, storeId } = sessionScope;
 
     const currentUser = firebaseAuth.currentUser;
     let canRefreshCurrentUser = false;
@@ -346,13 +360,13 @@ export async function syncAnswerlatticePlatformAuthForStore(
 
 export function ensureFirebaseAuthForSession(session: any): Promise<FirebaseAuthSyncResult> {
     const effectiveSession = getEffectiveSessionForFirebaseAuth(session);
-    const tenantId = getSessionTenantId(effectiveSession);
-    const storeId = getSessionStoreId(effectiveSession);
+    const sessionScope = resolveFirebaseAuthSessionScopeState(effectiveSession);
     const currentUid = firebaseAuth?.currentUser?.uid || "none";
     const nextKey = [
         effectiveSession?.user?.email || "no-email",
-        tenantId ?? "no-tenant",
-        storeId ?? "no-store",
+        sessionScope.status,
+        sessionScope.status === 'valid' ? sessionScope.tenantId : "no-tenant",
+        sessionScope.status === 'valid' ? sessionScope.storeId : "no-store",
         currentUid,
     ].join(":");
 

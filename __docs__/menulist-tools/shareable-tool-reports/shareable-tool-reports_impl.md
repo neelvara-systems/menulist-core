@@ -131,7 +131,8 @@ Report Leads is the internal platform-admin surface at `/ops/report-leads`.
 
 Runtime rules:
 
-- route is guarded by the existing `/ops` layout and `/api/ops/report-leads` uses `withAuth(..., { requiredPlatformRole: 'PLATFORM' })`
+- route is guarded by the existing `/ops` layout and `/api/ops/report-leads` uses `withAuth(..., { requiredPlatformRole: 'PLATFORM' })`; the shared wrapper requires root and nested platform-role aliases to agree
+- the per-operator rate-limit key requires exact root/nested user identity before the current-user read
 - after the request rate limit and before the lead query, the API re-reads the exact current `users/{userId}` document and proves document/session identity, normalized email, `platformRole: PLATFORM`, active and verified lifecycle state, non-blocked status, and a valid session issuance/revocation ordering
 - production rate-limit-provider failure blocks the route instead of bypassing admission
 - API is manual-refresh only
@@ -140,6 +141,7 @@ Runtime rules:
 - legacy `sourcePath` values are projected through the public-contact pathname normalizer so query strings and fragments do not enter the response DTO
 - source paths containing literal/encoded backslashes or resolving away from the fixed MenuList sentinel origin are rejected
 - response is capped and parsed through `readReportLeadOpsSnapshotResponse`
+- filter refreshes settle only the latest request; a failed current request clears the prior snapshot so stale rows cannot appear under new filters
 - UI shows the setup job list and can copy the first-reply template from the playbook
 - no lead mutation
 - no report storage

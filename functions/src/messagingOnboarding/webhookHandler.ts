@@ -21,6 +21,7 @@ import {
   enqueueInboundMessages,
   getInboundMessageId,
 } from "./inboundQueue";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from '../utils/boundedErrorContext';
 
 const logger = functions.logger;
 const WEBHOOK_QUEUE_FAILED_CODE = "WEBHOOK_QUEUE_FAILED";
@@ -38,20 +39,15 @@ function getWebhookBoundedStringContext(
 }
 
 function getWebhookErrorName(error: unknown): string {
-  if (error instanceof Error) return (error.name || "Error").slice(0, 80);
-  return typeof error;
+    return getBoundedFunctionsErrorName(error) || 'Error';
 }
 
 function getWebhookErrorCode(error: Error): string | undefined {
-  const code = (error as { code?: unknown }).code;
-  if (code === undefined || code === null) return undefined;
-  return String(code).slice(0, 64);
+    return getBoundedFunctionsErrorCode(error);
 }
 
 function getWebhookErrorStatus(error: Error): number | undefined {
-  const status = Number((error as { status?: unknown; statusCode?: unknown }).status
-    || (error as { statusCode?: unknown }).statusCode);
-  return Number.isFinite(status) ? status : undefined;
+    return getBoundedFunctionsErrorStatus(error);
 }
 
 function getWebhookErrorContext(error: unknown): {

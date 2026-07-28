@@ -55,7 +55,7 @@ export function findGrowthOSAction(
 ): GrowthOSActionSummary | null {
     if (!actions.length) return null;
     if (actionId) {
-        return actions.find((action) => action.id === actionId) || actions[0];
+        return actions.find((action) => action.id === actionId) || null;
     }
     return actions[0];
 }

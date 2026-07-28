@@ -3,8 +3,15 @@ import { GROWTHOS_SUMMARY_DOC_PREFIX } from "@constant/growthos";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
-import { randomUUID } from "node:crypto";
+import { isGrowthOSKitExpired } from "@lib/growthos/readiness";
+import { buildGrowthOSSourceFacts, hashGrowthOSSourceFacts } from "@lib/growthos/sourceFacts";
+import {
+    getGrowthOSClientScope,
+    projectGrowthOSSummaryForScope,
+} from "@lib/growthos/clientContracts";
 import type {
+    GrowthOSExport,
+    GrowthOSDestination,
     GrowthOSExportMethod,
     GrowthOSKit,
     GrowthOSKitStatus,
@@ -13,6 +20,9 @@ import type {
 } from "@type/growthos";
 
 const summaryDocId = (storeDocumentId: string) => `${GROWTHOS_SUMMARY_DOC_PREFIX}_${storeDocumentId}`;
+
+export const GROWTHOS_SOURCE_FACTS_CHANGED = "GROWTHOS_SOURCE_FACTS_CHANGED";
+export const GROWTHOS_KIT_BECAME_STALE = "GROWTHOS_KIT_BECAME_STALE";
 
 function normalizeGrowthOSDocumentId(value: unknown): string | null {
     if (typeof value !== "string") return null;
@@ -24,6 +34,16 @@ function normalizeGrowthOSScopeDocumentId(value: unknown): string | null {
     const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
     const documentId = raw.trim();
     return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;
+}
+
+function normalizeGrowthOSScopeAliases(values: readonly unknown[]): string | null {
+    const present = values.filter((value) => value !== undefined && value !== null);
+    if (present.length === 0) return null;
+    const normalized = present.map(normalizeGrowthOSScopeDocumentId);
+    const expected = normalized[0];
+    return expected && normalized.every((value) => value === expected)
+        ? expected
+        : null;
 }
 
 function requireGrowthOSDocumentId(value: unknown, label: string): string {
@@ -70,16 +90,58 @@ function legacyProjectBelongsToSession(params: {
 }): boolean {
     const expectedTenantId = String(params.tId);
     const expectedStoreId = String(params.sId);
-    const projectTenantId = params.projectData?.tId ?? params.projectData?.tenantId;
-    const projectStoreId = params.projectData?.sId ?? params.projectData?.storeId;
+    const tenantAliases = [params.projectData?.tId, params.projectData?.tenantId]
+        .filter((value) => value !== undefined && value !== null);
+    const storeAliases = [params.projectData?.sId, params.projectData?.storeId]
+        .filter((value) => value !== undefined && value !== null);
+    const projectTenantScope = normalizeGrowthOSScopeAliases(tenantAliases);
+    const projectStoreScope = normalizeGrowthOSScopeAliases(storeAliases);
 
-    if (projectTenantId != null && String(projectTenantId) !== expectedTenantId) return false;
-    if (projectStoreId != null && String(projectStoreId) !== expectedStoreId) return false;
-    if (projectTenantId != null && projectStoreId != null) return true;
+    if (tenantAliases.length > 0 && projectTenantScope !== expectedTenantId) return false;
+    if (storeAliases.length > 0 && projectStoreScope !== expectedStoreId) return false;
+    if (projectTenantScope && projectStoreScope) return true;
 
     const projectId = String(params.projectData?.projectId || params.projectId);
     return projectId === `${expectedTenantId}-default-${expectedStoreId}`
         || (projectId.startsWith(`${expectedTenantId}-`) && projectId.endsWith(`-${expectedStoreId}`));
+}
+
+async function getGrowthOSSourceFactsHashInTransaction(params: {
+    projectId: string;
+    storeDocumentId: string;
+    tenantDocumentId: string;
+    transaction: FirebaseFirestore.Transaction;
+}): Promise<string | null> {
+    const projectId = requireGrowthOSDocumentId(params.projectId, "project");
+    const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(params.storeDocumentId);
+    const scopedProjectRef = firestoreAdmin
+        .collection(`${DB_COLLECTIONS.PROJECTS}/${params.tenantDocumentId}/${params.storeDocumentId}`)
+        .doc(projectId);
+    const legacyProjectRef = firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(projectId);
+    const [storeSnap, scopedProjectSnap, legacyProjectSnap] = await Promise.all([
+        params.transaction.get(storeRef),
+        params.transaction.get(scopedProjectRef),
+        params.transaction.get(legacyProjectRef),
+    ]);
+    const projectData = scopedProjectSnap.exists
+        ? scopedProjectSnap.data()
+        : legacyProjectSnap.exists && legacyProjectBelongsToSession({
+            projectData: legacyProjectSnap.data(),
+            projectId,
+            sId: params.storeDocumentId,
+            tId: params.tenantDocumentId,
+        })
+            ? legacyProjectSnap.data()
+            : null;
+    if (!projectData) return null;
+    const facts = buildGrowthOSSourceFacts({
+        projectData,
+        projectId,
+        storeData: storeSnap.exists ? storeSnap.data() : null,
+        tId: params.tenantDocumentId,
+        sId: params.storeDocumentId,
+    });
+    return hashGrowthOSSourceFacts(facts);
 }
 
 export async function readGrowthOSProjectDataServer(params: {
@@ -110,36 +172,101 @@ export async function readGrowthOSProjectDataServer(params: {
     }) ? projectData : null;
 }
 
-export async function readGrowthOSSummaryServer(storeId: string | number): Promise<GrowthOSSummaryDocument | null> {
-    const storeDocumentId = normalizeGrowthOSScopeDocumentId(storeId);
-    if (!storeDocumentId) return null;
+export async function readGrowthOSSummaryServer(params: {
+    storeId: string | number;
+    tenantId: string | number;
+}): Promise<GrowthOSSummaryDocument | null> {
+    const scope = getGrowthOSClientScope(params);
+    if (!scope) return null;
 
     const snap = await firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(summaryDocId(storeDocumentId))
+        .doc(summaryDocId(scope.sId))
         .get();
-    return snap.exists ? snap.data() as GrowthOSSummaryDocument : null;
+    return snap.exists ? projectGrowthOSSummaryForScope(snap.data(), scope) : null;
 }
 
-export async function writeGrowthOSSummaryServer(
-    storeId: string | number,
-    summary: GrowthOSSummaryDocument,
-): Promise<void> {
-    const storeDocumentId = requireGrowthOSScopeDocumentId(storeId, "store");
+function normalizeGrowthOSSummaryForCompare(summary: GrowthOSSummaryDocument) {
+    return {
+        tId: summary.tId,
+        sId: summary.sId,
+        date: summary.date,
+        sourceFactsHash: summary.sourceFactsHash || null,
+        eligible: summary.eligible,
+        reason: summary.reason || null,
+        readiness: summary.readiness || null,
+        primaryAction: summary.primaryAction || null,
+        secondaryActions: summary.secondaryActions || [],
+        latestKit: summary.latestKit || null,
+    };
+}
 
-    await firestoreAdmin
+export async function writeGrowthOSRefreshedSummaryServer(
+    storeId: string | number,
+    proposed: GrowthOSSummaryDocument,
+    projectId: string,
+): Promise<GrowthOSSummaryDocument> {
+    const storeDocumentId = requireGrowthOSScopeDocumentId(storeId, "store");
+    const tenantDocumentId = requireGrowthOSScopeDocumentId(proposed.tId, "tenant");
+    if (proposed.sId !== storeDocumentId) {
+        throw new Error("GrowthOS refreshed summary scope mismatch");
+    }
+    const summaryRef = firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(summaryDocId(storeDocumentId))
-        .set(sanitizeForAdminFirestore({
-            ...summary,
+        .doc(summaryDocId(storeDocumentId));
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snap = await transaction.get(summaryRef);
+        const currentSourceFactsHash = await getGrowthOSSourceFactsHashInTransaction({
+            projectId,
+            storeDocumentId,
+            tenantDocumentId,
+            transaction,
+        });
+        if ((proposed.sourceFactsHash || null) !== currentSourceFactsHash) {
+            throw new Error(GROWTHOS_SOURCE_FACTS_CHANGED);
+        }
+        const current = snap.exists ? snap.data() as GrowthOSSummaryDocument : null;
+        if (
+            current
+            && (current.tId !== tenantDocumentId || current.sId !== storeDocumentId)
+        ) {
+            throw new Error("GrowthOS current summary scope mismatch");
+        }
+
+        const currentLatestKit = current?.latestKit;
+        const nextLatestKit = currentLatestKit && typeof currentLatestKit.id === "string"
+            ? {
+                ...currentLatestKit,
+                isStale: !proposed.sourceFactsHash
+                    || currentLatestKit.sourceFactsHash !== proposed.sourceFactsHash,
+            }
+            : proposed.latestKit || null;
+        const next: GrowthOSSummaryDocument = {
+            ...proposed,
+            latestKit: nextLatestKit,
+        };
+        if (
+            current
+            && JSON.stringify(normalizeGrowthOSSummaryForCompare(current))
+                === JSON.stringify(normalizeGrowthOSSummaryForCompare(next))
+        ) {
+            return current;
+        }
+
+        const committed = {
+            ...next,
             lastUpdated: admin.firestore.Timestamp.now(),
-        }), { merge: true });
+        };
+        transaction.set(summaryRef, sanitizeForAdminFirestore(committed), { merge: true });
+        return committed;
+    });
 }
 
 export async function writeGrowthOSKitAndSummaryServer(
     kit: GrowthOSKit,
     summary: GrowthOSSummaryDocument,
-): Promise<void> {
+): Promise<{ kit: GrowthOSKit; replayed: boolean; summary: GrowthOSSummaryDocument }> {
     const kitId = requireGrowthOSDocumentId(kit.id, "kit");
     const tenantDocumentId = requireGrowthOSScopeDocumentId(kit.tId, "tenant");
     const storeDocumentId = requireGrowthOSScopeDocumentId(kit.sId, "store");
@@ -159,13 +286,59 @@ export async function writeGrowthOSKitAndSummaryServer(
     const summaryRef = firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
         .doc(summaryDocId(summaryStoreDocumentId));
-    const batch = firestoreAdmin.batch();
-    batch.set(kitRef, sanitizeForAdminFirestore({ ...kit, id: kitId }));
-    batch.set(summaryRef, sanitizeForAdminFirestore({
-        ...summary,
-        lastUpdated: admin.firestore.Timestamp.now(),
-    }), { merge: true });
-    await batch.commit();
+    const operationId = requireGrowthOSDocumentId(kit.operationId, "operation");
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const [existingKitSnap, existingSummarySnap] = await Promise.all([
+            transaction.get(kitRef),
+            transaction.get(summaryRef),
+        ]);
+        if (existingKitSnap.exists) {
+            const existingKit = existingKitSnap.data() as GrowthOSKit;
+            if (
+                existingKit.id !== kitId
+                || existingKit.tId !== tenantDocumentId
+                || existingKit.sId !== storeDocumentId
+                || existingKit.operationId !== operationId
+                || existingKit.projectId !== kit.projectId
+                || existingKit.actionId !== kit.actionId
+            ) {
+                throw new Error("GrowthOS generation operation conflict");
+            }
+            const existingSummary = existingSummarySnap.exists
+                ? existingSummarySnap.data() as GrowthOSSummaryDocument
+                : null;
+            if (
+                !existingSummary
+                || existingSummary.tId !== tenantDocumentId
+                || existingSummary.sId !== storeDocumentId
+            ) {
+                throw new Error("GrowthOS generation summary unavailable");
+            }
+            return { kit: existingKit, replayed: true, summary: existingSummary };
+        }
+
+        const currentSourceFactsHash = await getGrowthOSSourceFactsHashInTransaction({
+            projectId: requireGrowthOSDocumentId(kit.projectId, "project"),
+            storeDocumentId,
+            tenantDocumentId,
+            transaction,
+        });
+        if (currentSourceFactsHash !== kit.sourceFactsHash) {
+            throw new Error(GROWTHOS_SOURCE_FACTS_CHANGED);
+        }
+
+        const committedSummary = {
+            ...summary,
+            lastUpdated: admin.firestore.Timestamp.now(),
+        };
+        transaction.create(kitRef, sanitizeForAdminFirestore({
+            ...kit,
+            id: kitId,
+            operationId,
+        }));
+        transaction.set(summaryRef, sanitizeForAdminFirestore(committedSummary), { merge: true });
+        return { kit: { ...kit, id: kitId, operationId }, replayed: false, summary: committedSummary };
+    });
 }
 
 export async function readGrowthOSKitServer(params: {
@@ -196,46 +369,174 @@ function statusForExportMethod(method: GrowthOSExportMethod): GrowthOSKitStatus 
 }
 
 export async function recordGrowthOSExportServer(params: {
-    destination: string;
+    destination: GrowthOSDestination;
+    isStale: boolean;
     kit: GrowthOSKit;
     method: GrowthOSExportMethod;
+    operationId: string;
     outputId?: string;
     session: any;
-}): Promise<{ exportId: string; status?: GrowthOSKitStatus | null }> {
+}): Promise<{ exportId: string; isStale: boolean; status?: GrowthOSKitStatus | null }> {
     const kitId = requireGrowthOSDocumentId(params.kit.id, "kit");
     const tenantDocumentId = requireGrowthOSScopeDocumentId(params.kit.tId, "tenant");
     const storeDocumentId = requireGrowthOSScopeDocumentId(params.kit.sId, "store");
+    const actorId = requireGrowthOSDocumentId(params.session?.uId || params.session?.user?.id, "actor");
+    const operationId = requireGrowthOSDocumentId(params.operationId, "operation");
     const exportRef = firestoreAdmin
         .collection(`${DB_COLLECTIONS.GROWTHOS_EXPORTS}/${tenantDocumentId}/${storeDocumentId}`)
-        .doc();
+        .doc(`growthos_export_${operationId}`);
     const exportedAt = admin.firestore.Timestamp.now();
-    const exportData = sanitizeForAdminFirestore({
+    const nextStatus = statusForExportMethod(params.method);
+    const exportData: GrowthOSExport = {
         id: exportRef.id,
         tId: params.kit.tId,
         sId: params.kit.sId,
         kitId,
         destination: params.destination,
         method: params.method,
+        operationId,
         outputId: params.outputId,
+        status: nextStatus,
+        isStale: params.isStale,
         exportedAt,
-        uId: params.session?.uId || params.session?.user?.id,
-    });
-    const nextStatus = statusForExportMethod(params.method);
+        uId: actorId,
+    };
     const kitRef = firestoreAdmin
         .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${tenantDocumentId}/${storeDocumentId}`)
         .doc(kitId);
+    const summaryRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(summaryDocId(storeDocumentId));
 
-    const batch = firestoreAdmin.batch();
-    batch.set(exportRef, exportData);
-    if (nextStatus) {
-        batch.set(kitRef, sanitizeForAdminFirestore({
-            status: nextStatus,
-            updatedAt: exportedAt,
-        }), { merge: true });
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const [existingExportSnap, currentKitSnap, summarySnap] = await Promise.all([
+            transaction.get(exportRef),
+            transaction.get(kitRef),
+            transaction.get(summaryRef),
+        ]);
+        if (existingExportSnap.exists) {
+            const existing = existingExportSnap.data() as Partial<GrowthOSExport>;
+            if (
+                existing.operationId !== operationId
+                || existing.tId !== params.kit.tId
+                || existing.sId !== params.kit.sId
+                || existing.kitId !== kitId
+                || existing.destination !== params.destination
+                || existing.method !== params.method
+                || existing.outputId !== params.outputId
+                || existing.uId !== actorId
+            ) {
+                throw new Error("GrowthOS export operation conflict");
+            }
+            return {
+                exportId: exportRef.id,
+                isStale: existing.isStale === true,
+                status: existing.status ?? null,
+            };
+        }
+        if (!currentKitSnap.exists) throw new Error("GrowthOS kit no longer exists");
+        const currentKit = currentKitSnap.data() as Partial<GrowthOSKit>;
+        if (
+            currentKit.id !== kitId
+            || currentKit.tId !== params.kit.tId
+            || currentKit.sId !== params.kit.sId
+            || !Array.isArray(currentKit.outputs)
+            || !findGrowthOSKitOutput({
+                destination: params.destination,
+                kit: currentKit as GrowthOSKit,
+                outputId: params.outputId,
+            })
+        ) {
+            throw new Error("GrowthOS kit authority changed");
+        }
+        const currentSourceFactsHash = currentKit.projectId
+            ? await getGrowthOSSourceFactsHashInTransaction({
+                projectId: currentKit.projectId,
+                storeDocumentId,
+                tenantDocumentId,
+                transaction,
+            })
+            : null;
+        const transactionStale = !currentSourceFactsHash
+            || currentSourceFactsHash !== currentKit.sourceFactsHash
+            || isGrowthOSKitExpired(currentKit.expiresAt);
+        if (
+            transactionStale
+            && params.method !== "mark_used"
+            && params.method !== "stale"
+        ) {
+            throw new Error(GROWTHOS_KIT_BECAME_STALE);
+        }
+
+        const committedExportData = {
+            ...exportData,
+            isStale: transactionStale,
+        };
+        transaction.create(exportRef, sanitizeForAdminFirestore(committedExportData));
+        if (nextStatus) {
+            transaction.set(kitRef, sanitizeForAdminFirestore({
+                status: nextStatus,
+                updatedAt: exportedAt,
+            }), { merge: true });
+        }
+        if (summarySnap.exists) {
+            const summary = summarySnap.data() as Partial<GrowthOSSummaryDocument>;
+            if (
+                summary.tId === params.kit.tId
+                && summary.sId === params.kit.sId
+                && summary.latestKit?.id === kitId
+            ) {
+                transaction.set(summaryRef, sanitizeForAdminFirestore({
+                    latestKit: {
+                        ...summary.latestKit,
+                        status: nextStatus || summary.latestKit.status,
+                        isStale: transactionStale,
+                    },
+                    lastUpdated: exportedAt,
+                }), { merge: true });
+            }
+        }
+        return { exportId: exportRef.id, isStale: transactionStale, status: nextStatus };
+    });
+}
+
+export async function readGrowthOSExportReplayServer(params: {
+    destination: string;
+    kitId: string;
+    method: GrowthOSExportMethod;
+    operationId: string;
+    outputId?: string;
+    session: any;
+}): Promise<{ exportId: string; isStale: boolean; status?: GrowthOSKitStatus | null } | null> {
+    const tenantDocumentId = requireGrowthOSScopeDocumentId(params.session?.tId, "tenant");
+    const storeDocumentId = requireGrowthOSScopeDocumentId(params.session?.sId, "store");
+    const actorId = requireGrowthOSDocumentId(params.session?.uId || params.session?.user?.id, "actor");
+    const operationId = requireGrowthOSDocumentId(params.operationId, "operation");
+    const kitId = requireGrowthOSDocumentId(params.kitId, "kit");
+    const exportRef = firestoreAdmin
+        .collection(`${DB_COLLECTIONS.GROWTHOS_EXPORTS}/${tenantDocumentId}/${storeDocumentId}`)
+        .doc(`growthos_export_${operationId}`);
+    const snap = await exportRef.get();
+    if (!snap.exists) return null;
+    const existing = snap.data() as Partial<GrowthOSExport>;
+    if (
+        existing.operationId !== operationId
+        || existing.tId !== String(params.session.tId)
+        || existing.sId !== String(params.session.sId)
+        || existing.kitId !== kitId
+        || existing.destination !== params.destination
+        || existing.method !== params.method
+        || existing.outputId !== params.outputId
+        || existing.uId !== actorId
+        || typeof existing.isStale !== "boolean"
+    ) {
+        throw new Error("GrowthOS export operation conflict");
     }
-    await batch.commit();
-
-    return { exportId: exportRef.id, status: nextStatus };
+    return {
+        exportId: exportRef.id,
+        isStale: existing.isStale,
+        status: existing.status ?? null,
+    };
 }
 
 export function findGrowthOSKitOutput(params: {
@@ -249,8 +550,12 @@ export function findGrowthOSKitOutput(params: {
     )) || null;
 }
 
-export function buildGrowthOSKitId(tId: string | number, sId: string | number): string {
-    return `growthos_${tId}_${sId}_${randomUUID()}`;
+export function buildGrowthOSKitId(
+    tId: string | number,
+    sId: string | number,
+    operationId: string,
+): string {
+    return `growthos_${tId}_${sId}_${requireGrowthOSDocumentId(operationId, "operation")}`;
 }
 
 export function buildGrowthOSSummaryDocId(storeId: string | number): string {

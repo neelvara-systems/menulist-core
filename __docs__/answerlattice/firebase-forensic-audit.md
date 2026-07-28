@@ -93,7 +93,7 @@ Workspace summaries include activation, coverage, trust, friction, context conte
 | `supportTickets/messages/{tId}/{sId}/{id}` | Workspace member | Image/document, 10 MB |
 | `changelog/files/{tId}/{sId}/{id}` | Knowledge manager | Image/document, 10 MB |
 | `ingestion_source_files/{tId}/{sId}/{id}` | Knowledge manager/platform | Supported source, 10 MB, required retention/purpose metadata |
-| `answerlattice-context/public/{bundleId}/{version}/**` | Public read | Immutable compiled bundle |
+| `answerlattice-context/public/{bundleId}/{version}/**` | Client read denied; Admin-backed proxy only | Content-immutable compiled bundle with mandatory transport revalidation so lifecycle deletion revokes the origin |
 | `answerlattice-context/private/{tId}/{sId}/{version}/**` | Server only | Private compiled bundle |
 
 Ingestion files use `sourceUse=knowledge_generation_only` and `uploadedVia=answerlattice_kb_generation`. Failed upload-to-job handoff deletes successful attempt-owned partial uploads. A persisted job does not own global deletion because another valid job in the workspace may reference the same path; reclamation requires a bounded workspace-wide non-reference inventory.

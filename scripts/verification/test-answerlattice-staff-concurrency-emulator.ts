@@ -8,7 +8,10 @@ import {
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
-import { syncAnswerlatticeStaffProductAccountBridge } from '@lib/answerlattice/staffAccessBridge';
+import {
+    eraseAnswerlatticeStaffProductAccountBridge,
+    syncAnswerlatticeStaffProductAccountBridge,
+} from '@lib/answerlattice/staffAccessBridge';
 import {
     AnswerlatticeStaffTransactionError,
     createAnswerlatticeStaffMembershipTransaction,
@@ -817,6 +820,64 @@ const verifyBridgeRejectsStaleRevision = async () => {
     assert.equal(reactivatedBridgeData.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]?.authDisabled, false);
     assert.equal(reactivatedBridgeData.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]?.deleted, false);
     assert.equal(reactivatedBridgeData.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]?.storeId, firstStoreId);
+
+    const conflictingEraseUserId = 'al-default-bridge-conflicting-erase';
+    const conflictingEraseRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(conflictingEraseUserId);
+    await conflictingEraseRef.set({
+        productAccounts: {
+            [PRODUCT_IDS.ANSWERLATTICE]: {
+                tenantId,
+                tId: tenantId + 1,
+                storeIds: [],
+            },
+        },
+    });
+    assert.equal(await eraseAnswerlatticeStaffProductAccountBridge({
+        db: firestoreAdmin,
+        defaultUserId: conflictingEraseUserId,
+        tenantId,
+    }), false, 'Conflicting tenant aliases must not authorize product-account erasure.');
+    assert.ok((await conflictingEraseRef.get()).data()?.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]);
+
+    const hiddenMembershipUserId = 'al-default-bridge-hidden-membership';
+    const hiddenMembershipRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(hiddenMembershipUserId);
+    await hiddenMembershipRef.set({
+        productAccounts: {
+            [PRODUCT_IDS.ANSWERLATTICE]: {
+                tenantId,
+                storeId: firstStoreId,
+                storeIds: [],
+            },
+        },
+    });
+    await assert.rejects(
+        eraseAnswerlatticeStaffProductAccountBridge({
+            db: firestoreAdmin,
+            defaultUserId: hiddenMembershipUserId,
+            tenantId,
+        }),
+        /ANSWERLATTICE_PRODUCT_ACCOUNT_STILL_HAS_MEMBERSHIPS/,
+    );
+    assert.ok((await hiddenMembershipRef.get()).data()?.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE]);
+
+    const exactEraseUserId = 'al-default-bridge-exact-erase';
+    const exactEraseRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(exactEraseUserId);
+    await exactEraseRef.set({
+        productAccounts: {
+            [PRODUCT_IDS.ANSWERLATTICE]: {
+                tenantId,
+                tId: String(tenantId),
+                storeId: null,
+                storeIds: [],
+            },
+        },
+    });
+    assert.equal(await eraseAnswerlatticeStaffProductAccountBridge({
+        db: firestoreAdmin,
+        defaultUserId: exactEraseUserId,
+        tenantId,
+    }), true);
+    assert.equal((await exactEraseRef.get()).data()?.productAccounts?.[PRODUCT_IDS.ANSWERLATTICE], undefined);
 };
 
 const main = async () => {

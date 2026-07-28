@@ -1,5 +1,6 @@
 import { lookup } from 'dns/promises';
 import { isBlockedPosSyncNetworkTarget } from './webhookUrl';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 export type ApprovedPosSyncWebhookAddress = {
     address: string;
@@ -25,7 +26,7 @@ export async function validatePosSyncWebhookNetworkTarget(
             valid: false,
             addressCount: 0,
             error: 'invalid_url',
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedErrorName(error) || typeof error,
         };
     }
 
@@ -64,7 +65,7 @@ export async function validatePosSyncWebhookNetworkTarget(
             valid: false,
             addressCount: 0,
             error: 'dns_lookup_failed',
-            errorName: error instanceof Error ? error.name : typeof error,
+            errorName: getBoundedErrorName(error) || typeof error,
         };
     }
 }

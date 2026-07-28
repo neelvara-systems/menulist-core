@@ -15,6 +15,8 @@ Answerlattice gives workspace owners a small set of controls for checking suppor
 
 Use **Canonical only** for a fast deterministic check. Use **Full runtime** only when you need to verify fallback behavior; support-credit rules apply.
 
+Critical support should be backed by an approved canonical answer, a published FAQ, or an explicitly expected safe escalation/no-answer path. Provider fallback is useful for ordinary regression testing, but it must not count as verified critical proof. Until the pending hardening is implemented in runtime, review any critical test configured with **Knowledge fallback** manually and do not treat its `Ready` label as sufficient launch evidence.
+
 `Ready`, `Review`, and `Blocked` describe the retained proof result. They do not deploy code, publish content, or change a release automatically.
 
 These checks confirm the source route, expected IDs, phrases, confidence, abstention, and evidence rules you configured. They do not independently prove that an answer is factually correct, complete, or that a customer was resolved. Review representative cases with product/support judgment.

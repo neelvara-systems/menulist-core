@@ -103,7 +103,7 @@ function verifyManifestRoute() {
   assertIncludes(route, 'buildManifestFailureLogContext', 'manifest route bounded failure context');
   assertIncludes(route, 'hostnameLength: hostname.length', 'manifest route bounded host context');
   assertIncludes(route, 'storeIdLength: normalizedStoreId.length', 'manifest route bounded store context');
-  assertIncludes(route, 'errorName: error instanceof Error ? error.name : typeof error', 'manifest route bounded error context');
+  assertIncludes(route, 'errorName: getBoundedErrorName(error) || typeof error', 'manifest route bounded error context');
   assertIncludes(route, "logRuntimeFailure('customer_app_manifest_start_url_lookup_failed'", 'manifest start-url lookup diagnostics');
   assertIncludes(route, 'MAX_MANIFEST_START_URL_DIAGNOSTICS', 'manifest start-url diagnostic cap');
   assertIncludes(route, 'reportedManifestStartUrlFailures.add(failureKey)', 'manifest start-url one-per-shape guard');
@@ -130,6 +130,7 @@ function verifyManifestRoute() {
 }
 
 function verifyCustomerAppShortcutHandoffBoundary() {
+  const clientNotFound = read('src/app/client/not-found.tsx');
   const shortcutHandoffUrl = read('src/app/client/pwa/shortcutHandoffUrl.ts');
   const externalRedirectClient = read('src/app/client/pwa/PwaExternalRedirectClient.tsx');
   const callClient = read('src/app/client/pwa/call/PwaCallHandoffClient.tsx');
@@ -142,6 +143,9 @@ function verifyCustomerAppShortcutHandoffBoundary() {
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
+
+  assertIncludes(clientNotFound, "getPublicCustomerLocale(requestedLanguage).split('-')[0] || 'en'", 'Customer App not-found supported language projection');
+  assertNotIncludes(clientNotFound, 'setActiveLanguage(requestedLanguage)', 'Customer App not-found must not reflect a raw language query into document attributes');
 
   assertIncludes(shortcutHandoffUrl, 'const TEL_URL_PATTERN = /^tel:\\+[0-9]+$/;', 'Customer App shortcut tel URL shape guard');
   assertIncludes(shortcutHandoffUrl, "const WHATSAPP_HOST = 'wa.me';", 'Customer App shortcut WhatsApp host guard');
@@ -173,6 +177,11 @@ function verifyCustomerAppShortcutHandoffBoundary() {
   assertIncludes(directionsClient, 'createPublicCustomerTranslator(activeLanguage)', 'Customer App directions client localized copy');
   assertNotIncludes(directionsClient, 'window.location.replace(mapsUrl);', 'Customer App directions client raw redirect');
   assertNotIncludes(directionsClient, '<a href={mapsUrl}>Open in Maps</a>', 'Customer App directions client raw noscript link');
+  assertIncludes(directionsPage, 'type PwaDirectionsStore = {', 'Customer App directions fallback must use an explicit store projection.');
+  assertIncludes(directionsPage, 'function projectPwaDirectionsStore(value: unknown): PwaDirectionsStore | null', 'Customer App directions fallback must project unknown store input at runtime.');
+  assertIncludes(directionsPage, 'function buildMapsUrl(value: unknown)', 'Customer App directions fallback must admit persisted store input as unknown.');
+  assertIncludes(directionsPage, 'const store = projectPwaDirectionsStore(value);', 'Customer App directions fallback must consume the explicit store projection.');
+  assertNotIncludes(directionsPage, 'function buildMapsUrl(store: any)', 'Customer App directions fallback must not erase the public store contract.');
 
   assertIncludes(whatsappClient, 'const safeWaUrl = getSafePwaWhatsAppUrl(waUrl);', 'Customer App WhatsApp client safe URL');
   assertIncludes(whatsappClient, 'if (!safeWaUrl) {', 'Customer App WhatsApp client fail-closed guard');
@@ -184,6 +193,8 @@ function verifyCustomerAppShortcutHandoffBoundary() {
 
   assertIncludes(reservationPage, 'const reservationUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.reservationUrl);', 'Customer App reservation server URL normalization');
   assertIncludes(orderPage, 'const orderUrl = normalizeOBPExternalHttpsUrl(store.publicPresence?.orderUrl);', 'Customer App order server URL normalization');
+  assertIncludes(reservationPage, 'if (store.publicPresence?.showReservation === false) return notFound();', 'Customer App reservation handoff must honor owner visibility.');
+  assertIncludes(orderPage, 'if (store.publicPresence?.showOrder === false) return notFound();', 'Customer App order handoff must honor owner visibility.');
   assertIncludes(directionsPage, 'const direct = normalizeOBPGoogleMapsUrl(store?.publicPresence?.googleMapsUrl);', 'Customer App directions server URL normalization');
 
   assertIncludes(customerAppImpl, 'Shortcut handoff URL boundary', 'Customer App implementation shortcut handoff boundary docs');

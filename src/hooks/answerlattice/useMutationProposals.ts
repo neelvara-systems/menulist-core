@@ -8,6 +8,8 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { useClientAuthSession } from '@hook/useClientAuthSession';
+import { buildAnswerlatticeHookScopeKey } from '@lib/answerlattice/hookScopeBoundary';
 import {
     approveDraftAsCanonicalAnswer,
     approveMutationProposal,
@@ -22,7 +24,7 @@ import { checkAnswerlatticeProposalImpact } from '@lib/answerlattice/proposalImp
 import type { AnswerlatticeProposalImpactResponse } from '@lib/answerlattice/proposalImpactContracts';
 import { AnswerlatticeMutationProposal } from '@type/answerlattice';
 import { message } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const ANSWERLATTICE_MUTATION_PROPOSALS_LOAD_FAILED = 'Could not load proposals';
 const ANSWERLATTICE_MUTATION_PROPOSAL_APPROVE_FAILED = 'Could not approve proposal';
@@ -56,81 +58,141 @@ interface UseMutationProposalsReturn {
 }
 
 export function useMutationProposals(tId: number, sId: number): UseMutationProposalsReturn {
+    const session = useClientAuthSession();
     const [proposals, setProposals] = useState<AnswerlatticeMutationProposal[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const requestedScopeKey = buildAnswerlatticeHookScopeKey(tId, sId);
+    const sessionScopeKey = buildAnswerlatticeHookScopeKey(session?.tId, session?.sId);
+    const scopeKey = requestedScopeKey === sessionScopeKey ? requestedScopeKey : null;
+    const scopeKeyRef = useRef(scopeKey);
+    const latestRefreshRef = useRef(0);
+    const mutationInFlightRef = useRef(false);
+    scopeKeyRef.current = scopeKey;
 
     const refresh = useCallback(async () => {
-        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION || !tId || !sId) return;
+        const requestScopeKey = scopeKey;
+        const requestId = latestRefreshRef.current + 1;
+        latestRefreshRef.current = requestId;
+        if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION || !requestScopeKey) {
+            setProposals([]);
+            setLoading(false);
+            setError(null);
+            return;
+        }
 
         setLoading(true);
         setError(null);
         try {
             const result = await getPendingMutationProposals(tId, sId);
+            if (scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId) return;
             setProposals(result || []);
         } catch {
+            if (scopeKeyRef.current !== requestScopeKey || latestRefreshRef.current !== requestId) return;
             setError(ANSWERLATTICE_MUTATION_PROPOSALS_LOAD_FAILED);
         } finally {
-            setLoading(false);
+            if (scopeKeyRef.current === requestScopeKey && latestRefreshRef.current === requestId) {
+                setLoading(false);
+            }
         }
-    }, [tId, sId]);
+    }, [scopeKey, tId, sId]);
 
     useEffect(() => {
         refresh();
     }, [refresh]);
 
     const approve = useCallback(async (proposalId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return;
+        mutationInFlightRef.current = true;
         try {
             const result = await approveMutationProposal(proposalId);
+            if (scopeKeyRef.current !== operationScopeKey) return;
             message.success(result?.status === 'implemented'
                 ? 'Proposal approved and answer updated'
                 : 'Proposal approved');
             await refresh();
         } catch (error) {
-            message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_APPROVE_FAILED));
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_APPROVE_FAILED));
+            }
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 
     const reject = useCallback(async (proposalId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return;
+        mutationInFlightRef.current = true;
         try {
             await rejectMutationProposal(proposalId);
+            if (scopeKeyRef.current !== operationScopeKey) return;
             message.success('Proposal rejected');
             await refresh();
         } catch (error) {
-            message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_REJECT_FAILED));
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_REJECT_FAILED));
+            }
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 
     const implement = useCallback(async (proposalId: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) return;
+        mutationInFlightRef.current = true;
         try {
             await markMutationImplemented(proposalId);
+            if (scopeKeyRef.current !== operationScopeKey) return;
             message.success('Proposal marked as implemented');
             await refresh();
         } catch (error) {
-            message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_IMPLEMENT_FAILED));
+            if (scopeKeyRef.current === operationScopeKey) {
+                message.error(getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_PROPOSAL_IMPLEMENT_FAILED));
+            }
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh]);
 
     const approveDraft = useCallback(async (proposalId: string, editedContent: DraftApprovalContent, approvedBy: string) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) {
+            throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
+        }
+        mutationInFlightRef.current = true;
         try {
             await approveDraftAsCanonicalAnswer(proposalId, editedContent, tId, sId, approvedBy);
+            if (scopeKeyRef.current !== operationScopeKey) {
+                throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
+            }
             message.success('Canonical answer published');
             await refresh();
         } catch (error) {
+            if (scopeKeyRef.current !== operationScopeKey) {
+                throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
+            }
             const errorMessage = getGovernanceActionMessage(error, ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED);
             message.error(errorMessage);
             throw new Error(errorMessage);
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh, sId, tId]);
 
     const regenerateDraft = useCallback(async (proposalId: string) => {
-        if (!tId || !sId) {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) {
             message.error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
             return;
         }
 
+        mutationInFlightRef.current = true;
         try {
             const result = await regenerateMutationProposalDraft(proposalId);
+            if (scopeKeyRef.current !== operationScopeKey) return;
 
             if (!result.success) {
                 throw new Error(ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED);
@@ -139,8 +201,11 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
             message.success('Draft generated');
             await refresh();
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) return;
             message.error(ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED);
             throw new Error(ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED);
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, [refresh, sId, tId]);
 
@@ -148,11 +213,25 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         proposalId: string,
         editedContent?: DraftApprovalContent,
     ) => {
+        const operationScopeKey = scopeKeyRef.current;
+        if (!operationScopeKey || mutationInFlightRef.current) {
+            throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
+        }
+        mutationInFlightRef.current = true;
         try {
-            return await checkAnswerlatticeProposalImpact(proposalId, editedContent);
+            const result = await checkAnswerlatticeProposalImpact(proposalId, editedContent);
+            if (scopeKeyRef.current !== operationScopeKey) {
+                throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
+            }
+            return result;
         } catch {
+            if (scopeKeyRef.current !== operationScopeKey) {
+                throw new Error(ANSWERLATTICE_WORKSPACE_SCOPE_MISSING);
+            }
             message.error(ANSWERLATTICE_MUTATION_PROPOSAL_IMPACT_FAILED);
             throw new Error(ANSWERLATTICE_MUTATION_PROPOSAL_IMPACT_FAILED);
+        } finally {
+            mutationInFlightRef.current = false;
         }
     }, []);
 

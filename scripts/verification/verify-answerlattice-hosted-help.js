@@ -40,6 +40,10 @@ assert((settings.match(/runTransaction\(async \(transaction: FirebaseFirestore\.
 assertIncludes(settings, 'isAnswerlatticeStoreInScope(currentStoreData, scope, currentStoreSnapshot.id)', 'Hosted Help transaction-current store scope');
 assertIncludes(settings, 'registryScopeMatches(currentRegistry, scope)', 'Hosted Help transaction-current registry scope');
 assertIncludes(settings, 'compensateHostedHelpProviderChanges', 'Hosted Help provider compensation');
+assertIncludes(settings, 'shouldRemoveCompensatedHostedHelpProviderDomain(registrySnapshot.exists)', 'Hosted Help compensation durable-claim preservation');
+assertIncludes(settings, "answerlattice_hosted_help_provider_compensation_registry_read_failed", 'Hosted Help compensation registry uncertainty diagnostic');
+assertIncludes(settings, "answerlattice_hosted_help_provider_compensation_preserved_claim", 'Hosted Help compensation concurrent-winner diagnostic');
+assertIncludes(server, 'registryExists === false', 'Hosted Help compensation removes only proven-unclaimed provider domains');
 assertIncludes(settings, "removeResult.ok || removeResult.status === 404", 'Hosted Help exact provider removal result');
 assertNotIncludes(settings, 'const batch = db.batch();', 'Hosted Help must not commit registry truth from stale snapshots');
 assertIncludes(settings, 'if (!addResult.ok) {', 'Hosted Help rejects unproven provider conflicts');
@@ -94,6 +98,9 @@ assertIncludes(page, 'if (!articleMeta) notFound();', 'Hosted Help article requi
 assertNotIncludes(page, ': await getCachedKnowledgeBaseArticle(scope, publicRoute.articleSlug', 'Hosted Help hidden direct-article fallback');
 assertIncludes(page, 'unavailableReason="Help content is temporarily unavailable. Please try again shortly."', 'Hosted Help explicit temporary unavailability');
 assertIncludes(client, 'buildHostedHelpArticlePath(article.url || article.id)', 'Hosted Help client shared article route encoding');
+assertIncludes(page, 'renderPublicTiptapArticle(article.content)', 'Hosted Help sanitized article and outline renderer');
+assertIncludes(client, '<ArticleTopicMap', 'Hosted Help public topic map');
+assertNotIncludes(client, 'article.content', 'Hosted Help client raw article content boundary');
 assertIncludes(client, 'Help is temporarily unavailable', 'Hosted Help visible unavailable state');
 assertIncludes(sitemap, 'buildHostedHelpArticlePath(article.url || article.id)', 'Hosted Help sitemap encoded article paths');
 assertIncludes(sitemap, 'Array.from(new Set(articlePaths))', 'Hosted Help sitemap article deduplication');

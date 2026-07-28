@@ -16,6 +16,7 @@ import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl
 import { buildAnswerlatticeAgentKitFiles } from '@lib/answerlattice/installContract/contract';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { normalizeAnswerlatticeWidgetApiState } from '@lib/answerlattice/widgetKeyManager';
 import { normalizeWidgetAllowedOrigins, normalizeWidgetConfig } from '@lib/answerlattice/widgetConfig';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -56,7 +57,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!scope?.tenantId || !scope?.storeId) {
         return kitJsonResponse({ error: 'Not onboarded' }, { status: 400 });
     }
-    const userId = String(session.uId || session.user?.id || 'unknown');
+    const userId = resolveCurrentSessionUserDocumentId(session);
+    if (!userId) {
+        return kitJsonResponse({ error: 'Forbidden' }, { status: 403 });
+    }
 
     try {
         const rateLimitResult = await checkRateLimit({
@@ -68,9 +72,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ),
             limit: 10,
             window: 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return kitJsonResponse({ error: 'Too many requests' }, { status: 429 });
+            const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+            return kitJsonResponse(
+                { error: providerUnavailable ? 'Agent kit is temporarily unavailable' : 'Too many requests' },
+                { status: providerUnavailable ? 503 : 429 },
+            );
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET);

@@ -22,6 +22,11 @@ const { SIGNALDESK_COLLECTIONS } = require("@constant/signaldesk/database");
 const { admin, signaldeskFirestoreAdmin: db } = require("@lib/firebase/signaldeskFirebaseAdmin");
 const signalDeskAiProvider = require("@lib/signaldesk/aiProvider");
 const {
+  parseSignalDeskOutboundContactAuthority,
+  signalDeskOutboundContactIdentityIdFor,
+} = require("@lib/signaldesk/outboundContactContracts");
+const { parseSignalDeskTargetSummaryDocument } = require("@lib/signaldesk/targetContracts");
+const {
   captureSignalDeskReplyServer,
   createSignalDeskDailyGrowthMissionServer,
   createSignalDeskDraftServer,
@@ -354,8 +359,10 @@ async function main() {
     sourceDataLifecycleState: "completed",
     stage: "won",
     status: "won",
+    winLossReason: "Existing two-surface activation outcome.",
   }, { merge: true });
   await accountRef.set({
+    activationState: "activated",
     engagementState: "replied",
     legalRetentionReviewReason: "commercial-engagement-record",
     legalRetentionReviewRequired: true,
@@ -502,6 +509,41 @@ async function main() {
     reason: sensitiveReviewNote,
     status: "approved",
   });
+  const approvalRef = db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE)
+    .doc(draftResult.approval.approvalId);
+  const draftRef = db.collection(SIGNALDESK_COLLECTIONS.DRAFT_SUMMARIES)
+    .doc(draftResult.draft.draftId);
+  const bindApprovedChannel = async (channel) => {
+    const [targetSnapshot, detailSnapshot] = await Promise.all([targetRef.get(), detailRef.get()]);
+    const targetAuthority = parseSignalDeskTargetSummaryDocument(targetSnapshot.data(), targetSnapshot.id);
+    const sourceRunRef = db.collection(SIGNALDESK_COLLECTIONS.SOURCE_RUN_SUMMARIES)
+      .doc(targetAuthority.sourceRunId);
+    const recipient = channel === "whatsapp" ? detailSnapshot.get("phone") : detailSnapshot.get("instagram");
+    const contactIdentityId = signalDeskOutboundContactIdentityIdFor(channel, recipient);
+    const contactRef = db.collection(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES).doc(contactIdentityId);
+    const [sourceRunSnapshot, contactSnapshot] = await Promise.all([sourceRunRef.get(), contactRef.get()]);
+    const contactAuthority = parseSignalDeskOutboundContactAuthority({
+      channel,
+      contactDocumentId: contactIdentityId,
+      policy,
+      rawContact: contactSnapshot.data(),
+      rawSourceRun: sourceRunSnapshot.data(),
+      rawTargetDetail: detailSnapshot.data(),
+      sourceRunDocumentId: sourceRunSnapshot.id,
+      target: targetAuthority,
+    });
+    const binding = {
+      channel,
+      contactAuthorityFingerprintHash: contactAuthority.contactAuthorityFingerprintHash,
+      contactIdentityId: contactAuthority.contactIdentityId,
+      updatedAt: admin.firestore.Timestamp.now(),
+    };
+    await Promise.all([
+      approvalRef.set(binding, { merge: true }),
+      draftRef.set(binding, { merge: true }),
+    ]);
+  };
+  await bindApprovedChannel("whatsapp");
   await upsertSignalDeskChannelWindowStateServer(access, {
     channel: "whatsapp",
     idempotencyKey: "fresh-lineage-whatsapp-window-v1",
@@ -547,6 +589,7 @@ async function main() {
   });
   const instagramRecipientId = "17841400000000001";
   await detailRef.set({ instagramRecipientId }, { merge: true });
+  await bindApprovedChannel("instagram");
   const instagramSuppressionRef = db.collection(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER)
     .doc(`instagram_${hashValue(row.instagram)}`);
   await instagramSuppressionRef.set({

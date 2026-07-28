@@ -9,7 +9,7 @@ if (!sharedRuntime) {
     process.env.ANSWERLATTICE_FIREBASE_MODE = 'separate';
     process.env.ANSWERLATTICE_FIREBASE_PROJECT_ID = process.env.GCLOUD_PROJECT;
 }
-const runtimeRoot = sharedRuntime ? '../../functions/lib/functions/src' : '../../functions-answerlattice/lib';
+const runtimeRoot = sharedRuntime ? '../../functions/lib' : '../../functions-answerlattice/lib';
 
 const { admin, firestoreAdmin } = require(`${runtimeRoot}/firebaseAdmin`);
 const { FieldValue, Timestamp } = admin.firestore;

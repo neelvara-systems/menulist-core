@@ -79,7 +79,7 @@ No roadmap item may bypass human approval, tenant isolation, summary-backed read
 | 12 | Jira integration | Not implemented; do not build now | Reconsider one read-only provider only after paying-client concentration, export-friction, selected-scope, deletion, cost, and concierge-outcome proof |
 | 13 | Helpdesk integrations | Not implemented as native connectors; do not build now | Keep export/import; reconsider one read-only provider only after the complete Feature 43 admission gate |
 | 14 | Changelog-to-knowledge automation | Partially implemented through releases/surfaces/drift | Widen only after releases are consistently linked to entities and stale-answer review |
-| 15 | Knowledge graph traversal | Implemented and active with 1-hop summary-backed guards | Keep bounded; no visualization unless owner value is proven |
+| 15 | Knowledge graph traversal and Knowledge Map | Implemented and active with 1-hop summary-backed guards | Keep bounded; the owner map uses two point reads for graph plus freshness evidence, and public article maps use published headings only |
 | 16 | Predictive support | Implemented and active with cooldown/fail-closed guards | Keep rule-based and quiet; no prompt spam |
 | 17 | Content package generation | Not a standalone product surface yet | Generate drafts only from governed sources and review queues |
 | 18 | Team approval routing | Partially covered by staff access/governance roles | Add only when review volume requires routing by support/product/engineering/legal/billing |

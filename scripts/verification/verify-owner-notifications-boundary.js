@@ -59,7 +59,9 @@ function verifyDeliveryBoundaryMirror(appBoundary, functionsBoundary) {
 
   [
     'normalizeOwnerNotificationDocumentId',
+    'normalizeOwnerNotificationDocumentIdAliases',
     'normalizeOwnerNotificationNumericScopeDocumentId',
+    'normalizeOwnerNotificationNumericScopeAliases',
     'normalizeOwnerNotificationReferenceId',
     'getNextOwnerNotificationProcessingAttempt',
     'MAX_OWNER_NOTIFICATION_PROCESSING_ATTEMPTS = 2',
@@ -67,6 +69,11 @@ function verifyDeliveryBoundaryMirror(appBoundary, functionsBoundary) {
     'hasOwnerNotificationWhatsAppConsent',
     'OWNER_NOTIFICATION_WHATSAPP_CONSENT_REVOKED_STATUSES',
     'isOwnerNotificationEventWithinByteLimit',
+    'projectOwnerNotificationPersistedEvent',
+    'projectOwnerNotificationRateLimitCount',
+    'getOwnerNotificationDeliveryClaimDecision',
+    "existingStatus === 'sending'",
+    "return requestedAttempt > existingAttempt ? 'claim' : 'terminal'",
     "status !== 'pending' && status !== 'failed'",
     'normalizedAttempt >= MAX_OWNER_NOTIFICATION_PROCESSING_ATTEMPTS',
   ].forEach((token) => assertIncludes(appBoundary, token, 'Owner notification delivery boundary'));
@@ -105,11 +112,28 @@ function verifyLifecycleSubscriptionIndexes(firestoreIndexes, answerlatticeFires
     { fieldPath: 'status', order: 'ASCENDING' },
     { fieldPath: 'updatedAt', order: 'ASCENDING' },
   ]), 'Owner notification retry query must keep its status/updatedAt index');
+  assert(hasCollectionFields('ownerNotificationEvents', [
+    { fieldPath: 'productId', order: 'ASCENDING' },
+    { fieldPath: 'status', order: 'ASCENDING' },
+    { fieldPath: 'processingStartedAt', order: 'ASCENDING' },
+  ]), 'Owner notification stale-processing query must keep its processingStartedAt index');
+  assert(hasCollectionFields('ownerNotificationEvents', [
+    { fieldPath: 'productId', order: 'ASCENDING' },
+    { fieldPath: 'createdAt', order: 'ASCENDING' },
+  ]), 'Owner notification legacy event cleanup must keep its product/createdAt index');
   assert(hasCollectionFields('ownerNotificationDeliveries', [
     { fieldPath: 'productId', order: 'ASCENDING' },
     { fieldPath: 'status', order: 'ASCENDING' },
     { fieldPath: 'createdAt', order: 'ASCENDING' },
   ]), 'Owner notification digest query must keep its status/createdAt index');
+  assert(hasCollectionFields('ownerNotificationDeliveries', [
+    { fieldPath: 'productId', order: 'ASCENDING' },
+    { fieldPath: 'createdAt', order: 'ASCENDING' },
+  ]), 'Owner notification legacy delivery cleanup must keep its product/createdAt index');
+  assert(hasCollectionFields('ownerNotificationRateLimits', [
+    { fieldPath: 'productId', order: 'ASCENDING' },
+    { fieldPath: 'updatedAt', order: 'ASCENDING' },
+  ]), 'Owner notification legacy rate-limit cleanup must keep its product/updatedAt index');
   const detailIndex = [
     { fieldPath: 'productId', order: 'ASCENDING' },
     { fieldPath: 'eventId', order: 'ASCENDING' },
@@ -140,6 +164,8 @@ function verifyFirestoreDocumentIdHelper(helper) {
     "id !== '.'",
     "id !== '..'",
     "!id.includes('/')",
+    'FIRESTORE_DOCUMENT_ID_MAX_UTF8_BYTES = 1_500',
+    'new TextEncoder().encode(id).byteLength <= FIRESTORE_DOCUMENT_ID_MAX_UTF8_BYTES',
     '!RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN.test(id)',
   ].forEach((token) => assertIncludes(helper, token, 'Firestore document ID helper'));
 }
@@ -268,11 +294,19 @@ function verifyCore(core, recipientResolver, emailChannel, whatsappChannel, appL
     'getNextOwnerNotificationProcessingAttempt(',
     'isOwnerNotificationEventWithinByteLimit(doc)',
     "logNotificationFailure('owner_notification_event_too_large'",
-    "current.productId !== productId",
+    'projectOwnerNotificationPersistedEvent(snap.data(), productId)',
+    'safeId(current.dedupeKey) !== eventId',
+    'current.priority !== registryEntry.priority',
     "error: 'scope_not_found_or_mismatch'",
     'tenantId: event.tenantId',
     'const existing = await transaction.get(deliveryRef);',
-    'attempt: params.event.processingAttempt || 1',
+    'projectOwnerNotificationRateLimitCount(recipientSnap.data()',
+    'const deliveryClaim = await claimDelivery({',
+    "status: 'sending'",
+    'await finalizeDelivery({',
+    "data?.status !== 'sending'",
+    'data?.attempt !== attempt',
+    'attempt,',
     'lastAttemptAt: attemptedAt',
     'processImmediately',
     'MAX_PER_RECIPIENT_PER_DAY = 20',
@@ -284,24 +318,44 @@ function verifyCore(core, recipientResolver, emailChannel, whatsappChannel, appL
     'sendOwnerNotificationEmail',
     'sendOwnerNotificationWhatsApp',
     'getAnswerlatticeRetentionFields',
+    'MENULIST_OWNER_NOTIFICATION_RETENTION_DAYS = 30',
+    'MENULIST_OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS = 2',
     "logNotificationFailure('owner_notification_processing_failed'",
   ].forEach((token) => assertIncludes(core, token, 'Owner notification app core'));
 
   [
+    'Number(recipientSnap.data()?.count || 0)',
+    'Number(storeSnap.data()?.count || 0)',
+    'const current = snap.data() as OwnerNotificationEventDoc',
+    'async function writeDelivery(',
+  ].forEach((token) => assertNotIncludes(core, token, 'Owner notification app persisted and delivery boundary'));
+
+  assertOrder(core, [
+    'const deliveryClaim = await claimDelivery({',
+    "if (deliveryClaim.decision !== 'claimed')",
+    "const result = channel === 'email'",
+  ], 'Owner notification app durable channel claim ordering');
+  assert(
+    core.lastIndexOf('await finalizeDelivery({') > core.indexOf("const result = channel === 'email'"),
+    'Owner notification app must finalize the provider result after the provider call',
+  );
+
+  [
     'normalizeOwnerNotificationDocumentId',
+    'normalizeOwnerNotificationDocumentIdAliases',
     'normalizeOwnerNotificationNumericScopeDocumentId',
     'const tenantDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.tenantId);',
     'const workspaceDocumentId = normalizeOwnerNotificationRecipientDocumentId(event.workspaceId ?? event.storeId);',
     'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(workspaceDocumentId).get();',
-    'const storedTenantDocumentId = normalizeOwnerNotificationRecipientDocumentId(',
+    'const storedTenantDocumentId = normalizeOwnerNotificationDocumentIdAliases([',
     '? { readCount: 1, workspaceData }',
     ': { readCount: 1 };',
     'const tenantScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.tenantId);',
     'const storeScope = normalizeMenuListOwnerNotificationScopeDocumentId(event.storeId);',
     'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get();',
-    'storeData?.tenantId ?? storeData?.tId',
+    'normalizeOwnerNotificationNumericScopeAliases([',
     'storedTenantScope?.numericId === tenantScope.numericId',
-    '!storedTenantScope || storedTenantScope.numericId === tenantScope.numericId',
+    'storedTenantAliases.length === 0 || storedTenantScope?.numericId === tenantScope.numericId',
     'DB_COLLECTIONS.TENANTS',
     'manualRecipientOverride === true',
     'forceHintRecipient ? hintEmail || email : email',
@@ -333,6 +387,8 @@ function verifyCore(core, recipientResolver, emailChannel, whatsappChannel, appL
     'const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(event.storeId).get();',
     'cleanEmail(data.email)\n        || cleanEmail(hints.email)',
     'data.whatsappNumber,\n            hints.whatsappNumber',
+    'workspaceData?.tenantId ?? workspaceData?.tId',
+    'storeData?.tenantId ?? storeData?.tId',
   ].forEach((token) => assertNotIncludes(recipientResolver, token, 'Owner notification recipient resolver'));
 
   [
@@ -340,7 +396,8 @@ function verifyCore(core, recipientResolver, emailChannel, whatsappChannel, appL
     'normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId)',
     'normalizeOwnerNotificationReferenceId(payload.referenceId)',
     'resolveAuthoritativeLifecycleRecipient',
-    'normalizeOwnerNotificationNumericScopeDocumentId(store.tenantId ?? store.tId)',
+    'normalizeOwnerNotificationNumericScopeAliases(tenantAliases)',
+    'normalizeOwnerNotificationNumericScopeAliases(storeAliases)',
     'claimLifecycleDelivery',
     'transaction.create(ref, {',
     'db.collection(MESSAGE_LOGS).doc(documentId).set({',
@@ -407,13 +464,22 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'normalizeOwnerNotificationReferenceId(payload.referenceId)',
     'hasOwnerNotificationWhatsAppConsent(settings)',
     'isOwnerNotificationEventWithinByteLimit(eventDoc)',
+    "projectOwnerNotificationPersistedEvent(snapshot.data(), 'ML')",
+    'safeId(event.dedupeKey) !== eventRef.id',
+    'event.priority !== registryEntry.priority',
+    'projectOwnerNotificationRateLimitCount(recipientSnap.data()',
+    'const deliveryClaim = await claimDelivery({',
+    "status: 'sending'",
+    'await finalizeDelivery({',
+    "data?.status !== 'sending'",
+    'data?.attempt !== attempt',
     'OWNER_NOTIFICATION_EVENT_TOO_LARGE',
     'getNextOwnerNotificationProcessingAttempt(',
     'const existing = await tx.get(eventRef);',
     'if (!existing.exists) tx.create(eventRef, eventDoc);',
     'const event = await claimOwnerNotificationEvent(eventRef);',
     'db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId).get()',
-    'normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId)',
+    'normalizeOwnerNotificationNumericScopeAliases(tenantAliases)',
     "['ML', 'store', event.tenantId, event.storeId, dateKey]",
     'DB_COLLECTIONS.TENANTS',
     'encodeURIComponent(phoneNumberId)',
@@ -427,10 +493,23 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'createAlert({',
     'PLATFORM_NOTIFICATION_TRIGGER_TYPES.OWNER_NOTIFICATION_FAILURE',
     'retryFailedOwnerNotifications',
+    'markStaleOwnerNotificationProcessingEvents',
+    'OWNER_NOTIFICATION_PROCESSING_OUTCOME_AMBIGUOUS',
+    'OWNER_NOTIFICATION_PROCESSING_LEASE_MS = 15 * 60 * 1000',
+    ".where('processingStartedAt', '<=', staleBefore)",
+    ".orderBy('processingStartedAt', 'asc')",
+    'processingAttempt: MAX_OWNER_NOTIFICATION_PROCESSING_ATTEMPTS',
+    'retryCount: 1',
+    'recordOwnerNotificationRetryAttempt',
+    "const event = projectOwnerNotificationPersistedEvent(doc.data(), 'ML');",
+    'event.retryCount === 1',
+    'event.processingAttempt !== MAX_OWNER_NOTIFICATION_PROCESSING_ATTEMPTS',
+    'const recorded = await recordOwnerNotificationRetryAttempt',
+    'ambiguous: number;',
     'getOwnerNotificationDigest',
     'failureCode: OWNER_NOTIFICATION_PROCESSING_FAILED',
     'const existing = await tx.get(deliveryRef);',
-    'attempt: params.event.processingAttempt || 1',
+    'attempt,',
     ".where('updatedAt', '>=', Timestamp.fromMillis(yesterdayMs))",
     ".orderBy('updatedAt', 'asc')",
     ".where('createdAt', '>=', Timestamp.fromMillis(yesterdayMs))",
@@ -438,6 +517,25 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'const sent = sentSnap.data().count;',
     'const failed = failedSnap.data().count;',
   ].forEach((token) => assertIncludes(processor, token, 'Functions owner notification processor'));
+
+  [
+    'Number(recipientSnap.data()?.count || 0)',
+    'Number(storeSnap.data()?.count || 0)',
+    'const event = snapshot.data() as OwnerNotificationEventDoc',
+    'async function writeDelivery(',
+    'data.retryCount && data.retryCount >= 1',
+    'await doc.ref.set({ retryCount: 1',
+  ].forEach((token) => assertNotIncludes(processor, token, 'Functions owner notification persisted and delivery boundary'));
+
+  assertOrder(processor, [
+    'const deliveryClaim = await claimDelivery({',
+    "if (deliveryClaim.decision !== 'claimed')",
+    "const result = channel === 'email'",
+  ], 'Functions owner notification durable channel claim ordering');
+  assert(
+    processor.lastIndexOf('await finalizeDelivery({') > processor.indexOf("const result = channel === 'email'"),
+    'Functions owner notification must finalize the provider result after the provider call',
+  );
 
   [
     ".where('productId', '==', 'ML')",
@@ -452,7 +550,10 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'if (!storeDoc.exists) {',
     '.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId)',
     'if (!storeDoc.exists) return null;',
-    'const storedTenantScope = normalizeOwnerNotificationNumericScopeDocumentId(data.tenantId ?? data.tId);',
+    'const tenantAliases = [data.tenantId, data.tId]',
+    'const storedTenantScope = normalizeOwnerNotificationNumericScopeAliases(tenantAliases);',
+    'const storeAliases = [data.storeId, data.sId]',
+    'const storedStoreScope = storeAliases.length === 0',
   ], 'Functions MenuList owner notification store lookup order');
 
   [
@@ -466,6 +567,10 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     "productValue: 'ML'",
     ".where(params.productField, '==', params.productValue)",
     'export const runOwnerNotificationRetentionCleanupForTest = runOwnerNotificationRetentionCleanup;',
+    'deleteLegacyOwnerNotificationDocs({',
+    "timestampField: 'createdAt'",
+    "timestampField: 'updatedAt'",
+    'data.expiresAt !== undefined',
   ].forEach((token) => assertIncludes(scheduler, token, 'MenuList owner notification retention product partition'));
 
   [
@@ -499,6 +604,8 @@ function verifyFunctionsProcessor(processor, scheduler, messagingEngine, smtpPro
     'normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId)',
     'normalizeOwnerNotificationNumericScopeDocumentId(payload.tenantId)',
     'normalizeOwnerNotificationReferenceId(payload.referenceId)',
+    'normalizeOwnerNotificationNumericScopeAliases(tenantAliases)',
+    'normalizeOwnerNotificationNumericScopeAliases(storeAliases)',
     'claimMessageDelivery({',
     'transaction.create(claimRef, {',
     'db.collection(DB_COLLECTIONS.MESSAGE_LOGS).doc(documentId).set(log, { merge: true })',

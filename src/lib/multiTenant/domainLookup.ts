@@ -14,6 +14,7 @@ import {
     normalizeMenuListPublicEntityIdentityAliases,
 } from '@lib/publicTruth/entityEligibility';
 import { secureError } from '@lib/security/secureLogger';
+import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 export interface TenantInfo {
     storeId: number;
@@ -27,8 +28,9 @@ export interface TenantInfo {
 
 const normalizeDomainLookupFailure = (error: unknown, message: string): Error => {
     const normalized = new Error(message);
-    if (error instanceof Error && error.name) {
-        normalized.name = error.name;
+    const errorName = getBoundedErrorName(error);
+    if (errorName) {
+        normalized.name = errorName;
     }
     return normalized;
 };

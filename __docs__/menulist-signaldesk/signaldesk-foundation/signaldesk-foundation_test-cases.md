@@ -26,6 +26,8 @@
 | Two concurrent creates claim the same canonical email with different user IDs | Exactly one succeeds; the other conflicts; one membership exists. |
 | Explicit update names a missing team-member ID | Rejected; no replacement row is created. |
 | Mobile edits team access | Blocked. |
+| Distributed limiter provider is unavailable | Protected overview, workspace, action and kill-switch routes return bounded `503 RATE_LIMIT_UNAVAILABLE` before membership/permission reads or audit writes. |
+| Actor exceeds an established route/action quota | The route returns bounded `429 RATE_LIMITED` with retry metadata before membership/permission reads or audit writes. |
 
 ## Audit Tests
 

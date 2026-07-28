@@ -19,6 +19,7 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBrandStoreLabel } from '@lib/businessIdentity/names';
 import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { getBoundedPublicFeedbackStringContext, logPublicFeedbackPageFailure } from '@lib/feedback/publicFeedbackDiagnostics';
+import { normalizePublicFeedbackDefaults } from '@lib/feedback/feedbackDefaultsBoundary';
 import { getPublicStoreById } from '@lib/firestore/clientStoreLookup';
 import {
     createPublicCustomerTranslator,
@@ -33,9 +34,14 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { resolveOBPAccentColor } from '@lib/obp/accentColor';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { projectPublicClientStore } from '@lib/publicTruth/clientStoreProjection';
+import { normalizeMenuListPublicEntityIdentityAliases } from '@lib/publicTruth/entityEligibility';
+import {
+    projectPublicClientStore,
+    type PublicClientStore,
+} from '@lib/publicTruth/clientStoreProjection';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
-import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults } from '@type/guestFeedback';
+import { FeedbackDefaults } from '@type/guestFeedback';
+import type { StoreTemporaryStatus } from '@type/platform/store';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
@@ -142,14 +148,14 @@ const getProjectData = cache(async (projectId: string) => {
 interface StoreInfo {
     accentColor?: string;
     contentLanguage: string;
-    storeDetails: Record<string, any>;
+    storeDetails: PublicClientStore;
     storeName?: string;
     feedbackDefaults: FeedbackDefaults;
     feedbackEnabled: boolean;
     logoUrl?: string;
     officialPageUrl?: string;
     tagline?: string;
-    tempStatus?: any;
+    tempStatus?: StoreTemporaryStatus;
 }
 
 /**
@@ -171,7 +177,10 @@ const getStoreInfo = cache(async (
             return null;
         }
 
-        const storeTenantScope = normalizeGuestFeedbackNumericDocumentId(storeData.tenantId ?? storeData.tId);
+        const storeTenantScope = normalizeMenuListPublicEntityIdentityAliases([
+            storeData.tenantId,
+            storeData.tId,
+        ]);
         if (!storeTenantScope || storeTenantScope.numericId !== tId) {
             return null;
         }
@@ -197,11 +206,10 @@ const getStoreInfo = cache(async (
             storeDetails,
             storeName: displayStoreName,
             feedbackEnabled,
-            feedbackDefaults: {
-                ...DEFAULT_FEEDBACK_SETTINGS,
-                ...storeData.feedbackDefaults,
-            },
-            logoUrl: (storeData.logo || '') as string | undefined,
+            feedbackDefaults: normalizePublicFeedbackDefaults(storeData.feedbackDefaults),
+            logoUrl: typeof storeData.logo === 'string' && storeData.logo.trim()
+                ? storeData.logo
+                : undefined,
             officialPageUrl: appendPublicLanguageParam(
                 generateOBPUrl(storeData.subdomain, storeData.customDomain),
                 contentLanguage,
@@ -212,8 +220,8 @@ const getStoreInfo = cache(async (
                     contentLanguage,
                     getPrimaryLocalizedLanguage(storeData.tagline, contentLanguage),
                     '',
-                ) || getPublicBusinessDescription(storeData, contentLanguage) || ''
-            ) as string | undefined,
+                ) || getPublicBusinessDescription(storeData, contentLanguage) || undefined
+            ),
             tempStatus: storeData.tempStatus,
         };
     } catch (error) {

@@ -29,6 +29,21 @@ const getAlias = (record: Record<string, unknown>, key: 'pId' | 'productId'): st
     return typeof value === 'string' && value.length > 0 ? value : null;
 };
 
+const getConsistentScopeAliases = (
+    record: Record<string, unknown>,
+    keys: readonly ['tenantId', 'tId'] | readonly ['storeId', 'sId'],
+): number | null => {
+    const supplied = keys
+        .map((key) => record[key])
+        .filter((value) => value !== undefined && value !== null);
+    if (supplied.length === 0) return null;
+    const normalized = supplied.map(getCanonicalPositiveInteger);
+    const expected = normalized[0];
+    return expected && normalized.every((value) => value === expected)
+        ? expected
+        : null;
+};
+
 /**
  * Classify legacy rows without guessing product ownership. The original
  * MenuList webhook composer always persisted pId=ML, so completing the missing
@@ -46,8 +61,8 @@ export const classifyMenuListBillingRecordIdentityBackfill = (
         return { status: 'skip_conflicting_or_other_product' };
     }
 
-    const tenantId = getCanonicalPositiveInteger(record.tenantId ?? record.tId);
-    const storeId = getCanonicalPositiveInteger(record.storeId ?? record.sId);
+    const tenantId = getConsistentScopeAliases(record, ['tenantId', 'tId']);
+    const storeId = getConsistentScopeAliases(record, ['storeId', 'sId']);
     if (!tenantId || !storeId) return { status: 'skip_invalid_scope' };
 
     if (

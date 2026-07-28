@@ -24,6 +24,19 @@ import {
 const FEEDBACK_INTELLIGENCE_FAILURE = 'FEEDBACK_INTELLIGENCE_FAILED';
 const FEEDBACK_INTELLIGENCE_STORE_FAILURE = 'FEEDBACK_INTELLIGENCE_STORE_FAILED';
 const FEEDBACK_INTELLIGENCE_BATCH_FAILURE = 'FEEDBACK_INTELLIGENCE_BATCH_FAILED';
+const MAX_FEEDBACK_LOOKBACK_DAYS = 30;
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function normalizeFeedbackText(value: unknown, maxLength: number): string {
+  return typeof value === 'string'
+    ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength)
+    : '';
+}
 
 function getFeedbackIntelligenceScope(tId: string, sId: string): {
   tenantId: ReturnType<typeof getAnalyticsIdContext>;
@@ -158,8 +171,11 @@ async function getRecentNegativeFeedback(
   sId: string,
   daysBack: number
 ): Promise<Array<{ message: string; timestamp: string; context?: string }>> {
+  const boundedDaysBack = Number.isSafeInteger(daysBack) && daysBack > 0
+    ? Math.min(daysBack, MAX_FEEDBACK_LOOKBACK_DAYS)
+    : 7;
   const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+  cutoffDate.setDate(cutoffDate.getDate() - (boundedDaysBack - 1));
   const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
   // Query chatAnalytics collection for negative feedback
@@ -172,25 +188,33 @@ async function getRecentNegativeFeedback(
 
   const feedbackItems: Array<{ message: string; timestamp: string; context?: string }> = [];
 
-  snapshot.forEach((doc: any) => {
+  snapshot.forEach((doc) => {
     const data = doc.data();
 
     // Extract negative feedback from the document
     if (data.negativeFeedback && Array.isArray(data.negativeFeedback)) {
-      data.negativeFeedback.forEach((item: any) => {
-        if (item.message) {
+      data.negativeFeedback.forEach((value: unknown) => {
+        const item = asRecord(value);
+        const message = normalizeFeedbackText(item?.message, 1000);
+        if (message) {
+          const timestamp = normalizeFeedbackText(item?.createdOn, 80)
+            || normalizeFeedbackText(data.date, 80)
+            || cutoffDateStr;
+          const context = normalizeFeedbackText(item?.query, 500);
           feedbackItems.push({
-            message: item.message,
-            timestamp: item.createdOn || data.date,
-            context: item.query || undefined,
+            message,
+            timestamp,
+            ...(context ? { context } : {}),
           });
         }
       });
     }
   });
 
-  // Limit to most recent 50 items to control Gemini token usage
-  return feedbackItems.slice(0, 50);
+  // Limit to the most recent 50 items to control Gemini token usage.
+  return feedbackItems
+    .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
+    .slice(0, 50);
 }
 
 /**

@@ -157,7 +157,9 @@ When OFF: No index documents written, no nightly task runs.
 
 ## 10. Security
 
-- Collection-level Firestore rules: read-only for authenticated users, write-only for Cloud Functions
+- Current Firestore access: no collection-specific rule exists, so root default deny blocks every browser read and write while the feature remains inactive.
 - No sensitive data in the collection (see §3)
+- The dormant builder's safety guard recursively rejects sensitive-looking keys, hostile objects, and cyclic structures; this remains defense in depth rather than authorization.
 - Feature-flagged OFF by default
 - Store deactivation cleanup is not wired yet; when activated, the scheduler/DAL must delete or mark index entries inactive.
+- Activation requires a separate runtime schema, server-only writer, public DTO review, query/index/cost plan, tenant/product ownership model, deactivation cleanup, and focused Firestore rules tests before any rule path is added.

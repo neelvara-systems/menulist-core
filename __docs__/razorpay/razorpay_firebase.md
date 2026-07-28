@@ -1,11 +1,13 @@
 # Razorpay — Firebase Cost Tracking
 
+> **July 28, 2026:** the billing-record product-identity backfill remains dry-run by default and write mode remains project-confirmed. Its scope classifier now reconciles every present `tenantId`/`tId` and `storeId`/`sId` value before proposing a merge. Equal numeric/string legacy aliases remain compatible; conflicts or malformed present aliases are skipped. No backfill was executed.
+
 > **July 22, 2026:** paid-cycle entitlement parity retains the plan mirror for current-cycle cancelled/paused rows. Every owner, settlement, reconciliation, expiry, messaging, AI-recovery, and Founder Monitor subscription path now requires both exact MenuList aliases, with product-prefixed composites such as `subscriptions(pId ASC, productId ASC, status ASC, cycleEndDate ASC)`. The source requires MenuList rules/index/Function deployment; no app/Vercel deploy was performed here.
 
 > **July 22, 2026 bounded-fallback closure:** MenuList entitlement selection and Answerlattice activation/license/intake/server fallbacks constrain both product and tenant/store alias pairs before `limit`. Shared and dedicated index files add `subscriptions(pId, productId, tenantId, storeId, tId, sId)`; exact current rows are reprojected inside entitlement transactions before any store/platform/subscription mirror write.
 
 **Purpose:** Track ALL Firestore reads/writes/deletes for the Razorpay billing system.
-**Last Updated:** July 22, 2026
+**Last Updated:** July 27, 2026
 
 ---
 
@@ -79,16 +81,18 @@ July 6 MenuList Top-Up Scope Document ID Boundary is Firebase-cost neutral. Vali
 
 | Operation | Collection | Count per run | Type | Description |
 |-----------|-----------|---------------|------|-------------|
-| Cursor read/checkpoint | `_system/subscriptionReconciliationCursor` | 1 initial read + up to 1 write per complete page | READ/WRITE | Resumes after the last fully processed document; reaching the end deletes the cursor |
+| Cursor read/checkpoint | `_system/subscriptionReconciliationCursor` | 1 initial read + up to 1 write per complete page + 1 delete at cycle end | READ/WRITE/DELETE | Resumes after the last fully processed document; reaching the end deletes the cursor, and a failed delete fails the leased task instead of reporting a completed cycle |
 | Paged query | `subscriptions` | N reads in 100-row pages | READ | `where('status', 'in', ['active', 'past_due', 'paused'])`, ordered by Firestore document ID; no unbounded snapshot is retained and only five provider fetches run concurrently |
 | Transaction re-read | `subscriptions` | N reads | READ | Rechecks authoritative Firestore ID, exact provider ID and current state immediately before any update |
-| Update | `subscriptions` | 0-N writes | WRITE | Only writes a mismatch; status history, recovery timestamp, cycle dates, paid count, renew date, billing-period credit reset and `lastWebhook` are committed together |
-| Entitlement repair | `subscriptions`, `stores`, `platformSummary` | mismatch-only transaction | READ/WRITE | Reads the triggering subscription plus at most 10 current active subscriptions and writes the authoritative store/platform/subscription mirrors before cache invalidation |
+| Update | `subscriptions` | 0-N writes | WRITE | Only writes a mismatch; status history, recovery timestamp, cycle dates, paid count, renew date, billing-period credit reset, `lastWebhook`, and any required entitlement-repair marker are committed together |
+| Entitlement repair | `subscriptions`, `stores`, `platformSummary` | mismatch-only transaction + 1 marker-clear write after complete mirror/cache settlement | READ/WRITE | Derives entitlement from the transaction-next subscription shape, reads the triggering subscription plus at most 10 current paid-cycle subscriptions, writes the authoritative store/platform/subscription mirrors, and clears the durable retry marker only after cache/screen/Business Health invalidation succeeds |
 
 **Cost estimate (per night):**
 - **Best case (no mismatches):** approximately 2N reads (paged admission plus transaction recheck), 0 writes
 - **Worst case (all mismatched):** approximately 2N base reads + N subscription writes + scoped entitlement transaction reads/writes
 - **Typical:** 2N reads and few writes; webhook success keeps reconciliation changes rare
+
+If provider reconciliation commits a status or cycle change that requires a plan-mirror repair, `billingEntitlementSyncPending: true` is part of that same subscription transaction. A failed or interrupted post-commit mirror/cache settlement remains visible to the existing bounded pending-entitlement repair scan, including when the provider transition makes the subscription terminal and removes it from future active reconciliation queries.
 
 **External API calls (not Firebase):**
 - Razorpay `subscriptions.fetch()` — 1 call per alive subscription per night
@@ -114,6 +118,8 @@ July 5 normal-path debug cleanup is Firebase-cost neutral. Plan lookup no longer
 | Operation | Collection | Count per event | Type | Description |
 |-----------|-----------|----------------|------|-------------|
 | Create/read/update | `razorpayWebhookEvents` | 1 claim transaction + 1 attempt-fenced terminal transaction | READ/WRITE | Durable replay guard. Processed events acknowledge duplicate; active work returns retryable `503`; failed/expired work receives a new owner; stale owners cannot overwrite a newer terminal state. |
+
+Answerlattice top-up credit and store-summary writes remain in the same product-local transaction for new settlement. A paid replay that repairs the store summary first projects the current exact subscription and writes only that admitted identity/credit shape; malformed/coercible or concurrently replaced subscription state returns reconciliation instead of becoming a mirror update.
 | Query | `subscriptions` | 1 read | READ | Find subscription by `providerSubscriptionId` |
 | Update | `subscriptions` | 1 write | WRITE | Update status, dates, credits, lastWebhook, billingHistory |
 | Create | `payment_transactions` | 0-1 write | WRITE | Append-only payment audit log. Webhook storage writes a lean v2 summary instead of the full Razorpay payload; desktop/mobile billing history parse these summaries through a shared formatter and still tolerate legacy raw payload rows. |
@@ -122,7 +128,7 @@ July 5 normal-path debug cleanup is Firebase-cost neutral. Plan lookup no longer
 
 **Frequency:** Per webhook event (typically 1-3 events per billing cycle per store)
 
-**Duplicate behavior:** A replayed processed Razorpay event reads the existing `razorpayWebhookEvents/{eventKey}` lock and returns without writing another `payment_transactions` row or repeating subscription mutations. A replay while the current lease is active returns non-success `503` plus `Retry-After`, preventing a concurrent delivery from suppressing all later provider retries if the original worker crashes. Expired/failed retries are transactionally re-owned and every terminal result is attempt-fenced.
+**Duplicate behavior:** A replayed processed Razorpay event reads the existing `razorpayWebhookEvents/{eventKey}` lock and returns without writing another `payment_transactions` row or repeating subscription mutations only after the complete versioned persisted identity/state contract is admitted. Missing version/identity/attempt/timestamps, conflicting event keys, malformed retry/provider fields and invalid lease/terminal shapes fail retryably rather than becoming duplicate truth. A replay while the current lease is active returns non-success `503` plus `Retry-After`, preventing a concurrent delivery from suppressing all later provider retries if the original worker crashes. Expired/failed retries are transactionally re-owned and every terminal result is attempt-fenced.
 
 `payment_transactions/{eventKey}` replay uses one transaction read around its merge write so the first valid `createdOn` remains immutable. Product, paired tenant/store scope aliases, event/type, provider entity IDs, amount, currency and provider event time must match exactly; a collision fails closed before merge and `modifiedOn` remains current. The Admin sanitizer preserves Firestore FieldValue transforms. Top-up audit creation is deferred until the existing settlement reads/transaction prove canonical billing scope and immutable value, so it adds no Firestore operation. Unknown non-top-up orders persist at most one unscoped internal audit row and cannot satisfy owner-history queries/rules. Legacy malformed/conflicting rows require guarded review rather than replay reassignment.
 

@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.117 Homepage Private Preview Surface Polish
-**Last Updated:** July 25, 2026
+**Status:** IMPLEMENTED — v3.6.118 Website Audit Hardening
+**Last Updated:** July 28, 2026
 **Audience:** Developers
 
 ---
@@ -9,6 +9,12 @@
 ## 1. Architecture Overview
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
+
+The v3.6.118 audit-hardening pass removes the authenticated Firebase sign-out chain from the anonymous Header bundle by dynamically importing it only after an authenticated logout action. Desktop Features and Resources panels derive visibility from the controlled React state and become `inert` plus `aria-hidden` while closed, preventing invisible links from entering keyboard navigation. The Features trigger also opens the controlled panel when activated, so access does not depend on pointer hover. `WebsiteProductPathProvider` derives `/ml` from `usePathname()` after hydration instead of forcing the shared website layout to call `headers()` only for alias routing. The layout still resolves locale/session-aware providers on the server, so no static-cache guarantee is claimed.
+
+Accepted public contact rows retain the existing bounded single-write admission contract. The feature-flagged `GET /api/ops/website-enquiries` route requires current `PLATFORM` authority, applies a fail-closed production read limiter, scans at most 120 recent rows, projects only bounded response fields, returns `Cache-Control: no-store`, and performs no write or realtime listener. `/ops/website-enquiries` is the manual response inbox; it supports bounded filters, row details, and an operator-opened email reply. Response-time commitments and automatic notification remain intentionally absent.
+
+Presentation corrections keep the homepage customer-link inclusions at three desktop columns, two tablet columns, and one phone column; raise desktop mega-menu supporting-copy size; and only mount the floating CTA when both viewport width and height leave enough unobstructed reading space. The public X link was removed because no maintained destination exists. Create-preview, contact success, and Trust & Security hero wording now use plain, supportable owner language rather than technical or absolute claims.
 
 The v3.6.117 homepage preview repair keeps `CreateMenuPreviewSection` code-native and interactive instead of replacing it with a static marketing asset. The contrast-panel header uses the dedicated contrast token family. The selected photo or owned-link example renders inside one preview sheet with semantic list rows, a responsive three-step review rail, and a compact guardrail footer. Phone layouts stack the review rail without introducing nested bordered cards or horizontal overflow; desktop keeps the same two-column conversion composition. The selector still changes browser-local example copy only and continues to route the real action to `/create-menu`.
 
@@ -28,7 +34,7 @@ Resource GA4 custom-event payloads are bounded through `trackGoogleMarketingEven
 
 The public contact write boundary is `POST /api/public/contact`. It applies the `MENULIST_CONTACT_FORM` limiter with fail-closed behavior for limiter infrastructure errors, rejects JSON above 8KB, validates the exact form/report-summary DTO, ignores honeypot submissions, and verifies Turnstile before the single Admin SDK write. Turnstile delivery uses a fixed endpoint, manual redirect handling, an 8-second abort deadline, bounded JSON response parsing, and `finally` timer cleanup. Persisted `sourcePath` and `referrer` retain only path/origin-path identity, never query strings or fragments; optional numeric report values use nullish preservation so zero remains zero. `npm run verify:public-contact-boundary`, `npm run test:public-contact-boundary`, and `npm run test:public-turnstile-boundary` guard these contracts.
 
-The general `/contact` success state is intentionally bounded to persisted acknowledgement. The current maintained Ops consumer is scoped to report leads, not every `sourceKind`, so a monitored general-enquiry alert/inbox and its response ownership remain production-owner work. Website copy must not promise that every form row has been read or give a response-time commitment until that operating evidence exists.
+The general `/contact` success state confirms successful admission and availability in the private platform inbox. A verified platform operator owns manual review through `/ops/website-enquiries`; the source does not claim that a row was already read, promise a response time, or send an automatic notification.
 
 The contact collection keeps query/routing scalars indexed, including the scoped Report Leads `sourceKind + createdOn` path. `landingPageEnquiries.message` and `landingPageEnquiries.sourceContext` are exact-document payload fields and are exempt from unused automatic indexing. This reduces index-entry fanout and storage without changing admission, the one-write success path, private Ops projection, or end-user behavior. The validated QA index deploy currently remains pending because the July 17 `menulist-qa` attempt failed before upload with Firebase Rules test-endpoint HTTP 403 caller permission.
 

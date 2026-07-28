@@ -15,6 +15,7 @@ import {
     normalizePosSyncSecretVersion,
     resolvePosSyncSecretInTransaction,
 } from '@lib/posSync/serverSecretStore';
+import { projectPosSyncSecretDocument } from '@lib/posSync/secretDocumentBoundary';
 import { isPosSyncSecretScopeCurrent } from '@lib/posSync/secretScope';
 import { generateWebhookSecret } from '@lib/posSync/signature';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -160,9 +161,16 @@ async function readOrMutateSecret(params: {
 
         const secret = generateWebhookSecret();
         const now = admin.firestore.Timestamp.now();
+        const currentSecretDocument = projectPosSyncSecretDocument(
+            secretSnapshot.data(),
+            tenantScope.numericId,
+            storeScope.numericId,
+        );
         transaction.set(secretRef, {
-            createdOn: secretSnapshot.data()?.createdOn || now,
-            createdBy: secretSnapshot.data()?.createdBy || actorId,
+            createdOn: currentSecretDocument?.createdOn instanceof admin.firestore.Timestamp
+                ? currentSecretDocument.createdOn
+                : now,
+            createdBy: currentSecretDocument?.createdBy || actorId,
             modifiedBy: actorId,
             modifiedOn: now,
             pId: 'ML',
@@ -170,7 +178,7 @@ async function readOrMutateSecret(params: {
             secret,
             tId: tenantScope.numericId,
             version: nextVersion,
-        }, { merge: true });
+        });
         transaction.update(storeRef, {
             'posSync.webhookSecret': admin.firestore.FieldValue.delete(),
             'posSync.secretVersion': nextVersion,

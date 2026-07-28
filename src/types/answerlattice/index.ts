@@ -18,6 +18,7 @@
 import { Timestamp } from "firebase/firestore";
 import type { ProductId } from "@constant/product";
 import type { SourceContext } from "@type/multiProduct";
+import type { Content } from "@tiptap/core";
 
 export interface AnswerlatticeDocumentIdentity {
     pId?: ProductId;
@@ -466,7 +467,7 @@ export interface AnswerlatticeSignalEvent extends AnswerlatticeDocumentIdentity 
     timestamp: Timestamp;
     /** Firestore TTL deadline. Optional only for legacy pre-TTL documents. */
     expiresAt?: Timestamp;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     dedupKey?: string;
     /** Stable payload identity used to reject conflicting idempotent replays. */
     identityFingerprint?: string;
@@ -593,8 +594,8 @@ export interface AnswerlatticeAuditLog extends AnswerlatticeDocumentIdentity {
     action: string;
     entityType: string;
     entityId: string;
-    previousState?: Record<string, any>;
-    newState?: Record<string, any>;
+    previousState?: Record<string, unknown>;
+    newState?: Record<string, unknown>;
     performedBy: string;
     timestamp: Timestamp;
 
@@ -653,7 +654,7 @@ export type AnswerlatticeArticleTranslationStatus = 'draft' | 'approved';
 export interface AnswerlatticeArticleTranslation {
     locale: string;                   // e.g., 'hi-IN', 'es-ES', 'ar-SA'
     title: string;                    // Translated title
-    content: any;                     // Translated TipTap JSON content
+    content: Content;                 // Translated TipTap JSON content
     status: AnswerlatticeArticleTranslationStatus;
     sourceLocale: 'en-US';
     sourceHash: string;                // SHA-256 of the source title/content used for this draft
@@ -867,7 +868,7 @@ export interface AnswerlatticeRelatedChangelogRef {
     pageId: string;
     title: string;
     version?: string | null;
-    releasedOn?: any;
+    releasedOn?: unknown;
     tags?: string[];
 }
 
@@ -908,7 +909,7 @@ export interface AnswerlatticeSurfaceContentSummary {
     pId?: ProductId;
     tId: number;
     sId: number;
-    generatedAt?: any;
+    generatedAt?: unknown;
     surfaceCount: number;
     articleCount: number;
     faqCount?: number;
@@ -926,7 +927,7 @@ export type AnswerlatticeActivationStepStatus = 'complete' | 'attention' | 'pend
 export type AnswerlatticeActivationStage = 'setup' | 'install' | 'knowledge' | 'live';
 
 export interface AnswerlatticeWidgetRuntimeStatus {
-    lastSeenAt?: any;
+    lastSeenAt?: unknown;
     lastOrigin?: string | null;
     lastPath?: string | null;
     lastContextKey?: string | null;
@@ -944,7 +945,7 @@ export interface AnswerlatticeActivationSubscriptionSummary {
     currency?: string | null;
     amount?: number | null;
     isBeta?: boolean;
-    subscriptionEndDate?: any;
+    subscriptionEndDate?: unknown;
 }
 
 export interface AnswerlatticeActivationStep {
@@ -1036,7 +1037,7 @@ export interface AnswerlatticeActivationSummary {
         faqCount?: number;
         changelogCount: number;
         ticketCount: number;
-        summaryGeneratedAt?: any;
+        summaryGeneratedAt?: unknown;
         surfaceReadiness: AnswerlatticeSurfaceReadinessItem[];
     };
     governance: {
@@ -1172,7 +1173,7 @@ export type AnswerlatticeCompiledSourceVersions = Partial<Record<AnswerlatticeCo
     pId?: ProductId;
     tId?: number;
     sId?: number;
-    updatedAt?: any;
+    updatedAt?: unknown;
     lastReason?: string;
     lastSourceId?: string;
     lastSourceType?: string;
@@ -1222,9 +1223,9 @@ export interface AnswerlatticeContextBundleManifest extends AnswerlatticeDocumen
     activeVersion: number;
     lastReadyVersion: number;
     status: AnswerlatticeBundleStatus;
-    generatedAt?: any;
-    lastBuildStartedAt?: any;
-    lastBuildCompletedAt?: any;
+    generatedAt?: unknown;
+    lastBuildStartedAt?: unknown;
+    lastBuildCompletedAt?: unknown;
     lastBuildError?: string | null;
     staleReason?: string | null;
     hash?: string;
@@ -1240,8 +1241,8 @@ export interface AnswerlatticeCompiledContextReadiness {
     activeVersion: number;
     lastReadyVersion: number;
     publicBundleId?: string | null;
-    generatedAt?: any;
-    lastBuildCompletedAt?: any;
+    generatedAt?: unknown;
+    lastBuildCompletedAt?: unknown;
     lastBuildError?: string | null;
     staleReason?: string | null;
     stats?: Partial<AnswerlatticeContextBundleStats>;
@@ -1520,9 +1521,20 @@ export interface AnswerlatticeInteractionRule {
 export interface AnswerlatticeEntityGraphNode {
     name: string;
     type: string;
+    currentVersion?: number;
     related: string[];                       // entityIds from all relation types
     relationTypes: Record<string, string[]>; // relationType → entityIds
+    outgoingRelationTypes?: Record<string, string[]>; // relationType → toEntityIds
+    incomingRelationTypes?: Record<string, string[]>; // relationType → fromEntityIds
     answerCount: number;                     // Active canonical answers bound to this entity
+    driftedAnswerCount?: number;              // Active bound answers with governance.driftFlag
+    reviewRequiredAnswerCount?: number;       // Active bound answers requiring human review
+}
+
+export interface AnswerlatticeEntityGraphSourceVersions {
+    entities: number;
+    entityRelations: number;
+    canonical: number;
 }
 
 export interface AnswerlatticeEntityGraphIndex {
@@ -1534,6 +1546,7 @@ export interface AnswerlatticeEntityGraphIndex {
     entityCount: number;
     relationCount: number;
     graph: Record<string, AnswerlatticeEntityGraphNode>;
+    sourceVersions?: AnswerlatticeEntityGraphSourceVersions;
     interactionRules?: AnswerlatticeInteractionRule[];
 }
 
@@ -1919,6 +1932,45 @@ export const ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE = {
 
 export type AnswerlatticeKnowledgeSourceType = typeof ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE[keyof typeof ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE];
 
+export const ANSWERLATTICE_SOURCE_AUTHORITY = {
+    OWNER_POLICY: 'owner_policy',
+    OWNER_CONFIRMED_FACT: 'owner_confirmed_fact',
+    OFFICIAL_DOCUMENTATION: 'official_documentation',
+    OFFICIAL_RELEASE: 'official_release',
+    OFFICIAL_WEBSITE: 'official_website',
+    PRODUCT_SURFACE: 'product_surface',
+    APPROVED_SUPPORT_MATERIAL: 'approved_support_material',
+    SUPPORT_SIGNAL: 'support_signal',
+    UNVERIFIED_REFERENCE: 'unverified_reference',
+} as const;
+
+export type AnswerlatticeSourceAuthority = typeof ANSWERLATTICE_SOURCE_AUTHORITY[keyof typeof ANSWERLATTICE_SOURCE_AUTHORITY];
+
+export const ANSWERLATTICE_SOURCE_APPROVAL_STATUS = {
+    UNREVIEWED: 'unreviewed',
+    APPROVED: 'approved',
+    EXCLUDED: 'excluded',
+    SUPERSEDED: 'superseded',
+} as const;
+
+export type AnswerlatticeSourceApprovalStatus = typeof ANSWERLATTICE_SOURCE_APPROVAL_STATUS[keyof typeof ANSWERLATTICE_SOURCE_APPROVAL_STATUS];
+
+export const ANSWERLATTICE_SOURCE_ACCESS_SCOPE = {
+    PUBLIC: 'public',
+    WORKSPACE_PRIVATE: 'workspace_private',
+    RESTRICTED: 'restricted',
+} as const;
+
+export type AnswerlatticeSourceAccessScope = typeof ANSWERLATTICE_SOURCE_ACCESS_SCOPE[keyof typeof ANSWERLATTICE_SOURCE_ACCESS_SCOPE];
+
+export const ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY = {
+    PUBLIC: 'public',
+    INTERNAL_ONLY: 'internal_only',
+    NOT_CITABLE: 'not_citable',
+} as const;
+
+export type AnswerlatticeSourceCitationEligibility = typeof ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY[keyof typeof ANSWERLATTICE_SOURCE_CITATION_ELIGIBILITY];
+
 export const ANSWERLATTICE_INTAKE_REVIEW_TARGET = {
     KB_ARTICLE: 'kb_article',
     FAQ: 'faq',
@@ -1956,6 +2008,9 @@ export const ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS = {
     MAX_TAGS: 20,
     MAX_ENTITY_IDS: 25,
     MAX_CONTEXT_KEYS: 20,
+    MAX_SOURCE_GOVERNANCE_APPLICABILITY_ITEMS: 12,
+    MAX_SOURCE_GOVERNANCE_CONFLICTS: 5,
+    MAX_SOURCE_GOVERNANCE_NOTES_CHARS: 1_000,
 } as const;
 
 export interface AnswerlatticeKnowledgeIntakeJob extends AnswerlatticeDocumentIdentity {
@@ -1980,7 +2035,7 @@ export interface AnswerlatticeKnowledgeIntakeJob extends AnswerlatticeDocumentId
     publishedItemCount: number;
     rejectedItemCount?: number;
     usageUnitsConsumed?: number;
-    usageSummary?: Record<string, any>;
+    usageSummary?: Record<string, unknown>;
     analysisRun?: {
         id: string;
         sourceHash: string;
@@ -2038,7 +2093,27 @@ export interface AnswerlatticeKnowledgeSource extends AnswerlatticeDocumentIdent
     tags?: string[];
     contextKeys?: string[];
     entityIds?: string[];
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
+    governance?: {
+        authority: AnswerlatticeSourceAuthority;
+        owner?: string | null;
+        approvalStatus: AnswerlatticeSourceApprovalStatus;
+        accessScope: AnswerlatticeSourceAccessScope;
+        citationEligibility: AnswerlatticeSourceCitationEligibility;
+        effectiveDate?: string | null;
+        reviewDate?: string | null;
+        applicability: {
+            products: string[];
+            plans: string[];
+            roles: string[];
+            regions: string[];
+            versions: string[];
+        };
+        conflictSourceIds: string[];
+        notes?: string | null;
+        reviewedBy: string;
+        reviewedOn: Timestamp;
+    };
     processingRun?: {
         id: string;
         status: 'processing' | 'completed' | 'failed';
@@ -2145,11 +2220,23 @@ export interface AnswerlatticeKnowledgeIntakeBundle {
  * Format: MAJOR * 1_000_000 + MINOR * 1_000 + PATCH
  */
 export function normalizeVersion(versionLabel: string): number {
-    const parts = versionLabel.split('.').map(Number);
-    const major = parts[0] || 0;
-    const minor = parts[1] || 0;
-    const patch = parts[2] || 0;
-    return major * 1_000_000 + minor * 1_000 + patch;
+    const label = typeof versionLabel === 'string' ? versionLabel.trim() : '';
+    if (!/^\d{1,6}(?:\.\d{1,3}){0,2}$/.test(label)) return Number.NaN;
+    const [major, minor = 0, patch = 0] = label.split('.').map(Number);
+    if (
+        !Number.isSafeInteger(major)
+        || !Number.isSafeInteger(minor)
+        || !Number.isSafeInteger(patch)
+        || major <= 0
+        || minor < 0
+        || minor > 999
+        || patch < 0
+        || patch > 999
+    ) {
+        return Number.NaN;
+    }
+    const normalized = major * 1_000_000 + minor * 1_000 + patch;
+    return Number.isSafeInteger(normalized) ? normalized : Number.NaN;
 }
 
 /**
@@ -2157,8 +2244,10 @@ export function normalizeVersion(versionLabel: string): number {
  * 2004001 → "2.4.1"
  */
 export function denormalizeVersion(normalized: number): string {
+    if (!Number.isSafeInteger(normalized) || normalized <= 0) return '';
     const major = Math.floor(normalized / 1_000_000);
     const minor = Math.floor((normalized % 1_000_000) / 1_000);
     const patch = normalized % 1_000;
+    if (major <= 0 || minor < 0 || minor > 999 || patch < 0 || patch > 999) return '';
     return `${major}.${minor}.${patch}`;
 }

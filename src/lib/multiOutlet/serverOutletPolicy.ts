@@ -4,8 +4,9 @@ import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     normalizeMultiOutletNumericDocumentId,
     normalizeMultiOutletProjectId,
-    type MultiOutletNumericDocumentId,
 } from "@lib/multiOutlet/projectIdBoundary";
+import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
+import { resolveStorePermissionScopeDocumentIdAliases } from "@lib/permissions/scopeDocumentId";
 import {
     DEFAULT_OUTLET_POLICY,
     LOCAL_CATEGORY_PREFIX,
@@ -14,23 +15,6 @@ import {
 } from "@type/multiOutlet.types";
 
 type OutletPolicyAction = "description" | "image" | "translation";
-
-type SessionLike = {
-    tId?: number | string;
-    sId?: number | string;
-    user?: {
-        tenantId?: number | string;
-        storeId?: number | string;
-    };
-};
-
-const getSessionTenantScope = (session: SessionLike): MultiOutletNumericDocumentId | null => (
-    normalizeMultiOutletNumericDocumentId(session.tId ?? session.user?.tenantId)
-);
-
-const getSessionStoreScope = (session: SessionLike): MultiOutletNumericDocumentId | null => (
-    normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId)
-);
 
 const hasInheritedTargets = (itemIds: string[]) => {
     if (!itemIds.length) return true;
@@ -88,12 +72,13 @@ export async function getLinkedOutletPolicyBlockReason({
     categoryIds?: string[];
     itemIds?: string[];
     projectId?: string | null;
-    session: SessionLike;
+    session: unknown;
 }): Promise<string | null> {
     if (!projectId) return null;
 
-    const tenantScope = getSessionTenantScope(session);
-    const storeScope = getSessionStoreScope(session);
+    const sessionScope = getOutletSessionScope(session);
+    const tenantScope = normalizeMultiOutletNumericDocumentId(sessionScope?.tenantDocumentId);
+    const storeScope = normalizeMultiOutletNumericDocumentId(sessionScope?.storeDocumentId);
     if (!tenantScope || !storeScope) {
         return "Store access is required";
     }
@@ -126,7 +111,10 @@ export async function getLinkedOutletPolicyBlockReason({
     if (masterProjectScope.sId === storeScope.numericId) return null;
 
     const masterStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${masterProjectScope.storeDocumentId}`).get();
-    const masterTenantScope = normalizeMultiOutletNumericDocumentId(masterStoreSnap.data()?.tenantId);
+    const masterTenantScope = resolveStorePermissionScopeDocumentIdAliases([
+        masterStoreSnap.data()?.tenantId,
+        masterStoreSnap.data()?.tId,
+    ]);
     if (
         !masterTenantScope
         || masterTenantScope.numericId !== tenantScope.numericId

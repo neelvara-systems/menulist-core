@@ -21,6 +21,7 @@ const currentAccessClient = read('src/lib/auth/currentPlatformAccessClient.ts');
 const routeGuard = read('src/lib/auth/platformRouteGuard.ts');
 const storeHook = read('src/hooks/usePlatformStoreSummaryOptions.ts');
 const opsDal = read('src/database/ops/index.ts');
+const opsTypes = read('src/lib/ops/types.ts');
 const schedulerDal = read('src/database/ops/scheduler.ts');
 const extractionDal = read('src/database/ops/extraction.ts');
 const schedulerResponse = read('src/lib/ops/schedulerRecoveryResponse.ts');
@@ -53,8 +54,8 @@ includes(currentAccessClient, [
   "accessModel === 'current_persisted_platform_user'",
 ], 'current platform-access client');
 includes(routeGuard, [
-  'const currentPlatformUser = await getCurrentPlatformUser(session);',
-  'if (!currentPlatformUser) redirect(redirectPath);',
+  'const currentUser = await getCurrentUser(session);',
+  'currentUser.userData.platformRole !== sessionPlatformRole',
 ], 'platform route guard');
 includes(storeHook, [
   'await assertCurrentPlatformAccess();',
@@ -85,6 +86,10 @@ includes(opsDal, [
   "throw new Error('ops_system_state_unavailable')",
   "throw new Error('ops_recent_alerts_unavailable')",
 ], 'Ops Control Room snapshot');
+for (const placeholderMetric of ['publishedToday', 'feedbackToday', 'noProject', 'unpublished48h', 'storeHealthSummary']) {
+  assert(!opsDal.includes(placeholderMetric), `Ops DAL must not emit false placeholder metric ${placeholderMetric}`);
+  assert(!opsTypes.includes(placeholderMetric), `Ops DTO must not declare false placeholder metric ${placeholderMetric}`);
+}
 includes(schedulerDal, [
   'SCHEDULER_HISTORY_LIMIT = 30',
   'SCHEDULER_SETTLEMENT_LIMIT = 100',

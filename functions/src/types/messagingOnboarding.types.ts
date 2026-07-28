@@ -221,6 +221,8 @@ export interface MessagingOnboardingRateLimit {
   cooldownUntil: Timestamp | null;
   dayResetAt: Timestamp;
   weekResetAt: Timestamp;
+  /** Legacy rows may omit this until their next admitted write. */
+  expiresAt?: Timestamp;
 }
 
 // ═══════════════════════════════════════════════════════════════

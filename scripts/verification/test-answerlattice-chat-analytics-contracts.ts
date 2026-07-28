@@ -41,6 +41,16 @@ assert.equal(
     getAnswerlatticeChatWorkspaceScopeKey({ tenantId: 11, storeId: 101 }),
     'answerlattice-chat:11:101',
 );
+assert.equal(
+    getAnswerlatticeChatWorkspaceScopeKey({ tenantId: 11, tId: 12, storeId: 101 }),
+    null,
+    'conflicting tenant aliases must not create a cross-workspace cache key',
+);
+assert.equal(
+    getAnswerlatticeChatWorkspaceScopeKey({ tenantId: 11, storeId: 101, sId: 102 }),
+    null,
+    'conflicting store aliases must not create a cross-workspace cache key',
+);
 
 const validRoiResponse = {
     success: true,

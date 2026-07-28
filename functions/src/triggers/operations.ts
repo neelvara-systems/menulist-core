@@ -38,6 +38,8 @@ import { resolveStoreBusinessCategory } from '../sharedData/businessTypes';
 import { normalizePlatformStoreSummaryIdentity } from '../sharedData/storeSummaryBoundary';
 import { resolveBusinessDayEndTime } from '../utils/businessDay';
 import { computeSchedulerHour } from '../utils/schedulerHour';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
+import { hasCallableTenantStoreAccess } from '../utils/callableScopeAccess';
 
 function getRequesterRole(request: { auth?: { token?: Record<string, any> } }): string {
     return String(request.auth?.token?.platformRole || request.auth?.token?.role || '');
@@ -71,13 +73,7 @@ function hasTenantStoreAccess(
     if (!request.auth) return false;
     if (getRequesterRole(request) === ECOMSAI_PLATFORM_USER_ROLE) return true;
 
-    const token = request.auth.token || {};
-    const tokenTenantId = String(token.tenantId || token.tId || '');
-    const tokenStoreId = String(token.storeId || token.sId || '');
-    const tokenStoreIds = Array.isArray(token.storeIds) ? token.storeIds.map(String) : [];
-
-    return tokenTenantId === String(tenantId)
-        && (tokenStoreId === String(storeId) || tokenStoreIds.includes(String(storeId)));
+    return hasCallableTenantStoreAccess(request.auth.token || {}, tenantId, storeId);
 }
 
 const OPERATIONS_VERIFY_MENU_PUBLISH_ACCESS_DENIED = 'OPERATIONS_VERIFY_MENU_PUBLISH_ACCESS_DENIED';
@@ -110,19 +106,7 @@ function getBoundedOperationsStringContext(label: string, value: unknown): Recor
 }
 
 function getOperationsErrorContext(error: unknown): { sourceErrorName?: string; sourceErrorCode?: string; sourceStatusCode?: number } {
-    if (!error || typeof error !== 'object') {
-        return { sourceErrorName: error === undefined ? undefined : typeof error };
-    }
-
-    const record = error as Record<string, unknown>;
-    const statusValue = record.status ?? record.statusCode;
-    const status = Number(statusValue);
-
-    return {
-        sourceErrorName: error instanceof Error ? error.name : 'object',
-        sourceErrorCode: record.code === undefined || record.code === null ? undefined : String(record.code).slice(0, 64),
-        sourceStatusCode: Number.isFinite(status) ? status : undefined,
-    };
+    return getBoundedFunctionsErrorContext(error);
 }
 
 function getOperationsCallLogContext(context: {

@@ -53,8 +53,10 @@ function AssetsUploader() {
         if (data) {
             const categoriesCpy = removeObjRef(categories)
             if (data.type == "deleted") {
-                let cId = categoriesCpy.findIndex(c => c.id == data.catId);
-                categoriesCpy.splice(cId, 1);
+                const nextCategories = categoriesCpy.filter((category) => category.id != data.catId);
+                setCategories(nextCategories);
+                setShowDetailsModal({ active: false, data: null, type: "" });
+                return;
             } else {
                 let i = categoriesCpy.findIndex(c => c.id == data.id);
                 if (i != -1) {
@@ -92,20 +94,22 @@ function AssetsUploader() {
                 dispatch(showSuccessToast("Category deleted !"))
             } else if (showCategoryModal.type == 'Sub Category') {
                 await deleteAssetsSubCategory(activeAssetsType, activeDetails, activeCategory);
-                let scId = activeCategory.subCategories.findIndex(c => c.id == activeDetails.id);
-                activeCategory.subCategories.splice(scId, 1);
-                handleModalResponse({ ...activeCategory });
+                handleModalResponse({
+                    ...activeCategory,
+                    subCategories: activeCategory.subCategories.filter((category) => category.id != activeDetails.id),
+                });
                 dispatch(showSuccessToast("Category deleted !"))
             } else if (showCategoryModal.type == 'Item') {
                 await deleteAssetsItem(activeAssetsType, activeDetails, activeCategory, activeSubCategory);
                 const activeCategoryCpy = removeObjRef(activeCategory);
                 if (Boolean(activeSubCategory?.id)) {
-                    const subcategoryIndex = activeCategoryCpy.subCategories.findIndex(subcategory => subcategory.id === activeSubCategory.id);
-                    const iIndex = activeCategoryCpy.subCategories[subcategoryIndex].items.findIndex(i => i.id == activeDetails.id)
-                    activeCategoryCpy.subCategories[subcategoryIndex].items.splice(iIndex, 1)
+                    activeCategoryCpy.subCategories = activeCategoryCpy.subCategories.map((subcategory) => (
+                        subcategory.id === activeSubCategory.id
+                            ? { ...subcategory, items: subcategory.items.filter((item) => item.id != activeDetails.id) }
+                            : subcategory
+                    ));
                 } else {
-                    const iIndex = activeCategoryCpy.items.findIndex(i => i.id == activeDetails.id)
-                    activeCategoryCpy.items.splice(iIndex, 1)
+                    activeCategoryCpy.items = activeCategoryCpy.items.filter((item) => item.id != activeDetails.id);
                 }
                 handleModalResponse({ ...activeCategoryCpy });
                 dispatch(showSuccessToast("Item deleted !"))

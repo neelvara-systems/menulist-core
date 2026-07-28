@@ -12,18 +12,16 @@ const persistConfig = {
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
-export const reduxStore: any = configureStore({
+export const reduxStore = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) => getDefaultMiddleware({ serializableCheck: false })
 });
 
-if (windowRef()) {
-  reduxStore.__persistor = persistStore(reduxStore); // Nasty hack
-}
+export const reduxPersistor = windowRef() ? persistStore(reduxStore) : null;
 
 export const getReduxStoreClient = () => reduxStore;
-export type AppStore = ReturnType<typeof reduxStore>;
-export type AppDispatch = ReturnType<AppStore["dispatch"]>;
+export type AppStore = typeof reduxStore;
+export type AppDispatch = AppStore["dispatch"];
 export type AppState = ReturnType<AppStore["getState"]>;
 export type AppThunk<ReturnType = void> = ThunkAction<
   ReturnType,

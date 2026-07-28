@@ -47,7 +47,11 @@ import {
     MENU_EXTRACTION_JOB_LIMITS,
     MENU_EXTRACTION_SOURCES,
 } from "../sharedData/menuExtractionJob";
-import { findInvalidMenuExtractionSourceIndexes } from "../sharedData/menuExtractionIntegrity";
+import {
+    findInvalidMenuExtractionSourceIndexes,
+    getMenuExtractionFailedSourceFileIndices,
+} from "../sharedData/menuExtractionIntegrity";
+import { normalizeOwnerNotificationNumericScopeAliases } from "../sharedData/ownerNotificationDeliveryBoundary";
 import {
     ExtractedMenuData,
     MenuCategory,
@@ -67,6 +71,7 @@ import { validateNetworkTargetUrl } from "../utils/networkTarget";
 import { buildSafeTempFilePath } from "../utils/safeTempFile";
 import { processAIResponseForFirebase } from "./aiResponseUtils";
 import { ExistingCategoriesContext, getParallelProcessingPrompt } from "./parallelProcessingPrompt";
+import { getBoundedFunctionsErrorName, getBoundedFunctionsErrorCode, getBoundedFunctionsErrorStatus } from '../utils/boundedErrorContext';
 
 // ═══════════════════════════════════════════════════════════════
 // SYSTEM PROMPT (Uses parallel processing prompt with sourceFileIndex)
@@ -117,25 +122,15 @@ const MENU_EXTRACTION_FAILED_MESSAGE = 'Menu extraction failed';
 const MAX_CONCURRENT_FILE_UPLOADS = 3;
 
 function getExtractionErrorName(error: unknown): string {
-    if (error instanceof Error) return (error.name || 'Error').slice(0, 96);
-    return typeof error;
+    return getBoundedFunctionsErrorName(error) || 'Error';
 }
 
 function getExtractionErrorCode(error: unknown): string | number | undefined {
-    if (!error || typeof error !== 'object') return undefined;
-    const code = (error as { code?: unknown }).code;
-    if (typeof code === 'number') return code;
-    if (typeof code === 'string') return code.slice(0, 96);
-    return undefined;
+    return getBoundedFunctionsErrorCode(error);
 }
 
 function getExtractionErrorStatus(error: unknown): number | undefined {
-    if (!error || typeof error !== 'object') return undefined;
-    const value = 'status' in error
-        ? (error as { status?: unknown }).status
-        : (error as { statusCode?: unknown }).statusCode;
-    const status = Number(value);
-    return Number.isFinite(status) ? status : undefined;
+    return getBoundedFunctionsErrorStatus(error);
 }
 
 function getExtractionErrorContext(error: unknown): {
@@ -681,17 +676,15 @@ function compactAiOperationForStorage(transactionObject: TransactionObject): Rec
     });
 }
 
-function normalizeOwnerOperationScope(value: unknown): string | null {
-    const normalized = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-    const numeric = Number(normalized);
-    return Number.isSafeInteger(numeric) && numeric > 0 && String(numeric) === normalized
-        ? normalized
-        : null;
-}
-
 function buildOwnerExtractionActivity(transactionObject: TransactionObject): Record<string, unknown> | null {
-    const tenantId = normalizeOwnerOperationScope(transactionObject.tId ?? transactionObject.tenantId);
-    const storeId = normalizeOwnerOperationScope(transactionObject.sId ?? transactionObject.storeId);
+    const tenantScope = normalizeOwnerNotificationNumericScopeAliases([
+        transactionObject.tId,
+        transactionObject.tenantId,
+    ]);
+    const storeScope = normalizeOwnerNotificationNumericScopeAliases([
+        transactionObject.sId,
+        transactionObject.storeId,
+    ]);
     const userId = typeof transactionObject.uId === 'string' ? transactionObject.uId.trim() : '';
     const isOwnerProjectExtraction =
         transactionObject.destinationType === MENU_EXTRACTION_DESTINATION_TYPES.PROJECT
@@ -700,8 +693,8 @@ function buildOwnerExtractionActivity(transactionObject: TransactionObject): Rec
             || transactionObject.jobSource === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT
         );
     if (
-        !tenantId
-        || !storeId
+        !tenantScope
+        || !storeScope
         || !userId
         || userId !== transactionObject.uId
         || !isOwnerProjectExtraction
@@ -718,10 +711,10 @@ function buildOwnerExtractionActivity(transactionObject: TransactionObject): Rec
         modifiedOn: FieldValue.serverTimestamp(),
         processingTime: transactionObject.processingTime,
         projectId: transactionObject.projectId,
-        sId: Number(storeId),
+        sId: storeScope.numericId,
         source: 'firebase-function-menu-extraction',
         status: transactionObject.status,
-        tId: Number(tenantId),
+        tId: tenantScope.numericId,
         targetLanguages: transactionObject.targetLanguages,
         uId: userId,
         unitsConsumed: 0,
@@ -1284,7 +1277,7 @@ async function processSingleBatch(
                 candidatesTokenCount: 0,
                 totalTokenCount: 0,
             },
-            failedFileIndices: uploadedFiles.map((_, i) => batchIndex * MAX_IMAGES_PER_BATCH + i),
+            failedFileIndices: getMenuExtractionFailedSourceFileIndices(uploadedFiles),
         };
     }
 }

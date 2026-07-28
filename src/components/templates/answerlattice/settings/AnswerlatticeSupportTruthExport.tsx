@@ -9,7 +9,7 @@ import {
 } from '@lib/security/boundedResponseBody';
 import { useAnswerlatticeAccess } from '@providers/answerlatticeAccessProvider';
 import { Alert, Button, Card, Flex, Typography, message } from 'antd';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuDownload } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -40,15 +40,36 @@ const getDownloadFilename = (response: Response) => {
 export default function AnswerlatticeSupportTruthExport() {
     const { access } = useAnswerlatticeAccess();
     const [exporting, setExporting] = useState(false);
+    const scopeKey = access ? `${access.scope.tenantId}:${access.scope.storeId}` : null;
+    const scopeKeyRef = useRef(scopeKey);
+    scopeKeyRef.current = scopeKey;
+    const exportInFlightRef = useRef(false);
+    const exportAbortRef = useRef<AbortController | null>(null);
     const canExport = access?.isPlatformAdmin === true
         || access?.permissions?.[ANSWERLATTICE_PERMISSION_KEYS.EXPORT_DATA] === true;
 
+    useEffect(() => {
+        exportAbortRef.current?.abort();
+        exportAbortRef.current = null;
+        exportInFlightRef.current = false;
+        setExporting(false);
+        return () => {
+            exportAbortRef.current?.abort();
+        };
+    }, [scopeKey]);
+
     const handleExport = useCallback(async () => {
+        if (!scopeKey || exportInFlightRef.current) return;
+        const requestScopeKey = scopeKey;
+        const controller = new AbortController();
+        exportInFlightRef.current = true;
+        exportAbortRef.current = controller;
         setExporting(true);
         try {
             const response = await fetch('/api/answerlattice/support-truth-export', {
                 ...EXPORT_REQUEST_POLICY,
                 method: 'POST',
+                signal: controller.signal,
             });
             if (!response.ok) {
                 const payload = await readJsonResponseWithLimit<unknown>(
@@ -59,6 +80,7 @@ export default function AnswerlatticeSupportTruthExport() {
             }
 
             const bytes = await readResponseUint8ArrayWithLimit(response, EXPORT_DOWNLOAD_MAX_BYTES);
+            if (scopeKeyRef.current !== requestScopeKey || controller.signal.aborted) return;
             const blob = new Blob([bytes], { type: 'application/json;charset=utf-8' });
 
             const downloadUrl = URL.createObjectURL(blob);
@@ -72,12 +94,23 @@ export default function AnswerlatticeSupportTruthExport() {
             URL.revokeObjectURL(downloadUrl);
             message.success('Support truth export created');
         } catch (error) {
+            if (
+                controller.signal.aborted
+                || scopeKeyRef.current !== requestScopeKey
+                || (error instanceof DOMException && error.name === 'AbortError')
+            ) {
+                return;
+            }
             logAnswerlatticeFailure('answerlattice_support_truth_export_download_failed', error);
             message.error(error instanceof Error ? error.message : 'Could not create the support truth export.');
         } finally {
-            setExporting(false);
+            if (exportAbortRef.current === controller) {
+                exportAbortRef.current = null;
+                exportInFlightRef.current = false;
+                if (scopeKeyRef.current === requestScopeKey) setExporting(false);
+            }
         }
-    }, []);
+    }, [scopeKey]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_EXPORT || !canExport) {
         return null;

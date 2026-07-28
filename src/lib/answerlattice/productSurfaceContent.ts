@@ -66,24 +66,68 @@ const normalizeNonNegativeInteger = (value: unknown, max = MAX_SUMMARY_COUNT): n
     typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= max ? value : null
 );
 
-const normalizeTimestampLikeForSurface = (value: unknown): string | number | null => {
-    if (value == null) return null;
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string') return normalizeBoundedText(value, 120, true);
-    if (value instanceof Date && Number.isFinite(value.getTime())) return value.toISOString();
-    if (isRecord(value)) {
-        if (typeof value.toDate === 'function') {
-            const date = (value.toDate as () => Date)();
-            return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+export function getAnswerlatticeProductSurfaceTimestampMillis(value: unknown): number | null {
+    try {
+        if (typeof value === 'number') {
+            return Number.isFinite(value) && Number.isFinite(new Date(value).getTime()) ? value : null;
         }
-        const seconds = typeof value.seconds === 'number' ? value.seconds : value._seconds;
-        const nanoseconds = typeof value.nanoseconds === 'number' ? value.nanoseconds : value._nanoseconds;
-        if (typeof seconds === 'number' && Number.isSafeInteger(seconds)) {
-            const date = new Date((seconds * 1000) + (typeof nanoseconds === 'number' ? Math.floor(nanoseconds / 1_000_000) : 0));
-            return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+        if (typeof value === 'string') {
+            const parsed = Date.parse(value);
+            return Number.isFinite(parsed) ? parsed : null;
         }
+        if (value instanceof Date) {
+            const millis = value.getTime();
+            return Number.isFinite(millis) ? millis : null;
+        }
+        if (!value || (typeof value !== 'object' && typeof value !== 'function')) return null;
+
+        const timestamp = value as {
+            _nanoseconds?: unknown;
+            _seconds?: unknown;
+            nanoseconds?: unknown;
+            seconds?: unknown;
+            toDate?: unknown;
+            toMillis?: unknown;
+        };
+        const toMillis = timestamp.toMillis;
+        if (typeof toMillis === 'function') {
+            const millis = toMillis.call(value);
+            return typeof millis === 'number'
+                && Number.isFinite(millis)
+                && Number.isFinite(new Date(millis).getTime())
+                ? millis
+                : null;
+        }
+        const toDate = timestamp.toDate;
+        if (typeof toDate === 'function') {
+            const date = toDate.call(value);
+            return date instanceof Date && Number.isFinite(date.getTime()) ? date.getTime() : null;
+        }
+        const seconds = timestamp.seconds ?? timestamp._seconds;
+        const nanoseconds = timestamp.nanoseconds ?? timestamp._nanoseconds ?? 0;
+        if (
+            typeof seconds !== 'number'
+            || !Number.isSafeInteger(seconds)
+            || typeof nanoseconds !== 'number'
+            || !Number.isSafeInteger(nanoseconds)
+            || nanoseconds < 0
+            || nanoseconds > 999_999_999
+        ) {
+            return null;
+        }
+        const millis = (seconds * 1000) + Math.floor(nanoseconds / 1_000_000);
+        return Number.isSafeInteger(millis) && Number.isFinite(new Date(millis).getTime()) ? millis : null;
+    } catch {
+        return null;
     }
-    return null;
+}
+
+const normalizeTimestampLikeForSurface = (value: unknown): string | number | null => {
+    const millis = getAnswerlatticeProductSurfaceTimestampMillis(value);
+    if (millis === null) return null;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return normalizeBoundedText(value, 120, true);
+    return new Date(millis).toISOString();
 };
 
 export function normalizeAnswerlatticeProductSurfaceScopeId(value: unknown): number | null {

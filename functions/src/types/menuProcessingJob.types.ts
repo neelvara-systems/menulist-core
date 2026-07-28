@@ -144,7 +144,7 @@ export interface MenuImageProcessingJob {
         };
         extractedBusinessProfile?: ExtractedBusinessProfile;
         summary?: Record<string, unknown>;
-        dataPrunedAt?: any;
+        dataPrunedAt?: Timestamp;
         dataPrunedReason?: string;
         qualityScore: number;
         qualityDetails: {

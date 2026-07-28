@@ -42,6 +42,8 @@ The implementation keeps the existing `menulist_owner` report path and includes 
 | Mobile card remains read-only | Pass | No report write, mutation, `window.location`, or desktop route bypass is added |
 | No V1 report storage | Pass | Owner report/hook/card contain no Firestore writes or `platformSummary/publicTruthTools_` persistence |
 | No external source inspection | Pass | Owner report boundaries keep `externalSourcesFetched: false`, `aiOrSearchChecked: false`, and `rankingPromise: false` |
+| Exact owner workspace admission | Pass | The hook requires session tenant/store to exactly match loaded store context before reading, caching, or rendering private readiness data |
+| Legacy timestamp containment | Pass | `readOwnerPublicTruthTimestampMs()` accepts only bounded canonical time shapes and maps malformed/throwing values to unavailable freshness |
 
 ## Commands
 
@@ -49,6 +51,7 @@ The implementation keeps the existing `menulist_owner` report path and includes 
 npm run verify:public-truth-check
 npm run verify:owner-business-assistant
 npm run verify:public-truth-tools
+npm run test:owner-public-truth-timestamp-boundary
 npx tsc --noEmit --incremental false
 ```
 

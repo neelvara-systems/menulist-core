@@ -27,6 +27,7 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { getGeneratedEmail } from "@constant/urls";
 import { authOptions } from "@lib/auth";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
 import {
   AUTH_CLAIM_TOKEN_MAX_LENGTH,
   AUTH_CLAIM_TOKEN_MIN_LENGTH,
@@ -515,12 +516,13 @@ export async function POST(request: NextRequest) {
 
     // ━━━ MODE 1: Google OAuth (requires active NextAuth session) ━━━
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email || !session?.user?.id) {
+    const sessionUserId = resolveCurrentSessionUserDocumentId(session);
+    if (!session?.user?.email || !sessionUserId) {
       return claimFailure("Unable to complete account claim.", 401);
     }
 
     const googleEmail = session.user.email.toLowerCase().trim();
-    const googleUserId = normalizeOnboardingUserId(session.user.id);
+    const googleUserId = normalizeOnboardingUserId(sessionUserId);
     if (
       !googleUserId
       || googleUserId === messagingUserDoc.id

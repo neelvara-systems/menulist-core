@@ -2,7 +2,7 @@
 
 **Owner-Facing Name:** Business Health
 **Status:** Current read-only test contract
-**Last Updated:** July 13, 2026
+**Last Updated:** July 27, 2026
 
 ## Verification Script
 
@@ -31,6 +31,8 @@ Cover:
 - persisted current/analytics projection strips Firestore-only and unknown nested fields
 - wrong tenant/store identity and malformed required arrays/maps fail before context-packet composition
 - cached packet identity must match the cache-key tenant, store, and project dimensions
+- persisted guest-feedback projection rejects foreign scope, malformed IDs, invalid rating/status/attention/source/creator combinations, non-persisted or invalid timestamps, impossible business dates, and oversized messages before summary counts or source references
+- valid guest-feedback projection preserves canonical current rows, supports strict persisted timestamp structures from the Functions runtime boundary, and redacts contact details only after admission
 
 ## API Tests
 
@@ -82,6 +84,7 @@ Cover:
 - no action/draft document writes
 - no base64 image storage
 - no unbounded historical session scan on open
+- the guest-feedback summary query remains capped at 81 document reads and admits at most 80 rows after runtime projection
 
 ## Regression Tests
 

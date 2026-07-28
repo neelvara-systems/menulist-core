@@ -9,18 +9,18 @@ const {
     groupHealthSignalDailyDocumentsForTest,
     normalizeHealthSignalDailyDocumentForTest,
     processHealthSignalsForAllStores,
-} = require('../../functions/lib/functions/src/analytics/healthSignalsComputation.js');
+} = require('../../functions/lib/analytics/healthSignalsComputation.js');
 const {
     getTodayLiveStats,
     initializeTodayDoc,
     onChatComplete,
     onFeedbackAdded,
     onRegenerationEvent,
-} = require('../../functions/lib/functions/src/analytics/realtimeTracking.js');
+} = require('../../functions/lib/analytics/realtimeTracking.js');
 const {
     claimStalenessDetectionForTest,
-} = require('../../functions/lib/functions/src/analytics/stalenessCheck.js');
-const { firestoreAdmin } = require('../../functions/lib/functions/src/firebaseAdmin.js');
+} = require('../../functions/lib/analytics/stalenessCheck.js');
+const { firestoreAdmin } = require('../../functions/lib/firebaseAdmin.js');
 const requireFromFunctions = createRequire(require.resolve('../../functions/package.json'));
 const { Timestamp } = requireFromFunctions('firebase-admin/firestore');
 

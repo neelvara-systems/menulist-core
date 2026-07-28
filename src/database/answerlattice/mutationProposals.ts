@@ -69,12 +69,16 @@ const getDocRef = (docId: string) => {
     return doc(answerlatticeFirebaseClient, COLLECTION, normalizedDocId);
 };
 
+const isStoredMutationProposal = (value: unknown): value is AnswerlatticeMutationProposal => (
+    AnswerlatticeStoredMutationProposalSchema.safeParse(value).success
+);
+
 const parseStoredProposal = (documentId: string, value: unknown): AnswerlatticeMutationProposal | null => {
     const parsed = AnswerlatticeStoredMutationProposalSchema.safeParse({
         ...(value && typeof value === 'object' && !Array.isArray(value) ? value : {}),
         id: documentId,
     });
-    if (parsed.success) return parsed.data as AnswerlatticeMutationProposal;
+    if (parsed.success && isStoredMutationProposal(parsed.data)) return parsed.data;
 
     logRuntimeFailure('answerlattice_mutation_proposal_document_invalid', undefined, {
         surface: 'answerlattice_mutation_proposals',

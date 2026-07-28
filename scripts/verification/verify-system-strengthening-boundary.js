@@ -100,13 +100,10 @@ function verifyFreshDalSessions() {
   [
     'src/database/projects/index.ts',
     'src/database/campaigns/index.ts',
-    'src/database/notes/index.ts',
     'src/database/contentFeedback/index.ts',
     'src/database/feedback/index.ts',
     'src/database/changelog/index.ts',
-    'src/database/changelog/feedback.ts',
     'src/database/tickets/index.ts',
-    'src/database/todos/index.ts',
     'src/database/guestFeedback/index.ts',
   ].forEach((route) => {
     const source = read(route);
@@ -114,19 +111,24 @@ function verifyFreshDalSessions() {
     assertNoRegex(source, /\blet\s+session\s*[:=]/, `${route} must not keep a module-level session cache`);
     assertNotIncludes(source, 'session = Boolean(session)', `${route} must not reuse stale module-level sessions`);
   });
+  assert(
+    !fs.existsSync(path.join(ROOT, 'src/database/changelog/feedback.ts')),
+    'retired changelog feedback writer must remain absent',
+  );
 
-  const todoDal = read('src/database/todos/index.ts');
   [
-    'requireTodoScope(session)',
-    'requireTodoMutation(data, { requireId: true })',
-    'parseTodoConfig(docSnap.data())',
-    'return config?.tags || []',
-  ].forEach((token) => {
-    assertIncludes(todoDal, token, `Todos DAL must retain runtime boundary token ${token}`);
+    'src/database/notes/index.ts',
+    'src/lib/notes/noteBoundary.ts',
+    'scripts/verification/test-note-boundary.ts',
+    'src/database/todos/index.ts',
+    'src/lib/todos/todoBoundary.ts',
+    'scripts/verification/test-todo-boundary.ts',
+  ].forEach((relativePath) => {
+    assert(
+      !fs.existsSync(path.join(ROOT, relativePath)),
+      `Retired orphan source must remain absent: ${relativePath}`,
+    );
   });
-  assertNotIncludes(todoDal, 'session: any', 'Todos DAL must not restore erased session scope');
-  assertNotIncludes(todoDal, 'data: any', 'Todos DAL must not restore erased mutation input');
-  assertNotIncludes(todoDal, 'docSnap.data() as TodoConfig', 'Todos DAL must validate persisted config');
 }
 
 function verifyBatchWorkerAdmission() {
@@ -348,6 +350,8 @@ function verifyBillingReadWriteBoundary() {
   [
     'firestoreAdmin.runTransaction(async (transaction) => {',
     'const snapshot = await transaction.get(subscriptionRef);',
+    'const expectedScope = getMenuListSubscriptionEntitlementScope(sub);',
+    'isMenuListSubscriptionInExpectedEntitlementScope(current, expectedScope)',
     'if (current.status !== "past_due")',
     'transaction.set(subscriptionRef, composeServerSubscriptionPayload(update), { merge: true });',
     'safeSyncStorePlanEntitlementFromSubscription',

@@ -4,7 +4,13 @@ import { assertSupportTicketUpdateSucceeded, updateTicket } from '@database/tick
 import { useAppDispatch } from '@hook/useAppDispatch';
 import AddSupportTicket from '@organisms/addSupportTicket';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
-import { calculateSupportTicketSLAStatus, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
+import {
+    calculateSupportTicketSLAStatus,
+    getSupportTicketTimestampMillis,
+    SUPPORT_TICKET_PRIORITY,
+    SUPPORT_TICKET_STATUS,
+    SupportTicketType,
+} from '@type/supportTicket';
 import { updateList } from '@util/utils';
 import { Flex, message, Table, theme, Typography } from 'antd';
 import { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
@@ -77,10 +83,11 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
                 (filters.client ? ticket.clientDetails?.storeName === filters.client : true);
 
             // Date range filter
+            const createdOnMillis = getSupportTicketTimestampMillis(ticket.createdOn);
             const matchesDateRange = filters.dateRange
-                ? ticket.createdOn &&
-                ticket.createdOn.toMillis() >= filters.dateRange[0]?.valueOf() &&
-                ticket.createdOn.toMillis() <= filters.dateRange[1]?.valueOf()
+                ? createdOnMillis !== null
+                && createdOnMillis >= filters.dateRange[0]?.valueOf()
+                && createdOnMillis <= filters.dateRange[1]?.valueOf()
                 : true;
 
             // Tags filter
@@ -97,8 +104,8 @@ const PlatformTicketsView = forwardRef<PlatformTicketsViewRef, PlatformTicketsVi
 
             // Long-running filter (>3 days old and not resolved)
             const matchesLongRunning = filters.longRunning
-                ? ticket.createdOn &&
-                (Date.now() - ticket.createdOn.toMillis()) > (3 * 24 * 60 * 60 * 1000) &&
+                ? createdOnMillis !== null
+                && (Date.now() - createdOnMillis) > (3 * 24 * 60 * 60 * 1000) &&
                 ticket.status !== SUPPORT_TICKET_STATUS.RESOLVED &&
                 ticket.status !== SUPPORT_TICKET_STATUS.CLOSED
                 : true;

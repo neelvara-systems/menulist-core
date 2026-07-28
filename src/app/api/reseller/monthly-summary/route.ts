@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { getResellerProfile } from "@database/reseller/server";
 import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
+import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import {
@@ -12,9 +13,9 @@ import {
 } from "@lib/reseller/resellerMonthlySummary";
 import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
 import type { ResellerProfile } from "@type/reseller";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
-import { applyResellerReadRateLimit } from "../readRateLimit";
+import { applyResellerReadRateLimit, resellerPrivateJson } from "../readRateLimit";
 
 const INDIA_TZ = "Asia/Kolkata";
 const INDIA_UTC_OFFSET_HOURS = -5;
@@ -134,17 +135,17 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     let reportMonth = getCurrentIndiaMonth();
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            return NextResponse.json({ error: "Feature not available." }, { status: 404 });
+            return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
         }
 
         const rateLimitResponse = await applyResellerReadRateLimit(session, "monthly-summary");
         if (rateLimitResponse) return rateLimitResponse;
 
-        const isPlatform = session.user.platformRole === "PLATFORM" || session.platformRole === "PLATFORM";
+        const isPlatform = resolveExactSessionPlatformRole(session) === "PLATFORM";
         const sessionResellerId = session.user.id;
         const parsedMonth = parseMonth(request.nextUrl.searchParams.get("month"));
         if (!parsedMonth) {
-            return NextResponse.json({ error: "Invalid month filter." }, { status: 400 });
+            return resellerPrivateJson({ error: "Invalid month filter." }, { status: 400 });
         }
 
         const { month, start, end } = parsedMonth;
@@ -153,7 +154,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         let currentResellerProfile: ResellerProfile | null = null;
         if (isPlatform) {
             if (!await getCurrentPlatformUser(session)) {
-                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
             }
         } else {
             currentResellerProfile = await getResellerProfile(
@@ -167,7 +168,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 sessionEmail: session.user.email,
                 sessionProfileId: session.user.resellerProfileId,
             })) {
-                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
             }
         }
         let transactionQuery = db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS)
@@ -271,7 +272,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         totals.clientCount = resellers.reduce((sum, row) => sum + row.clientCount, 0);
 
-        return NextResponse.json({
+        return resellerPrivateJson({
             generatedAt: new Date().toISOString(),
             invalidRowCount,
             isPartial: transactionSnapshot.size >= MONTHLY_TRANSACTION_LIMIT || invalidRowCount > 0,
@@ -285,6 +286,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             month: reportMonth,
             ...getBoundedResellerApiStringContext("userId", session.uId || session.user?.id),
         });
-        return NextResponse.json({ error: "Failed to fetch reseller monthly summary." }, { status: 500 });
+        return resellerPrivateJson({ error: "Failed to fetch reseller monthly summary." }, { status: 500 });
     }
 }, { requiredPlatformRole: "RESELLER" });

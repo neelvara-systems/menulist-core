@@ -227,7 +227,7 @@ The feedback request contract requires a bounded request ID and one canonical ca
 | `createAnswerlatticeSupportBoardCard` from feedback review | `answerlattice_supportBoardCards` | addDoc |
 | `getLatestFeedbackForUser` | `feedback` | getDocs (query, limit 1) |
 | `updateContentFeedbackWithAudit` | Protected API client | Validate request/response and preserve bounded retry request ID; no direct Firestore mutation |
-| `executeAnswerlatticeContentFeedback` | `kb_articles`, `answerlattice_faqs`, or `changelog/{tId}/{sId}` plus `{type}_feedback/{tId}/{sId}` and optional `answerlattice_signalEvents` | One Admin transaction: read source/audit/actor state, enforce actor transition, update source/state, create/exact-append audit below cap, and create deterministic signal for an added dislike |
+| `executeAnswerlatticeContentFeedback` | `kb_articles`, `answerlattice_faqs`, or `changelog/{tId}/{sId}` plus `{type}_feedback/{tId}/{sId}` and optional `answerlattice_signalEvents` | Reject missing/coercive actor identity before Admin access. Then one transaction reads source/audit/actor state, enforces actor transition, updates source/state, creates/exact-appends audit below cap, and creates a deterministic signal for an added dislike. Route admission fails closed before this transaction when distributed limiter capacity is unavailable. |
 | `updateContentFeedback` | Router | Routes to above handlers |
 
 ---

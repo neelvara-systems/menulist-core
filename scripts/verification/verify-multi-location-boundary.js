@@ -60,7 +60,7 @@ function verifyOutletActionRoute(content, label, maxBodyToken, limiterToken) {
     'touchDigitalScreenContentVersionForStoreServer',
     'invalidateOwnerBusinessAssistantPacketCache',
   ].forEach((token) => assertIncludes(content, token, label));
-  assertIncludes(content, 'revalidate: (tag) => revalidateTag(tag)', `${label} shared cache invalidation handoff`);
+  assertIncludes(content, 'revalidate: (tag) => revalidateTag(tag, { expire: 0 })', `${label} shared cache invalidation handoff`);
 
   assertOrder(
     content,
@@ -95,9 +95,11 @@ function verifyOutletSessionScopeHelper(helper) {
     'export function normalizeOutletDocumentId(value: unknown): string | null',
     'return documentId === raw && isValidFirestoreDocumentId(documentId) ? documentId : null;',
     'function normalizeOutletSessionDocumentId(value: unknown): OutletSessionDocumentId | null',
-    'export function getOutletSessionScope(session: any): OutletSessionScope | null',
-    'const tenantId = normalizeOutletSessionDocumentId(session?.tId);',
-    'const storeId = normalizeOutletSessionDocumentId(session?.sId);',
+    'function normalizeOutletSessionDocumentIdAliases(values: unknown[]): OutletSessionDocumentId | null',
+    'export function getOutletSessionScope(session: unknown): OutletSessionScope | null',
+    'source.user?.tenantId',
+    'source.user?.storeId',
+    'normalized.every((value) => value?.documentId === first.documentId)',
   ].forEach((token) => assertIncludes(helper, token, 'Outlet session scope helper boundary'));
 }
 
@@ -137,7 +139,8 @@ function verifyProjectIdBoundary(helper, resolver, linkedOutletSaveRoute) {
     'import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";',
     'const outletProjectRef = normalizeMultiOutletProjectId(project.projectId);',
     'const masterProjectRef = normalizeMultiOutletProjectId(project.masterProjectId);',
-    'const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);',
+      'const outletSessionScope = getOutletSessionScope(session);',
+      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(outletSessionScope?.storeDocumentId);',
     'linked_outlet_save_invalid_session_store_scope',
     'const currentStoreId = currentStoreScope.numericId;',
   ].forEach((token) => assertIncludes(linkedOutletSaveRoute, token, 'Linked outlet save shared project ID boundary'));
@@ -420,7 +423,7 @@ function verifyPolicyRoute(policyRoute) {
     'requireAnyStorePermissionForStoreData(',
     'PERMISSIONS.MANAGE_OUTLETS',
     'const [freshStoreSnap, freshTenantSnap] = await Promise.all([',
-    'normalizeStoreSummaryNumericDocumentId(freshStore.tenantId ?? freshStore.tId) !== tenantDocumentId',
+    'normalizeStoreSummaryNumericAliases([freshStore.tenantId, freshStore.tId]) !== tenantDocumentId',
     'freshStore.active === false',
     'isPlatformEntityBlocked(freshStore)',
     'freshTenantSnap.data()?.active === false',
@@ -444,7 +447,7 @@ function verifyPolicyRoute(policyRoute) {
     'isOutletPolicyScopeChangedError(error)',
   ].forEach((token) => assertIncludes(policyRoute, token, 'Outlet policy route boundary'));
   assertNotIncludes(policyRoute, 'tenantRef.get()', 'Outlet policy must not derive tenant storesList outside its transaction');
-  assertIncludes(policyRoute, 'revalidate: (tag) => revalidateTag(tag)', 'Outlet policy route delegates cache invalidation to shared post-commit isolation');
+  assertIncludes(policyRoute, 'revalidate: (tag) => revalidateTag(tag, { expire: 0 })', 'Outlet policy route delegates cache invalidation to shared post-commit isolation');
 
   assertOrder(
     policyRoute,
@@ -474,8 +477,9 @@ function verifyLinkedOutletSaveRoute(route) {
     'validateAPIInput(schema, body)',
     'normalizeMultiOutletProjectId(project.projectId)',
     'normalizeMultiOutletProjectId(project.masterProjectId)',
-    'normalizeMultiOutletNumericDocumentId(session.tId ?? session.user?.tenantId)',
-    'normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId)',
+    'const outletSessionScope = getOutletSessionScope(session);',
+    'normalizeMultiOutletNumericDocumentId(outletSessionScope?.tenantDocumentId)',
+    'normalizeMultiOutletNumericDocumentId(outletSessionScope?.storeDocumentId)',
     'linked_outlet_save_invalid_session_store_scope',
     'const currentStoreId = currentStoreScope.numericId;',
     'verifyTenantAccess(session, tenantId, currentStoreId, request)',
@@ -484,10 +488,10 @@ function verifyLinkedOutletSaveRoute(route) {
     'outlet-save:${userRateLimitHash}:${projectRateLimitHash}',
     'requireAnyStorePermissionForStoreData(',
     'PERMISSIONS.MANAGE_MENU',
-    'Number(outletStore?.tenantId) !== tenantId',
+    'isStorePermissionDataInScope(outletStore, outletStoreScope, tenantScope)',
     'outletStore?.deleted === true',
     'outletStore?.isMaster === true',
-    'Number(masterStore?.tenantId) !== tenantId',
+    'isStorePermissionDataInScope(masterStore, masterStoreScope, tenantScope)',
     'masterStore?.deleted === true',
     'masterStore?.isMaster !== true',
     'isPlatformEntityBlocked(callerStore)',
@@ -532,7 +536,7 @@ function verifyLinkedOutletSaveRoute(route) {
     'await runLinkedOutletPostCommitEffects({',
     'runStorePublicTruthPostCommitEffects({',
     'storeIds: [String(outletStoreId)]',
-    'revalidate: (tag) => revalidateTag(tag)',
+    'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
     'touchDigitalScreenContentVersionForStoreServer(storeId, reason)',
     'invalidateOwnerBusinessAssistantPacketCache({',
     'failedEffectCount: result.failedEffectCount',
@@ -648,7 +652,15 @@ function verifyClientBoundaries(files) {
   ].forEach((token) => assertIncludes(masterUpdateDiff, token, 'Master update awareness Firestore-safe snapshot boundary'));
 
   [
+    'const requestedOutletProject = outletProjectRef.current;',
+    'const requestedMasterProject = masterProjectRef.current;',
+    'const requestedOperationalVersion = latestVersionRef.current;',
+    'const isCurrentAcknowledgement = () => {',
+    'if (!isCurrentAcknowledgement()) return;',
+    'String(session.tId) !== String(tId)',
+    'String(session.sId) !== String(sId)',
     'const newSnapshot = createMasterSnapshot(',
+    'requestedOperationalVersion,',
     'await updateDoc(projectRef, {',
     'masterSnapshot: newSnapshot',
     'onProjectUpdate?.({ masterSnapshot: newSnapshot });',
@@ -1244,6 +1256,7 @@ function verifyMultiLocationBoundary() {
   const renameRoute = read('src/app/api/outlets/rename/route.ts');
   const policyRoute = read('src/app/api/outlets/policy/route.ts');
   const linkedOutletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
+  const projectDeleteRoute = read('src/app/api/projects/delete/route.ts');
   const brandPropagationRoute = read('src/app/api/outlets/brand-propagation/route.ts');
   const brandPropagationDal = read('src/database/multiOutlet/brandPropagation.ts');
   const brandPropagationBoundary = read('src/lib/multiOutlet/brandPropagationBoundary.ts');
@@ -1272,6 +1285,7 @@ function verifyMultiLocationBoundary() {
     onboardingCompensation: read('src/lib/onboarding/compensateFailedOnboarding.ts'),
     onboardingCompensationMapping: read('src/lib/onboarding/compensatedStoreMappings.ts'),
     multiOutletDal: read('src/database/multiOutlet/index.ts'),
+    projectsDal: read('src/database/projects/index.ts'),
     masterUpdateDiff: read('src/lib/multiOutlet/masterUpdateDiff.ts'),
     masterOperationalState: read('src/lib/multiOutlet/masterOperationalState.ts'),
     awarenessHook: read('src/hooks/useMasterUpdateAwareness.ts'),
@@ -1299,6 +1313,27 @@ function verifyMultiLocationBoundary() {
     'request.resource.data.operationalVersion == resource.data.operationalVersion + 1',
     'request.resource.data.lastUpdatedAt == request.time',
   ].forEach((token) => assertIncludes(firestoreRules, token, 'Master operational state rule boundary'));
+  [
+    "get(masterPath).data.get('active', true) != false",
+    "get(masterPath).data.get('deleted', false) != true",
+    '&& !willSoftDelete',
+    '&& !isLinkedToMaster;',
+    'Direct hard deletes would bypass linked-outlet',
+    'an already-linked document is server-write-only',
+  ].forEach((token) => assertIncludes(firestoreRules, token, 'Linked outlet server-write rule boundary'));
+  [
+    'if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && currentProject.masterProjectId)',
+    'await runUpdateProject(',
+    'syncPublicSummary: true',
+  ].forEach((token) => assertIncludes(files.projectsDal, token, 'Linked outlet active-state server route boundary'));
+  [
+    'export const POST = withAuth',
+    'requireAnyStorePermissionForStoreData(',
+    'transaction.get(linkedQuery)',
+    '.where("masterProjectId", "==", projectScope.projectId)',
+    'transaction.set(projectRef, projectUpdate, { merge: true })',
+    'runStorePublicTruthPostCommitEffects({',
+  ].forEach((token) => assertIncludes(projectDeleteRoute, token, 'Atomic master project delete boundary'));
   [
     'parseMasterOperationalState(docSnap.data())',
     'master_update_awareness_signal_invalid',
@@ -1343,6 +1378,7 @@ function verifyMultiLocationBoundary() {
     'sourceStore.isMaster !== true',
     'entries.has(storeScope.documentId)',
     'buildDeterministicOutletProjectId',
+    'uuidv5(masterScope.projectId, uuidv5.URL)',
   ].forEach((token) => assertIncludes(projectPropagationBoundary, token, 'Project propagation source/identity boundary'));
   [
     'const plan = normalizeProjectPropagationPlan(',
@@ -1368,7 +1404,12 @@ function verifyMultiLocationBoundary() {
     'isPlatformSession(session)',
     'getOutletSessionScope(session)',
     'outlet-brand-propagation:${limiterHash}',
+    'failClosedOnProviderError: true',
+    "rateLimit.reason === 'provider_unavailable'",
+    "'Cache-Control': 'private, no-store, max-age=0'",
+    "'X-Content-Type-Options': 'nosniff'",
     'readBoundedJsonBody(request, BRAND_PROPAGATION_MAX_BODY_BYTES',
+    'applyPrivateResponseHeaders(bodyResult.response)',
     'validateAPIInput(schema, bodyResult.data)',
     'normalizeMultiOutletNumericDocumentId(validation.data.tenantId)',
     'normalizeMultiOutletNumericDocumentId(validation.data.masterStoreId)',
@@ -1383,6 +1424,9 @@ function verifyMultiLocationBoundary() {
     'const masterSummary = storesList.find',
     'const canonicalOutletIds = storesList',
     'const queriedStores = new Map(outletSnapshot.docs.map',
+    'masterStore?.tenantId !== tenantScope.numericId',
+    'freshMaster.tenantId !== tenantScope.numericId',
+    'storeData?.tenantId !== tenantScope.numericId',
     'storeData?.active === false',
     'storeData?.deleted === true',
     'normalizeMasterStorePropagationFields(Object.keys(validation.data.values))',
@@ -1392,6 +1436,7 @@ function verifyMultiLocationBoundary() {
     'transaction.get(masterStoreRef)',
     'transaction.get(outletQuery)',
     'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    'if (permissionError) return applyPrivateResponseHeaders(permissionError);',
     'transaction.set(masterStoreRef, { ...propagatedValues, modifiedOn: now }, { merge: true });',
     'transaction.set(outlet.ref, { ...propagatedValues, modifiedOn: now }, { merge: true });',
     ".doc('storesSummary')",
@@ -1421,7 +1466,14 @@ function verifyMultiLocationBoundary() {
     'request.json()',
     'request.resource',
     'const batch = db.batch();',
+    'Number(masterStore?.tenantId)',
+    'Number(freshMaster.tenantId)',
+    'Number(storeData?.tenantId)',
   ].forEach((token) => assertNotIncludes(brandPropagationRoute, token, 'Brand propagation untrusted/raw write boundary'));
+  assert(
+    (brandPropagationRoute.match(/return NextResponse\.json\(/g) || []).length === 1,
+    'Brand propagation keeps NextResponse.json encapsulated by its private response boundary',
+  );
 
   [
     "fetch('/api/outlets/brand-propagation'",
@@ -1530,11 +1582,13 @@ function verifyMultiLocationBoundary() {
 
   [
     'export function normalizeStoreSummaryNumericDocumentId(',
+    'export function normalizeStoreSummaryNumericAliases(',
     'export function normalizeStoreSummaryDate(',
     'export function normalizePlatformStoreSummaryIdentity(',
     'function parseRawStoreSummaryMap(',
     'export function parsePlatformStoreSummary(',
-    "const embeddedStoreId = rawEntry.storeId === undefined",
+    'const tenantId = normalizeStoreSummaryNumericAliases([rawEntry.tId, rawEntry.tenantId]);',
+    'normalizeStoreSummaryNumericAliases([rawEntry.storeId, rawEntry.sId])',
     'const identity = normalizePlatformStoreSummaryIdentity(rawStoreId, rawEntry);',
   ].forEach((token) => assertIncludes(storeSummaryBoundary, token, 'Shared store-summary runtime boundary'));
   assert(
@@ -1633,7 +1687,7 @@ function verifyMultiLocationBoundary() {
     'export const mergeStoreSummaryFields',
   ].forEach((token) => assertNotIncludes(platformSummaryDal, token, 'Platform summary legacy counter path'));
 
-  assertIncludes(tenantsDal, "data.tenantId = await reserveNextPlatformEntityId('tenant');", 'Manual tenant atomic ID reservation');
+  assertIncludes(tenantsDal, "nextData.tenantId = await reserveNextPlatformEntityId('tenant');", 'Manual tenant atomic ID reservation');
   assertIncludes(storesDal, "data.storeId = await reserveNextPlatformEntityId('store');", 'Manual store atomic ID reservation');
   [
     'const [storeSnapshot, tenantSnapshot] = await Promise.all([',
@@ -1655,6 +1709,10 @@ function verifyMultiLocationBoundary() {
   [
     'export const POST = withAuth(async (request, session) => {',
     'key: `tenant-name:${limiterHash}`',
+    'failClosedOnProviderError: true',
+    "rateLimit.reason === 'provider_unavailable'",
+    "'Cache-Control': 'private, no-store, max-age=0'",
+    "'X-Content-Type-Options': 'nosniff'",
     'readBoundedJsonBody(request, TENANT_NAME_MAX_BODY_BYTES',
     'validateAPIInput(schema, bodyResult.data)',
     'requireAnyStorePermissionForStoreData(',

@@ -710,8 +710,8 @@ export default async function AnswerlatticeProductPage() {
             <main className="al-page-flow">
                 <PageHero
                     eyebrow="Product overview"
-                    title="Everything your SaaS needs to support users before you hire a support team."
-                    description="Every product owner has knowledge scattered across docs, tickets, releases, screenshots, recordings, notes, product context, and repeated replies. AnswerLattice turns it into a standard support knowledge structure with approved answers for your help widget, help center, FAQs, and future AI agents."
+                    title="One governed support layer for the questions your users ask most."
+                    description="AnswerLattice turns scattered product knowledge into approved answers for your in-app widget and hosted help, keeps missing coverage visible, and gives founders a review path before guidance becomes official."
                     basePath={basePath}
                     align="left"
                     actions={[

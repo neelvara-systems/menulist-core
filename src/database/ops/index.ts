@@ -14,6 +14,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { assertCurrentPlatformAccess } from '@lib/auth/currentPlatformAccessClient';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import { normalizeOpsTimestamp } from '@lib/ops/opsTimestamp';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, OpsConfig, OpsControlRoomSnapshot, SystemState } from '@lib/ops/types';
 import {
   collection,
@@ -54,7 +55,7 @@ function normalizeOpsAlert(id: string, raw: unknown): OpsAlert {
     severity,
     title: buildOpsStoredTextSummary('Alert title', 'alertTitle', data.title) || 'Alert title unavailable.',
     message: buildOpsStoredTextSummary('Alert message', 'alertMessage', data.message) || 'Alert message unavailable.',
-    timestamp: data.timestamp || null,
+    timestamp: normalizeOpsTimestamp(data.timestamp),
     acknowledged: data.acknowledged === true,
     tId: cleanOpsField(data.tId, 160, 'system'),
     sId: cleanOpsField(data.sId, 160, 'system'),
@@ -69,14 +70,13 @@ function normalizeOpsAlert(id: string, raw: unknown): OpsAlert {
  * Get current system state: SAFE_MODE status, alert mute, store health summary.
  * Firestore reads: 2 (ops_config/system + stores count query)
  */
-export async function getSystemState(): Promise<SystemState> {
+async function getSystemState(): Promise<SystemState> {
   const result: SystemState = {
     safeModeActive: false,
     safeModeReason: null,
     safeModeActivatedAt: null,
     alertsMuted: false,
     alertsMutedUntil: null,
-    storeHealthSummary: { ok: 0, warning: 0, failed: 0 },
     lastAlertTitle: null,
     lastAlertTimestamp: null,
   };
@@ -87,13 +87,13 @@ export async function getSystemState(): Promise<SystemState> {
     const opsDoc = await getDoc(opsConfigRef);
 
     if (opsDoc.exists()) {
-      const data = opsDoc.data() as OpsConfig;
+      const data = opsDoc.data() as Partial<OpsConfig>;
       result.safeModeActive = data.SAFE_MODE === true;
       result.safeModeReason = buildOpsStoredTextSummary('SAFE_MODE reason', 'safeModeReason', data.reason);
-      result.safeModeActivatedAt = data.activatedAt || null;
+      result.safeModeActivatedAt = normalizeOpsTimestamp(data.activatedAt);
 
-      if (data.alertsMutedUntil) {
-        const mutedUntil = data.alertsMutedUntil;
+      const mutedUntil = normalizeOpsTimestamp(data.alertsMutedUntil);
+      if (mutedUntil) {
         result.alertsMuted = mutedUntil.toMillis() > Date.now();
         result.alertsMutedUntil = mutedUntil;
       }
@@ -107,7 +107,7 @@ export async function getSystemState(): Promise<SystemState> {
     if (!alertsSnap.empty) {
       const lastAlert = alertsSnap.docs[0].data();
       result.lastAlertTitle = buildOpsStoredTextSummary('Alert title', 'lastAlertTitle', lastAlert.title);
-      result.lastAlertTimestamp = lastAlert.timestamp || null;
+      result.lastAlertTimestamp = normalizeOpsTimestamp(lastAlert.timestamp);
     }
     return result;
   } catch (error) {
@@ -124,12 +124,10 @@ export async function getSystemState(): Promise<SystemState> {
  * Get adoption metrics for last 24h.
  * Firestore reads: ~2 (count queries)
  */
-export async function getAdoptionPulse(): Promise<AdoptionPulse> {
+async function getAdoptionPulse(): Promise<AdoptionPulse> {
   const result: AdoptionPulse = {
     newStores24h: 0,
-    publishedToday: 0,
     activeStores7d: 0,
-    feedbackToday: 0,
   };
 
   try {
@@ -169,10 +167,8 @@ export async function getAdoptionPulse(): Promise<AdoptionPulse> {
  * Get store integrity signals.
  * Firestore reads: ~2 (count queries)
  */
-export async function getIntegritySignals(): Promise<IntegritySignals> {
+async function getIntegritySignals(): Promise<IntegritySignals> {
   const result: IntegritySignals = {
-    noProject: 0,
-    unpublished48h: 0,
     noPublish60d: 0,
   };
 
@@ -204,7 +200,7 @@ export async function getIntegritySignals(): Promise<IntegritySignals> {
  * Get recent alerts.
  * Firestore reads: 1 (limit 10)
  */
-export async function getRecentAlerts(maxResults: number = 10): Promise<OpsAlert[]> {
+async function getRecentAlerts(maxResults: number = 10): Promise<OpsAlert[]> {
   try {
     const boundedMaxResults = Number.isSafeInteger(maxResults)
       ? Math.min(Math.max(maxResults, 1), 30)

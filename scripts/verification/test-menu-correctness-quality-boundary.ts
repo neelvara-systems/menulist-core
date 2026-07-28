@@ -84,6 +84,62 @@ assert.equal(
     'legacy projects without project.languages must use extracted primary-language evidence',
 );
 
+const missingItemId = mceValidate({
+    projectData: {
+        files: [file([{
+            active: true,
+            available: true,
+            category: 'category-1',
+            name: { en: 'Missing identifier' },
+            price: '100',
+        }])],
+        languages: ['en'],
+    },
+    isOutlet: false,
+});
+assert(
+    missingItemId.errors.some((error) => (
+        error.ruleId === 'NO_DUPLICATE_IDS'
+        && error.affectedItems.includes('item:0:0')
+    )),
+    'MCE must not verify items without stable identifiers',
+);
+
+const malformedAvailability = mceValidate({
+    projectData: {
+        files: [file([item('malformed-availability', '100', { available: 'yes' })])],
+        languages: ['en'],
+    },
+    isOutlet: false,
+});
+assert(
+    malformedAvailability.errors.some((error) => error.ruleId === 'DISABLED_ITEM_HIDDEN'),
+    'MCE must reject non-boolean item availability flags',
+);
+
+const malformedOutletOverrides = mceValidate({
+    projectData: {
+        ...validProject,
+        overrides: { items: [] },
+    },
+    isOutlet: true,
+    masterProjectId: 'master-1',
+});
+assert(
+    malformedOutletOverrides.errors.some((error) => error.ruleId === 'OVERRIDE_PRESERVED'),
+    'MCE must reject malformed outlet override maps',
+);
+
+assert.doesNotThrow(
+    () => mceValidate({ projectData: 'malformed-project', isOutlet: false }),
+    'MCE must failure-contain malformed persisted project input',
+);
+assert.equal(
+    mceValidate({ projectData: 'malformed-project', isOutlet: false }).verified,
+    false,
+    'MCE must not verify malformed persisted project input',
+);
+
 const multilingualFiles = [file([
     item('one', '100', { description: { en: 'English only' }, name: { en: 'One' } }),
     item('two', '110', { description: { en: 'English', hi: 'हिंदी' }, name: { en: 'Two', hi: 'दो' } }),
@@ -101,6 +157,8 @@ assert.equal(getTrustSignalFreshnessText('2026-07-16T13:00:00.000Z', now), null)
 assert.equal(getTrustSignalFreshnessText('2026-05-01T12:00:00.000Z', now), null);
 
 assert.equal(isMenuSnapshotPayloadWithinLimit({ items: [{ id: 'small' }] }), true);
+assert.equal(isMenuSnapshotPayloadWithinLimit(undefined), false);
+assert.equal(isMenuSnapshotPayloadWithinLimit(() => undefined), false);
 assert.equal(
     isMenuSnapshotPayloadWithinLimit({ text: 'x'.repeat(MENU_SNAPSHOT_MAX_ESTIMATED_BYTES + 1) }),
     false,
