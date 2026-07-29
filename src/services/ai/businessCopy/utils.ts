@@ -2,10 +2,24 @@ import { getAllSemanticAttributes } from '@lib/infrastructure/semantics/attribut
 
 export function firstText(value: unknown): string {
     if (typeof value === 'string') return value.trim();
-    if (value && typeof value === 'object') {
-        const firstValue = Object.values(value as Record<string, unknown>).find((entry) => typeof entry === 'string' && entry.trim());
-        return typeof firstValue === 'string' ? firstValue.trim() : '';
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+
+    let keys: string[];
+    try {
+        keys = Object.keys(value).slice(0, 64);
+    } catch {
+        return '';
     }
+
+    for (const key of keys) {
+        try {
+            const entry = Reflect.get(value, key);
+            if (typeof entry === 'string' && entry.trim()) return entry.trim();
+        } catch {
+            // A malformed localized field must not hide later valid translations.
+        }
+    }
+
     return '';
 }
 

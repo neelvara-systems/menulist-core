@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions';
-import { getBoundedFunctionsErrorName } from '../utils/boundedErrorContext';
+import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
 
 export const analyticsLogger = functions.logger;
 
@@ -8,13 +8,11 @@ export function getAnalyticsErrorContext(error: unknown): {
     code?: string;
     status?: number;
 } {
-    if (!error || typeof error !== 'object') return {};
-
-    const record = error as Record<string, unknown>;
+    const context = getBoundedFunctionsErrorContext(error);
     return {
-        name: getBoundedFunctionsErrorName(error),
-        code: typeof record.code === 'string' ? record.code : undefined,
-        status: typeof record.status === 'number' ? record.status : undefined,
+        name: context.sourceErrorName,
+        code: context.sourceErrorCode,
+        status: context.sourceStatusCode,
     };
 }
 
@@ -22,7 +20,15 @@ export function getAnalyticsIdContext(value: unknown): {
     present: boolean;
     length: number;
 } {
-    const normalized = typeof value === 'string' ? value : String(value ?? '');
+    const normalized = typeof value === 'string'
+        ? value
+        : (
+            (typeof value === 'number' && Number.isFinite(value))
+            || typeof value === 'bigint'
+            || typeof value === 'boolean'
+        )
+            ? String(value)
+            : '';
     return {
         present: normalized.length > 0,
         length: normalized.length,

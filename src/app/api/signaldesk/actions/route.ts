@@ -10,6 +10,8 @@ import {
     parseSignalDeskJsonBody,
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
+    signalDeskPrivateJson,
+    withSignalDeskPrivateHeaders,
 } from "@lib/signaldesk/apiGuards";
 import { recordSignalDeskMobileActionBlockedServer } from "@lib/signaldesk/server";
 import {
@@ -90,7 +92,6 @@ import {
 import type { SignalDeskPermission } from "@type/signaldesk";
 import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 // A bounded volume run can make up to 45 provider calls with per-pair dependencies
@@ -1656,7 +1657,7 @@ const validatePayload = <Schema extends z.ZodTypeAny>(schema: Schema, payload: u
             session: context.session,
         });
         return {
-            response: NextResponse.json({ error: "Invalid input" }, { status: 400 }),
+            response: signalDeskPrivateJson({ error: "Invalid input" }, { status: 400 }),
             success: false as const,
         };
     }
@@ -1668,17 +1669,17 @@ const validatePayload = <Schema extends z.ZodTypeAny>(schema: Schema, payload: u
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     const disabled = requireSignalDeskRuntime();
-    if (disabled) return disabled;
+    if (disabled) return withSignalDeskPrivateHeaders(disabled);
 
     const body = await parseSignalDeskJsonBody({ request, session });
-    if (!body.success) return body.response;
+    if (!body.success) return withSignalDeskPrivateHeaders(body.response);
 
     const envelope = validatePayload(ActionEnvelopeSchema, body.data, {
         action: "action-envelope",
         request,
         session,
     });
-    if (!envelope.success) return envelope.response;
+    if (!envelope.success) return withSignalDeskPrivateHeaders(envelope.response);
 
     const rateLimit = await applySignalDeskRateLimit({
         feature: envelope.data.action === "run-ai-volume-batch"
@@ -1690,10 +1691,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         request,
         session,
     });
-    if (rateLimit) return rateLimit;
+    if (rateLimit) return withSignalDeskPrivateHeaders(rateLimit);
 
     const accessResult = await requireSignalDeskAccess(request, session, permissionForAction(envelope.data.action));
-    if ("response" in accessResult) return accessResult.response;
+    if ("response" in accessResult) return withSignalDeskPrivateHeaders(accessResult.response);
 
     if (isSignalDeskMobileRequest(request)) {
         const actionClass = SIGNALDESK_MOBILE_ACTION_CLASS[envelope.data.action] || "configure";
@@ -1702,12 +1703,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             action: envelope.data.action,
             actionClass,
         });
-        return NextResponse.json({ actionClass, error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
+        return signalDeskPrivateJson({ actionClass, error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
     }
 
     try {
         if (envelope.data.action === "seed-defaults") {
-            return NextResponse.json({ data: await seedSignalDeskDefaultsServer(accessResult.access) });
+            return signalDeskPrivateJson({ data: await seedSignalDeskDefaultsServer(accessResult.access) });
         }
         if (envelope.data.action === "create-source-policy") {
             const payload = validatePayload(SignalDeskSourcePolicyCreateSchema, envelope.data.payload, {
@@ -1716,7 +1717,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskSourcePolicyServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskSourcePolicyServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "renew-source-policy") {
             const payload = validatePayload(SignalDeskSourcePolicyRenewSchema, envelope.data.payload, {
@@ -1725,7 +1726,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await renewSignalDeskSourcePolicyServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await renewSignalDeskSourcePolicyServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "import-targets") {
             const payload = validatePayload(SignalDeskManualTargetImportSchema, envelope.data.payload, {
@@ -1734,7 +1735,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await importSignalDeskTargetsServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await importSignalDeskTargetsServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "score-target") {
             const payload = validatePayload(TargetSchema, envelope.data.payload, {
@@ -1743,7 +1744,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await scoreSignalDeskTargetServer(accessResult.access, payload.data.targetId) });
+            return signalDeskPrivateJson({ data: await scoreSignalDeskTargetServer(accessResult.access, payload.data.targetId) });
         }
         if (envelope.data.action === "create-evidence") {
             const payload = validatePayload(TargetSchema, envelope.data.payload, {
@@ -1752,7 +1753,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskEvidenceServer(accessResult.access, payload.data.targetId) });
+            return signalDeskPrivateJson({ data: await createSignalDeskEvidenceServer(accessResult.access, payload.data.targetId) });
         }
         if (envelope.data.action === "create-draft") {
             const payload = validatePayload(DraftSchema, envelope.data.payload, {
@@ -1761,7 +1762,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskDraftServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskDraftServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-approval") {
             const payload = validatePayload(ReviewApprovalSchema, envelope.data.payload, {
@@ -1770,7 +1771,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskApprovalServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await reviewSignalDeskApprovalServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "export-message") {
             const payload = validatePayload(ExportMessageSchema, envelope.data.payload, {
@@ -1779,7 +1780,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await exportSignalDeskMessageServer(accessResult.access, payload.data.approvalId) });
+            return signalDeskPrivateJson({ data: await exportSignalDeskMessageServer(accessResult.access, payload.data.approvalId) });
         }
         if (envelope.data.action === "record-manual-contact") {
             const payload = validatePayload(ManualContactSchema, envelope.data.payload, {
@@ -1788,7 +1789,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({
+            return signalDeskPrivateJson({
                 data: await recordSignalDeskManualContactServer(accessResult.access, {
                     idempotencyKey: payload.data.idempotencyKey,
                     note: payload.data.note,
@@ -1807,7 +1808,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await captureSignalDeskReplyServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await captureSignalDeskReplyServer(accessResult.access, {
                 conversationId: payload.data.conversationId,
                 idempotencyKey: payload.data.idempotencyKey,
                 message: payload.data.message,
@@ -1821,9 +1822,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             if (!payload.data.channel || !payload.data.outcomeType || !payload.data.source) {
-                return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+                return signalDeskPrivateJson({ error: "Invalid input" }, { status: 400 });
             }
-            return NextResponse.json({
+            return signalDeskPrivateJson({
                 data: await recordSignalDeskOutcomeServer(accessResult.access, {
                     channel: payload.data.channel,
                     evidenceRef: payload.data.evidenceRef,
@@ -1846,9 +1847,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             if (!payload.data.channel || !payload.data.targetId) {
-                return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+                return signalDeskPrivateJson({ error: "Invalid input" }, { status: 400 });
             }
-            return NextResponse.json({
+            return signalDeskPrivateJson({
                 data: await createSignalDeskRouteTokenServer(accessResult.access, {
                     actionId: payload.data.actionId,
                     channel: payload.data.channel,
@@ -1867,9 +1868,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             if (!payload.data.reason || !payload.data.routeTokenId) {
-                return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+                return signalDeskPrivateJson({ error: "Invalid input" }, { status: 400 });
             }
-            return NextResponse.json({
+            return signalDeskPrivateJson({
                 data: await revokeSignalDeskRouteTokenServer(accessResult.access, {
                     reason: payload.data.reason,
                     routeTokenId: payload.data.routeTokenId,
@@ -1883,7 +1884,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await runSignalDeskSourceProviderServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await runSignalDeskSourceProviderServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "run-ai-assist") {
             const payload = validatePayload(AiAssistSchema, envelope.data.payload, {
@@ -1892,7 +1893,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await runSignalDeskAiAssistServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await runSignalDeskAiAssistServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "run-ai-volume-batch") {
             const payload = validatePayload(AiVolumeBatchSchema, envelope.data.payload, {
@@ -1901,7 +1902,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await runSignalDeskAiVolumeBatchServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await runSignalDeskAiVolumeBatchServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-ai-shadow-run") {
             const payload = validatePayload(AiShadowReviewSchema, envelope.data.payload, {
@@ -1910,7 +1911,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskAiShadowRunServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await reviewSignalDeskAiShadowRunServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "prepare-channel-handoff") {
             const payload = validatePayload(ChannelActionSchema, envelope.data.payload, {
@@ -1919,7 +1920,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await prepareSignalDeskChannelHandoffServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await prepareSignalDeskChannelHandoffServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-channel-window-state") {
             const payload = validatePayload(ChannelWindowStateSchema, envelope.data.payload, {
@@ -1929,9 +1930,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
             if (!payload.success) return payload.response;
             if (!payload.data.channel || !payload.data.idempotencyKey || !payload.data.source || !payload.data.status) {
-                return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+                return signalDeskPrivateJson({ error: "Invalid input" }, { status: 400 });
             }
-            return NextResponse.json({ data: await upsertSignalDeskChannelWindowStateServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await upsertSignalDeskChannelWindowStateServer(accessResult.access, {
                 channel: payload.data.channel,
                 expiresAt: payload.data.expiresAt,
                 idempotencyKey: payload.data.idempotencyKey,
@@ -1948,7 +1949,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await sendSignalDeskApprovedMessageServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await sendSignalDeskApprovedMessageServer(accessResult.access, {
                 approvalId: payload.data.approvalId,
                 channel: payload.data.channel,
             }) });
@@ -1960,7 +1961,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskProviderAccountServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskProviderAccountServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-budget-policy") {
             const payload = validatePayload(BudgetPolicySchema, envelope.data.payload, {
@@ -1969,7 +1970,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskBudgetPolicyServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskBudgetPolicyServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-connector-setting") {
             const payload = validatePayload(ConnectorSettingSchema, envelope.data.payload, {
@@ -1978,7 +1979,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskConnectorSettingServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskConnectorSettingServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-model-route") {
             const payload = validatePayload(ModelRouteSchema, envelope.data.payload, {
@@ -1987,7 +1988,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskModelRouteServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskModelRouteServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-enrichment-waterfall") {
             const payload = validatePayload(EnrichmentWaterfallSchema, envelope.data.payload, {
@@ -1996,7 +1997,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskEnrichmentWaterfallServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskEnrichmentWaterfallServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-audience-segment") {
             const payload = validatePayload(AudienceSegmentSchema, envelope.data.payload, {
@@ -2005,7 +2006,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskAudienceSegmentServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskAudienceSegmentServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "recommend-market-pod-plan") {
             const payload = validatePayload(MarketPodRecommendationSchema, envelope.data.payload, {
@@ -2014,7 +2015,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await recommendSignalDeskMarketPodPlanServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await recommendSignalDeskMarketPodPlanServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-market-pod") {
             const payload = validatePayload(MarketPodReviewSchema, envelope.data.payload, {
@@ -2023,7 +2024,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskMarketPodServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await reviewSignalDeskMarketPodServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-sender-domain") {
             const payload = validatePayload(SenderDomainSchema, envelope.data.payload, {
@@ -2032,7 +2033,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({
+            return signalDeskPrivateJson({
                 data: await upsertSignalDeskSenderDomainServer(accessResult.access, {
                     authenticationState: payload.data.authenticationState,
                     bounceRate: payload.data.bounceRate,
@@ -2054,7 +2055,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskSelfServiceCtaServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskSelfServiceCtaServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-daily-growth-mission") {
             const payload = validatePayload(DailyGrowthMissionSchema, envelope.data.payload, {
@@ -2063,7 +2064,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskDailyGrowthMissionServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskDailyGrowthMissionServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-growth-mission") {
             const payload = validatePayload(GrowthMissionReviewSchema, envelope.data.payload, {
@@ -2072,7 +2073,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskGrowthMissionServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await reviewSignalDeskGrowthMissionServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-experiment-card") {
             const payload = validatePayload(ExperimentCardSchema, envelope.data.payload, {
@@ -2081,7 +2082,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskExperimentCardServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskExperimentCardServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-experiment-card") {
             const payload = validatePayload(ExperimentReviewSchema, envelope.data.payload, {
@@ -2090,7 +2091,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskExperimentCardServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await reviewSignalDeskExperimentCardServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-offer-cta") {
             const payload = validatePayload(OfferCtaSchema, envelope.data.payload, {
@@ -2099,7 +2100,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskOfferCtaServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskOfferCtaServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "qualify-revenue-account") {
             const payload = validatePayload(RevenueAccountQualificationSchema, envelope.data.payload, {
@@ -2108,7 +2109,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await qualifySignalDeskRevenueAccountServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await qualifySignalDeskRevenueAccountServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-commercial-opportunity") {
             const payload = validatePayload(CommercialOpportunitySchema, envelope.data.payload, {
@@ -2117,7 +2118,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskCommercialOpportunityServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskCommercialOpportunityServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-commercial-offer") {
             const payload = validatePayload(CommercialOfferSchema, envelope.data.payload, {
@@ -2126,7 +2127,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskCommercialOfferServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskCommercialOfferServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-operating-envelope") {
             const payload = validatePayload(OperatingEnvelopeSchema, envelope.data.payload, {
@@ -2135,7 +2136,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskOperatingEnvelopeServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskOperatingEnvelopeServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "refresh-activation-watch") {
             const payload = validatePayload(ActivationWatchSchema, envelope.data.payload, {
@@ -2144,7 +2145,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await refreshSignalDeskActivationWatchServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await refreshSignalDeskActivationWatchServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-reply-playbook") {
             const payload = validatePayload(ReplyPlaybookSchema, envelope.data.payload, {
@@ -2153,7 +2154,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskReplyPlaybookServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskReplyPlaybookServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-source-quality-snapshot") {
             const payload = validatePayload(SourceQualitySnapshotSchema, envelope.data.payload, {
@@ -2162,7 +2163,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskSourceQualitySnapshotServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskSourceQualitySnapshotServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-research-agent-run") {
             const payload = validatePayload(ResearchAgentRunSchema, envelope.data.payload, {
@@ -2171,7 +2172,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskResearchAgentRunServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskResearchAgentRunServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "refresh-provider-source-retention") {
             const payload = validatePayload(ProviderSourceRetentionRefreshSchema, envelope.data.payload, {
@@ -2180,7 +2181,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await refreshSignalDeskProviderSourceRetentionServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await refreshSignalDeskProviderSourceRetentionServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-weekly-strategist-memo") {
             const payload = validatePayload(WeeklyStrategistMemoSchema, envelope.data.payload, {
@@ -2189,7 +2190,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskWeeklyStrategistMemoServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskWeeklyStrategistMemoServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-provider-evaluation") {
             const payload = validatePayload(ProviderEvaluationSchema, envelope.data.payload, {
@@ -2198,7 +2199,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskProviderEvaluationServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskProviderEvaluationServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "run-enrichment-waterfall") {
             const payload = validatePayload(RunWaterfallSchema, envelope.data.payload, {
@@ -2207,7 +2208,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await runSignalDeskEnrichmentWaterfallServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await runSignalDeskEnrichmentWaterfallServer(accessResult.access, {
                 idempotencyKey: payload.data.idempotencyKey,
                 targetId: payload.data.targetId,
                 waterfallId: payload.data.waterfallId,
@@ -2220,7 +2221,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskApprovalPacketServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskApprovalPacketServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-sequencer-handoff") {
             const payload = validatePayload(SequencerHandoffSchema, envelope.data.payload, {
@@ -2229,7 +2230,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskSequencerHandoffServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskSequencerHandoffServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "send-owned-sequence-step") {
             const payload = validatePayload(OwnedSequenceStepSchema, envelope.data.payload, {
@@ -2238,7 +2239,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await sendSignalDeskOwnedSequenceStepServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await sendSignalDeskOwnedSequenceStepServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-content-source") {
             const payload = validatePayload(ContentSourceSchema, envelope.data.payload, {
@@ -2247,7 +2248,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskContentSourceServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await upsertSignalDeskContentSourceServer(accessResult.access, {
                 contentSourceId: payload.data.contentSourceId,
                 defaultAudience: payload.data.defaultAudience,
                 defaultMarketPodId: payload.data.defaultMarketPodId,
@@ -2265,7 +2266,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskProofPermissionServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await upsertSignalDeskProofPermissionServer(accessResult.access, {
                 evidenceRef: payload.data.evidenceRef,
                 expiresAt: payload.data.expiresAt,
                 grantedAt: payload.data.grantedAt,
@@ -2284,7 +2285,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskContentAssetServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await createSignalDeskContentAssetServer(accessResult.access, {
                 canonicalMessage: payload.data.canonicalMessage,
                 contentAssetId: payload.data.contentAssetId,
                 ctaId: payload.data.ctaId,
@@ -2310,7 +2311,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskContentAssetServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await reviewSignalDeskContentAssetServer(accessResult.access, {
                 contentAssetId: payload.data.contentAssetId,
                 idempotencyKey: payload.data.idempotencyKey,
                 reason: payload.data.reason,
@@ -2329,7 +2330,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 contentAssetId: payload.data.contentAssetId,
                 idempotencyKey: payload.data.idempotencyKey,
             });
-            return NextResponse.json({ data: { drafts } });
+            return signalDeskPrivateJson({ data: { drafts } });
         }
         if (envelope.data.action === "review-content-distribution-draft") {
             const payload = validatePayload(ContentDraftReviewSchema, envelope.data.payload, {
@@ -2338,7 +2339,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskContentDistributionDraftServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await reviewSignalDeskContentDistributionDraftServer(accessResult.access, {
                 approvalStatus: payload.data.approvalStatus,
                 contentDraftId: payload.data.contentDraftId,
                 idempotencyKey: payload.data.idempotencyKey,
@@ -2352,7 +2353,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await scheduleSignalDeskContentDistributionDraftServer(accessResult.access, {
+            return signalDeskPrivateJson({ data: await scheduleSignalDeskContentDistributionDraftServer(accessResult.access, {
                 contentDraftId: payload.data.contentDraftId,
                 idempotencyKey: payload.data.idempotencyKey,
                 scheduledFor: payload.data.scheduledFor,
@@ -2366,8 +2367,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            if (!payload.data.channel || !payload.data.contentAssetId || !payload.data.engagementQuality || !payload.data.idempotencyKey) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
-            return NextResponse.json({ data: await recordSignalDeskContentPerformanceServer(accessResult.access, {
+            if (!payload.data.channel || !payload.data.contentAssetId || !payload.data.engagementQuality || !payload.data.idempotencyKey) return signalDeskPrivateJson({ error: "Invalid input" }, { status: 400 });
+            return signalDeskPrivateJson({ data: await recordSignalDeskContentPerformanceServer(accessResult.access, {
                 activations: payload.data.activations || 0, channel: payload.data.channel, clicks: payload.data.clicks || 0,
                 contentAssetId: payload.data.contentAssetId, contentDraftId: payload.data.contentDraftId,
                 currentListSubmissions: payload.data.currentListSubmissions || 0, engagementQuality: payload.data.engagementQuality,
@@ -2382,7 +2383,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskTrustPartnerProfileServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskTrustPartnerProfileServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-trust-partner-niche-test") {
             const payload = validatePayload(TrustPartnerNicheTestSchema, envelope.data.payload, {
@@ -2391,7 +2392,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskTrustPartnerNicheTestServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskTrustPartnerNicheTestServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "create-trust-partner-brief") {
             const payload = validatePayload(TrustPartnerBriefSchema, envelope.data.payload, {
@@ -2400,7 +2401,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await createSignalDeskTrustPartnerBriefServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await createSignalDeskTrustPartnerBriefServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "review-trust-partner-deal") {
             const payload = validatePayload(TrustPartnerDealSchema, envelope.data.payload, {
@@ -2409,7 +2410,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskTrustPartnerDealServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await reviewSignalDeskTrustPartnerDealServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "record-trust-partner-deliverable") {
             const payload = validatePayload(TrustPartnerDeliverableSchema, envelope.data.payload, {
@@ -2418,7 +2419,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await recordSignalDeskTrustPartnerDeliverableServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await recordSignalDeskTrustPartnerDeliverableServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "record-trust-partner-metrics") {
             const payload = validatePayload(TrustPartnerMetricsSchema, envelope.data.payload, {
@@ -2427,8 +2428,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            if (!payload.data.commentQuality || !payload.data.idempotencyKey || !payload.data.partnerId) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
-            return NextResponse.json({ data: await recordSignalDeskTrustPartnerMetricsServer(accessResult.access, {
+            if (!payload.data.commentQuality || !payload.data.idempotencyKey || !payload.data.partnerId) return signalDeskPrivateJson({ error: "Invalid input" }, { status: 400 });
+            return signalDeskPrivateJson({ data: await recordSignalDeskTrustPartnerMetricsServer(accessResult.access, {
                 activations: payload.data.activations || 0, commentQuality: payload.data.commentQuality,
                 comments: payload.data.comments || 0, currentListSubmissions: payload.data.currentListSubmissions || 0,
                 deliverableId: payload.data.deliverableId, idempotencyKey: payload.data.idempotencyKey,
@@ -2442,7 +2443,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await reviewSignalDeskTrustPartnerRenewalServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await reviewSignalDeskTrustPartnerRenewalServer(accessResult.access, payload.data) });
         }
         if (envelope.data.action === "upsert-team-member") {
             const payload = validatePayload(TeamMemberSchema, envelope.data.payload, {
@@ -2451,7 +2452,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 session,
             });
             if (!payload.success) return payload.response;
-            return NextResponse.json({ data: await upsertSignalDeskTeamMemberServer(accessResult.access, payload.data) });
+            return signalDeskPrivateJson({ data: await upsertSignalDeskTeamMemberServer(accessResult.access, payload.data) });
         }
 
         const payload = validatePayload(CaptureDemandSignalSchema, envelope.data.payload, {
@@ -2460,7 +2461,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             session,
         });
         if (!payload.success) return payload.response;
-        return NextResponse.json({
+        return signalDeskPrivateJson({
             data: await captureSignalDeskDemandSignalServer(accessResult.access, {
                 idempotencyKey: payload.data.idempotencyKey,
                 signalType: payload.data.signalType,
@@ -2481,6 +2482,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             },
         );
         const message = getSafeActionErrorMessage(error);
-        return NextResponse.json({ error: message }, { status: message === "SignalDesk action failed" ? 500 : 400 });
+        return signalDeskPrivateJson({ error: message }, { status: message === "SignalDesk action failed" ? 500 : 400 });
     }
 });

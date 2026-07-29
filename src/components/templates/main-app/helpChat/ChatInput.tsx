@@ -24,6 +24,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuImage, LuMessageSquarePlus, LuSend, LuX } from 'react-icons/lu';
 import { getBoundedHelpChatStringContext, logHelpChatFailure } from './helpChatDiagnostics';
 import { ChatMode } from './types';
+import { clearDraft } from './chatUtils';
 
 const { TextArea } = Input;
 
@@ -106,20 +107,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
             // Clear selected image after sending (no URL revocation needed for base64)
             setSelectedImage(null);
             
-            // Clear draft after sending
-            try {
-                if (draftKeys) {
-                    localStorage.removeItem(draftKeys.draftKey);
-                    localStorage.removeItem(draftKeys.imageDraftKey);
-                }
-                localStorage.removeItem(legacyDraftKeys.draftKey);
-                localStorage.removeItem(legacyDraftKeys.imageDraftKey);
-            } catch (error) {
-                logHelpChatFailure('help_chat_draft_clear_failed', error, {
-                    ...getBoundedHelpChatStringContext('sessionId', sessionId),
-                    hasSelectedImage: Boolean(selectedImage),
-                });
-            }
+            clearDraft(sessionId, draftScope);
         }
     };
 
@@ -238,18 +226,12 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
         if (value === '' && previousValue !== '') {
             setInputValue('');
             setSelectedImage(null);
-            // Clear drafts from localStorage
-            if (draftKeys) {
-                localStorage.removeItem(draftKeys.draftKey);
-                localStorage.removeItem(draftKeys.imageDraftKey);
-            }
-            localStorage.removeItem(legacyDraftKeys.draftKey);
-            localStorage.removeItem(legacyDraftKeys.imageDraftKey);
+            clearDraft(sessionId, draftScope);
         }
         
         // Update ref for next comparison
         previousValueRef.current = value;
-    }, [value, draftKeys, legacyDraftKeys]);
+    }, [value, sessionId, draftScope]);
 
     // Load draft from localStorage when component mounts or session changes
     useEffect(() => {
@@ -279,8 +261,7 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
                 ...getBoundedHelpChatStringContext('sessionId', sessionId),
             });
         }
-        // Only load on mount or session change, NOT on value changes
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Only load on mount or scoped session change, not on parent value changes.
     }, [draftKeys, sessionId]);
 
     // Auto-save draft to localStorage when input changes
@@ -316,10 +297,13 @@ const ChatInput = ({ onSendMessage, onInputChange, onImageUpload, placeholder, m
             }
             localStorage.removeItem(legacyDraftKeys.draftKey);
             localStorage.removeItem(legacyDraftKeys.imageDraftKey);
-        } catch {
-            // Draft cleanup is best-effort only.
+        } catch (error) {
+            logHelpChatFailure('help_chat_draft_cleanup_failed', error, {
+                ...getBoundedHelpChatStringContext('sessionId', sessionId),
+                hasDraftScope: Boolean(draftScope),
+            });
         }
-    }, [selectedImage, draftKeys, draftScope, legacyDraftKeys]);
+    }, [selectedImage, draftKeys, draftScope, legacyDraftKeys, sessionId]);
 
     // QnA Post-Answer Actions View
     if (showQnAActions) {

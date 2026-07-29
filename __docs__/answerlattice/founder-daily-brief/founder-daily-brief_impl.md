@@ -1,8 +1,8 @@
 # Founder Daily Brief Implementation
 
 > **Current runtime:** Live, summary-only, read-only
-> **Documented hardening:** Strict qualification and true quiet state
-> **Code status:** Pending the separate Feature 1 implementation pass
+> **Implemented hardening:** Strict qualification, true quiet state, and bounded owner-context handoffs
+> **Code status:** Implemented and locally verified; hosted QA evidence remains a release gate
 
 ## File Plan
 
@@ -40,34 +40,41 @@ No `ownerActionCenter` route, component tree, collection, summary document, or s
 10. Server filters every action, evidence link, and prepared-card capability against the caller's current permission map.
 11. Browser validates the complete brief shape, source health, action enums, route allowlist, capabilities, and read-model counters before rendering.
 
-## Current-to-Target Gap
+## Implemented Parity Closure
 
-| Area | Current behavior | Required code-level behavior |
-| --- | --- | --- |
-| Healthy state | Adds generic release-safety and cost-guard cards while action slots remain. | Return an empty action list and a plain quiet state. |
-| Attention count | Adds selected raw counts and can disagree with the ranked action list. | Derive from qualified candidate actions. |
-| Uncovered entities | Any uncovered entity makes answer risk `critical`. | Count-only uncovered coverage cannot be critical. |
-| Support Board evidence | Reads `highPriorityCards` but does not project it into metrics/actions. | Admit bounded high-priority work without a new query. |
-| Trust evidence | Trust summary contains bounded `topFailingEntities`, but Daily Brief uses aggregate counts only. | Use the top entry as evidence where admitted; do not infer root cause. |
-| Friction | Any signal can create an action. | Require `HIGH` friction or actual escalation evidence. |
-| Knowledge Intake | Any positive review count creates an action. | Surface only when launch or an upstream qualified support-truth problem requires it. |
-| Release | Generic reminder is always eligible. | Keep `I shipped a change` as a command; rank release work only through actual drift/impact evidence. |
-| Cost | Generic cost card is always eligible. | Keep cost note and bounded cost question; do not consume an action slot. |
-| Resolution | Refresh naturally reflects source changes; no explicit contract. | Preserve source-derived clearing and add regression coverage. |
-
-## Code-Level File Plan
-
-The implementation pass is bounded to existing files:
-
-| File | Required change |
+| Area | Current verified behavior |
 | --- | --- |
-| `src/lib/answerlattice/ownerSupportAssistantContracts.ts` | Add strict admission for `highPriorityCards` and any bounded top-entity fields projected into the response. Preserve the six-read source contract and existing route validation. |
-| `src/lib/answerlattice/ownerSupportAssistant.ts` | Build candidate actions only from qualifying conditions; remove generic release/cost cards; derive attention count and quiet state from the qualified candidates. |
-| `src/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant.tsx` | Render the zero-action quiet state without adding a drawer, listener, or local task lifecycle. Keep commands outside the ranked list. |
-| `scripts/verification/verify-answerlattice-founder-daily-brief.js` | Lock the quiet-state, no-new-collection, no-new-read, and source-derived-resolution boundaries. |
-| `scripts/verification/test-answerlattice-owner-support-assistant-contracts.ts` | Add high-priority, qualification, permission, quiet-state, and stale-source cases. |
+| Healthy state | A complete current packet with no qualifying condition returns zero action cards and plain quiet-state copy. |
+| Attention count | The displayed count is derived from the permission-filtered ranked action list. |
+| Uncovered entities | Count-only uncovered coverage is not promoted to critical risk. |
+| Support Board evidence | Existing `highPriorityCards` is admitted without a new query; resolved high-priority cards are removed upstream. |
+| Trust evidence | Bounded `topFailingEntities[0]` may support wording but never establishes autonomous root cause. |
+| Friction | An action requires `HIGH` evidence level or actual escalation evidence and preserves the selected entity in the handoff. |
+| Coverage | Low coverage is admitted only with repair evidence and routes to Canonical Answers, not the test suite. |
+| Knowledge Intake | Generic review backlog does not consume an action slot. |
+| Release | `I shipped a change` remains a command; generic release reminders do not consume the ranked queue. |
+| Cost | Cost guidance remains supporting text and does not consume an action slot. |
+| Resolution | A cleared source condition disappears on the next admitted refresh without Daily Brief persistence. |
 
-No Functions, Firestore rules, indexes, Storage rules, or Firebase deployment should be required unless the code pass discovers that a currently written summary field is malformed or absent. The current evidence does not justify those changes.
+## Implemented Files
+
+The hardening remains bounded to existing feature files plus one shared,
+validation-only owner-context helper:
+
+| File | Implemented change |
+| --- | --- |
+| `src/lib/answerlattice/ownerSupportAssistantContracts.ts` | Strictly admits `highPriorityCards` and bounded top-entity evidence while preserving the six-read response contract. |
+| `src/lib/answerlattice/ownerSupportAssistant.ts` | Qualifies actions, returns a true quiet state, and routes friction/coverage work to the owning screen. |
+| `src/lib/answerlattice/ownerDecisionNavigation.ts` | Validates and encodes bounded entity, answer, and release context without tenant/workspace data. |
+| `src/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant.tsx` | Renders the zero-action quiet state without a drawer, listener, or local task lifecycle. |
+| `scripts/verification/verify-answerlattice-founder-daily-brief.js` | Locks qualification, quiet state, owner-context routing, and no-new-cost boundaries. |
+| `scripts/verification/test-answerlattice-owner-support-assistant-contracts.ts` | Covers route-context validation, permissions, qualification, quiet state, and stale sources. |
+
+The Daily Brief wiring itself needs no Functions, Firestore rules, indexes,
+Storage rules, or Firebase deployment. The earlier Support Board summary
+correction changed Functions source and still requires authenticated QA
+deployment; its failed authentication evidence is documented in the Firebase
+note.
 
 ## Placement Rules
 

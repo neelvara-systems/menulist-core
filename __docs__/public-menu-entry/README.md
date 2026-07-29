@@ -2,7 +2,7 @@
 
 **Status:** Local source complete; external release evidence pending
 **Feature flags:** `ENABLE_PUBLIC_MENU_ENTRY`; link intake also requires `ENABLE_MENU_LINK_IMPORT`
-**Last reviewed:** July 16, 2026
+**Last reviewed:** July 28, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -15,7 +15,7 @@
 ## End-to-end flow
 
 1. The visitor opens the public page. Upload or link submission redirects an unauthenticated visitor to sign in.
-2. The signed-in client submits a JPEG, PNG, WebP, or permission-confirmed public link.
+2. The signed-in client admits one submission at a time and submits a JPEG, PNG, WebP, or permission-confirmed public link. The returned draft identifier must pass the same exact UUID projector used by polling, claim, and preview routing.
 3. The protected route applies feature flags, a fail-closed 30-per-5-minute admission limit, account-scope integrity, current extraction permission for existing stores, SAFE_MODE, bounded parsing, source validation, active-draft reuse, and the 5-new-sources-per-24-hours quota.
 4. The route creates one owner-bound 24-hour draft and deterministic extraction job atomically. Link acquisition keeps its existing SSRF, redirect, MIME, size, and confidence boundaries.
 5. The preview checks status every 5 seconds, up to 36 times, and fetches the full extracted DTO once completion is reported. Invalid price truth fails closed instead of reaching claim.

@@ -11,6 +11,7 @@ import { buildCacheKey } from '../../src/lib/answerlattice/instantCache';
 import {
     getAnswerlatticeProductAccount,
     isAnswerlatticeActiveStoreInScope,
+    isExactAnswerlatticePersistedAuthority,
     isAnswerlatticeStoreInScope,
     resolveAnswerlatticeSessionScope,
 } from '../../src/lib/answerlattice/sessionScope';
@@ -159,6 +160,24 @@ assert.equal(isAnswerlatticeActiveStoreInScope({ pId: 'AL', tId: 11, sId: 22, de
 assert.equal(isAnswerlatticeActiveStoreInScope({ pId: 'AL', tId: 11, sId: 22, authDisabled: true }, workspace), false);
 assert.equal(isAnswerlatticeActiveStoreInScope({ pId: 'AL', tId: 11, sId: 22, blocked: true }, workspace), false);
 assert.equal(isAnswerlatticeActiveStoreInScope({ pId: 'AL', tId: 11, sId: 22, blockDetails: { blocked: true } }, workspace), false);
+
+assert.equal(isExactAnswerlatticePersistedAuthority({ pId: 'AL', tId: 11, sId: 22 }, workspace), true);
+assert.equal(
+    isExactAnswerlatticePersistedAuthority({ pId: 'AL', tId: '11', sId: 22 }, workspace),
+    false,
+    'persisted tenant authority must not coerce a numeric string',
+);
+assert.equal(
+    isExactAnswerlatticePersistedAuthority({ pId: 'AL', tId: 11, sId: '22' }, workspace),
+    false,
+    'persisted workspace authority must not coerce a numeric string',
+);
+assert.equal(
+    isExactAnswerlatticePersistedAuthority({ pId: 'AL', tId: 11, tenantId: '11', sId: 22 }, workspace),
+    false,
+    'a malformed persisted tenant alias must fail closed',
+);
+assert.equal(isExactAnswerlatticePersistedAuthority({ pId: 'ML', tId: 11, sId: 22 }, workspace), false);
 
 assert.deepEqual(getAnswerlatticeProductAccount({
     productAccounts: {

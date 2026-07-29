@@ -129,8 +129,8 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
     const titleStyle = useMemo(() => ({ margin: 0 }), []);
 
     const parsedDescription = useMemo(() => {
-        const improvements: any[] = [];
-        const bugfixes: any[] = [];
+        const improvements: string[] = [];
+        const bugfixes: string[] = [];
         let hasSections = false;
         let fullHtml = '';
 
@@ -350,13 +350,27 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                                         setArticleModal({ active: true, article });
                                     };
 
-                                    const breadcrumbItems = [
-                                        category ? { title: <a href={helpCenterTabRouting('kb')}>{category.title}</a> } : null,
-                                        section ? { title: <a href={helpCenterTabRouting('kb')}>{section.title}</a> } : null,
-                                        article ? { title: <a href={helpCenterArticleRouting(getHelpCenterArticleRouteSegment(article))} onClick={openArticle}>{article.title}</a> } : null,
-                                    ].filter(Boolean);
+                                    const breadcrumbItems: Array<{ title: React.ReactNode }> = [];
+                                    if (category) {
+                                        breadcrumbItems.push({ title: <a href={helpCenterTabRouting('kb')}>{category.title}</a> });
+                                    }
+                                    if (section) {
+                                        breadcrumbItems.push({ title: <a href={helpCenterTabRouting('kb')}>{section.title}</a> });
+                                    }
+                                    if (article) {
+                                        breadcrumbItems.push({
+                                            title: (
+                                                <a
+                                                    href={helpCenterArticleRouting(getHelpCenterArticleRouteSegment(article))}
+                                                    onClick={openArticle}
+                                                >
+                                                    {article.title}
+                                                </a>
+                                            ),
+                                        });
+                                    }
 
-                                    return <Breadcrumb key={i} items={breadcrumbItems as any} />;
+                                    return <Breadcrumb key={i} items={breadcrumbItems} />;
                                 })}
                             </Flex>
                         </div>
@@ -390,7 +404,7 @@ const ChangelogPreview: React.FC<ChangelogPreviewProps> = ({ item, pageId, mode,
                             size="small"
                             dataSource={feedbackEvents}
                             renderItem={(event) => {
-                                const requester = getAnswerlatticeCustomerIdentity(event as any);
+                                const requester = getAnswerlatticeCustomerIdentity(event);
                                 const actionLabel = event.action === 'removed' ? 'removed' : 'added';
                                 return (
                                     <List.Item>

@@ -291,6 +291,8 @@ Prompt storage:
 - Visit count uses `localStorage`.
 - Dismissal timestamp uses `localStorage`.
 - Session/open dedupe uses `sessionStorage` where appropriate.
+- Visit counts and install/dismiss/prompt timestamps use exact tenant/store browser keys plus canonical digit-only safe integers with explicit caps and non-future timestamp checks. Invalid persisted values are removed instead of being coerced. Controller and prompt effects process each admitted tenant/store once; a context switch clears any prior-scope native install event and visible prompt before destination eligibility is evaluated.
+- The standalone-open guard is tenant/store scoped, admits one in-flight attempt, and writes its completion marker only after `trackEvent()` succeeds. A failed event remains retryable in the same session.
 - Failed prompt visit-count or dismissal localStorage paths log bounded `customer_app_prompt_*` diagnostics once per operation and create no fallback Firestore write.
 - Failed install-mode detection and shortcut/direct-intent URL parsing log bounded Customer App diagnostics once per failure path and keep the existing fail-closed behavior.
 - Failed prompt-shown timestamp storage for iOS inference logs bounded `customer_app_prompt_shown_*` diagnostics once per operation and creates no fallback Firestore write.
@@ -299,7 +301,8 @@ Prompt storage:
 
 Prompt analytics:
 
-- Prompt shown, dismissed, and install-started events fire from `InstallPrompt.tsx`.
+- Prompt shown, dismissed, and install-started events fire from `InstallPrompt.tsx`. The operational prompt-shown timestamp is recorded even when analytics tracking is disabled; only the analytics event follows the owner tracking preference.
+- App-open, install and shortcut analytics fail closed when exact tenant/store identity is unavailable. Open and shortcut events use in-memory in-flight admission plus canonical non-future session completion timestamps written only after acknowledged tracking; malformed/future markers are evicted, so corrupt state, rerenders, concurrent effects and failed attempts do not create duplicate or permanently suppressed events.
 - Native `appinstalled` is handled by `CustomerAppController`.
 - iOS manual install is inferred on first standalone launch through `standaloneDetector.ts`.
 - If browser storage blocks standalone-open de-dupe or iOS prompt lookup, Customer App tracking remains non-blocking and records bounded diagnostics only.

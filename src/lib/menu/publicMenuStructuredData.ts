@@ -4,34 +4,53 @@ export interface PublicMenuFreshness {
     menuVersion?: number;
 }
 
+const safeRead = (value: object, key: string): unknown => {
+    try {
+        return Reflect.get(value, key);
+    } catch {
+        return undefined;
+    }
+};
+
+const copyFiniteDate = (value: unknown): Date | null => {
+    if (!(value instanceof Date)) return null;
+
+    try {
+        const millis = Date.prototype.getTime.call(value);
+        return Number.isFinite(millis) ? new Date(millis) : null;
+    } catch {
+        return null;
+    }
+};
+
 const toFiniteDate = (value: unknown): Date | null => {
-    if (!value) return null;
+    if (value === null || value === undefined || value === '') return null;
 
     if (value instanceof Date) {
-        return Number.isNaN(value.getTime()) ? null : value;
+        return copyFiniteDate(value);
     }
 
     if (typeof value === 'string' || typeof value === 'number') {
         const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? null : date;
+        return Number.isFinite(date.getTime()) ? date : null;
     }
 
-    if (typeof value === 'object') {
-        const maybeTimestamp = value as {
-            toDate?: () => Date;
-            seconds?: number;
-            _seconds?: number;
-        };
-
-        if (typeof maybeTimestamp.toDate === 'function') {
-            const date = maybeTimestamp.toDate();
-            return date instanceof Date && !Number.isNaN(date.getTime()) ? date : null;
+    if (typeof value === 'object' && !Array.isArray(value)) {
+        const toDate = safeRead(value, 'toDate');
+        if (typeof toDate === 'function') {
+            try {
+                const date = Reflect.apply(toDate, value, []);
+                const copiedDate = copyFiniteDate(date);
+                if (copiedDate) return copiedDate;
+            } catch {
+                // Fall through to the legacy seconds representation.
+            }
         }
 
-        const seconds = maybeTimestamp.seconds ?? maybeTimestamp._seconds;
+        const seconds = safeRead(value, 'seconds') ?? safeRead(value, '_seconds');
         if (typeof seconds === 'number' && Number.isFinite(seconds)) {
             const date = new Date(seconds * 1000);
-            return Number.isNaN(date.getTime()) ? null : date;
+            return Number.isFinite(date.getTime()) ? date : null;
         }
     }
 
@@ -41,17 +60,32 @@ const toFiniteDate = (value: unknown): Date | null => {
 export const toPublicIsoDate = (value: unknown): string | undefined =>
     toFiniteDate(value)?.toISOString();
 
-export function getPublicMenuFreshness(projectData: any, storeData: any): PublicMenuFreshness {
-    const lastPublishedAt = toPublicIsoDate(projectData?.lastPublishedAt);
+const readRecordField = (value: unknown, key: string): unknown => (
+    value && typeof value === 'object' && !Array.isArray(value)
+        ? safeRead(value, key)
+        : undefined
+);
+
+const normalizeMenuVersion = (value: unknown): number | undefined => {
+    const menuVersion = typeof value === 'number'
+        ? value
+        : typeof value === 'string' && value.trim().length > 0
+            ? Number(value)
+            : Number.NaN;
+
+    return Number.isSafeInteger(menuVersion) && menuVersion > 0 ? menuVersion : undefined;
+};
+
+export function getPublicMenuFreshness(projectData: unknown, storeData: unknown): PublicMenuFreshness {
+    const lastPublishedAt = toPublicIsoDate(readRecordField(projectData, 'lastPublishedAt'));
     const storeModifiedAt =
-        toPublicIsoDate(storeData?.modifiedOn) ||
-        toPublicIsoDate(storeData?.updatedAt);
-    const menuVersion = Number(projectData?.menuVersion);
+        toPublicIsoDate(readRecordField(storeData, 'modifiedOn')) ||
+        toPublicIsoDate(readRecordField(storeData, 'updatedAt'));
+    const menuVersion = normalizeMenuVersion(readRecordField(projectData, 'menuVersion'));
 
     return {
         dateModified: lastPublishedAt || storeModifiedAt,
         lastPublishedAt,
-        menuVersion: Number.isFinite(menuVersion) && menuVersion > 0 ? menuVersion : undefined,
+        menuVersion,
     };
 }
-

@@ -86,6 +86,11 @@ export const evaluateAnswerTestCase = (
     if (resolved.source !== expected.source) {
         failures.push(`Expected ${expected.source}, received ${resolved.source}.`);
     }
+    if (testCase.riskLevel === 'critical' && resolved.source === 'rag') {
+        failures.push(
+            'Critical proof requires approved canonical or FAQ truth, or a safe escalation or no-answer route. Knowledge fallback cannot certify a critical answer.',
+        );
+    }
     if (expected.answerId && resolved.answerId !== expected.answerId) {
         failures.push('The canonical answer did not match the expected answer.');
     }

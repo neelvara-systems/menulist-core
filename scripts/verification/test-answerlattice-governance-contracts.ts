@@ -6,9 +6,22 @@ import {
     AnswerlatticeGovernanceActionSchema,
     AnswerlatticeStoredMutationProposalSchema,
 } from '../../src/lib/answerlattice/governanceContracts';
-import { replaceAnswerlatticeResolvedEntityReference } from '../../src/lib/answerlattice/governanceIdBoundary';
+import {
+    normalizeAnswerlatticeResolvedEntityIds,
+    replaceAnswerlatticeResolvedEntityReference,
+} from '../../src/lib/answerlattice/governanceIdBoundary';
 
 const requestId = 'request_12345678';
+assert.deepEqual(
+    normalizeAnswerlatticeResolvedEntityIds(['entity_1', 'entity_1', 'entity_2'], 2),
+    ['entity_1', 'entity_2'],
+);
+assert.deepEqual(normalizeAnswerlatticeResolvedEntityIds(['entity_1'], 0), []);
+assert.deepEqual(normalizeAnswerlatticeResolvedEntityIds(new Proxy([], {
+    get() {
+        throw new Error('entity list proxy must remain contained');
+    },
+}), 10), []);
 const validMerge = AnswerlatticeGovernanceActionSchema.safeParse({
     action: 'merge_entities',
     mergedId: 'entity_merged',

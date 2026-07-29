@@ -22,7 +22,8 @@ Versioned public entries require an exact active release dependency. The changel
 
 ### Release activation
 
-- Claim transaction: one release read and one release write.
+- Claim transaction: one release read, one affected-answer query up to 201, and
+  one release write after the reviewed fingerprint matches.
 - Completion transaction: release read, affected-answer query up to 201, answer/audit writes for drifted answers, release update, activation audit, source version, cache version when needed, and bundle manifest.
 
 ### Release impact preview
@@ -36,6 +37,11 @@ Versioned public entries require an exact active release dependency. The changel
 
 Activation repeats authoritative reads by design. Preview results cannot replace
 transaction-current authorization or drift evaluation.
+
+Affected-answer and linked-test review links add zero preview reads or writes.
+Canonical Answers and Answer Tests perform only their existing bounded loads
+after the owner explicitly opens the destination. No link mounts a listener or
+runs a test automatically.
 
 ### Changelog create
 
@@ -57,7 +63,7 @@ transaction-current authorization or drift evaluation.
 - Public physical-page scan: 25 pages per request.
 - Entry-index deletion tombstone: 90 days.
 - Preview answer cap: the same 200-answer cap with cap-plus-one failure.
-- Preview response: bounded private projection with an explicit byte limit.
+- Preview response: bounded private projection with a 256 KiB browser limit.
 
 ## Security
 

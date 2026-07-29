@@ -1,11 +1,15 @@
 let fallbackCounter = 0;
+export const RUNTIME_RANDOM_ID_SEGMENT_MAX_LENGTH = 128;
 
 const getRuntimeCrypto = (): Crypto | undefined => (
     typeof globalThis !== 'undefined' ? globalThis.crypto : undefined
 );
 
 const normalizeLength = (length: number): number => (
-    Math.max(1, Math.floor(Number.isFinite(length) ? length : 12))
+    Math.min(
+        RUNTIME_RANDOM_ID_SEGMENT_MAX_LENGTH,
+        Math.max(1, Math.floor(Number.isFinite(length) ? length : 12)),
+    )
 );
 
 const normalizePrefix = (prefix: string): string => {

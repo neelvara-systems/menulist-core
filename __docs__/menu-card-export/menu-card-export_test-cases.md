@@ -189,7 +189,8 @@ Authenticated browser click-through remains an external certification gate befor
 | Repeat logo export | Same logo URL is converted from in-memory cache during the route session instead of refetching for every export. |
 | Auto design cost | No provider call, AI credit consumption, Firestore write, Storage upload, Cloud Function, rule, or index. |
 | History flag off | Local history UI is hidden and no browser history record is written. |
-| History flag on | Reads shaped local browser history only, max 20 records per tenant/store/project. Equal project IDs in another store return no records. |
+| History flag on | Reads shaped local browser history only, max 20 records per tenant/store/project. Equal project IDs in another store return no records. Invalid preset/page count/timestamp/project records, oversized arrays, and malformed JSON are evicted. |
+| Legacy quick-PDF freshness | Only canonical positive safe-integer millisecond timestamps at or before the current time are admitted; coercible exponent, fractional, negative, and future values are rejected. |
 | Device storage rejection after delivery | Export/download success remains success; device-local history/freshness persistence is omitted without a false failure. |
 | Native share cancelled | No fallback download, success event, or local history record. |
 | Native file sharing unsupported | Download fallback runs and reports a download. |

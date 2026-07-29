@@ -2,6 +2,11 @@
 
 Public copy may say that Answerlattice groups mapped support evidence by product area, compares completed seven-day windows, and helps founders prioritize what to review.
 
+Public copy may also say that a ranked product area can open the same selected
+entity in Knowledge Map. This is a validated navigation handoff over already
+loaded or explicitly opened summaries; it is not a new Customer Friction Map,
+root-cause model, or automatic diagnosis.
+
 Do not market a Customer Friction Map, workflow tree, root-cause percentage,
 release-causation overlay, or automatic friction classification until each
 capability is implemented and validated with real founder evidence. The

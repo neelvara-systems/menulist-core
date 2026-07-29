@@ -200,24 +200,22 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 
 ---
 
-## ADR-12: Internal Product Hosts Must Be Registered Before Tenant Routing
+## ADR-12: MyCodex Has No Active Public Domain
 
-**Decision:** `menulist.digital` and `www.menulist.digital` are dedicated MyCodex product domains. They are registered in the shared product-domain matrix and must resolve to `/sites/mycodex`, not `/client`. Outside localhost, middleware must require a signed MyCodex session cookie before serving protected MyCodex routes.
+**Decision:** MyCodex currently has no active public product domain. The previous `menulist.digital` dependency is discarded. MyCodex remains a static/internal reader reached locally through `/__mycodex`; any future private host must be approved and added back to `src/constants/deploymentTargets.ts` before DNS or Vercel setup.
 
 **Why:**
 
-- MyCodex needs Vercel access from anywhere, not only local `/__mycodex`.
-- Unknown hosts are treated as tenant custom domains by the public menu router.
-- Registering `menulist.digital` as a product domain prevents MenuList tenant/custom-domain logic from attempting to resolve it as a restaurant.
-- The host is separate from MenuList (`menulist.ai`) and Answerlattice (`answerlattice.com`) production domains.
-- MyCodex renders repository documentation, so Vercel access must fail closed if auth credentials are missing.
+- The active domain/account plan discards `menulist.digital`.
+- MyCodex is static/no DB and does not require Firebase, Storage, Functions, or a public domain.
+- Unknown production hosts should not be preserved as implicit product carve-outs.
+- If a private MyCodex host is approved later, it must fail closed behind the existing MyCodex login/session cookie.
 
 **Runtime contract:**
 
-| Host | Expected classification | Expected rewrite |
+| Entry point | Expected classification | Expected rewrite |
 | ---- | ----------------------- | ---------------- |
-| `menulist.digital` | Product: MyCodex | `/sites/mycodex` |
-| `www.menulist.digital` | Product: MyCodex | `/sites/mycodex` |
+| `localhost:3000/__mycodex` | Local MyCodex dev prefix | `/sites/mycodex` |
 | `menulist.ai` | Platform/MenuList | no MyCodex rewrite |
 | `answerlattice.com` | Product: Answerlattice | `/sites/answerlattice` |
 
@@ -228,7 +226,7 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 
 The credential env var names are retained for compatibility, but runtime access is now first-party form login plus an `HttpOnly` `mycodex_session` cookie. Credentials must stay server-side and must not be stored in browser `localStorage`.
 
-MyCodex may be installed as a PWA on `menulist.digital`, but its install identity must stay product-scoped: `/mycodex.webmanifest`, MyCodex icon assets, and `/mycodex-sw.js`. The service worker is allowed to cache the offline page and static logo assets only; it must not cache repository documentation pages, markdown, or tenant/client menu data.
+If a private MyCodex host is approved later, its PWA install identity must stay product-scoped: `/mycodex.webmanifest`, MyCodex icon assets, and `/mycodex-sw.js`. The service worker is allowed to cache the offline page and static logo assets only; it must not cache repository documentation pages, markdown, or tenant/client menu data.
 
 Because MyCodex reads `__docs__` markdown from disk at runtime, the MyCodex route must retain a Vercel file-tracing include in `next.config.js`: `/sites/mycodex` routes include `./__docs__/**/*`. This is packaging support only; it does not add MenuList tenant routing or Answerlattice access to the docs tree.
 

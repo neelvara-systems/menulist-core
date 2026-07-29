@@ -19,6 +19,12 @@ import {
     type AnswerlatticeOwnerAssistantPermissionMap,
     type AnswerlatticeOwnerAssistantSummaryHealth,
 } from '@lib/answerlattice/ownerSupportAssistantContracts';
+import {
+    getAnswerlatticeAnswerContextRoute,
+    getAnswerlatticeEntityContextRoute,
+    getAnswerlatticeReleaseContextRoute,
+    normalizeAnswerlatticeOwnerReleaseContext,
+} from '@lib/answerlattice/ownerDecisionNavigation';
 
 const createPermissionMap = (
     enabled: Array<keyof AnswerlatticeOwnerAssistantPermissionMap>,
@@ -36,6 +42,37 @@ const supportOnly = createPermissionMap([
 ]);
 const owner = createPermissionMap(ANSWERLATTICE_ALL_PERMISSIONS);
 
+assert.equal(
+    getAnswerlatticeEntityContextRoute(`${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`, 'billing'),
+    `${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction?entity=billing`,
+);
+assert.equal(
+    getAnswerlatticeAnswerContextRoute(`${ANSWERLATTICE_ROUTES.GOVERNANCE}/answers`, 'answer one'),
+    `${ANSWERLATTICE_ROUTES.GOVERNANCE}/answers?answer=answer%20one`,
+);
+assert.equal(
+    getAnswerlatticeReleaseContextRoute(ANSWERLATTICE_ROUTES.ANSWER_TESTS, 'release_1'),
+    `${ANSWERLATTICE_ROUTES.ANSWER_TESTS}?release=release_1`,
+);
+assert.equal(
+    getAnswerlatticeEntityContextRoute(`${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`, 'invalid/entity'),
+    `${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`,
+    'unsafe entity context must be omitted',
+);
+assert.equal(
+    getAnswerlatticeEntityContextRoute(
+        `${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction?entity=stale&view=graph#selected`,
+        'billing',
+    ),
+    `${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction?entity=billing&view=graph#selected`,
+    'owner navigation must replace stale same-key context without losing other query/hash state',
+);
+assert.equal(
+    normalizeAnswerlatticeOwnerReleaseContext('x'.repeat(181)),
+    null,
+    'owner navigation must cap release context',
+);
+
 for (const route of [
     ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT,
     ANSWERLATTICE_ROUTES.SUPPORT_BOARD,
@@ -43,6 +80,14 @@ for (const route of [
 ]) {
     assert.equal(canUseAnswerlatticeOwnerAssistantRoute(route, supportOnly), true);
 }
+assert.equal(
+    canUseAnswerlatticeOwnerAssistantRoute(
+        getAnswerlatticeEntityContextRoute(`${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`, 'billing'),
+        owner,
+    ),
+    true,
+    'validated owner context must preserve route permission checks',
+);
 for (const route of [
     ANSWERLATTICE_ROUTES.GOVERNANCE,
     ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE,
@@ -96,6 +141,10 @@ assert.equal(parseAnswerlatticeOwnerAssistantSupportBoardSummary(
     { tenantId: 7, storeId: 9 },
 ), null, 'needs-answer cards cannot exceed open cards');
 assert.equal(parseAnswerlatticeOwnerAssistantSupportBoardSummary(
+    { ...validSupportBoard, openCards: 0, needsAnswerCards: 0 },
+    { tenantId: 7, storeId: 9 },
+), null, 'resolved high-priority cards cannot create current owner work');
+assert.equal(parseAnswerlatticeOwnerAssistantSupportBoardSummary(
     { ...validSupportBoard, lastUpdated: 'not-a-date' },
     { tenantId: 7, storeId: 9 },
 ), null, 'malformed timestamps must fail closed');
@@ -144,6 +193,7 @@ const createSummaryHealth = (
 
 const noActivityMetrics: AnswerlatticeOwnerAssistantMetrics = {
     coverageRate: null,
+    canonicalMisses: 0,
     noEscalationRate: null,
     confirmedResolutionRate: null,
     recontactEligible: 0,
@@ -152,9 +202,11 @@ const noActivityMetrics: AnswerlatticeOwnerAssistantMetrics = {
     uncoveredEntities: 0,
     openBoardCards: 0,
     needsAnswerCards: 0,
+    highPriorityCards: 0,
     reviewItems: 0,
     signals7d: 0,
     escalations7d: 0,
+    frictionLevel: null,
 };
 assert.equal(
     getAnswerlatticeOwnerAssistantStatus(noActivityMetrics, createSummaryHealth()),
@@ -180,8 +232,8 @@ assert.equal(
         { ...noActivityMetrics, uncoveredEntities: 1 },
         createSummaryHealth('missing'),
     ),
-    'at_risk',
-    'known risk remains visible even when other summaries are unavailable',
+    'insufficient_data',
+    'count-only uncovered coverage is not a critical owner action',
 );
 assert.equal(
     getAnswerlatticeOwnerAssistantStatus(
@@ -189,6 +241,44 @@ assert.equal(
         createSummaryHealth('stale'),
     ),
     'needs_review',
+);
+assert.equal(
+    getAnswerlatticeOwnerAssistantStatus(
+        {
+            ...noActivityMetrics,
+            openBoardCards: 1,
+            highPriorityCards: 1,
+        },
+        createSummaryHealth(),
+    ),
+    'needs_review',
+    'qualified high-priority Support Board work must be visible',
+);
+assert.equal(
+    getAnswerlatticeOwnerAssistantStatus(
+        {
+            ...noActivityMetrics,
+            coverageRate: 100,
+            noEscalationRate: 100,
+            signals7d: 10,
+            frictionLevel: 'MODERATE',
+        },
+        createSummaryHealth(),
+    ),
+    'healthy',
+    'ordinary friction signals do not displace the quiet state',
+);
+assert.equal(
+    getAnswerlatticeOwnerAssistantStatus(
+        {
+            ...noActivityMetrics,
+            signals7d: 10,
+            frictionLevel: 'HIGH',
+        },
+        createSummaryHealth(),
+    ),
+    'needs_review',
+    'high measured friction qualifies for owner review',
 );
 
 const validMetrics: AnswerlatticeOwnerAssistantMetrics = {
@@ -201,7 +291,7 @@ const validMetrics: AnswerlatticeOwnerAssistantMetrics = {
 const validBrief = {
     status: 'healthy',
     headline: 'Support looks stable.',
-    attentionCount: 0,
+    attentionCount: 1,
     metrics: validMetrics,
     promptChips: ['What needs my attention today?'],
     launchVerification: {
@@ -252,6 +342,23 @@ const validBrief = {
 };
 assert.equal(isAnswerlatticeOwnerAssistantBrief(validBrief), true);
 assert.equal(isAnswerlatticeOwnerAssistantBriefResponse({ brief: validBrief }), true);
+assert.equal(isAnswerlatticeOwnerAssistantBrief({
+    ...validBrief,
+    attentionCount: 0,
+}), false, 'attention count must equal the permission-filtered daily action count');
+assert.equal(isAnswerlatticeOwnerAssistantBrief({
+    ...validBrief,
+    status: 'healthy',
+    headline: 'Nothing needs your decision right now.',
+    attentionCount: 0,
+    dailyBrief: {
+        ...validBrief.dailyBrief,
+        headline: 'Nothing needs your decision right now',
+        summary: 'No current answer risk, qualified support gap, or launch blocker is visible in the latest summaries.',
+        focus: 'maintain',
+        actions: [],
+    },
+}), true, 'a complete healthy packet may return a true zero-action quiet state');
 assert.equal(isAnswerlatticeOwnerAssistantBrief({
     ...validBrief,
     dailyBrief: {

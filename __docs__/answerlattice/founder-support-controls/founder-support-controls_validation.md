@@ -2,8 +2,8 @@
 
 > **External proposal:** Critical Answer Test Suite
 > **Decision:** Keep the existing Answer Tests feature; admit one bounded hardening
-> **Reviewed:** 2026-07-28
-> **Stage:** Documentation complete; focused code hardening pending
+> **Reviewed:** 2026-07-29
+> **Stage:** Focused hardening implemented and locally verified
 
 ## Owner Problem
 
@@ -30,27 +30,34 @@ Answerlattice already has the core feature proposed by the external response:
 
 Creating another Critical Answer Test Suite would duplicate routes, data, proof semantics, permissions, cost controls, and owner navigation.
 
-## Verified Gap
+## Verified Gap And Resolution
 
-The current case schema allows `expected.source = rag` regardless of risk level. The evaluator compares actual and expected source but does not add a failure when a critical case resolves through RAG. Therefore, a critical-RAG case can pass and an otherwise passing run can become `ready`.
+The review found that the case schema allowed `expected.source = rag` regardless of risk level and the evaluator did not independently fail a critical case resolved through RAG. That gap could allow an otherwise passing critical-RAG run to become `ready`.
 
 This conflicts with Answerlattice's authority model: provider-backed RAG may be useful fallback evidence, but it is not approved support truth and should not certify a business-critical answer.
 
-## Admitted Change
+The source now closes the gap in the shared evaluator, save transaction, and owner form. New or edited active critical-RAG cases are rejected, unchanged legacy cases remain readable/save-compatible, legacy cases may be deactivated safely, and any actual critical-RAG result fails with blocked proof.
 
-The later code pass should make one deterministic rule universal:
+## Implemented Change
+
+One deterministic rule is now universal:
 
 > An actual `rag` route cannot pass a critical Answer Test.
 
-Implementation remains inside the current evaluator and form:
+Implementation remains inside the current evaluator, save route, and form:
 
 1. Fail critical-RAG results explicitly.
 2. Prevent new/edited critical cases from choosing RAG.
 3. Keep legacy critical-RAG cases readable and block them on the next run.
 4. Reuse the rule across normal, First 10, release, and proposal-preview checks.
 5. Add focused source, API, UI, and legacy tests.
+6. Let release impact open the existing release-check flow and let failed
+   answer-bound results open the exact Canonical Answer review surface through
+   validated navigation context.
 
-This needs no model call, Firestore migration, new summary field, collection, scheduler, Storage object, or mobile-specific data path.
+This needs no model call, Firestore migration, new summary field, collection,
+scheduler, Storage object, or mobile-specific data path. Navigation does not
+run a test or mutate support truth.
 
 ## Proposal Decision Matrix
 
@@ -94,15 +101,21 @@ Keep the existing **Answer Tests** route and language. A founder should:
 2. Select approved truth or a safe fallback.
 3. Run the current bounded check.
 4. See the exact failed contract and current evidence.
-5. Open the governed source or proposal path.
+5. Open the governed canonical answer directly when the failed result identifies
+   one, or use the existing proposal path.
 6. Rerun after correction.
 
 The feature remains advisory. Passing proof does not deploy, publish, approve, or independently guarantee factual completeness or customer resolution.
 
 ## Cost And Safety Verdict
 
-The admitted hardening is zero-read and zero-write beyond the existing run because it checks the already-resolved route in memory. The rejected scheduler, Storage artifacts, per-assertion persistence, generated variants, and model judge would add recurring cost and operational burden without evidence that they improve founder decisions.
+The admitted authority hardening is zero-read and zero-write beyond the
+existing run because it checks the already-resolved route in memory. The new
+links add no operation until the owner opens an existing destination. The
+rejected scheduler, Storage artifacts, per-assertion persistence, generated
+variants, and model judge would add recurring cost and operational burden
+without evidence that they improve founder decisions.
 
 ## Final Verdict
 
-Feature 5 is not a new build. It is an existing, substantial Answer Tests capability with one important authority correction pending: critical proof must fail closed when the runtime reaches provider-backed RAG. Complete that bounded hardening before making the public claim, then gather real founder test evidence before considering any richer assertion model.
+Feature 5 is not a new parallel build. It is the existing Answer Tests capability with the critical-RAG authority correction now implemented and locally verified. Browser and deployed-runtime evidence remain separate release gates; real founder suites should still be collected before considering any richer assertion model.

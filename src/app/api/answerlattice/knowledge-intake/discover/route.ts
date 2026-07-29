@@ -6,14 +6,16 @@ import {
     serializeIntakeValue,
 } from '@lib/answerlattice/knowledgeIntake';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
+    withAnswerlatticeKnowledgeIntakePrivateHeaders,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { logAnswerlatticeKnowledgeIntakeFailure } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import { isAnswerlatticeKnowledgeIntakeHttpUrl } from '@lib/answerlattice/knowledgeIntakeUrlContracts';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
@@ -30,7 +32,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         rateWindow: 60,
         requireActiveLicense: true,
     });
-    if (access.response) return access.response;
+    if (access.response) return withAnswerlatticeKnowledgeIntakePrivateHeaders(access.response);
 
     try {
         const bodyResult = await readOptionalBoundedJsonBody(request, KNOWLEDGE_INTAKE_DISCOVER_MAX_BODY_BYTES, {
@@ -38,7 +40,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return answerlatticeKnowledgeIntakeJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Enter a valid public URL.' },
                 { status: bodyResult.response.status },
             );
@@ -47,13 +49,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const parsed = DiscoverSchema.parse(bodyResult.data);
         if (parsed.fetchText) {
             const page = await fetchPublicPageText(parsed.url);
-            return NextResponse.json({ page: serializeIntakeValue(page) }, { headers: { 'Cache-Control': 'private, no-store' } });
+            return answerlatticeKnowledgeIntakeJson({ page: serializeIntakeValue(page) });
         }
         const links = await discoverKnowledgeIntakeLinks(parsed.url);
-        return NextResponse.json({ links: serializeIntakeValue(links) }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ links: serializeIntakeValue(links) });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Enter a valid public URL.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'Enter a valid public URL.' }, { status: 400 });
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -61,6 +63,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to inspect URL.') }, { status });
+        return answerlatticeKnowledgeIntakeJson({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to inspect URL.') }, { status });
     }
 });

@@ -2,7 +2,7 @@
 
 > **Status:** Implementation source of truth
 > **Product:** Answerlattice
-> **Updated:** 2026-07-28
+> **Updated:** 2026-07-29
 
 Founder Support Controls add the missing safety workflows around Answerlattice's existing governed support layer. They let owners test answers, check release impact, publish temporary known-issue notices, verify visitor context, attach bounded debugging evidence, and export approved support truth without turning Answerlattice into a helpdesk, status platform, session-replay product, or project manager.
 
@@ -35,11 +35,14 @@ The private Owner Support Assistant remains documented separately under `__docs_
 
 - Canonical answers remain authoritative before fallback.
 - Deterministic Answer Tests verify the configured source, answer IDs, phrases, confidence, abstention, and evidence contract. They are regression evidence, not an independent factual-correctness or completeness guarantee.
-- The current implementation permits a critical case to expect provider-backed RAG. The admitted hardening is narrower: a critical case must never receive `ready` proof from an actual `rag` route, even when an older saved case expected that route. Existing cases remain readable and become blocked evidence until the owner selects canonical, FAQ, escalation, or no-answer behavior.
+- Provider-backed RAG cannot produce passing critical proof. New or edited active critical cases cannot select `rag`; unchanged legacy cases remain readable, may be deactivated safely, and produce blocked evidence when an actual run reaches `rag`.
 - Test runs never create production analytics, signals, tickets, or mutation proposals unless the owner explicitly converts a failed result.
 - Proof status is advisory: critical failures mark the retained run `blocked`, standard failures mark it `review`, and passing suites mark it `ready`; Answerlattice never deploys, publishes, or changes product state from a test result.
 - A retained run is current only for the exact suite revision it executed. Reused request IDs are accepted only for the same mode, selected cases, suite revision, and release identity.
 - Proposal impact previews compare current and proposed deterministic outcomes for at most 10 explicitly linked active tests. They are read-only, use no fallback model, retain no run, and never replace the authoritative governance approval checks.
+- Release-impact links may open the existing Answer Tests release check with a
+  validated release ID, and a failed result may open its approved canonical
+  answer with a validated answer ID. Neither link executes a run or mutation.
 - Rollback is a mutation proposal, never a direct answer overwrite.
 - Known issues do not change canonical retrieval priority and do not create a public status platform.
 - Unsigned visitor data is informational only and never authorizes private data or tenant scope.
@@ -51,7 +54,9 @@ The private Owner Support Assistant remains documented separately under `__docs_
 
 | Date | Change |
 | --- | --- |
-| 2026-07-28 | Validated the proposed Critical Answer Test Suite against the shipped Answer Tests runtime. Kept the existing bounded proof loop, admitted only deterministic critical-RAG blocking for a later code pass, and rejected duplicate suites, multi-turn simulation, model judging, scheduled runs, and Storage-backed artifacts. |
+| 2026-07-29 | Wired Release Impact to the existing release-scoped Answer Tests modal and failed Answer Tests to the exact Canonical Answer review surface through validated, zero-persistence URL context. |
+| 2026-07-29 | Implemented deterministic critical-RAG blocking in the shared evaluator, save API, owner form, and focused regression suite without adding a migration, read, write, provider call, scheduler, or Storage artifact. |
+| 2026-07-28 | Validated the proposed Critical Answer Test Suite against the shipped Answer Tests runtime. Kept the existing bounded proof loop, admitted only deterministic critical-RAG blocking for the subsequent bounded implementation, and rejected duplicate suites, multi-turn simulation, model judging, scheduled runs, and Storage-backed artifacts. |
 | 2026-07-26 | Made every Answer Test mutation/provider admission fail closed on limiter outage and moved rollback answer/audit/entity authority into the proposal transaction with strict procedure and acknowledgement contracts. |
 | 2026-07-20 | Hardened Support Truth Export with projected approved evidence, fail-closed rate enforcement, one metadata-only audit write, executable cap/redaction/completeness tests, and an explicit portability-not-legal-export boundary. |
 | 2026-07-18 | Hardened Answer Tests schema version 4 with exact persisted identity, fail-closed case admission, input-bound request fingerprints, suite-revision freshness, strict release parsing, transactional rollback proposal/audit repair, and truthful deterministic-proof wording. |

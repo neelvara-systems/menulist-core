@@ -25,6 +25,7 @@ import {
     ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
     ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS,
     ANSWERLATTICE_SUPPORT_METRIC_WINDOWS,
+    type AnswerlatticeFrictionEvidenceComponents,
     calculateAnswerlatticeFrictionLoad,
     classifyAnswerlatticeFrictionLevel,
     detectAnswerlatticeFrictionTrend,
@@ -200,10 +201,9 @@ interface FrictionEntitySummary {
     entityType: string;
     last7d: {
         queryCount: number;
-        escalationCount: number;
         lowConfidenceCount: number;
         frictionScore: number;
-    };
+    } & AnswerlatticeFrictionEvidenceComponents;
     previous7d: {
         queryCount: number;
         frictionScore: number;
@@ -477,7 +477,15 @@ export async function aggregateFrictionStats(
         const entityAgg = new Map<string, {
             entityName: string;
             entityType: string;
-            last7d: { queryCount: number; escalationCount: number; lowConfidenceCount: number; frictionScore: number };
+            last7d: {
+                queryCount: number;
+                ticketCount: number;
+                chatNegativeCount: number;
+                escalationCount: number;
+                canonicalMissCount: number;
+                lowConfidenceCount: number;
+                frictionScore: number;
+            };
             previous7d: { queryCount: number; frictionScore: number };
             firstSeenDate: string;
         }>();
@@ -496,14 +504,25 @@ export async function aggregateFrictionStats(
             const agg = entityAgg.get(stat.entityId) || {
                 entityName: stat.entityName,
                 entityType: stat.entityType,
-                last7d: { queryCount: 0, escalationCount: 0, lowConfidenceCount: 0, frictionScore: 0 },
+                last7d: {
+                    queryCount: 0,
+                    ticketCount: 0,
+                    chatNegativeCount: 0,
+                    escalationCount: 0,
+                    canonicalMissCount: 0,
+                    lowConfidenceCount: 0,
+                    frictionScore: 0,
+                },
                 previous7d: { queryCount: 0, frictionScore: 0 },
                 firstSeenDate: stat.date,
             };
 
             if (stat.date >= windows.currentStart && stat.date <= windows.currentEnd) {
                 agg.last7d.queryCount += stat.queryCount;
+                agg.last7d.ticketCount += stat.ticketCount;
+                agg.last7d.chatNegativeCount += stat.chatNegativeCount;
                 agg.last7d.escalationCount += stat.escalationCount;
+                agg.last7d.canonicalMissCount += stat.lowConfidenceCount;
                 agg.last7d.lowConfidenceCount += stat.lowConfidenceCount;
                 agg.last7d.frictionScore += stat.frictionScore;
             } else {

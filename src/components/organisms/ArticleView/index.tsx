@@ -43,10 +43,9 @@ import { secureError } from '@lib/security/secureLogger';
 import { formatViewCountShort, getUserViewCount } from '@lib/viewCount';
 import FeedbackSection from '@molecules/FeedbackSection';
 import { EditorContent, useEditor } from '@tiptap/react';
-import { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Badge, Breadcrumb, Button, Card, Divider, Flex, Grid, message, theme, Tooltip, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuCalendar, LuCheck, LuClock, LuEye, LuFolderOpen, LuLink, LuTag } from 'react-icons/lu';
 
 const { Title, Text } = Typography;
@@ -179,6 +178,11 @@ const ArticleView: React.FC<ArticleViewProps> = ({
             },
         },
     });
+
+    useEffect(() => {
+        if (!editor) return;
+        editor.commands.setContent(article.content, false);
+    }, [article.content, editor]);
 
     // Generate slug for anchor link
     const slug = normalizeHelpCenterRouteSegment(article.title);

@@ -12,12 +12,6 @@ export type { SeoGenerationResult } from "@lib/ai/seoOutput";
 
 const SEO_GENERATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
-type SeoGenerationApiResponse = {
-    data?: SeoGenerationResult | null;
-    remainingBalance?: unknown;
-    transaction?: unknown;
-};
-
 export default async function generateSeoViaAPI(payload: SeoGenerationPayload): Promise<SeoGenerationResult | null> {
     try {
         const response = await fetch('/api/seo', {
@@ -32,7 +26,7 @@ export default async function generateSeoViaAPI(payload: SeoGenerationPayload): 
             throw createAiServiceHttpError('ai_seo_generation_request_failed', response);
         }
 
-        const responseJson = await readAiServiceResponseJson<SeoGenerationApiResponse>(response, {
+        const responseJson = await readAiServiceResponseJson(response, {
             context: {
                 ...getBoundedAiServiceStringContext('businessName', payload.store?.name),
             },

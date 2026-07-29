@@ -24,19 +24,24 @@ const getProviderErrorIndicators = (value: unknown, depth = 0): string[] => {
     }
     if (typeof value !== 'object') return [];
 
-    const record = value as Record<string, unknown>;
-    const indicators = Object.entries(record)
+    let entries: Array<[string, unknown]>;
+    try {
+        entries = Object.entries(value);
+    } catch {
+        return [];
+    }
+    const indicators = entries
         .filter(([key, entry]) => isProviderErrorIndicatorEntry(key, entry))
         .map(([, entry]) => String(entry));
 
     return [
-        ...(value instanceof Error ? [getBoundedErrorName(value) || 'Error'] : []),
+        ...(getBoundedErrorName(value) === 'Error' ? ['Error'] : []),
         ...indicators,
-        ...getProviderErrorIndicators(record.error, depth + 1),
-        ...getProviderErrorIndicators(record.errorDetails, depth + 1),
-        ...getProviderErrorIndicators(record.details, depth + 1),
-        ...getProviderErrorIndicators(record.metadata, depth + 1),
-        ...getProviderErrorIndicators(record.cause, depth + 1),
+        ...getProviderErrorIndicators(getUnknownObjectValueAtPath(value, ['error']), depth + 1),
+        ...getProviderErrorIndicators(getUnknownObjectValueAtPath(value, ['errorDetails']), depth + 1),
+        ...getProviderErrorIndicators(getUnknownObjectValueAtPath(value, ['details']), depth + 1),
+        ...getProviderErrorIndicators(getUnknownObjectValueAtPath(value, ['metadata']), depth + 1),
+        ...getProviderErrorIndicators(getUnknownObjectValueAtPath(value, ['cause']), depth + 1),
     ];
 };
 
@@ -46,49 +51,48 @@ const getProviderErrorIndicatorText = (error: unknown): string => (
 
 const normalizeRetryAfterSeconds = (value: unknown): number | null => {
     if (value === undefined || value === null) return null;
-    const normalizedValue = typeof value === 'string'
-        ? value.trim().match(/^(\d+(?:\.\d+)?)s?$/i)?.[1]
-        : value;
+    const normalizedValue = typeof value === 'number'
+        ? value
+        : typeof value === 'string'
+            ? value.trim().match(/^(\d+(?:\.\d+)?)s?$/i)?.[1]
+            : undefined;
     if (normalizedValue === undefined) return null;
     const seconds = Number(normalizedValue);
     return Number.isFinite(seconds) && seconds > 0 ? Math.max(1, Math.ceil(seconds)) : null;
 };
 
-export const getAIProviderRetryAfter = (error: any): number | null => {
+export const getAIProviderRetryAfter = (error: unknown): number | null => {
     if (!error || typeof error !== 'object') return null;
-    const source = error as {
-        retryAfterSeconds?: unknown;
-        retryAfter?: unknown;
-        retryDelaySeconds?: unknown;
-        retryDelay?: unknown;
-        details?: {
-            retryAfterSeconds?: unknown;
-            retryAfter?: unknown;
-            retryDelaySeconds?: unknown;
-            retryDelay?: unknown;
-        };
-    };
-    return normalizeRetryAfterSeconds(
-        source.retryAfterSeconds ??
-        source.retryAfter ??
-        source.retryDelaySeconds ??
-        source.retryDelay ??
-        source.details?.retryAfterSeconds ??
-        source.details?.retryAfter ??
-        source.details?.retryDelaySeconds ??
-        source.details?.retryDelay,
-    );
+    const paths = [
+        ['retryAfterSeconds'],
+        ['retryAfter'],
+        ['retryDelaySeconds'],
+        ['retryDelay'],
+        ['details', 'retryAfterSeconds'],
+        ['details', 'retryAfter'],
+        ['details', 'retryDelaySeconds'],
+        ['details', 'retryDelay'],
+    ];
+    for (const path of paths) {
+        const retryAfter = normalizeRetryAfterSeconds(getUnknownObjectValueAtPath(error, path));
+        if (retryAfter !== null) return retryAfter;
+    }
+    return null;
 };
 
-export const isAIProviderRateLimitError = (error: any): boolean => {
+export const isAIProviderRateLimitError = (error: unknown): boolean => {
     const indicators = getProviderErrorIndicatorText(error);
-    return error?.status === 429 ||
-        error?.httpStatusCode === 429 ||
-        error?.error?.code === 429 ||
+    return getBoundedErrorNumberAtPath(error, ['status']) === 429 ||
+        getBoundedErrorNumberAtPath(error, ['httpStatusCode']) === 429 ||
+        getBoundedErrorNumberAtPath(error, ['error', 'code']) === 429 ||
         indicators.includes('429') ||
         indicators.includes('resource_exhausted') ||
         indicators.includes('quota') ||
         indicators.includes('rate_limit') ||
         indicators.includes('too_many_requests');
 };
-import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
+import {
+    getBoundedErrorName,
+    getBoundedErrorNumberAtPath,
+    getUnknownObjectValueAtPath,
+} from '@lib/monitoring/boundedLogContext';

@@ -8,8 +8,8 @@
 - Show customers only explicitly published notes.
 - Recover failed publication as a draft instead of exposing a partial release.
 
-After the pre-activation preview is implemented and verified, public copy may
-also say:
+The pre-activation preview is implemented and locally verified. After its
+hosted owner flow is certified, public copy may also say:
 
 - Review directly affected approved answers and linked critical tests before
   activating a versioned release.

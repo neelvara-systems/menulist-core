@@ -1,7 +1,7 @@
 # Owner Dashboard - Current Runtime Contract
 
 > **Version:** 3.0
-> **Last Updated:** July 16, 2026
+> **Last Updated:** July 28, 2026
 > **Status:** Implemented reference; not current launch certification
 
 > **Launch boundary:** This document records current source behavior. It is not production approval. Release readiness still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [production-readiness checklist](../production-readiness/README.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), target deployment evidence, desktop/mobile browser QA, and production-host smoke.
@@ -16,7 +16,7 @@ The current owner dashboard is a Today-first live dashboard. It is a confirmatio
 - `showHistorical` starts `false`. Dashboard callers pass `loadHistorical: showHistorical` to `useOwnerDashboard()` and `useOBPDashboard()` so settled reads stay lazy until the owner selects a non-Today view.
 - The Today view reads live per-project and OBP daily documents through bounded DAL normalizers. Optional source-readiness, project-setup, and Business Health cards use their existing bounded sources when their flags are enabled.
 - Settled menu analytics come from `{tId}_{sId}_{projectId}_dashboard_summary`; settled OBP analytics come from the OBP dashboard read model. The owner client must not rebuild settled menu cards from an unbounded daily-document range.
-- Browser caches are tenant/store/project scoped. Today data has a 10-minute TTL; settled scheduler data uses the store-local scheduler day key.
+- Browser caches are tenant/store/project scoped. Today data has a 10-minute TTL; settled scheduler data uses the store-local scheduler day key. Persisted cache envelopes require exact safe-integer timestamps not in the future plus a canonical calendar date; malformed entries are removed. Owner Dashboard and Owner Action Plan payloads are reprojected through the DAL read-model normalizers (including exact project identity for the settled model) before fallback or fetcher use.
 - Desktop graph mode is gated by `ENABLE_OWNER_DASHBOARD_GRAPH_MODE`. It renders existing settled `daily30d`, cached `trendSummary`, source, action, item, search, and OBP data. It adds no event, write, collection, job, or provider call.
 - Past Activity remains disabled unless `ENABLE_PAST_ACTIVITY_HISTORY` is enabled. `/today/history` redirects or falls back to Today when the flag is disabled.
 
@@ -67,7 +67,7 @@ The settlement job also stores cached weekly/monthly movement labels and trend c
 - Mobile shell entry, direct hashes, and Business Health route mapping enforce `VIEW_ANALYTICS` before analytics screens mount.
 - Owner Business Health APIs independently enforce authentication, selected-store scope, and `VIEW_ANALYTICS`.
 - Owner action mark-done acknowledgement transactionally rechecks that the action is current and updates the bounded deterministic receipt map, preventing concurrent stale read/update loss.
-- Invalid or cross-store cached read models fail normalization and are evicted or rejected.
+- Invalid, wrong-project, or malformed cached read models fail normalization and are evicted or rejected. Scope remains part of every cache/SWR key, sign-out clears the cache namespace, and no TypeScript generic assertion is accepted as runtime cache validation.
 - Today and settled failures remain visible through the existing safe error/empty states; the client does not fabricate totals.
 - Analytics collection browser writes remain denied by Firestore rules. Public customer writes go through the protected Admin route.
 
@@ -82,6 +82,7 @@ npm run verify:owner-dashboard-today-boundary
 npm run verify:owner-business-health-boundary
 npm run verify:analytics-write-boundary
 npm run verify:catalog-analytics
+npm run test:swr-local-storage-provider
 npx tsc --noEmit
 ```
 

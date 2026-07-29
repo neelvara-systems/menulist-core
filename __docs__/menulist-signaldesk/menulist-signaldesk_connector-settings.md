@@ -30,7 +30,7 @@ The UI does not store:
 - Apify webhook secrets;
 - any raw provider secret.
 
-Actual secrets stay in `MENULIST_SIGNALDESK_*` environment variables or future Firebase Secret Manager entries. SignalDesk only records whether required env-backed secrets are configured or missing.
+Actual secrets stay in `SIGNALDESK_*` environment variables or future Firebase Secret Manager entries. SignalDesk only records whether required env-backed secrets are configured or missing.
 
 ## Runtime Shape
 

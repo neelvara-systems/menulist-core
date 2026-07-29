@@ -23,11 +23,29 @@ const jsonObjectKeyIntegrity = readFileSync(
     path.join(root, 'scripts/audit/json-object-key-integrity.mjs'),
     'utf8',
 );
+const auditReport = readFileSync(
+    path.join(root, '__docs__/audits/data-flow-pipeline-deep-audit.md'),
+    'utf8',
+);
 
 assert.equal(
     packageJson.scripts?.['audit:data-flow:manifest'],
     'node scripts/audit/generate-data-flow-audit-manifest.mjs',
     'package scripts must expose the maintained coverage manifest generator',
+);
+
+const parseSummaryCount = (label) => {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = auditReport.match(new RegExp(`^\\| ${escapedLabel} \\| \\*?\\*?([\\d,]+)\\*?\\*? \\|`, 'm'));
+    assert(match, `audit report must expose the canonical ${label} findings summary row`);
+    return Number(match[1].replaceAll(',', ''));
+};
+const severityCounts = ['P0', 'P1', 'P2', 'P3'].map(parseSummaryCount);
+const reportedFindingTotal = parseSummaryCount('**Total**');
+assert.equal(
+    severityCounts.reduce((total, count) => total + count, 0),
+    reportedFindingTotal,
+    'audit findings summary total must equal the P0-P3 row sum',
 );
 assert.equal(
     packageJson.scripts?.['audit:data-flow:catalog'],

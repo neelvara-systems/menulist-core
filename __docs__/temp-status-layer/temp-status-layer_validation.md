@@ -12,7 +12,7 @@ Primary gate:
 npm run verify:temporary-status-boundary
 ```
 
-The verifier covers `src/app/client/obp/OBPResolvedSurface.tsx`, menu and feedback rendering, owner clients, active-status normalization, exact expiry, Special Menu ownership, structured data, public API/browser projections, store/cache/screen/assistant effects, `screen-data`, and docs parity.
+The verifier covers `src/app/client/obp/OBPResolvedSurface.tsx`, menu and feedback rendering, owner clients, active-status normalization, exact expiry, Special Menu ownership, structured data, public API/browser projections, store/cache/screen/assistant effects, exact Digital Screen hashed-token invalidation, and docs parity.
 
 ## Correctness Cases
 

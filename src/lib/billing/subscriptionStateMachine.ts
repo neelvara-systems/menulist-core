@@ -27,7 +27,7 @@ import { getBoundedRazorpayStringContext } from "@lib/billing/razorpayDiagnostic
  *   expired  ─→ (terminal)
  *   completed ─→ (terminal)
  */
-const VALID_TRANSITIONS: Record<string, PaymentStatus[]> = {
+const VALID_TRANSITIONS: Readonly<Record<string, readonly PaymentStatus[]>> = {
     pending:   ["active", "past_due", "cancelled"],
     active:    ["past_due", "paused", "cancelled", "completed", "expired"],
     past_due:  ["active", "cancelled", "expired"],
@@ -41,7 +41,7 @@ const getTransitionLogContext = (
     from: PaymentStatus,
     to: PaymentStatus,
     context: string,
-    allowedTransitions: PaymentStatus[] = [],
+    allowedTransitions: readonly PaymentStatus[] = [],
 ) => ({
     ...getBoundedRazorpayStringContext('fromStatus', from),
     ...getBoundedRazorpayStringContext('toStatus', to),
@@ -76,6 +76,6 @@ export function validateTransition(from: PaymentStatus, to: PaymentStatus, conte
     return isValid;
 }
 
-export function getAllowedSubscriptionTransitions(from: PaymentStatus): PaymentStatus[] {
-    return VALID_TRANSITIONS[from] || [];
+export function getAllowedSubscriptionTransitions(from: PaymentStatus): readonly PaymentStatus[] {
+    return [...(VALID_TRANSITIONS[from] || [])];
 }

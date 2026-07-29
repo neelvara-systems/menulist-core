@@ -74,6 +74,16 @@ async function run(): Promise<void> {
             doc(platformDb, 'analytics', '1_101_menu-project_daily_2026-07-12'),
             validDailyAnalytics('1', '101'),
         ));
+        for (const db of [storeDb, platformDb, publicDb]) {
+            const receiptRef = doc(db, 'analyticsDeliveryReceipts', 'receipt-1');
+            await assertFails(getDoc(receiptRef));
+            await assertFails(setDoc(receiptRef, {
+                deliveryId: 'a'.repeat(32),
+                expiresAt: Timestamp.fromMillis(Date.now() + 60_000),
+                sId: '101',
+                tId: '1',
+            }));
+        }
     } finally {
         await testEnv.cleanup();
     }

@@ -35,7 +35,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
         items: [
             {
                 title: 'Help center and hosted docs',
-                detail: 'Articles, categories, FAQ, search, contact flows, and release notes can run in the app or on a branded support domain such as help.yourapp.com.',
+                detail: 'Articles, public article topic maps, categories, FAQ, search, contact flows, and release notes can run in the app or on a branded support domain such as help.yourapp.com.',
             },
             {
                 title: 'In-app widget',
@@ -51,7 +51,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Known issues and owner brief',
-                detail: 'Owners can publish a contextual, expiring widget notice for a temporary issue and use a read-only summary assistant to find the governed review screen that needs attention.',
+                detail: 'Owners can publish a contextual, expiring widget notice for a temporary issue and use a read-only Daily Brief to see qualified decisions or a clear quiet state.',
             },
             {
                 title: 'Changelog awareness',
@@ -73,7 +73,7 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Knowledge Map',
-                detail: 'Owners can inspect governed entity relationships, approved-answer coverage, drift, and review state from one compact summary instead of opening each record.',
+                detail: 'Owners can inspect governed entity relationships, approved-answer coverage, drift, and review state from one compact summary, then carry the selected product-area context into answer review.',
             },
             {
                 title: 'Approved answers',
@@ -89,11 +89,11 @@ export const ANSWERLATTICE_SYSTEM_COVERAGE = [
             },
             {
                 title: 'Trust and readiness metrics',
-                detail: 'Coverage, stale-answer pressure, failing entities, and escalation pressure are summarized for owners without raw log hunting.',
+                detail: 'Coverage and Product Friction Evidence summarize mapped support pressure across completed windows without presenting weighted load as root cause or product health.',
             },
             {
                 title: 'Answer tests and release checks',
-                detail: 'Critical questions can be saved and checked against approved-answer behavior, with release-scoped runs and rollback proposals that never overwrite live answers automatically.',
+                detail: 'Critical questions can be checked against approved-answer behavior, while release impact keeps directly linked answers and tests together before owner confirmation. Neither path overwrites live answers automatically.',
             },
         ],
     },

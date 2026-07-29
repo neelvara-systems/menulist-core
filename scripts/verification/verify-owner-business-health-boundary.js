@@ -77,6 +77,7 @@ const constants = read('src/lib/ownerBusinessAssistant/constants.ts');
 const clientResponses = read('src/lib/ownerBusinessAssistant/clientResponses.ts');
 const apiGuards = read('src/lib/ownerBusinessAssistant/server/apiGuards.ts');
 const sessionScope = read('src/lib/ownerBusinessAssistant/server/sessionScope.ts');
+const clientScope = read('src/lib/ownerBusinessAssistant/clientScope.ts');
 const contextPacketCache = read('src/lib/ownerBusinessAssistant/server/contextPacketCache.ts');
 const contextPacketBuilder = read('src/lib/ownerBusinessAssistant/server/buildOwnerBusinessAssistantContextPacket.ts');
 const domainMatrix = read('src/lib/ownerBusinessAssistant/server/domainCapabilityMatrix.ts');
@@ -461,6 +462,14 @@ forbidToken(schemas, 'targetKind', 'owner business action target schema');
   'resolveOwnerBusinessAssistantSessionScope',
 ].forEach((token) => requireToken(sessionScope, token, 'owner business exact session scope'));
 requireToken(apiGuards, 'resolveOwnerBusinessAssistantSessionScope(session)', 'owner business API exact session scope');
+[
+  'resolveCurrentSessionUserDocumentId(session)',
+  'actorId,',
+  'encodeURIComponent(scope.actorId)',
+  "projectId ? `project:${encodeURIComponent(projectId)}` : 'all'",
+].forEach((token) => requireToken(clientScope, token, 'owner business exact browser actor scope'));
+requireToken(threadHook, '[url, clientScope.cacheScope, clientScope.actorId] as const', 'owner business personal thread SWR identity');
+requireToken(answerHook, 'session?.uId, session?.user?.id', 'owner business personal thread memo identity');
 [
   'export const projectOwnerBusinessAssistantMessage = (value: unknown) => {',
   'sourceFactIds:',

@@ -33,7 +33,7 @@ type SignalDeskAdminBootstrapState = {
 };
 
 type SignalDeskAdminBootstrapGlobal = typeof globalThis & {
-    __MENULIST_SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__?: SignalDeskAdminBootstrapState;
+    __SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__?: SignalDeskAdminBootstrapState;
 };
 
 const signaldeskAdminBootstrapGlobal = globalThis as SignalDeskAdminBootstrapGlobal;
@@ -176,7 +176,7 @@ function initializeSignalDeskAdminApp(
         if (!signaldeskAdminAppOptionsMatch(app)) {
             return null;
         }
-        signaldeskAdminBootstrapGlobal.__MENULIST_SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__ = {
+        signaldeskAdminBootstrapGlobal.__SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__ = {
             app,
             fingerprint,
         };
@@ -201,7 +201,7 @@ function getSignalDeskAdminApp(): admin.app.App | null {
 
     const existing = admin.getApps().find((app) => app?.name === SIGNALDESK_FIREBASE_APP_NAME);
     if (existing) {
-        const bootstrapState = signaldeskAdminBootstrapGlobal.__MENULIST_SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__;
+        const bootstrapState = signaldeskAdminBootstrapGlobal.__SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__;
         if (
             bootstrapState?.app === existing
             && bootstrapState.fingerprint === fingerprint

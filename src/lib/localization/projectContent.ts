@@ -13,25 +13,43 @@ export type ProjectPublicContentGap = {
     languageCode: string;
 };
 
-export function getProjectManagedLanguages(projectDetails?: any, storeDetails?: any): string[] {
+const readOwnContentField = (value: unknown, key: string): unknown => {
+    if (!value || typeof value !== 'object') return undefined;
+    try {
+        if (Array.isArray(value)) return undefined;
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+export function getProjectManagedLanguages(projectDetails?: unknown, storeDetails?: unknown): string[] {
+    const projectLanguages = readOwnContentField(projectDetails, 'languages');
+    const projectDefaultLanguage = readOwnContentField(projectDetails, 'defaultLanguage');
+    const projectName = readOwnContentField(projectDetails, 'name');
+    const projectDescription = readOwnContentField(projectDetails, 'description');
+    const storeDefaultLanguage = readOwnContentField(storeDetails, 'defaultLanguage');
     return normalizeProjectLanguages([
-        ...(Array.isArray(projectDetails?.languages) ? projectDetails.languages : []),
-        projectDetails?.defaultLanguage,
-        getPrimaryLocalizedLanguage(projectDetails?.name, ''),
-        getPrimaryLocalizedLanguage(projectDetails?.description, ''),
-        storeDetails?.defaultLanguage,
+        ...(Array.isArray(projectLanguages) ? projectLanguages : []),
+        projectDefaultLanguage,
+        getPrimaryLocalizedLanguage(projectName, ''),
+        getPrimaryLocalizedLanguage(projectDescription, ''),
+        storeDefaultLanguage,
     ]);
 }
 
-export function getProjectPreferredLanguage(projectDetails?: any, storeDetails?: any): string {
+export function getProjectPreferredLanguage(projectDetails?: unknown, storeDetails?: unknown): string {
     const managedLanguages = getProjectManagedLanguages(projectDetails, storeDetails);
+    const preferredLanguage = readOwnContentField(projectDetails, 'defaultLanguage')
+        || readOwnContentField(storeDetails, 'defaultLanguage');
     return getPreferredDefaultLanguage(
-        projectDetails?.defaultLanguage || storeDetails?.defaultLanguage,
+        typeof preferredLanguage === 'string' ? preferredLanguage : undefined,
         managedLanguages,
     );
 }
 
-export function getProjectDefaultLanguage(projectDetails?: any, storeDetails?: any): string {
+export function getProjectDefaultLanguage(projectDetails?: unknown, storeDetails?: unknown): string {
     return getProjectPreferredLanguage(projectDetails, storeDetails);
 }
 
@@ -44,7 +62,7 @@ export function getProjectLanguageLabel(languageCode: string): string {
 }
 
 export function getLocalizedProjectValue(
-    value: any,
+    value: unknown,
     languageCode: string,
     fallback = '',
 ): string {
@@ -67,23 +85,28 @@ export function applyLocalizedProjectDraftMap(
 
 const PROJECT_PUBLIC_CONTENT_READERS: Array<{
     key: ProjectPublicContentFieldKey;
-    readValue: (projectDetails?: any) => unknown;
+    readValue: (projectDetails?: unknown) => unknown;
 }> = [
     {
         key: 'name',
-        readValue: (projectDetails) => projectDetails?.name,
+        readValue: (projectDetails) => readOwnContentField(projectDetails, 'name'),
     },
     {
         key: 'description',
-        readValue: (projectDetails) => projectDetails?.description,
+        readValue: (projectDetails) => readOwnContentField(projectDetails, 'description'),
     },
     {
         key: 'specialMenuDisplayName',
-        readValue: (projectDetails) => projectDetails?._specialMenu?.displayName || projectDetails?.specialMenuDisplayName,
+        readValue: (projectDetails) => (
+            readOwnContentField(readOwnContentField(projectDetails, '_specialMenu'), 'displayName')
+            || readOwnContentField(projectDetails, 'specialMenuDisplayName')
+        ),
     },
     {
         key: 'specialNote',
-        readValue: (projectDetails) => projectDetails?.menuSettings?.specialNote,
+        readValue: (projectDetails) => (
+            readOwnContentField(readOwnContentField(projectDetails, 'menuSettings'), 'specialNote')
+        ),
     },
 ];
 
@@ -96,14 +119,14 @@ const getExactLocalizedProjectValue = (value: unknown, languageCode: string): st
         return '';
     }
 
-    const exactValue = (value as Record<string, unknown>)[languageCode];
+    const exactValue = readOwnContentField(value, languageCode);
     if (typeof exactValue === 'string' && exactValue.trim()) {
         return exactValue.trim();
     }
 
     const baseLanguage = languageCode.split('-')[0];
     if (baseLanguage && baseLanguage !== languageCode) {
-        const baseValue = (value as Record<string, unknown>)[baseLanguage];
+        const baseValue = readOwnContentField(value, baseLanguage);
         return typeof baseValue === 'string' ? baseValue.trim() : '';
     }
 
@@ -111,11 +134,16 @@ const getExactLocalizedProjectValue = (value: unknown, languageCode: string): st
 };
 
 export function getMissingProjectPublicContentGaps(
-    projectDetails?: any,
+    projectDetails?: unknown,
     languages?: string[],
 ): ProjectPublicContentGap[] {
+    const requestedLanguages = languages?.length
+        ? languages
+        : readOwnContentField(projectDetails, 'languages');
     const targetLanguages = normalizeProjectLanguages(
-        languages?.length ? languages : projectDetails?.languages,
+        Array.isArray(requestedLanguages)
+            ? requestedLanguages.filter((value): value is string => typeof value === 'string')
+            : [],
     ).filter((languageCode) => languageCode !== CANONICAL_SOURCE_LANGUAGE);
 
     if (!targetLanguages.length) return [];
@@ -139,12 +167,12 @@ const hasExactDraftValue = (
     draftsByLanguage: Record<string, string>,
     languageCode: string,
 ): boolean => {
-    const exactValue = draftsByLanguage[languageCode];
+    const exactValue = readOwnContentField(draftsByLanguage, languageCode);
     if (typeof exactValue === 'string' && exactValue.trim().length > 0) return true;
 
     const baseLanguage = languageCode.split('-')[0];
     if (baseLanguage && baseLanguage !== languageCode) {
-        const baseValue = draftsByLanguage[baseLanguage];
+        const baseValue = readOwnContentField(draftsByLanguage, baseLanguage);
         return typeof baseValue === 'string' && baseValue.trim().length > 0;
     }
 

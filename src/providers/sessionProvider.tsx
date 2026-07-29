@@ -2,6 +2,7 @@
 import {
     DEPLOYMENT_IDENTITY_STORAGE_KEY,
     emitDeploymentIdentityUpdated,
+    normalizeDeploymentDebugIdentity,
 } from '@constant/deploymentDebug';
 import { ECOMSAI_PLATFORM_USER_ROLE, RESELLER_USER_ROLE } from '@constant/user';
 import RolesPermissionInitialData from '@data/rolesPermissionsInitialData';
@@ -18,6 +19,7 @@ import {
 } from '@lib/answerlattice/sessionScope';
 import { startLogCapture } from '@lib/localLogs/localLogsTracker';
 import { clearUserContext, setUserContext } from '@lib/monitoring/logger';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
     readActiveStoreContextId,
     writeActiveStoreContextId,
@@ -474,6 +476,7 @@ export default function SessionProvider({ children, session }: Props) {
         if (activeStoreContext && !targetStoreId) {
             setActiveStoreContext(null);
             if (storeDetails?.storeId !== loginStoreDetails.storeId) {
+                setUserPermissions(null);
                 setStoreDetails(loginStoreDetails);
             }
             return;
@@ -481,6 +484,7 @@ export default function SessionProvider({ children, session }: Props) {
 
         if (!targetStoreId) {
             if (storeDetails?.storeId !== loginStoreDetails.storeId) {
+                setUserPermissions(null);
                 setStoreDetails(loginStoreDetails);
             }
             if (
@@ -538,6 +542,7 @@ export default function SessionProvider({ children, session }: Props) {
                 });
             }
 
+            setUserPermissions(null);
             setStoreDetails(targetStore);
             const subscriptionData = await fetchActiveSubscriptionForStore(
                 Number(session.user.tenantId),
@@ -562,6 +567,7 @@ export default function SessionProvider({ children, session }: Props) {
                 activeSubscriptionRequestScopeKeyRef.current = null;
                 setActiveSubscription(null);
                 setActiveStoreContext(null);
+                setUserPermissions(null);
                 setStoreDetails(loginStoreDetails);
                 setActiveSubscriptionLoading(false);
             }
@@ -643,68 +649,65 @@ export default function SessionProvider({ children, session }: Props) {
         const authorityStoreDetails = loginStoreCanActAsMaster
             ? (loginStoreDetails || storeDetails)
             : (storeDetails || loginStoreDetails);
-        if (objectNullCheck(authorityStoreDetails)) {
-            if (!authorityStoreDetails?.roles) return;
+        if (!objectNullCheck(authorityStoreDetails) || !Array.isArray(authorityStoreDetails?.roles)) {
+            setUserPermissions(null);
+            return;
+        }
 
-            if (session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE) {
-                setUserPermissions(RolesPermissionInitialData);
-                return;
-            }
+        if (session?.user?.platformRole === ECOMSAI_PLATFORM_USER_ROLE) {
+            setUserPermissions(RolesPermissionInitialData);
+            return;
+        }
 
-            // HQ users keep HQ authority while viewing an outlet context. Other
-            // mapped users use the role assigned to the store they are viewing.
-            const permissionStoreId = Number(
-                loginStoreCanActAsMaster
-                    ? session?.user?.storeId
-                    : authorityStoreDetails?.storeId || session?.user?.storeId
-            );
-            const loginStoreId = Number(session?.user?.storeId);
-            const loginStoreRoleId = session?.user?.stores?.find(
-                (store: any) => Number(store.storeId) === loginStoreId
-            )?.role || ((session?.user as any)?.role || (session as any)?.role);
-            const canSwitchFromLoginStore = Boolean(
-                loginStoreDetails?.roles?.length
-                && getPermissionsForRole(loginStoreRoleId, loginStoreDetails.roles || [])?.canSwitchStores
-            );
-            const userRoleId = session?.user?.stores?.find(
-                (store: any) => Number(store.storeId) === permissionStoreId
-            )?.role || (
-                permissionStoreId === Number(session?.user?.storeId)
-                    ? ((session?.user as any)?.role || (session as any)?.role)
-                    : undefined
-            );
+        // HQ users keep HQ authority while viewing an outlet context. Other
+        // mapped users use the role assigned to the store they are viewing.
+        const permissionStoreId = Number(
+            loginStoreCanActAsMaster
+                ? session?.user?.storeId
+                : authorityStoreDetails?.storeId || session?.user?.storeId
+        );
+        const loginStoreId = Number(session?.user?.storeId);
+        const loginStoreRoleId = session?.user?.stores?.find(
+            (store: any) => Number(store.storeId) === loginStoreId
+        )?.role || ((session?.user as any)?.role || (session as any)?.role);
+        const canSwitchFromLoginStore = Boolean(
+            loginStoreDetails?.roles?.length
+            && getPermissionsForRole(loginStoreRoleId, loginStoreDetails.roles || [])?.canSwitchStores
+        );
+        const userRoleId = session?.user?.stores?.find(
+            (store: any) => Number(store.storeId) === permissionStoreId
+        )?.role || (
+            permissionStoreId === Number(session?.user?.storeId)
+                ? ((session?.user as any)?.role || (session as any)?.role)
+                : undefined
+        );
 
-            // Find matching role definition from store
-            const userRole = authorityStoreDetails.roles?.find((r: any) => r.id === userRoleId);
+        const rolePermissions = getPermissionsForRole(userRoleId, authorityStoreDetails.roles);
 
-            if (userRole?.permissions) {
-                const rolePermissions = getPermissionsForRole(userRoleId, authorityStoreDetails.roles || []);
-                // For outlet stores: apply master's outletPolicy to restrict permissions
-                // Master store's outletPolicy is the chain-wide gate for what outlets can do
-                const isMaster = loginStoreCanActAsMaster || isMasterLocationContext({
-                    storeDetails: authorityStoreDetails,
-                    tenantDetails,
-                });
-                if (!isMaster && tenantDetails?.storesList?.length) {
-                    const masterStore = tenantDetails.storesList.find((s: any) => s.isMaster);
-                    const outletPolicy = masterStore?.storeDetails?.outletPolicy;
-                    const effectivePermissions = applyOutletPolicy(rolePermissions, outletPolicy, false);
-                    setUserPermissions({
-                        ...effectivePermissions,
-                        canSwitchStores: loginStoreCanActAsMaster
-                            ? effectivePermissions.canSwitchStores
-                            : canSwitchFromLoginStore,
-                    });
-                } else {
-                    // Master store or single store - direct permissions
-                    setUserPermissions({
-                        ...rolePermissions,
-                        canSwitchStores: loginStoreCanActAsMaster
-                            ? rolePermissions.canSwitchStores
-                            : canSwitchFromLoginStore,
-                    });
-                }
-            }
+        // For outlet stores: apply master's outletPolicy to restrict permissions
+        // Master store's outletPolicy is the chain-wide gate for what outlets can do
+        const isMaster = loginStoreCanActAsMaster || isMasterLocationContext({
+            storeDetails: authorityStoreDetails,
+            tenantDetails,
+        });
+        if (!isMaster && tenantDetails?.storesList?.length) {
+            const masterStore = tenantDetails.storesList.find((s: any) => s.isMaster);
+            const outletPolicy = masterStore?.storeDetails?.outletPolicy;
+            const effectivePermissions = applyOutletPolicy(rolePermissions, outletPolicy, false);
+            setUserPermissions({
+                ...effectivePermissions,
+                canSwitchStores: loginStoreCanActAsMaster
+                    ? effectivePermissions.canSwitchStores
+                    : canSwitchFromLoginStore,
+            });
+        } else {
+            // Master store or single store - direct permissions
+            setUserPermissions({
+                ...rolePermissions,
+                canSwitchStores: loginStoreCanActAsMaster
+                    ? rolePermissions.canSwitchStores
+                    : canSwitchFromLoginStore,
+            });
         }
     }, [loginStoreDetails, session, storeDetails, tenantDetails])
 
@@ -716,17 +719,35 @@ export default function SessionProvider({ children, session }: Props) {
         const storeId = storeDetails?.storeId ?? session?.user?.storeId ?? null;
         const storeName = storeDetails?.name || '';
 
-        if (!tenantId && !storeId && !tenantName && !storeName) {
-            window.sessionStorage.removeItem(DEPLOYMENT_IDENTITY_STORAGE_KEY);
-            emitDeploymentIdentityUpdated();
-            return;
-        }
+        try {
+            if (!tenantId && !storeId && !tenantName && !storeName) {
+                window.sessionStorage.removeItem(DEPLOYMENT_IDENTITY_STORAGE_KEY);
+                emitDeploymentIdentityUpdated();
+                return;
+            }
 
-        window.sessionStorage.setItem(
-            DEPLOYMENT_IDENTITY_STORAGE_KEY,
-            JSON.stringify({ tenantId, tenantName, storeId, storeName }),
-        );
-        emitDeploymentIdentityUpdated();
+            const identity = normalizeDeploymentDebugIdentity({
+                tenantId,
+                tenantName,
+                storeId,
+                storeName,
+            });
+            if (!identity) {
+                window.sessionStorage.removeItem(DEPLOYMENT_IDENTITY_STORAGE_KEY);
+                emitDeploymentIdentityUpdated();
+                return;
+            }
+
+            window.sessionStorage.setItem(
+                DEPLOYMENT_IDENTITY_STORAGE_KEY,
+                JSON.stringify(identity),
+            );
+            emitDeploymentIdentityUpdated();
+        } catch (error) {
+            logRuntimeFailure('session_provider_deployment_identity_storage_failed', error, {
+                fallbackPolicy: 'deployment_badge_identity_unavailable',
+            }, { developmentOnly: true });
+        }
     }, [
         session?.user?.storeId,
         session?.user?.tenantId,

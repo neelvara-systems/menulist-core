@@ -7,7 +7,7 @@ import styles from './obp.module.scss';
 import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 
 type OBPTheme = 'light' | 'dark';
-type OBPThemeStorageOperation = 'read' | 'write';
+type OBPThemeStorageOperation = 'read' | 'remove' | 'write';
 
 const STORAGE_KEY = 'menulist:obp-theme';
 const reportedOBPThemeStorageFailures = new Set<OBPThemeStorageOperation>();
@@ -36,7 +36,14 @@ function logOBPThemeStorageFailure(
 function getStoredTheme(): OBPTheme | null {
     try {
         const value = window.localStorage.getItem(STORAGE_KEY);
-        return value === 'dark' || value === 'light' ? value : null;
+        if (value === 'dark' || value === 'light') return value;
+        if (value === null) return null;
+        try {
+            window.localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {
+            logOBPThemeStorageFailure('remove', error);
+        }
+        return null;
     } catch (error) {
         logOBPThemeStorageFailure('read', error);
         return null;

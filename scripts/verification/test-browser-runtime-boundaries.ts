@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
     isRazorpayCheckoutConfigurationReady,
     isRazorpayCheckoutReady,
 } from '../../src/lib/billing/razorpayScriptBoundary';
 import { parseCookieItem, serializeCookieItem } from '../../src/hooks/useCookie';
-import { normalizeStoredColorList } from '../../src/hooks/useRecentColors';
+import { normalizeStoredColorList, parseStoredColorList } from '../../src/hooks/useRecentColors';
 import { matchesKeyboardShortcut } from '../../src/hooks/useKeyboardShortcuts';
 import { loader, startLoader, stopLoader } from '../../src/redux/slices/loader';
 
@@ -64,6 +66,26 @@ assert.deepEqual(
     ['#abc', '#123456'],
 );
 assert.deepEqual(normalizeStoredColorList({ 0: '#fff' }, 10), []);
+assert.deepEqual(parseStoredColorList('[" #ABC ","#abc","#123456"]', 10), ['#abc', '#123456']);
+assert.deepEqual(parseStoredColorList(null, 10), []);
+assert.equal(parseStoredColorList('{"color":"#fff"}', 10), null);
+assert.equal(parseStoredColorList('{', 10), null);
+
+const recentColorsHookSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/hooks/useRecentColors.ts'),
+    'utf8',
+);
+assert.doesNotMatch(
+    recentColorsHookSource,
+    /set(?:Recent|Favorite)Colors\(\(prev\)[\s\S]{0,800}localStorage\.setItem/,
+    'React state updater callbacks must not perform browser-storage side effects',
+);
+const enhancedColorPickerSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/components/organisms/appSettings/EnhancedColorPicker.tsx'),
+    'utf8',
+);
+assert.match(enhancedColorPickerSource, /recentColors\.map\(/);
+assert.doesNotMatch(enhancedColorPickerSource, /rgbaColors:\s*any/);
 
 assert.equal(
     matchesKeyboardShortcut(

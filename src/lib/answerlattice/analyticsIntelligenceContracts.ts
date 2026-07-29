@@ -663,6 +663,20 @@ export function parseAnswerlatticeFrictionSnapshot(
         const currentQueryCount = normalizeNonNegativeInteger(entry.last7d.queryCount);
         const currentEscalationCount = normalizeNonNegativeInteger(entry.last7d.escalationCount);
         const currentLowConfidenceCount = normalizeNonNegativeInteger(entry.last7d.lowConfidenceCount);
+        const hasComponentBreakdown = (
+            entry.last7d.ticketCount !== undefined
+            || entry.last7d.chatNegativeCount !== undefined
+            || entry.last7d.canonicalMissCount !== undefined
+        );
+        const currentTicketCount = hasComponentBreakdown
+            ? normalizeNonNegativeInteger(entry.last7d.ticketCount)
+            : null;
+        const currentChatNegativeCount = hasComponentBreakdown
+            ? normalizeNonNegativeInteger(entry.last7d.chatNegativeCount)
+            : null;
+        const currentCanonicalMissCount = hasComponentBreakdown
+            ? normalizeNonNegativeInteger(entry.last7d.canonicalMissCount)
+            : null;
         const currentLoad = normalizeFiniteMetric(entry.last7d.frictionScore);
         const previousQueryCount = normalizeNonNegativeInteger(entry.previous7d.queryCount);
         const previousLoad = normalizeFiniteMetric(entry.previous7d.frictionScore);
@@ -679,6 +693,19 @@ export function parseAnswerlatticeFrictionSnapshot(
             || currentEscalationCount > currentQueryCount
             || currentLowConfidenceCount === null
             || currentLowConfidenceCount > currentQueryCount
+            || (
+                hasComponentBreakdown
+                && (
+                    currentTicketCount === null
+                    || currentChatNegativeCount === null
+                    || currentCanonicalMissCount === null
+                    || currentCanonicalMissCount !== currentLowConfidenceCount
+                    || currentTicketCount
+                        + currentChatNegativeCount
+                        + currentEscalationCount
+                        + currentCanonicalMissCount > currentQueryCount
+                )
+            )
             || currentLoad === null
             || currentLoad < 0
             || currentLoad > priorFrictionLoad
@@ -700,6 +727,13 @@ export function parseAnswerlatticeFrictionSnapshot(
                 escalationCount: currentEscalationCount,
                 lowConfidenceCount: currentLowConfidenceCount,
                 frictionScore: currentLoad,
+                ...(hasComponentBreakdown
+                    ? {
+                        ticketCount: currentTicketCount as number,
+                        chatNegativeCount: currentChatNegativeCount as number,
+                        canonicalMissCount: currentCanonicalMissCount as number,
+                    }
+                    : {}),
             },
             previous7d: { queryCount: previousQueryCount, frictionScore: previousLoad },
             trendDirection,

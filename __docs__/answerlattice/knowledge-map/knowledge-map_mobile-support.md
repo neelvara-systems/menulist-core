@@ -10,6 +10,10 @@ The Knowledge Map remains inside the existing Answerlattice governance route and
 - every interactive control has a minimum 44px target;
 - no horizontal canvas dragging is required;
 - changing focus preserves the current route.
+- an inbound entity handoff selects that entity only after it is found in the
+  exact-scope map;
+- **Review canonical answers** opens the responsive existing editor filtered to
+  the selected entity.
 
 ## Hosted Help
 

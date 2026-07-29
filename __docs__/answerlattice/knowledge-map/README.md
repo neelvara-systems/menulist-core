@@ -26,6 +26,9 @@ and must not imply that visual placement itself is product truth.
 - The map remains a read-only navigation surface. Entity Management,
   Canonical Answers, Drift Review, and Entity Candidates continue to own
   corrections.
+- Product Friction Evidence and other owner review surfaces may open the map
+  with one validated entity focus. The map may open Canonical Answers filtered
+  to that same entity.
 - A separate `/product-map` route, map manifest, Storage snapshot, layout
   document, presentation configuration, and action-count feed are rejected.
 
@@ -48,4 +51,6 @@ and must not imply that visual placement itself is product truth.
 - Public maps use only already-published article structure and navigation metadata.
 - Relationships are human-authored ontology relations, never model-invented edges.
 - Map loading is manual and bounded; no snapshot listener is permitted.
+- URL focus carries no tenant/workspace identity and is revalidated against the
+  loaded exact-scope graph before use.
 - The feature adds no collection, embedding, vector search, AI call, or graph database.

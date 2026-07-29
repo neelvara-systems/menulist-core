@@ -1,7 +1,8 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
-import { FieldValue } from 'firebase-admin/firestore';
+import { createHash } from 'node:crypto';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import {
   filterAnalyticsUpdateData,
   TWO_LEVEL_ANALYTICS_MAP_FIELDS,
@@ -11,6 +12,8 @@ import {
 const DAILY_ANALYTICS_COLLECTION = 'daily';
 const PUBLIC_ANALYTICS_PROJECT_ID_PATTERN = /^[A-Za-z0-9_-]{1,120}$/;
 const ANALYTICS_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ANALYTICS_DELIVERY_ID_PATTERN = /^[a-z0-9]{32}$/;
+const ANALYTICS_DELIVERY_RECEIPT_RETENTION_MS = 72 * 60 * 60 * 1000;
 
 function normalizePublicAnalyticsWriteScopeDocumentId(value: unknown): string | null {
   const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
@@ -126,6 +129,7 @@ export async function writePublicAnalyticsEventAdmin({
   dateString,
   storeTimeZone,
   businessDayEndTime,
+  deliveryId,
 }: {
   updateData: Record<string, unknown>;
   tenantId: string | number;
@@ -134,12 +138,19 @@ export async function writePublicAnalyticsEventAdmin({
   dateString: string;
   storeTimeZone?: string;
   businessDayEndTime?: string;
+  deliveryId: string;
 }) {
   const tenantDocumentId = normalizePublicAnalyticsWriteScopeDocumentId(tenantId);
   const storeDocumentId = normalizePublicAnalyticsWriteScopeDocumentId(storeId);
   const analyticsProjectId = normalizePublicAnalyticsWriteProjectId(projectId);
   const analyticsDateKey = normalizePublicAnalyticsWriteDateKey(dateString);
-  if (!tenantDocumentId || !storeDocumentId || !analyticsProjectId || !analyticsDateKey) {
+  if (
+    !tenantDocumentId
+    || !storeDocumentId
+    || !analyticsProjectId
+    || !analyticsDateKey
+    || !ANALYTICS_DELIVERY_ID_PATTERN.test(deliveryId)
+  ) {
     throw new Error('Invalid public analytics write scope.');
   }
 
@@ -158,22 +169,45 @@ export async function writePublicAnalyticsEventAdmin({
     assignProcessedAnalyticsField(processedData, key, rawValue);
   });
 
-  await firestoreAdmin.collection(DB_COLLECTIONS.ANALYTICS).doc(docId).set({
-    tId: tenantDocumentId,
-    sId: storeDocumentId,
-    projectId: analyticsProjectId,
-    grain: DAILY_ANALYTICS_COLLECTION,
-    analyticsScope: 'customer',
-    surface: analyticsProjectId === 'obp'
-      ? 'obp'
-      : analyticsProjectId === 'customerApp'
-        ? 'customerApp'
-        : 'menu',
-    date: analyticsDateKey,
-    localDate: analyticsDateKey,
-    storeTimeZone: storeTimeZone || 'UTC',
-    businessDayEndTime: businessDayEndTime || null,
-    ...processedData,
-    lastUpdated: FieldValue.serverTimestamp(),
-  }, { merge: true });
+  const deliveryReceiptId = createHash('sha256')
+    .update(`${tenantDocumentId}:${storeDocumentId}:${analyticsProjectId}:${analyticsDateKey}:${deliveryId}`)
+    .digest('hex');
+  const analyticsRef = firestoreAdmin.collection(DB_COLLECTIONS.ANALYTICS).doc(docId);
+  const receiptRef = firestoreAdmin
+    .collection(DB_COLLECTIONS.ANALYTICS_DELIVERY_RECEIPTS)
+    .doc(deliveryReceiptId);
+
+  return firestoreAdmin.runTransaction(async (transaction) => {
+    const receiptSnapshot = await transaction.get(receiptRef);
+    if (receiptSnapshot.exists) return { status: 'duplicate' as const };
+
+    transaction.set(analyticsRef, {
+      tId: tenantDocumentId,
+      sId: storeDocumentId,
+      projectId: analyticsProjectId,
+      grain: DAILY_ANALYTICS_COLLECTION,
+      analyticsScope: 'customer',
+      surface: analyticsProjectId === 'obp'
+        ? 'obp'
+        : analyticsProjectId === 'customerApp'
+          ? 'customerApp'
+          : 'menu',
+      date: analyticsDateKey,
+      localDate: analyticsDateKey,
+      storeTimeZone: storeTimeZone || 'UTC',
+      businessDayEndTime: businessDayEndTime || null,
+      ...processedData,
+      lastUpdated: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    transaction.create(receiptRef, {
+      analyticsDocumentId: docId,
+      createdAt: FieldValue.serverTimestamp(),
+      deliveryId,
+      expiresAt: Timestamp.fromMillis(Date.now() + ANALYTICS_DELIVERY_RECEIPT_RETENTION_MS),
+      projectId: analyticsProjectId,
+      sId: storeDocumentId,
+      tId: tenantDocumentId,
+    });
+    return { status: 'applied' as const };
+  });
 }

@@ -317,7 +317,6 @@ export const POST = withAuth(async (request, session) => {
         const refreshScreens = hasDigitalScreenBrandPropagationFields(fields);
         const postCommit = await runStorePublicTruthPostCommitEffects({
             chunkSize: BRAND_PROPAGATION_EFFECT_CHUNK_SIZE,
-            includeScreenDataTag: refreshScreens,
             storeIds: [masterStoreScope.documentId, ...propagationResult.targetOutletIds],
             tenantId: tenantScope.documentId,
             deps: {

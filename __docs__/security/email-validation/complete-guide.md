@@ -40,7 +40,7 @@ Current release approval requires the active [production-readiness audit](../../
 ✅ **Front-end + back-end validation** (defense in depth)  
 ✅ **Instant user feedback** (no waiting for API)  
 ✅ **Domain format validation** (localhost, IP, TLD checks)  
-✅ **Easy maintenance** (one curl command)
+✅ **Atomic validated maintenance** (one repository command)
 
 ### **Impact**
 - 📉 **60-80% reduction** in spam signups
@@ -177,43 +177,31 @@ After:  Type email → Move to next field → Instant error ⚡
 **File:** `src/lib/validation/disposableEmailDomains.ts`
 
 ```typescript
-import disposableDomainsJson from './disposable-domains-full.json';
-
-// Convert to Set for O(1) lookup
-const FULL_DISPOSABLE_DOMAINS = new Set<string>(disposableDomainsJson);
-
-// Fallback list (if JSON import fails)
-export const DISPOSABLE_EMAIL_DOMAINS_FALLBACK = new Set<string>([
-    '10minutemail.com',
-    'tempmail.com',
-    // ... ~200 common ones
-]);
-
-/**
- * Check if email is disposable
- * @param email - Email to check
- * @returns true if disposable
- */
 export function isDisposableEmail(email: string): boolean {
-    const domain = email.split('@')[1]?.toLowerCase()?.trim();
-    
+    const domain = getEmailDomain(email);
     if (!domain) return false;
-    
-    // Check full list first (10,000+ domains)
-    if (FULL_DISPOSABLE_DOMAINS.size > 0) {
-        return FULL_DISPOSABLE_DOMAINS.has(domain);
+
+    const disposableDomains = FULL_DISPOSABLE_DOMAINS.size > 0
+        ? FULL_DISPOSABLE_DOMAINS
+        : DISPOSABLE_EMAIL_DOMAINS_FALLBACK;
+    let candidate = domain;
+    while (candidate.includes('.')) {
+        if (disposableDomains.has(candidate)) return true;
+        candidate = candidate.slice(candidate.indexOf('.') + 1);
     }
-    
-    // Fallback to manual list
-    return DISPOSABLE_EMAIL_DOMAINS_FALLBACK.has(domain);
+    return false;
 }
 ```
 
 **Key Features:**
-- Uses Set for O(1) lookup (fast!)
-- Fallback to manual list if JSON fails
+- Validates the JSON update artifact before adding entries to the Set
+- Uses bounded suffix lookups so subdomains of disposable services are blocked
+- Falls back to the manual list if the validated full list is empty
 - Case-insensitive checking
-- Extracts domain safely
+- Requires exactly one `@` when extracting the domain
+- Registration validation enforces 63-character DNS labels, 253-character
+  domains, 64-character local parts, non-numeric TLDs, and exact/subdomain
+  reserved-domain matching without rejecting words such as `contest`
 
 ---
 
@@ -611,25 +599,23 @@ git push
 ### **Update Process**
 
 ```bash
-# 1. Navigate to project
-cd /Users/danny/Projects/MenuListAi/dashboard
+# 1. Navigate to this repository
+cd /Users/danny/Projects/MenuListAi/menulist-core
 
-# 2. Download latest list
-curl -s "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json" -o src/lib/validation/disposable-domains-full.json
+# 2. Download, validate, and atomically replace the list
+npm run maintenance:update-disposable-domains
 
-# 3. Verify download (should be ~1-2MB)
+# 3. Verify the committed artifact and registration behavior
 ls -lh src/lib/validation/disposable-domains-full.json
+npm run test:email-domain-validation
 
-# 4. Test with disposable email
-npm run dev
-# Try: test@10minutemail.com
-
-# 5. Commit and deploy
+# 4. Review and commit through the normal repository workflow
+git diff -- src/lib/validation/disposable-domains-full.json
 git add src/lib/validation/disposable-domains-full.json
 git commit -m "chore: update disposable email domains list"
 git push
 
-# 6. Update maintenance date
+# 5. Update maintenance date
 # Edit: maintenance-tasks.md
 # Set next reminder: +6 months
 ```
@@ -824,11 +810,12 @@ Error: Cannot find module './disposable-domains-full.json'
 
 **Fix:**
 ```bash
-# Re-download the file
-curl -s "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json" -o src/lib/validation/disposable-domains-full.json
+# Re-download, validate, and atomically replace the file
+npm run maintenance:update-disposable-domains
 
-# Verify it exists
+# Verify it exists and satisfies the registration contract
 ls src/lib/validation/disposable-domains-full.json
+npm run test:email-domain-validation
 
 # Clean and rebuild
 rm -rf .next
@@ -867,7 +854,7 @@ Track these metrics:
 ✅ **Comprehensive spam prevention** (10,000+ domains)  
 ✅ **Instant user feedback** (front-end validation)  
 ✅ **Secure enforcement** (server-side validation)  
-✅ **Easy maintenance** (one curl command)  
+✅ **Atomic validated maintenance** (one repository command)
 ✅ **Zero cost** ($0 vs $240-960/year)  
 ✅ **Source and maintenance evidence recorded** (deployment state must be reconfirmed through the active launch gates)
 

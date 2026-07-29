@@ -23,6 +23,11 @@ import {
     type StarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
 import { secureError } from '@lib/security/secureLogger';
+import { resolveStorePermissionSessionScope } from '@lib/permissions/scopeDocumentId';
+import {
+    parsePublicCreateMenuLastClaimHandoff,
+    PUBLIC_CREATE_MENU_LAST_CLAIM_KEY,
+} from '@lib/publicCreateMenu/lastClaimHandoff';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -264,7 +269,7 @@ async function copyCreateMenuSuccessLinkToClipboard(menuUrl: string) {
 export default function CreateMenuSuccessClient() {
     const t = useTranslations('Website');
     const searchParams = useSearchParams();
-    const { update: updateSession } = useSession();
+    const { data: session, update: updateSession } = useSession();
     const defaultBusinessName = t('CreateMenuSuccess.defaultBusinessName');
     const rawMenuUrl = searchParams.get('menuUrl') || '';
     const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';
@@ -289,10 +294,21 @@ export default function CreateMenuSuccessClient() {
         if (recordedSignalsRef.current.has(signal)) return;
         let rawClaim: string | null = null;
         try {
-            rawClaim = window.sessionStorage.getItem('menulist:create-menu:last-claim');
-            const claim = rawClaim ? JSON.parse(rawClaim) : null;
-            const storeId = Number(claim?.storeId);
-            if (!storeId) return;
+            rawClaim = window.sessionStorage.getItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
+            const claim = parsePublicCreateMenuLastClaimHandoff(rawClaim);
+            const sessionScope = resolveStorePermissionSessionScope(session);
+            if (!claim) {
+                if (rawClaim) window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
+                return;
+            }
+            if (
+                !sessionScope
+                || claim.tenantId !== sessionScope.tenantScope.numericId
+                || claim.storeId !== sessionScope.storeScope.numericId
+            ) {
+                return;
+            }
+            const storeId = claim.storeId;
 
             recordedSignalsRef.current.add(signal);
             recordStarterActivationSignal(storeId, signal)
@@ -314,7 +330,7 @@ export default function CreateMenuSuccessClient() {
                 getCreateMenuSuccessStarterSignalContext(signal, rawClaim),
             );
         }
-    }, []);
+    }, [session]);
 
     const handleCopyLink = useCallback(async () => {
         if (!menuUrl) return;

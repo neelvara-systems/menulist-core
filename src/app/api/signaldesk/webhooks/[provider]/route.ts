@@ -16,7 +16,10 @@ import { NextResponse } from "next/server";
 const PROVIDERS = new Set(["email", "whatsapp", "instagram", "messenger", "apify"]);
 const SIGNALDESK_WEBHOOK_MAX_BODY_BYTES = 256 * 1024;
 const SIGNALDESK_WEBHOOK_REJECTED_REASON = "webhook_rejected";
-const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+const NO_STORE_HEADERS = {
+    "Cache-Control": "no-store, max-age=0",
+    "X-Content-Type-Options": "nosniff",
+} as const;
 
 const resolveProvider = (provider: string) => PROVIDERS.has(provider) ? provider as "email" | "whatsapp" | "instagram" | "messenger" | "apify" : null;
 
@@ -58,7 +61,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
             invalidRequestMessage: "Invalid webhook request",
             tooLargeMessage: "Webhook body too large",
         });
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) {
+            Object.entries(NO_STORE_HEADERS).forEach(([name, value]) => {
+                bodyResult.response.headers.set(name, value);
+            });
+            return bodyResult.response;
+        }
 
         const rawBody = bodyResult.body;
         const result = await processSignalDeskProviderWebhook({

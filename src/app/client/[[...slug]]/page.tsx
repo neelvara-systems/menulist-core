@@ -57,6 +57,7 @@ import { attachPublicMenuSearchIndex } from "@lib/menu/publicMenuSearch";
 import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
 import { mergeSpecialMenuOverlayProjects } from "@lib/menu/specialMenuOverlay";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
+import { normalizePublicAccentColor } from "@lib/obp/accentColor";
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { populateMasterCache, resolveProjectForRender } from "@lib/multiOutlet";
@@ -806,7 +807,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
             '',
         ).trim();
     const appleWebAppTitle = deriveCustomerAppShortName(storeName, pwaShortName);
-    const themeColor = storeData.publicPresence?.accentColor || APP_THEME_COLOR;
+    const themeColor = normalizePublicAccentColor(storeData.publicPresence?.accentColor) || APP_THEME_COLOR;
 
     const currentPath = params?.slug && params.slug.length > 0
         ? `/${params.slug.join('/')}`
@@ -1179,7 +1180,7 @@ export async function generateViewport(): Promise<Viewport> {
     }
 
     return {
-        themeColor: storeData?.publicPresence?.accentColor || APP_THEME_COLOR,
+        themeColor: normalizePublicAccentColor(storeData?.publicPresence?.accentColor) || APP_THEME_COLOR,
         width: 'device-width',
         initialScale: 1,
         viewportFit: 'cover',
@@ -2192,7 +2193,7 @@ async function MenuContent({
                         businessName: storeName,
                     }),
             baseUrl,
-            themeColor: storeDetails?.publicPresence?.accentColor,
+            themeColor: normalizePublicAccentColor(storeDetails?.publicPresence?.accentColor) || undefined,
         })
         : null;
     const safeStoreOutletSlug = normalizePublicOutletSlug(storeData.outletSlug);

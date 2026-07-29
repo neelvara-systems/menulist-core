@@ -53,12 +53,19 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 34. Legacy retained runs without suite revision remain visible but cannot be presented as current proof; legacy reservations without request fingerprints do not block new work.
 35. The deterministic evaluator remains provider-free and the UI states that its result is regression evidence rather than an independent factual-correctness guarantee.
 36. **Adopt current route and evidence** updates source, answer/FAQ IDs, confidence, and evidence while preserving required and blocked phrase checks.
-37. After Feature 5 hardening, a new or edited critical case cannot select `rag` as its expected route.
+37. A new or edited active critical case cannot select `rag` as its expected route; an unchanged legacy case remains save-compatible and can be deactivated safely.
 38. A legacy persisted critical-RAG case continues to load, but an actual `rag` result fails with an explicit reason and produces `proofStatus = blocked`.
 39. A critical test may still run in full-runtime mode; canonical, published FAQ, explicitly expected escalation, and explicitly expected no-answer outcomes can pass when all configured assertions pass.
 40. The same critical-RAG rule applies to standard runs, First 10 proof, release checks, and proposal-impact current/proposed evaluation.
 41. Critical-RAG blocking adds no Firestore read/write, provider call, summary migration, analytics event, or retained artifact beyond the existing run contract.
 42. No test route creates multi-turn variants, scheduled suites, model-judge results, separate manifests, per-assertion documents, or Storage artifacts.
+43. A validated release URL context opens the existing release-check modal and
+    preselects only a release present in the exact-scope loaded list.
+44. Closing a query-opened release modal removes the context without running a
+    test or writing state.
+45. A failed result with a valid answer ID opens the existing Canonical Answer
+    Editor focused on that answer; missing or invalid IDs cannot open a
+    different record.
 
 ## Release Safety
 

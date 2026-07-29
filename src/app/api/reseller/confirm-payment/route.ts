@@ -16,9 +16,9 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { ResellerConfirmPaymentSchema } from "@lib/validation/resellerSchemas";
-import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
+import { resellerPrivateJson, withResellerPrivateHeaders } from "../readRateLimit";
 
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 
@@ -36,7 +36,7 @@ export const POST = withAuth(async (request, session) => {
 
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            return NextResponse.json({ error: "Feature not available." }, { status: 404 });
+            return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
         }
 
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
@@ -44,29 +44,32 @@ export const POST = withAuth(async (request, session) => {
         const rateLimitResult = await checkRateLimit({
             key: `reseller-confirm-payment:${resellerRateLimitHash}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({
-                error: "Too many requests. Please try again later.",
+            return resellerPrivateJson({
+                error: rateLimitResult.reason === 'provider_unavailable'
+                    ? "Service temporarily unavailable. Please try again later."
+                    : "Too many requests. Please try again later.",
                 resetAt: rateLimitResult.resetAt,
-            }, { status: 429 });
+            }, { status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429 });
         }
 
         const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid input',
         });
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);
         const validation = validateAPIInput(ResellerConfirmPaymentSchema, bodyResult.data);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-            return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
+            return resellerPrivateJson({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
         const { subscriptionId } = validation.data;
 
         if (isPlatformUser) {
             if (!await getCurrentPlatformUser(session)) {
-                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
             }
         } else {
             const resellerProfile = await getResellerProfile(
@@ -80,7 +83,7 @@ export const POST = withAuth(async (request, session) => {
                 sessionEmail: session.user.email,
                 sessionProfileId: session.user.resellerProfileId,
             })) {
-                return NextResponse.json({ error: "Reseller profile not found or inactive." }, { status: 403 });
+                return resellerPrivateJson({ error: "Reseller profile not found or inactive." }, { status: 403 });
             }
         }
 
@@ -90,7 +93,7 @@ export const POST = withAuth(async (request, session) => {
             subscriptionId,
         });
         if (confirmation.kind === 'not_found') {
-            return NextResponse.json({ error: "Subscription not found." }, { status: 404 });
+            return resellerPrivateJson({ error: "Subscription not found." }, { status: 404 });
         }
         if (confirmation.kind === 'forbidden') {
             logger.security('Reseller Confirm Payment - Unauthorized Access', {
@@ -98,16 +101,16 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedResellerApiStringContext('resellerId', resellerId),
                 ...getBoundedResellerApiStringContext('subscriptionId', subscriptionId),
             }, 'high');
-            return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
         }
         if (confirmation.kind === 'wrong_mode') {
-            return NextResponse.json({ error: "This subscription uses online payment. No manual confirmation needed." }, { status: 400 });
+            return resellerPrivateJson({ error: "This subscription uses online payment. No manual confirmation needed." }, { status: 400 });
         }
         if (confirmation.kind === 'invalid_state') {
-            return NextResponse.json({ error: "Only a pending manual subscription can be confirmed." }, { status: 409 });
+            return resellerPrivateJson({ error: "Only a pending manual subscription can be confirmed." }, { status: 409 });
         }
         if (confirmation.kind === 'malformed') {
-            return NextResponse.json({ error: "This subscription cannot be confirmed. Contact support." }, { status: 409 });
+            return resellerPrivateJson({ error: "This subscription cannot be confirmed. Contact support." }, { status: 409 });
         }
 
         await markResellerTransactionsActiveForSubscription(
@@ -138,7 +141,7 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        return NextResponse.json({
+        return resellerPrivateJson({
             success: true,
             alreadyConfirmed: confirmation.alreadyConfirmed,
             subscriptionId,
@@ -149,7 +152,7 @@ export const POST = withAuth(async (request, session) => {
         logResellerApiFailure('reseller_confirm_payment_route_failed', error, {
             ...getBoundedResellerApiStringContext('resellerId', resellerId),
         });
-        return NextResponse.json(
+        return resellerPrivateJson(
             { error: 'Failed to confirm payment. Please try again.' },
             { status: 500 }
         );

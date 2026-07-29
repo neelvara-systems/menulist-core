@@ -1,11 +1,11 @@
 # MyCodex PWA Shell
 
-Private PWA shell handling for MyCodex on `menulist.digital` and local `/__mycodex`.
+Private PWA shell handling for MyCodex on local `/__mycodex`. No public MyCodex domain is active.
 
 ## Scope
 
 - Product: MyCodex only
-- Host: `menulist.digital`
+- Host: none active
 - Local route: `/__mycodex`
 - Primary user device: desktop browser and iPhone/iPad PWA installs
 

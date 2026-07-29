@@ -1520,7 +1520,7 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
   );
   assertIncludes(
     'src/lib/cache/storePublicTruthPostCommit.ts',
-    ['`menu-store-${storeId}`', '`store-${storeId}`', "params.deps.revalidate('client-stores')", "params.deps.revalidate('screen-data')"],
+    ['`menu-store-${storeId}`', '`store-${storeId}`', "params.deps.revalidate('client-stores')", "params.deps.touchScreen(storeId)"],
     'shared store public-truth cache-tag boundary',
   );
 
@@ -1763,10 +1763,14 @@ function verifySessionScopedPublicTruthRoutes() {
       'userId === raw',
       'userId.length <= CHANGE_PASSWORD_USER_DOCUMENT_ID_MAX_LENGTH',
       'isValidFirestoreDocumentId(userId)',
-      'const userId = normalizeChangePasswordUserDocumentId(rawUserId);',
+      'resolveCurrentSessionUserDocumentId(session)',
       'const userRateLimitHash = hashPublicRateLimitValue(userId);',
       'key: `auth-pwd:${userRateLimitHash}`',
       'readBoundedJsonBody(request, CHANGE_PASSWORD_MAX_BODY_BYTES',
+      'withAuthPrivateHeaders(bodyResult.response)',
+      'authTokensRevokedAt: now,',
+      'sessionRevokedAt: now,',
+      'reauthenticationRequired: true,',
       'getBoundedSecurityRouteContext(session, request)',
     ],
     'change-password hashed limiter identity and bounded body guard',
@@ -2405,13 +2409,21 @@ function verifySessionScopedPublicTruthRoutes() {
       'function normalizeSessionDocumentId(value: unknown): string | null',
       'documentId.length <= PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH',
       'isValidFirestoreDocumentId(documentId)',
-      'const { tId: rawTenantId, sId: rawStoreId } = session',
-      'const tenantId = normalizeSessionDocumentId(rawTenantId);',
-      'const storeId = normalizeSessionDocumentId(rawStoreId);',
+      'resolveStorePermissionSessionScope,',
+      'resolveCurrentSessionUserDocumentId',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'const actorId = normalizeSessionDocumentId(resolveCurrentSessionUserDocumentId(session));',
+      'const tenantId = sessionScope.tenantScope.documentId;',
+      'const storeId = sessionScope.storeScope.documentId;',
       'requireAnyStorePermissionForStoreData(',
       '[PERMISSIONS.MANAGE_INTEGRATIONS]',
+      'const actorRateLimitHash = hashPublicRateLimitValue(actorId);',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
-      'key: `api-key-mgmt:${storeRateLimitHash}`',
+      'key: `api-key-mgmt:${actorRateLimitHash}:${storeRateLimitHash}`',
+      "'Cache-Control': 'private, no-store, max-age=0'",
+      "'Pragma': 'no-cache'",
+      "'X-Content-Type-Options': 'nosniff'",
+      'if (bodyResult.ok === false) return withPublicApiKeyResponseHeaders(bodyResult.response);',
       'readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
       'RequestSchema.safeParse(body)',
       'const requestedTenantId = normalizeSessionDocumentId(validation.data.tenantId);',
@@ -2440,6 +2452,9 @@ function verifySessionScopedPublicTruthRoutes() {
   assert(publicApiKeyRoute.indexOf('RequestSchema.safeParse(body)') < publicApiKeyRoute.indexOf('requireAnyStorePermissionForStoreData('), 'public API key management must validate the bounded body before current permission Firestore work');
   assert(publicApiKeyRoute.indexOf('requireAnyStorePermissionForStoreData(') < publicApiKeyRoute.indexOf('transaction.update(storeRef,'), 'public API key management must authorize from the transaction snapshot before writing');
   assert(!publicApiKeyRoute.includes('key: `api-key-mgmt:${storeId}`'), 'public API key management must not store raw store IDs in rate-limit keys');
+  assert(!publicApiKeyRoute.includes('key: `api-key-mgmt:${storeRateLimitHash}`'), 'public API key management must not share one store-only limiter across managers');
+  assert(!publicApiKeyRoute.includes('const { tId: rawTenantId, sId: rawStoreId } = session'), 'public API key management must reject conflicting session scope aliases');
+  assert(!publicApiKeyRoute.includes('session.user?.id || session.uId'), 'public API key management must reject conflicting actor aliases');
   assert(!publicApiKeyRoute.includes('await storeRef.update('), 'public API key management must not write outside its current-scope transaction');
   assert(!publicApiKeyRoute.includes("secureLog('[Public API] Key generated'"), 'public API key generation must not log raw store IDs');
   assert(!publicApiKeyRoute.includes("secureLog('[Public API] Key revoked'"), 'public API key revocation must not log raw store IDs');
@@ -2985,6 +3000,10 @@ function verifyAuthClaimAndCacheBoundaries() {
       'if (!sessionUserId)',
       'const setClaimsUserRateLimitHash = hashPublicRateLimitValue(sessionUserId);',
       'key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${setClaimsUserRateLimitHash}`',
+      'failClosedOnProviderError: true',
+      "rateLimit.reason === 'provider_unavailable'",
+      'AUTH_CREDENTIAL_RESPONSE_HEADERS',
+      "'Pragma': 'no-cache'",
       "logger.security('Rate Limit Exceeded - Set Claims'",
       'readOptionalBoundedJsonBody(request, SET_CLAIMS_MAX_BODY_BYTES',
       'targetStoreId: z.number().int().positive().optional()',
@@ -3035,6 +3054,7 @@ function verifyAuthClaimAndCacheBoundaries() {
   assert(!setClaimsRoute.includes('key: `auth-set-claims:${session.uId'), 'set-claims route must not store raw session user IDs in rate-limit keys');
   assert(!setClaimsRoute.includes('key: `auth-set-claims:${session.user.email'), 'set-claims route must not store raw emails in rate-limit keys');
   assert(!setClaimsRoute.includes('key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${session'), 'set-claims route must build limiter keys from hashed identity material');
+  assert(setClaimsRoute.includes('return withCredentialResponseHeaders(bodyResult.response);'), 'set-claims bounded-body failures must retain protected private headers');
   assert(setClaimsAuthFirebaseDoc.includes('Set-claims rate-limit boundary'), 'Auth Firebase docs must record the set-claims rate-limit boundary');
   assert(setClaimsAuthFirebaseDoc.includes('one canonical target-store read for each valid sync attempt'), 'Auth Firebase docs must record canonical set-claims store verification');
   assert(setClaimsFirebaseAuthSyncDoc.includes('Set-claims rate-limit boundary'), 'Firebase Auth sync docs must record the set-claims rate-limit boundary');
@@ -3053,7 +3073,7 @@ function verifyAuthClaimAndCacheBoundaries() {
       'const storeId = normalizeStoreId(body.storeId);',
       'if (!storeId)',
       'if (sessionAccess && !canMenuRevalidationSessionAccessStore(sessionAccess, storeId))',
-      'tags = [`menu-store-${storeId}`, `store-${storeId}`, \'client-stores\', \'screen-data\'];',
+      'tags = [`menu-store-${storeId}`, `store-${storeId}`, \'client-stores\'];',
     ],
     'menu revalidation store shorthand auth boundary',
   );
@@ -3171,7 +3191,8 @@ function verifyPublicTruthMutationBoundedBodies() {
     assert(content.includes('readBoundedJsonBody'), `${route} bounded JSON body reader`);
     assert(
       content.includes('if (bodyResult.ok === false) return bodyResult.response;')
-        || content.includes('if (bodyResult.ok === false) return applyPrivateResponseHeaders(bodyResult.response);'),
+        || content.includes('if (bodyResult.ok === false) return applyPrivateResponseHeaders(bodyResult.response);')
+        || content.includes('if (bodyResult.ok === false) return withPublicApiKeyResponseHeaders(bodyResult.response);'),
       `${route} bounded JSON body guard`,
     );
   });
@@ -3269,11 +3290,14 @@ function verifyPublicTruthMutationBoundedBodies() {
   assertOrder(
     'src/app/api/store/public-api-key/route.ts',
     [
-      'const tenantId = normalizeSessionDocumentId(rawTenantId);',
-      'const storeId = normalizeSessionDocumentId(rawStoreId);',
+      'const sessionScope = resolveStorePermissionSessionScope(session);',
+      'const actorId = normalizeSessionDocumentId(resolveCurrentSessionUserDocumentId(session));',
+      'const tenantId = sessionScope.tenantScope.documentId;',
+      'const storeId = sessionScope.storeScope.documentId;',
+      'const actorRateLimitHash = hashPublicRateLimitValue(actorId);',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
       'const rlResult = await checkRateLimit({',
-      'key: `api-key-mgmt:${storeRateLimitHash}`',
+      'key: `api-key-mgmt:${actorRateLimitHash}:${storeRateLimitHash}`',
       'failClosedOnProviderError: true',
       'const bodyResult = await readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
       'const validation = RequestSchema.safeParse(body);',
@@ -4623,9 +4647,13 @@ function verifyAnalyticsErrorBoundary() {
       'const scope = resolveStorePermissionSessionScope(session);',
       'scope.tenantScope.numericId',
       'scope.storeScope.numericId',
+      'failClosedOnProviderError: true',
+      'resolveCurrentSessionUserDocumentId(session)',
+      'withAiPackStatusPrivateHeaders(permissionError)',
+      '"Cache-Control": "private, no-store, max-age=0"',
       'const permissionError = await requireAnyStorePermission(',
       '[PERMISSIONS.ACCESS_BILLING]',
-      'if (permissionError) return permissionError;',
+      'if (permissionError) return withAiPackStatusPrivateHeaders(permissionError);',
     ],
     'AI pack status permission guard',
   );
@@ -4634,8 +4662,9 @@ function verifyAnalyticsErrorBoundary() {
     [
       'const scope = resolveStorePermissionSessionScope(session);',
       'if (!scope) {',
+      'const rateLimit = await checkRateLimit({',
       'const permissionError = await requireAnyStorePermission(',
-      'if (permissionError) return permissionError;',
+      'if (permissionError) return withAiPackStatusPrivateHeaders(permissionError);',
       'const capacityCheck = await checkAICapacity(',
     ],
     'AI pack status route must check billing permission before capacity reads',
@@ -4928,6 +4957,11 @@ function verifyAnalyticsErrorBoundary() {
       'analytics_session_refresh_failed',
       'analytics_session_clear_failed',
       'reportedAnalyticsSessionStorageFailures',
+      'CANONICAL_UUID_V4_PATTERN',
+      'isCanonicalAnalyticsSessionId',
+      'parseAnalyticsSessionTimestamp',
+      'Number.isSafeInteger(timestamp)',
+      'timestamp <= now',
       'getAnalyticsSessionStorageFailureContext',
       'logAnalyticsSessionStorageFailure',
       "getBoundedAnalyticsStringContext('sessionIdKey', SESSION_ID_KEY)",
@@ -6223,6 +6257,8 @@ function verifyOwnerUtilitySecureLogging() {
 	      "redirect: 'manual',",
     ]],
     ['functions/src/monitoring/platformNotificationDelivery.ts', [
+      "import { normalizePlatformNotificationEmail } from '../sharedData/platformNotificationRecipient';",
+      'normalizePlatformNotificationEmail(',
       'const encodedPhoneNumberId = encodeURIComponent(phoneNumberId);',
       '${encodedPhoneNumberId}/messages',
       'function getPlatformDeliveryStringContext',
@@ -6242,6 +6278,8 @@ function verifyOwnerUtilitySecureLogging() {
       'if (!result.success)',
     ]],
     ['src/lib/ops/platformNotificationDelivery.ts', [
+      "import { normalizePlatformNotificationEmail } from '@data/shared/platformNotificationRecipient';",
+      'normalizePlatformNotificationEmail(',
       'function getPlatformDeliveryStringContext',
       'function buildPlatformDeliveryScopeLine',
       'function buildPlatformDeliveryAlertLine',
@@ -6983,6 +7021,10 @@ function verifyOwnerUtilitySecureLogging() {
     assert(
       !platformNotificationDelivery.includes('.catch(() => undefined)'),
       'platform alert delivery must not silently swallow Email/WhatsApp provider failures',
+    );
+    assert(
+      !platformNotificationDelivery.includes('value === undefined || value === null ? \'\' : String(value)'),
+      'Functions platform alert diagnostics must not execute unknown conversion hooks',
     );
     assert(
       platformNotificationDelivery.includes("error: 'whatsapp_send_failed'"),
@@ -7947,13 +7989,17 @@ function verifyPublicOperationalSignalCheapFail() {
       "status: 429",
       "'Retry-After': String(TOKEN_RATE_LIMIT_WINDOW_SECONDS)",
       'firestoreAdmin.runTransaction',
+      'transaction.get(params.controlRef)',
       'transaction.get(params.screenRef)',
       'transaction.get(storeRef)',
       'transaction.get(tenantRef)',
-      'screen?.screenToken !== params.token',
+      'control?.screenToken === params.token',
+      'String(control?.storeId || "") === storeScope.documentId',
+      'const legacyTokenMatches = !controlSnapshot.exists',
       'screen?.enabled !== true',
       'isCurrentScreenSeenPublicScope({',
-      "summaryRef.where('screen.screenToken', '==', token).limit(2).get()",
+      "summaryRef.where('screenToken', '==', token).limit(2).get()",
+      ".where('screen.screenToken', '==', token)",
       'resolveUniqueLegacyScreenSeenStoreId(',
       'storeId: targetStoreId',
       'transaction.update(params.screenRef',
@@ -9063,7 +9109,8 @@ function verifyPaymentMutationBoundedJson() {
       [
         'readBoundedJsonBody',
         'const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;',
-        'if (bodyResult.ok === false) return bodyResult.response;',
+        'if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);',
+        'failClosedOnProviderError: true',
         'validateAPIInput(',
       ],
       `${route} bounded reseller body guard`,
@@ -10370,6 +10417,8 @@ function verifyAuthAccountClientResponseDiagnostics() {
   assert(authAccountResponses.includes('AUTH_ACCOUNT_REQUEST_POLICY = AUTH_BROWSER_REQUEST_POLICY'), 'auth account browser requests must use the shared auth browser request policy');
   assert(claimAccountRoute.includes('getBoundedSecurityRouteContext(null, request)'), 'claim-account security logs must use bounded anonymous route context');
   assert(!claimAccountRoute.includes('buildSecurityContext'), 'claim-account must not spread raw request security context into security logs');
+  assert(claimAccountRoute.includes('CLAIM_ACCOUNT_RESPONSE_HEADERS'), 'claim-account responses must be non-storable');
+  assert(claimAccountRoute.includes('if (bodyResult.ok === false) return withClaimResponseHeaders(bodyResult.response);'), 'claim-account bounded-body failures must retain non-storage headers');
   assert(authBrowserRequestPolicy.includes("cache: 'no-store'"), 'auth account browser requests must bypass browser cache');
   assert(authBrowserRequestPolicy.includes("credentials: 'same-origin'"), 'auth account browser requests must keep credentials same-origin');
   assert(authBrowserRequestPolicy.includes("redirect: 'manual'"), 'auth account browser requests must not follow redirects');
@@ -10405,12 +10454,18 @@ function verifyAuthAccountClientResponseDiagnostics() {
   assert(authAccountResponses.includes('auth_account_response_invalid'), 'auth account client responses must log invalid successful response envelopes');
   assert(authAccountResponses.includes('isProfileUpdateResponse'), 'auth account client responses must validate profile update envelopes');
   assert(authAccountResponses.includes('isPasswordChangeResponse'), 'auth account client responses must validate password change envelopes');
+  assert(authAccountResponses.includes('reauthenticationRequired: true'), 'password-change response contract must require reauthentication');
+  assert(authAccountResponses.includes('value.reauthenticationRequired === true'), 'password-change response parser must reject success without a reauthentication acknowledgement');
   assert(authAccountResponses.includes('isSwitchStoreResponse'), 'auth account client responses must validate switch-store envelopes');
   assert(authAccountResponses.includes("AuthAccountResponseKind = 'profile_update' | 'password_change' | 'switch_store'"), 'auth account client responses must include switch-store response kind');
   assert(authAccountResponses.includes('success: true'), 'auth account client responses must require successful envelopes');
   assert(authAccountResponses.includes('Array.isArray(value.updated)'), 'profile update response must include updated field names');
   assert(authAccountResponses.includes('isRecord(value.updates)'), 'profile update response must include updates object');
   assert(authAccountResponses.includes('Number.isInteger(value.targetStoreId)'), 'switch-store response must include an integer target store id');
+  assert(desktopProfileModal.includes('desktop_account_password_change_signout_failed'), 'desktop password change must observe post-commit sign-out failure');
+  assert(desktopProfileModal.includes('await signOutSession();'), 'desktop password change must end the revoked session');
+  assert(mobileMoreScreen.includes('mobile_account_password_change_signout_failed'), 'mobile password change must observe post-commit sign-out failure');
+  assert(mobileMoreScreen.includes('await signOutSession();'), 'mobile password change must end the revoked session');
   assert(authAccountResponses.includes('AUTH_SWITCH_STORE_REJECTED'), 'switch-store rejected responses must map to fixed auth account codes');
   assert(authAccountResponses.includes('createAuthDiagnosticError(\'Auth account request failed\''), 'auth account client errors must use fixed local error text');
   assert(authAccountResponses.includes('error.status = response.status'), 'auth account client errors must preserve status-only diagnostics');

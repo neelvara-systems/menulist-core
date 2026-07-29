@@ -1,7 +1,7 @@
 # Feedback System — Technical Implementation Blueprint
 
-> **Version:** 1.9.0
-> **Last Updated:** 2026-07-19
+> **Version:** 1.10.0
+> **Last Updated:** 2026-07-28
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -102,7 +102,7 @@ interface Feedback {
 
 ### 2.4 Hook
 
-**File:** `src/hooks/useFeedback.ts` — Feedback state management
+**File:** `src/hooks/useFeedback.ts` — Feedback state management with a single in-flight lock plus exact content/page/actor/workspace operation tokens. A scope transition invalidates the pending token and resets local submission/modal state. An older response may finish its original server/local acknowledgement work, but it cannot reconcile counters, roll back UI, show messages, or clear a newer mutation after the selected scope changes.
 
 ---
 

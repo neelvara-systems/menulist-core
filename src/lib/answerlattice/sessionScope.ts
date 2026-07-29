@@ -107,6 +107,20 @@ export const normalizeConsistentAnswerlatticeScopeDocumentIds = (values: unknown
         : null;
 };
 
+export function isExactAnswerlatticePersistedAuthority(
+    value: unknown,
+    scope: { tenantId: number; storeId: number },
+): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+
+    return record.pId === PRODUCT_IDS.ANSWERLATTICE
+        && record.tId === scope.tenantId
+        && record.sId === scope.storeId
+        && (record.tenantId === undefined || record.tenantId === scope.tenantId)
+        && (record.storeId === undefined || record.storeId === scope.storeId);
+}
+
 const getProductAccounts = (sessionOrUser: any): Record<string, any> | undefined => (
     sessionOrUser?.user?.productAccounts
     || sessionOrUser?.productAccounts

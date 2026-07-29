@@ -39,6 +39,7 @@ import {
     sendAiMenuManagerCommand,
     submitAiMenuManagerProposalAction,
 } from '@database/aiMenuManager';
+import { getScreenState } from '@database/campaigns';
 import { assertProjectUpdateSucceeded, updateProjectWithoutLoader } from '@database/projects';
 import type {
     AiMenuManagerCardPayload,
@@ -178,13 +179,34 @@ export default function MobileAiMenuManagerScreen({
         (storeDetails as any)?.businessType
         || (storeDetails as any)?.businessCategory
     ), [storeDetails]);
+    const [digitalScreenToken, setDigitalScreenToken] = useState<string | undefined>();
+    useEffect(() => {
+        let active = true;
+        if (!canAccessDigitalScreens) {
+            setDigitalScreenToken(undefined);
+            return () => {
+                active = false;
+            };
+        }
+        void getScreenState()
+            .then((screen) => {
+                if (active) setDigitalScreenToken(screen?.screenToken);
+            })
+            .catch((error) => {
+                if (active) setDigitalScreenToken(undefined);
+                logRuntimeFailure('mobile_ai_menu_manager_screen_context_load_failed', error, {
+                    ...getBoundedRuntimeStringContext('storeId', (storeDetails as any)?.storeId),
+                });
+            });
+        return () => {
+            active = false;
+        };
+    }, [canAccessDigitalScreens, (storeDetails as any)?.storeId]);
     const storePublicContext = useMemo(() => ({
         customDomain: (storeDetails as any)?.customDomain,
-        screenToken: canAccessDigitalScreens
-            ? (storeDetails as any)?.screen?.screenToken || (storeDetails as any)?.screenToken
-            : undefined,
+        screenToken: canAccessDigitalScreens ? digitalScreenToken : undefined,
         subdomain: (storeDetails as any)?.subdomain,
-    }), [canAccessDigitalScreens, storeDetails]);
+    }), [canAccessDigitalScreens, digitalScreenToken, storeDetails]);
 
     const promptGroups = useMemo(() => getAiMenuManagerProjectPromptGroups(selectedProject), [selectedProject]);
     const attentionSuggestions = useMemo(() => getAiMenuManagerAttentionSuggestions(selectedProject), [selectedProject]);

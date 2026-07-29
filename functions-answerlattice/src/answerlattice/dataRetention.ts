@@ -62,10 +62,16 @@ const emptyResult = (): AnswerlatticeRetentionCleanupResult => ({
 });
 
 const toMillis = (value?: Timestamp | Date | number | null): number => {
-    if (!value) return Date.now();
-    if (typeof value === 'number') return value;
-    if (value instanceof Date) return value.getTime();
-    return value.toMillis();
+    if (value === null || value === undefined) return Date.now();
+    const millis = typeof value === 'number'
+        ? value
+        : value instanceof Date
+            ? value.getTime()
+            : value.toMillis();
+    if (!Number.isSafeInteger(millis)) {
+        throw new TypeError('answerlattice_retention_from_invalid');
+    }
+    return millis;
 };
 
 function getRetentionErrorContext(error: unknown): Record<string, string | number | null> {

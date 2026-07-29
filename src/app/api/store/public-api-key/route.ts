@@ -15,9 +15,13 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { admin } from "@lib/firebase/firebaseAdmin";
-import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
+import {
+    requireAnyStorePermissionForStoreData,
+    resolveStorePermissionSessionScope,
+} from "@lib/permissions/server";
 import { hashApiKey } from "@lib/publicApi/auth";
 import {
     isMenuListPublicApiProductEntity,
@@ -37,7 +41,11 @@ import { withAuth } from "../../../../middleware/auth";
 
 const PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES = 1024;
 const PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH = 160;
-const PUBLIC_API_KEY_RESPONSE_HEADERS = { 'Cache-Control': 'private, no-store' };
+const PUBLIC_API_KEY_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'Pragma': 'no-cache',
+    'X-Content-Type-Options': 'nosniff',
+};
 const RequestSchema = z.object({
     action: z.enum(['generate', 'revoke']),
     storeId: z.string().min(1).max(PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH),
@@ -61,6 +69,24 @@ function getPublicApiKeyRateLimitResponse(result: {
     );
 }
 
+function withPublicApiKeyResponseHeaders(response: NextResponse): NextResponse {
+    for (const [name, value] of Object.entries(PUBLIC_API_KEY_RESPONSE_HEADERS)) {
+        response.headers.set(name, value);
+    }
+    return response;
+}
+
+function publicApiKeyJson(
+    body: unknown,
+    init: ResponseInit = {},
+): NextResponse {
+    const headers = new Headers(init.headers);
+    for (const [name, value] of Object.entries(PUBLIC_API_KEY_RESPONSE_HEADERS)) {
+        headers.set(name, value);
+    }
+    return NextResponse.json(body, { ...init, headers });
+}
+
 function normalizeSessionDocumentId(value: unknown): string | null {
     const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
     const documentId = raw.trim();
@@ -74,19 +100,21 @@ function normalizeSessionDocumentId(value: unknown): string | null {
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_API) {
-        return NextResponse.json({ error: "Feature disabled" }, { status: 403 });
+        return publicApiKeyJson({ error: "Feature disabled" }, { status: 403 });
     }
 
-    const { tId: rawTenantId, sId: rawStoreId } = session;
-    const tenantId = normalizeSessionDocumentId(rawTenantId);
-    const storeId = normalizeSessionDocumentId(rawStoreId);
-    if (!tenantId || !storeId) {
-        return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    const actorId = normalizeSessionDocumentId(resolveCurrentSessionUserDocumentId(session));
+    if (!sessionScope || !actorId) {
+        return publicApiKeyJson({ error: "Not onboarded" }, { status: 400 });
     }
+    const tenantId = sessionScope.tenantScope.documentId;
+    const storeId = sessionScope.storeScope.documentId;
 
+    const actorRateLimitHash = hashPublicRateLimitValue(actorId);
     const storeRateLimitHash = hashPublicRateLimitValue(storeId);
     const rlResult = await checkRateLimit({
-        key: `api-key-mgmt:${storeRateLimitHash}`,
+        key: `api-key-mgmt:${actorRateLimitHash}:${storeRateLimitHash}`,
         limit: 5,
         window: 60,
         failClosedOnProviderError: true,
@@ -98,18 +126,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const bodyResult = await readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES, {
         invalidJsonMessage: "Invalid input",
     });
-    if (bodyResult.ok === false) return bodyResult.response;
+    if (bodyResult.ok === false) return withPublicApiKeyResponseHeaders(bodyResult.response);
     const body = bodyResult.data;
     const validation = RequestSchema.safeParse(body);
     if (!validation.success) {
-        return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+        return publicApiKeyJson({ error: "Invalid input" }, { status: 400 });
     }
     const requestedTenantId = normalizeSessionDocumentId(validation.data.tenantId);
     const requestedStoreId = normalizeSessionDocumentId(validation.data.storeId);
     if (requestedTenantId !== tenantId || requestedStoreId !== storeId) {
-        return NextResponse.json(
+        return publicApiKeyJson(
             { error: "Store context changed" },
-            { status: 409, headers: PUBLIC_API_KEY_RESPONSE_HEADERS },
+            { status: 409 },
         );
     }
 
@@ -121,7 +149,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         action,
         ...getBoundedSecurityStringContext('tenantId', tenantId),
         ...getBoundedSecurityStringContext('storeId', storeId),
-        ...getBoundedSecurityStringContext('userId', session.user?.id || session.uId),
+        ...getBoundedSecurityStringContext('userId', actorId),
     };
 
     try {
@@ -148,7 +176,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 || resolveMenuListPublicApiTenantDocumentId(storeData) !== tenantId
             ) {
                 return {
-                    permissionError: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+                    permissionError: publicApiKeyJson({ error: "Forbidden" }, { status: 403 }),
                 };
             }
 
@@ -161,7 +189,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 storeId,
                 tenantId,
             );
-            if (permissionError) return { permissionError };
+            if (permissionError) {
+                return { permissionError: withPublicApiKeyResponseHeaders(permissionError) };
+            }
 
             if (apiKey && apiKeyHash) {
                 transaction.update(storeRef, {
@@ -185,19 +215,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         if (apiKey) {
             logSecurityDiagnostic('public_api_key_generated', diagnosticContext);
-            return NextResponse.json(
+            return publicApiKeyJson(
                 { apiKey, storeId, tenantId },
-                { headers: PUBLIC_API_KEY_RESPONSE_HEADERS },
             );
         }
 
         logSecurityDiagnostic('public_api_key_revoked', diagnosticContext);
-        return NextResponse.json(
+        return publicApiKeyJson(
             { success: true, storeId, tenantId },
-            { headers: PUBLIC_API_KEY_RESPONSE_HEADERS },
         );
     } catch (error) {
         logSecurityFailure('public_api_key_management_failed', error, diagnosticContext);
-        return NextResponse.json({ error: "Failed to manage API key" }, { status: 500 });
+        return publicApiKeyJson({ error: "Failed to manage API key" }, { status: 500 });
     }
 });

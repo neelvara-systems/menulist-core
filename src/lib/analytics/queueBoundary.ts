@@ -12,6 +12,7 @@ export const ANALYTICS_QUEUE_MAX_FIELDS = 100;
 export const ANALYTICS_QUEUE_MAX_STORAGE_CHARS = 512 * 1024;
 export const ANALYTICS_QUEUE_MAX_RETRY_COUNT = 12;
 export const ANALYTICS_QUEUE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+export const ANALYTICS_DELIVERY_ID_PATTERN = /^[a-z0-9]{32}$/;
 
 export type NormalizedAnalyticsQueueEntry = {
   queueKey: string;
@@ -21,6 +22,7 @@ export type NormalizedAnalyticsQueueEntry = {
   dateString: string;
   storeTimeZone?: string;
   businessDayEndTime?: string;
+  deliveryId: string;
   updateData: Record<string, AnalyticsWriteValue>;
   eventCount: number;
   retryCount: number;
@@ -48,6 +50,16 @@ const normalizeBusinessDayEndTime = (value: unknown): string | undefined => (
   typeof value === 'string' && value.trim() === value && parseBusinessDayEndMinutes(value) !== null
     ? value
     : undefined
+);
+
+export const normalizeAnalyticsDeliveryId = (value: unknown): string | null => (
+  typeof value === 'string' && ANALYTICS_DELIVERY_ID_PATTERN.test(value)
+    ? value
+    : null
+);
+
+const buildLegacyAnalyticsDeliveryId = (createdAt: number): string => (
+  `legacy${createdAt.toString(36).padStart(26, '0')}`
 );
 
 export const getAnalyticsQueueKey = (
@@ -141,6 +153,10 @@ export function normalizePersistedAnalyticsQueue(
       || Number(createdAt) > nowMs + 5 * 60 * 1000
       || nowMs - Number(createdAt) > ANALYTICS_QUEUE_MAX_AGE_MS
     ) continue;
+    const deliveryId = queued.deliveryId === undefined
+      ? buildLegacyAnalyticsDeliveryId(Number(createdAt))
+      : normalizeAnalyticsDeliveryId(queued.deliveryId);
+    if (!deliveryId) continue;
 
     const queueKey = getAnalyticsQueueKey(tenantId, storeId, projectId, dateString);
     if (admittedKeys.has(queueKey)) continue;
@@ -154,6 +170,7 @@ export function normalizePersistedAnalyticsQueue(
       dateString,
       storeTimeZone,
       businessDayEndTime,
+      deliveryId,
       updateData,
       eventCount: Number(eventCount),
       retryCount: Number(retryCount),

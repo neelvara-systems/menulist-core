@@ -326,13 +326,13 @@ function verifyResolverRuntimeBoundary() {
     const campaigncue = resolveDomain('campaigncue.ai');
     assert(campaigncue.type === 'product' && campaigncue.productSite?.id === 'campaigncue', 'production CampaignCue domain must resolve as product');
 
-    const mycodex = resolveDomain('menulist.digital');
-    assert(mycodex.type === 'product' && mycodex.productSite?.id === 'mycodex', 'MyCodex domain must resolve as product, not custom tenant domain');
+    const discardedMyCodexDomain = resolveDomain('menulist.digital');
+    assert(discardedMyCodexDomain.type !== 'product', 'Discarded menulist.digital domain must not resolve as a product');
 
     const custom = resolveDomain('restaurant.example');
     assert(custom.type === 'custom' && custom.isClient === true, 'restaurant custom domain must resolve as tenant client traffic');
 
-    assert(resolveKnownProductIdByHostname('signaldesk.menulist.ai') === 'signaldesk', 'known product host lookup must recognize production SignalDesk');
+    assert(resolveKnownProductIdByHostname('signaldesk.menulist.online') === 'signaldesk', 'known product host lookup must recognize SignalDesk on menulist.online');
     assert(isActiveProductDomain('answerlattice', 'answerlattice.com:443') === true, 'active product-domain lookup must accept valid production Host ports');
     assert(isAnswerlatticeProductHostname('answerlattice.com:443') === true, 'Answerlattice production helper must accept valid Host ports');
     assert(isCampaignCueProductHostname('campaigncue.ai:443') === true, 'CampaignCue production helper must accept valid Host ports');
@@ -340,7 +340,7 @@ function verifyResolverRuntimeBoundary() {
     assert(resolveProductSiteByHostname('answerlattice.com:443')?.id === 'answerlattice', 'product-site lookup must accept valid production Host ports');
     [
       'answerlattice.com:bad',
-      'signaldesk.menulist.ai:bad',
+      'signaldesk.menulist.online:bad',
       'menulist.digital:bad',
     ].forEach((malformedHost) => {
       assert(resolveKnownProductIdByHostname(malformedHost) === null, `known production product host lookup must reject malformed authority ${malformedHost}`);

@@ -15,6 +15,7 @@ export type AuthProfileUpdateResponse = {
 
 export type AuthPasswordChangeResponse = {
     message?: string;
+    reauthenticationRequired: true;
     success: true;
 };
 
@@ -40,7 +41,9 @@ const isProfileUpdateResponse = (value: unknown): value is AuthProfileUpdateResp
 );
 
 const isPasswordChangeResponse = (value: unknown): value is AuthPasswordChangeResponse => (
-    isRecord(value) && value.success === true
+    isRecord(value)
+    && value.success === true
+    && value.reauthenticationRequired === true
 );
 
 const isSwitchStoreResponse = (value: unknown): value is AuthSwitchStoreResponse => (

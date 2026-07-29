@@ -64,12 +64,12 @@ async function touchDigitalScreenContentVersionForStore(normalizedStoreId: strin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
             .doc(`screen_${normalizedStoreId}`);
 
-        await firestoreAdmin.runTransaction(async (transaction) => {
+        const touched = await firestoreAdmin.runTransaction(async (transaction) => {
             const screenSnap = await transaction.get(screenRef);
             const screen = screenSnap.exists ? screenSnap.data()?.screen : null;
 
-            if (!screen?.screenToken) {
-                return;
+            if (!screen || typeof screen.enabled !== 'boolean') {
+                return false;
             }
 
             const now = Timestamp.now();
@@ -86,8 +86,9 @@ async function touchDigitalScreenContentVersionForStore(normalizedStoreId: strin
                 storeId: String(normalizedStoreId),
                 updatedAt: now,
             }, { merge: false });
+            return true;
         });
-        return true;
+        return touched;
     } catch (error: unknown) {
         functions.logger.warn('[publicCacheRevalidation] Digital screen version touch failed', {
             failureCode: PUBLIC_CACHE_SCREEN_TOUCH_FAILED_CODE,
@@ -115,6 +116,7 @@ export async function revalidatePublicClientCacheForStore(
     const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
     const revalidationSecret = process.env.REVALIDATION_SECRET;
     let cacheRevalidated = false;
+    let screenTouchSucceeded = false;
 
     if (!appBaseUrl || !revalidationSecret) {
         functions.logger.warn('[publicCacheRevalidation] Skipping public cache revalidation; app URL or secret is not configured', {
@@ -144,7 +146,10 @@ export async function revalidatePublicClientCacheForStore(
                         'content-type': 'application/json',
                         'x-revalidate-secret': revalidationSecret,
                     },
-                    body: JSON.stringify({ storeId: normalizedStoreId }),
+                    body: JSON.stringify({
+                        storeId: normalizedStoreId,
+                        touchScreen: options.touchDigitalScreen === true,
+                    }),
                 });
 
                 if (!response.ok) {
@@ -155,6 +160,12 @@ export async function revalidatePublicClientCacheForStore(
                     });
                 } else {
                     cacheRevalidated = true;
+                    if (options.touchDigitalScreen === true) {
+                        const responseBody = await response.json().catch(() => null) as {
+                            screenTouch?: { touched?: boolean };
+                        } | null;
+                        screenTouchSucceeded = responseBody?.screenTouch?.touched === true;
+                    }
                 }
             }
         } catch (error: unknown) {
@@ -166,8 +177,7 @@ export async function revalidatePublicClientCacheForStore(
         }
     }
 
-    let screenTouchSucceeded = false;
-    if (options.touchDigitalScreen === true) {
+    if (options.touchDigitalScreen === true && !screenTouchSucceeded) {
         screenTouchSucceeded = await touchDigitalScreenContentVersionForStore(normalizedStoreId, context);
     }
 

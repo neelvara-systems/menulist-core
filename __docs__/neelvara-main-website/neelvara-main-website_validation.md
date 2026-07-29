@@ -358,7 +358,7 @@ Verification completed in this pass:
 - `node scripts/verification/verify-agent-readiness.js --env-targets-only`: pass.
 - `git diff --check` over Neelvara runtime/constants/docs/routing/assets: pass.
 - Local route smoke: `/__neelvara`, `/products`, `/about`, `/contact`, `/legal`, `/privacy`, `/terms`, `/sitemap.xml`, `/robots.txt`, `/.well-known/security.txt` return `200`; `/__neelvara/missing-page` returns `404`; the retired local prefix returns `404`.
-- MyCodex alias smoke with `Host: www.menulist.digital`: `/nv` and `/nv/products` return `200` with `X-Robots-Tag: noindex, nofollow`.
+- Former MyCodex alias smoke is historical only; no active public MyCodex host is configured.
 - Browser render smoke at `1440x1000` and `390x844`: title and H1 use Neelvara, canonical points to `https://neelvara.com`, `.neelvara-site` root is present, 3 product rows render, no retired-name string appears in visible text or markup, and no horizontal overflow is present.
 
 Screenshots captured:
@@ -402,7 +402,7 @@ Verification completed in this pass:
 - Local rendered route smoke for `/`, `/products`, `/about`, `/contact`, `/legal`, `/privacy`, `/terms`, `/home`, `/sitemap.xml`, `/robots.txt`, and a missing path under `/__neelvara`: pass
 - Static trust route smoke for `/__neelvara/.well-known/security.txt`: pass
 - Internal route smoke for `/sites/neelvara/products`: pass
-- Alias smoke for `/nv/products` with `Host: www.menulist.digital`: pass, including `X-Robots-Tag: noindex, nofollow`
+- Former `/nv` alias smoke: historical only; no active public MyCodex host is configured.
 - OG image metadata and `/neelvara-og-image.png` asset smoke: pass
 - Browser layout smoke at `1440x1000`, `390x844`, and `320x720`: pass
 - Final browser layout smoke after nav/metadata/security follow-up at `1440x1000` and `390x844`: pass

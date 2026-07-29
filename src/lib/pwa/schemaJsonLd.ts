@@ -14,6 +14,8 @@
  * "downloadUrl" requirements tied to MobileApplication.
  */
 
+import { normalizePublicAccentColor } from '@lib/obp/accentColor';
+
 export interface MobileAppSchemaInput {
     /** Store display name used as app name. */
     name: string;
@@ -33,8 +35,9 @@ export function buildMobileAppSchema(input: MobileAppSchemaInput): Record<string
         description,
         baseUrl,
         applicationCategory = 'FoodAndDrinkApplication',
-        themeColor,
+        themeColor: rawThemeColor,
     } = input;
+    const themeColor = normalizePublicAccentColor(rawThemeColor);
 
     // Canonical manifest and screenshot URLs — same-origin, server-agnostic.
     const manifestUrl = `${baseUrl.replace(/\/$/, '')}/manifest.webmanifest`;

@@ -46,6 +46,7 @@ const REQUIRED_FILES = [
   'src/constants/publicTruthMonitor.ts',
   'src/types/publicTruthMonitor.ts',
   'src/lib/public-truth-tools/publicTruthMonitorDiagnostics.ts',
+  'src/lib/public-truth-tools/publicTruthMonitorApiResponse.ts',
   'src/lib/public-truth-tools/publicTruthMonitorEntitlements.ts',
   'src/lib/public-truth-tools/publicTruthMonitorServerScope.ts',
   'src/lib/public-truth-tools/serverPublicTruthMonitorEntitlements.ts',
@@ -79,6 +80,7 @@ const features = read('src/config/features.ts');
 const constants = read('src/constants/publicTruthMonitor.ts');
 const types = read('src/types/publicTruthMonitor.ts');
 const entitlement = read('src/lib/public-truth-tools/publicTruthMonitorEntitlements.ts');
+const apiResponse = read('src/lib/public-truth-tools/publicTruthMonitorApiResponse.ts');
 const serverScope = read('src/lib/public-truth-tools/publicTruthMonitorServerScope.ts');
 const serverEntitlement = read('src/lib/public-truth-tools/serverPublicTruthMonitorEntitlements.ts');
 const report = read('src/lib/public-truth-tools/publicTruthMonitorReport.ts');
@@ -206,7 +208,10 @@ assertIncludes(refreshRoute, 'evaluatePublicTruthMonitorServerEntitlementWithAut
 assertIncludes(refreshRoute, 'authorizeSubscription: (subscriptionData, currentStoreData) => (', 'refresh route transaction-current subscription callback');
 assertIncludes(refreshRoute, 'subscriptionId: activeSubscription.id', 'refresh route exact admitted subscription ref');
 assertIncludes(refreshRoute, 'buildSummary: (current) => buildPublicTruthMonitorSummary({', 'refresh route atomic current-summary merge');
-assertIncludes(refreshRoute, 'failClosedOnProviderError: process.env.NODE_ENV === "production"', 'refresh route production fail-closed rate limit');
+assertIncludes(refreshRoute, 'failClosedOnProviderError: true', 'refresh route fail-closed rate limit');
+assertIncludes(refreshRoute, 'const actorId = resolveCurrentSessionUserDocumentId(session);', 'refresh route exact current actor attribution');
+assertIncludes(refreshRoute, 'generatedByUserId: actorId', 'refresh route persists the admitted actor');
+assertNotIncludes(refreshRoute, 'generatedByUserId: session.uId || session.user?.id', 'refresh route first-alias actor attribution');
 assertIncludes(refreshRoute, 'buildOwnerPublicTruthReadinessReport', 'refresh route owner readiness reuse');
 assertIncludes(refreshRoute, 'getPublicTruthMonitorSessionScope', 'refresh route session scope normalizer');
 assertIncludes(refreshRoute, 'const sessionScope = getPublicTruthMonitorSessionScope(session);', 'refresh route normalized session scope');
@@ -219,7 +224,16 @@ assertIncludes(refreshRoute, 'tenantId: sessionScope.tenantScope.documentId', 'r
 assertIncludes(refreshRoute, 'authorizeStore: (currentStoreData) => {', 'refresh route transaction-current permission callback');
 assertNotIncludes(refreshRoute, 'Number(session.sId)', 'refresh route must not loose-coerce store scope');
 assertNotIncludes(refreshRoute, 'Number(session.tId)', 'refresh route must not loose-coerce tenant scope');
-assertIncludes(summaryRoute, 'failClosedOnProviderError: process.env.NODE_ENV === "production"', 'summary route production fail-closed rate limit');
+assertIncludes(summaryRoute, 'failClosedOnProviderError: true', 'summary route fail-closed rate limit');
+assertIncludes(apiResponse, '"Cache-Control": "private, no-store, max-age=0"', 'shared private no-store response policy');
+assertIncludes(apiResponse, '"X-Content-Type-Options": "nosniff"', 'shared response sniffing protection');
+assertIncludes(apiResponse, 'const headers = new Headers(init.headers);', 'shared protected response header precedence');
+assertIncludes(apiResponse, 'export function withPublicTruthMonitorPrivateHeaders', 'shared helper-response stamper');
+[summaryRoute, refreshRoute].forEach((route, index) => {
+  assertIncludes(route, 'publicTruthMonitorJson', `route ${index + 1} shared private JSON boundary`);
+  assertIncludes(route, 'withPublicTruthMonitorPrivateHeaders', `route ${index + 1} shared helper-response boundary`);
+  assertNotIncludes(route, 'NextResponse.json(', `route ${index + 1} direct JSON response bypass`);
+});
 assertIncludes(serverDal, 'export async function updatePublicTruthMonitorSummaryServer(', 'server DAL atomic summary updater');
 assertIncludes(serverDal, 'export async function readAuthorizedPublicTruthMonitorSummaryServer(', 'server DAL transaction-authorized summary reader');
 assertIncludes(serverDal, 'firestoreAdmin.runTransaction', 'server DAL transaction boundary');

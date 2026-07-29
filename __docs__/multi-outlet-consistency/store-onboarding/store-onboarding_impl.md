@@ -84,8 +84,10 @@ Switch controls are shown only for active stores mapped to the signed-in user an
 - Selecting the already-current location is a no-op.
 - Selecting an outlet requires a successful switch acknowledgement, then refreshes Firebase claims for that outlet before writing `activeStoreContext`.
 - Returning to HQ refreshes HQ claims before clearing `activeStoreContext`.
+- Persisted context is accepted only as structured JSON containing exact positive numeric `tenantId`, login `baseStoreId`, and target `storeId`; legacy scalar, partial, malformed, or unreadable values are evicted before `SessionProvider` can consume them.
 - Desktop and mobile derive `Current`/disabled `View` state from the active context, not only the login-store session row.
 - If target hydration fails, session loading falls back to the login store with bounded diagnostics.
+- Permission state is cleared before a target/login-store transition and missing or unmatched role data projects an all-denied permission set instead of retaining the previous store's permissions.
 
 ## 9. New master-project propagation
 

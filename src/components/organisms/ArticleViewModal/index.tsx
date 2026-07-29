@@ -1,8 +1,9 @@
 'use client';
 
 import { useArticleCache } from '@hook/useArticleCache';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import ArticleView from '@organisms/ArticleView';
-import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType } from '@type/knowledgeBase';
+import { KnowledgeBaseArticleMeta } from '@type/knowledgeBase';
 import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Button, Divider, Flex, Grid, Modal, Skeleton, Space, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
@@ -27,39 +28,50 @@ export default function ArticleViewModal({ open, onClose, article: providedArtic
     useEffect(() => {
         if (!open || !providedArticle) {
             setFullArticle(null);
+            setIsLoading(false);
             return;
         }
 
+        let active = true;
+
         // Check if provided article is already full (has content field)
-        const isFull = 'content' in providedArticle && providedArticle.content;
-
-        if (isFull) {
+        if ('content' in providedArticle) {
             // Already have full article - use it and cache it
-            const fullArt = providedArticle as AnswerlatticeReadableArticle;
-            setFullArticle(fullArt);
-            addArticleToCache(fullArt);
-        } else {
-            // Use the unified getArticle method
-            // It handles: cache check → fetch if needed → update cache
-            loadArticle(providedArticle.id);
-        }
-    }, [open, providedArticle]);
-
-    const loadArticle = async (articleId: string) => {
-        setIsLoading(true);
-
-        try {
-            // 🎯 Single method handles everything!
-            const article = await getArticle(articleId, {
-                onCacheHit: () => setIsLoading(false),  // Instant load
-                onCacheMiss: () => setIsLoading(true)   // Show loading
-            });
-
-            setFullArticle(article);
-        } finally {
+            setFullArticle(providedArticle);
             setIsLoading(false);
+            addArticleToCache(providedArticle);
+        } else {
+            const articleId = providedArticle.id;
+            setFullArticle(null);
+            setIsLoading(true);
+
+            void getArticle(articleId, {
+                onCacheHit: () => {
+                    if (active) setIsLoading(false);
+                },
+                onCacheMiss: () => {
+                    if (active) setIsLoading(true);
+                },
+            })
+                .then((article) => {
+                    if (active) setFullArticle(article);
+                })
+                .catch((error) => {
+                    if (!active) return;
+                    setFullArticle(null);
+                    logRuntimeFailure('answerlattice_article_modal_load_failed', error, {
+                        ...getBoundedRuntimeStringContext('articleId', articleId),
+                    });
+                })
+                .finally(() => {
+                    if (active) setIsLoading(false);
+                });
         }
-    };
+
+        return () => {
+            active = false;
+        };
+    }, [addArticleToCache, getArticle, open, providedArticle]);
 
     return (
         <Modal

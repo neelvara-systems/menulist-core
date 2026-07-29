@@ -15,7 +15,7 @@ Answerlattice gives workspace owners a small set of controls for checking suppor
 
 Use **Canonical only** for a fast deterministic check. Use **Full runtime** only when you need to verify fallback behavior; support-credit rules apply.
 
-Critical support should be backed by an approved canonical answer, a published FAQ, or an explicitly expected safe escalation/no-answer path. Provider fallback is useful for ordinary regression testing, but it must not count as verified critical proof. Until the pending hardening is implemented in runtime, review any critical test configured with **Knowledge fallback** manually and do not treat its `Ready` label as sufficient launch evidence.
+Critical support should be backed by an approved canonical answer, a published FAQ, or an explicitly expected safe escalation/no-answer path. Provider fallback is useful for ordinary regression testing, but it cannot count as verified critical proof. Existing critical tests that used **Knowledge fallback** remain visible for review and can be deactivated safely; rerun them after selecting an approved or safe route.
 
 `Ready`, `Review`, and `Blocked` describe the retained proof result. They do not deploy code, publish content, or change a release automatically.
 
@@ -23,7 +23,11 @@ These checks confirm the source route, expected IDs, phrases, confidence, absten
 
 If a test definition changes, the previous run is labelled **Stale** and remains available only as historical evidence. Rerun the current suite before relying on its proof status.
 
-For a failed result, **Adopt current route and evidence** updates the expected source, answer IDs, confidence, and references after owner confirmation. Required and blocked phrase checks remain unchanged and must still be reviewed explicitly.
+For a failed result tied to an approved answer, use **Review approved answer**
+first to inspect the current governed truth. **Adopt current route and
+evidence** updates the expected source, answer IDs, confidence, and references
+only after owner confirmation. Required and blocked phrase checks remain
+unchanged and must still be reviewed explicitly.
 
 ## Check A Proposed Answer
 
@@ -38,7 +42,11 @@ The check uses no fallback model and saves no test run. If no active tests are l
 
 ## Check A Release
 
-Open a release and run its support check. Answerlattice selects tests linked to the release's affected product areas. A failed check does not change support content. Open the result and create a review proposal when a fix is required.
+Open a release and choose **Review linked Answer Tests**. Answerlattice opens
+the existing release-check flow with that release selected, then runs only
+tests linked to its affected product areas after you confirm. A failed check
+does not change support content. Review the approved answer or create a review
+proposal when a governed fix is required.
 
 ## Propose A Rollback
 

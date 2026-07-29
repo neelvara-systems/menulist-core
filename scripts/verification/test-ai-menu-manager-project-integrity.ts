@@ -74,6 +74,33 @@ function run(): void {
     assert.equal(projectMutationVersionIso({ _seconds: 1_700_000_000, _nanoseconds: 123_000_000 }), '2023-11-14T22:13:20.123Z');
     assert.equal(projectDocumentMutationVersionMillis({ modifiedOn: { seconds: 1_700_000_000, nanoseconds: 123_000_000 } }), versionMillis);
     assert.equal(projectMutationVersionMillis({ seconds: 1, nanoseconds: 1_000_000_000 }), null);
+    assert.equal(projectMutationVersionMillis({
+        get toMillis() {
+            throw new Error('timestamp getter must remain contained');
+        },
+    }), null);
+    assert.equal(projectMutationVersionMillis({
+        toMillis() {
+            throw new Error('timestamp method must remain contained');
+        },
+    }), null);
+    assert.equal(projectMutationVersionMillis({
+        seconds: {
+            valueOf() {
+                throw new Error('timestamp coercion must not execute');
+            },
+        },
+    }), null);
+    assert.equal(projectMutationVersionMillis(new Proxy({}, {
+        get() {
+            throw new Error('timestamp proxy must remain contained');
+        },
+    })), null);
+    assert.equal(projectDocumentMutationVersionMillis(new Proxy({}, {
+        get() {
+            throw new Error('project timestamp access must remain contained');
+        },
+    })), null);
 
     const normalized = normalizeAiMenuManagerProjectSnapshot(validProject(), projectId);
     assert.ok(normalized, 'valid project snapshots must normalize');

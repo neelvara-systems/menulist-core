@@ -14,9 +14,9 @@ import {
     logScreenSettingsFailure,
 } from "@lib/screen/screenDiagnostics";
 import {
-    screenTimestampToDate,
     type DigitalScreenSeenTimestamp,
 } from "@lib/screen/screenTimestamp";
+import { getDigitalScreenHealth } from "@lib/screen/screenHealth";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPlay, LuQrCode } from "react-icons/lu";
@@ -41,23 +41,6 @@ interface ScreenModeCardProps {
     qrValue: string;
     tag: string;
     title: string;
-}
-
-function formatLastSeen(value?: DigitalScreenSeenTimestamp): string {
-    const date = screenTimestampToDate(value);
-    if (!date) return "Waiting for first TV";
-
-    const diff = Date.now() - date.getTime();
-    const minutes = Math.max(0, Math.floor(diff / 60000));
-
-    if (minutes < 1) return "Seen just now";
-    if (minutes < 60) return `Seen ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `Seen ${hours} hour${hours === 1 ? "" : "s"} ago`;
-
-    const days = Math.floor(hours / 24);
-    return `Seen ${days} day${days === 1 ? "" : "s"} ago`;
 }
 
 function compactScreenUrl(url: string): string {
@@ -151,8 +134,8 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
     const highlightsUrl = `${screenUrl}?mode=highlights`;
     const menuCompactUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
     const highlightsCompactUrl = useMemo(() => compactScreenUrl(highlightsUrl), [highlightsUrl]);
-    const lastSeenLabel = useMemo(() => formatLastSeen(screenLastSeenAt), [screenLastSeenAt]);
-    const hasSeenSignal = Boolean(screenTimestampToDate(screenLastSeenAt));
+    const screenHealth = useMemo(() => getDigitalScreenHealth(screenLastSeenAt), [screenLastSeenAt]);
+    const hasSeenSignal = screenHealth.state !== "link_ready";
 
     const handleOpen = (url: string, type: ScreenMode) => {
         try {
@@ -208,8 +191,8 @@ export default function ScreenLink({ screenUrl, screenLastSeenAt }: ScreenLinkPr
                         Two screen types are ready for this store.
                     </Text>
                 </div>
-                <Tag color={hasSeenSignal ? "success" : "default"}>
-                    {lastSeenLabel}
+                <Tag color={screenHealth.state === "recent" ? "success" : screenHealth.state === "stale" ? "warning" : "default"}>
+                    {screenHealth.detail}
                 </Tag>
             </div>
 

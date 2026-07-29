@@ -29,8 +29,10 @@ The gate composes source assertions, runtime-contract tests and the ticket attac
 | Public content | Category/article/FAQ/changelog request starts in workspace A and session changes to B | Route rejects an A expectation under B before content reads, or the client rejects a non-A acknowledgement; no A/B response enters the wrong cache/UI |
 | Cache | Platform ticket cache exists and customer Help Center opens | Platform data is ignored because the audience key differs |
 | Cache | Two workspaces request categories/changelog concurrently | Each request uses its own in-flight promise and result |
+| Changelog | Initial changelog fetch fails or persisted last-viewed timestamp is malformed/future | Marker does not advance; invalid state is evicted and future New badges remain eligible |
 | Draft | User starts an unsent text question | Strict workspace/user-scoped envelope is stored, max 2,000 characters |
 | Draft | Same user reloads within 24 hours | Valid text draft restores after hydration without autosave erasing it |
+| Draft | Browser storage rejects removal while sending or parent clears the input | In-memory input still clears and bounded diagnostics are emitted without throwing |
 | Draft | Draft is expired, malformed, legacy or from another scope | Value is removed and not rendered |
 | Draft | Screenshot is selected | Screenshot data is never written to draft storage |
 | Tickets | Customer opens history or direct ticket detail | Only exact workspace rows pass DAL and Firestore rules |

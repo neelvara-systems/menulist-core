@@ -40,6 +40,7 @@ import {
     sendAiMenuManagerCommand,
     submitAiMenuManagerProposalAction,
 } from '@database/aiMenuManager';
+import { getScreenState } from '@database/campaigns';
 import { assertProjectUpdateSucceeded, getProjectDataWithoutLoader, getProjectsListWithoutLoader, updateProjectWithoutLoader } from '@database/projects';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectSelectorList, ProjectSelectorTrigger, type ProjectSelectorItem } from '../../../shared/ProjectSelector';
@@ -139,6 +140,7 @@ export default function AiMenuManagerRoute() {
     const [activeSuggestion, setActiveSuggestion] = useState<AiMenuManagerPromptSuggestion | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [workingCardId, setWorkingCardId] = useState<string | null>(null);
+    const [digitalScreenToken, setDigitalScreenToken] = useState<string | undefined>();
     const chatScrollRef = useRef<HTMLDivElement | null>(null);
     const sessionIdRef = useRef<string | null>(null);
     const sessionProjectIdRef = useRef<string | null>(null);
@@ -164,13 +166,33 @@ export default function AiMenuManagerRoute() {
         (storeDetails as any)?.businessType
         || (storeDetails as any)?.businessCategory
     ), [storeDetails]);
+    useEffect(() => {
+        let active = true;
+        if (!canAccessDigitalScreens) {
+            setDigitalScreenToken(undefined);
+            return () => {
+                active = false;
+            };
+        }
+        void getScreenState()
+            .then((screen) => {
+                if (active) setDigitalScreenToken(screen?.screenToken);
+            })
+            .catch((error) => {
+                if (active) setDigitalScreenToken(undefined);
+                logRuntimeFailure('ai_menu_manager_screen_context_load_failed', error, {
+                    ...getBoundedRuntimeStringContext('storeId', (storeDetails as any)?.storeId),
+                });
+            });
+        return () => {
+            active = false;
+        };
+    }, [canAccessDigitalScreens, (storeDetails as any)?.storeId]);
     const storePublicContext = useMemo(() => ({
         customDomain: (storeDetails as any)?.customDomain,
-        screenToken: canAccessDigitalScreens
-            ? (storeDetails as any)?.screen?.screenToken || (storeDetails as any)?.screenToken
-            : undefined,
+        screenToken: canAccessDigitalScreens ? digitalScreenToken : undefined,
         subdomain: (storeDetails as any)?.subdomain,
-    }), [canAccessDigitalScreens, storeDetails]);
+    }), [canAccessDigitalScreens, digitalScreenToken, storeDetails]);
     const promptGroups = useMemo(() => getAiMenuManagerProjectPromptGroups(selectedProject), [selectedProject]);
     const attentionSuggestions = useMemo(() => getAiMenuManagerAttentionSuggestions(selectedProject), [selectedProject]);
     const starterSuggestions = useMemo(() => getAiMenuManagerStarterSuggestions(promptGroups), [promptGroups]);

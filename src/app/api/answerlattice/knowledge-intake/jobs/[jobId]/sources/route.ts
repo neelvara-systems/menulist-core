@@ -10,6 +10,7 @@ import {
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
@@ -18,7 +19,7 @@ import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
 import { isAnswerlatticeKnowledgeIntakeHttpUrl } from '@lib/answerlattice/knowledgeIntakeUrlContracts';
 import { ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE } from '@type/answerlattice';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
@@ -39,7 +40,7 @@ const KNOWLEDGE_INTAKE_SOURCE_MAX_BODY_BYTES = 128 * 1024;
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
     if (!jobId) {
-        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Invalid knowledge intake job.' }, { status: 400 });
     }
 
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -56,7 +57,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return answerlatticeKnowledgeIntakeJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid source details.' },
                 { status: bodyResult.response.status },
             );
@@ -70,10 +71,10 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             sourceId: source.id,
             sourceType: source.type,
         }));
-        return NextResponse.json({ source: serializeIntakeValue(source) }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ source: serializeIntakeValue(source) });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Invalid source details.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'Invalid source details.' }, { status: 400 });
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -82,6 +83,6 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
                 scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to add source.') }, { status });
+        return answerlatticeKnowledgeIntakeJson({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to add source.') }, { status });
     }
 });

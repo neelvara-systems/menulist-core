@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { FEATURE_FLAGS } from "@config/features";
 import { uploadPreparedMediaImageWithLedger } from "@database/storage/uploadPreparedMediaImage";
-import { collection, deleteField, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, setDoc, Timestamp, type Transaction, where } from "@firebase/firestore";
+import { collection, deleteField, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, setDoc, Timestamp, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -25,8 +25,12 @@ import {
     removeCampaignFromToday,
 } from "@lib/campaigns/campaignActionState";
 import { normalizeOwnerSlideCaption, normalizeScreenImageUrl } from "@lib/screen/screenContent";
-import { getPublicScreenStateDocRef, toPublicScreenState } from "@lib/screen/publicScreenState";
-import { filterExpiredSlides, generateScreenToken, getActiveScreenSlides, getOwnerUploadExpiry, isValidScreenToken } from "@lib/screen/utils";
+import type {
+    DigitalScreenManagementMutation,
+    DigitalScreenManagementResponse,
+    DigitalScreenOwnerStateTransport,
+} from "@lib/screen/screenManagementContracts";
+import { filterExpiredSlides, getOwnerUploadExpiry, isValidScreenToken } from "@lib/screen/utils";
 import { secureError } from "@lib/security/secureLogger";
 import { createRandomIdSegment } from "@lib/runtime/randomId";
 import {
@@ -35,6 +39,7 @@ import {
     CampaignsSummaryDocument,
     CampaignStatus,
     CampaignType,
+    DigitalScreenOwnerState,
     DigitalScreenState,
     ExecutionSurface,
     PhysicalSurfaceEligibility,
@@ -87,7 +92,7 @@ const logCampaignScreenFailure = (
 
 export type DigitalScreenMutationResult = {
     success: true;
-    screen: DigitalScreenState;
+    screen: DigitalScreenOwnerState;
 };
 
 const isFirestoreTimestampLike = (value: unknown): boolean => (
@@ -118,16 +123,14 @@ const isPinnedScreenSlide = (value: unknown): value is ScreenSlide => {
         && isFirestoreTimestampLike(slide.validUntil);
 };
 
-const getActivePinnedScreenSlides = (slides: ScreenSlide[] = []): ScreenSlide[] => (
-    getActiveScreenSlides(slides, DIGITAL_SCREEN_MAX_UPLOADS)
-);
-
 export const isDigitalScreenState = (value: unknown): value is DigitalScreenState => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const screen = value as Partial<DigitalScreenState>;
     return typeof screen.enabled === 'boolean'
-        && typeof screen.screenToken === 'string'
-        && isValidScreenToken(screen.screenToken)
+        && (screen.screenToken === undefined || (
+            typeof screen.screenToken === 'string'
+            && isValidScreenToken(screen.screenToken)
+        ))
         && isFirestoreTimestampLike(screen.lastRefreshed)
         && Number.isInteger(screen.contentVersion)
         && Number(screen.contentVersion) >= 1
@@ -143,11 +146,17 @@ export const isDigitalScreenState = (value: unknown): value is DigitalScreenStat
         && (screen.screenLastSeenAt === undefined || isFirestoreTimestampLike(screen.screenLastSeenAt));
 };
 
+export const isDigitalScreenOwnerState = (value: unknown): value is DigitalScreenOwnerState => (
+    isDigitalScreenState(value)
+    && typeof value.screenToken === "string"
+    && isValidScreenToken(value.screenToken)
+);
+
 export const isDigitalScreenMutationResult = (result: unknown): result is DigitalScreenMutationResult => (
     Boolean(result && typeof result === 'object')
     && !Array.isArray(result)
     && (result as DigitalScreenMutationResult).success === true
-    && isDigitalScreenState((result as DigitalScreenMutationResult).screen)
+    && isDigitalScreenOwnerState((result as DigitalScreenMutationResult).screen)
 );
 
 export function assertDigitalScreenMutationSucceeded(
@@ -315,18 +324,6 @@ const getExportsCollectionRef = (session: CampaignSessionScope) => {
  */
 const getCampaignsSummaryDocRef = (session: CampaignSessionScope) => {
     return doc(firebaseClient, PLATFORM_SUMMARY, `campaigns_${session.sId}`);
-};
-
-const setScreenStateInTransaction = (
-    transaction: Transaction,
-    session: CampaignSessionScope,
-    screen: DigitalScreenState,
-): void => {
-    const publicState = toPublicScreenState(session.sId, screen);
-    if (!publicState) throw new Error('digital_screen_public_state_invalid');
-
-    transaction.set(getCampaignsSummaryDocRef(session), { screen }, { merge: true });
-    transaction.set(getPublicScreenStateDocRef(session.sId), publicState, { merge: false });
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -794,79 +791,75 @@ export const skipCampaign = async (campaignId: string, campaignType: CampaignTyp
 /**
  * Get screen state for current store
  */
-export const getScreenState = async (): Promise<DigitalScreenState | null> => {
+function hydrateDigitalScreenOwnerState(
+    transport: DigitalScreenOwnerStateTransport,
+): DigitalScreenOwnerState {
+    const screen: DigitalScreenOwnerState = {
+        contentVersion: transport.contentVersion,
+        currentMinConfidence: transport.currentMinConfidence,
+        enabled: transport.enabled,
+        lastContentChangeAt: Timestamp.fromMillis(transport.lastContentChangeAtMs),
+        lastRefreshed: Timestamp.fromMillis(transport.lastRefreshedMs),
+        ownerOverrideEnabled: transport.ownerOverrideEnabled,
+        pinnedSlides: transport.pinnedSlides.map(({ validUntilMs, ...slide }) => ({
+            ...slide,
+            ...(validUntilMs ? { validUntil: Timestamp.fromMillis(validUntilMs) } : {}),
+        })),
+        ...(transport.screenLastSeenAtMs
+            ? { screenLastSeenAt: Timestamp.fromMillis(transport.screenLastSeenAtMs) }
+            : {}),
+        screenToken: transport.screenToken,
+    };
+    if (!isDigitalScreenOwnerState(screen)) {
+        throw new Error("digital_screen_management_response_invalid");
+    }
+    return screen;
+}
+
+async function callDigitalScreenManagementApi(
+    mutation?: DigitalScreenManagementMutation,
+): Promise<DigitalScreenOwnerState | null> {
+    const response = await fetch("/api/digital-screens", {
+        method: mutation ? "POST" : "GET",
+        headers: mutation ? { "Content-Type": "application/json" } : undefined,
+        credentials: "same-origin",
+        cache: "no-store",
+        redirect: "manual",
+        ...(mutation ? { body: JSON.stringify(mutation) } : {}),
+    });
+    if (!response.ok) {
+        throw new Error(`digital_screen_management_request_failed_${response.status}`);
+    }
+
+    const result = await response.json() as Partial<DigitalScreenManagementResponse>;
+    if (result.success !== true) {
+        throw new Error("digital_screen_management_response_invalid");
+    }
+    return result.screen ? hydrateDigitalScreenOwnerState(result.screen) : null;
+}
+
+export const getScreenState = async (): Promise<DigitalScreenOwnerState | null> => {
     const result = await apiCallComposer(
         async () => {
-            const session = requireCampaignSessionScope(await getActiveSession());
-            const docRef = getCampaignsSummaryDocRef(session);
-            const docSnap = await getDoc(docRef);
-
-            if (!docSnap.exists()) {
-                return null;
-            }
-
-            const data = docSnap.data() as CampaignsSummaryDocument;
-            if (!isDigitalScreenState(data.screen)) return null;
-            return {
-                ...data.screen,
-                pinnedSlides: getActivePinnedScreenSlides(data.screen.pinnedSlides),
-            };
+            return callDigitalScreenManagementApi();
         },
         null,
         "getScreenState"
     );
-    return isDigitalScreenState(result) ? result : null;
+    return isDigitalScreenOwnerState(result) ? result : null;
 };
 
 /**
  * Initialize screen state for a store (first-time setup)
  * Per spec: Screen token generated on first access
  */
-export const initializeScreenState = async (): Promise<DigitalScreenState> => {
+export const initializeScreenState = async (): Promise<DigitalScreenOwnerState> => {
     const result = await apiCallComposer(
-        async () => {
-            const session = requireCampaignSessionScope(await getActiveSession());
-            const docRef = getCampaignsSummaryDocRef(session);
-            return runTransaction(firebaseClient, async (transaction) => {
-                const currentSnap = await transaction.get(docRef);
-                const currentScreen = currentSnap.exists()
-                    ? (currentSnap.data() as Partial<CampaignsSummaryDocument>).screen
-                    : null;
-                if (currentScreen) {
-                    if (!isDigitalScreenState(currentScreen)) {
-                        throw new Error('digital_screen_state_invalid');
-                    }
-                    const activeScreen = {
-                        ...currentScreen,
-                        pinnedSlides: getActivePinnedScreenSlides(currentScreen.pinnedSlides),
-                    };
-                    setScreenStateInTransaction(transaction, session, activeScreen);
-                    return activeScreen;
-                }
-
-                // Generate high-entropy screen token (22 chars, ~130-bit).
-                // Transaction retries remain safe because only the committed token
-                // is returned and the canonical/public documents commit together.
-                const now = Timestamp.now();
-                const screenState: DigitalScreenState = {
-                    enabled: true,
-                    screenToken: generateScreenToken(),
-                    lastRefreshed: now,
-                    contentVersion: 1,
-                    lastContentChangeAt: now,
-                    currentMinConfidence: 0,
-                    ownerOverrideEnabled: false,
-                    pinnedSlides: [],
-                };
-
-                setScreenStateInTransaction(transaction, session, screenState);
-                return screenState;
-            });
-        },
+        async () => callDigitalScreenManagementApi({ action: "initialize" }),
         null,
         "initializeScreenState"
     );
-    if (!isDigitalScreenState(result)) {
+    if (!isDigitalScreenOwnerState(result)) {
         throw new Error('digital_screen_initialization_rejected');
     }
     return result;
@@ -879,36 +872,15 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
 export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: boolean }): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
-            const session = requireCampaignSessionScope(await getActiveSession());
-            const docRef = getCampaignsSummaryDocRef(session);
-            return runTransaction(firebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(docRef);
-                const currentScreen = docSnap.exists()
-                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
-                    : null;
-                if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
-
-                const ownerOverrideEnabled = typeof settings.ownerOverrideEnabled === "boolean"
-                    ? settings.ownerOverrideEnabled
-                    : currentScreen.ownerOverrideEnabled;
-                const activePinnedSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
-                if (
-                    ownerOverrideEnabled === currentScreen.ownerOverrideEnabled
-                    && activePinnedSlides.length === currentScreen.pinnedSlides.length
-                ) {
-                    return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
-                }
-
-                const nextScreen: DigitalScreenState = {
-                    ...currentScreen,
-                    ownerOverrideEnabled,
-                    pinnedSlides: activePinnedSlides,
-                    contentVersion: (currentScreen.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now(),
-                };
-                setScreenStateInTransaction(transaction, session, nextScreen);
-                return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+            if (typeof settings.ownerOverrideEnabled !== "boolean") {
+                throw new Error("digital_screen_settings_invalid");
+            }
+            const screen = await callDigitalScreenManagementApi({
+                action: "update_settings",
+                ownerOverrideEnabled: settings.ownerOverrideEnabled,
             });
+            if (!screen) throw new Error("digital_screen_not_initialized");
+            return { success: true, screen } satisfies DigitalScreenMutationResult;
         },
         settings,
         "updateScreenSettings"
@@ -922,46 +894,20 @@ export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: bo
 export const addPinnedSlide = async (slide: ScreenSlide): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
-            const session = requireCampaignSessionScope(await getActiveSession());
-            const docRef = getCampaignsSummaryDocRef(session);
             if (!isDigitalScreenSlideUploadResult(slide)) {
                 throw new Error('digital_screen_slide_invalid');
             }
-
-            return runTransaction(firebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(docRef);
-                const currentScreen = docSnap.exists()
-                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
-                    : null;
-                if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
-
-                const currentSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
-                if (currentSlides.some((currentSlide) => currentSlide.id === slide.id)) {
-                    if (currentSlides.length !== currentScreen.pinnedSlides.length) {
-                        const nextScreen: DigitalScreenState = {
-                            ...currentScreen,
-                            pinnedSlides: currentSlides,
-                            contentVersion: (currentScreen.contentVersion || 0) + 1,
-                            lastContentChangeAt: Timestamp.now(),
-                        };
-                        setScreenStateInTransaction(transaction, session, nextScreen);
-                        return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
-                    }
-                    return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
-                }
-                if (currentSlides.length >= DIGITAL_SCREEN_MAX_UPLOADS) {
-                    throw new Error(`Maximum ${DIGITAL_SCREEN_MAX_UPLOADS} pinned slides allowed`);
-                }
-
-                const nextScreen: DigitalScreenState = {
-                    ...currentScreen,
-                    pinnedSlides: [...currentSlides, slide],
-                    contentVersion: (currentScreen.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now(),
-                };
-                setScreenStateInTransaction(transaction, session, nextScreen);
-                return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+            const validUntilMs = slide.validUntil?.toMillis();
+            if (!validUntilMs) throw new Error("digital_screen_slide_expiry_invalid");
+            const screen = await callDigitalScreenManagementApi({
+                action: "add_slide",
+                slide: {
+                    ...slide,
+                    validUntilMs,
+                },
             });
+            if (!screen) throw new Error("digital_screen_not_initialized");
+            return { success: true, screen } satisfies DigitalScreenMutationResult;
         },
         { slideId: slide.id },
         "addPinnedSlide"
@@ -974,39 +920,13 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<DigitalScreenM
 export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
-            const session = requireCampaignSessionScope(await getActiveSession());
-            const docRef = getCampaignsSummaryDocRef(session);
             const normalizedSlideId = requireScreenSlideId(slideId);
-            return runTransaction(firebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(docRef);
-                const currentScreen = docSnap.exists()
-                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
-                    : null;
-                if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
-
-                const currentSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
-                if (!currentSlides.some((slide) => slide.id === normalizedSlideId)) {
-                    if (currentSlides.length !== currentScreen.pinnedSlides.length) {
-                        const nextScreen: DigitalScreenState = {
-                            ...currentScreen,
-                            pinnedSlides: currentSlides,
-                            contentVersion: (currentScreen.contentVersion || 0) + 1,
-                            lastContentChangeAt: Timestamp.now(),
-                        };
-                        setScreenStateInTransaction(transaction, session, nextScreen);
-                        return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
-                    }
-                    return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
-                }
-                const nextScreen: DigitalScreenState = {
-                    ...currentScreen,
-                    pinnedSlides: currentSlides.filter((slide) => slide.id !== normalizedSlideId),
-                    contentVersion: (currentScreen.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now(),
-                };
-                setScreenStateInTransaction(transaction, session, nextScreen);
-                return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+            const screen = await callDigitalScreenManagementApi({
+                action: "remove_slide",
+                slideId: normalizedSlideId,
             });
+            if (!screen) throw new Error("digital_screen_not_initialized");
+            return { success: true, screen } satisfies DigitalScreenMutationResult;
         },
         { slideId },
         "removePinnedSlide"
@@ -1019,47 +939,15 @@ export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenM
 export const updatePinnedSlideCaption = async (slideId: string, caption: string): Promise<DigitalScreenMutationResult> => {
     return await apiCallComposer(
         async () => {
-            const session = requireCampaignSessionScope(await getActiveSession());
-            const docRef = getCampaignsSummaryDocRef(session);
             const normalizedSlideId = requireScreenSlideId(slideId);
             const nextCaption = normalizeOwnerSlideCaption(caption);
-            return runTransaction(firebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(docRef);
-                const currentScreen = docSnap.exists()
-                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
-                    : null;
-                if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
-
-                const currentSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
-                const targetSlide = currentSlides.find((slide) => slide.id === normalizedSlideId);
-                if (!targetSlide) throw new Error('digital_screen_slide_not_found');
-                if ((targetSlide.caption || '') === nextCaption) {
-                    if (currentSlides.length !== currentScreen.pinnedSlides.length) {
-                        const nextScreen: DigitalScreenState = {
-                            ...currentScreen,
-                            pinnedSlides: currentSlides,
-                            contentVersion: (currentScreen.contentVersion || 0) + 1,
-                            lastContentChangeAt: Timestamp.now(),
-                        };
-                        setScreenStateInTransaction(transaction, session, nextScreen);
-                        return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
-                    }
-                    return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
-                }
-
-                const nextScreen: DigitalScreenState = {
-                    ...currentScreen,
-                    pinnedSlides: currentSlides.map((slide) => (
-                        slide.id === normalizedSlideId
-                            ? { ...slide, caption: nextCaption }
-                            : slide
-                    )),
-                    contentVersion: (currentScreen.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now(),
-                };
-                setScreenStateInTransaction(transaction, session, nextScreen);
-                return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+            const screen = await callDigitalScreenManagementApi({
+                action: "update_caption",
+                caption: nextCaption,
+                slideId: normalizedSlideId,
             });
+            if (!screen) throw new Error("digital_screen_not_initialized");
+            return { success: true, screen } satisfies DigitalScreenMutationResult;
         },
         { slideId },
         "updatePinnedSlideCaption"
@@ -1075,25 +963,15 @@ export const bumpScreenContentVersion = async (): Promise<void> => {
     return await apiCallComposer(
         async () => {
             const session = requireCampaignSessionScope(await getActiveSession());
-            const docRef = getCampaignsSummaryDocRef(session);
-            await runTransaction(firebaseClient, async (transaction) => {
-                const docSnap = await transaction.get(docRef);
-                const currentScreen = docSnap.exists()
-                    ? (docSnap.data() as Partial<CampaignsSummaryDocument>).screen
-                    : null;
-                if (!currentScreen) return;
-                if (!isDigitalScreenState(currentScreen)) {
-                    throw new Error('digital_screen_state_invalid');
-                }
-
-                const nextScreen: DigitalScreenState = {
-                    ...currentScreen,
-                    pinnedSlides: getActivePinnedScreenSlides(currentScreen.pinnedSlides),
-                    contentVersion: (currentScreen.contentVersion || 0) + 1,
-                    lastContentChangeAt: Timestamp.now(),
-                };
-                setScreenStateInTransaction(transaction, session, nextScreen);
+            const response = await fetch("/api/revalidate/menu", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "same-origin",
+                cache: "no-store",
+                redirect: "manual",
+                body: JSON.stringify({ storeId: session.sId, touchScreen: true }),
             });
+            if (!response.ok) throw new Error("digital_screen_version_bump_failed");
         },
         null,
         "bumpScreenContentVersion"

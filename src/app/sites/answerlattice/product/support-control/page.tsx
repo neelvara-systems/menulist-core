@@ -7,7 +7,7 @@ import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
     title: 'Help Center and Tickets',
-    description: 'Turn scattered product knowledge into hosted help, docs, FAQ, custom owner answers, changelog support, tickets, contextual issue notices, feedback, a daily founder brief, weekly review, and notifications.',
+    description: 'Turn scattered product knowledge into hosted help, article topic maps, tickets, feedback, and a qualified read-only Daily Brief.',
     alternates: { canonical: '/product/support-control' },
 };
 
@@ -33,13 +33,13 @@ export default async function SupportControlProductPage() {
                 canonicalPath="/product/support-control"
                 eyebrow="Help center and tickets"
                 title="Turn scattered support knowledge into hosted help, widget answers, tickets, and feedback review."
-                description="AnswerLattice gives you a practical support layer for scattered product docs, notes, tickets, replies, releases, feedback, and screenshots: hosted help, in-app answers, contextual issue notices, custom owner answers, ticket fallback, private Support Board follow-up, a read-only Daily Founder Brief, weekly review output, and owner notifications."
+                description="AnswerLattice gives you a practical support layer for scattered product docs, notes, tickets, replies, releases, feedback, and screenshots: hosted help, article topic maps, in-app answers, contextual issue notices, custom owner answers, ticket fallback, private Support Board follow-up, a qualified read-only Daily Brief, and owner notifications."
                 activeTab="Help center and tickets"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
                 bentoTitle="Your support surfaces come from the same structured knowledge."
                 bentoDescription="Instead of a standalone docs site, isolated ticket inbox, and separate release notes, AnswerLattice turns scattered product material into customer support by product surface."
                 bentoCards={[
-                    { title: 'Knowledge base', description: 'Long-form articles remain available for reviewed support content and hosted help.' },
+                    { title: 'Knowledge base', description: 'Long-form articles remain available for reviewed support content, while public topic maps let readers jump to the section they need.' },
                     { title: 'FAQ management', description: 'Owner-written answers and article-backed FAQs give users short answers and keep related article context nearby.' },
                     { title: 'Changelog support', description: 'Release notes can become product-surface review triggers for affected support answers.' },
                     { title: 'Feedback signals', description: 'Help Center feedback can be reviewed by owners, grouped by Product Surface, and synced into Support Board when it reveals a support gap.' },
@@ -47,19 +47,21 @@ export default async function SupportControlProductPage() {
                     { title: 'Support Board', description: 'Owners can track selected support gaps, private notes, status history, and answer proposal follow-up.' },
                     { title: 'Workflow notifications', description: 'Slack and email delivery can surface digest output, coverage drops, repeated failures, and test results.' },
                     { title: 'Known issues', description: 'Publish an approved, contextual widget notice with an active window while permanent support answers remain unchanged.' },
-                    { title: 'Daily Founder Brief', description: 'See the smallest useful support plan for today from five compact summaries, then open the linked governed review screen. The assistant performs no mutation.' },
+                    { title: 'Daily Brief', description: 'See up to four qualified decisions from compact summaries, or a clear quiet state when complete evidence needs no action. The brief performs no mutation.' },
                 ]}
                 workflowTitle="Publish help, answer users, collect feedback, track follow-up, and turn fallbacks into review work."
                 workflowDescription="Support Control is practical: publish help, answer users, accept fallback tickets, collect feedback, track selected follow-up on Support Board, notify owners when attention is needed, and turn unresolved issues into review work."
                 workflowSteps={[
+                    { title: 'Review qualified daily work', description: 'Start from the read-only Daily Brief and open the exact governed screen for any current answer risk, support gap, or measured friction.' },
                     { title: 'Publish help content', description: 'Turn scattered docs, FAQs, custom answers, release notes, and product material into hosted help center content.' },
+                    { title: 'Expose article topics', description: 'Let readers scan sanitized published headings and jump to the relevant section without exposing private governance records.' },
                     { title: 'Map product surfaces', description: 'Assign content to the routes and workflows where users need it.' },
                     { title: 'Let widget answer first', description: 'Serve approved answers, owner FAQ answers, and related support before fallback.' },
                     { title: 'Capture fallback tickets', description: 'When coverage is missing, route the user to a ticket with safe context.' },
                     { title: 'Review feedback', description: 'Use feedback, ratings, requests, and suggestions by Product Surface to spot support content gaps.' },
                     { title: 'Track selected follow-up', description: 'Use Support Board for private notes, status history, and answer-proposal handoff when an item needs owner review.' },
                     { title: 'Notify the owner', description: 'Use Slack or email for test delivery, critical alerts, and digest-first support review summaries.' },
-                    { title: 'Review the daily brief', description: 'Use the read-only Daily Founder Brief, digest, board, and signal views to decide which support content needs owner attention.' },
+                    { title: 'Carry evidence into governance', description: 'Open mapped friction, release, and answer-review work with the selected context intact instead of searching for the same issue again.' },
                 ]}
             />
             <AnswerlatticeFooter basePath={basePath} />

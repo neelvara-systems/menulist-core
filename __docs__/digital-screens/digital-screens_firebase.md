@@ -2,7 +2,7 @@
 
 **Feature:** In-Store Digital Menu Screens (TV/Tablet Display)
 **Status:** 🔒 **v2.3 LOCKED** (readability/reliability/owner-trust/listener-isolation/bounded-diagnostics hardening only)
-**Last Updated:** July 16, 2026
+**Last Updated:** July 29, 2026
 **Source:** Codebase analysis (not spec — actual implementation)
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Digital Screens state, listener, invalidation, Storage, and Firebase-cost evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:digital-screens-boundary`, browser TV smoke for Menu Board and Highlights modes, authenticated desktop/mobile owner settings QA, physical-device TV/tablet/browser QA, target Firebase deploy evidence where rules, indexes, Storage, or Functions change, target Vercel deploy evidence where app routes or display clients change, and production-host smoke for the target tenant and screen URL.
@@ -11,12 +11,12 @@
 
 ## Summary
 
-- **Collections Used:** `platformSummary` (existing — canonical `campaigns_{sId}.screen` plus public-safe `screen_{sId}` listener mirror), `stores` (existing), `projects` (existing — fallback/source menu item data)
-- **NO new collections created** — screen state and generated available-item menu projection live inside existing `CampaignsSummaryDocument.screen`; only a small token-free `platformSummary/screen_{sId}` mirror is maintained for public client listeners.
+- **Collections Used:** `platformSummary` (existing — canonical `campaigns_{sId}.screen`, server-only private control `screenControl_{sId}`, and public-safe listener mirror `screen_{sId}`), `stores`, `tenants`, and `projects`.
+- **No new collection family** — the private control and listener mirror are bounded documents in existing `platformSummary`.
 - **Storage Buckets:** `MenuListAi/platform_summary/screen_slides/` (owner uploads only)
 - **Cloud Functions:** No dedicated Digital Screen function. Existing MenuList Functions public-cache revalidation can optionally touch initialized screen versions for server-side public-output changes.
 - **Real-time:** Firebase `onSnapshot` doc listener on `platformSummary/screen_{sId}` (not polling, no internal owner summary exposure)
-- **Screen invalidation:** Browser project/menu public cache invalidation touches `screen.contentVersion` only when an initialized screen token exists, and refreshes `screen.menuProjection` from the automatic default menu when available. Store-profile saves, master-to-outlet propagation, and server-side Functions public-output changes can also touch the version after public cache revalidation when rendered screen output changes.
+- **Screen invalidation:** Browser paths request the protected revalidation route; only Admin/server transactions bump `screen.contentVersion`, replace the safe mirror, and invalidate the exact hashed-token cache tag. A screen is considered initialized from canonical state/private control, not from a client-readable token field.
 - **Content normalization:** Text, price, category, tag, caption, and dedupe logic is shared by projection generation and fallback DAL/render paths.
 - **Estimated Monthly Cost:** **~$0.31-$0.45/month for 1000 screens** depending on projection hit rate, menu-save frequency, and the direct-versus-legacy seen-signal mix.
 - **v2.0 Menu Board Mode Impact:** **$0.00 additional cost** (same menu data resolver, different client render)
@@ -29,29 +29,29 @@
 
 | Operation              | Collection        | Trigger               | Frequency      | Reads                         | Code Evidence                         |
 | ---------------------- | ----------------- | --------------------- | -------------- | ----------------------------- | ------------------------------------- |
-| Screen page load (SSR) | `platformSummary` | TV boot / 6hr refresh | ~4x/day/screen | 1 (query by token)            | `database/campaigns/serverScreen.ts`  |
+| Screen page load (SSR) | `platformSummary` | TV boot / 6hr refresh | ~4x/day/screen | 1 private-control query + 1 canonical screen read before store/menu reads; legacy migration can add one fallback query | `database/campaigns/serverScreen.ts` |
 | Store data lookup      | `stores`          | Same as above         | ~4x/day/screen | 1 (doc get)                   | `database/campaigns/serverScreen.ts`  |
 | Project summary lookup | `platformSummary` | Missing/stale projection context, special menu active, or legacy projection without slug | As needed | 0-1 (skipped when valid projection includes base menu slug) | `database/campaigns/serverScreen.ts`  |
 | Menu projection hit    | `platformSummary` | Same as above         | ~4x/day/screen | 0 extra reads after screen doc | `screen/[token]/page.tsx`, `database/campaigns/serverScreen.ts` |
 | Menu items fallback    | `projects`        | Missing/stale projection, special menu active, or old screen state | As needed | Usually 1 default project read after `baseProjectId`; special overlay can read 2 project docs | `database/campaigns/serverScreen.ts` |
 | onSnapshot initial     | `platformSummary/screen_{storeId}` | Screen connect        | 1x/day/screen  | 1                             | `ScreenDisplay.tsx`, `MenuBoardDisplay.tsx` |
 | onSnapshot updates     | `platformSummary/screen_{storeId}` | Content changes       | ~1-5x/day      | 1 per change                  | `publicScreenState.ts`, display clients |
-| Daily seen signal      | `platformSummary`, `stores`, `tenants` | 1x/day/screen after declared-size, bounded-body, IP-rate, token-rate, unique legacy candidate when needed, and transaction-current screen/store/tenant eligibility checks | 1x/day | 3 transaction reads (screen summary, exact store, exact tenant); the legacy no-store request first performs one token query capped at 2 documents and rejects zero/duplicate/noncanonical candidates | `api/screen/seen/route.ts`, `lib/screen/screenSeenScope.ts` |
-| Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 1                             | `database/campaigns/index.ts:599`     |
+| Daily seen signal      | `platformSummary`, `stores`, `tenants` | 1x/day/screen after bounded/rate/token checks | 1x/day | control + canonical screen + store + tenant transaction reads; no-store legacy requests first resolve a unique private or legacy token candidate | `api/screen/seen/route.ts` |
+| Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 2 (canonical + private control); no writes on an unchanged migrated state | `api/digital-screens/route.ts`, `screenManagementServer.ts` |
 | Owner: addPinnedSlide  | `platformSummary` | Upload image          | Rare           | 2 (read + check)              | `database/campaigns/index.ts:677`     |
-| Screen version touch   | `platformSummary`, `projects` | Public menu cache invalidation or rendered store-output change | Per menu/store change where screen exists | 1 screen doc get; up to 2 projection rebuild reads for browser project/menu changes; 0 projection reads for store-output-only and Functions touches | `lib/screen/screenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
+| Screen version touch   | `platformSummary` | Public menu cache invalidation or rendered store-output change | Per relevant change where screen exists | canonical screen + private control reads in one Admin transaction | `lib/screen/serverScreenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
 
 ### Writes
 
 | Operation                    | Collection        | Trigger                  | Frequency | Writes                        | Code Evidence                     |
 | ---------------------------- | ----------------- | ------------------------ | --------- | ----------------------------- | --------------------------------- |
 | Daily seen signal            | `platformSummary` | 1x/day/screen after rate-limit admission and transaction-current token, enabled-screen, exact store/tenant identity, lifecycle, and block checks | 1/day     | 0 when rate-limited/already seen/ineligible; otherwise 1 transaction update of `screenLastSeenAt`. Rate-limit denials are non-success and do not create the browser daily marker. | `api/screen/seen/route.ts`     |
-| Owner: initializeScreenState | `platformSummary` | First-time setup         | 1x ever   | 2 (`campaigns_{sId}` + safe `screen_{sId}` mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
+| Owner: initializeScreenState | `platformSummary` | First-time setup         | 1x ever   | 3 (`campaigns_{sId}` + private `screenControl_{sId}` + safe `screen_{sId}` mirror) | `api/digital-screens/route.ts`, `screenManagementServer.ts` |
 | Owner: addPinnedSlide        | `platformSummary` | Upload image             | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | Owner: removePinnedSlide     | `platformSummary` | Delete upload            | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | Owner: updateScreenSettings  | `platformSummary` | Toggle override          | Rare      | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
 | bumpScreenContentVersion     | `platformSummary` | Menu/availability change | ~1-5x/day | 2 (canonical screen update + safe mirror) | `database/campaigns/index.ts`, `publicScreenState.ts` |
-| touchDigitalScreenContentVersion / Functions screen touch | `platformSummary` | Public cache invalidation after project/menu changes, rendered store-output changes, scheduled special-menu changes, extraction project saves, or entitlement attribution changes | ~1-5x/day when screen exists; extra touches only for public-output paths | 2 writes; browser project/menu touches may include refreshed `screen.menuProjection`; Functions touches only bump version + safe mirror | `lib/screen/screenInvalidation.ts`, `publicScreenState.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
+| touchDigitalScreenContentVersion / Functions screen touch | `platformSummary` | Public-output changes | ~1-5x/day when screen exists | 2 writes (canonical version + safe mirror); token cache invalidation is exact and adds no Firestore write | `lib/screen/serverScreenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
 
 ### Deletes
 
@@ -134,7 +134,8 @@ Prepared `digitalScreenSlide` uploads keep a variant URL ledger, but the determi
 
 | Collection        | Fields               | Type         | Purpose                                    |
 | ----------------- | -------------------- | ------------ | ------------------------------------------ |
-| `platformSummary` | `screen.screenToken` | Single-field | Token lookup for screen page + seen signal |
+| `platformSummary` | `screenToken` | Single-field | Private control token lookup for screen page + seen signal |
+| `platformSummary` | `screen.screenToken` | Single-field | Temporary legacy lookup until private-control migration closeout |
 
 ---
 
@@ -142,25 +143,26 @@ Prepared `digitalScreenSlide` uploads keep a variant URL ledger, but the determi
 
 | Optimization                        | Impact                           | Evidence                                |
 | ----------------------------------- | -------------------------------- | --------------------------------------- |
-| No separate collection              | Eliminated extra reads           | `CampaignsSummaryDocument.screen` field |
+| No new collection family            | Keeps bounded screen docs in `platformSummary` | canonical/private/public document trio |
 | onSnapshot instead of polling       | 99.6% read reduction             | `ScreenDisplay.tsx:180`                 |
 | Daily seen signal (not heartbeat)   | 1 write/day vs 1440 writes/day   | `ScreenDisplay.tsx:130-147`             |
 | Seen signal store eligibility | Prevents inactive, deleted, blocked, or tenant-blocked stores from refreshing liveness state; uses the shared cached public store-id lookup | `api/screen/seen/route.ts`, `lib/firestore/clientStoreLookup.ts` |
-| Client-side localStorage cache      | Survives offline, no extra reads | `ScreenDisplay.tsx:59-87`               |
+| Version-matched offline cache       | Uses local content only while offline and version-equal | `screenRuntime.ts`, display clients |
 | 6-hour refresh (not 5-min)          | 4 SSR/day vs 288/day             | `ScreenDisplay.tsx:225-233`             |
-| **Vercel `unstable_cache` (OPT-6)** | **SSR reads cached 60s at edge** | `screen/[token]/page.tsx:31-41`         |
+| **Scoped `unstable_cache`** | 60s token-hashed state cache plus store menu cache | `screen/[token]/page.tsx` |
 | Generated screen menu projection | Avoids full project fallback reads on valid cold public renders; stores available display items plus base menu slug context | `CampaignsSummaryDocument.screen.menuProjection`, `screen/[token]/page.tsx` |
 | Public-safe screen listener mirror | Preserves 1-doc listener cost while avoiding public reads of owner/internal campaign summary data | `lib/screen/publicScreenState.ts`, `firestore.rules` |
-| Public cache linked screen touch | Keeps connected TVs fresh after ordinary menu saves, rendered store-output saves, and selected server-side public-output changes | `lib/cache/publicClientCache.ts`, `lib/screen/screenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
+| Server-only screen touch | Keeps connected TVs fresh without browser writes and expires the exact token cache | `lib/cache/publicClientCache.ts`, `lib/screen/serverScreenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
 | Seen signal cheap-fail ordering | Rejects oversized anonymous bodies, including no-length streamed bodies, and hashed-IP/token bursts before Firestore lookup | `api/screen/seen/route.ts` |
 | Content normalization | Prevents weak public screen copy without extra reads/writes | `lib/screen/screenContent.ts` |
 | Dedicated source gate | Locks the route, public-safe listener mirror, seen-signal cheap-fail order, screen invalidation touch, owner acknowledgement guards, and docs parity without adding reads/writes | `scripts/verification/verify-digital-screens-boundary.js` |
 | Token-free mirror migration | Dry-run by default, explicit project/scope/write confirmation, 200-row pagination, replace writes | `scripts/backfill-digital-screen-public-mirrors.ts` |
+| Private control migration | Dry-run by default; explicit project/scope/write confirmation; atomic token move | `scripts/backfill-digital-screen-private-controls.ts` |
 | Expired-slide capacity recovery | Owner reads ignore expired slides; the next mutation prunes expired Firestore references before enforcing the shared cap | `database/campaigns/index.ts` |
 
-> **OPT-6 (Added Feb 19, 2026; updated Jun 6, 2026):** Screen SSR data reads (`getScreenDataByToken` + generated `screen.menuProjection` or `getMenuItemsForScreen` fallback) are wrapped in `unstable_cache` with 60s TTL. Multiple screens hitting the same token within 60s share cached Firestore results instead of repeating raw reads. A valid projection with base menu slug context reduces the default cold raw public path from 4 reads to 2 reads before cache hits.
+> **Scoped cache correction (July 29, 2026):** Screen state uses a hashed bearer-token tag and menu reconstruction uses `menu-store-{storeId}`. A version touch expires only the affected screen state; a menu write expires the affected store menu. This removes global `screen-data` fan-out while retaining a 60-second fallback TTL.
 
-> **June 2026 invalidation note; July 16 transaction correction:** `touchDigitalScreenContentVersion()` first reads `platformSummary/campaigns_{storeId}` and returns without writing if `screen.screenToken` is missing. This avoids creating partial screen state for stores that have never opened Digital Screens. When a screen exists, the helper increments `screen.contentVersion`, updates `screen.lastContentChangeAt`, and attempts to refresh `screen.menuProjection` from the automatic default project. The compact summary and selected project are read through the same Firestore transaction, so a concurrent menu write retries instead of pairing stale items with a current screen version. Projection refresh can add up to 2 owner-side reads per invalidation, but removes repeated project reads from later cold public screen renders. If projection refresh fails, the public route falls back to the old project read path. The correction changes no baseline read or write count.
+> **Server invalidation correction (July 29, 2026):** browser writes to canonical screen state and the public mirror are denied. `/api/revalidate/menu` invokes the Admin transaction only when `touchScreen=true`; it reads canonical state plus private control, bumps the version, replaces the mirror, and expires the exact token tag. Missing screen state returns without creating a partial screen.
 
 > **June 28, 2026 Functions invalidation note; July 16 acknowledgement correction:** server-side Functions cache revalidation can request the same screen-version touch for first-extraction project saves, scheduled special-menu activation/deactivation/repair, subscription entitlement attribution changes, and incident recovery. Cache refresh and screen touch report separate acknowledgements: missing/invalid Next.js cache configuration no longer returns before an explicitly requested screen touch. The Functions helper does not build `screen.menuProjection`; it only reads the existing screen state and writes the canonical content version plus the public-safe listener mirror, so stale projections are rejected by the public resolver and fall back to project reads when needed.
 

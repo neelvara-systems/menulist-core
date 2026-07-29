@@ -2,7 +2,6 @@ const http = require("http");
 const https = require("https");
 
 const BASE_URL = new URL(process.env.SIGNALDESK_SMOKE_BASE_URL || "http://localhost:3000");
-const ALIAS_HOST = process.env.SIGNALDESK_SMOKE_ALIAS_HOST || "menulist.digital";
 const PUBLIC_HOST = process.env.SIGNALDESK_SMOKE_PUBLIC_HOST || "menulist.ai";
 const ALLOW_RATE_LIMIT_UNAVAILABLE = process.env.SIGNALDESK_SMOKE_ALLOW_RATE_LIMIT_UNAVAILABLE === "1";
 
@@ -69,15 +68,6 @@ async function expectHead(pathname, label) {
   assert(headerIncludes(response, "x-robots-tag", "noindex"), `${label} is noindexed`);
 }
 
-async function expectAlias(pathname, rewritePath) {
-  const response = await request(pathname, { host: ALIAS_HOST, method: "HEAD" });
-  assert(response.status === 200, `${pathname} alias returns 200`, `received ${response.status}`);
-  assert(headerIncludes(response, "x-robots-tag", "noindex"), `${pathname} alias is noindexed`);
-  assert(response.headers["x-product-id"] === "signaldesk", `${pathname} alias has SignalDesk product header`);
-  assert(response.headers["x-product-base-path"] === "/sd", `${pathname} alias keeps /sd base path`);
-  assert(String(response.headers["x-middleware-rewrite"] || "").includes(rewritePath), `${pathname} alias rewrites to ${rewritePath}`);
-}
-
 async function main() {
   for (const pathname of [
     "/signaldesk",
@@ -93,14 +83,6 @@ async function main() {
   ]) {
     await expectHead(pathname, pathname);
   }
-
-  await expectAlias("/sd", "/signaldesk");
-  await expectAlias("/sd/app", "/signaldesk");
-  await expectAlias("/sd/content", "/signaldesk/content");
-  await expectAlias("/sd/app/content", "/signaldesk/content");
-  await expectAlias("/sd/opportunities", "/signaldesk/opportunities");
-  await expectAlias("/sd/app/activations", "/signaldesk/activations");
-  await expectAlias("/sd/signin", "/signaldesk/signin");
 
   const publicAlias = await request("/sd", { host: PUBLIC_HOST, method: "HEAD" });
   assert(publicAlias.status === 404, "/sd alias is not exposed on public MenuList host", `received ${publicAlias.status}`);
@@ -123,17 +105,13 @@ async function main() {
   assert(privatePage.status === 200, "/signaldesk unauthenticated page returns local dev shell", `received ${privatePage.status}`);
   assert(privatePage.body.includes("/signaldesk/signin?callbackUrl=%2Fsignaldesk"), "/signaldesk unauthenticated page redirects to the isolated SignalDesk sign-in");
   [
-    "MENULIST_SIGNALDESK_SMTP_PASS",
-    "MENULIST_SIGNALDESK_META_ACCESS_TOKEN",
-    "MENULIST_SIGNALDESK_APIFY_API_TOKEN",
-    "MENULIST_SIGNALDESK_WEBHOOK_SECRET",
+    "SIGNALDESK_SMTP_PASS",
+    "SIGNALDESK_META_ACCESS_TOKEN",
+    "SIGNALDESK_APIFY_API_TOKEN",
+    "SIGNALDESK_WEBHOOK_SECRET",
   ].forEach((secretName) => {
     assert(!privatePage.body.includes(secretName), `/signaldesk HTML does not expose ${secretName}`);
   });
-
-  const aliasPage = await request("/sd", { host: ALIAS_HOST });
-  assert(aliasPage.status === 200, "/sd unauthenticated alias returns local dev shell", `received ${aliasPage.status}`);
-  assert(aliasPage.body.includes("/sd/signin?callbackUrl=%2Fsd"), "/sd unauthenticated alias redirects to /sd/signin");
 
   const overview = await request("/api/signaldesk/overview");
   assert(overview.status === 401, "Overview API rejects unauthenticated requests", `received ${overview.status}`);

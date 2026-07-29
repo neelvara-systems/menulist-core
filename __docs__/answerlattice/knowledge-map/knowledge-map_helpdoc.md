@@ -13,7 +13,7 @@ truth by visual placement.
 3. Review its approved-answer coverage and any drift or review warnings.
 4. Read directional labels such as **Requires**, **Required by**, **Part of**, or **Contains**.
 5. Follow a relationship to make that entity the new focus.
-6. Use the existing action links to update ontology relationships, review entity candidates, review answers, or resolve drift.
+6. Use the existing action links to update ontology relationships, review entity candidates, review answers for the selected entity, or resolve drift.
 
 The map is a view of approved Answerlattice data. It does not automatically create or approve relationships.
 
@@ -22,6 +22,14 @@ The map is a view of approved Answerlattice data. It does not automatically crea
 Demand, customer-friction, release-review, and Daily Brief actions remain in
 their owning surfaces. The map may help you locate the affected concept, then
 route you to the relevant review workflow.
+
+When Product Friction Evidence opens the map, the selected product area appears
+first. The map does not copy the friction score or advisory text; it only
+preserves the governed entity identity.
+
+When the selected product area has no canonical answer, **Prepare first answer**
+prefills that exact loaded entity. The proposal still follows normal governance
+review and does not publish from the map.
 
 ## Public Article Topic Map
 

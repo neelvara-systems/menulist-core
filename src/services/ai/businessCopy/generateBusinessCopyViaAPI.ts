@@ -52,12 +52,6 @@ export interface BusinessCopyGenerationPayload {
 
 const BUSINESS_COPY_GENERATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
-type BusinessCopyGenerationApiResponse = {
-    data?: BusinessCopyGenerationResult | null;
-    remainingBalance?: unknown;
-    transaction?: unknown;
-};
-
 export default async function generateBusinessCopyViaAPI(payload: BusinessCopyGenerationPayload): Promise<BusinessCopyGenerationResult | null> {
     try {
         const response = await fetch('/api/business-copy', {
@@ -72,7 +66,7 @@ export default async function generateBusinessCopyViaAPI(payload: BusinessCopyGe
             throw createAiServiceHttpError('ai_business_copy_generation_request_failed', response);
         }
 
-        const responseJson = await readAiServiceResponseJson<BusinessCopyGenerationApiResponse>(response, {
+        const responseJson = await readAiServiceResponseJson(response, {
             context: {
                 ...getBoundedAiServiceStringContext('businessName', payload.store?.name),
             },

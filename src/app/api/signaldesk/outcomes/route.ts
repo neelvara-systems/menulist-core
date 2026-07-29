@@ -13,7 +13,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const MAX_BODY_BYTES = 64 * 1024;
-const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
+const NO_STORE_HEADERS = {
+    "Cache-Control": "no-store, max-age=0",
+    "X-Content-Type-Options": "nosniff",
+} as const;
 
 export async function POST(request: NextRequest) {
     try {
@@ -35,7 +38,9 @@ export async function POST(request: NextRequest) {
             tooLargeMessage: "Outcome request body too large",
         });
         if (bodyResult.ok === false) {
-            bodyResult.response.headers.set("Cache-Control", "no-store");
+            Object.entries(NO_STORE_HEADERS).forEach(([name, value]) => {
+                bodyResult.response.headers.set(name, value);
+            });
             return bodyResult.response;
         }
         const result = await processSignalDeskOutcomeBridge({

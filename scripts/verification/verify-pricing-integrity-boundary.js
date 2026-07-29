@@ -57,7 +57,8 @@ const pricingPlansUi = read('src/components/templates/platform/pricingPlans/inde
 const staticPlatformPlans = read('src/data/PlatformPlansList.ts');
 const projectsDatabase = read('src/database/projects/index.ts');
 const publicClientCache = read('src/lib/cache/publicClientCache.ts');
-const screenInvalidation = read('src/lib/screen/screenInvalidation.ts');
+const screenInvalidation = read('src/lib/screen/serverScreenInvalidation.ts');
+const revalidateMenuRoute = read('src/app/api/revalidate/menu/route.ts');
 const pricingEngine = read('src/lib/pricing/integrityEngine.ts');
 const pricingPdfQueue = read('src/lib/pricing/pdfQueue.ts');
 const pricingIndex = read('src/lib/pricing/index.ts');
@@ -229,8 +230,9 @@ requireOccurrenceAtLeast(
 [
   'export const revalidatePublicClientCacheForProject = async (',
   'invalidateOwnerBusinessAssistantBrowserCache({ storeId, projectId });',
-  'await revalidatePublicClientCache(storeId, context);',
-  'await touchDigitalScreenContentVersion(storeId, context, { projectId });',
+  'await revalidatePublicClientCache(storeId, context, {',
+  'projectId,',
+  'touchScreen: true,',
   'const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();',
   'pending.rerunRequested = true;',
   '} while (entry.rerunRequested);',
@@ -238,33 +240,30 @@ requireOccurrenceAtLeast(
 forbidToken(publicClientCache, 'const pendingRevalidations = new Map<string, Promise<void>>();', 'Public client cache helper');
 
 [
-  'if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId || typeof window === "undefined")',
-  'if (!screen?.screenToken)',
-  'await runTransaction(firebaseClient, async (transaction) => {',
+  'if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId)',
+  'await firestoreAdmin.runTransaction(async (transaction) => {',
   '"screen.contentVersion": nextContentVersion',
   '"screen.lastContentChangeAt": now',
-  'transaction.set(publicScreenRef, publicState, { merge: false });',
-  'type PendingScreenContentTouch',
-  'const pendingScreenTouches = new Map<string, PendingScreenContentTouch>();',
-  'pending.rerunRequested = true;',
-  'pending.options = options;',
-  '} while (entry.rerunRequested);',
-  'if (pendingScreenTouches.get(normalizedStoreId) === entry)',
+  'transaction.set(publicScreenRef, {',
+  'getPrivateScreenTokenCacheTag(screenToken)',
+  'revalidateTag(result.tokenCacheTag, { expire: 0 });',
 ].forEach((token) => requireToken(screenInvalidation, token, 'Digital Screens invalidation path'));
-forbidToken(screenInvalidation, 'const pendingScreenTouches = new Map<string, Promise<void>>();', 'Digital Screens invalidation path');
 requireOrder(
   screenInvalidation,
   [
-    'await runTransaction(firebaseClient, async (transaction) => {',
-    'if (!screen?.screenToken)',
+    'await firestoreAdmin.runTransaction(async (transaction) => {',
     'const nextContentVersion = Number(screen.contentVersion || 0) + 1;',
-    'const publicState = toPublicScreenState(normalizedStoreId, nextScreen);',
     'transaction.update(screenRef, {',
     '"screen.contentVersion": nextContentVersion',
-    'transaction.set(publicScreenRef, publicState, { merge: false });',
+    'transaction.set(publicScreenRef, {',
   ],
   'Digital Screens invalidation order',
 );
+[
+  'touchDigitalScreenContentVersionForStoreServer(',
+  'body.touchScreen === true',
+].forEach((token) => requireToken(revalidateMenuRoute, token, 'Protected screen invalidation route'));
+forbidToken(revalidateMenuRoute, "'screen-data'", 'Protected screen invalidation route');
 
 [
   'export async function runPricingIntegrity',

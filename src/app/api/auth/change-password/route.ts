@@ -11,8 +11,9 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { authPrivateJson, withAuthPrivateHeaders } from "@lib/auth/authApiResponse";
 import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
-import { getCurrentUser } from "@lib/auth/currentPlatformUser";
+import { getCurrentUser, resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
 import { admin, authAdmin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { logger } from "@lib/monitoring/logger";
@@ -22,7 +23,6 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { withAuth } from "../../../../middleware/auth";
@@ -73,18 +73,21 @@ function normalizeChangePasswordUserDocumentId(value: unknown): string | null {
 
 export const POST = withAuth(async (request: NextRequest, session) => {
   try {
-    const rawUserId = session?.uId || session?.user?.id;
-    const userId = normalizeChangePasswordUserDocumentId(rawUserId);
+    const hasSuppliedUserId = session?.uId !== undefined
+      || session?.user?.id !== undefined;
+    const userId = normalizeChangePasswordUserDocumentId(
+      resolveCurrentSessionUserDocumentId(session),
+    );
     const email = String(session?.user?.email || "").toLowerCase().trim();
     if (!userId || !email) {
-      if (rawUserId !== undefined && rawUserId !== null && String(rawUserId).length > 0 && !userId) {
+      if (hasSuppliedUserId && !userId) {
         logAuthFailure(
           "change_password_invalid_session_user_id",
           undefined,
           getChangePasswordLogContext(request, session),
         );
       }
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return authPrivateJson({ error: "Not authenticated" }, { status: 401 });
     }
 
     const userRateLimitHash = hashPublicRateLimitValue(userId);
@@ -102,7 +105,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         providerUnavailable,
       }, "medium");
 
-      return NextResponse.json({
+      return authPrivateJson({
         error: providerUnavailable
           ? "Password change is temporarily unavailable. Please try again."
           : "Too many attempts. Please wait before trying again.",
@@ -112,7 +115,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const bodyResult = await readBoundedJsonBody(request, CHANGE_PASSWORD_MAX_BODY_BYTES, {
       invalidJsonMessage: "Invalid password details",
     });
-    if (bodyResult.ok === false) return bodyResult.response;
+    if (bodyResult.ok === false) return withAuthPrivateHeaders(bodyResult.response);
     const body = bodyResult.data;
     const validation = validateAPIInput(ChangePasswordSchema, body);
     if (validation.success === false) {
@@ -122,7 +125,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         error: validation.error,
       }, "medium");
 
-      return NextResponse.json({ error: "Invalid password details" }, { status: 400 });
+      return authPrivateJson({ error: "Invalid password details" }, { status: 400 });
     }
 
     const { currentPassword, newPassword } = validation.data;
@@ -134,13 +137,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         undefined,
         getChangePasswordLogContext(request, session),
       );
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return authPrivateJson({ error: "Not authenticated" }, { status: 401 });
     }
     const currentEmail = typeof currentUser.userData.email === "string"
       ? currentUser.userData.email.toLowerCase().trim()
       : "";
     if (!currentEmail || currentEmail !== email) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return authPrivateJson({ error: "Not authenticated" }, { status: 401 });
     }
 
     // Find the Firebase Auth user for this email
@@ -148,7 +151,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     try {
       firebaseUser = await authAdmin.getUserByEmail(email);
     } catch {
-      return NextResponse.json({
+      return authPrivateJson({
         error: "Unable to verify current credentials.",
       }, { status: 400 });
     }
@@ -173,7 +176,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         undefined,
         getChangePasswordLogContext(request, session),
       );
-      return NextResponse.json({ error: "Unable to verify current credentials." }, { status: 403 });
+      return authPrivateJson({ error: "Unable to verify current credentials." }, { status: 403 });
     }
 
     // Check if user has a password provider (not just Google)
@@ -182,7 +185,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     );
 
     if (!hasPasswordProvider) {
-      return NextResponse.json({
+      return authPrivateJson({
         error: "Unable to verify current credentials.",
       }, { status: 400 });
     }
@@ -197,7 +200,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         getChangePasswordLogContext(request, session),
       );
 
-      return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
+      return authPrivateJson({ error: "Could not verify current password" }, { status: 500 });
     }
 
     const verificationController = new AbortController();
@@ -220,7 +223,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       });
 
       if (!verifyRes.ok) {
-        return NextResponse.json({ error: "Unable to verify current credentials." }, { status: 403 });
+        return authPrivateJson({ error: "Unable to verify current credentials." }, { status: 403 });
       }
     } catch (verifyError) {
       logAuthFailure(
@@ -229,7 +232,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         getChangePasswordLogContext(request, session),
       );
 
-      return NextResponse.json({ error: "Could not verify current password" }, { status: 500 });
+      return authPrivateJson({ error: "Could not verify current password" }, { status: 500 });
     } finally {
       clearTimeout(verificationTimeout);
     }
@@ -244,8 +247,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const userRef = firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc(currentUser.documentId);
     try {
       await userRef.update({
+        authTokensRevokedAt: now,
         modifiedOn: now,
         passwordChangedAt: now,
+        sessionRevokedAt: now,
       });
     } catch (metadataError) {
       logAuthFailure(
@@ -257,7 +262,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     logger.info("[change-password] Password changed", getChangePasswordLogContext(request, session));
 
-    return NextResponse.json({
+    return authPrivateJson({
+      reauthenticationRequired: true,
       success: true,
       message: "Password changed successfully",
     });
@@ -268,6 +274,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       getChangePasswordLogContext(request, session),
     );
 
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return authPrivateJson({ error: "Internal error" }, { status: 500 });
   }
 });

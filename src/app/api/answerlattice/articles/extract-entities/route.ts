@@ -8,7 +8,10 @@ import { getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import { extractEntitiesFromArticles, extractPlainTextFromTipTap } from '@lib/answerlattice/entityExtraction';
@@ -27,8 +30,7 @@ import {
 } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
-    normalizeAnswerlatticeScopeDocumentId,
-    normalizeConsistentAnswerlatticeScopeDocumentIds,
+    isExactAnswerlatticePersistedAuthority,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -55,6 +57,21 @@ const ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES = 256 * 1024;
 const ARTICLE_ENTITY_ID_LIMIT = 10;
 
 class ArticleEntityExtractionConflictError extends Error {}
+
+const privateJson = (body: unknown, init: ResponseInit = {}) => {
+    const headers = new Headers(init.headers);
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return (NextResponse.json)(body, { ...init, headers });
+};
+
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
 
 const stableSerialize = (value: unknown): string => {
     if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
@@ -145,18 +162,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     try {
         if (!userIdForLog) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return privateJson({ error: 'Forbidden' }, { status: 403 });
         }
         const scope = resolveAnswerlatticeSessionScope(session);
         tenantIdForLog = scope?.tenantId;
         storeIdForLog = scope?.storeId;
         if (!scope) {
-            return NextResponse.json({ error: 'Answerlattice account scope is missing' }, { status: 400 });
+            return privateJson({ error: 'Answerlattice account scope is missing' }, { status: 400 });
         }
 
         const { checkSafeMode } = await import('@lib/ops/safeMode');
         const safeModeResponse = await checkSafeMode();
-        if (safeModeResponse) return safeModeResponse;
+        if (safeModeResponse) return withPrivateHeaders(safeModeResponse);
 
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
         const userId = userIdForLog;
@@ -179,7 +196,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 window: rateLimitConfig.window,
             }, 'medium');
 
-            return NextResponse.json(
+            return privateJson(
                 {
                     error: providerUnavailable
                         ? 'Entity extraction is temporarily unavailable. Please try again later.'
@@ -200,14 +217,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateHeaders(permission.response);
 
         const bodyResult = await readBoundedJsonBody(request, ARTICLE_ENTITY_EXTRACTION_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid entity extraction request',
             tooLargeMessage: 'Request body too large',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return privateJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid entity extraction request' },
                 { status: bodyResult.response.status },
             );
@@ -215,7 +232,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const validation = ArticleSchema.safeParse(bodyResult.data);
         if (!validation.success) {
-            return NextResponse.json(
+            return privateJson(
                 { error: 'Invalid entity extraction request', details: getSafeZodValidationDetails(validation.error) },
                 { status: 400 },
             );
@@ -228,25 +245,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const articleRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.KB_ARTICLES).doc(article.id);
         const articleSnap = await articleRef.get();
         if (!articleSnap.exists) {
-            return NextResponse.json({ error: 'Article not found' }, { status: 404 });
+            return privateJson({ error: 'Article not found' }, { status: 404 });
         }
 
         const persistedArticle = articleSnap.data() || {};
-        const articleTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-            persistedArticle.tId,
-            persistedArticle.tenantId,
-        ]);
-        const articleStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-            persistedArticle.sId,
-            persistedArticle.storeId,
-        ]);
-        if (
-            persistedArticle.pId !== PRODUCT_IDS.ANSWERLATTICE
-            || !articleTenantId
-            || !articleStoreId
-            || articleTenantId !== tenantId
-            || articleStoreId !== storeId
-        ) {
+        if (!isExactAnswerlatticePersistedAuthority(persistedArticle, { tenantId, storeId })) {
             logger.security('Authorization Failed - Answerlattice Article Entity Extraction Scope Mismatch', {
                 ...getBoundedRuntimeStringContext('articleId', article.id),
                 ...getBoundedRuntimeStringContext('requestedStoreId', storeId),
@@ -255,7 +258,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...getBoundedRuntimeStringContext('tenantId', persistedArticle.tId),
                 ...getBoundedRuntimeStringContext('userId', userId),
             }, 'critical');
-            return NextResponse.json({ error: 'Article not found' }, { status: 404 });
+            return privateJson({ error: 'Article not found' }, { status: 404 });
         }
 
         const sourceFingerprint = buildArticleSourceFingerprint(persistedArticle);
@@ -273,12 +276,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     throw new ArticleEntityExtractionConflictError('article_deleted_during_entity_extraction');
                 }
                 const currentArticle = currentArticleSnapshot.data() || {};
-                const currentTenantId = normalizeAnswerlatticeScopeDocumentId(currentArticle.tId);
-                const currentStoreId = normalizeAnswerlatticeScopeDocumentId(currentArticle.sId);
                 if (
-                    currentArticle.pId !== PRODUCT_IDS.ANSWERLATTICE
-                    || currentTenantId !== tenantId
-                    || currentStoreId !== storeId
+                    !isExactAnswerlatticePersistedAuthority(currentArticle, { tenantId, storeId })
                     || buildArticleSourceFingerprint(currentArticle) !== sourceFingerprint
                 ) {
                     throw new ArticleEntityExtractionConflictError('article_changed_during_entity_extraction');
@@ -340,7 +339,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         if (!textContent || textContent.length < 20) {
             const entityIds = await syncArticleEntityIds([]);
-            return NextResponse.json({ ok: true, entityIds, newCandidateCount: 0 });
+            return privateJson({ ok: true, entityIds, newCandidateCount: 0 });
         }
 
         const existingEntitiesSnap = await answerlatticeFirestoreAdmin
@@ -402,6 +401,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     id: userId,
                     email: session.user?.email,
                     name: session.user?.name,
+                }).catch((logError) => {
+                    logRuntimeFailure('answerlattice_article_entity_extraction_operation_log_failed', logError, {
+                        ...getBoundedRuntimeStringContext('articleId', article.id),
+                        ...getBoundedRuntimeStringContext('storeId', storeId),
+                        ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                    });
                 });
 
                 return geminiResult.text;
@@ -451,20 +456,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             throw new Error('One or more extracted entity candidates could not be stored');
         }
 
-        return NextResponse.json({
+        return privateJson({
             ok: true,
             entityIds: matchedEntityIds,
             newCandidateCount,
         });
     } catch (error) {
         if (error instanceof ArticleEntityExtractionConflictError) {
-            return NextResponse.json(
+            return privateJson(
                 { error: 'The article changed while entity extraction was running. Retry from the latest article.' },
                 { status: 409 },
             );
         }
         if (error instanceof AnswerlatticeInvalidationOwnershipError) {
-            return NextResponse.json(
+            return privateJson(
                 { error: 'Article cache state is invalid for this workspace.' },
                 { status: 409 },
             );
@@ -475,6 +480,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('userId', userIdForLog),
             ...getBoundedRuntimeStringContext('articleId', articleIdForLog),
         });
-        return NextResponse.json({ error: 'Could not extract article entities' }, { status: 500 });
+        return privateJson({ error: 'Could not extract article entities' }, { status: 500 });
     }
 });

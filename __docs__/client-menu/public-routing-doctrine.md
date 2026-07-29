@@ -579,38 +579,37 @@ For G-07 and G-08 to be enforceable, we need to know when a QR was first downloa
 
 ### A-16. Cross-surface state persistence doctrine
 
-**Added from ChatGPT second review.** The codebase persists three things today in `sessionStorage` keyed by `menulist_customerMenu_{storeId}_{suffix}` — `activePage`, `activeLanguage`, and `scrollY` (`@/src/components/templates/website/clientWebsite/index.tsx:43-67, 81-107`). What survives which transition has never been doctrinally stated. With D-01 removing the HOME state, with D-07 introducing outlet OBP, and with PWA installs creating persistent sessions, this becomes material.
+The public renderer persists its tab-local menu state under an exact tenant/store/project key. Tenant is required even though custom domains usually partition browser storage by origin, because platform-host navigation can serve more than one tenant on one origin. Project is required because language availability and scroll/category structure can differ between menus in the same store. Invalid identity disables persistence rather than falling back to a shared `default`, document ID, or slug key.
 
 **Lock — state persistence scope matrix:**
 
 | State                                       | Scope                                        | Survives transition                                                         | Does NOT survive                                                                      |
 | ------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| **Selected language**                       | Per-store (keyed by `storeId`)               | Project → Project within same store                                         | Switching stores on a multi-store brand (language availability may differ per outlet) |
-| **Selected currency**                       | Per-store                                    | Same as language                                                            | Cross-store switch                                                                    |
-| **Dietary / veg-nonveg / allergen filters** | Per-project (keyed by `storeId + projectId`) | Project reload, menu refresh                                                | Any cross-project or cross-store switch — filters are project-schema-specific         |
-| **Scroll position**                         | Per-project                                  | Router refresh, tab return                                                  | Cross-project or cross-store switch                                                   |
-| **View mode** (e.g. grid/list, if added)    | Per-store                                    | Same as language                                                            | Cross-store switch                                                                    |
+| **Selected language**                       | Per tenant/store/project                     | Same project reload, menu refresh, tab return                               | Any cross-project, cross-store, or cross-tenant switch                                |
+| **Selected currency**                       | Per tenant/store/project if added            | Same project only                                                           | Cross-project, cross-store, or cross-tenant switch                                    |
+| **Dietary / veg-nonveg / allergen filters** | Per tenant/store/project                     | Project reload, menu refresh                                                | Any cross-project, cross-store, or cross-tenant switch                                |
+| **Scroll position**                         | Per tenant/store/project                     | Router refresh, tab return                                                  | Cross-project, cross-store, or cross-tenant switch                                    |
+| **View mode** (e.g. grid/list, if added)    | Per tenant/store/project if added            | Same project only                                                           | Cross-project, cross-store, or cross-tenant switch                                    |
 | **OBP "last viewed outlet" hint**           | Per-tenant (keyed by `tenantId`)             | Cross-visit on multi-store brand OBP — surfaces "Continue to [last outlet]" | Cross-tenant                                                                          |
 | **PWA install consent / dismissals**        | Per-origin (browser-managed)                 | All surfaces in the tenant                                                  | Cross-tenant (different origin)                                                       |
 
 **Reset rules:**
 
 - On store switch (different `storeId`), language/currency/view-mode reset to the destination store's defaults. A one-time toast ("Showing menu in English — change") can offer a shortcut to reapply the previous choice, but does not auto-apply.
-- On project switch within the same store (D-05), language/currency persist; filters and scroll reset.
-- On tenant switch (different origin), everything resets. This is enforced by sessionStorage scope naturally.
-- On PWA launch, state matches whatever `sessionStorage` holds for the launched surface's origin + storeId. A fresh PWA launch into `/pune/bar-menu` should not inherit the language chosen during a previous `/mumbai/food-menu` session, since `storeId` differs.
+- On project switch within the same store (D-05), language, filters and scroll restore only the destination project's own state; the previous project cannot populate the new key.
+- On tenant switch, everything resets through the explicit tenant key dimension even when both tenants are reached through the same platform origin.
+- On PWA launch, state matches only the launched tenant/store/project tuple.
 
 **Storage key convention (extend the existing prefix):**
 
 ```
-menulist_customerMenu_{storeId}_language
-menulist_customerMenu_{storeId}_currency
-menulist_customerMenu_{storeId}_{projectId}_filters
-menulist_customerMenu_{storeId}_{projectId}_scrollY
+menulist_customerMenu_{tenantId}_{storeId}_{projectId}_activeLanguage
+menulist_customerMenu_{tenantId}_{storeId}_{projectId}_activePage
+menulist_customerMenu_{tenantId}_{storeId}_{projectId}_scrollY
 menulist_brandOBP_{tenantId}_lastOutlet
 ```
 
-This is a direct extension of `@/src/components/templates/website/clientWebsite/index.tsx:43-49`. No new storage mechanism introduced.
+`src/lib/localization/publicMenuSessionState.ts` owns exact key construction. No new storage mechanism is introduced.
 
 **Why not localStorage:** `sessionStorage` is the correct boundary — one tab-session of menu browsing. `localStorage` leaks across all future visits, which is wrong for operational state (a customer who chose Spanish at one store does not necessarily want Spanish 3 months later on a different device). The one exception is PWA install dismissals, which the browser manages independently.
 

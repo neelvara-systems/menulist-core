@@ -4,6 +4,7 @@ import {
   PLATFORM_NOTIFICATION_TRIGGER_TYPES,
   type PlatformNotificationRegistryEntry,
 } from '@data/shared/platformNotificationRegistry';
+import { normalizePlatformNotificationEmail } from '@data/shared/platformNotificationRecipient';
 import {
   sendOwnerNotificationEmail,
 } from '@lib/owner-notifications/channels/email';
@@ -31,11 +32,11 @@ const OPS_PLATFORM_ALERT_EMAIL_DELIVERY_FAILED = 'ops_platform_alert_email_deliv
 const OPS_PLATFORM_ALERT_WHATSAPP_DELIVERY_FAILED = 'ops_platform_alert_whatsapp_delivery_failed';
 
 function resolvePlatformRecipientEmail(): string | null {
-  return (
+  return normalizePlatformNotificationEmail(
     process.env.PLATFORM_ALERT_EMAIL_TO ||
     process.env.INTERNAL_NOTIFICATION_EMAIL ||
-    ''
-  ).trim() || null;
+    '',
+  );
 }
 
 function resolvePlatformRecipientWhatsApp(): string | null {

@@ -7,6 +7,7 @@ import {
     readAuthAccountResponse,
 } from '@lib/auth/accountClientResponses';
 import { getBoundedAuthStringContext, logAuthFailure } from '@lib/auth/authDiagnostics';
+import { signOutSession } from '@lib/auth/client';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -231,6 +232,14 @@ function UserProfileModal({ open, onClose }: UserProfileModalProps) {
             dispatch(showSuccessToast('Password changed successfully'));
             passwordForm.resetFields();
             setActiveSection('overview');
+            try {
+                await signOutSession();
+            } catch (signOutError) {
+                logAuthFailure('desktop_account_password_change_signout_failed', signOutError, {
+                    ...getDesktopProfileLogContext(session, storeDetails),
+                });
+                dispatch(showWarningToast('Password changed. Please sign in again.'));
+            }
         } catch (err) {
             logAuthFailure('desktop_account_password_change_failed', err, {
                 ...getDesktopProfileLogContext(session, storeDetails),

@@ -16,4 +16,12 @@ Approved hosted-help wording:
 
 > Readers can switch an article into a topic map and jump directly to the section they need.
 
+Approved connected-owner wording:
+
+> Product Friction Evidence can open the selected product area in Knowledge Map, and Knowledge Map can carry that validated product-area context into governed answer review.
+
+The homepage may present `Knowledge Map` as one step in the owner decision
+system after Daily Brief. The Product and Knowledge Governance pages own the
+deeper explanation.
+
 Do not present the feature as a generic mind-map builder, enterprise-search graph, or autonomous knowledge model.

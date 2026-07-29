@@ -18,18 +18,26 @@ export function hasMeaningfulDescription(value: unknown): boolean {
 export function hasAnyNonEmptyDescription(descriptions: unknown): boolean {
     if (!descriptions || typeof descriptions !== 'object' || Array.isArray(descriptions)) return false;
 
-    return Object.values(descriptions).some((description) => (
-        typeof description === 'string' && description.trim().length > 0
-    ));
+    try {
+        return Object.values(descriptions).some((description) => (
+            typeof description === 'string' && description.trim().length > 0
+        ));
+    } catch {
+        return false;
+    }
 }
 
 export function hasMeaningfulDescriptionsForLanguages(
     descriptions: unknown,
     languageCodes: string[]
 ): boolean {
-    if (!descriptions || typeof descriptions !== 'object') return false;
+    if (!descriptions || typeof descriptions !== 'object' || Array.isArray(descriptions)) return false;
 
-    return languageCodes.every((languageCode) => (
-        hasMeaningfulDescription((descriptions as Record<string, unknown>)[languageCode])
-    ));
+    try {
+        return languageCodes.every((languageCode) => (
+            hasMeaningfulDescription(Reflect.get(descriptions, languageCode))
+        ));
+    } catch {
+        return false;
+    }
 }

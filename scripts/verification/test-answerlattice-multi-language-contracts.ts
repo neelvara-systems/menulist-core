@@ -44,6 +44,33 @@ assert.notEqual(
     source.sourceHash,
     'a source edit must change the translation fingerprint',
 );
+const cyclicContent: Record<string, unknown> = { type: 'doc', content: [] };
+(cyclicContent.content as unknown[]).push(
+    { type: 'paragraph', content: [{ type: 'text', text: 'Contained source.' }] },
+    cyclicContent,
+    new Proxy({}, {
+        get() {
+            throw new Error('translation source node access must remain contained');
+        },
+    }),
+    { type: 'text', text: 'x'.repeat(ANSWERLATTICE_TRANSLATED_CONTENT_MAX_CHARS + 100) },
+);
+const boundedCyclicSource = getAnswerlatticeArticleTranslationSource({
+    title: 'Bounded source',
+    content: cyclicContent,
+});
+assert.match(boundedCyclicSource.plainContent, /^Contained source\./);
+assert.equal(
+    boundedCyclicSource.plainContent.length <= ANSWERLATTICE_TRANSLATED_CONTENT_MAX_CHARS
+        && boundedCyclicSource.plainContent.length > 11_000,
+    true,
+    'cyclic and oversized source documents must terminate at the provider-input bound',
+);
+assert.doesNotThrow(() => getAnswerlatticeArticleTranslationSource(new Proxy<Record<string, unknown>>({}, {
+    get() {
+        throw new Error('article source access must remain contained');
+    },
+})));
 
 assert.deepEqual(
     parseAnswerlatticeTranslationProviderOutput(
@@ -133,12 +160,13 @@ const publicBoundarySource = fs.readFileSync(
     'utf8',
 );
 assert.match(routeSource, /failClosedOnProviderError:\s*true/);
-assert.match(routeSource, /import \{ PRODUCT_IDS \} from '@constant\/product';/);
 assert.equal(
-    (routeSource.match(/pId !== PRODUCT_IDS\.ANSWERLATTICE/g) || []).length,
+    (routeSource.match(/isExactAnswerlatticePersistedAuthority\(/g) || []).length,
     2,
-    'initial and transaction-current article reads must require the Answerlattice product identity',
+    'initial and transaction-current article reads must require exact Answerlattice persisted authority',
 );
+assert.match(routeSource, /ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS/);
+assert.match(routeSource, /if \(permission\.response\) return withPrivateHeaders\(permission\.response\);/);
 assert.match(
     routeSource,
     /if \(safeModeResponse\) \{[\s\S]*return translationJson\([\s\S]*SAFE_MODE_ACTIVE/,

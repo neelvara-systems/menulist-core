@@ -10,6 +10,7 @@ import {
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
@@ -17,7 +18,7 @@ import {
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
 import { isAnswerlatticeKnowledgeIntakeHttpUrl } from '@lib/answerlattice/knowledgeIntakeUrlContracts';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
@@ -39,12 +40,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
     try {
         const jobs = await listKnowledgeIntakeJobs(access.context.scope);
-        return NextResponse.json({ jobs: serializeIntakeValue(jobs) }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ jobs: serializeIntakeValue(jobs) });
     } catch (error) {
         logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to list jobs', 'answerlattice_intake_jobs_list_failed', error, {
             scope: access.context.scope,
         });
-        return NextResponse.json({ error: 'Failed to load knowledge intake jobs.' }, { status: 500 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Failed to load knowledge intake jobs.' }, { status: 500 });
     }
 });
 
@@ -63,7 +64,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return answerlatticeKnowledgeIntakeJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid intake job details.' },
                 { status: bodyResult.response.status },
             );
@@ -75,10 +76,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             jobId: job.id,
             scope: access.context.scope,
         }));
-        return NextResponse.json({ job: serializeIntakeValue(job) }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ job: serializeIntakeValue(job) });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Invalid intake job details.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'Invalid intake job details.' }, { status: 400 });
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -86,6 +87,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to create knowledge intake job.') }, { status });
+        return answerlatticeKnowledgeIntakeJson({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to create knowledge intake job.') }, { status });
     }
 });

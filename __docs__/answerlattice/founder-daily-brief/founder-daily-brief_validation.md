@@ -3,7 +3,7 @@
 > **Reviewed input:** External "Feature 1 - Owner Action Center" proposal
 > **Reviewed:** 2026-07-28
 > **Decision:** Improve the existing Founder Daily Brief; do not create a second feature or action store
-> **Implementation state:** Documentation decision complete; the code changes identified below are pending the separate code-level pass
+> **Implementation state:** Accepted hardening implemented and locally verified on 2026-07-29
 
 ## Executive Verdict
 
@@ -109,9 +109,9 @@ Useful existing fields that are not fully projected today include:
 
 Projecting these fields is CPU-only after the same six reads. It does not justify `platformSummary/ownerActionCenter_*` or `answerlattice_ownerActions`.
 
-## Code-Level Gap List
+## Implemented Code-Level Closure
 
-The separate implementation pass should:
+The implementation pass:
 
 1. Remove generic `release-safety` and `cost-guard` cards from the ranked action queue.
 2. Return an empty action list for a complete, current, healthy packet.
@@ -143,4 +143,7 @@ The separate implementation pass should:
 
 Feature 1 remains **Founder Daily Brief** in code and documentation. "Owner Action Center" is an external description of its job, not a new product object.
 
-The documentation target is approved. Code work is bounded to qualification, quiet-state, evidence projection, and contract hardening inside the existing six-summary runtime.
+The accepted code work is complete inside the existing six-summary runtime.
+Daily Brief now preserves the selected friction entity in its owner handoff and
+sends evidence-backed coverage repair to Canonical Answers. These are
+validation-only URL handoffs, not a new action store or detail-read path.

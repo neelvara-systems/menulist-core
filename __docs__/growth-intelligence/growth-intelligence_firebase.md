@@ -1,7 +1,7 @@
 # Growth Intelligence Firebase and Cost
 
 **Status:** Approved  
-**Last Updated:** July 10, 2026
+**Last Updated:** July 29, 2026
 
 ## Data
 
@@ -17,9 +17,17 @@ Founder Monitor adds one document read for `founderMonitorGrowth` per manual ref
 
 Acquisition telemetry is best-effort so a summary outage cannot block owner onboarding. The idempotency markers share the parent draft's existing lifecycle and add no independent retention surface; no permanent growth-event collection or cleanup job is introduced. Cancellation reason aggregation rides the existing idempotent revenue movement transaction and adds no transaction round trip.
 
+The transaction treats the persisted draft attribution as authoritative. A
+caller-provided source/medium/campaign must normalize to the same fixed
+combination already stored on the draft before either the marker or summary
+counter can change. Attribution fields admit primitive strings only and never
+invoke unknown conversion hooks. Missing, mismatched or malformed persisted
+attribution and invalid event timestamps fail closed without a write.
+
 ## Security
 
 - Admin SDK/server routes only for founder summaries and draft idempotency markers.
 - Fixed source values only.
+- Exact persisted-draft attribution must match the caller's normalized attribution.
 - No raw URL, referrer, tenant ID, store ID, owner ID, cancellation detail, or provider error in aggregate maps.
 - Existing platform-auth and billing tenant checks remain mandatory.

@@ -20,6 +20,7 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { getLuminance } from '@lib/colorEnforcement';
 import type { BeforeInstallPromptEvent } from '@lib/pwa/installDetection';
@@ -31,7 +32,7 @@ import {
     createPublicCustomerTranslator,
     getPublicCustomerLanguageDirection,
 } from '@lib/localization/publicCustomerMessages';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import InstallInstructions from './InstallInstructions';
 
 interface Props {
@@ -84,6 +85,7 @@ export default function InstallPrompt({
     const platform = useMemo(() => detectPlatform(), []);
     const [showIosInstructions, setShowIosInstructions] = useState(false);
     const [busy, setBusy] = useState(false);
+    const reportedPromptScopeRef = useRef<string | null>(null);
     const resolvedThemeColor = normalizeThemeColor(themeColor);
     const installTextColor = getSafeContrastColor(resolvedThemeColor);
 
@@ -93,16 +95,24 @@ export default function InstallPrompt({
     // checks this timestamp to decide whether a later standalone launch
     // qualifies as a confirmed install.
     useEffect(() => {
-        if (!trackingEnabled) return;
-        void trackEvent(TrackingEvent.CUSTOMER_APP_PROMPT_SHOWN, {
-            storeId: String(storeId),
+        const promptScopeKey = getTenantStoreStorageKey(
+            'customer-app-prompt-shown',
             tenantId,
-            sessionId: getSessionId(),
-            storeTimeZone,
-            businessDayEndTime,
-            includeLocation: locationTrackingEnabled,
-        });
-        recordPromptShown(storeId);
+            storeId,
+        );
+        if (!promptScopeKey || reportedPromptScopeRef.current === promptScopeKey) return;
+        reportedPromptScopeRef.current = promptScopeKey;
+        recordPromptShown(tenantId, storeId);
+        if (trackingEnabled) {
+            void trackEvent(TrackingEvent.CUSTOMER_APP_PROMPT_SHOWN, {
+                storeId: String(storeId),
+                tenantId,
+                sessionId: getSessionId(),
+                storeTimeZone,
+                businessDayEndTime,
+                includeLocation: locationTrackingEnabled,
+            });
+        }
     }, [storeId, tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, locationTrackingEnabled]);
 
     const handleDismiss = useCallback(() => {

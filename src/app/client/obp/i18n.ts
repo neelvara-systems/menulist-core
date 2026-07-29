@@ -51,9 +51,9 @@ import viVN from "public/locales/menulist.ai/vi-VN.json";
 import zhCN from "public/locales/menulist.ai/zh-CN.json";
 import zhTW from "public/locales/menulist.ai/zh-TW.json";
 
-type TranslationValues = Record<string, string | number | boolean | null | undefined>;
+export type OBPTranslationValues = Record<string, string | number | boolean | null | undefined>;
 
-const DICTIONARIES: Record<string, Record<string, any>> = {
+const DICTIONARIES: Record<string, unknown> = {
     "ar-SA": arSA,
     "as-IN": asIN,
     "bn-IN": bnIN,
@@ -108,29 +108,53 @@ const DICTIONARIES: Record<string, Record<string, any>> = {
     "zh-TW": zhTW,
 };
 
-function readPath(source: Record<string, any>, path: string): unknown {
-    return path.split(".").reduce<unknown>((current, part) => {
-        if (!current || typeof current !== "object") return undefined;
-        return (current as Record<string, unknown>)[part];
-    }, source);
+function readOwnDataProperty(source: unknown, key: string): unknown {
+    if ((typeof source !== "object" || source === null) && typeof source !== "function") {
+        return undefined;
+    }
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(source, key);
+        return descriptor && "value" in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
-function interpolate(template: string, values?: TranslationValues): string {
+function readPath(source: unknown, path: string): unknown {
+    const parts = path.split(".");
+    if (parts.length === 0 || parts.length > 12 || parts.some((part) => !part || part.length > 100)) {
+        return undefined;
+    }
+
+    let current = source;
+    for (const part of parts) {
+        current = readOwnDataProperty(current, part);
+        if (current === undefined) return undefined;
+    }
+    return current;
+}
+
+function interpolate(template: string, values?: OBPTranslationValues): string {
     if (!values) return template;
     return template.replace(/\{([^}]+)\}/g, (_, key) => {
-        const value = values[key];
-        return value === null || value === undefined ? "" : String(value);
+        const value = readOwnDataProperty(values, key);
+        if (typeof value === "string") return value;
+        if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+        if (typeof value === "boolean") return value ? "true" : "false";
+        return "";
     });
 }
 
-export function getOBPTranslations(locale: string): (key: string, values?: TranslationValues) => string {
-    const messages = DICTIONARIES[locale] || DICTIONARIES["en-US"];
-    const fallback = DICTIONARIES["en-US"];
+export function getOBPTranslations(locale: string): (key: string, values?: OBPTranslationValues) => string {
+    const fallback = readOwnDataProperty(DICTIONARIES, "en-US");
+    const messages = readOwnDataProperty(DICTIONARIES, locale) || fallback;
+    const messagesBusinessSettings = readOwnDataProperty(messages, "BusinessSettings");
+    const fallbackBusinessSettings = readOwnDataProperty(fallback, "BusinessSettings");
 
-    return (key: string, values?: TranslationValues) => {
+    return (key: string, values?: OBPTranslationValues) => {
         const value =
-            readPath(messages.BusinessSettings || {}, key) ??
-            readPath(fallback.BusinessSettings || {}, key);
+            readPath(messagesBusinessSettings, key) ??
+            readPath(fallbackBusinessSettings, key);
 
         return typeof value === "string"
             ? interpolate(value, values)

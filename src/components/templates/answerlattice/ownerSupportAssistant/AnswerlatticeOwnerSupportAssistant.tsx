@@ -383,9 +383,34 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                                 ) : null}
 
                                 <Flex vertical gap={10}>
-                                    {brief.dailyBrief.actions[0] ? renderDailyAction(brief.dailyBrief.actions[0], true) : null}
-                                    {brief.dailyBrief.actions.length > 1 ? <Text strong>Also review</Text> : null}
-                                    {brief.dailyBrief.actions.slice(1).map(action => renderDailyAction(action, false))}
+                                    {brief.dailyBrief.actions.length === 0
+                                        && brief.status === 'healthy'
+                                        && brief.summaryHealth.complete ? (
+                                        <div
+                                            style={{
+                                                border: `1px solid ${token.colorSuccessBorder}`,
+                                                borderRadius: 8,
+                                                padding: isMobile ? 12 : 14,
+                                                background: token.colorSuccessBg,
+                                            }}
+                                        >
+                                            <Flex align="start" gap={10}>
+                                                <LuCheckCircle size={20} color={token.colorSuccess} />
+                                                <Flex vertical gap={3}>
+                                                    <Text strong>Nothing needs your decision right now</Text>
+                                                    <Text type="secondary">
+                                                        No current answer risk, qualified support gap, or launch blocker is visible in the latest summaries.
+                                                    </Text>
+                                                </Flex>
+                                            </Flex>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {brief.dailyBrief.actions[0] ? renderDailyAction(brief.dailyBrief.actions[0], true) : null}
+                                            {brief.dailyBrief.actions.length > 1 ? <Text strong>Also review</Text> : null}
+                                            {brief.dailyBrief.actions.slice(1).map(action => renderDailyAction(action, false))}
+                                        </>
+                                    )}
                                 </Flex>
 
                                 <Flex vertical gap={2}>

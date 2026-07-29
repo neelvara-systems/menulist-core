@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPublicCustomerTranslator } from '@lib/localization/publicCustomerMessages';
 import { appendPublicLanguageParam } from '@lib/localization/publicRenderLanguage';
 import { normalizeOBPReviewUrl } from '@lib/obp/publicLinks';
+import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { MenuMoodConfig } from '../designSystem';
 
@@ -74,16 +75,18 @@ export default function FeedbackNudge({
     scrollContainerRef,
 }: FeedbackNudgeProps) {
     const t = createPublicCustomerTranslator(activeLanguage);
-    const [visible, setVisible] = useState(false);
-    const [dismissed, setDismissed] = useState(false);
+    const [visibleProjectId, setVisibleProjectId] = useState<string | null>(null);
+    const [dismissedProjectId, setDismissedProjectId] = useState<string | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
-    const hasTriggeredRef = useRef(false);
+    const triggeredProjectIdRef = useRef<string | null>(null);
 
-    const sessionKey = `${SESSION_KEY_PREFIX}${projectId}`;
+    const normalizedProjectId = normalizeGuestFeedbackProjectId(projectId);
+    const sessionKey = normalizedProjectId ? `${SESSION_KEY_PREFIX}${normalizedProjectId}` : null;
     const safeReviewUrl = normalizeOBPReviewUrl(reviewUrl);
 
     // Check if already shown this session
     const wasShownThisSession = useCallback(() => {
+        if (!sessionKey) return true;
         try {
             return sessionStorage.getItem(sessionKey) === '1';
         } catch (error) {
@@ -93,6 +96,7 @@ export default function FeedbackNudge({
     }, [projectId, sessionKey]);
 
     const markAsShown = useCallback(() => {
+        if (!sessionKey) return;
         try {
             sessionStorage.setItem(sessionKey, '1');
         } catch (error) {
@@ -101,11 +105,17 @@ export default function FeedbackNudge({
     }, [projectId, sessionKey]);
 
     const showNudge = useCallback(() => {
-        if (hasTriggeredRef.current || wasShownThisSession()) return;
-        hasTriggeredRef.current = true;
-        setVisible(true);
+        if (
+            !normalizedProjectId
+            || triggeredProjectIdRef.current === normalizedProjectId
+            || wasShownThisSession()
+        ) {
+            return;
+        }
+        triggeredProjectIdRef.current = normalizedProjectId;
+        setVisibleProjectId(normalizedProjectId);
         markAsShown();
-    }, [wasShownThisSession, markAsShown]);
+    }, [markAsShown, normalizedProjectId, wasShownThisSession]);
 
     // Timer-based trigger (18s)
     useEffect(() => {
@@ -149,7 +159,13 @@ export default function FeedbackNudge({
         };
     }, [scrollContainerRef, showNudge, wasShownThisSession]);
 
-    if (!visible || dismissed) return null;
+    if (
+        !normalizedProjectId
+        || visibleProjectId !== normalizedProjectId
+        || dismissedProjectId === normalizedProjectId
+    ) {
+        return null;
+    }
 
     return (
         <div
@@ -185,7 +201,7 @@ export default function FeedbackNudge({
                 {/* Positive → Google review (if URL set) or feedback form */}
                 <a
                     href={safeReviewUrl || appendPublicLanguageParam(
-                        `/feedback/${projectId}?source=menu_footer`,
+                        `/feedback/${normalizedProjectId}?source=menu_footer`,
                         activeLanguage,
                     )}
                     target={safeReviewUrl ? '_blank' : '_self'}
@@ -213,7 +229,7 @@ export default function FeedbackNudge({
                 {/* Negative/Neutral → Internal feedback */}
                 <a
                     href={appendPublicLanguageParam(
-                        `/feedback/${projectId}?source=menu_footer`,
+                        `/feedback/${normalizedProjectId}?source=menu_footer`,
                         activeLanguage,
                     )}
                     style={{
@@ -239,7 +255,7 @@ export default function FeedbackNudge({
             </div>
 
             <button
-                onClick={() => setDismissed(true)}
+                onClick={() => setDismissedProjectId(normalizedProjectId)}
                 style={{
                     background: 'none',
                     border: 'none',

@@ -9,6 +9,8 @@ import {
     getAnswerlatticeKnowledgeMap,
     type AnswerlatticeKnowledgeMapData,
 } from '@database/answerlattice/knowledgeMap';
+import { normalizeAnswerlatticeEntityId } from '@lib/answerlattice/governanceIdBoundary';
+import { getAnswerlatticeEntityContextRoute } from '@lib/answerlattice/ownerDecisionNavigation';
 import type {
     AnswerlatticeEntityGraphNode,
 } from '@type/answerlattice';
@@ -18,6 +20,7 @@ import {
 } from '@type/answerlattice';
 import { Alert, Button, Empty, Select, Spin, Tag, Typography, theme } from 'antd';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -96,6 +99,8 @@ const getQualityRank = (node: AnswerlatticeEntityGraphNode) => (
 
 export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboardProps) {
     const { token } = theme.useToken();
+    const searchParams = useSearchParams();
+    const requestedEntityId = normalizeAnswerlatticeEntityId(searchParams.get('entity')) || '';
     const [data, setData] = useState<AnswerlatticeKnowledgeMapData | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
@@ -119,7 +124,13 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                 const entries = Object.entries(result.graph)
                     .map(([id, node]) => ({ id, node }))
                     .sort((a, b) => getQualityRank(b.node) - getQualityRank(a.node) || a.node.name.localeCompare(b.node.name));
-                setSelectedId(current => (current && result.graph[current] ? current : entries[0]?.id || ''));
+                setSelectedId(current => (
+                    requestedEntityId && result.graph[requestedEntityId]
+                        ? requestedEntityId
+                        : current && result.graph[current]
+                            ? current
+                            : entries[0]?.id || ''
+                ));
             }
         } catch {
             setLoadFailed(true);
@@ -127,7 +138,7 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
         } finally {
             setLoading(false);
         }
-    }, [sId, tId]);
+    }, [requestedEntityId, sId, tId]);
 
     useEffect(() => {
         void load();
@@ -437,7 +448,10 @@ export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboar
                         <Link href={getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ENTITIES)}>
                             <Button icon={<LuBoxes />}>Manage relationships</Button>
                         </Link>
-                        <Link href={getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS)}>
+                        <Link href={getAnswerlatticeEntityContextRoute(
+                            getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
+                            selectedId,
+                        )}>
                             <Button>Review canonical answers</Button>
                         </Link>
                         <Link href={getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.CANDIDATES)}>

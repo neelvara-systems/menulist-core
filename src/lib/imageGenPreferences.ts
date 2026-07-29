@@ -10,8 +10,12 @@
  */
 
 import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 
 const STORAGE_KEY_PREFIX = 'imgGenPrefs';
+const MAX_PREFERENCE_ARRAY_LENGTH = 20;
+const MAX_PREFERENCE_VALUE_LENGTH = 100;
+const IMAGE_ASPECT_RATIOS = new Set(['1:1', '16:9', '9:16', '4:3', '3:4']);
 
 export interface ImageGenPreferences {
     stylesCategory?: string;
@@ -36,34 +40,70 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
     && !Array.isArray(value)
 );
 
-const isOptionalString = (value: unknown): value is string | undefined => (
-    value === undefined || typeof value === 'string'
+const isOptionalBoundedString = (
+    value: unknown,
+    maxLength: number,
+): value is string | undefined => (
+    value === undefined
+    || (typeof value === 'string' && value.length <= maxLength)
 );
 
-const isOptionalNullableString = (value: unknown): value is string | null | undefined => (
-    value === undefined || value === null || typeof value === 'string'
+const isOptionalBoundedNullableString = (
+    value: unknown,
+    maxLength: number,
+): value is string | null | undefined => (
+    value === undefined
+    || value === null
+    || (typeof value === 'string' && value.length <= maxLength)
 );
 
 const isOptionalBoolean = (value: unknown): value is boolean | undefined => (
     value === undefined || typeof value === 'boolean'
 );
 
-const isOptionalStringArray = (value: unknown): value is string[] | undefined => (
+const isOptionalAspectRatio = (value: unknown): value is string | undefined => (
     value === undefined
-    || (Array.isArray(value) && value.every((entry) => typeof entry === 'string'))
+    || (typeof value === 'string' && IMAGE_ASPECT_RATIOS.has(value))
 );
 
+const isOptionalStringArray = (value: unknown): value is string[] | undefined => (
+    value === undefined
+    || (
+        Array.isArray(value)
+        && value.length <= MAX_PREFERENCE_ARRAY_LENGTH
+        && value.every((entry) => (
+            typeof entry === 'string'
+            && entry.length > 0
+            && entry.length <= MAX_PREFERENCE_VALUE_LENGTH
+        ))
+    )
+);
+
+const isCanonicalPastIsoTimestamp = (value: unknown): value is string | undefined => {
+    if (value === undefined) return true;
+    if (typeof value !== 'string' || value.length > 40) return false;
+    const millis = Date.parse(value);
+    return Number.isFinite(millis)
+        && millis <= Date.now()
+        && new Date(millis).toISOString() === value;
+};
+
 export function parseImageGenPreferences(value: unknown): ImageGenPreferences | null {
-    if (!isRecord(value) || typeof value.stylesCategory !== 'string' || value.stylesCategory.trim().length === 0) {
+    if (
+        !isRecord(value)
+        || typeof value.stylesCategory !== 'string'
+        || value.stylesCategory.trim().length === 0
+        || value.stylesCategory.length > MAX_PREFERENCE_VALUE_LENGTH
+    ) {
         return null;
     }
 
     if (
-        !isOptionalString(value.aspectRatio)
-        || !isOptionalString(value.negativePrompt)
-        || !isOptionalString(value.savedAt)
-        || !isOptionalNullableString(value.backgroundColor)
-        || !isOptionalNullableString(value.foregroundColor)
+        !isOptionalAspectRatio(value.aspectRatio)
+        || !isOptionalBoundedString(value.negativePrompt, 2_000)
+        || !isCanonicalPastIsoTimestamp(value.savedAt)
+        || !isOptionalBoundedNullableString(value.backgroundColor, 50)
+        || !isOptionalBoundedNullableString(value.foregroundColor, 50)
         || !isOptionalBoolean(value.transparentBg)
         || !isOptionalBoolean(value.isMultiMode)
         || !isOptionalStringArray(value.styles)
@@ -94,8 +134,14 @@ export function parseImageGenPreferences(value: unknown): ImageGenPreferences | 
     };
 }
 
-function getStorageKey(tId: string | number, sId: string | number): string {
-    return `${STORAGE_KEY_PREFIX}_${tId}_${sId}`;
+export function getImageGenPreferencesStorageKey(
+    tId: string | number,
+    sId: string | number,
+): string | null {
+    const scopedKey = getTenantStoreStorageKey(STORAGE_KEY_PREFIX, tId, sId);
+    if (!scopedKey) return null;
+    const [prefix, tenantId, storeId] = scopedKey.split(':');
+    return `${prefix}_${tenantId}_${storeId}`;
 }
 
 const getPreferenceScopeLogContext = (
@@ -134,7 +180,8 @@ export function saveImageGenPreferences(
 
     try {
         if (typeof window === 'undefined') return;
-        storageKey = getStorageKey(tId, sId);
+        storageKey = getImageGenPreferencesStorageKey(tId, sId) || '';
+        if (!storageKey) return;
         const data: ImageGenPreferences = {
             stylesCategory: prefs.stylesCategory,
             styles: prefs.styles,
@@ -151,8 +198,10 @@ export function saveImageGenPreferences(
             isMultiMode: prefs.isMultiMode,
             savedAt: new Date().toISOString(),
         };
+        const projected = parseImageGenPreferences(data);
+        if (!projected) return;
         phase = 'serialize';
-        serializedPreferences = JSON.stringify(data);
+        serializedPreferences = JSON.stringify(projected);
         phase = 'write';
         localStorage.setItem(storageKey, serializedPreferences);
     } catch (error) {
@@ -178,15 +227,28 @@ export function loadImageGenPreferences(
 
     try {
         if (typeof window === 'undefined') return null;
-        storageKey = getStorageKey(tId, sId);
+        storageKey = getImageGenPreferencesStorageKey(tId, sId) || '';
+        if (!storageKey) return null;
         rawPreferences = localStorage.getItem(storageKey);
         if (!rawPreferences) return null;
-        return parseImageGenPreferences(JSON.parse(rawPreferences));
+        const projected = parseImageGenPreferences(JSON.parse(rawPreferences));
+        if (!projected) {
+            localStorage.removeItem(storageKey);
+            return null;
+        }
+        return projected;
     } catch (error) {
         logHookFailure('image_generation_preferences_load_failed', error, {
             ...getPreferenceScopeLogContext(tId, sId, storageKey),
             ...getBoundedHookStringContext('storedPreferences', rawPreferences),
         });
+        if (storageKey) {
+            try {
+                localStorage.removeItem(storageKey);
+            } catch {
+                // Browser storage can remain unavailable; defaults still fail safely.
+            }
+        }
         return null;
     }
 }
@@ -202,7 +264,8 @@ export function clearImageGenPreferences(
 
     try {
         if (typeof window === 'undefined') return;
-        storageKey = getStorageKey(tId, sId);
+        storageKey = getImageGenPreferencesStorageKey(tId, sId) || '';
+        if (!storageKey) return;
         localStorage.removeItem(storageKey);
     } catch (error) {
         logHookFailure('image_generation_preferences_clear_failed', error, {

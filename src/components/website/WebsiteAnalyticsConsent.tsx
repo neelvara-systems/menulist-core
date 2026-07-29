@@ -8,6 +8,7 @@ import PlausibleAnalytics from './PlausibleAnalytics';
 import WebsiteMarketingClickTracker from './WebsiteMarketingClickTracker';
 import { useWebsitePath } from './shared/WebsiteProductPathProvider';
 import { WEBSITE_ANALYTICS_CONSENT_STORAGE_KEY, WEBSITE_ANALYTICS_PREFERENCES_EVENT } from './shared/websiteAnalyticsConsentConfig';
+import { setPublicWebsiteAnalyticsRuntimeConsent } from '@lib/website/plausible';
 
 type AnalyticsConsent = PublicCookieConsentChoice;
 
@@ -64,6 +65,7 @@ function clearKnownAnalyticsCookies() {
 }
 
 function applyConsentToLoadedVendors(consent: AnalyticsConsent) {
+  setPublicWebsiteAnalyticsRuntimeConsent(consent);
   const consentWindow = window as ConsentWindow;
   const analyticsStorage = consent === 'accepted' ? 'granted' : 'denied';
 

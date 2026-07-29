@@ -1,4 +1,4 @@
-export const MYCODEX_SITE_URL = 'https://menulist.digital';
+export const MYCODEX_SITE_URL = 'https://mycodex.invalid';
 export const MYCODEX_THEME_COLOR = '#09090b';
 export const MYCODEX_BACKGROUND_COLOR = '#09090b';
 export const MYCODEX_MANIFEST_PATH = '/mycodex.webmanifest';

@@ -9,8 +9,14 @@ const PUBLIC_LANGUAGE_PARAM_DIAGNOSTIC_LIMIT = 25;
 const reportedPublicLanguageParamFailures = new Set<string>();
 
 export const normalizePublicLanguageCode = (value?: string | string[] | null): string | null => {
-    const raw = Array.isArray(value) ? value[0] : value;
-    const normalized = String(raw || '').trim().toLowerCase();
+    let raw: unknown = value;
+    try {
+        if (Array.isArray(value)) raw = Reflect.get(value, 0);
+    } catch {
+        return null;
+    }
+    if (typeof raw !== 'string') return null;
+    const normalized = raw.trim().toLowerCase();
     if (!normalized) return null;
     return normalized.split('-')[0] || null;
 };

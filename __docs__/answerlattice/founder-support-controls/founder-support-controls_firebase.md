@@ -28,6 +28,10 @@ The admitted critical-RAG hardening is evaluator/UI logic over this existing sum
 - Standard regression suite: 1 answer-test summary read.
 - First 10 launch screen: 2 compact reads in parallel, answer-test summary plus current source-version summary.
 - No listener.
+- Release URL context adds no read before the page load. Opening its modal uses
+  the existing scoped release-list read; it does not run tests automatically.
+- A failed-result answer link adds no test read or write. Canonical Answers uses
+  its existing bounded load only after navigation.
 
 ### Save Test Cases
 

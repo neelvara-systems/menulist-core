@@ -12,6 +12,7 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -63,12 +64,16 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (!scope) {
         return notificationTestJson({ error: 'Not onboarded' }, 400);
     }
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) {
+        return notificationTestJson({ error: 'Forbidden' }, 403);
+    }
 
     try {
         const rateLimitResult = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey(
                 'answerlattice-notification-test',
-                session.uId,
+                actorId,
                 scope.tenantId,
                 scope.storeId,
             ),

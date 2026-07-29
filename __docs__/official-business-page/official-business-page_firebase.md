@@ -74,7 +74,7 @@
 
 **OBP hours status fallback diagnostics:** Invalid timezone fallback and malformed time-range suppression in `src/lib/obp/hoursStatus.ts` use the shared browser/runtime hours diagnostics only. This adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
-**Theme preference diagnostics:** Public OBP light/dark preference is browser-local only. Failed localStorage read/write paths log bounded `obp_theme_storage_*_failed` diagnostics once per operation and add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+**Theme preference diagnostics:** Public OBP light/dark preference is browser-local only. Invalid values are removed, and failed localStorage read/remove/write paths log bounded `obp_theme_storage_*_failed` diagnostics once per operation. This adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 
 **OBP server fallback diagnostics:** Public OBP menu-summary, menu-resolution timeout, and tenant-store-count fallback failures now log bounded `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed` diagnostics. These logs reuse the already-attempted public render reads and add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 

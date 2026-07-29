@@ -79,6 +79,8 @@ import {
     hasRuntimeCopyFallback,
     logRuntimeFailure,
 } from "@lib/runtime/runtimeDiagnostics";
+import { getCreativeEditorDraftStorageKey } from "@lib/browserStorage/creativeEditorDraft";
+import { creativeEditorDocumentSchema } from "@lib/validation/creativeEditorTemplateSchemas";
 import {
     buildCreativeEditorArrowElement,
     buildCreativeEditorEggElement,
@@ -332,6 +334,9 @@ type RulerTick = {
     major: boolean;
     position: number;
 };
+
+type CreativeEditorDraftStorageOperation = "cleanup" | "dismiss" | "read" | "write";
+const reportedCreativeEditorDraftStorageFailures = new Set<CreativeEditorDraftStorageOperation>();
 
 const buildRulerTicks = (total: number, minorStep = 40, majorStep = 160): RulerTick[] => {
     const safeTotal = Math.max(1, Math.round(total));
@@ -1340,17 +1345,9 @@ const normalizeOwnerImageUrl = (value: string) => {
     }
 };
 
-const isCreativeEditorDocument = (value: unknown): value is CreativeEditorDocument => {
-    if (!value || typeof value !== "object") return false;
-    const candidate = value as Partial<CreativeEditorDocument>;
-    return Boolean(
-        candidate.schemaVersion
-        && candidate.canvas
-        && typeof candidate.canvas.width === "number"
-        && typeof candidate.canvas.height === "number"
-        && Array.isArray(candidate.elements)
-        && candidate.productContext,
-    );
+const parseCreativeEditorDocument = (value: unknown): CreativeEditorDocument | null => {
+    const parsed = creativeEditorDocumentSchema.safeParse(value);
+    return parsed.success ? parsed.data : null;
 };
 
 const parsePolygonPoints = (value: string) => value
@@ -1543,9 +1540,12 @@ export default function CreativeEditor({
     const visibleLayerCount = documentValue.elements.filter((element) => element.visible !== false).length;
     const lockedLayerCount = documentValue.elements.filter((element) => element.locked || element.printFrameLocked).length;
     const currentHistoryLabel = historyLabelsRef.current[historyIndexRef.current] || historyLabelState.current;
-    const autosaveKey = useMemo(() => (
-        `creative-editor-draft:${documentValue.productContext.productId}:${documentValue.productContext.workspaceId || "workspace"}:${sourceLabel}:${initialEditorDocument.id}`
-    ), [documentValue.productContext.productId, documentValue.productContext.workspaceId, initialEditorDocument.id, sourceLabel]);
+    const autosaveKey = useMemo(() => getCreativeEditorDraftStorageKey({
+        documentId: initialEditorDocument.id,
+        productId: documentValue.productContext.productId,
+        sourceLabel,
+        workspaceId: documentValue.productContext.workspaceId,
+    }), [documentValue.productContext.productId, documentValue.productContext.workspaceId, initialEditorDocument.id, sourceLabel]);
 
     const showCreativeEditorFailure = (
         failureCode: string,
@@ -1570,6 +1570,21 @@ export default function CreativeEditor({
 
         logRuntimeFailure(failureCode, error, context);
         setNotice(noticeMessage);
+    };
+
+    const logCreativeEditorDraftStorageFailure = (
+        operation: CreativeEditorDraftStorageOperation,
+        error: unknown,
+    ): void => {
+        if (reportedCreativeEditorDraftStorageFailures.has(operation)) return;
+        reportedCreativeEditorDraftStorageFailures.add(operation);
+        logRuntimeFailure("creative_editor_browser_draft_storage_failed", error, {
+            operation,
+            ...getBoundedRuntimeStringContext("autosaveKey", autosaveKey),
+            ...getBoundedRuntimeStringContext("documentId", initialEditorDocument.id),
+            ...getBoundedRuntimeStringContext("productId", documentValue.productContext.productId),
+            ...getBoundedRuntimeStringContext("workspaceId", documentValue.productContext.workspaceId),
+        });
     };
 
     const setRightPanelMode = (mode: RightPanelMode) => {
@@ -2412,7 +2427,7 @@ export default function CreativeEditor({
     }, [documentValue, onDocumentChange]);
 
     useEffect(() => {
-        if (!browserDraftsEnabled) {
+        if (!browserDraftsEnabled || !autosaveKey) {
             autosaveReadyRef.current = false;
             setAutosaveDraft(null);
             return;
@@ -2425,8 +2440,14 @@ export default function CreativeEditor({
                 autosaveReadyRef.current = true;
                 return;
             }
-            const payload = JSON.parse(stored) as unknown;
-            if (!isCreativeEditorDocument(payload)) {
+            const payload = parseCreativeEditorDocument(JSON.parse(stored) as unknown);
+            if (
+                !payload
+                || payload.id !== initialEditorDocument.id
+                || payload.productContext.productId !== documentRef.current.productContext.productId
+                || (payload.productContext.workspaceId || undefined)
+                    !== (documentRef.current.productContext.workspaceId || undefined)
+            ) {
                 window.localStorage.removeItem(autosaveKey);
                 autosaveReadyRef.current = true;
                 return;
@@ -2440,19 +2461,25 @@ export default function CreativeEditor({
                 return;
             }
             autosaveReadyRef.current = true;
-        } catch {
+        } catch (error) {
+            logCreativeEditorDraftStorageFailure("read", error);
+            try {
+                window.localStorage.removeItem(autosaveKey);
+            } catch (cleanupError) {
+                logCreativeEditorDraftStorageFailure("cleanup", cleanupError);
+            }
             autosaveReadyRef.current = true;
         }
-    }, [autosaveKey, browserDraftsEnabled]);
+    }, [autosaveKey, browserDraftsEnabled, initialEditorDocument.id]);
 
     useEffect(() => {
-        if (!browserDraftsEnabled) return undefined;
+        if (!browserDraftsEnabled || !autosaveKey) return undefined;
         if (!autosaveReadyRef.current || autosaveDraft) return undefined;
         const timeout = window.setTimeout(() => {
             try {
                 window.localStorage.setItem(autosaveKey, JSON.stringify(documentValue));
-            } catch {
-                // Ignore local storage failures; exporting and template save still work.
+            } catch (error) {
+                logCreativeEditorDraftStorageFailure("write", error);
             }
         }, 700);
         return () => window.clearTimeout(timeout);
@@ -4292,12 +4319,13 @@ export default function CreativeEditor({
         try {
             const text = await readFileAsText(file);
             const payload = JSON.parse(text) as unknown;
-            if (isCreativeEditorDocument(payload)) {
+            const parsedDocument = parseCreativeEditorDocument(payload);
+            if (parsedDocument) {
                 const next: CreativeEditorDocument = normalizeCreativeEditorDocumentPages({
-                    ...payload,
+                    ...parsedDocument,
                     productContext: documentRef.current.productContext,
                     metadata: {
-                        ...payload.metadata,
+                        ...parsedDocument.metadata,
                         updatedAt: new Date().toISOString(),
                     },
                 });
@@ -4441,10 +4469,15 @@ export default function CreativeEditor({
     };
 
     const dismissAutosaveDraft = () => {
+        if (!autosaveKey) {
+            autosaveReadyRef.current = true;
+            setAutosaveDraft(null);
+            return;
+        }
         try {
             window.localStorage.removeItem(autosaveKey);
-        } catch {
-            // Ignore local storage failures; the editor can continue without recovery.
+        } catch (error) {
+            logCreativeEditorDraftStorageFailure("dismiss", error);
         }
         autosaveReadyRef.current = true;
         setAutosaveDraft(null);

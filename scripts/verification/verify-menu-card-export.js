@@ -1430,8 +1430,11 @@ const menuCardHistoryRepository = fs.readFileSync(path.join(root, 'src/lib/menu-
 [
   'storageScope: string',
   'encodeURIComponent(storageScope)',
-  'isMenuCardLocalHistoryRecord',
-  'isMenuCardLocalHistoryRecord(record) && record.projectId === projectId',
+  'projectMenuCardLocalHistoryRecord',
+  'Number.isSafeInteger(record.pageCount)',
+  'isCanonicalPastIsoTimestamp(record.generatedAt)',
+  'record.projectId !== projectId',
+  'localStorage.removeItem(key(projectId, storageScope))',
   'localStorage.setItem(key(params.projectId, params.storageScope)',
   'must never turn a successful export into an owner-visible failure',
 ].forEach((token) => {

@@ -11,18 +11,31 @@ export function clearDraft(
     sessionId: string | null | undefined,
     draftScope?: string | null,
 ): void {
-    try {
-        const scopedKeys = getAnswerlatticeHelpChatDraftKeys(draftScope, sessionId);
-        const legacyKeys = getLegacyHelpChatDraftKeys(sessionId);
-        if (scopedKeys) {
-            localStorage.removeItem(scopedKeys.draftKey);
-            localStorage.removeItem(scopedKeys.imageDraftKey);
+    const scopedKeys = getAnswerlatticeHelpChatDraftKeys(draftScope, sessionId);
+    const legacyKeys = getLegacyHelpChatDraftKeys(sessionId);
+    const keys = Array.from(new Set([
+        scopedKeys?.draftKey,
+        scopedKeys?.imageDraftKey,
+        legacyKeys.draftKey,
+        legacyKeys.imageDraftKey,
+    ].filter((key): key is string => Boolean(key))));
+    let firstError: unknown;
+    let failedRemovalCount = 0;
+
+    for (const key of keys) {
+        try {
+            localStorage.removeItem(key);
+        } catch (error) {
+            firstError ??= error;
+            failedRemovalCount += 1;
         }
-        localStorage.removeItem(legacyKeys.draftKey);
-        localStorage.removeItem(legacyKeys.imageDraftKey);
-    } catch (error) {
-        logHelpChatFailure('help_chat_draft_clear_failed', error, {
+    }
+
+    if (failedRemovalCount > 0) {
+        logHelpChatFailure('help_chat_draft_clear_failed', firstError, {
             ...getBoundedHelpChatStringContext('sessionId', sessionId),
+            attemptedRemovalCount: keys.length,
+            failedRemovalCount,
         });
     }
 }

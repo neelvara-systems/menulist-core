@@ -6,7 +6,7 @@
  * Per DAL pattern: Receives initial data from server component
  * 
  * HARDENING (Jan 2026):
- * - Cached-first rendering (deploy safety)
+ * - Server-authoritative rendering with version-matched offline fallback
  * - Firebase real-time listener (data freshness)
  * - Zero-blank guarantee (fallback guard)
  * - Lazy QR loading (cold boot optimization)
@@ -24,6 +24,8 @@ import {
 } from "@lib/screen/screenContent";
 import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
 import { getPublicScreenStateDocId } from "@lib/screen/publicScreenState";
+import { shouldUseDigitalScreenOfflineCache } from "@lib/screen/screenRuntime";
+import { screenTimestampToMillis } from "@lib/screen/screenTimestamp";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { ScreenSlide, ScreenStoreInfo } from "@type/campaigns";
 import { QRCode } from "antd";
@@ -63,17 +65,22 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     const { slides: initialSlides, storeInfo, config, token, storeId } = initialData;
     const cacheKey = `menulist-screen-data-${token}`;
 
-    // HARDENING: Cached-first rendering for deploy safety
-    // Try to load from cache first, then update from server data
+    // Use a local snapshot only for a version-matched offline boot.
     const [state, setState] = useState<ScreenState>(() => {
-        // Try cached data first (instant render, survives bad deploys)
         if (typeof window !== 'undefined') {
             try {
                 const cached = localStorage.getItem(cacheKey);
                 if (cached) {
                     const parsedCache = JSON.parse(cached);
-                    // Only use cache if it has valid slides
-                    if (parsedCache.slides && parsedCache.slides.length > 0) {
+                    if (
+                        shouldUseDigitalScreenOfflineCache({
+                            cachedContentVersion: parsedCache.contentVersion,
+                            cachedEntryCount: parsedCache.slides?.length,
+                            initialContentVersion: initialData.contentVersion,
+                            online: navigator.onLine,
+                        })
+                        && parsedCache.slides
+                    ) {
                         return {
                             slides: parsedCache.slides,
                             currentIndex: 0,
@@ -103,20 +110,19 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
 
     const slideTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // HARDENING: Update state from server data after initial render
-    // This ensures cache-first render, then seamless update if server has newer data
+    // Keep current server truth authoritative after a client-side route refresh.
+    // Local content is admitted only during a version-matched offline boot.
     useEffect(() => {
-        if (initialSlides.length > 0) {
-            // Only update if server data is valid and different
-            const serverDataStr = JSON.stringify(initialSlides);
-            const currentDataStr = JSON.stringify(state.slides);
-            if (serverDataStr !== currentDataStr) {
-                setState(prev => ({
-                    ...prev,
-                    currentIndex: Math.min(prev.currentIndex, initialSlides.length - 1),
-                    slides: initialSlides,
-                }));
-            }
+        const serverDataStr = JSON.stringify(initialSlides);
+        const currentDataStr = JSON.stringify(state.slides);
+        if (serverDataStr !== currentDataStr) {
+            setState(prev => ({
+                ...prev,
+                currentIndex: initialSlides.length > 0
+                    ? Math.min(prev.currentIndex, initialSlides.length - 1)
+                    : 0,
+                slides: initialSlides,
+            }));
         }
     }, [initialSlides]);
 
@@ -197,6 +203,25 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
             }
         };
     }, [state.slides.length, advanceSlide, config.slideDurationMs]);
+
+    // Owner posters have a truth deadline. Reload at the nearest expiry so a
+    // long-running TV cannot keep displaying an expired offer until the next
+    // six-hour maintenance refresh.
+    useEffect(() => {
+        const now = Date.now();
+        const nextExpiry = state.slides
+            .filter((slide) => slide.type === "owner_upload")
+            .map((slide) => screenTimestampToMillis(slide.validUntil))
+            .filter((value): value is number => value !== null && value > now)
+            .sort((left, right) => left - right)[0];
+        if (!nextExpiry) return;
+
+        const timeout = window.setTimeout(
+            () => _guardedReload("screen", token),
+            Math.min(2_147_000_000, Math.max(1_000, nextExpiry - now + 1_000)),
+        );
+        return () => window.clearTimeout(timeout);
+    }, [state.slides, token]);
 
     // HARDENING: Firebase real-time listener for data freshness
     // GPT FIX 3: Direct doc listener (cheaper than query listener at scale)
@@ -651,7 +676,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     .owner-upload-image {
                         width: 100%;
                         height: 100%;
-                        object-fit: cover;
+                        object-fit: contain;
                         display: block;
                     }
                     .slide-qr-corner {
@@ -667,7 +692,8 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     .slide-store-watermark {
                         position: absolute;
                         bottom: 28px;
-                        right: 24px;
+                        left: 24px;
+                        max-width: calc(100% - 220px);
                         font-size: 13px;
                         font-weight: 600;
                         color: rgba(255, 255, 255, 0.32);
@@ -738,7 +764,13 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                 {hasScreenPrice(slide.price) && (
                     <div className="slide-meta-row">
                         <div className="slide-price-pill">
-                            <span className="price-value">{formatScreenPrice(slide.price, storeInfo.currencySymbol)}</span>
+                            <span className="price-value">
+                                {formatScreenPrice(
+                                    slide.price,
+                                    storeInfo.currencySymbol,
+                                    storeInfo.locale,
+                                )}
+                            </span>
                         </div>
                     </div>
                 )}
@@ -939,7 +971,8 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                 .slide-store-watermark {
                     position: absolute;
                     bottom: 28px;
-                    right: 24px;
+                    left: 24px;
+                    max-width: calc(100% - 220px);
                     font-size: 13px;
                     font-weight: 600;
                     color: rgba(255, 255, 255, 0.2);

@@ -83,10 +83,10 @@ export const logAiServiceDiagnostic = (
     });
 };
 
-export async function readAiServiceResponseJson<T extends object>(
+export async function readAiServiceResponseJson(
     response: Response,
     options: AiServiceResponseParserOptions,
-): Promise<T> {
+): Promise<Record<string, unknown>> {
     const {
         context = {},
         invalidFailureCode,
@@ -117,5 +117,5 @@ export async function readAiServiceResponseJson<T extends object>(
         throw createAiServiceResponseError(invalidFailureCode, response);
     }
 
-    return payload as T;
+    return payload as Record<string, unknown>;
 }

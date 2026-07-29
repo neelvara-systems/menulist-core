@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 const SESSION_ID_KEY = 'menulist_session_id';
 const SESSION_TIMESTAMP_KEY = 'menulist_session_timestamp';
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const CANONICAL_UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 type AnalyticsSessionStorageOperation = 'get' | 'refresh' | 'clear';
 
@@ -17,6 +18,16 @@ const ANALYTICS_SESSION_STORAGE_FAILURE_CODES: Record<AnalyticsSessionStorageOpe
 };
 
 const reportedAnalyticsSessionStorageFailures = new Set<string>();
+
+const isCanonicalAnalyticsSessionId = (value: unknown): value is string => (
+  typeof value === 'string' && CANONICAL_UUID_V4_PATTERN.test(value)
+);
+
+const parseAnalyticsSessionTimestamp = (value: unknown, now: number): number | null => {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null;
+  const timestamp = Number(value);
+  return Number.isSafeInteger(timestamp) && timestamp <= now ? timestamp : null;
+};
 
 const getAnalyticsSessionStorageFailureContext = (
   operation: AnalyticsSessionStorageOperation,
@@ -74,11 +85,15 @@ export function getSessionId(): string {
     
     // Check if we have an existing session
     if (existingId && timestampStr) {
-      const timestamp = parseInt(timestampStr, 10);
       const now = Date.now();
+      const timestamp = parseAnalyticsSessionTimestamp(timestampStr, now);
       
       // If session hasn't expired, update timestamp and return existing ID
-      if (now - timestamp < SESSION_TIMEOUT_MS) {
+      if (
+        isCanonicalAnalyticsSessionId(existingId)
+        && timestamp !== null
+        && now - timestamp < SESSION_TIMEOUT_MS
+      ) {
         sessionStorage.setItem(SESSION_TIMESTAMP_KEY, now.toString());
         return existingId;
       }
@@ -111,8 +126,11 @@ export function refreshSession(): void {
 
   try {
     existingId = sessionStorage.getItem(SESSION_ID_KEY);
-    if (existingId) {
+    if (isCanonicalAnalyticsSessionId(existingId)) {
       sessionStorage.setItem(SESSION_TIMESTAMP_KEY, Date.now().toString());
+    } else if (existingId !== null) {
+      sessionStorage.removeItem(SESSION_ID_KEY);
+      sessionStorage.removeItem(SESSION_TIMESTAMP_KEY);
     }
   } catch (error) {
     logAnalyticsSessionStorageFailure('refresh', error, { existingId });

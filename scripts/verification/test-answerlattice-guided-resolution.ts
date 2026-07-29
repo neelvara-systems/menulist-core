@@ -123,6 +123,25 @@ assert.equal(isAnswerlatticeSearchHistoryAvailableForInteraction({
 assert.equal(isAnswerlatticeSearchHistoryAvailableForInteraction({
     expiresAt: { toMillis: () => { throw new Error('malformed timestamp'); } },
 }, nowMs), false, 'malformed retained timestamps must fail closed without throwing');
+let retentionCoercionExecuted = false;
+assert.equal(isAnswerlatticeSearchHistoryAvailableForInteraction({
+    createdOn: { seconds: nowMs / 1000 },
+    retentionDays: {
+        valueOf() {
+            retentionCoercionExecuted = true;
+            throw new Error('retention coercion must not execute');
+        },
+    },
+}, nowMs), true, 'invalid legacy retention uses the configured bounded fallback');
+assert.equal(retentionCoercionExecuted, false);
+assert.equal(isAnswerlatticeSearchHistoryAvailableForInteraction(new Proxy({}, {
+    get() {
+        throw new Error('history getter must remain contained');
+    },
+}), nowMs), false);
+assert.equal(isAnswerlatticeSearchHistoryAvailableForInteraction({
+    expiresAt: new Proxy(new Date(nowMs + 1000), {}),
+}, nowMs), false, 'Date Proxies must fail closed without throwing');
 assert.equal(isAnswerlatticeSearchHistoryAvailableForInteraction({}, nowMs), false);
 
 const procedure: AnswerlatticeProcedure = {

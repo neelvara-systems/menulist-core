@@ -362,6 +362,24 @@ const isOwnerBusinessAssistantFeedbackResponse = (
   && value.data.success === true
 );
 
+export const projectOwnerBusinessAssistantCurrentResponse = (
+  value: unknown,
+): OwnerBusinessAssistantCurrentResponse | null => (
+  isOwnerBusinessAssistantCurrentResponse(value) ? value : null
+);
+
+export const projectOwnerBusinessAssistantAnalyticsResponse = (
+  value: unknown,
+): OwnerBusinessAssistantAnalyticsResponse | null => (
+  isOwnerBusinessAssistantAnalyticsResponse(value) ? value : null
+);
+
+export const projectOwnerBusinessAssistantLocationsResponse = (
+  value: unknown,
+): OwnerBusinessAssistantLocationsResponse | null => (
+  isOwnerBusinessAssistantLocationsResponse(value) ? value : null
+);
+
 const getReadModelLogContext = (
   kind: OwnerBusinessAssistantReadModelKind,
   response: Response,

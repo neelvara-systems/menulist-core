@@ -5,7 +5,9 @@ import {
     DEPLOYMENT_BADGE_TOGGLE_EVENT,
     DEPLOYMENT_IDENTITY_EVENT,
     DEPLOYMENT_IDENTITY_STORAGE_KEY,
+    parseDeploymentDebugIdentity,
 } from '@constant/deploymentDebug';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
     DEPLOYMENT_VERSION_REQUEST_POLICY,
     readDeploymentVersionResponse,
@@ -35,27 +37,41 @@ export default function DeploymentBuildBadge() {
         try {
             const raw = window.sessionStorage.getItem(DEPLOYMENT_IDENTITY_STORAGE_KEY);
             if (!raw) return;
-            const parsed = JSON.parse(raw) as {
-                tenantId?: string | number | null;
-                tenantName?: string;
-                storeId?: string | number | null;
-                storeName?: string;
-            };
-            setTenantId(parsed?.tenantId === null || parsed?.tenantId === undefined ? '' : String(parsed.tenantId));
-            setTenantName(parsed?.tenantName || '');
-            setStoreId(parsed?.storeId === null || parsed?.storeId === undefined ? '' : String(parsed.storeId));
-            setStoreName(parsed?.storeName || '');
-        } catch {
+            const parsed = parseDeploymentDebugIdentity(raw);
+            if (!parsed) {
+                window.sessionStorage.removeItem(DEPLOYMENT_IDENTITY_STORAGE_KEY);
+                setTenantId('');
+                setTenantName('');
+                setStoreId('');
+                setStoreName('');
+                return;
+            }
+            setTenantId(parsed.tenantId);
+            setTenantName(parsed.tenantName);
+            setStoreId(parsed.storeId);
+            setStoreName(parsed.storeName);
+        } catch (error) {
             setTenantId('');
             setTenantName('');
             setStoreId('');
             setStoreName('');
+            logRuntimeFailure('deployment_badge_identity_storage_failed', error, {
+                fallbackPolicy: 'omit_identity',
+            }, { developmentOnly: true });
         }
     };
 
     useEffect(() => {
         const fromUrl = shouldShowBadge();
-        const fromStorage = typeof window !== 'undefined' && window.sessionStorage.getItem(DEPLOYMENT_BADGE_STORAGE_KEY) === '1';
+        let fromStorage = false;
+        try {
+            fromStorage = typeof window !== 'undefined'
+                && window.sessionStorage.getItem(DEPLOYMENT_BADGE_STORAGE_KEY) === '1';
+        } catch (error) {
+            logRuntimeFailure('deployment_badge_visibility_storage_read_failed', error, {
+                fallbackPolicy: 'url_only',
+            }, { developmentOnly: true });
+        }
         setIsVisible(fromUrl || fromStorage);
         loadIdentityFromStorage();
     }, []);
@@ -73,7 +89,13 @@ export default function DeploymentBuildBadge() {
         const onToggle = () => {
             setIsVisible((prev) => {
                 const next = !prev;
-                window.sessionStorage.setItem(DEPLOYMENT_BADGE_STORAGE_KEY, next ? '1' : '0');
+                try {
+                    window.sessionStorage.setItem(DEPLOYMENT_BADGE_STORAGE_KEY, next ? '1' : '0');
+                } catch (error) {
+                    logRuntimeFailure('deployment_badge_visibility_storage_write_failed', error, {
+                        fallbackPolicy: 'memory_only',
+                    }, { developmentOnly: true });
+                }
                 return next;
             });
         };

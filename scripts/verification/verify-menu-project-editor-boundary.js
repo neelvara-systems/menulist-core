@@ -73,7 +73,10 @@ function requireNamedImport(source, moduleSpecifier, names, label) {
 const packageJson = read('package.json');
 const projectsRoute = read('src/app/(main)/projects/page.tsx');
 const projectsPage = read('src/components/templates/main-app/projects/index.tsx');
+const projectsDataProvider = read('src/providers/projectsDataProvider.tsx');
 const editor = read('src/components/templates/main-app/projects/editorView/Editor.tsx');
+const editorWelcomeBanner = read('src/components/templates/main-app/projects/editorView/EditorWelcomeBanner.tsx');
+const zoomableImage = read('src/components/templates/main-app/projects/editorView/ZoomableImage.tsx');
 const commandCenter = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/index.tsx');
 const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
 const mobileProjectSelector = read('src/components/mobile/components/MobileProjectSelectorSheet.tsx');
@@ -91,7 +94,8 @@ const timeSlotPresetBoundary = read('src/lib/menu/timeSlotPresetBoundary.ts');
 const timedCategories = read('src/hooks/useTimedCategories.ts');
 const storeDal = read('src/database/stores/index.tsx');
 const publicClientCache = read('src/lib/cache/publicClientCache.ts');
-const screenInvalidation = read('src/lib/screen/screenInvalidation.ts');
+const screenInvalidation = read('src/lib/screen/serverScreenInvalidation.ts');
+const revalidateMenuRoute = read('src/app/api/revalidate/menu/route.ts');
 const projectsReadme = read('__docs__/projects/README.md');
 const editorReadme = read('__docs__/projects/editor/README.md');
 const projectsMobileSupport = read('__docs__/projects/projects_mobile-support.md');
@@ -114,6 +118,17 @@ requireToken(
 ['import ProjectsPage from "@template/main-app/projects"', '<ProjectsPage />'].forEach((token) => {
   requireToken(projectsRoute, token, 'projects route');
 });
+
+[
+  'setActiveProject: (project: Project) => void;',
+  'setCurrentView: Dispatch<SetStateAction<number>>;',
+  'activeBatchImageJob: BatchImageGenerationJobType | null;',
+  'setActiveBatchImageJob: Dispatch<SetStateAction<BatchImageGenerationJobType | null>>;',
+  '<ProjectsDataContext.Provider value={contextData}>',
+].forEach((token) => requireToken(projectsDataProvider, token, 'projects data provider'));
+forbidToken(projectsDataProvider, ': any', 'projects data provider');
+forbidToken(projectsDataProvider, 'useState(contextData)', 'projects data provider');
+forbidToken(projectsDataProvider, 'setContextState(contextData)', 'projects data provider');
 
 requireNamedImport(projectsPage, '@database/projects', [
   'addProject',
@@ -172,6 +187,23 @@ requireNamedImport(editor, '@database/projects', [
   '<CommandCenterModal',
   'await appendImageBatchProjectSelections({',
 ].forEach((token) => requireToken(editor, token, 'desktop editor'));
+
+[
+  'getEditorOnboardingStorageKeys(tenantId, storeId)',
+  'setShowWelcome(false);',
+  'setShowOutletBanner(false);',
+  'isMasterLinked && !isEditorOnboardingMarker(outletSeen)',
+  "menu_editor_onboarding_storage_failed",
+].forEach((token) => requireToken(editorWelcomeBanner, token, 'editor onboarding browser state'));
+forbidToken(editorWelcomeBanner, "WELCOME_DISMISSED: 'editor_welcome_dismissed'", 'editor onboarding browser state');
+
+[
+  'ref={imageRef}',
+  'imageRef.current.offsetWidth * zoom',
+  'imageRef.current.offsetHeight * zoom',
+  "menu_editor_zoom_hint_storage_failed",
+].forEach((token) => requireToken(zoomableImage, token, 'editor zoom browser state'));
+forbidToken(zoomableImage, 'image.width * zoom', 'editor zoom browser state');
 requireOrder(
   editor,
   [
@@ -412,8 +444,9 @@ requireToken(projectDal, 'type: validatedPayload.mimeType,', 'project DAL canoni
 [
   'export const revalidatePublicClientCacheForProject = async (',
   'invalidateOwnerBusinessAssistantBrowserCache({ storeId, projectId });',
-  'await revalidatePublicClientCache(storeId, context);',
-  'await touchDigitalScreenContentVersion(storeId, context, { projectId });',
+  'await revalidatePublicClientCache(storeId, context, {',
+  'projectId,',
+  'touchScreen: true,',
   'const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();',
   'pending.rerunRequested = true;',
   '} while (entry.rerunRequested);',
@@ -430,20 +463,20 @@ requireToken(projectDal, 'type: validatedPayload.mimeType,', 'project DAL canoni
 forbidToken(publicClientCache, 'const pendingRevalidations = new Map<string, Promise<void>>();', 'public client cache');
 
 [
-  'export const touchDigitalScreenContentVersion = async (',
-  'if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId || typeof window === "undefined") {',
-  'await runTransaction(firebaseClient, async (transaction) => {',
+  'export async function touchDigitalScreenContentVersionForStoreServer(',
+  'if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !normalizedStoreId) {',
+  'await firestoreAdmin.runTransaction(async (transaction) => {',
   '"screen.contentVersion": nextContentVersion',
-  'transaction.set(publicScreenRef, publicState, { merge: false });',
-  'digital_screen_content_version_touch_failed',
-  'type PendingScreenContentTouch',
-  'const pendingScreenTouches = new Map<string, PendingScreenContentTouch>();',
-  'pending.rerunRequested = true;',
-  'pending.options = options;',
-  '} while (entry.rerunRequested);',
-  'if (pendingScreenTouches.get(normalizedStoreId) === entry)',
+  'transaction.set(publicScreenRef, {',
+  'digital_screen_server_content_version_touch_failed',
+  'getPrivateScreenTokenCacheTag(screenToken)',
+  'revalidateTag(result.tokenCacheTag, { expire: 0 });',
 ].forEach((token) => requireToken(screenInvalidation, token, 'digital screen invalidation'));
-forbidToken(screenInvalidation, 'const pendingScreenTouches = new Map<string, Promise<void>>();', 'digital screen invalidation');
+[
+  'touchDigitalScreenContentVersionForStoreServer(',
+  'body.touchScreen === true',
+].forEach((token) => requireToken(revalidateMenuRoute, token, 'protected digital screen invalidation route'));
+forbidToken(revalidateMenuRoute, "'screen-data'", 'protected digital screen invalidation route');
 
 requireNamedImport(mobileMenu, '@database/projects', [
   'appendImageBatchProjectSelections',

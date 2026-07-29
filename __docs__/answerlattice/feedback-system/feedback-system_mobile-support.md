@@ -1,7 +1,7 @@
 # Feedback System — Mobile Support Assessment
 
-> **Version:** 1.8.0
-> **Last Updated:** 2026-07-19
+> **Version:** 1.9.0
+> **Last Updated:** 2026-07-28
 > **Audience:** Mobile team, Product
 
 ---
@@ -27,7 +27,7 @@ Help Center submit/navigation controls share a ref-backed in-flight lock so rapi
 
 Reaction buttons and the dislike modal share an in-flight lock/loading state. Failed detailed reactions retain the comment for retry, optimistic counters never render below zero, and acknowledged mutations reconcile to authoritative server counts.
 
-Mobile browser acknowledgement is partitioned by Answerlattice tenant, store and user and resets on a workspace/content switch; another workspace cannot inherit the previous like/dislike state.
+Mobile browser acknowledgement is partitioned by Answerlattice tenant, store and user and resets on a workspace/content/page/actor switch. Pending responses are token-fenced to their originating scope, so a slow prior reaction cannot overwrite the newly selected item's counters or loading state. Future-dated local acknowledgements fail closed.
 
 ---
 

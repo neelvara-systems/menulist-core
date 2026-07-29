@@ -2,7 +2,7 @@
 
 **Status:** Implemented internal runtime
 **Created:** June 23, 2026
-**Runtime reconciled:** July 21, 2026
+**Runtime reconciled:** July 28, 2026
 
 ## Runtime Modules
 
@@ -52,5 +52,6 @@ Dashboard/common and Attribution desktop workspaces read up to 30 strict summari
 | Free-text target name without target ID | Reject before Firestore work. |
 | Existing summary malformed or wrong lineage | Reject the full transaction. |
 | Replay claim/event/summary missing or malformed | Fail closed; do not acknowledge duplicate. |
+| Timestamp accessor throws, changes, is non-finite, or is outside the JavaScript date range | Normalize to the exact persisted-contract error before summary identity or transaction effects. |
 | Same key with changed type/surface/target | Idempotency conflict. |
 | Suppressed target | Record compact demand; preserve suppression and all contact blocks. |

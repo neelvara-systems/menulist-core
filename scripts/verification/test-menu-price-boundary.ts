@@ -59,6 +59,25 @@ assert.equal(project.overrides.attributes.option1.price, '');
 assert.throws(() => normalizeProjectPriceTruth({ files: [{ extractedData: { data: { items: [{ price: '<script>' }] } } }] }));
 assert.equal(normalizeExtractedMenuPriceTruth({ items: [{ price: ' 299 ' }] }).items[0].price, '299');
 assert.throws(() => normalizeExtractedMenuPriceTruth({ items: [{ price: '299 🎉' }] }));
+const partiallyValidExtractedPrices = {
+    items: [{ price: ' 299 ' }, { price: '<script>' }],
+};
+assert.throws(() => normalizeExtractedMenuPriceTruth(partiallyValidExtractedPrices));
+assert.equal(
+    partiallyValidExtractedPrices.items[0].price,
+    ' 299 ',
+    'a later invalid price must not partially normalize an extracted menu',
+);
+const partiallyValidProjectPrices = {
+    files: [{ extractedData: { data: { items: [{ price: ' 199 ' }] } } }],
+    overrides: { items: { invalid: { price: '299 🎉' } } },
+};
+assert.throws(() => normalizeProjectPriceTruth(partiallyValidProjectPrices));
+assert.equal(
+    partiallyValidProjectPrices.files[0].extractedData.data.items[0].price,
+    ' 199 ',
+    'an invalid override must not leave an earlier project item partially normalized',
+);
 
 assert.equal(formatMenuPrice('199–249', '₹'), '₹199–249');
 assert.equal(hasPublicItemDisplayPrice({ price: 'Market Price' }), true);

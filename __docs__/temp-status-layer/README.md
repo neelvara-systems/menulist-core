@@ -39,7 +39,7 @@ After the store write commits, the route attempts the existing public effects to
 - `menu-store-{storeId}`
 - `store-{storeId}`
 - `client-stores`
-- `screen-data`
+- the affected Digital Screen hashed token cache tag
 - Digital Screens content-version touch
 - Owner Business Assistant packet-cache invalidation
 

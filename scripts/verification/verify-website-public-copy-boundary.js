@@ -204,6 +204,23 @@ function verifyWebsiteAuditHardeningBoundary() {
   assertIncludes(hindiLocale, '"successTitle": "मैसेज मिल गया"', 'Hindi contact acknowledgement');
 }
 
+function verifyWebsiteThemeStorageBoundary() {
+  const provider = read('src/components/website/shadcn/theme-provider.tsx');
+  const preference = read('src/lib/website/themePreference.ts');
+  const implDoc = read('__docs__/main-website/main-website_impl.md');
+
+  [
+    'normalizeWebsiteThemePreference(rawTheme)',
+    'window.localStorage.removeItem(WEBSITE_THEME_STORAGE_KEY)',
+    "logWebsiteThemeStorageFailure('read', error)",
+    "logWebsiteThemeStorageFailure('remove', error)",
+    "logWebsiteThemeStorageFailure('write', error)",
+  ].forEach((token) => assertIncludes(provider, token, 'Main website theme storage boundary'));
+  assertIncludes(preference, "value === 'light' || value === 'dark' || value === 'system'", 'Main website exact theme projector');
+  assertNotIncludes(provider, 'as Theme | null', 'Main website theme storage unchecked assertion');
+  assertIncludes(implDoc, 'invalid values are evicted', 'Main website theme persistence documentation');
+}
+
 function verifyMountedHomepageBoundary() {
   const homepage = read(HOMEPAGE);
   const mountedFiles = new Set([HOMEPAGE]);
@@ -894,8 +911,13 @@ function verifyWebsiteAnalyticsBoundary() {
   );
   assertIncludes(
     publicCookieConsentBanner,
-    "fallbackPolicy: operation === 'read' ? 'show_consent_panel' : 'keep_page_runtime_choice'",
+    "operation === 'remove'",
     'Public cookie consent storage fallback policy',
+  );
+  assertIncludes(
+    publicCookieConsentBanner,
+    "window.localStorage.removeItem(storageKey)",
+    'Public cookie consent invalid-choice eviction',
   );
   assertIncludes(
     publicCookieConsentBanner,
@@ -933,6 +955,8 @@ function verifyWebsiteAnalyticsBoundary() {
     'Public website Plausible consent read silent catch',
   );
   [
+    'setPublicWebsiteAnalyticsRuntimeConsent',
+    'if (!hasAcceptedPublicWebsiteAnalyticsConsent()) return;',
     'MARKETING_EVENT_PARAM_MAX_LENGTH_BY_KEY',
     'stripAnalyticsControlCharacters',
     'getBoundedMarketingEventParams',
@@ -943,6 +967,11 @@ function verifyWebsiteAnalyticsBoundary() {
     plausibleHelper,
     "analyticsWindow.gtag('event', normalizedEventName, params);",
     'Public website Google marketing event unbounded payload call',
+  );
+  assertIncludes(
+    websiteAnalyticsConsent,
+    'setPublicWebsiteAnalyticsRuntimeConsent(consent);',
+    'Main website immediate runtime consent projection',
   );
   [
     [resourceAnalytics, 'ResourceAnalytics'],
@@ -1451,6 +1480,7 @@ function verifyDocsBoundary() {
 verifyPackageScript();
 verifyWebsiteSocialMetadataBoundary();
 verifyWebsiteAuditHardeningBoundary();
+verifyWebsiteThemeStorageBoundary();
 verifyMountedHomepageBoundary();
 verifyLocaleAndDiscoveryCopy();
 verifyWhatsAppOnboardingFailClosedBoundary();

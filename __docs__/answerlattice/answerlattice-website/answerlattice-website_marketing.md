@@ -1,7 +1,7 @@
 # AnswerLattice Website Marketing
 
 > **Status:** Implemented public acquisition contract; outcome proof still requires real buyers
-> **Last audited:** July 19, 2026
+> **Last audited:** July 29, 2026
 
 ## Audience
 
@@ -19,7 +19,8 @@ The public path should prove:
 2. known questions can use approved truth before fallback;
 3. unknown or conflicting questions remain review work;
 4. the product can be installed and tested without replacing a helpdesk;
-5. the plan, checkout, trust, and data boundaries are visible before purchase.
+5. an owner can move from a qualified Daily Brief into the exact product area, supporting friction evidence, Knowledge Map context, Answer Tests, and release impact;
+6. the plan, checkout, trust, and data boundaries are visible before purchase.
 
 ## Positioning
 
@@ -46,6 +47,10 @@ Do not claim zero hallucinations, guaranteed accuracy, guaranteed ticket reducti
 Do not use `the first 24/7 support layer`; the superlative has no market evidence and the phrase can imply an uptime promise. Use `governed support layer` or `your first support layer`.
 
 Do not treat demo stage completion, conversations, containment, or answer volume as customer resolution.
+
+Do not market the Knowledge Map as a free-form diagram, a public raw ontology graph, or an automatic product-health diagnosis. It is a private owner review surface over governed product structure. Public help may expose only sanitized article-heading topic maps.
+
+The Daily Brief must be described as a bounded decision surface: up to four qualified current priorities, or a quiet state when no item qualifies. Do not imply that it invents work to keep the screen populated.
 
 ## Conversion Events
 

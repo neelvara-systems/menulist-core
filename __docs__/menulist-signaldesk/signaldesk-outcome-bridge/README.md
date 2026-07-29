@@ -42,7 +42,7 @@ The Today desk now exposes a deliberately weaker manual handoff while the signed
 
 The repository runtime now enforces scoped, expiring, revocable hash-only route tokens; strict signed payloads; transactional idempotency; direct attribution touches; and the MenuList truth boundary. Production clearance still requires:
 
-- deploy-time secret configuration for `MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET`,
+- deploy-time secret configuration for `SIGNALDESK_OUTCOME_BRIDGE_SECRET`,
 - an approved MenuList producer using the documented raw-body HMAC contract,
 - live retry/replay smoke testing against the deployed route,
 - privacy and retention approval for outcome and attribution history.

@@ -32,6 +32,7 @@ import {
     normalizeAnswerlatticeOwnerAssistantCount,
     normalizeAnswerlatticeOwnerAssistantTimestamp,
 } from '@lib/answerlattice/ownerSupportAssistantNormalization';
+import { getAnswerlatticeEntityContextRoute } from '@lib/answerlattice/ownerDecisionNavigation';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import type {
@@ -335,6 +336,9 @@ const buildMetrics = (packet: SummaryPacket): AnswerlatticeOwnerAssistantBrief['
         : packet.coverage && packet.coverage.coverage.total > 0
             ? packet.coverage.coverage.rate
             : null,
+    canonicalMisses: normalizeAnswerlatticeOwnerAssistantCount(
+        packet.trust?.coverage?.misses ?? packet.coverage?.coverage?.misses,
+    ),
     noEscalationRate: packet.trust && packet.trust.nonEscalation.total > 0
         ? packet.trust.nonEscalation.rate
         : null,
@@ -347,9 +351,11 @@ const buildMetrics = (packet: SummaryPacket): AnswerlatticeOwnerAssistantBrief['
     uncoveredEntities: normalizeAnswerlatticeOwnerAssistantCount(packet.trust?.entityAnswerCoverage?.uncoveredCount),
     openBoardCards: normalizeAnswerlatticeOwnerAssistantCount(packet.board?.openCards),
     needsAnswerCards: normalizeAnswerlatticeOwnerAssistantCount(packet.board?.needsAnswerCards),
+    highPriorityCards: normalizeAnswerlatticeOwnerAssistantCount(packet.board?.highPriorityCards),
     reviewItems: normalizeAnswerlatticeOwnerAssistantCount(packet.intake?.reviewItems),
     signals7d: normalizeAnswerlatticeOwnerAssistantCount(packet.friction?.totalSignals7d),
     escalations7d: normalizeAnswerlatticeOwnerAssistantCount(packet.friction?.totalEscalations7d),
+    frictionLevel: packet.friction?.frictionLevel || null,
 });
 
 const getUpdatedAt = (packet: SummaryPacket) => packet.summaryHealth.newestUpdatedAt;
@@ -361,14 +367,19 @@ const createDailyAction = (action: AnswerlatticeFounderDailyAction): Answerlatti
 const buildFounderDailyBrief = (
     status: AnswerlatticeOwnerAssistantStatus,
     metrics: AnswerlatticeOwnerAssistantBrief['metrics'],
+    trust: SummaryPacketValue['trust'],
     friction: SummaryPacketValue['friction'],
     launchVerification: AnswerlatticeLaunchVerification,
     permissions: AnswerlatticeOwnerAssistantPermissionMap,
     capabilities: AnswerlatticeOwnerAssistantCapabilities,
 ): AnswerlatticeFounderDailyBrief => {
     const ranked: Array<AnswerlatticeFounderDailyAction & { rank: number }> = [];
+    const topFailingEntity = trust?.topFailingEntities[0] || null;
     const topFrictionEntity = friction?.topFrictionEntities[0] || null;
-    const frictionRoute = `${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`;
+    const frictionRoute = getAnswerlatticeEntityContextRoute(
+        `${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`,
+        topFrictionEntity?.entityId,
+    );
     const add = (rank: number, action: AnswerlatticeFounderDailyAction) => {
         if (!canUseAnswerlatticeOwnerAssistantRoute(action.href, permissions)) return;
         ranked.push({
@@ -405,13 +416,21 @@ const buildFounderDailyBrief = (
         });
     }
 
-    if (metrics.uncoveredEntities > 0 || metrics.driftedAnswers > 0) {
+    if (metrics.driftedAnswers > 0) {
+        const topFailureEvidence = topFailingEntity
+            && (
+                topFailingEntity.canonicalMissCount > 0
+                || topFailingEntity.negativeFeedbackCount > 0
+                || topFailingEntity.escalationCount > 0
+            )
+            ? ` Highest measured evidence: ${topFailingEntity.entityName} with ${topFailingEntity.canonicalMissCount} canonical misses, ${topFailingEntity.negativeFeedbackCount} negative ratings, and ${topFailingEntity.escalationCount} escalations.`
+            : '';
         add(10, {
             id: 'answer-risk-review',
             category: 'answer_review',
-            severity: metrics.uncoveredEntities > 0 ? 'critical' : 'high',
+            severity: metrics.driftedAnswers > 2 ? 'critical' : 'high',
             title: 'Review approved-answer risk first',
-            description: `${metrics.driftedAnswers} approved answers need drift review and ${metrics.uncoveredEntities} active product entities do not have an approved answer.`,
+            description: `${metrics.driftedAnswers} approved answers need drift review.${topFailureEvidence}`,
             reason: 'Wrong or stale approved answers create the highest support-truth risk.',
             href: `${ANSWERLATTICE_ROUTES.GOVERNANCE}/drift`,
             cta: 'Open drift review',
@@ -421,7 +440,21 @@ const buildFounderDailyBrief = (
         });
     }
 
-    if (metrics.needsAnswerCards > 0) {
+    if (metrics.highPriorityCards > 0) {
+        add(15, {
+            id: 'high-priority-support-board',
+            category: 'needs_answer',
+            severity: 'high',
+            title: 'Review high-priority support work',
+            description: `${metrics.highPriorityCards} high-priority Support Board cards are open.${metrics.needsAnswerCards > 0 ? ` ${metrics.needsAnswerCards} open cards need a governed answer or response.` : ''}`,
+            reason: 'The Support Board has already qualified this work by current priority, so it should displace routine backlog.',
+            href: ANSWERLATTICE_ROUTES.SUPPORT_BOARD,
+            cta: 'Open Support Board',
+            source: 'Support Board summary',
+            aiAssist: 'Existing card evidence and draft tools remain owner-reviewed.',
+            costImpact: 'Board review is no-cost; optional AI drafting uses existing support-credit gates.',
+        });
+    } else if (metrics.needsAnswerCards > 0) {
         add(20, {
             id: 'needs-answer-board',
             category: 'needs_answer',
@@ -461,23 +494,12 @@ const buildFounderDailyBrief = (
         });
     }
 
-    if (metrics.reviewItems > 0) {
-        add(30, {
-            id: 'knowledge-intake-review',
-            category: 'intake_review',
-            severity: 'medium',
-            title: 'Approve imported knowledge',
-            description: `${metrics.reviewItems} Knowledge Intake items are waiting for review from docs, URLs, screenshots, recordings, notes, or replies.`,
-            reason: 'Owner approval turns raw intake into reusable support knowledge.',
-            href: ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE,
-            cta: 'Review intake',
-            source: 'Knowledge Intake summary',
-            aiAssist: 'OCR/transcription and draft preparation stay owner-reviewed.',
-            costImpact: 'Review is no-cost; media extraction is already logged through support-credit settlement.',
-        });
-    }
-
-    if (metrics.escalations7d > 0 || metrics.signals7d > 0) {
+    const hasQualifiedFriction = (
+        friction?.frictionLevel === 'HIGH'
+        || metrics.escalations7d > 0
+        || (topFrictionEntity?.last7d.escalationCount || 0) > 0
+    );
+    if (hasQualifiedFriction) {
         add(40, {
             id: 'support-reply-grounding',
             category: 'support_reply',
@@ -501,79 +523,30 @@ const buildFounderDailyBrief = (
         });
     }
 
-    if (metrics.coverageRate !== null && metrics.coverageRate < 50) {
+    const hasCoverageRepairEvidence = (
+        metrics.canonicalMisses > 0
+        || metrics.uncoveredEntities > 0
+        || metrics.highPriorityCards > 0
+        || metrics.needsAnswerCards > 0
+        || metrics.driftedAnswers > 0
+    );
+    if (
+        metrics.coverageRate !== null
+        && metrics.coverageRate < 50
+        && hasCoverageRepairEvidence
+    ) {
         add(50, {
             id: 'coverage-safety',
             category: 'answer_review',
             severity: 'high',
             title: 'Raise approved-answer coverage',
-            description: `Canonical coverage is ${metrics.coverageRate}%. Add or approve answers for the screens where users repeat questions.`,
+            description: `Canonical coverage is ${metrics.coverageRate}%, with ${metrics.canonicalMisses} measured canonical misses and ${metrics.uncoveredEntities} uncovered active entities.`,
             reason: 'Low coverage means more fallback, more founder interruptions, and more support risk.',
-            href: ANSWERLATTICE_ROUTES.ANSWER_TESTS,
-            cta: 'Open Answer Tests',
+            href: `${ANSWERLATTICE_ROUTES.GOVERNANCE}/answers`,
+            cta: 'Review canonical answers',
             source: 'Coverage summary',
             aiAssist: 'Deterministic answer checks avoid fallback model calls when approved answers already cover the question.',
             costImpact: 'Canonical-only checks have no provider cost; full-runtime checks are capped and metered.',
-        });
-    }
-
-    if (status === 'insufficient_data' && !launchVerification.available) {
-        add(60, {
-            id: 'launch-verification',
-            category: 'launch_safety',
-            severity: 'medium',
-            title: 'Verify setup before users rely on support',
-            description: 'Confirm widget install, allowed origin, blocked routes, safe page context, and first approved answers.',
-            reason: 'Noisy or missing runtime context makes support feel generic.',
-            href: ANSWERLATTICE_ROUTES.ACTIVATION,
-            cta: 'Open activation',
-            source: 'Available summary state',
-            aiAssist: 'Install checks are deterministic; no model is needed.',
-            costImpact: 'No AI cost.',
-            preparedReviewCard: {
-                title: 'Finish live support verification',
-                description: 'Confirm widget install, allowed origin, blocked routes, safe page context, and first approved answers before users depend on support.',
-                priority: 'high',
-                tags: ['launch', 'widget', 'verification'],
-            },
-        });
-    }
-
-    if (ranked.length < DAILY_ACTION_LIMIT) {
-        add(70, {
-            id: 'release-safety',
-            category: 'release_safety',
-            severity: status === 'healthy' ? 'stable' : 'low',
-            title: 'Run release checks before shipping changes',
-            description: 'Record what changed, link the affected entities and surfaces, then use the existing release and drift checks before users see stale support.',
-            reason: 'Fast product changes are where stale support usually appears first.',
-            href: `${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1`,
-            cta: 'Record product change',
-            source: 'Changelog and release checks',
-            aiAssist: 'Release checks select linked cases instead of testing everything.',
-            costImpact: 'Deterministic checks avoid provider calls; full-runtime checks are capped.',
-            preparedReviewCard: {
-                title: 'Review support impact for the next release',
-                description: 'Run linked answer tests, review affected product surfaces, and confirm stale or changed answers before the release reaches users.',
-                priority: 'medium',
-                tags: ['release', 'answer-tests', 'drift'],
-            },
-        });
-    }
-
-    if (ranked.length < DAILY_ACTION_LIMIT) {
-        add(80, {
-            id: 'cost-guard',
-            category: 'cost_guard',
-            severity: 'stable',
-            title: 'Keep AI work bounded',
-            description: 'Prefer approved answers and deterministic checks first. Use support credits for media extraction, full-runtime tests, and AI draft preparation only when needed.',
-            reason: 'Low AI cost still needs visible accounting so support stays predictable.',
-            href: ANSWERLATTICE_ROUTES.BILLING,
-            cta: 'Review credits',
-            source: 'Billing guardrail',
-            aiAssist: 'The brief itself does not call a model.',
-            costImpact: 'No AI cost from this daily brief.',
         });
     }
 
@@ -584,12 +557,12 @@ const buildFounderDailyBrief = (
 
     const focus: AnswerlatticeFounderDailyBrief['focus'] = launchVerification.available && !launchVerification.ready
         ? 'launch'
-        : status === 'at_risk'
+        : actions.some(action => action.severity === 'critical')
         ? 'stabilize'
-        : status === 'needs_review'
+        : actions.length > 0
             ? 'review'
             : status === 'insufficient_data'
-                ? (launchVerification.ready ? 'maintain' : 'launch')
+                ? 'review'
                 : 'maintain';
 
     const headline = focus === 'stabilize'
@@ -599,15 +572,23 @@ const buildFounderDailyBrief = (
             : focus === 'launch'
                 ? 'Finish setup so support can answer correctly.'
                 : status === 'insufficient_data'
-                    ? 'Launch is verified; outcome data will appear after real support activity.'
-                    : 'Support is stable; keep release checks ready.';
+                    ? launchVerification.ready
+                        ? 'Launch is verified; outcome data will appear after real support activity.'
+                        : 'Current support evidence needs refresh before a decision.'
+                    : status === 'healthy'
+                        ? 'Nothing needs your decision right now'
+                        : 'No permitted action is available for the current support evidence.';
 
     return {
         enabled: true,
         headline,
         summary: actions.length
             ? `Start with ${actions[0].title.toLowerCase()}. The rest are ordered by support-truth risk and founder time saved.`
-            : 'No support action is visible in the current summaries.',
+            : status === 'healthy'
+                ? 'No current answer risk, qualified support gap, or launch blocker is visible in the latest summaries.'
+                : status === 'insufficient_data'
+                    ? 'Current source evidence is incomplete or does not yet contain enough support activity for a decision.'
+                    : 'The current summaries contain support evidence, but no permitted action path is available in this brief.',
         focus,
         actions,
         costNote: 'This brief is computed from existing summaries. It adds no model call, no new Firestore scan, and no support-credit debit.',
@@ -622,21 +603,38 @@ export const getAnswerlatticeOwnerAssistantBrief = async (
 ): Promise<AnswerlatticeOwnerAssistantBrief> => {
     const packet = await loadSummaryPacket(tId, sId);
     const metrics = buildMetrics(packet);
-    const status = getAnswerlatticeOwnerAssistantStatus(metrics, packet.summaryHealth);
+    const metricStatus = getAnswerlatticeOwnerAssistantStatus(metrics, packet.summaryHealth);
     const capabilities = buildAnswerlatticeOwnerAssistantCapabilities(permissions);
     const launchVerification = buildLaunchVerification(
         packet.activation,
         capabilities.canViewLaunchVerification,
     );
-    const attentionCount = metrics.driftedAnswers + metrics.uncoveredEntities + metrics.needsAnswerCards + metrics.reviewItems
-        + (launchVerification.available && !launchVerification.ready ? 1 : 0);
+    const dailyBrief = buildFounderDailyBrief(
+        metricStatus,
+        metrics,
+        packet.trust,
+        packet.friction,
+        launchVerification,
+        permissions,
+        capabilities,
+    );
+    const status: AnswerlatticeOwnerAssistantStatus = dailyBrief.actions.some(action => action.severity === 'critical')
+        ? 'at_risk'
+        : dailyBrief.actions.length > 0 && metricStatus === 'healthy'
+            ? 'needs_review'
+            : metricStatus;
+    const attentionCount = dailyBrief.actions.length;
     const headline = status === 'healthy'
-        ? 'Support looks stable. No urgent review is visible in the current summaries.'
+        ? 'Nothing needs your decision right now.'
         : status === 'insufficient_data'
             ? 'There is not enough support activity yet to summarize the current support state.'
             : status === 'at_risk'
-                ? `${attentionCount || 1} high-risk support items need owner review.`
-                : `${attentionCount || 1} support items are ready for review.`;
+                ? attentionCount > 0
+                    ? `${attentionCount} high-risk support ${attentionCount === 1 ? 'item needs' : 'items need'} owner review.`
+                    : 'High-risk support evidence exists outside the permitted action paths.'
+                : attentionCount > 0
+                    ? `${attentionCount} support ${attentionCount === 1 ? 'item is' : 'items are'} ready for review.`
+                    : 'Support evidence needs review outside the permitted action paths.';
 
     return {
         status,
@@ -656,16 +654,7 @@ export const getAnswerlatticeOwnerAssistantBrief = async (
         ],
         launchVerification,
         ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF
-            ? {
-                dailyBrief: buildFounderDailyBrief(
-                    status,
-                    metrics,
-                    packet.friction,
-                    launchVerification,
-                    permissions,
-                    capabilities,
-                ),
-            }
+            ? { dailyBrief }
             : {}),
         summaryHealth: packet.summaryHealth,
         capabilities,

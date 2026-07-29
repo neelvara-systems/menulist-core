@@ -28,6 +28,13 @@ const privateNoStoreHeaders = {
     'X-Content-Type-Options': 'nosniff',
 };
 
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(privateNoStoreHeaders).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
+
 const featureUnavailable = () => NextResponse.json(
     { error: 'Support truth export is not enabled.', code: 'FEATURE_DISABLED' },
     { status: 403, headers: privateNoStoreHeaders },
@@ -98,7 +105,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         session,
         ANSWERLATTICE_PERMISSION_KEYS.EXPORT_DATA,
     );
-    if (permission.response) return permission.response;
+    if (permission.response) return withPrivateHeaders(permission.response);
     const access = permission.access;
     if (!access) {
         return NextResponse.json(

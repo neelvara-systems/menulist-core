@@ -20,7 +20,7 @@
  *   Prod: neelvara.com    — Neelvara production
  *   Prod: answerlattice.com        — Answerlattice production
  *   Prod: campaigncue.ai      — CampaignCue production
- *   Prod: signaldesk.menulist.ai — private SignalDesk production app
+ *   Prod: signaldesk.menulist.online — private SignalDesk app
  *   [future product domains] — SurfaceOS / GrowthOS / KitStamp websites
  *   app.menulist.ai          — Owner/staff dashboard (authenticated)
  *   {subdomain}.menulist.online — Customer-facing digital menu in local/staging

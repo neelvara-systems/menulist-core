@@ -1,7 +1,7 @@
 # Help Center — Feature Documentation
 
 > **Status:** DOCUMENTED (Forensic Audit)
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-07-29
 > **Audit Type:** Codebase-first forensic documentation
 > **Feature Scope:** 16 subsystems, 190+ files, Answerlattice + Help Center Firestore collections
 
@@ -44,6 +44,26 @@ Answerlattice dashboard navigation is grouped by the product-owner workflow. The
 The Activation Command Center reads compact summary docs only. Generated entity candidates and canonical answer drafts appear in Governance for human approval; drafts are never auto-published.
 
 Owner-facing setup surfaces must stay direct and founder-readable. The dashboard metadata identifies Answerlattice instead of inheriting MenuList social metadata, Activation avoids time-to-launch promises, setup-state messages avoid backend implementation terms, Install Center snippets use an explicit full-key placeholder instead of a saved key prefix, Weekly Digest describes the prepared summary in owner terms, and review queues explain the next useful action when empty. These usability changes add no Firebase reads, writes, listeners, indexes, or scheduler work.
+
+### Owner Decision Wiring
+
+The owner features share validated URL context, not another action store or
+analytics collection:
+
+| From | To | Preserved context | Authority |
+| --- | --- | --- | --- |
+| Daily Brief | Product Friction Evidence | Selected entity ID | Friction summary remains the evidence source. |
+| Daily Brief | Canonical Answers | Coverage-repair intent | Canonical Governance owns review and mutation. |
+| Product Friction Evidence | Knowledge Map | Selected entity ID | The map remains read-only and does not ingest friction metrics. |
+| Knowledge Map | Canonical Answers | Selected entity ID | Canonical Answers filters its existing loaded set. |
+| Release impact preview | Canonical Answers | Affected answer ID | The preview remains private and read-only. |
+| Release impact preview | Answer Tests | Pending release ID | Answer Tests selects the existing release only after the owner opens it. |
+| Failed Answer Test | Canonical Answers | Resolved answer ID | Test results do not modify the answer. |
+
+Entity, answer, and release context is bounded, Firestore-ID validated, and
+revalidated by each destination. Creating these links adds no Firestore read,
+write, listener, scheduler task, provider call, or support-credit operation;
+the destination pays only its existing cost when the owner explicitly opens it.
 
 ---
 

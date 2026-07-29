@@ -38,12 +38,6 @@ export function prepareNewItemMetadataRequestItem(
     };
 }
 
-type NewItemMetadataApiResponse = {
-    data?: unknown;
-    remainingBalance?: unknown;
-    transaction?: unknown;
-};
-
 export function mergeGeneratedItemMetadata(
     currentItem: ExtractedDataItem,
     generatedData: GeneratedItemMetadata | null
@@ -99,7 +93,7 @@ async function getNewItemMetadataViaAPI(payload: NewItemMetadataAPIParams): Prom
             throw createAiServiceHttpError('ai_new_item_metadata_request_failed', response);
         }
 
-        const responseJson = await readAiServiceResponseJson<NewItemMetadataApiResponse>(response, {
+        const responseJson = await readAiServiceResponseJson(response, {
             invalidFailureCode: 'ai_new_item_metadata_response_invalid',
             maxBytes: NEW_ITEM_METADATA_RESPONSE_JSON_MAX_BYTES,
             parseFailureCode: 'ai_new_item_metadata_response_parse_failed',

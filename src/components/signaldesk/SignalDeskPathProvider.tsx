@@ -2,14 +2,14 @@
 
 import {
     SIGNALDESK_BASE_PATH,
-    SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH,
+    SIGNALDESK_SHORT_ALIAS_PATH,
 } from "@constant/signaldesk/routes";
 import { createContext, useContext, useMemo } from "react";
 
 const SignalDeskPathContext = createContext(SIGNALDESK_BASE_PATH);
 
 const normalizeBasePath = (basePath?: string | null): string => {
-    if (basePath === SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH) return basePath;
+    if (basePath === SIGNALDESK_SHORT_ALIAS_PATH) return basePath;
     return SIGNALDESK_BASE_PATH;
 };
 

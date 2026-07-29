@@ -37,10 +37,10 @@ No Firebase deploy was run. No real provider send was run.
 | `GET/HEAD /signaldesk/partners` | PASS | Internal private route returns noindexed shell/auth gate. |
 | `GET/HEAD /signaldesk/settings` | PASS | Internal private route returns noindexed shell/auth gate. |
 | `GET/HEAD /signaldesk/control-room` | PASS | Internal private route returns noindexed shell/auth gate. |
-| `Host: menulist.digital /sd` | PASS | Rewrites to `/signaldesk`, keeps `/sd` base path, sets SignalDesk product headers and noindex. |
-| `Host: menulist.digital /sd/app` | PASS | Rewrites to `/signaldesk`, keeps `/sd` base path. |
-| `Host: menulist.digital /sd/content` | PASS | Rewrites to `/signaldesk/content`. |
-| `Host: menulist.digital /sd/app/content` | PASS | Rewrites to `/signaldesk/content`. |
+| Former `/sd` public-host alias | Historical only | No longer part of active setup. |
+| Former `/sd/app` public-host alias | Historical only | No longer part of active setup. |
+| Former `/sd/content` public-host alias | Historical only | No longer part of active setup. |
+| Former `/sd/app/content` public-host alias | Historical only | No longer part of active setup. |
 | `Host: menulist.ai /sd` | PASS | Returns 404; alias is not exposed on the public MenuList host. |
 
 ## 4. API Protection Results
@@ -123,7 +123,7 @@ SignalDesk is product-local and private:
 - Runtime code is under SignalDesk app/API/component/lib/database/type areas.
 - App shell is under `src/app/(signaldesk)/signaldesk/`, not website folders.
 - Layout and middleware keep SignalDesk noindexed.
-- `/sd` aliases are scoped to `menulist.digital`, not public `menulist.ai`.
+- `/sd` public-host aliases are no longer active; use local `/signaldesk` and `signaldesk.menulist.online`.
 - Static search found no direct SignalDesk MenuList DAL writes to stores, menus, projects, billing, or public output truth.
 - Workflow smoke asserts no top-level MenuList truth collections are mutated.
 

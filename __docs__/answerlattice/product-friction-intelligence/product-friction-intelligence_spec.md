@@ -76,16 +76,17 @@ event as a question or every high total as a product defect.
 - legacy daily-row count;
 - server last-updated timestamp.
 
-The next admitted schema revision should also project, for each retained top
-entity, the deterministic counts already stored in daily rows:
+The current additive snapshot projection includes, for each newly generated
+top-entity row, the deterministic counts already stored in daily rows:
 
 - ticket evidence;
 - negative-feedback evidence;
 - escalation evidence;
 - canonical-miss or low-confidence evidence.
 
-This is a projection change over already-read history. It must not add raw
-signal reads to the owner page.
+This is a projection change over already-read history. Legacy summaries remain
+readable without invented component zeroes, and the change adds no raw signal
+read to the owner page.
 
 ### Advisory insight
 
@@ -106,6 +107,8 @@ The advisory producer must validate exact workspace scope and the complete sourc
 - show a bounded evidence breakdown before an advisory explanation;
 - route the owner to the existing governance workflow when a safe destination
   exists rather than adding repair state to the friction surface.
+- preserve one validated entity focus from Daily Brief and allow ranked rows or
+  admitted advisory actions to open that entity in the read-only Knowledge Map.
 
 ## Customer Friction Map Proposal Decision
 
@@ -120,7 +123,7 @@ The advisory producer must validate exact workspace scope and the complete sourc
 | Add release-before/after attribution | Validate separately. Temporal correlation must not be presented as release causation. |
 | Add 7/30/90-day controls | Reject for now. The completed 7-day comparison is bounded and comparable. |
 | Add heatmap or giant tree | Reject. Ranked evidence is more legible for the founder ICP and mobile. |
-| Add suggested fixes | Keep only as advisory links to existing reviewed workflows. |
+| Add suggested fixes | Implement only as validated entity-bound advisory links to Knowledge Map review; no product or knowledge mutation. |
 | Ingest product analytics, abandonment, or mouse/session data | Reject. |
 
 ## Validation Gates

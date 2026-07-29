@@ -22,7 +22,7 @@
 
 - Permanent stored slugs on every project (rename → old URL redirects automatically)
 - Brand-level subdomain ownership (one URL for the brand, locations as paths)
-- Product-domain carve-outs before tenant routing (`answerlattice.com`, `menulist.digital`)
+- Product-domain carve-outs before tenant routing (`answerlattice.com`, product-specific production domains)
 - Reserved namespace preventing future platform conflicts
 - CDN cache headers for global edge delivery
 
@@ -78,13 +78,13 @@
 
 ### In-Scope (Product-Domain Guardrails — Implemented May 30, 2026)
 
-- Dedicated MyCodex internal reader host: `menulist.digital` / `www.menulist.digital`
 - MyCodex local path prefix: `/__mycodex`
+- No active MyCodex public domain
 - Product-domain classification before tenant/custom-domain routing
 - MyCodex login/session-cookie protection outside localhost
-- MyCodex-specific PWA manifest, app icons, Apple launch images, and offline-only service worker on the MyCodex product host
+- MyCodex-specific PWA manifest, app icons, Apple launch images, and offline-only service worker if a private MyCodex host is approved later
 - Feature flag: `ENABLE_MYCODEX_READER`
-- No MenuList tenant/store/project routing for `menulist.digital`
+- No implicit MenuList tenant/store/project routing carve-out for the discarded MyCodex domain
 
 ### Out-of-Scope
 
@@ -150,6 +150,6 @@
 | **ADR-9**  | Subdomain uniqueness pre-check         | Globally unique subdomains                             |
 | **ADR-10** | Resolver reads projectsSummary         | 1 read vs N, slug field accessible                     |
 | **ADR-11** | Outlet path routing via outletSlug     | Multi-store brand URL resolution                       |
-| **ADR-12** | Product hosts before tenant routing    | `menulist.digital` serves MyCodex, not restaurant custom-domain flow |
+| **ADR-12** | MyCodex public-domain boundary | MyCodex has no active public domain until a private host is explicitly approved |
 
 See [url-routing-architecture_adr.md](./url-routing-architecture_adr.md) for full rationale.

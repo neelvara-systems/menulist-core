@@ -10,49 +10,46 @@ One initiating workspace owns the complete operation. The editor captures exact 
 
 For a new or legacy-unlinked versioned entry, the editor uses:
 
-`draft -> release activation -> linked publication`
+`draft -> pending release -> impact preview -> owner confirmation -> release activation -> linked publication`
 
 1. Save the complete changelog content with `published=false` and a stable request ID.
 2. Create or replay the deterministic release keyed by changelog entry and normalized version.
-3. Activate with a deterministic activation request ID.
-4. Evaluate affected active canonical answers and set `reviewRequired` where version drift is detected.
-5. Update the same entry to `published=true` with the active `releaseId`.
-6. Rebuild product-surface summary and revalidate public caches.
+3. Read the bounded direct impact and current linked Answer Tests proof.
+4. Keep the note private when the owner cancels review.
+5. Activate with a deterministic activation request ID and the reviewed impact
+   fingerprint.
+6. Recompute the fingerprint during lease claim and final transaction, then
+   evaluate affected active canonical answers and set `reviewRequired` where
+   version drift is detected.
+7. Update the same entry to `published=true` with the active `releaseId`.
+8. Rebuild product-surface summary and revalidate public caches.
 
 Already linked entries can update directly; the server revalidates the active dependency before accepting a published result.
 
 ## Feature 4 Validation Result
 
-Current code creates a pending release and immediately activates it during one
-versioned publish attempt. Activation then queries directly affected active
-canonical answers and marks version drift. Answer Tests can separately run a
-release-scoped check.
+The existing release route now admits strict `preview_impact`. It reads the
+pending release, applies the same direct affected-answer projector and
+200-answer cap used by activation, optionally reads the existing bounded Answer
+Tests summary when the actor can manage governance, and returns a private
+projection plus deterministic fingerprint. It performs no write or provider
+call.
 
-This proves the release, drift, and test foundations. It does not give the
-founder a preventive review point before activation.
+The editor stages the note privately, creates or replays the pending release,
+shows the owner the impact, and activates only after explicit confirmation.
+Cancellation keeps the note private and the release retryable. Activation
+recomputes the fingerprint during the claim transaction and final transaction.
+Any current answer/version/governance input change rejects the stale preview.
 
-### Bounded later code scope
+Each bounded affected-answer row can open the existing Canonical Answer Editor
+with one validated answer ID. When linked tests exist and the actor can see
+governance proof, the preview can open Answer Tests with the pending release
+preselected. Both destinations revalidate the ID and retain their existing
+authority and cost contracts; the preview does not run a test or mutate an
+answer.
 
-1. Add a read-only `preview_impact` action to the existing authenticated release
-   route and strict release contracts.
-2. Reuse the same direct affected-answer resolution and 200-answer cap as
-   activation.
-3. Return a strict private/no-store projection with bounded answer identity,
-   current validated version, review/drift state, match reason, and current
-   linked Answer Tests proof state.
-4. Calculate a deterministic impact fingerprint from the release and current
-   affected authoritative versions.
-5. Split versioned publishing UI settlement so create is followed by preview,
-   explicit owner confirmation, activation, and final linked publication.
-6. Send the preview fingerprint with activation and revalidate it inside the
-   authoritative activation transaction.
-7. Preserve current retry, lease, audit, invalidation, and workspace-fencing
-   behavior.
-8. Add contract, emulator, narrow-width, stale-preview, idempotency, and
-   permission tests.
-
-The later pass must not add change-unit, impact-item, readiness, risk,
-scheduled-version, or monitoring collections.
+No change-unit, impact-item, readiness, risk, scheduled-version, or monitoring
+collection was added.
 
 ## Release admission
 
@@ -60,8 +57,8 @@ scheduled-version, or monitoring collections.
 
 Activation uses a five-minute lease. It evaluates at most 200 active answers whose bound entities overlap the release. Malformed affected-answer state aborts the activation. Failure recovery returns the release to `pending` instead of leaving it stranded in `processing`.
 
-The preview and activation must share one pure affected-answer projector so
-their admission rules cannot drift. Preview evidence is not authority:
+The preview and activation share one pure affected-answer projector so their
+admission rules cannot drift. Preview evidence is not authority:
 activation always re-reads current release and answer state.
 
 ## Changelog persistence
@@ -99,6 +96,9 @@ If the active workspace changes, the editor and management list discard prior ro
 
 A stale impact preview does not activate or publish. The draft and pending
 release remain retryable, and the UI requests a fresh preview.
+
+An invalid, removed, or foreign answer/release URL context is ignored or shown
+as unavailable by the destination. It cannot change activation state.
 
 ## Verification
 

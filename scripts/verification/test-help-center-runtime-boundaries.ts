@@ -13,6 +13,7 @@ import { resolveAnswerlatticeWorkspaceCacheScopeKey } from '@lib/answerlattice/c
 import { normalizeAnswerlatticePublicRelatedContent } from '@lib/answerlattice/productSurfaceContent';
 import { isHelpCenterSearchResponse } from '@lib/search/helpCenterSearchResponse';
 import { projectHelpCenterSearchResponse } from '@lib/search/helpCenterSearchResponse';
+import { clearDraft } from '../../src/components/templates/main-app/helpChat/chatUtils';
 
 const draftScope = resolveAnswerlatticeHelpChatDraftScope({
     productAccounts: {
@@ -32,6 +33,17 @@ assert.equal(resolveAnswerlatticeHelpChatDraftScope({
 }), null);
 assert.equal(resolveAnswerlatticeHelpChatDraftScope({
     productAccounts: { AL: { tenantId: 101, storeId: 202 } },
+}), null);
+assert.equal(resolveAnswerlatticeHelpChatDraftScope(null), null);
+assert.equal(resolveAnswerlatticeHelpChatDraftScope([]), null);
+assert.equal(resolveAnswerlatticeHelpChatDraftScope({
+    productAccounts: { AL: { tenantId: 101, storeId: 202 } },
+    uId: 'user-1',
+    user: 'user-1',
+}), '101:202:user-1');
+assert.equal(resolveAnswerlatticeHelpChatDraftScope({
+    productAccounts: { AL: { tenantId: 101, storeId: 202 } },
+    uId: ' user-1',
 }), null);
 
 const newDraftKeys = getAnswerlatticeHelpChatDraftKeys(draftScope, null);
@@ -91,6 +103,40 @@ assert.equal(storedDrafts.has(newDraftKeys!.draftKey), true);
 assert.equal(storedDrafts.has(existingDraftKeys!.draftKey), true);
 assert.equal(storedDrafts.has(otherWorkspaceDraftKeys!.draftKey), false);
 assert.equal(storedDrafts.has('unrelated-key'), true);
+
+const clearDraftKeys = getAnswerlatticeHelpChatDraftKeys(draftScope, 'session-1')!;
+const clearDraftValues = new Map<string, string>([
+    [clearDraftKeys.draftKey, 'current draft'],
+    [clearDraftKeys.imageDraftKey, 'current image'],
+    ['chat-draft-session-1', 'legacy draft'],
+    ['chat-draft-image-session-1', 'legacy image'],
+]);
+let firstRemoval = true;
+Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+        removeItem(key: string) {
+            if (firstRemoval) {
+                firstRemoval = false;
+                throw new Error('first removal blocked');
+            }
+            clearDraftValues.delete(key);
+        },
+    },
+});
+clearDraft('session-1', draftScope);
+assert.equal(
+    clearDraftValues.has(clearDraftKeys.draftKey),
+    true,
+    'the individually failed key remains for a future retry',
+);
+assert.equal(
+    clearDraftValues.has(clearDraftKeys.imageDraftKey),
+    false,
+    'one failed removal must not prevent cleanup of the remaining scoped keys',
+);
+assert.equal(clearDraftValues.has('chat-draft-session-1'), false);
+assert.equal(clearDraftValues.has('chat-draft-image-session-1'), false);
 
 const relatedContent = {
     key: 'help_center_billing',
@@ -184,6 +230,20 @@ assert.ok(
 assert.ok(
     !helpCenterSearchRoute.includes('response.relatedContent = result.relatedContent'),
     'Help Center search must not send internal ticket counts or recent ticket display IDs to the browser',
+);
+assert.ok(
+    helpCenterSearchRoute.includes('const HELP_CENTER_PRIVATE_RESPONSE_HEADERS = {'),
+    'Help Center search must define one protected private response policy',
+);
+assert.ok(
+    helpCenterSearchRoute.includes('const headers = new Headers(init.headers);')
+        && helpCenterSearchRoute.includes('headers.set(name, value);'),
+    'Help Center search protected headers must override caller-supplied response headers',
+);
+assert.ok(
+    helpCenterSearchRoute.includes('if (rateLimitResponse) return withSearchResponseHeaders(rateLimitResponse);')
+        && helpCenterSearchRoute.includes('if (bodyResult.ok === false) return withSearchResponseHeaders(bodyResult.response);'),
+    'Help Center search helper responses must retain the protected private response policy',
 );
 
 const messageReferences = fs.readFileSync(

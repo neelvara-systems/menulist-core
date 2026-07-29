@@ -6,7 +6,7 @@ import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScop
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
-import { trackPlausibleEvent } from '@lib/website/plausible';
+import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
 import type { CSSProperties, FormEvent } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
 import { useEffect, useMemo, useState } from 'react';
@@ -37,10 +37,6 @@ interface OnboardErrorResult {
     code: string;
     error?: string;
 }
-
-type AnswerlatticeAnalyticsWindow = Window & {
-    gtag?: (...args: unknown[]) => void;
-};
 
 const SURFACE_OPTIONS = [
     { key: 'billing', label: 'Billing' },
@@ -200,15 +196,12 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
         trackPlausibleEvent('onboarding_completed');
         if (result.apiKey) trackPlausibleEvent('widget_key_generated');
 
-        const win = window as AnswerlatticeAnalyticsWindow;
-        if (typeof win.gtag !== 'function') return;
-
-        win.gtag('event', 'onboarding_completed', {
+        trackGoogleMarketingEvent('onboarding_completed', {
             event_category: 'answerlattice_website',
             event_label: result.plan.id,
         });
         if (result.apiKey) {
-            win.gtag('event', 'widget_key_generated', {
+            trackGoogleMarketingEvent('widget_key_generated', {
                 event_category: 'answerlattice_website',
                 event_label: result.plan.id,
             });

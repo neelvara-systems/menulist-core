@@ -26,6 +26,7 @@ import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
 import { getStoreDayKey, getStoreStatus, normalizeWorkingHoursValue, parseWorkingHoursRanges } from "@lib/hours/hoursEngine";
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl, normalizeOBPReviewUrl, normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from "@lib/obp/publicLinks";
+import { normalizeOBPPublicPhotoUrls } from "@lib/obp/publicPhotos";
 import { buildTelHref, buildWhatsAppPhoneParam } from "@lib/phone/phoneNumber";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { shouldShowStarterPublicPlaceholders } from "@lib/onboarding/starterActivation";
@@ -695,10 +696,11 @@ export default function OBPResolvedSurface({
         geo: store?.geo || { latitude: store?.latitude, longitude: store?.longitude },
         googleMapsUrl: safeGoogleMapsUrl || undefined,
     });
+    const photos = normalizeOBPPublicPhotoUrls(pp.photos);
     const hasStarterPreviewVisualDepth = Boolean(
         businessCover ||
         googleMapsEmbedUrl ||
-        (pp.photos || []).some(Boolean) ||
+        photos.length > 0 ||
         activeProjects.some((project) => Boolean(project.projectImage)),
     );
     const useStarterCompactLayout = showStarterPlaceholders && !hasStarterPreviewVisualDepth;
@@ -767,7 +769,6 @@ export default function OBPResolvedSurface({
     const googleRating = pp.googleRating;
     const googleReviewCount = pp.googleReviewCount;
     const hasGoogleReview = !!(googleReviewUrl && googleRating);
-    const photos = (pp.photos || []).filter(Boolean);
     const allHours = getAllHoursDisplay(store?.workingHours, t, todayDayKey);
     const serviceModeItems = buildServiceModes(store?.businessAttributes).map((mode) => ({
         key: mode,

@@ -70,19 +70,32 @@ export async function loadAnswerlatticeSupportBoardCoreCounts(
         .where('pId', '==', PRODUCT_ID)
         .where('tId', '==', tId)
         .where('sId', '==', sId);
-    const [totalSnapshot, resolvedSnapshot, needsAnswerSnapshot, highPrioritySnapshot] = await Promise.all([
+    const [
+        totalSnapshot,
+        resolvedSnapshot,
+        needsAnswerSnapshot,
+        highPrioritySnapshot,
+        resolvedHighPrioritySnapshot,
+    ] = await Promise.all([
         scoped.count().get(),
         scoped.where('status', '==', RESOLVED_STATUS).count().get(),
         scoped.where('status', '==', NEEDS_ANSWER_STATUS).count().get(),
         scoped.where('priority', '==', HIGH_PRIORITY).count().get(),
+        scoped
+            .where('priority', '==', HIGH_PRIORITY)
+            .where('status', '==', RESOLVED_STATUS)
+            .count()
+            .get(),
     ]);
     const totalRecentCards = totalSnapshot.data().count;
     const resolvedCards = resolvedSnapshot.data().count;
+    const highPriorityCards = highPrioritySnapshot.data().count;
+    const resolvedHighPriorityCards = resolvedHighPrioritySnapshot.data().count;
 
     return {
         openCards: Math.max(0, totalRecentCards - resolvedCards),
         needsAnswerCards: needsAnswerSnapshot.data().count,
-        highPriorityCards: highPrioritySnapshot.data().count,
+        highPriorityCards: Math.max(0, highPriorityCards - resolvedHighPriorityCards),
         totalRecentCards,
     };
 }

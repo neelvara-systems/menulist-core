@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
     getStoredOwnerProjectId,
+    resolveSelectableProject,
     setStoredOwnerProjectId,
 } from '../../src/lib/projects/projectSelection';
 
@@ -56,6 +57,14 @@ assert.equal(localStorage.getItem('mobileSelectedProjectId:11:7'), '11-default-7
 assert.equal(localStorage.getItem('mobileSelectedProjectId:22:7'), '22-default-7');
 assert.equal(sessionStorage.getItem('menulist_dashboard_project_id'), null);
 
+setStoredOwnerProjectId('collision-attempt', '2:3', 1);
+setStoredOwnerProjectId('collision-attempt-2', 3, '1:2');
+assert.equal(localStorage.getItem('mobileSelectedProjectId:1:2:3'), null);
+assert.equal(getStoredOwnerProjectId('2:3', 1), null);
+assert.equal(getStoredOwnerProjectId(3, '1:2'), null);
+setStoredOwnerProjectId('whitespace-scope', ' 7', 11);
+assert.equal(getStoredOwnerProjectId(' 7', 11), null);
+
 setStoredOwnerProjectId('unsafe-store-only', 7);
 assert.equal(
     getStoredOwnerProjectId(7),
@@ -77,6 +86,19 @@ assert.equal(
     getStoredOwnerProjectId(7, 22),
     '22-default-7',
     'clearing one tenant selection must not remove another tenant selection',
+);
+
+const activeProject = { active: true, projectId: 'active' };
+const deletedProject = { active: true, deleted: true, isDefault: true, projectId: 'deleted' };
+assert.equal(
+    resolveSelectableProject([activeProject, deletedProject], 'deleted'),
+    activeProject,
+    'a stale preferred project ID must not reselect a deleted project',
+);
+assert.equal(
+    resolveSelectableProject([deletedProject], 'deleted'),
+    null,
+    'deleted projects must not become the selection fallback',
 );
 
 Reflect.deleteProperty(globalThis, 'window');

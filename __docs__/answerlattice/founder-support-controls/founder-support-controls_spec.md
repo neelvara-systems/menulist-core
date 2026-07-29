@@ -33,9 +33,8 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 - Test traffic is marked as test traffic and excluded from production search history, signals, conversations, friction, coverage, and ROI.
 - The UI shows pass/fail, source, answer/version, evidence outcome, bounded reference IDs, risk level, proof status, and duration.
 - A run is `blocked` when any critical case fails, `review` when only standard cases fail, and `ready` when every case passes. This is an advisory release-proof state, not an automated deployment gate.
-- **Current limitation:** the implemented evaluator does not independently reject an all-passing critical case whose actual source is `rag`.
-- **Admitted hardening:** critical proof may pass only when the actual route is `canonical`, `faq`, `escalation`, or `no_answer` and every configured assertion passes. An actual `rag` route always fails a critical case with an explicit deterministic reason. This remains pending until the focused implementation pass is completed.
-- New or edited critical cases must not select `rag` as their expected route after that hardening. Previously stored critical-RAG cases remain readable, but their next run is blocked rather than silently migrated or treated as corrupt.
+- Critical proof may pass only when the actual route is `canonical`, `faq`, `escalation`, or `no_answer` and every configured assertion passes. An actual `rag` route always fails a critical case with an explicit deterministic reason.
+- New or edited active critical cases cannot select `rag` as their expected route. Previously stored critical-RAG cases remain readable, unchanged saves remain compatible, and the owner may deactivate them safely; an actual `rag` result is blocked rather than silently migrated or treated as corrupt.
 - Deterministic checks validate the configured answer contract. They do not independently establish semantic factual correctness, completeness, or customer resolution.
 - The retained run records the exact test-suite revision used. Any later case edit makes that run historical until the current suite is rerun.
 - A request ID is idempotent only for the same run kind, mode, ordered selected cases, suite revision, and release ID. Reusing it for different inputs fails with a conflict instead of returning unrelated evidence.
@@ -46,6 +45,11 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 ### Release Safety
 
 - Release checks select test cases by related entity IDs and product-surface context.
+- An optional validated release URL context may open the existing release-check
+  modal and preselect only an exact release returned by the scoped release DAL.
+- A failed result with an admitted answer ID may open that exact answer in
+  Canonical Governance before the owner adopts evidence or prepares rollback.
+- Navigation alone never runs a test, changes a case, or changes an answer.
 - Release checks parse the exact stored release contract and reject wrong-product, wrong-scope, or malformed records.
 - A release check never scans all historical tests or all support collections.
 - Failed release checks create no knowledge automatically.
@@ -150,7 +154,7 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 ## Success Criteria
 
 - A founder can create five priority questions, mark material cases critical, require known article references where applicable, and run a canonical-only test in one session.
-- After the admitted hardening, an actual provider-backed RAG route cannot produce passing critical proof, including for a legacy critical-RAG case.
+- An actual provider-backed RAG route cannot produce passing critical proof, including for a legacy critical-RAG case.
 - Legacy test suites load unchanged while new runs retain deterministic evidence and proof-status fields.
 - Current proof is shown only when retained evidence uses the current suite revision and current source versions.
 - A release can check only its affected cases without a broad scan.

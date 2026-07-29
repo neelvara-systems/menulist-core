@@ -155,6 +155,22 @@ const getAnswerTestCaseDefinition = (testCase: AnswerlatticeAnswerTestCase): str
     return stableStringify(definition);
 };
 
+export const hasDisallowedAnswerlatticeCriticalRagCaseMutation = (
+    currentCases: AnswerlatticeAnswerTestCase[],
+    submittedCases: AnswerlatticeAnswerTestCase[],
+): boolean => {
+    const currentById = new Map(currentCases.map(testCase => [testCase.id, testCase]));
+    return submittedCases.some((submittedCase) => {
+        if (submittedCase.riskLevel !== 'critical' || submittedCase.expected.source !== 'rag') {
+            return false;
+        }
+        const currentCase = currentById.get(submittedCase.id);
+        if (!currentCase) return true;
+        if (submittedCase.active === false) return false;
+        return getAnswerTestCaseDefinition(currentCase) !== getAnswerTestCaseDefinition(submittedCase);
+    });
+};
+
 export const prepareAnswerlatticeAnswerTestCasesForWrite = (
     currentCases: AnswerlatticeAnswerTestCase[],
     submittedCases: AnswerlatticeAnswerTestCase[],

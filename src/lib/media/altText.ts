@@ -1,15 +1,30 @@
 function resolvePlainText(value: unknown): string {
     if (typeof value === 'string') return value.trim();
-    if (!value || typeof value !== 'object') return '';
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
 
-    const record = value as Record<string, unknown>;
+    let keys: string[];
+    try {
+        keys = Object.keys(value).slice(0, 64);
+    } catch {
+        return '';
+    }
+
+    const values = new Map<string, unknown>();
+    for (const key of keys) {
+        try {
+            values.set(key, Reflect.get(value, key));
+        } catch {
+            // A broken legacy language entry must not hide later valid text.
+        }
+    }
+
     const preferred = ['en', 'default', 'name', 'title', 'label']
-        .map((key) => record[key])
+        .map((key) => values.get(key))
         .find((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
-
     if (preferred) return preferred.trim();
 
-    const first = Object.values(record).find((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+    const first = Array.from(values.values())
+        .find((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
     return first?.trim() || '';
 }
 

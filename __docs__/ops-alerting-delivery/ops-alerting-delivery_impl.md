@@ -92,6 +92,7 @@ Platform-owner delivery now runs from both alert helpers:
 - Unknown legacy alerts stay visible in `systemAlerts` but are not automatically sent to Email/WhatsApp.
 - `metadata.platformDeliverySuppressed: true` keeps low-value events, such as scheduler heartbeats, out of automatic delivery while preserving the alert record when needed.
 - Email/WhatsApp delivery stays best-effort and non-blocking, but failed/skipped provider results and thrown delivery exceptions are no longer silent. The helpers log `ops_platform_alert_email_delivery_failed` or `ops_platform_alert_whatsapp_delivery_failed` with bounded alert, tenant, store, trigger, product, channel-error, and skipped-reason presence/length metadata only.
+- The email recipient is one scalar mailbox, not a provider recipient list. App and Functions use the byte-identical `platformNotificationRecipient` contract; comma/semicolon lists, display-name syntax, control characters, malformed addresses, non-string values, and addresses over 254 characters fail closed before an Email provider call.
 - Cloud Functions platform WhatsApp delivery treats non-2xx Meta Graph responses as `whatsapp_send_failed` and logs the bounded status code without reading or storing the provider response body.
 
 Required runtime configuration:
@@ -109,6 +110,10 @@ Feature flags:
 
 - App: `ENABLE_PLATFORM_ALERT_EMAIL`, `ENABLE_PLATFORM_ALERT_WHATSAPP`.
 - Functions: `ENABLE_PLATFORM_ALERT_EMAIL`, `ENABLE_PLATFORM_ALERT_WHATSAPP`.
+
+`npm run test:platform-notification-recipient` verifies valid mailbox
+normalization, recipient-list/header-injection rejection, no unknown conversion
+hooks, and byte-identical app/Functions source.
 
 Deployment note: `functions/src/config/secrets.ts` keeps `SECRET_GROUPS.PLATFORM_ALERT_DELIVERY` limited to deploy-safe WhatsApp secrets until Telegram/SMTP Secret Manager values exist in `menulist-qa`. Functions Email delivery is implemented and runtime-gated, but it requires the SMTP secrets to be created and added to the platform delivery secret group before production Functions can send email automatically.
 

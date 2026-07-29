@@ -72,13 +72,21 @@ Required indexes:
 | Add note | 1 | 1 | Transaction reads card, writes capped notes array |
 | Sync tickets | up to 50 source reads + up to 20 card reads | up to 20 | Feature-flagged explicit action; deterministic transaction prevents duplicates beyond the loaded board window |
 | Sync signals | up to 50 source reads + up to 20 card reads | up to 20 | Feature-flagged explicit action; deterministic transaction prevents duplicates |
-| Live summary refresh | 4 aggregate count queries + 1 summary read | up to 1 | Runs only on create/status/priority changes; aggregate query billing follows Firestore count semantics |
+| Live summary refresh | 5 aggregate count queries + 1 summary read | up to 1 | Runs only on create/status/priority changes; the fifth count excludes resolved high-priority cards from owner work |
 | Nightly source scan | up to 1,250 + entity lookups | 0 | Disabled by default; search history, signal events, drifted answers, recent releases; capped per tenant |
 | Nightly card upsert | up to 20 reads | up to 20 | Disabled by default; deterministic card docs; skips resolved and unchanged cards |
-| Nightly summary | up to 121 card reads + 4 aggregate count queries + 1 summary read | 0-1 | Disabled by default; exact core counts plus bounded breakdown; skips unchanged summary writes |
+| Nightly summary | up to 121 card reads + 5 aggregate count queries + 1 summary read | 0-1 | Disabled by default; exact core counts plus bounded breakdown; skips unchanged summary writes |
 | Create answer proposal | 0-1 | 3 | Proposal write, card update, note transaction |
 
 Nightly sync diagnostics add no Firestore operations. Success and failure logs use scope booleans, fixed failure codes, and source error name/code/status only.
+
+## July 29, 2026 QA Deployment Evidence
+
+The narrow deployment of `answerlatticeSupportBoardSummaryOnWrite` and
+`answerlatticeNightly` stopped before upload because the local Firebase CLI was
+not authenticated: `Failed to authenticate, have you run firebase login?`.
+The live-summary emulator and dedicated/shared rules suites passed, but no QA
+Function revision changed.
 
 ## Scaling Guardrails
 
@@ -97,6 +105,7 @@ Nightly sync diagnostics add no Firestore operations. Success and failure logs u
 - Cards are never public.
 - Delete is denied for now; resolved cards can be retained for operational context.
 - Exact core counts are not inferred from the 120-card UI window.
+- `highPriorityCards` counts only unresolved cards, so resolved work cannot return to the Founder Daily Brief.
 - Cap-plus-one nightly scans expose saturation/freshness state instead of implying complete analysis.
 
 ## Future Cost Improvements

@@ -33,11 +33,11 @@ export const SECTIONS_LIST = {
 }
 
 export type ConfigType = {
-    id: any,
-    categoryId: any,
-    sectionId: any,
-    componentName: any,
-    uid: any
+    id: string,
+    categoryId: string,
+    sectionId: string,
+    componentName: string,
+    uid: string
 }
 
 export const PANEL_ACTIONS_LIST = {
@@ -83,7 +83,7 @@ export const COLOR_VARIABLES = {
     COLOR_PRIMARY_CONTRAST: "--color_primary_contrast",
 }
 
-export const COLOR_VARIABLES_LABEL: any = {
+export const COLOR_VARIABLES_LABEL: Record<string, string> = {
     "textlabel": "Paragraph Color Calculated using text color",
     [COLOR_VARIABLES.COLOR_TEXT]: "Text",//Text - Color of static text and icons.
     [COLOR_VARIABLES.COLOR_PARAGRAPH]: "Paragraph",//Paragraph - Color of static sub headings/text and paragraph.

@@ -1,7 +1,7 @@
 /**
  * PWA Install Tracker — Per-Device Deduplication
  *
- * Fires CUSTOMER_APP_INSTALLED exactly once per (device, store) via a localStorage
+ * Fires CUSTOMER_APP_INSTALLED exactly once per (device, tenant, store) via a localStorage
  * guard. Reinstalls on the same device with browser data intact are suppressed.
  *
  * Dedup scenarios — full matrix documented in customer-app_impl.md:
@@ -14,14 +14,16 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { detectPlatform } from './platformDetection';
 import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
 import { detectInstallSurface } from './surfaceDetection';
+import { parseCanonicalPwaTimestamp } from './storageValue';
 
 const INSTALL_FIRED_KEY_PREFIX = 'menulist_customerApp_installFired_';
 // Timestamp of the last prompt shown — used by the iOS inference heuristic in
-// standaloneDetector.ts. Keyed per-store so different tenants don't collide.
+// standaloneDetector.ts. Keyed by tenant/store so platform-host contexts cannot collide.
 export const PROMPT_SHOWN_AT_KEY_PREFIX = 'menulist_customerApp_promptShownAt_';
 const INSTALL_TRACKER_STORAGE_TEST_KEY = '__menulist_customer_app_install_test__';
 
@@ -92,7 +94,7 @@ export interface InstallTrackerOptions {
 }
 
 /**
- * Fire CUSTOMER_APP_INSTALLED once per device per store.
+ * Fire CUSTOMER_APP_INSTALLED once per device per tenant/store.
  *
  * @param storeId  Numeric or string store id (used as localStorage key suffix)
  * @param options  Optional tenantId + owner-level trackingEnabled flag + source
@@ -110,7 +112,14 @@ export async function fireInstalledEventOnce(
   // Entry/source context only. Customer App identity is store-level, so this
   // does not create or imply separate installed apps per public route.
   const installSurface = detectInstallSurface();
-  const key = `${INSTALL_FIRED_KEY_PREFIX}${storeId}`;
+  const key = getTenantStoreStorageKey(INSTALL_FIRED_KEY_PREFIX, tenantId, storeId);
+  if (!key) {
+    logPwaTrackingFailure('customer_app_install_scope_invalid', new Error('Invalid install scope'), {
+      ...getBoundedPwaStringContext('storeId', storeId),
+      ...getBoundedPwaStringContext('tenantId', tenantId),
+    });
+    return;
+  }
 
   // Storage unavailable → still fire (privacy / SSR fallback), no dedup possible.
   if (!isStorageAvailable({ operation: 'install_dedupe_availability', storeId, storageKey: key })) {
@@ -144,7 +153,11 @@ export async function fireInstalledEventOnce(
 
   let installAlreadyRecorded = false;
   try {
-    installAlreadyRecorded = Boolean(window.localStorage.getItem(key));
+    const raw = window.localStorage.getItem(key);
+    installAlreadyRecorded = raw !== null && parseCanonicalPwaTimestamp(raw) !== null;
+    if (raw !== null && !installAlreadyRecorded) {
+      window.localStorage.removeItem(key);
+    }
   } catch (error) {
     logCustomerAppInstallStorageFailure(
       'customer_app_install_dedupe_read_failed',
@@ -233,8 +246,12 @@ function logCustomerAppInstallTrackingFailure(
  * InstallPrompt / visitCounter so the iOS inference heuristic can tell whether
  * a subsequent standalone launch was likely triggered by that prompt.
  */
-export function recordPromptShown(storeId: string | number): void {
-  const storageKey = `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`;
+export function recordPromptShown(
+  tenantId: string | number,
+  storeId: string | number,
+): void {
+  const storageKey = getTenantStoreStorageKey(PROMPT_SHOWN_AT_KEY_PREFIX, tenantId, storeId);
+  if (!storageKey) return;
   const operation: InstallStorageOperation = 'prompt_shown_write';
   if (!isStorageAvailable({ operation, storeId, storageKey })) return;
   try {
@@ -261,7 +278,13 @@ export function resetInstallFiredFlag(storeId: string | number): void {
   if (!isStorageAvailable()) return;
   try {
     window.localStorage.removeItem(`${INSTALL_FIRED_KEY_PREFIX}${storeId}`);
-  } catch {
-    /* noop */
+  } catch (error) {
+    logCustomerAppInstallStorageFailure(
+      'customer_app_install_dedupe_reset_failed',
+      'install_dedupe_write',
+      error,
+      storeId,
+      `${INSTALL_FIRED_KEY_PREFIX}${storeId}`,
+    );
   }
 }

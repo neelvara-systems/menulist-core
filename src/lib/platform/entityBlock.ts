@@ -1,10 +1,36 @@
 import type { PlatformBlockDetails } from '@type/platform/blocking';
 
-export function isPlatformEntityBlocked(entity: any): boolean {
-    return entity?.blocked === true || entity?.tenantBlocked === true || entity?.blockDetails?.blocked === true;
+type SafeReadResult = {
+    ok: boolean;
+    value?: unknown;
+};
+
+const safeRead = (value: unknown, key: string): SafeReadResult => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return { ok: true, value: undefined };
+    }
+
+    try {
+        return { ok: true, value: Reflect.get(value, key) };
+    } catch {
+        return { ok: false };
+    }
+};
+
+export function isPlatformEntityBlocked(entity: unknown): boolean {
+    const blocked = safeRead(entity, 'blocked');
+    const tenantBlocked = safeRead(entity, 'tenantBlocked');
+    const blockDetails = safeRead(entity, 'blockDetails');
+    if (!blocked.ok || !tenantBlocked.ok || !blockDetails.ok) return true;
+
+    const nestedBlocked = safeRead(blockDetails.value, 'blocked');
+    return !nestedBlocked.ok
+        || blocked.value === true
+        || tenantBlocked.value === true
+        || nestedBlocked.value === true;
 }
 
-function cleanUndefined<T extends Record<string, any>>(value: T): T {
+function cleanUndefined<T extends Record<string, unknown>>(value: T): T {
     return Object.fromEntries(
         Object.entries(value).filter(([, entryValue]) => entryValue !== undefined),
     ) as T;

@@ -178,7 +178,7 @@ The same optional dislike-signal write applies to article and changelog reaction
 
 Reaction activity is capped at 200 visible events per article/changelog/FAQ item document. At the cap, later valid reactions update the source counter and active-actor state without expanding visible audit history. Owner reaction details load only `doc1_*` when a specific item preview is opened. Normal customer browsing uses existing aggregate counters and does not read reaction audit or actor state.
 
-The browser reaction marker adds no Firebase operation. It is a versioned local acknowledgement keyed and envelope-checked by `tId+sId+uId+contentType`, capped at 500 exact entries, and discarded on legacy/malformed/cross-scope input. Firestore counters plus the internal active-actor state are authoritative; the visible actor audit is bounded review history.
+The browser reaction marker adds no Firebase operation. It is a versioned local acknowledgement keyed and envelope-checked by `tId+sId+uId+contentType`, capped at 500 exact entries, and discarded on legacy, malformed, future-dated, or cross-scope input. Async UI reconciliation is additionally fenced to the originating content/page/actor/workspace token; this does not add a Firestore read or write. Firestore counters plus the internal active-actor state are authoritative; the visible actor audit is bounded review history.
 
 This example is a scale illustration, not a billing promise. Actual cost depends on reaction mix, negative-signal writes, owner audit reads, and regional Firestore pricing.
 

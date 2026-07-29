@@ -18,8 +18,6 @@
 //     else return false;
 // }
 
-export const isIEDevice = () => {
-    if (true) return true;
-    // if (isIE) return true;
-    else return false;
-}
+export const isIEDevice = (
+    userAgent = typeof navigator === 'undefined' ? '' : navigator.userAgent,
+): boolean => /MSIE|Trident\//i.test(userAgent);

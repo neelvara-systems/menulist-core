@@ -1376,8 +1376,12 @@ function verifyFirebaseBoundary() {
   assertIncludes(admin, "CAMPAIGNCUE_FIREBASE_APP_NAME", "CampaignCue Admin app name constant");
   assertIncludes(admin, "CAMPAIGNCUE_FIREBASE_CREDENTIAL_PREFIX", "CampaignCue Admin env prefix constant");
   assertIncludes(admin, "CAMPAIGNCUE_FIREBASE_ENV", "CampaignCue Admin env names constant");
+  assertIncludes(admin, "campaigncue_admin_project_mismatch", "CampaignCue Admin rejects cross-product env credentials");
+  assertIncludes(admin, "isExpectedCampaignCueProjectId(projectId, campaigncueFirebaseProjectId)", "CampaignCue Admin validates env and file credential projects");
   assertIncludes(clientConfig, "CAMPAIGNCUE_FIREBASE_MODE_ALIASES", "CampaignCue Firebase mode aliases constant");
-  assertIncludes(clientConfig, "CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS", "CampaignCue Firebase project env keys constant");
+  assertIncludes(clientConfig, "if (params.nodeEnv === \"production\") return \"separate\";", "CampaignCue production Firebase mode is dedicated");
+  assertIncludes(clientConfig, "isExpectedCampaignCueProjectId", "CampaignCue client config validates the governed project");
+  assertIncludes(clientConfig, "const campaigncueFirebaseProjectId = expectedCampaignCueProjectId;", "CampaignCue runtime project stays stage-governed");
   assertIncludes(firestoreRules, "allow read, write: if false", "CampaignCue Firestore default deny");
   assertIncludes(firestoreRules, "allow write: if false", "CampaignCue Firestore server-only writes");
   assertIncludes(firestoreRules, "match /sourceInputs/{docId}", "CampaignCue source inputs rules");

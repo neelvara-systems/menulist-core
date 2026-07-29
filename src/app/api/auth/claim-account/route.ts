@@ -85,12 +85,32 @@ const ClaimWithWhatsappPhoneSchema = z.object({
   useWhatsappPhone: z.literal(true),
 });
 const CLAIM_ACCOUNT_MAX_BODY_BYTES = 16 * 1024;
+const CLAIM_ACCOUNT_RESPONSE_HEADERS = {
+  "Cache-Control": "no-store",
+  "Pragma": "no-cache",
+  "X-Content-Type-Options": "nosniff",
+} as const;
+
+const claimJson = (body: unknown, init: ResponseInit = {}) => {
+  const headers = new Headers(init.headers);
+  Object.entries(CLAIM_ACCOUNT_RESPONSE_HEADERS).forEach(([name, value]) => {
+    headers.set(name, value);
+  });
+  return (NextResponse.json)(body, { ...init, headers });
+};
+
+const withClaimResponseHeaders = <T extends NextResponse>(response: T): T => {
+  Object.entries(CLAIM_ACCOUNT_RESPONSE_HEADERS).forEach(([name, value]) => {
+    response.headers.set(name, value);
+  });
+  return response;
+};
 
 const getMessagingPhone = (messagingUser: FirebaseFirestore.DocumentData) => (
   String(messagingUser.phone || messagingUser.providerDisplayId || "").trim()
 );
 
-const claimFailure = (message: string, status = 400) => NextResponse.json({ error: message }, { status });
+const claimFailure = (message: string, status = 400) => claimJson({ error: message }, { status });
 
 const buildAnonymousSecurityContext = (request: NextRequest) => ({
   ...getBoundedSecurityRouteContext(null, request),
@@ -247,7 +267,7 @@ export async function POST(request: NextRequest) {
     });
     if (!rl.allowed) {
       const providerUnavailable = rl.reason === 'provider_unavailable';
-      return NextResponse.json(
+      return claimJson(
         {
           error: providerUnavailable
             ? "Account setup is temporarily unavailable. Please try again shortly."
@@ -260,7 +280,7 @@ export async function POST(request: NextRequest) {
     const bodyResult = await readBoundedJsonBody(request, CLAIM_ACCOUNT_MAX_BODY_BYTES, {
       invalidJsonMessage: "Unable to complete account claim.",
     });
-    if (bodyResult.ok === false) return bodyResult.response;
+    if (bodyResult.ok === false) return withClaimResponseHeaders(bodyResult.response);
     const body = (
       bodyResult.data && typeof bodyResult.data === "object" && !Array.isArray(bodyResult.data)
     )
@@ -379,7 +399,7 @@ export async function POST(request: NextRequest) {
         userDocumentId: messagingUserDoc.id,
       });
 
-      return NextResponse.json({
+      return claimJson({
         success: true,
         mode: "whatsapp-phone",
         tenantId: claimScope.tenantId,
@@ -505,7 +525,7 @@ export async function POST(request: NextRequest) {
         userDocumentId: emailUserId,
       });
 
-      return NextResponse.json({
+      return claimJson({
         success: true,
         mode: "email-password",
         tenantId: claimScope.tenantId,
@@ -612,7 +632,7 @@ export async function POST(request: NextRequest) {
     const claimScope = claimedMessagingUser.claimAccountScope;
     await revalidateClaimAccountPublicCache(claimScope, request);
 
-    return NextResponse.json({
+    return claimJson({
       success: true,
       mode: "google",
       tenantId: claimScope.tenantId,
@@ -626,6 +646,6 @@ export async function POST(request: NextRequest) {
 
     logAuthFailure("claim_account_unexpected_error", error, buildClaimFailureLogContext(request));
 
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return claimJson({ error: "Internal error" }, { status: 500 });
   }
 }

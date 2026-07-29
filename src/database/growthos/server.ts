@@ -369,18 +369,18 @@ function statusForExportMethod(method: GrowthOSExportMethod): GrowthOSKitStatus 
 }
 
 export async function recordGrowthOSExportServer(params: {
+    actorId: string;
     destination: GrowthOSDestination;
     isStale: boolean;
     kit: GrowthOSKit;
     method: GrowthOSExportMethod;
     operationId: string;
     outputId?: string;
-    session: any;
 }): Promise<{ exportId: string; isStale: boolean; status?: GrowthOSKitStatus | null }> {
     const kitId = requireGrowthOSDocumentId(params.kit.id, "kit");
     const tenantDocumentId = requireGrowthOSScopeDocumentId(params.kit.tId, "tenant");
     const storeDocumentId = requireGrowthOSScopeDocumentId(params.kit.sId, "store");
-    const actorId = requireGrowthOSDocumentId(params.session?.uId || params.session?.user?.id, "actor");
+    const actorId = requireGrowthOSDocumentId(params.actorId, "actor");
     const operationId = requireGrowthOSDocumentId(params.operationId, "operation");
     const exportRef = firestoreAdmin
         .collection(`${DB_COLLECTIONS.GROWTHOS_EXPORTS}/${tenantDocumentId}/${storeDocumentId}`)
@@ -501,16 +501,18 @@ export async function recordGrowthOSExportServer(params: {
 }
 
 export async function readGrowthOSExportReplayServer(params: {
+    actorId: string;
     destination: string;
     kitId: string;
     method: GrowthOSExportMethod;
     operationId: string;
     outputId?: string;
-    session: any;
+    sId: string | number;
+    tId: string | number;
 }): Promise<{ exportId: string; isStale: boolean; status?: GrowthOSKitStatus | null } | null> {
-    const tenantDocumentId = requireGrowthOSScopeDocumentId(params.session?.tId, "tenant");
-    const storeDocumentId = requireGrowthOSScopeDocumentId(params.session?.sId, "store");
-    const actorId = requireGrowthOSDocumentId(params.session?.uId || params.session?.user?.id, "actor");
+    const tenantDocumentId = requireGrowthOSScopeDocumentId(params.tId, "tenant");
+    const storeDocumentId = requireGrowthOSScopeDocumentId(params.sId, "store");
+    const actorId = requireGrowthOSDocumentId(params.actorId, "actor");
     const operationId = requireGrowthOSDocumentId(params.operationId, "operation");
     const kitId = requireGrowthOSDocumentId(params.kitId, "kit");
     const exportRef = firestoreAdmin
@@ -521,8 +523,8 @@ export async function readGrowthOSExportReplayServer(params: {
     const existing = snap.data() as Partial<GrowthOSExport>;
     if (
         existing.operationId !== operationId
-        || existing.tId !== String(params.session.tId)
-        || existing.sId !== String(params.session.sId)
+        || existing.tId !== tenantDocumentId
+        || existing.sId !== storeDocumentId
         || existing.kitId !== kitId
         || existing.destination !== params.destination
         || existing.method !== params.method

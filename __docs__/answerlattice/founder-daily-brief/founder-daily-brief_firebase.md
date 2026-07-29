@@ -82,3 +82,18 @@ The daily brief uses the existing six-document Support Assistant packet, includi
 Scheduled summary timestamps older than 48 hours are exposed as stale. A five-minute future tolerance avoids small clock skew while rejecting implausible future evidence. These checks do not refresh or rewrite a source.
 
 Removing generic release and cost cards, admitting the quiet state, projecting `highPriorityCards`, and tightening friction qualification are CPU-only changes. The Firebase cost remains six cold reads or zero reads on a valid 60-second process-cache hit.
+
+Entity-focused friction links and canonical-answer coverage links carry only a
+validated URL parameter. They add zero reads or writes while Daily Brief is
+rendered. The destination performs only its existing bounded load after the
+owner explicitly opens it.
+
+The upstream Support Board summary now defines `highPriorityCards` as unresolved high-priority cards. Its live and nightly exact-count helper uses one additional aggregate query for resolved high-priority cards and subtracts that count before writing the existing summary document. This prevents completed work from reappearing in Daily Brief; it does not add a Daily Brief read, collection, listener, or write.
+
+## July 29, 2026 QA Deployment Evidence
+
+The narrow deployment of `answerlatticeSupportBoardSummaryOnWrite` and
+`answerlatticeNightly` stopped before upload because the local Firebase CLI was
+not authenticated: `Failed to authenticate, have you run firebase login?`.
+Source, emulator, rules, typecheck, lint, and Functions-build gates passed; no
+QA Function revision changed.

@@ -13,6 +13,21 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const SIGNALDESK_JSON_BODY_MAX_BYTES = 256 * 1024;
+export const SIGNALDESK_PRIVATE_RESPONSE_HEADERS = {
+    "Cache-Control": "private, no-store, max-age=0",
+    "X-Content-Type-Options": "nosniff",
+} as const;
+
+export const withSignalDeskPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(SIGNALDESK_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
+
+export const signalDeskPrivateJson = (body: unknown, init: ResponseInit = {}) => (
+    withSignalDeskPrivateHeaders(NextResponse.json(body, init))
+);
 
 export type SignalDeskLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -76,7 +91,7 @@ export const logSignalDeskFailure = (
 
 export const requireSignalDeskRuntime = () => {
     if (!FEATURE_FLAGS.ENABLE_MENULIST_SIGNALDESK_APP_SHELL) {
-        return NextResponse.json({ error: "SignalDesk is disabled" }, { status: 404 });
+        return signalDeskPrivateJson({ error: "SignalDesk is disabled" }, { status: 404 });
     }
     return null;
 };
@@ -92,7 +107,7 @@ export const isSignalDeskMobileRequest = (request: NextRequest) => {
 
 export const blockSignalDeskMobileMutation = (request: NextRequest, message = "SignalDesk mobile is read-only") => {
     if (!isSignalDeskMobileRequest(request)) return null;
-    return NextResponse.json({ error: message }, { status: 403 });
+    return signalDeskPrivateJson({ error: message }, { status: 403 });
 };
 
 export function logSignalDeskValidationFailure(params: {
@@ -121,7 +136,7 @@ export async function requireSignalDeskAccess(
                 ...getBoundedSignalDeskStringContext("requiredPermission", permission),
             }),
         }, "high");
-        return { response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+        return { response: signalDeskPrivateJson({ error: "Forbidden" }, { status: 403 }) };
     }
 
     return { access: access as SignalDeskAccessContext };
@@ -159,7 +174,7 @@ export async function applySignalDeskRateLimit(params: {
         window: rateLimitConfig.window,
     }, "medium");
 
-    return NextResponse.json(
+    return signalDeskPrivateJson(
         {
             error: decision.providerUnavailable
                 ? "SignalDesk request protection is temporarily unavailable. Please try again shortly."
@@ -196,7 +211,7 @@ export async function parseSignalDeskJsonBody(params: {
             status: bodyResult.response.status,
         }, "medium");
         return {
-            response: bodyResult.response,
+            response: withSignalDeskPrivateHeaders(bodyResult.response),
             success: false as const,
         };
     }

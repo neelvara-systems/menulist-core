@@ -12,6 +12,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { withPlatformAuth } from '../../../../middleware/auth';
 
+const PLATFORM_ACCESS_PRIVATE_RESPONSE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0',
+  'X-Content-Type-Options': 'nosniff',
+} as const;
+const platformAccessJson = (body: unknown, init: ResponseInit = {}) => {
+  const headers = new Headers(init.headers);
+  Object.entries(PLATFORM_ACCESS_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+    headers.set(name, value);
+  });
+  return NextResponse.json(body, { ...init, headers });
+};
+
 /**
  * Fresh platform-access admission for browser Firestore monitors.
  *
@@ -34,7 +46,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     logger.security('Platform current-access check rate limited', {
       ...getBoundedSecurityRouteContext(session, request),
     }, 'medium');
-    return NextResponse.json(
+    return platformAccessJson(
       {
         error: rateLimit.reason === 'provider_unavailable'
           ? 'Platform access check is temporarily unavailable'
@@ -44,7 +56,6 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
       {
         status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
         headers: {
-          'Cache-Control': 'private, no-store',
           'Retry-After': String(retryAfter),
         },
       },
@@ -56,14 +67,13 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     logger.security('Authorization Failed - Current Platform Access', {
       ...getBoundedSecurityRouteContext(session, request),
     }, 'high');
-    return NextResponse.json(
+    return platformAccessJson(
       { error: 'Forbidden' },
-      { status: 403, headers: { 'Cache-Control': 'private, no-store' } },
+      { status: 403 },
     );
   }
 
-  return NextResponse.json(
+  return platformAccessJson(
     { authorized: true, accessModel: 'current_persisted_platform_user' },
-    { headers: { 'Cache-Control': 'private, no-store' } },
   );
 });

@@ -107,8 +107,8 @@ function verifyManifest() {
   assert(manifest.name === 'MyCodex', 'manifest name must be MyCodex');
   assert(manifest.short_name === 'MyCodex', 'manifest short_name must be MyCodex');
   assert(manifest.id === '/mycodex', 'manifest id must be product-specific');
-  assert(manifest.scope === '/', 'manifest scope must stay root-scoped for menulist.digital');
-  assert(manifest.start_url === '/', 'manifest start_url must stay root for menulist.digital');
+  assert(manifest.scope === '/', 'manifest scope must stay root-scoped for a private host');
+  assert(manifest.start_url === '/', 'manifest start_url must stay root for a private host');
   assert(manifest.display === 'standalone', 'manifest display must be standalone');
   assert(Array.isArray(manifest.icons), 'manifest icons must be an array');
 

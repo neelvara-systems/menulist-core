@@ -19,7 +19,7 @@ The referenced source-stack components (MCE, hours status, versioned publishing)
 - MCE: `__docs__/menu-correctness-engine/menu-correctness-engine_firebase.md` - client-side validation on covered project update paths
 - Hours Status: Part of existing store document reads
 - Public menu/OBP cache: current public cache tags and the 60-second public cache window
-- Digital Screens: separate `screen-data` cache and content-version listener path
+- Digital Screens: exact hashed-token state cache, store-scoped menu cache, and content-version listener path
 - Downloaded or provider targets: require separate artifact/provider evidence before freshness claims
 
 ---

@@ -2,7 +2,7 @@
 
 > **External systems read business and menu data FROM MenuList — the pull counterpart to POS Webhook push.**
 
-**Status:** ✅ IMPLEMENTED (v1.14 — contract inventory and compatibility fixtures hardened Jul 22, 2026)
+**Status:** ✅ IMPLEMENTED (v1.16 — key-management admission and secret-response boundary hardened Jul 28, 2026)
 **Feature Flag:** `ENABLE_PUBLIC_API: true`
 **Date:** February 22, 2026
 
@@ -78,6 +78,8 @@ MenuList is the **upstream menu authority** (Doc 15 Rule 1). POS Webhook Sync pu
 - **Two-level request limiting** — syntactically valid `ml_` credentials first pass a fail-closed hashed-IP ceiling, then the existing fail-closed 60-per-minute hashed-key ceiling. Rotating fake keys cannot create unbounded key lookups.
 - **Duplicate credentials fail closed** — current hashes and legacy raw-key representations are both checked while compatibility is enabled. The same store may carry both during migration, but matches resolving to multiple store document paths are rejected instead of letting lookup order select a tenant.
 - **Private failure and secret responses** — pull errors use `private, no-store` plus `Vary: X-API-Key`, and one-time key-generation responses use `private, no-store`.
+- **Exact key-management admission** — generation/revocation rejects conflicting actor, tenant, or store session aliases before rate, body, or Firestore work; the limiter combines hashed actor and store partitions.
+- **Non-overridable secret response policy** — every key-management branch, including bounded-body and permission failures, receives `private, no-store, max-age=0`, `Pragma: no-cache`, and `nosniff`.
 - **Fail-closed outage semantics** — an exhausted limiter returns `429 RATE_LIMIT_EXCEEDED`; an unavailable limiter provider returns retryable `503 SERVICE_UNAVAILABLE`. Both include `Retry-After` instead of misreporting provider outages as caller abuse.
 - **Linked outlet truth resolution** — pull menu responses resolve the same master menu plus outlet overrides/local items used by customer rendering; malformed, cross-tenant, missing, deleted, chained, or empty master references fail closed instead of returning an empty outlet menu.
 - **MenuList product and identity coherence** — legacy records with missing product/ID aliases remain supported, but any explicit `pId`/`productId` must be `ML`; explicit tenant/store aliases must be exact numeric document IDs and agree with each other and the authoritative document path.

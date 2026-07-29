@@ -29,6 +29,18 @@ assert.deepEqual(getActiveTempStatus({
 assert.equal(getActiveTempStatus({ expiresAt: now.toISOString(), type: 'closed_today' }, now.getTime()), null);
 assert.equal(getActiveTempStatus({ expiresAt: 'not-a-date', type: 'closed_today' }, now.getTime()), null);
 assert.equal(getActiveTempStatus({ expiresAt: future, type: 'unknown' }, now.getTime()), null);
+assert.equal(getActiveTempStatus(new Proxy({}, {
+    get() {
+        throw new Error('temporary-status proxy must remain contained');
+    },
+})), null);
+assert.equal(getActiveTempStatus({
+    expiresAt: future,
+    get message() {
+        throw new Error('temporary-status message getter must remain contained');
+    },
+    type: 'custom',
+}, now.getTime())?.message, 'Temporary notice');
 
 assert.equal(isTempStatusMutationScopeCurrent({
     store: { active: true, tenantId: 11 },

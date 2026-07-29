@@ -2,12 +2,36 @@ import { LANGUAGE_CONSTANTS } from '@constant/languages';
 
 export const CANONICAL_SOURCE_LANGUAGE = LANGUAGE_CONSTANTS.FALLBACK_LANGUAGE;
 
-const normalizeLanguageCode = (value?: string | null) => String(value || '').trim().toLowerCase();
+const readOwnValue = (value: unknown, key: PropertyKey): unknown => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    try {
+        return Object.prototype.hasOwnProperty.call(value, key)
+            ? Reflect.get(value, key)
+            : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+const normalizeLanguageCode = (value: unknown): string => (
+    typeof value === 'string' ? value.trim().toLowerCase() : ''
+);
 
 export function buildCanonicalLanguageList(
-    ...languageGroups: Array<string | null | undefined | Array<string | null | undefined>>
+    ...languageGroups: unknown[]
 ): string[] {
-    const collected = languageGroups.flatMap((group) => Array.isArray(group) ? group : [group]);
+    const collected: unknown[] = [];
+    try {
+        for (const group of languageGroups) {
+            if (Array.isArray(group)) {
+                collected.push(...Array.from(group));
+            } else {
+                collected.push(group);
+            }
+        }
+    } catch {
+        return [CANONICAL_SOURCE_LANGUAGE];
+    }
     const deduped = Array.from(new Set(collected.map(normalizeLanguageCode).filter(Boolean)));
 
     return [
@@ -16,17 +40,16 @@ export function buildCanonicalLanguageList(
     ];
 }
 
-export function normalizeStoreLanguagePolicy(storeDetails?: {
-    activeLanguages?: string[];
-    defaultLanguage?: string;
-    language?: string;
-}) {
+export function normalizeStoreLanguagePolicy(storeDetails?: unknown) {
+    const activeLanguageValues = readOwnValue(storeDetails, 'activeLanguages');
+    const defaultLanguageValue = readOwnValue(storeDetails, 'defaultLanguage');
+    const languageValue = readOwnValue(storeDetails, 'language');
     const activeLanguages = buildCanonicalLanguageList(
-        storeDetails?.activeLanguages,
-        storeDetails?.defaultLanguage,
-        storeDetails?.language,
+        activeLanguageValues,
+        defaultLanguageValue,
+        languageValue,
     );
-    const requestedDefaultLanguage = normalizeLanguageCode(storeDetails?.defaultLanguage);
+    const requestedDefaultLanguage = normalizeLanguageCode(defaultLanguageValue);
     const defaultLanguage = activeLanguages.includes(requestedDefaultLanguage)
         ? requestedDefaultLanguage
         : CANONICAL_SOURCE_LANGUAGE;

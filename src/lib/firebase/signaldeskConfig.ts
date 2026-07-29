@@ -215,14 +215,14 @@ const signaldeskFirebaseBoundary = resolveSignalDeskFirebaseBoundary({
     emulatorHost: process.env.FIRESTORE_EMULATOR_HOST,
     emulatorProjectId: process.env.GCLOUD_PROJECT,
     nodeEnv: process.env.NODE_ENV,
-    privateDatabaseId: process.env.MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID,
-    privateMode: process.env.MENULIST_SIGNALDESK_FIREBASE_MODE,
-    privateProjectId: process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID,
-    publicDatabaseId: process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID,
-    publicMode: process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE,
-    publicProjectId: process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID,
-    privateStorageBucket: process.env.MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET,
-    publicStorageBucket: process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET,
+    privateDatabaseId: process.env.SIGNALDESK_FIRESTORE_DATABASE_ID,
+    privateMode: process.env.SIGNALDESK_FIREBASE_MODE,
+    privateProjectId: process.env.SIGNALDESK_FIREBASE_PROJECT_ID,
+    publicDatabaseId: process.env.NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID,
+    publicMode: process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE,
+    publicProjectId: process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID,
+    privateStorageBucket: process.env.SIGNALDESK_FIREBASE_STORAGE_BUCKET,
+    publicStorageBucket: process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET,
 });
 
 const normalizeRuntimeValue = (value?: string): string | undefined => {
@@ -230,22 +230,22 @@ const normalizeRuntimeValue = (value?: string): string | undefined => {
     return normalized || undefined;
 };
 
-const privateMode = normalizeMode(process.env.MENULIST_SIGNALDESK_FIREBASE_MODE);
-const publicMode = normalizeMode(process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE);
-const privateProjectId = normalizeOptionalValue(process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID);
-const publicProjectId = normalizeOptionalValue(process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID);
+const privateMode = normalizeMode(process.env.SIGNALDESK_FIREBASE_MODE);
+const publicMode = normalizeMode(process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE);
+const privateProjectId = normalizeOptionalValue(process.env.SIGNALDESK_FIREBASE_PROJECT_ID);
+const publicProjectId = normalizeOptionalValue(process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID);
 const signaldeskAdminStorageBucket = signaldeskFirebaseBoundary.privateStorageBucket || undefined;
 const signaldeskClientStorageBucket = signaldeskFirebaseBoundary.publicStorageBucket || undefined;
 
 const signaldeskFirebaseConfig = {
-    apiKey: normalizeRuntimeValue(process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_API_KEY),
-    authDomain: normalizeRuntimeValue(process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN),
+    apiKey: normalizeRuntimeValue(process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_API_KEY),
+    authDomain: normalizeRuntimeValue(process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN),
     projectId: publicProjectId === signaldeskFirebaseBoundary.activeProjectId
         ? signaldeskFirebaseBoundary.activeProjectId || undefined
         : undefined,
     storageBucket: signaldeskClientStorageBucket,
-    messagingSenderId: normalizeRuntimeValue(process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MESSAGING_SENDER_ID),
-    appId: normalizeRuntimeValue(process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_APP_ID),
+    messagingSenderId: normalizeRuntimeValue(process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_MESSAGING_SENDER_ID),
+    appId: normalizeRuntimeValue(process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_APP_ID),
 };
 
 const hasSignalDeskFirebaseConfig = Boolean(
@@ -259,8 +259,8 @@ const hasSignalDeskFirebaseConfig = Boolean(
 );
 const hasSignalDeskAdminCredential = Boolean(
     privateProjectId === signaldeskFirebaseBoundary.activeProjectId
-    && normalizeRuntimeValue(process.env.MENULIST_SIGNALDESK_FIREBASE_CLIENT_EMAIL)
-    && normalizeRuntimeValue(process.env.MENULIST_SIGNALDESK_FIREBASE_PRIVATE_KEY)
+    && normalizeRuntimeValue(process.env.SIGNALDESK_FIREBASE_CLIENT_EMAIL)
+    && normalizeRuntimeValue(process.env.SIGNALDESK_FIREBASE_PRIVATE_KEY)
 );
 const hasSignalDeskAdminFirebaseConfig = Boolean(
     signaldeskFirebaseBoundary.valid
@@ -270,7 +270,7 @@ const hasSignalDeskAdminFirebaseConfig = Boolean(
     && (
         signaldeskFirebaseBoundary.isEmulator
         || hasSignalDeskAdminCredential
-        || normalizeRuntimeValue(process.env.MENULIST_SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS)
+        || normalizeRuntimeValue(process.env.SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS)
     )
 );
 const isSignalDeskFirebaseClientConfigured = hasSignalDeskFirebaseConfig;

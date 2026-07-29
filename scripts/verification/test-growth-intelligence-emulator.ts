@@ -1,7 +1,12 @@
 #!/usr/bin/env ts-node
 
 import { DB_COLLECTIONS } from '@constant/database';
-import { GROWTH_ACQUISITION_CAMPAIGN, GROWTH_ACQUISITION_MEDIUM, GROWTH_ACQUISITION_SOURCE } from '@lib/growth/acquisitionAttribution';
+import {
+    GROWTH_ACQUISITION_CAMPAIGN,
+    GROWTH_ACQUISITION_MEDIUM,
+    GROWTH_ACQUISITION_SOURCE,
+    normalizeGrowthAcquisitionAttribution,
+} from '@lib/growth/acquisitionAttribution';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
 import {
@@ -26,6 +31,7 @@ const run = async (): Promise<void> => {
     const suffix = Date.now().toString(36);
     const draftId = `growth-intelligence-${suffix}`;
     const partnerDraftId = `growth-intelligence-partner-${suffix}`;
+    const mismatchedDraftId = `growth-intelligence-mismatch-${suffix}`;
     const tooExpensiveMovementId = `growth-intelligence-churn-price-${suffix}`;
     const switchedProviderMovementId = `growth-intelligence-churn-switch-${suffix}`;
     const lifecycleSubscriptionId = `growth-intelligence-subscription-${suffix}`;
@@ -40,8 +46,22 @@ const run = async (): Promise<void> => {
         medium: GROWTH_ACQUISITION_MEDIUM.POWERED_BY,
         campaign: GROWTH_ACQUISITION_CAMPAIGN.PRODUCT_LOOP,
     };
+    let coercionHookCalled = false;
+    const coerciveAttribution = normalizeGrowthAcquisitionAttribution({
+        source: {
+            toString: () => {
+                coercionHookCalled = true;
+                return GROWTH_ACQUISITION_SOURCE.MENULIST_PUBLIC_SURFACE;
+            },
+        },
+        medium: GROWTH_ACQUISITION_MEDIUM.POWERED_BY,
+        campaign: GROWTH_ACQUISITION_CAMPAIGN.PRODUCT_LOOP,
+    });
+    assert(!coerciveAttribution, 'Non-string attribution fields must fail closed');
+    assert(!coercionHookCalled, 'Attribution normalization must not execute unknown conversion hooks');
     const draftRef = firestoreAdmin.collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS).doc(draftId);
     const partnerDraftRef = firestoreAdmin.collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS).doc(partnerDraftId);
+    const mismatchedDraftRef = firestoreAdmin.collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS).doc(mismatchedDraftId);
     await draftRef.set({ growthAcquisition: attribution });
 
     const draftResults = await Promise.all(Array.from({ length: 6 }, () => recordFounderGrowthEvent({
@@ -65,6 +85,26 @@ const run = async (): Promise<void> => {
         medium: GROWTH_ACQUISITION_MEDIUM.PARTNER_HANDOFF,
         campaign: GROWTH_ACQUISITION_CAMPAIGN.BENGALURU_PILOT_2026,
     };
+    await mismatchedDraftRef.set({ growthAcquisition: partnerAttribution });
+    const mismatchedResult = await recordFounderGrowthEvent({
+        attribution,
+        draftId: mismatchedDraftId,
+        occurredAt,
+        stage: 'draft_created',
+    });
+    assert(!mismatchedResult.recorded, 'Caller attribution must match persisted draft attribution');
+    assert(
+        !(await mismatchedDraftRef.get()).data()?.growthTelemetry,
+        'Mismatched attribution must not write an idempotency marker',
+    );
+    const invalidDateResult = await recordFounderGrowthEvent({
+        attribution: partnerAttribution,
+        draftId: mismatchedDraftId,
+        occurredAt: new Date(Number.NaN),
+        stage: 'draft_created',
+    });
+    assert(!invalidDateResult.recorded, 'Invalid event timestamps must fail closed before persistence');
+
     await partnerDraftRef.set({ growthAcquisition: partnerAttribution });
     const partnerResults = await Promise.all(Array.from({ length: 3 }, () => recordFounderGrowthEvent({
         attribution: partnerAttribution,
@@ -320,6 +360,7 @@ const run = async (): Promise<void> => {
     await Promise.all([
         draftRef.delete(),
         partnerDraftRef.delete(),
+        mismatchedDraftRef.delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(tooExpensiveMovementId).delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(switchedProviderMovementId).delete(),
         firestoreAdmin.collection(DB_COLLECTIONS.FOUNDER_REVENUE_MOVEMENTS).doc(malformedMovementId).delete(),

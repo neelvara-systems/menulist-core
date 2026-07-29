@@ -246,20 +246,20 @@ Runtime paths:
 
 - Local canonical app: `http://localhost:3000/signaldesk`
 - Local content rail: `http://localhost:3000/signaldesk/content`
-- MyCodex-host shortcut: `https://menulist.digital/sd`
-- Compatibility shortcut: `https://menulist.digital/sd/app`
+- MyCodex-host shortcut: not active; the old `/sd` dependency has been removed.
+- Compatibility shortcut: not active.
 
 Canonical private app hosts:
 
 - QA/private preview: `signaldesk.menulist.online`
-- Production private host: `signaldesk.menulist.ai`
+- Production private host: `signaldesk.menulist.online`
 
 Important:
 
 - SignalDesk is not `/sites/signaldesk`.
 - SignalDesk is not a public website.
 - SignalDesk is not a MenuList tenant route.
-- `menulist.digital` remains the MyCodex host, with `/sd` and `/sd/app` as internal path aliases.
+- MyCodex has no active public domain, and `/sd` / `/sd/app` are not active setup paths.
 
 ## Firebase And Cost Posture
 
@@ -329,10 +329,10 @@ Latest route smokes passed:
 200 /signaldesk/partners
 200 /signaldesk/settings
 200 /signaldesk/control-room
-200 menulist.digital/sd
-200 menulist.digital/sd/app
-200 menulist.digital/sd/app/content
-200 menulist.digital/sd/content
+404 former /sd public-host alias
+404 former /sd/app public-host alias
+404 former /sd/app/content public-host alias
+404 former /sd/content public-host alias
 ```
 
 `/sd/app/content` rewrites to `/signaldesk/content` and keeps headers:

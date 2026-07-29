@@ -53,7 +53,7 @@ The July 5, 2026 Vercel domain provider response-parse diagnostics add no Fireba
 
 The June 30, 2026 domain settings shared request-policy consolidation adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. Desktop Domain Settings, embedded Custom Domain, and Mobile Domain Settings now use the shared authenticated browser request policy for existing `/api/domain` and `/api/subdomain/check` browser calls before bounded response parsing. Valid subdomain availability reads, custom-domain provider calls, store writes, public cache invalidation, DNS display behavior, rules, indexes, schema fields, and owner-facing settings are unchanged.
 
-The MyCodex product-domain carve-out (`menulist.digital` / `www.menulist.digital`) adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. It only changes host classification in middleware, requires a first-party MyCodex login/session cookie outside localhost, serves local repository markdown from `__docs__`, emits product-scoped no-index/no-follow crawler controls, and serves MyCodex PWA assets from static files.
+MyCodex currently has no active public domain and adds no Firebase reads, writes, deletes, indexes, or Cloud Functions. It serves local repository markdown from `__docs__` through the local `/__mycodex` route and keeps product-scoped no-index/no-follow crawler controls and static MyCodex PWA assets ready for a future private host if approved.
 
 The July 2, 2026 URL routing boundary source gate adds no Firebase reads, writes, deletes, indexes, Cloud Functions, live provider calls, or deploy steps. `npm run verify:url-routing-boundary` runs resolver/source/docs checks locally to keep product hosts, tenant subdomains, custom domains, middleware rewrite order, tenant headers, and active documentation aligned with runtime code.
 
@@ -103,7 +103,7 @@ The July 5, 2026 tenant sitemap lookup diagnostic cap added no Firebase reads, w
 | Custom-domain availability check    | Canonical tenant/store + deterministic claim + bounded store-domain query | Owner clicks Check Availability | **4 reads** on a valid check; `DATA_READ` gated, no Vercel call, no write, POST repeats authority |
 | Brand OBP outlet list               | `stores` (WHERE tenantId + active)     | Brand OBP store selector (multi-store)       | **N reads** — cached 60s, only multi-store brands                  |
 | Custom domain status                | Canonical tenant/store + deterministic claim + bounded store-domain query, then Vercel | Owner opens/clicks verification | **4 Firestore reads normally; up to 8 when verification changes** because the post-provider transaction rechecks the exact current scope before writing |
-| MyCodex host classification         | None                                   | Requests to `menulist.digital`               | **0 Firestore reads** — product-domain registry + local markdown   |
+| MyCodex local/static reader         | None                                   | Local `/__mycodex` route                      | **0 Firestore reads** — local markdown only                        |
 | MyCodex crawler restriction         | None                                   | MyCodex pages and `robots.txt`               | **0 Firestore reads** — metadata, headers, and static text only    |
 | MyCodex PWA manifest/assets         | None                                   | Install metadata and app icons               | **0 Firestore reads** — static manifest, icons, splash files, and service worker only |
 

@@ -926,7 +926,10 @@ function verifyFunctionsPublicCacheRevalidationLoggingIsBounded() {
       'First-extraction project save must refresh public cache after project save and business-attribute defaults',
     );
   }
-  assertNotIncludes(helper, 'storeId: normalizedStoreId,', 'Functions public cache raw store ID log');
+  assert(
+    !/functions\.logger\.\w+\([^;]*storeId:\s*normalizedStoreId/s.test(helper),
+    'Functions public cache logs must not include the raw store ID',
+  );
   assertNotIncludes(helper, 'context,', 'Functions public cache raw caller context log');
   assertNotIncludes(helper, 'error?.message || String(error)', 'Functions public cache raw exception text');
 }
@@ -964,7 +967,7 @@ function verifyMenuRevalidationRouteLoggingIsBounded() {
     'Menu revalidation route rate limit before body parsing',
   );
   assertIncludes(clientMenuFirebase, 'Explicit single-store tag arrays derive the same store id before clearing the Owner Business Assistant packet cache.', 'Client Menu Firebase explicit tag assistant-cache boundary');
-  assertIncludes(clientMenuFirebase, 'Live Digital Screens content-version touches stay in the caller helpers after public-truth writes.', 'Client Menu Firebase live screen-touch boundary');
+  assertIncludes(clientMenuFirebase, "Live Digital Screens content-version touches stay in the caller helpers after public-truth writes and expire the affected screen's hashed token tag.", 'Client Menu Firebase live screen-touch boundary');
   assertIncludes(clientMenuFirebase, 'Menu cache revalidation rate-limit boundary', 'Client Menu Firebase revalidation rate-limit boundary');
   assertNotIncludes(route, "secureError('[Menu Cache] Revalidation failed'", 'Menu revalidation route raw secure error');
   assertNotIncludes(route, 'secureError(', 'Menu revalidation route must not pass raw exceptions to secureError');
@@ -978,20 +981,13 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   const screenPage = read('src/app/screen/[token]/page.tsx');
   const revalidateAction = read('src/lib/actions/revalidateMenuCache.ts');
   const messagingPublish = read('src/lib/messaging-onboarding/publish.ts');
-  const clientScreenInvalidation = read('src/lib/screen/screenInvalidation.ts');
   const serverScreenInvalidation = read('src/lib/screen/serverScreenInvalidation.ts');
   const storePublicTruthPostCommit = read('src/lib/cache/storePublicTruthPostCommit.ts');
   const outletPolicyRoute = read('src/app/api/outlets/policy/route.ts');
 
-  assertIncludes(screenPage, "tags: ['screen-data']", 'Digital screen SSR data cache tag');
-  assertIncludes(clientScreenInvalidation, 'type PendingScreenContentTouch', 'Browser screen invalidation pending entry contract');
-  assertIncludes(clientScreenInvalidation, 'const pendingScreenTouches = new Map<string, PendingScreenContentTouch>();', 'Browser screen invalidation pending map keeps rerun state');
-  assertIncludes(clientScreenInvalidation, 'pending.rerunRequested = true;', 'Browser screen invalidation same-store trailing touch marker');
-  assertIncludes(clientScreenInvalidation, 'pending.context = context;', 'Browser screen invalidation trailing context update');
-  assertIncludes(clientScreenInvalidation, 'pending.options = options;', 'Browser screen invalidation trailing project options update');
-  assertIncludes(clientScreenInvalidation, '} while (entry.rerunRequested);', 'Browser screen invalidation trailing touch loop');
-  assertIncludes(clientScreenInvalidation, 'if (pendingScreenTouches.get(normalizedStoreId) === entry)', 'Browser screen invalidation pending entry identity-safe cleanup');
-  assertNotIncludes(clientScreenInvalidation, 'const pendingScreenTouches = new Map<string, Promise<void>>();', 'Browser screen invalidation must not collapse later writes into a single promise');
+  assertIncludes(screenPage, 'getPrivateScreenTokenCacheTag(token)', 'Digital screen hashed-token state cache tag');
+  assertIncludes(screenPage, 'tags: [`menu-store-${storeId}`]', 'Digital screen store-scoped menu cache tag');
+  assertNotIncludes(screenPage, "tags: ['screen-data']", 'Digital screen global SSR cache fan-out');
   assertIncludes(revalidateAction, 'runStorePublicTruthPostCommitEffects({', 'Canonical menu cache revalidation must independently settle every public-truth effect');
   assertIncludes(revalidateAction, 'revalidate: (tag) => revalidateTag(tag, { expire: 0 })', 'Canonical menu cache revalidation must delegate every cache tag with immediate Next 16 expiry');
   assertIncludes(revalidateAction, 'touchDigitalScreenContentVersionForStoreServer(', 'Canonical menu cache revalidation must wake live digital screens');
@@ -999,7 +995,9 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   assertIncludes(revalidateAction, 'throw postCommit.firstError', 'Canonical menu cache revalidation must preserve the original cache failure after all effects settle');
   assertIncludes(serverScreenInvalidation, 'FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED', 'Server screen invalidation feature flag guard');
   assertIncludes(serverScreenInvalidation, "doc(`campaigns_${normalizedStoreId}`)", 'Server screen invalidation canonical screen state read');
-  assertIncludes(serverScreenInvalidation, 'if (!screen?.screenToken) return;', 'Server screen invalidation must not create partial screen state');
+  assertIncludes(serverScreenInvalidation, 'if (!screen || typeof screen.enabled !== "boolean")', 'Server screen invalidation must not create partial screen state');
+  assertIncludes(serverScreenInvalidation, 'getPrivateScreenTokenCacheTag(screenToken)', 'Server screen invalidation exact token cache tag');
+  assertIncludes(serverScreenInvalidation, 'revalidateTag(result.tokenCacheTag', 'Server screen invalidation exact token cache expiry');
   assertIncludes(serverScreenInvalidation, "doc(`screen_${normalizedStoreId}`)", 'Server screen invalidation public listener mirror');
   assertIncludes(serverScreenInvalidation, 'await firestoreAdmin.runTransaction(async (transaction) => {', 'Server screen invalidation transaction boundary');
   assertIncludes(serverScreenInvalidation, '"screen.contentVersion": nextContentVersion', 'Server screen invalidation exact transaction-local content-version bump');
@@ -1008,22 +1006,22 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   assertIncludes(messagingPublish, 'runStorePublicTruthPostCommitEffects({', 'Messaging onboarding publish must independently settle public-truth effects');
   assertIncludes(messagingPublish, 'revalidate: (tag) => revalidateTag(tag, { expire: 0 })', 'Messaging onboarding publish must delegate every cache tag to the shared effect runner with immediate Next 16 expiry');
   assertIncludes(messagingPublish, '"messagingOnboardingPublish",', 'Messaging onboarding publish must identify its live-screen touch');
-  assertIncludes(messagingPublish, 'tagCount: 4', 'Messaging onboarding publish cache diagnostic tag count');
+  assertIncludes(messagingPublish, 'tagCount: 3', 'Messaging onboarding publish cache diagnostic tag count');
   assertIncludes(messagingPublish, 'failedEffectCount: postCommit.failedEffectCount', 'Messaging onboarding publish must report aggregate post-commit failures');
 
   const tempStatusRoute = read('src/app/api/store/temp-status/route.ts');
   assertIncludes(tempStatusRoute, 'runStorePublicTruthPostCommitEffects({', 'Temporary Status must isolate public-truth effects after commit');
   assertIncludes(tempStatusRoute, "touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus')", 'Temporary Status must wake live digital screens after public truth writes');
   [
-    ['src/app/api/public/create-menu/claim/route.ts', "revalidateTag('screen-data', { expire: 0 })", "touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim')"],
-  ].forEach(([relativePath, cacheNeedle, screenTouchNeedle]) => {
+    ['src/app/api/public/create-menu/claim/route.ts', "touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim')"],
+  ].forEach(([relativePath, screenTouchNeedle]) => {
     const source = read(relativePath);
-    assertIncludes(source, cacheNeedle, `${relativePath} must refresh digital screen SSR data after public truth writes`);
     assertIncludes(source, screenTouchNeedle, `${relativePath} must wake live digital screens after public truth writes`);
+    assertNotIncludes(source, "revalidateTag('screen-data'", `${relativePath} must avoid obsolete global screen cache fan-out`);
   });
   assertIncludes(outletPolicyRoute, 'runStorePublicTruthPostCommitEffects({', 'Outlet policy must isolate public-truth effects after commit');
   assertIncludes(outletPolicyRoute, 'touchDigitalScreenContentVersionForStoreServer(storeId, "outletPolicy")', 'Outlet policy must wake live digital screens after public truth writes');
-  assertIncludes(storePublicTruthPostCommit, "params.deps.revalidate('screen-data')", 'Shared store public-truth effects must refresh digital screen SSR data by default');
+  assertNotIncludes(storePublicTruthPostCommit, "params.deps.revalidate('screen-data')", 'Shared store public-truth effects must avoid obsolete global screen cache fan-out');
   [
     ['src/app/api/outlets/create/route.ts', "touchDigitalScreenContentVersionForStoreServer(\n                    effectStoreId,"],
     ['src/app/api/outlets/rename/route.ts', "touchDigitalScreenContentVersionForStoreServer(storeId, 'outletRename')"],
@@ -1163,6 +1161,8 @@ function verifyOBPThemeStorageLoggingIsBounded() {
   assertIncludes(component, 'themeLength: themeValue.length', 'OBP theme bounded theme context');
   assertIncludes(component, 'errorName: getBoundedErrorName(error) || typeof error', 'OBP theme bounded error context');
   assertIncludes(component, "logOBPThemeStorageFailure('read', error)", 'OBP theme read-failure diagnostics');
+  assertIncludes(component, "window.localStorage.removeItem(STORAGE_KEY)", 'OBP invalid theme eviction');
+  assertIncludes(component, "logOBPThemeStorageFailure('remove', error)", 'OBP theme cleanup-failure diagnostics');
   assertIncludes(component, "logOBPThemeStorageFailure('write', error, nextTheme)", 'OBP theme write-failure diagnostics');
   assertNotIncludes(component, '} catch {\n        return null;\n    }', 'OBP theme read must not silently return null');
   assertNotIncludes(component, 'Theme switching is a visual preference; keep the page usable if storage is blocked.', 'OBP theme write must not rely on silent localStorage comment');
@@ -1170,6 +1170,7 @@ function verifyOBPThemeStorageLoggingIsBounded() {
   assertNotIncludes(component, 'console.warn', 'OBP theme direct warn logging');
   assertIncludes(implDoc, 'OBP customer theme preference', 'OBP implementation doc theme preference boundary');
   assertIncludes(implDoc, 'not owner theme customization', 'OBP implementation doc owner-theme boundary');
+  assertIncludes(implDoc, 'read/remove/write', 'OBP implementation doc storage operation boundary');
   assertIncludes(implDoc, 'obp_theme_storage_*_failed', 'OBP implementation doc storage diagnostic boundary');
   assertIncludes(firebaseDoc, 'Theme preference diagnostics', 'OBP Firebase doc theme diagnostics boundary');
   assertIncludes(firebaseDoc, 'add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement', 'OBP Firebase doc cost-neutral theme diagnostics');
@@ -1428,6 +1429,8 @@ function verifyPublicMenuBreadcrumbLanguageLoggingIsBounded() {
 
 function verifyPublicMenuLanguageStorageLoggingIsBounded() {
   const component = read('src/components/templates/main-app/projects/b2cView/output/MenuLanguageSwitcher.tsx');
+  const publicRenderer = read('src/components/templates/website/clientWebsite/index.tsx');
+  const sessionState = read('src/lib/localization/publicMenuSessionState.ts');
   const readme = read('__docs__/client-menu/README.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -1435,6 +1438,7 @@ function verifyPublicMenuLanguageStorageLoggingIsBounded() {
 
   [
     'public_menu_language_storage_read_failed',
+    'public_menu_language_storage_remove_failed',
     'public_menu_language_storage_write_failed',
     'logMenuLanguageStorageFailure',
     'reportedMenuLanguageStorageFailures',
@@ -1442,6 +1446,9 @@ function verifyPublicMenuLanguageStorageLoggingIsBounded() {
     "getBoundedRuntimeStringContext('activeLanguage', context.activeLanguage)",
     'projectLanguageCount',
     'hasWindow: typeof window !== \'undefined\'',
+    'restoredStorageKeyRef.current !== languageStorageKey',
+    'getPublicMenuLanguageStorageKey(projectData?.projectId)',
+    'localStorage.removeItem(languageStorageKey)',
   ].forEach((token) => assertIncludes(component, token, 'Public menu language storage diagnostics'));
 
   [
@@ -1450,6 +1457,21 @@ function verifyPublicMenuLanguageStorageLoggingIsBounded() {
     'console.error',
     'console.warn',
   ].forEach((token) => assertNotIncludes(component, token, 'Public menu language storage silent/direct diagnostics'));
+
+  [
+    'getPublicMenuSessionStateKey(tenantId, storeId, projectStorageId, "activeLanguage")',
+    'const [restoredLanguageStorageKey, setRestoredLanguageStorageKey]',
+    'if (restoredLanguageStorageKey !== languageStorageKey) return;',
+    'public_menu_session_state_read_failed',
+    'public_menu_session_state_remove_failed',
+    'public_menu_session_state_write_failed',
+    'parsePublicMenuScrollY(raw)',
+    'removeSessionValue(scrollStorageKey)',
+  ].forEach((token) => assertIncludes(publicRenderer, token, 'Public menu session language transition boundary'));
+  assertIncludes(sessionState, 'normalizedTenantId', 'Public menu session state tenant partition');
+  assertIncludes(sessionState, 'normalizedStoreId', 'Public menu session state store partition');
+  assertIncludes(sessionState, 'normalizedProjectId', 'Public menu session state project partition');
+  assertNotIncludes(publicRenderer, 'projectData?.id || projectData?.slug || "default"', 'Public menu unsafe session key fallback');
 
   assertIncludes(readme, 'Language preference storage diagnostics', 'Client menu README language storage diagnostics');
   assertIncludes(firebaseDoc, 'Language preference storage diagnostics', 'Client menu Firebase language storage diagnostics');
@@ -1482,6 +1504,14 @@ function verifyPublicMenuFeedbackNudgeStorageLoggingIsBounded() {
     'console.error',
     'console.warn',
   ].forEach((token) => assertNotIncludes(component, token, 'Public menu feedback nudge storage silent/direct diagnostics'));
+
+  [
+    'const [visibleProjectId, setVisibleProjectId]',
+    'const [dismissedProjectId, setDismissedProjectId]',
+    'triggeredProjectIdRef.current === normalizedProjectId',
+    'visibleProjectId !== normalizedProjectId',
+    'dismissedProjectId === normalizedProjectId',
+  ].forEach((token) => assertIncludes(component, token, 'Public menu feedback nudge project transition isolation'));
 
   assertIncludes(readme, 'Feedback nudge storage diagnostics', 'Client menu README feedback nudge diagnostics');
   assertIncludes(firebaseDoc, 'Feedback nudge storage diagnostics', 'Client menu Firebase feedback nudge diagnostics');
@@ -1521,9 +1551,10 @@ function verifyPublicMenuExternalLinksAreNormalized() {
 
   [
     'normalizeOBPReviewUrl(reviewUrl)',
+    'normalizeGuestFeedbackProjectId(projectId)',
     'const safeReviewUrl = normalizeOBPReviewUrl(reviewUrl);',
     'href={safeReviewUrl || appendPublicLanguageParam(',
-    '`/feedback/${projectId}?source=menu_footer`,',
+    '`/feedback/${normalizedProjectId}?source=menu_footer`,',
     'activeLanguage,',
     "target={safeReviewUrl ? '_blank' : '_self'}",
   ].forEach((token) => assertIncludes(feedbackNudge, token, 'Public menu feedback review link normalization'));
@@ -1607,6 +1638,19 @@ function verifyOBPCustomerQuickAnswersAreVisibleAndBounded() {
   assertIncludes(hiIN, '"publicCustomerAnswersTitle"', 'hi-IN OBP customer quick answers locale');
   assertNotIncludes(enUS, 'It is always up to date.', 'OBP FAQ menu answer must not overclaim freshness');
   assertNotIncludes(hiIN, 'यह हमेशा अपडेट रहता है', 'OBP FAQ menu answer must not overclaim freshness');
+}
+
+function verifyOwnerPreviewProjectMetadataContractIsTyped() {
+  const renderer = read('src/components/templates/website/mainContentRenderer/index.tsx');
+
+  assertIncludes(
+    renderer,
+    "Project & Partial<Pick<ProjectSummaryData, 'projectImage' | 'slug'>>",
+    'Owner OBP preview project/summary composition type',
+  );
+  assertIncludes(renderer, 'const previewProjectSlug = projectData.slug', 'Owner OBP preview typed slug read');
+  assertIncludes(renderer, 'projectImage: projectData.projectImage', 'Owner OBP preview typed image read');
+  assertNotIncludes(renderer, '(projectData as any)', 'Owner OBP preview broad project cast');
 }
 
 function verifyPublicFaqSchemaFreshnessCopyIsBounded() {
@@ -1767,6 +1811,7 @@ function verifyPublicMenuAnalyticsLoggingIsBounded() {
   assertIncludes(sourceAttribution, 'isAbsoluteUrl: isAbsoluteAnalyticsUrl(url)', 'Analytics source attribution absolute-url metadata');
   assertIncludes(sourceAttribution, "hasQuery: url.includes('?')", 'Analytics source attribution query metadata');
   assertIncludes(sourceAttribution, "hasHash: url.includes('#')", 'Analytics source attribution hash metadata');
+  assertIncludes(sourceAttribution, 'logSourceAttributionFailure(error, url, entrySource);\n        return url;', 'Analytics source attribution parse failure must preserve the original URL');
   assertIncludes(analyticsImplDoc, 'Shared source-attribution diagnostics', 'Analytics implementation source attribution diagnostics');
   assertIncludes(analyticsFirebaseDoc, 'Source attribution diagnostics rule', 'Analytics Firebase source attribution diagnostics');
   assertIncludes(audit, 'Analytics source attribution URL diagnostics checkpoint', 'Production audit analytics source attribution checkpoint');
@@ -2648,7 +2693,7 @@ function verifyTruthAccuracyDominanceDocsMatchRuntime() {
   assertIncludes(docs.spec, 'public menu/OBP/Digital Screens browser and device QA', 'Truth Accuracy spec browser/device QA boundary');
   assertIncludes(docs.spec, 'Active runtime flag: `ENABLE_MCE: true`', 'Truth Accuracy spec runtime flag parity');
   assertIncludes(docs.spec, 'Public menu/OBP follow the 60-second public cache window', 'Truth Accuracy spec public cache boundary');
-  assertIncludes(docs.spec, 'Digital Screens use their own `screen-data` cache', 'Truth Accuracy spec digital screens cache boundary');
+  assertIncludes(docs.spec, 'Digital Screens use exact hashed-token state caching', 'Truth Accuracy spec digital screens cache boundary');
   assertIncludes(docs.spec, 'PDF artifacts, POS integrations, Google/third-party surfaces', 'Truth Accuracy spec external target boundary');
   assertIncludes(docs.spec, 'The cache window is not a universal freshness promise', 'Truth Accuracy spec freshness boundary');
   assertIncludes(docs.spec, 'External Certification Runbook', 'Truth Accuracy spec external certification boundary');
@@ -2658,13 +2703,13 @@ function verifyTruthAccuracyDominanceDocsMatchRuntime() {
   assertIncludes(docs.firebase, 'adds no new feature-specific Firebase collections, Firestore reads/writes/deletes, Storage operations, Cloud Functions, indexes, rules, schedulers, provider calls, or cache invalidation jobs', 'Truth Accuracy Firebase no-new-operations boundary');
   assertIncludes(docs.firebase, '`npm run verify:public-business-truth`', 'Truth Accuracy Firebase source verifier boundary');
   assertIncludes(docs.firebase, 'Public menu/OBP cache: current public cache tags and the 60-second public cache window', 'Truth Accuracy Firebase public cache boundary');
-  assertIncludes(docs.firebase, 'Digital Screens: separate `screen-data` cache and content-version listener path', 'Truth Accuracy Firebase digital screens boundary');
+  assertIncludes(docs.firebase, 'Digital Screens: exact hashed-token state cache, store-scoped menu cache, and content-version listener path', 'Truth Accuracy Firebase digital screens boundary');
   assertIncludes(docs.firebase, 'Downloaded or provider targets: require separate artifact/provider evidence before freshness claims', 'Truth Accuracy Firebase target evidence boundary');
 
   assertIncludes(docs.mobile, '**Status:** Source-gated mobile support reference; mobile QA still required', 'Truth Accuracy mobile source-gated status');
   assertIncludes(docs.mobile, 'Mobile release approval is not automatic.', 'Truth Accuracy mobile launch boundary');
   assertIncludes(docs.mobile, 'MCE runs on project update paths covered by the current source gates.', 'Truth Accuracy mobile MCE path boundary');
-  assertIncludes(docs.mobile, 'Public menu/OBP output follows the current public cache window; Digital Screens use the `screen-data` cache/listener path.', 'Truth Accuracy mobile public-output boundary');
+  assertIncludes(docs.mobile, 'Public menu/OBP output follows the current public cache window; Digital Screens use exact token/store cache tags and the content-version listener path.', 'Truth Accuracy mobile public-output boundary');
   assertIncludes(docs.mobile, 'mobile save/publish smoke, public menu/OBP viewport QA, Digital Screens device QA where relevant', 'Truth Accuracy mobile QA evidence boundary');
 
   assertIncludes(docs.audit, 'Truth & Accuracy Dominance source-boundary checkpoint', 'Production audit records Truth Accuracy checkpoint');
@@ -3578,7 +3623,7 @@ function verifyMultiOutletDiagnosticsAreBounded() {
   assertIncludes(brandPropagationRoute, 'multi_outlet_brand_propagation_failed', 'Multi-outlet brand propagation server diagnostics');
   assertIncludes(brandPropagationBoundary, 'hasDigitalScreenBrandPropagationFields', 'Multi-outlet screen-output change guard');
   assertIncludes(brandPropagationRoute, 'storeIds: [masterStoreScope.documentId, ...propagationResult.targetOutletIds]', 'Multi-outlet propagated screen refresh uses committed target outlets');
-  assertIncludes(brandPropagationRoute, 'includeScreenDataTag: refreshScreens', 'Multi-outlet propagated screen refresh keeps field-sensitive global invalidation');
+  assertNotIncludes(brandPropagationRoute, 'includeScreenDataTag', 'Multi-outlet propagated screen refresh avoids global screen invalidation');
   assertIncludes(brandPropagationRoute, "touchDigitalScreenContentVersionForStoreServer(storeId, 'brandPropagation')", 'Multi-outlet propagated screen refresh');
   assertIncludes(mobileMenu, 'mobile_menu_linked_outlet_resolve_failed', 'Mobile linked outlet resolve diagnostics');
   [
@@ -3732,7 +3777,7 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const desktopCustomDomain = read('src/components/templates/main-app/businessSettings/tabs/CustomDomainTab.tsx');
   const updateStoreBlock = storesDal.slice(storesDal.indexOf('export const updateStore'));
   const updateStoreSummaryIndex = updateStoreBlock.indexOf('transaction.set(summaryRef, {');
-  const updateStoreCacheIndex = updateStoreBlock.indexOf('await revalidatePublicClientCache(data.storeId, "updateStore");');
+  const updateStoreCacheIndex = updateStoreBlock.indexOf('await revalidatePublicClientCache(data.storeId, "updateStore", {');
 
   assertIncludes(diagnostics, 'secureError', 'Store data diagnostics secure logging');
   assertIncludes(diagnostics, 'getBoundedStoreStringContext', 'Store data diagnostics bounded string context');
@@ -3825,7 +3870,7 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertNotIncludes(storesDal, 'await syncStoreToSummary(data.storeId, {', 'Store update must not split canonical and summary writes');
   assertNotIncludes(tenantsDal, 'updateTenantsStoreslist', 'Tenant DAL must not expose stale whole-list replacement');
   assertIncludes(storesDal, 'DIGITAL_SCREEN_STORE_OUTPUT_FIELDS', 'Store update digital screen output-field guard');
-  assertIncludes(storesDal, 'await touchDigitalScreenContentVersion(data.storeId, "updateStore");', 'Store update digital screen refresh');
+  assertIncludes(storesDal, 'touchScreen: hasDigitalScreenStoreOutputFieldChanges(data)', 'Store update digital screen refresh');
   assert(updateStoreSummaryIndex !== -1 && updateStoreCacheIndex !== -1 && updateStoreSummaryIndex < updateStoreCacheIndex, 'Store update must transactionally write storesSummary before public cache revalidation');
   assertNotIncludes(storesDal, 'TrackingEvent.SUBDOMAIN_MUTATION_BLOCKED', 'Store subdomain block dead browser analytics signal');
   assertNotIncludes(storesDal, 'console.error(', 'Store DAL direct error logging');
@@ -5441,7 +5486,8 @@ function verifyHelpChatDiagnosticsAreBounded() {
   assertIncludes(diagnostics, 'sourceErrorName: getHelpChatErrorName(error)', 'HelpChat diagnostics source error name');
   assertIncludes(diagnostics, 'sourceErrorCode: getHelpChatErrorCode(error)', 'HelpChat diagnostics source error code');
   assertIncludes(diagnostics, 'sourceStatusCode: getHelpChatErrorStatus(error)', 'HelpChat diagnostics source error status');
-  assertIncludes(chatInput, 'help_chat_draft_clear_failed', 'HelpChat input draft clear diagnostics');
+  assertIncludes(chatInput, 'clearDraft(sessionId, draftScope)', 'HelpChat input failure-contained draft clear');
+  assertIncludes(chatInput, 'help_chat_draft_cleanup_failed', 'HelpChat input draft cleanup diagnostics');
   assertIncludes(chatInput, 'help_chat_draft_load_failed', 'HelpChat input draft load diagnostics');
   assertIncludes(chatInput, 'help_chat_draft_save_failed', 'HelpChat input draft save diagnostics');
   assertIncludes(chatUtils, 'help_chat_draft_clear_failed', 'HelpChat utility draft clear diagnostics');
@@ -6243,6 +6289,7 @@ verifyPublicMenuFeedbackNudgeStorageLoggingIsBounded();
 verifyPublicMenuExternalLinksAreNormalized();
 verifyPublicMenuFooterFreshnessLoggingIsBounded();
 verifyOBPCustomerQuickAnswersAreVisibleAndBounded();
+verifyOwnerPreviewProjectMetadataContractIsTyped();
 verifyPublicFaqSchemaFreshnessCopyIsBounded();
 verifyPublicMenuAnalyticsLoggingIsBounded();
 verifyClientMenuErrorBoundaryLoggingIsBounded();

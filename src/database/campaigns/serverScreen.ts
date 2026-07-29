@@ -13,7 +13,8 @@ import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { normalizePublicProjectSlug } from "@lib/publicRouting/pathSegments";
 import { normalizeMenuListPublicEntityIdentityAliases } from "@lib/publicTruth/entityEligibility";
 import { mergeSpecialMenuOverlayProjects } from "@lib/menu/specialMenuOverlay";
-import { extractScreenMenuItemsFromProject } from "@lib/screen/screenContent";
+import { extractScreenMenuItemsFromProject, resolveScreenNumberLocale } from "@lib/screen/screenContent";
+import { getPrivateScreenControlDocId } from "@lib/screen/privateScreenControl";
 import { isValidScreenToken } from "@lib/screen/utils";
 import { secureError } from "@lib/security/secureLogger";
 import {
@@ -95,21 +96,63 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
     try {
         if (!isValidScreenToken(token)) return null;
 
-        const snapshot = await firestoreAdmin
+        let controlSnapshot = await firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .where("screen.screenToken", "==", token)
+            .where("screenToken", "==", token)
             .limit(2)
             .get();
 
-        if (snapshot.size !== 1) return null;
-
-        const docSnap = snapshot.docs[0];
-        const data = docSnap.data() as CampaignsSummaryDocument;
-        if (!data.screen?.enabled || data.screen.screenToken !== token) return null;
-
-        const summaryIdMatch = docSnap.id.match(CAMPAIGN_SUMMARY_ID_PATTERN);
-        const storeId = summaryIdMatch?.[1] || '';
+        let storeId = "";
+        let privateControlTenantId = "";
+        if (controlSnapshot.size === 1) {
+            const controlDoc = controlSnapshot.docs[0];
+            const controlMatch = controlDoc.id.match(/^screenControl_(\d{1,20})$/);
+            const control = controlDoc.data();
+            storeId = controlMatch?.[1] || "";
+            privateControlTenantId = String(control.tenantId || "").trim();
+            if (
+                !storeId
+                || control.screenToken !== token
+                || String(control.storeId || "") !== storeId
+                || !privateControlTenantId
+            ) {
+                return null;
+            }
+        } else if (controlSnapshot.empty) {
+            // Compatibility window for token-bearing summaries that have not
+            // yet been migrated by the ordered rollout/backfill.
+            controlSnapshot = await firestoreAdmin
+                .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+                .where("screen.screenToken", "==", token)
+                .limit(2)
+                .get();
+            if (controlSnapshot.size !== 1) return null;
+            const legacyMatch = controlSnapshot.docs[0].id.match(CAMPAIGN_SUMMARY_ID_PATTERN);
+            storeId = legacyMatch?.[1] || "";
+        } else {
+            return null;
+        }
         if (!storeId) return null;
+
+        const screenSnap = await firestoreAdmin
+            .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+            .doc(`campaigns_${storeId}`)
+            .get();
+        if (!screenSnap.exists) return null;
+        const data = screenSnap.data() as CampaignsSummaryDocument;
+        const legacyToken = typeof data.screen?.screenToken === "string"
+            ? data.screen.screenToken
+            : "";
+        const privateControlExists = (
+            controlSnapshot.size === 1
+            && controlSnapshot.docs[0].id === getPrivateScreenControlDocId(storeId)
+        );
+        if (
+            !data.screen?.enabled
+            || (!privateControlExists && legacyToken !== token)
+        ) {
+            return null;
+        }
 
         const storeData = await getPublicStoreById(storeId);
         if (!storeData) return null;
@@ -119,6 +162,9 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
         ]);
         if (!tenantScope) return null;
         const tenantId = tenantScope.documentId;
+        if (privateControlTenantId && privateControlTenantId !== tenantId) {
+            return null;
+        }
 
         const activeSpecialMenuId = storeData?.activeSpecialMenuId || null;
         const projectionContext = getUsableScreenProjectionContext(data.screen?.menuProjection, {
@@ -152,6 +198,9 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
             }
         }
 
+        const currencyCode = typeof storeData?.currencyCode === "string" && storeData.currencyCode.trim()
+            ? storeData.currencyCode.trim().toUpperCase()
+            : "INR";
         const storeInfo = {
             name: getStoreContextName(storeData, storeData?.businessName || "Menu"),
             logoUrl: storeData?.logo || undefined,
@@ -160,7 +209,9 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
                 storeData?.customDomain,
                 selectedProjectSlug,
             ),
+            currencyCode,
             currencySymbol: storeData?.currencySymbol || "₹",
+            locale: resolveScreenNumberLocale(currencyCode, storeData?.defaultLanguage),
             activePlanType: storeData?.activePlanType || null,
         };
 

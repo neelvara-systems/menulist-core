@@ -33,12 +33,14 @@ defect, user-experience problem, or customer-journey failure.
 ## Documentation Decision
 
 - Keep the existing entity-ranked, completed-window review surface.
-- In the later code pass, expose the deterministic ticket,
-  negative-feedback, escalation, and canonical-miss breakdown already retained
-  in daily rows.
+- Expose the deterministic ticket, negative-feedback, escalation, and
+  canonical-miss breakdown already retained in daily rows: implemented.
 - Replace owner-facing `questions` language with `support-evidence events`.
 - Present the aggregate label as support-evidence load, with its components,
   rather than an unexplained product-friction judgment.
+- Preserve a selected Daily Brief entity, provide a read-only Knowledge Map
+  handoff for each ranked area, and render validated entity-specific advisory
+  actions as review links rather than mutations: implemented.
 - Validate workflow hierarchy, release comparison, and owner-confirmed reason
   classification with real founder workspaces before development.
 - Do not add session replay, product-event tracking, funnel analytics,

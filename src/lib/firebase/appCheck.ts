@@ -40,7 +40,10 @@ function isLocalOrPreviewHost(hostname: string): boolean {
 
 // Debug token for local development - opt-in only
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development' && appCheckDebugToken) {
-    (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN =
+    const debugWindow = window as Window & {
+        FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string;
+    };
+    debugWindow.FIREBASE_APPCHECK_DEBUG_TOKEN =
         appCheckDebugToken === 'true' ? true : appCheckDebugToken;
 }
 

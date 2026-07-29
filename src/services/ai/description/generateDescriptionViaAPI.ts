@@ -9,12 +9,6 @@ import {
 
 const DESCRIPTION_GENERATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
-type DescriptionGenerationApiResponse = {
-    data?: DescriptionGenerationResult | null;
-    remainingBalance?: unknown;
-    transaction?: unknown;
-};
-
 async function getDescriptionsViaAPI({ itemsList, targetLang, sourceLang, action, projectId, fileId, contentLength, tone = 'Professional', operationRequestCount }: DescriptionAPIParams): Promise<DescriptionGenerationResult | null> {
     try {
         const payload = {
@@ -42,7 +36,7 @@ async function getDescriptionsViaAPI({ itemsList, targetLang, sourceLang, action
             throw createAiServiceHttpError('ai_description_request_failed', response);
         }
 
-        const responseJson = await readAiServiceResponseJson<DescriptionGenerationApiResponse>(response, {
+        const responseJson = await readAiServiceResponseJson(response, {
             context: {
                 ...getBoundedAiServiceStringContext('projectId', projectId),
                 ...getBoundedAiServiceStringContext('fileId', fileId),

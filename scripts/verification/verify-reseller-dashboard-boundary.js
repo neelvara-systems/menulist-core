@@ -68,6 +68,10 @@ function verifyReadRateLimit(helper) {
     "'Retry-After': String(waitSeconds)",
     "'X-RateLimit-Limit': String(rateLimitConfig.limit)",
     "'X-RateLimit-Remaining': String(rateLimit.remaining)",
+    'export const withResellerPrivateHeaders = <T extends NextResponse>(response: T): T => {',
+    'failClosedOnProviderError: true',
+    "rateLimit.reason === 'provider_unavailable'",
+    "status: rateLimit.reason === 'provider_unavailable' ? 503 : 429",
   ].forEach((token) => assertIncludes(helper, token, 'Reseller read rate limiter'));
 
   [
@@ -86,6 +90,12 @@ function verifyCommonMutationRoute(route, routeLabel, schemaName, rateLimitKey) 
     "getRateLimitForFeature('DATA_WRITE')",
     'const resellerRateLimitHash = hashPublicRateLimitValue(resellerId);',
     `key: \`${rateLimitKey}:\${resellerRateLimitHash}\``,
+    'failClosedOnProviderError: true',
+    "rateLimitResult.reason === 'provider_unavailable'",
+    "status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429",
+    'withResellerPrivateHeaders',
+    'return resellerPrivateJson(',
+    'if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);',
     'readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES',
     `validateAPIInput(${schemaName}, bodyResult.data)`,
     'getBoundedResellerApiStringContext',
@@ -105,6 +115,7 @@ function verifyCommonMutationRoute(route, routeLabel, schemaName, rateLimitKey) 
     'request.json()',
     'console.error',
     'error.message',
+    'NextResponse.json',
     `key: \`${rateLimitKey}:\${resellerId}\``,
   ].forEach((token) => assertNotIncludes(route, token, `${routeLabel} boundary`));
 }
@@ -128,6 +139,11 @@ function verifyManageRoute(route) {
     "getRateLimitForFeature('DATA_WRITE')",
     'const userRateLimitHash = hashPublicRateLimitValue(session.user.id);',
     'key: `reseller-manage:${userRateLimitHash}`',
+    'failClosedOnProviderError: true',
+    "rateLimitResult.reason === 'provider_unavailable'",
+    "status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429",
+    'ReturnType<typeof resellerPrivateJson> | null',
+    'if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);',
     'readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES',
     'validateAPIInput(UpdateResellerSchema, body)',
     'validateAPIInput(CreateResellerSchema, body)',
@@ -185,6 +201,7 @@ function verifyManageRoute(route) {
     'request.json()',
     'console.error',
     'error.message',
+    'NextResponse.json',
     'key: `reseller-manage:${session.user.id}`',
     "profileId: z.string().trim().min(1).max(128).refine(isValidFirestoreDocumentId, 'Invalid profile ID')",
     "profileId: z.string().trim().min(1).max(128).refine((value) => !value.includes('/'))",

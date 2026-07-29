@@ -45,6 +45,11 @@ import {
   OwnerBusinessAssistantAnswerRequestSchema,
   OwnerBusinessAssistantFeedbackRequestSchema,
 } from '@lib/ownerBusinessAssistant/schemas';
+import {
+  projectOwnerBusinessAssistantAnalyticsResponse,
+  projectOwnerBusinessAssistantCurrentResponse,
+  projectOwnerBusinessAssistantLocationsResponse,
+} from '@lib/ownerBusinessAssistant/clientResponses';
 
 const repoRoot = process.cwd();
 
@@ -111,6 +116,13 @@ const health: OwnerBusinessHealthCurrentDoc = {
     chatHotPathReadCount: 2,
   },
 };
+
+assert.deepEqual(projectOwnerBusinessAssistantCurrentResponse({ data: health }), { data: health });
+assert.equal(projectOwnerBusinessAssistantCurrentResponse({ data: { ...health, version: '1' } }), null);
+assert.deepEqual(projectOwnerBusinessAssistantAnalyticsResponse({ data: null }), { data: null });
+assert.equal(projectOwnerBusinessAssistantAnalyticsResponse({ data: [] }), null);
+assert.deepEqual(projectOwnerBusinessAssistantLocationsResponse({ data: { stores: [] } }), { data: { stores: [] } });
+assert.equal(projectOwnerBusinessAssistantLocationsResponse({ data: { stores: [{}] } }), null);
 
 const answerKey = buildOwnerBusinessAssistantPacketCacheKey({
   tId: 1,
@@ -329,6 +341,23 @@ assert.equal(
   null,
   'unsupported custom date ranges must not fall back to today',
 );
+assert.equal(
+  resolveOwnerBusinessAnalyticsPeriod('how are we doing this month so far', {
+    periods: {
+      thisMonth: lastMonthPeriod,
+      today: { ...lastMonthPeriod, label: 'Today' },
+    },
+  }),
+  lastMonthPeriod,
+  'an explicit named period must win over the generic so-far phrase',
+);
+assert.equal(
+  resolveOwnerBusinessAnalyticsPeriod('show last month from June 1 to June 5', {
+    periods: { lastMonth: lastMonthPeriod },
+  }),
+  null,
+  'an unsupported explicit date range must not be replaced by a named-period match',
+);
 
 const threadStore = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/threadStore.ts'), 'utf8');
 assert.match(threadStore, /MAX_MESSAGES_PER_THREAD = 20/);
@@ -478,10 +507,13 @@ assert.match(locationsHook, /selectedStoreScope/);
 assert.match(locationsHook, /resolveOwnerBusinessAssistantClientScope\(session, storeScopeKey\)/);
 assert.match(locationsHook, /params\.set\('storeId', clientScope\.storeId\)/);
 assert.match(locationsHook, /\[url, clientScope\.tenantId, clientScope\.storeId\] as const/);
-assert.match(locationsHook, /fallbackData: cached/);
+assert.match(locationsHook, /fallbackData: cached \|\| undefined/);
 assert.match(locationsHook, /shouldRevalidate/);
 assert.match(locationsHook, /browserReadModelTtlMs/);
 assert.match(locationsHook, /readOwnerBusinessAssistantLocationsResponse/);
+assert.match(locationsHook, /getCachedData<unknown>/);
+assert.match(locationsHook, /projectOwnerBusinessAssistantLocationsResponse\(cachedValue\)/);
+assert.match(locationsHook, /cachedValue !== undefined && !cached\) removeCachedData\(cacheKey\)/);
 assert.match(locationsHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
 assert.match(locationsHook, /getBoundedRuntimeStringContext/);
 assert.doesNotMatch(locationsHook, /response\.json\(\)/);
@@ -491,6 +523,9 @@ assert.match(currentHook, /browserReadModelTtlMs/);
 assert.match(currentHook, /resolveOwnerBusinessAssistantClientScope\(session, storeScopeKey\)/);
 assert.match(currentHook, /params\.set\('storeId', clientScope\.storeId\)/);
 assert.match(currentHook, /readOwnerBusinessAssistantCurrentResponse/);
+assert.match(currentHook, /getCachedData<unknown>/);
+assert.match(currentHook, /projectOwnerBusinessAssistantCurrentResponse\(cachedValue\)/);
+assert.match(currentHook, /cachedValue !== undefined && !cached\) removeCachedData\(cacheKey\)/);
 assert.match(currentHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
 assert.match(currentHook, /getBoundedRuntimeStringContext/);
 assert.doesNotMatch(currentHook, /response\.json\(\)/);
@@ -506,6 +541,9 @@ assert.match(analyticsHook, /browserReadModelTtlMs/);
 assert.match(analyticsHook, /resolveOwnerBusinessAssistantClientScope\(session, storeScopeKey\)/);
 assert.match(analyticsHook, /params\.set\('storeId', clientScope\.storeId\)/);
 assert.match(analyticsHook, /readOwnerBusinessAssistantAnalyticsResponse/);
+assert.match(analyticsHook, /getCachedData<unknown>/);
+assert.match(analyticsHook, /projectOwnerBusinessAssistantAnalyticsResponse\(cachedValue\)/);
+assert.match(analyticsHook, /cachedValue !== undefined && !cached\) removeCachedData\(cacheKey\)/);
 assert.match(analyticsHook, /OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY/);
 assert.match(analyticsHook, /getBoundedRuntimeStringContext/);
 assert.doesNotMatch(analyticsHook, /response\.json\(\)/);
@@ -684,6 +722,7 @@ const threadIdBoundary = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssis
 const threadStoreSource = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/threadStore.ts'), 'utf8');
 const answerEventLoggerSource = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/server/answerEventLogger.ts'), 'utf8');
 const answerHookSource = readFileSync(join(repoRoot, 'src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts'), 'utf8');
+const clientScopeSource = readFileSync(join(repoRoot, 'src/lib/ownerBusinessAssistant/clientScope.ts'), 'utf8');
 const ownerBusinessAssistantImplDoc = readFileSync(join(repoRoot, '__docs__/owner-business-assistant/owner-business-assistant_impl.md'), 'utf8');
 const ownerBusinessAssistantFirebaseDoc = readFileSync(join(repoRoot, '__docs__/owner-business-assistant/owner-business-assistant_firebase.md'), 'utf8');
 const ownerBusinessAssistantValidationDoc = readFileSync(join(repoRoot, '__docs__/owner-business-assistant/owner-business-assistant_validation.md'), 'utf8');
@@ -740,6 +779,10 @@ assert.match(threadStoreSource, /if \(!threadId\) return undefined;/);
 assert.match(answerHookSource, /const readStoredThreadId/);
 assert.match(answerHookSource, /normalizeOwnerBusinessAssistantThreadId\(window\.localStorage\.getItem\(storageKey\)\)/);
 assert.match(answerHookSource, /normalizeOwnerBusinessAssistantThreadId\(answerData\.threadId\)/);
+assert.match(clientScopeSource, /resolveCurrentSessionUserDocumentId\(session\)/);
+assert.match(clientScopeSource, /ownerBusinessAssistant-thread:\$\{scope\.cacheScope\}:\$\{encodeURIComponent\(scope\.actorId\)\}/);
+assert.match(threadHook, /\[url, clientScope\.cacheScope, clientScope\.actorId\] as const/);
+assert.match(answerHookSource, /session\?\.uId, session\?\.user\?\.id/);
 assert.doesNotMatch(requestSchemas, /OwnerBusinessAssistantAction/);
 assert.doesNotMatch(requestSchemas, /targetKind/);
 [

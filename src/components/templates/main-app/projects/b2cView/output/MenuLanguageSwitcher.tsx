@@ -8,11 +8,12 @@ import {
     createPublicCustomerTranslator,
     getPublicCustomerLanguageDirection,
 } from '@lib/localization/publicCustomerMessages';
+import { getPublicMenuLanguageStorageKey } from '@lib/localization/publicMenuLanguagePreference';
 import { Project } from '../../types';
 import { MenuMoodConfig } from '../designSystem';
 import { menuFadeTransition, menuPanelMotion, menuSpringTransition } from './menuMotion';
 
-type MenuLanguageStorageOperation = 'read' | 'write';
+type MenuLanguageStorageOperation = 'read' | 'remove' | 'write';
 
 const reportedMenuLanguageStorageFailures = new Set<MenuLanguageStorageOperation>();
 
@@ -42,7 +43,9 @@ function logMenuLanguageStorageFailure(
     const projectLanguageCount = Number(context.projectLanguageCount || 0);
     const failureCode = operation === 'read'
         ? 'public_menu_language_storage_read_failed'
-        : 'public_menu_language_storage_write_failed';
+        : operation === 'remove'
+            ? 'public_menu_language_storage_remove_failed'
+            : 'public_menu_language_storage_write_failed';
 
     logRuntimeFailure(failureCode, error, {
         operation,
@@ -69,13 +72,12 @@ function MenuLanguageSwitcher({
     const [mounted, setMounted] = useState(false);
     const [anchorPosition, setAnchorPosition] = useState({ top: 64, right: 12 });
     const triggerRef = useRef<HTMLButtonElement | null>(null);
-    const didCheckStoredLanguageRef = useRef(false);
+    const restoredStorageKeyRef = useRef<string | null>(null);
     const hasMultipleLanguages = projectData.languages?.length > 1;
     const currentLangCode = activeLanguage?.toUpperCase().slice(0, 2) || 'EN';
     const languageStorageKey = useMemo(() => {
-        const projectId = projectData?.projectId || (projectData as any)?.id || (projectData as any)?.slug;
-        return projectId ? `menulist_preferred_language_${projectId}` : null;
-    }, [projectData?.projectId, (projectData as any)?.id, (projectData as any)?.slug]);
+        return getPublicMenuLanguageStorageKey(projectData?.projectId);
+    }, [projectData?.projectId]);
 
     useEffect(() => {
         setMounted(true);
@@ -94,7 +96,12 @@ function MenuLanguageSwitcher({
 
     useEffect(() => {
         if (activeLanguage && languageStorageKey) {
-            if (restoreStoredLanguage && !didCheckStoredLanguageRef.current) return;
+            if (
+                restoreStoredLanguage
+                && restoredStorageKeyRef.current !== languageStorageKey
+            ) {
+                return;
+            }
             try {
                 localStorage.setItem(languageStorageKey, activeLanguage);
             } catch (error) {
@@ -110,7 +117,7 @@ function MenuLanguageSwitcher({
 
     useEffect(() => {
         if (!restoreStoredLanguage || !languageStorageKey) {
-            didCheckStoredLanguageRef.current = true;
+            restoredStorageKeyRef.current = languageStorageKey;
             return;
         }
 
@@ -118,6 +125,17 @@ function MenuLanguageSwitcher({
             const savedLang = localStorage.getItem(languageStorageKey);
             if (savedLang && projectData.languages?.includes(savedLang) && savedLang !== activeLanguage) {
                 setActiveLanguage(savedLang);
+            } else if (savedLang && !projectData.languages?.includes(savedLang)) {
+                try {
+                    localStorage.removeItem(languageStorageKey);
+                } catch (error) {
+                    logMenuLanguageStorageFailure('remove', error, {
+                        languageStorageKey,
+                        activeLanguage,
+                        projectLanguageCount: projectData.languages?.length || 0,
+                        restoreStoredLanguage,
+                    });
+                }
             }
         } catch (error) {
             logMenuLanguageStorageFailure('read', error, {
@@ -127,10 +145,16 @@ function MenuLanguageSwitcher({
                 restoreStoredLanguage,
             });
         } finally {
-            didCheckStoredLanguageRef.current = true;
+            restoredStorageKeyRef.current = languageStorageKey;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [projectData.languages, restoreStoredLanguage, languageStorageKey]);
+    }, [
+        activeLanguage,
+        languageStorageKey,
+        projectData.languages,
+        projectData.languages?.length,
+        restoreStoredLanguage,
+        setActiveLanguage,
+    ]);
 
     const toggleDropdown = () => {
         if (!showLangDropdown) {

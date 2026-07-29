@@ -2,7 +2,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { FEATURE_FLAGS } from "@config/features";
 import {
     SIGNALDESK_BASE_PATH,
-    SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH,
+    SIGNALDESK_SHORT_ALIAS_PATH,
 } from "@constant/signaldesk/routes";
 import { authOptions } from "@lib/auth";
 import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
@@ -44,14 +44,14 @@ export const viewport: Viewport = {
 
 async function getSignalDeskBasePath(): Promise<string> {
     const basePath = (await headers()).get("x-product-base-path");
-    return basePath === SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
-        ? SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
+    return basePath === SIGNALDESK_SHORT_ALIAS_PATH
+        ? SIGNALDESK_SHORT_ALIAS_PATH
         : SIGNALDESK_BASE_PATH;
 }
 
 function getSignalDeskSigninPath(basePath: string): string {
-    return basePath === SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH
-        ? `${SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH}/signin`
+    return basePath === SIGNALDESK_SHORT_ALIAS_PATH
+        ? `${SIGNALDESK_SHORT_ALIAS_PATH}/signin`
         : `${SIGNALDESK_BASE_PATH}/signin`;
 }
 

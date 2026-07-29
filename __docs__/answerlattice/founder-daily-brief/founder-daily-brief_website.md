@@ -1,6 +1,6 @@
 # Founder Daily Brief Website Copy
 
-> **Publication status:** Hold the new quiet-state and strict qualification claims until the Feature 1 code-level acceptance tests pass.
+> **Publication status:** Source-verified for public capability copy. Hosted QA remains a release-evidence gate and must not be described as completed.
 
 ## Approved Public Copy
 
@@ -12,7 +12,7 @@ Answerlattice turns governed support evidence into a short daily plan: current a
 
 Start with a daily support brief.
 
-See the smallest useful support plan for today, or a clear quiet state when nothing needs your decision. Then ask follow-up questions about answer risk, support gaps, release impact, setup safety, and cost guardrails. It reads summaries and stays read-only.
+See up to four qualified current decisions, or a clear quiet state when complete evidence needs no action. It reads compact summaries, stays read-only, and routes you to the governed review screen.
 
 ## Boundary Copy
 
@@ -22,4 +22,5 @@ The brief is summary-only. It does not publish answers, close tickets, rewrite s
 
 - Product page founder controls section.
 - Support Control product page.
+- Homepage owner-decision section, after the approved-answer support loop.
 - FAQ under operations/runtime safety.

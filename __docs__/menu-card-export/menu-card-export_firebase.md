@@ -114,7 +114,7 @@ Preflight runs inside preview/final export and also does not write. Its warnings
 
 The route uses `getExistingProjectsListWithoutLoader()` instead of the legacy auto-creating project list helper. If a store has no menus, the route shows an empty state and does not create a default project.
 
-`ENABLE_MENU_CARD_EXPORT_HISTORY=false` disables the local history UI and skips browser `localStorage` history writes. The default enabled history path remains device-local only and does not create Firebase cost. Its key includes tenant, store, and project scope; project-only legacy keys are not read. Browser quota/privacy rejection is best-effort and cannot overturn an already delivered file.
+`ENABLE_MENU_CARD_EXPORT_HISTORY=false` disables the local history UI and skips browser `localStorage` history writes. The default enabled history path remains device-local only and does not create Firebase cost. Its key includes tenant, store, and project scope; project-only legacy keys are not read. Stored records are re-projected through their exact bounded DTO and corrupt envelopes are evicted. The legacy quick-PDF freshness marker admits only canonical, positive, safe-integer, non-future millisecond timestamps. Browser quota/privacy rejection is best-effort and cannot overturn an already delivered file.
 
 ### Final Export
 

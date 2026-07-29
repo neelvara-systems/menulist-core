@@ -42,6 +42,8 @@ assertIncludes(hook, 'const syncingInFlightRef = useRef(false);', 'synchronous s
 
 assertIncludes(functionsIndex, 'answerlatticeSupportBoardSummaryOnWrite', 'live summary trigger export');
 assertIncludes(summary, 'loadAnswerlatticeSupportBoardCoreCounts', 'exact live board counts');
+assertIncludes(summary, 'resolvedHighPrioritySnapshot', 'resolved high-priority exclusion');
+assertIncludes(summary, 'highPriorityCards - resolvedHighPriorityCards', 'open high-priority count');
 assertIncludes(summary, ".where('pId', '==', PRODUCT_ID)", 'live count product partition');
 assertIncludes(summary, "scoped.where('priority', '==', HIGH_PRIORITY).count().get()", 'high-priority aggregate count');
 assertIncludes(summary, 'count_fields_unchanged', 'note-only summary skip');

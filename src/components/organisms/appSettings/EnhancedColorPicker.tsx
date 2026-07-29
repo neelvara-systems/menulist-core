@@ -1,7 +1,7 @@
 import SelectedItemCheck from '@atoms/selectedItemCheck';
 import { getColorDescription } from '@constant/colorMetadata';
 import { useRecentColors } from '@hook/useRecentColors';
-import { convertRGBtoOBJ, hexToRgbA } from '@util/utils';
+import { hexToRgbA } from '@util/utils';
 import { ColorPicker as AntColorPicker, Button, Flex, Tooltip, Typography } from 'antd';
 import { Color } from 'antd/es/color-picker';
 import { Fragment, memo } from 'react';
@@ -22,10 +22,12 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
     onSelect
 }) => {
     const {
+        recentColors,
         favoriteColors,
         addRecentColor,
         toggleFavorite,
-        isFavorite
+        isFavorite,
+        clearRecent,
     } = useRecentColors();
 
     // Handler for colors from Presets or Custom Picker (adds to recent)
@@ -75,6 +77,37 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                 />
             </Flex>
 
+            {/* Recent Colors */}
+            {recentColors.length > 0 && (
+                <Flex vertical gap={8}>
+                    <Flex justify="space-between" align="center">
+                        <Text strong>Recent Colors</Text>
+                        <Button onClick={clearRecent} size="small" type="text">
+                            Clear
+                        </Button>
+                    </Flex>
+                    <Flex className={`${styles.skeletonWrap} ${styles.colors}`}>
+                        {recentColors.map((color: string) => (
+                            <Tooltip key={color} title={`${color}\nClick to select`}>
+                                <Button
+                                    aria-label={`Select recent ${color} color`}
+                                    className={styles.colorElement}
+                                    onClick={() => handleRecentOrFavoriteClick(color)}
+                                    style={{
+                                        background: hexToRgbA(color, 0.6),
+                                        borderColor: color,
+                                        position: 'relative',
+                                    }}
+                                >
+                                    <SelectedItemCheck active={selectedColor === color} />
+                                    <span style={{ background: color, borderRadius: 4 }} />
+                                </Button>
+                            </Tooltip>
+                        ))}
+                    </Flex>
+                </Flex>
+            )}
+
             {/* Favorite Colors */}
             {favoriteColors.length > 0 && (
                 <Flex vertical gap={8}>
@@ -83,8 +116,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                         <LuHeart style={{ fontSize: 16, color: '#ff4d4f' }} />
                     </Flex>
                     <Flex className={`${styles.skeletonWrap} ${styles.colors}`}>
-                        {favoriteColors.map((color: string, i: number) => {
-                            const rgbaColors: any = convertRGBtoOBJ(hexToRgbA(color));
+                        {favoriteColors.map((color: string) => {
                             const isSelected = selectedColor === color;
                             const colorMeta = getColorDescription(color);
                             
@@ -93,7 +125,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                                 : `${color}\nDouble-click to remove from favorites`;
 
                             return (
-                                <Fragment key={i}>
+                                <Fragment key={color}>
                                     <Tooltip title={tooltipText}>
                                         <Button
                                             className={styles.colorElement}
@@ -101,7 +133,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                                             onDoubleClick={() => toggleFavorite(color)}
                                             aria-label={`Select ${color} color`}
                                             style={{
-                                                background: `rgba(${rgbaColors.r}, ${rgbaColors.g}, ${rgbaColors.b}, 0.6)`,
+                                                background: hexToRgbA(color, 0.6),
                                                 borderColor: color,
                                                 position: 'relative'
                                             }}
@@ -135,7 +167,6 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                 <Text strong>Color Presets</Text>
                 <Flex className={`${styles.skeletonWrap} ${styles.colors}`}>
                     {colors.map((color: string, i: number) => {
-                        const rgbaColors: any = convertRGBtoOBJ(hexToRgbA(color));
                         const isSelected = selectedColor === color;
                         const isFav = isFavorite(color);
                         const colorMeta = getColorDescription(color);
@@ -146,7 +177,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                             : `${color}\n${isFav ? 'Double-click to remove from favorites' : 'Double-click to add to favorites'}`;
 
                         return (
-                            <Fragment key={i}>
+                            <Fragment key={`${color}-${i}`}>
                                 <Tooltip title={tooltipText}>
                                     <Button
                                         className={styles.colorElement}
@@ -154,7 +185,7 @@ const EnhancedColorPicker: React.FC<EnhancedColorPickerProps> = ({
                                         onDoubleClick={() => toggleFavorite(color)}
                                         aria-label={`Select ${color} color`}
                                         style={{
-                                            background: `rgba(${rgbaColors.r}, ${rgbaColors.g}, ${rgbaColors.b}, 0.6)`,
+                                            background: hexToRgbA(color, 0.6),
                                             borderColor: color,
                                             position: 'relative'
                                         }}

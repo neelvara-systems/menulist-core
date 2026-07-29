@@ -21,7 +21,7 @@ It answers one operational question:
 - Shows `shortBuildId · env` (example: `a1b2c3d · preview`)
 - Includes:
   - `Build: <date-time>` when `/api/version` returns a valid `buildCreatedAt`
-  - Tenant/store identity when the owner shell has stored deployment identity context
+  - Tenant/store identity when the owner shell has stored an exact bounded deployment identity context
 - Visible when any of these triggers are used:
   - URL contains `?v=1` (or `?v=true`)
   - Long-press **More** tab in mobile nav
@@ -87,6 +87,7 @@ Expected:
 - First line: `<shortBuildId> · <env>`
 - Optional second line: `Build: <date-time>`
 - Optional tenant/store lines appear only when deployment identity context exists in session storage
+- The session identity DTO contains only projected tenant/store IDs and names. IDs are capped at 128 characters, names at 200 characters, control characters and non-finite numeric IDs are rejected, and malformed/corrupt values are removed before rendering.
 
 ### 2) Ground-truth server verification
 
@@ -116,7 +117,8 @@ If they do not match, you are seeing a stale client state (usually cache/service
 3. Browser consumers call `/api/version` through the shared no-store, same-origin, manual-redirect request policy.
 4. Browser consumers parse `/api/version` through the shared 8KB bounded response guard before trusting the payload.
 5. Malformed, oversized, or shape-invalid version responses fail quiet and keep owner work uninterrupted.
-6. Badge can be disabled without code change by setting:
+6. Denied session storage never blocks the owner shell or badge; the badge falls back to build-only output and records bounded development diagnostics.
+7. Badge can be disabled without code change by setting:
 - `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE=false`
 
 ---

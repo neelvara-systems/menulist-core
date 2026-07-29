@@ -23,6 +23,7 @@ import { resolveStorePublicLanguage } from '@lib/localization/publicRenderLangua
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveDomain, type ResolvedDomain } from '@lib/multiTenant/domainResolver';
 import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
+import { normalizePublicAccentColor } from '@lib/obp/accentColor';
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl } from '@lib/obp/publicLinks';
 import { getCustomerAppIconVersion } from '@lib/pwa/customerAppAssets';
 import { getStoreManifestStartUrl } from '@lib/pwa/manifestIdentity';
@@ -191,7 +192,7 @@ export async function GET() {
 
         // Theme + description pulled from publicPresence (the existing OBP-facing
         // branding surface). Falls back to sensible defaults in buildManifest().
-        const themeColor: string | undefined = store.publicPresence?.accentColor;
+        const themeColor = normalizePublicAccentColor(store.publicPresence?.accentColor) || undefined;
 
         // Shortcut info — only include actions that the owner has explicitly
         // enabled for public presence. Matches OBP quick-actions visibility.

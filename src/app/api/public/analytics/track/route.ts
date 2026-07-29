@@ -35,6 +35,7 @@ const AnalyticsTrackSchema = z.object({
     dateString: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     storeTimeZone: z.string().trim().max(80).optional(),
     businessDayEndTime: z.string().trim().regex(/^\d{2}:\d{2}$/).optional(),
+    deliveryId: z.string().regex(/^[a-z0-9]{32}$/),
     updateData: z.record(
         z.string().min(1).max(180),
         AnalyticsValueSchema,
@@ -254,6 +255,7 @@ async function postAnalyticsTrack(req: NextRequest) {
             dateString: trustedDateString,
             storeTimeZone: validTarget.storeTimeZone,
             businessDayEndTime: validTarget.businessDayEndTime,
+            deliveryId: data.deliveryId,
         });
 
         return NextResponse.json({ success: true });

@@ -12,6 +12,7 @@ const phoneOtpVerify = read('src/app/api/auth/phone-otp/verify/route.ts');
 const claimAccount = read('src/app/api/auth/claim-account/route.ts');
 const validateClaim = read('src/app/api/auth/validate-claim/route.ts');
 const loginPage = read('src/components/templates/loginPage/index.tsx');
+const loginProviders = read('src/providers/loginProviders.tsx');
 const setClaimsRoute = read('src/app/api/auth/set-claims/route.ts');
 const setClaimsWorkspace = read('src/lib/auth/setClaimsWorkspace.ts');
 const serverUserContext = read('src/lib/auth/serverUserContext.ts');
@@ -37,6 +38,9 @@ assert.doesNotMatch(claimAccount, /normalizeOnboardingUserId\(session\.user\.id\
 assert.match(loginPage, /const claimProcessingRef = useRef\(false\);/);
 assert.match(loginPage, /if \(pendingClaim && claimProcessingRef\.current\) return;/);
 assert.doesNotMatch(loginPage, /\[sessionData, router, claimProcessing, dispatch, updateSession\]/);
+assert.match(loginProviders, /<AntdThemeProvider>/);
+assert.doesNotMatch(loginProviders, /ensureReduxContext/);
+assert.doesNotMatch(loginProviders, /useEffect|useState|isMounted/);
 
 assert.match(setClaimsWorkspace, /export const resolveSetClaimsRole/);
 assert.match(setClaimsWorkspace, /@lib\/permissions\/scopeDocumentId/);

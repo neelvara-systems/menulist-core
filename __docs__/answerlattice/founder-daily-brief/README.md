@@ -14,7 +14,8 @@ The externally proposed name `Owner Action Center` describes this feature's job,
 - Six-summary, zero-write brief: implemented.
 - Permission filtering and bounded browser response: implemented.
 - Highest-friction entity projection: implemented.
-- Strict evidence qualification and true quiet state: documented target; code pass pending.
+- Strict evidence qualification and true quiet state: implemented and locally verified.
+- Entity-focused friction handoff and canonical-coverage repair route: implemented and locally verified.
 - Persistent owner-action lifecycle: rejected.
 
 ## Documents

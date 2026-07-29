@@ -11,14 +11,16 @@ import {
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
+    withAnswerlatticeKnowledgeIntakePrivateHeaders,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { readBoundedFormDataBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
 import { ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS } from '@type/answerlattice';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
@@ -73,12 +75,12 @@ const inferMimeType = (fileName: string, providedType: string) => {
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_MEDIA_EXTRACTION) {
-        return NextResponse.json({ error: 'Screenshot and media extraction is not enabled.' }, { status: 404 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Screenshot and media extraction is not enabled.' }, { status: 404 });
     }
 
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
     if (!jobId) {
-        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Invalid knowledge intake job.' }, { status: 400 });
     }
 
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -94,19 +96,21 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             invalidFormDataMessage: 'Upload a supported screenshot, audio, or video file.',
             tooLargeMessage: `File is too large. Maximum intake media size is ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB.`,
         });
-        if (formDataResult.ok === false) return formDataResult.response;
+        if (formDataResult.ok === false) {
+            return withAnswerlatticeKnowledgeIntakePrivateHeaders(formDataResult.response);
+        }
 
         const formData = formDataResult.formData;
         const file = formData.get('file');
         if (!(file instanceof File)) {
-            return NextResponse.json({ error: 'Upload a supported screenshot, audio, or video file.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'Upload a supported screenshot, audio, or video file.' }, { status: 400 });
         }
 
         if (file.size <= 0) {
-            return NextResponse.json({ error: 'The uploaded file is empty.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'The uploaded file is empty.' }, { status: 400 });
         }
         if (file.size > MAX_UPLOAD_BYTES) {
-            return NextResponse.json({ error: `File is too large. Maximum intake media size is ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB.` }, { status: 413 });
+            return answerlatticeKnowledgeIntakeJson({ error: `File is too large. Maximum intake media size is ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB.` }, { status: 413 });
         }
 
         const parsed = FormFieldsSchema.parse({
@@ -140,13 +144,13 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             usageUnits: result.usage.unitsConsumed,
         }));
 
-        return NextResponse.json({
+        return answerlatticeKnowledgeIntakeJson({
             source: serializeIntakeValue(result.source),
             usage: { unitsConsumed: result.usage.unitsConsumed },
-        }, { headers: { 'Cache-Control': 'private, no-store' } });
+        });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Invalid media source details.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'Invalid media source details.' }, { status: 400 });
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -155,6 +159,6 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
                 scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to extract media source.') }, { status });
+        return answerlatticeKnowledgeIntakeJson({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to extract media source.') }, { status });
     }
 });

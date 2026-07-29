@@ -22,12 +22,28 @@ import {
     runDescriptionGeneration,
 } from '../../src/components/templates/main-app/projects/editorView/descriptionGeneration.shared';
 import descriptionPrompt from '../../src/app/api/descriptions/prompt';
-import { AICapacityError } from '../../src/services/ai/capacityError';
+import {
+    AICapacityError,
+    isAICapacityError,
+} from '../../src/services/ai/capacityError';
 
 assert.equal(
     resolveDescriptionBillingAction(AI_ACTIONS_TYPES.ADD_DESCRIPTION, [{ description: '' }]),
     AI_ACTIONS_TYPES.ADD_DESCRIPTION,
 );
+assert.equal(isAICapacityError(new AICapacityError('Capacity', 'exhausted')), true);
+assert.equal(isAICapacityError({ name: 'AICapacityError' }), true);
+assert.equal(isAICapacityError(Object.create({ name: 'AICapacityError' })), false);
+assert.equal(isAICapacityError({
+    get name() {
+        throw new Error('capacity error name getter must not execute');
+    },
+}), false);
+assert.equal(isAICapacityError(new Proxy({}, {
+    getOwnPropertyDescriptor() {
+        throw new Error('capacity error descriptor lookup must remain contained');
+    },
+})), false);
 assert.equal(
     resolveDescriptionBillingAction(AI_ACTIONS_TYPES.ADD_DESCRIPTION, [{ description: 'Existing copy' }]),
     AI_ACTIONS_TYPES.REWRITE_DESCRIPTION,

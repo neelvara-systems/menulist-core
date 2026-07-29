@@ -130,7 +130,31 @@ function getSafeMonitoringTagValue(key: string, value: unknown): string | null {
             : String(value);
     }
     if (typeof value === 'string') return sanitizeMonitoringString(value, key).slice(0, 200);
-    return summarizeMonitoringString('value_present', String(value));
+    return summarizeMonitoringString('value_present', '1');
+}
+
+function getOwnMonitoringEntries(value: object, limit: number): Array<[string, unknown]> | null {
+    try {
+        const entries: Array<[string, unknown]> = [];
+        for (const key of Reflect.ownKeys(value)) {
+            if (entries.length >= limit) break;
+            if (typeof key !== 'string') continue;
+            const descriptor = Reflect.getOwnPropertyDescriptor(value, key);
+            if (!descriptor?.enumerable || !('value' in descriptor)) continue;
+            entries.push([key, descriptor.value]);
+        }
+        return entries;
+    } catch {
+        return null;
+    }
+}
+
+function isMonitoringError(value: unknown): value is Error {
+    try {
+        return value instanceof Error;
+    } catch {
+        return false;
+    }
 }
 
 function sanitizeMonitoringValue(
@@ -153,32 +177,41 @@ function sanitizeMonitoringValue(
         return value;
     }
 
-    if (value instanceof Error) {
+    if (isMonitoringError(value)) {
         return sanitizeErrorForLog(value);
     }
 
     if (Array.isArray(value)) {
         if (seen.has(value)) return '[Circular]';
         seen.add(value);
-        return value.slice(0, 20).map((entry) => sanitizeMonitoringValue(entry, depth + 1, key, seen));
+        const entries = getOwnMonitoringEntries(value, 20);
+        if (!entries) return '[Inspection failed]';
+        return entries
+            .filter(([entryKey]) => /^(?:0|[1-9]\d*)$/.test(entryKey))
+            .sort(([left], [right]) => Number(left) - Number(right))
+            .map(([, entry]) => sanitizeMonitoringValue(entry, depth + 1, key, seen));
     }
 
     if (typeof value === 'object') {
         if (seen.has(value)) return '[Circular]';
         seen.add(value);
-        return Object.fromEntries(
-            Object.entries(value as Record<string, unknown>)
-                .slice(0, 40)
-                .map(([entryKey, entryValue]) => [entryKey, sanitizeMonitoringValue(entryValue, depth + 1, entryKey, seen)])
-        );
+        const entries = getOwnMonitoringEntries(value, 40);
+        if (!entries) return '[Inspection failed]';
+        return Object.fromEntries(entries.map(([entryKey, entryValue]) => [
+            entryKey,
+            sanitizeMonitoringValue(entryValue, depth + 1, entryKey, seen),
+        ]));
     }
 
-    return String(value);
+    return `[${typeof value}]`;
 }
 
 export function getSanitizedMonitoringContext(context?: Record<string, unknown>) {
     if (!context) return undefined;
-    return sanitizeMonitoringValue(context) as Record<string, unknown>;
+    const sanitized = sanitizeMonitoringValue(context);
+    return sanitized && typeof sanitized === 'object' && !Array.isArray(sanitized)
+        ? sanitized as Record<string, unknown>
+        : { inspectionFailed: true };
 }
 
 export function getSanitizedMonitoringMessage(message: string): string {
@@ -186,17 +219,17 @@ export function getSanitizedMonitoringMessage(message: string): string {
 }
 
 function sanitizeMonitoringBreadcrumb(breadcrumb: Record<string, unknown>): Record<string, unknown> {
-    return {
-        ...breadcrumb,
-        data: sanitizeMonitoringValue(breadcrumb.data),
-        message: typeof breadcrumb.message === 'string'
-            ? getSanitizedMonitoringMessage(breadcrumb.message)
-            : breadcrumb.message,
-    };
+    const sanitized = sanitizeMonitoringValue(breadcrumb);
+    if (!sanitized || typeof sanitized !== 'object' || Array.isArray(sanitized)) return {};
+    return sanitized as Record<string, unknown>;
 }
 
 export function sanitizeMonitoringEvent<T extends object>(event: T): T {
-    const sanitizedEvent: Record<string, any> = { ...(event as Record<string, any>) };
+    const sanitized = sanitizeMonitoringValue(event);
+    if (!sanitized || typeof sanitized !== 'object' || Array.isArray(sanitized)) {
+        return {} as T;
+    }
+    const sanitizedEvent = sanitized as Record<string, unknown>;
 
     if (typeof sanitizedEvent.message === 'string') {
         sanitizedEvent.message = getSanitizedMonitoringMessage(sanitizedEvent.message);
@@ -205,42 +238,59 @@ export function sanitizeMonitoringEvent<T extends object>(event: T): T {
         sanitizedEvent.transaction = sanitizeMonitoringString(sanitizedEvent.transaction, 'routePath');
     }
 
-    if (sanitizedEvent.exception && Array.isArray(sanitizedEvent.exception.values)) {
-        sanitizedEvent.exception = {
-            ...sanitizedEvent.exception,
-            values: sanitizedEvent.exception.values.map((entry: Record<string, unknown>) => ({
-                ...entry,
-                mechanism: sanitizeMonitoringValue(entry.mechanism),
-                type: typeof entry.type === 'string'
-                    ? sanitizeMonitoringString(entry.type, 'errorType').slice(0, 120)
-                    : entry.type,
-                value: typeof entry.value === 'string'
-                    ? summarizeMonitoringString('error_message_present', entry.value)
-                    : entry.value,
-            })),
-        };
+    const exception = sanitizedEvent.exception;
+    if (exception && typeof exception === 'object' && !Array.isArray(exception)) {
+        const exceptionRecord = exception as Record<string, unknown>;
+        const values = exceptionRecord.values;
+        if (Array.isArray(values)) {
+            sanitizedEvent.exception = {
+                ...exceptionRecord,
+                values: values.map((entry) => {
+                    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return {};
+                    const entryRecord = entry as Record<string, unknown>;
+                    return {
+                        ...entryRecord,
+                        value: typeof entryRecord.value === 'string'
+                            ? summarizeMonitoringString('error_message_present', entryRecord.value)
+                            : entryRecord.value,
+                    };
+                }),
+            };
+        }
     }
 
-    if (sanitizedEvent.extra) sanitizedEvent.extra = sanitizeMonitoringValue(sanitizedEvent.extra);
-    if (sanitizedEvent.contexts) sanitizedEvent.contexts = sanitizeMonitoringValue(sanitizedEvent.contexts);
-    if (sanitizedEvent.tags) sanitizedEvent.tags = sanitizeMonitoringValue(sanitizedEvent.tags);
-    if (sanitizedEvent.user) sanitizedEvent.user = sanitizeMonitoringValue(sanitizedEvent.user);
-    if (sanitizedEvent.request) sanitizedEvent.request = sanitizeMonitoringValue(sanitizedEvent.request);
-    if (sanitizedEvent.fingerprint) sanitizedEvent.fingerprint = sanitizeMonitoringValue(sanitizedEvent.fingerprint);
-
     if (Array.isArray(sanitizedEvent.breadcrumbs)) {
-        sanitizedEvent.breadcrumbs = sanitizedEvent.breadcrumbs.map(sanitizeMonitoringBreadcrumb);
-    } else if (Array.isArray(sanitizedEvent.breadcrumbs?.values)) {
+        sanitizedEvent.breadcrumbs = sanitizedEvent.breadcrumbs.map((breadcrumb) => (
+            breadcrumb && typeof breadcrumb === 'object' && !Array.isArray(breadcrumb)
+                ? sanitizeMonitoringBreadcrumb(breadcrumb as Record<string, unknown>)
+                : {}
+        ));
+    } else if (
+        sanitizedEvent.breadcrumbs
+        && typeof sanitizedEvent.breadcrumbs === 'object'
+        && !Array.isArray(sanitizedEvent.breadcrumbs)
+        && Array.isArray((sanitizedEvent.breadcrumbs as Record<string, unknown>).values)
+    ) {
+        const breadcrumbs = sanitizedEvent.breadcrumbs as Record<string, unknown>;
         sanitizedEvent.breadcrumbs = {
-            ...sanitizedEvent.breadcrumbs,
-            values: sanitizedEvent.breadcrumbs.values.map(sanitizeMonitoringBreadcrumb),
+            ...breadcrumbs,
+            values: (breadcrumbs.values as unknown[]).map((breadcrumb) => (
+                breadcrumb && typeof breadcrumb === 'object' && !Array.isArray(breadcrumb)
+                    ? sanitizeMonitoringBreadcrumb(breadcrumb as Record<string, unknown>)
+                    : {}
+            )),
         };
     }
 
     return sanitizedEvent as T;
 }
 
-export function applyMonitoringContext(scope: any, context?: Record<string, unknown>) {
+type MonitoringScope = {
+    setContext: (key: string, value: Record<string, unknown>) => void;
+    setTag: (key: string, value: string) => void;
+};
+
+export function applyMonitoringContext(scope: MonitoringScope | null | undefined, context?: Record<string, unknown>) {
     const sanitizedContext = getSanitizedMonitoringContext(context);
     if (!scope || !sanitizedContext) return;
 
@@ -284,9 +334,17 @@ export function applyMonitoringContext(scope: any, context?: Record<string, unkn
 
 export function shouldSendMonitoringEvent(hint?: { originalException?: unknown }) {
     const originalException = hint?.originalException;
-    const message = originalException instanceof Error
-        ? originalException.message
-        : String(originalException || '');
+    let message = typeof originalException === 'string' ? originalException : '';
+    if (isMonitoringError(originalException)) {
+        try {
+            const descriptor = Reflect.getOwnPropertyDescriptor(originalException, 'message');
+            message = descriptor && 'value' in descriptor && typeof descriptor.value === 'string'
+                ? descriptor.value
+                : '';
+        } catch {
+            message = '';
+        }
+    }
 
     return !ignoredErrorPatterns.some((pattern) => pattern.test(message));
 }

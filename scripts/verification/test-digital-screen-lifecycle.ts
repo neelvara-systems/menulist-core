@@ -9,8 +9,14 @@ import {
     isSlideExpired,
     isValidScreenToken,
     getScreenReloadGuardKey,
+    shouldSuppressScreenReload,
 } from '../../src/lib/screen/utils';
 import type { ScreenSlide } from '../../src/types/campaigns';
+import {
+    getMenuBoardLayout,
+    shouldUseDigitalScreenOfflineCache,
+} from '../../src/lib/screen/screenRuntime';
+import { getDigitalScreenHealth } from '../../src/lib/screen/screenHealth';
 
 function slide(id: string, expiresAtMs: number): ScreenSlide {
     return {
@@ -64,6 +70,71 @@ assert.notEqual(
     getScreenReloadGuardKey('screen', 'Ab12Cd34'),
     getScreenReloadGuardKey('screen', 'Ef56Gh78'),
     'one screen token must not suppress another screen token reload',
+);
+assert.equal(shouldSuppressScreenReload(String(now - 1_000), now), true);
+assert.equal(
+    shouldSuppressScreenReload(String(now + 86_400_000), now),
+    false,
+    'a corrupt future timestamp must not suppress screen recovery',
+);
+assert.equal(shouldSuppressScreenReload(`${now - 1_000}junk`, now), false);
+assert.equal(shouldSuppressScreenReload('-1', now), false);
+
+assert.equal(
+    shouldUseDigitalScreenOfflineCache({
+        cachedContentVersion: 3,
+        cachedEntryCount: 12,
+        initialContentVersion: 4,
+        online: false,
+    }),
+    false,
+    'An old offline payload must never override a newer canonical content version',
+);
+assert.equal(
+    shouldUseDigitalScreenOfflineCache({
+        cachedContentVersion: 4,
+        cachedEntryCount: 12,
+        initialContentVersion: 4,
+        online: true,
+    }),
+    false,
+    'An online display must render the current server payload instead of local cache',
+);
+assert.equal(
+    shouldUseDigitalScreenOfflineCache({
+        cachedContentVersion: 4,
+        cachedEntryCount: 12,
+        initialContentVersion: 4,
+        online: false,
+    }),
+    true,
+    'A version-matched payload may support an offline display',
+);
+
+assert.deepEqual(
+    getMenuBoardLayout(1280, 720),
+    { columnCount: 2, itemsPerColumn: 8 },
+    'A 720p landscape TV must use the compact two-column layout',
+);
+assert.deepEqual(
+    getMenuBoardLayout(1920, 1080),
+    { columnCount: 3, itemsPerColumn: 12 },
+    'A 1080p TV must use the higher-capacity layout',
+);
+assert.deepEqual(
+    getMenuBoardLayout(768, 1024),
+    { columnCount: 1, itemsPerColumn: 12 },
+    'Portrait screens must stay single-column',
+);
+
+assert.equal(getDigitalScreenHealth(undefined, now).summary, 'Link ready');
+assert.equal(
+    getDigitalScreenHealth(Timestamp.fromMillis(now - 60_000), now).summary,
+    'Seen recently',
+);
+assert.equal(
+    getDigitalScreenHealth(Timestamp.fromMillis(now - 48 * 60 * 60 * 1000), now).summary,
+    'Check TV',
 );
 
 process.stdout.write('Digital Screens lifecycle tests passed.\n');

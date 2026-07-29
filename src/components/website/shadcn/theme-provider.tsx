@@ -2,8 +2,14 @@
 "use client";
 
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+  normalizeWebsiteThemePreference,
+  WEBSITE_THEME_STORAGE_KEY,
+  type WebsiteThemePreference,
+} from '@lib/website/themePreference';
 
-type Theme = "light" | "dark" | "system";
+type Theme = WebsiteThemePreference;
 
 interface ThemeProviderState {
   theme: Theme;
@@ -11,6 +17,34 @@ interface ThemeProviderState {
 }
 
 const ThemeProviderContext = createContext<ThemeProviderState | undefined>(undefined);
+const reportedWebsiteThemeStorageFailures = new Set<'read' | 'remove' | 'write'>();
+
+function logWebsiteThemeStorageFailure(operation: 'read' | 'remove' | 'write', error: unknown) {
+  if (reportedWebsiteThemeStorageFailures.has(operation)) return;
+  reportedWebsiteThemeStorageFailures.add(operation);
+  logRuntimeFailure(`website_theme_storage_${operation}_failed`, error, {
+    fallbackPolicy: operation === 'write' ? 'memory_only' : 'system_theme',
+  });
+}
+
+function readStoredTheme(): Theme {
+  try {
+    const rawTheme = window.localStorage.getItem(WEBSITE_THEME_STORAGE_KEY);
+    if (rawTheme === null) return 'system';
+
+    const storedTheme = normalizeWebsiteThemePreference(rawTheme);
+    if (storedTheme) return storedTheme;
+
+    try {
+      window.localStorage.removeItem(WEBSITE_THEME_STORAGE_KEY);
+    } catch (error) {
+      logWebsiteThemeStorageFailure('remove', error);
+    }
+  } catch (error) {
+    logWebsiteThemeStorageFailure('read', error);
+  }
+  return 'system';
+}
 
 export function ThemeProvider({ children, forcedTheme }: { children: ReactNode; forcedTheme?: "light" | "dark" }) {
   const [mounted, setMounted] = useState(false);
@@ -20,7 +54,7 @@ export function ThemeProvider({ children, forcedTheme }: { children: ReactNode; 
     if (typeof window === 'undefined') {
       return "system"; // Default for SSR
     }
-    return (localStorage.getItem("theme") as Theme | null) || "system";
+    return readStoredTheme();
   });
 
   useEffect(() => {
@@ -44,7 +78,11 @@ export function ThemeProvider({ children, forcedTheme }: { children: ReactNode; 
     root.classList.remove("light", "dark");
     root.classList.add(currentThemeToApply);
     if (!forcedTheme) {
-      localStorage.setItem("theme", theme); // Store the user's actual selection (light, dark, or system)
+      try {
+        window.localStorage.setItem(WEBSITE_THEME_STORAGE_KEY, theme);
+      } catch (error) {
+        logWebsiteThemeStorageFailure('write', error);
+      }
     }
   }, [theme, mounted, forcedTheme]);
 

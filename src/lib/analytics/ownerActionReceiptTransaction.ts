@@ -6,7 +6,7 @@ const RESULT_CHECK_DELAY_DAYS = 7;
 const OWNER_ACTION_RECEIPT_ID_PATTERN = /^[a-f0-9]{32}$/;
 
 export type OwnerActionReceiptTransactionOutcome =
-    | { ok: true; receipt: Record<string, any> }
+    | { ok: true; receipt: Record<string, unknown> }
     | { ok: false; error: string; status: 404 | 409 };
 
 export type OwnerActionReceiptTransactionParams = {
@@ -39,6 +39,18 @@ function getReceiptEntries(data: Record<string, any>) {
         || data.overview?.ownerActionPlan?.receipts
         || {};
     return Object.entries(receipts).filter(([, receipt]) => receipt && typeof receipt === 'object');
+}
+
+function getExistingReceipt(
+    data: Record<string, any>,
+    receiptId: string,
+): Record<string, unknown> | null {
+    const receipt = data.ownerActionReceipts?.[receiptId]
+        || data.ownerActionPlan?.receipts?.[receiptId]
+        || data.overview?.ownerActionPlan?.receipts?.[receiptId];
+    return receipt && typeof receipt === 'object' && !Array.isArray(receipt)
+        ? receipt as Record<string, unknown>
+        : null;
 }
 
 export function getOwnerActionReceiptIdsToPrune(
@@ -74,6 +86,17 @@ export async function markOwnerActionDoneTransaction(
         }
 
         const dashboardData = dashboardSnap.data() || {};
+        const existingReceipt = getExistingReceipt(dashboardData, params.receiptId);
+        if (existingReceipt) {
+            if (
+                existingReceipt.receiptId !== params.receiptId
+                || existingReceipt.actionId !== params.actionId
+            ) {
+                return { ok: false, error: 'Action receipt conflicts with existing data', status: 409 };
+            }
+            return { ok: true, receipt: existingReceipt };
+        }
+
         const actionPlan = dashboardData.ownerActionPlan || dashboardData.overview?.ownerActionPlan;
         const currentAction = Array.isArray(actionPlan?.actions)
             ? actionPlan.actions.find((action: any) => action?.id === params.actionId)

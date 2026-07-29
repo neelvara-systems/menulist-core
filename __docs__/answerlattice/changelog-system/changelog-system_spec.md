@@ -37,7 +37,7 @@ external Release Impact Guard proposal.
 
 ## Pre-Activation Impact Preview
 
-The later code pass must insert this bounded step between release creation and
+The implemented flow inserts this bounded step between release creation and
 activation:
 
 ```text
@@ -61,7 +61,9 @@ The preview:
    failure without running a provider call automatically;
 6. returns a deterministic fingerprint over the release version, changed
    entities, and affected authoritative source versions;
-7. performs no knowledge, release, changelog, drift, or test write.
+7. lets the owner open a directly affected answer or the release-scoped Answer
+   Tests workflow without changing preview state;
+8. performs no knowledge, release, changelog, drift, or test write.
 
 Activation must recompute the authoritative affected-answer input and reject a
 stale preview fingerprint. The owner then reviews the new preview.
@@ -74,10 +76,10 @@ answer was found.
 
 | Proposal | Decision |
 |---|---|
-| Preventive review before activation | Admit in the bounded direct-impact form above. |
+| Preventive review before activation | Implemented in the bounded direct-impact form above. |
 | Release and public changelog remain separate | Already implemented; preserve. |
-| Canonical-answer impact | Already implemented reactively; add read-only preview before activation. |
-| Release-scoped Answer Tests | Already implemented; compose proof into the preview without duplicating tests. |
+| Canonical-answer impact | Implemented reactively and preventively through the read-only preview. |
+| Release-scoped Answer Tests | Implemented; compose proof into the preview and open the existing release check with validated context without duplicating tests. |
 | Atomic change units | Validate first. Current founder flow uses one release plus 1-25 changed entities. |
 | Article, procedure, and product-surface impact queue | Validate first; current dependency completeness is not proven. |
 | Evidence tiers and one-hop graph propagation | Reject from the initial hardening. Use direct governed mappings only. |

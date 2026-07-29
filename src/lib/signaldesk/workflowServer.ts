@@ -16,6 +16,7 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/
 import { isSignalDeskHumanRole, isSignalDeskPermission } from "@lib/signaldesk/accessContracts";
 import {
     assertSignalDeskDemandSignalSummaryMatchesEvent,
+    getSignalDeskDemandSignalEventDay,
     parseSignalDeskDemandSignalClaimDocument,
     parseSignalDeskDemandSignalEventDocument,
     parseSignalDeskDemandSignalSummaryDocument,
@@ -22377,7 +22378,7 @@ export async function captureSignalDeskDemandSignalServer(access: SignalDeskAcce
             const signalSnap = await transaction.get(signalRef);
             if (!signalSnap.exists) throw new Error("DEMAND_SIGNAL_REPLAY_MISSING");
             const event = parseSignalDeskDemandSignalEventDocument(signalSnap.data(), signalSnap.id);
-            const eventDay = new Date((event.createdAt as { toMillis: () => number }).toMillis()).toISOString().slice(0, 10);
+            const eventDay = getSignalDeskDemandSignalEventDay(event);
             const replaySummaryId = `${eventDay}_${event.signalType}_${event.sourceSurface}_${event.targetId || "general"}`;
             const replaySummarySnap = await transaction.get(
                 db.collection(SIGNALDESK_COLLECTIONS.DEMAND_SIGNAL_SUMMARIES).doc(replaySummaryId),

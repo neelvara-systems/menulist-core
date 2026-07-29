@@ -43,7 +43,9 @@ includes(currentAccessRoute, [
   "const operatorId = resolveCurrentSessionUserDocumentId(session) || 'invalid-platform-session';",
   'const currentPlatformUser = await getCurrentPlatformUser(session);',
   "accessModel: 'current_persisted_platform_user'",
-  "'Cache-Control': 'private, no-store'",
+  "'Cache-Control': 'private, no-store, max-age=0'",
+  "'X-Content-Type-Options': 'nosniff'",
+  'const headers = new Headers(init.headers);',
 ], 'current platform-access route');
 includes(currentAccessClient, [
   "fetch('/api/platform/current-access'",
@@ -74,7 +76,7 @@ for (const [label, file] of [
   includes(source, [
     'failClosedOnProviderError: true',
     'const currentPlatformUser = await getCurrentPlatformUser(session);',
-    "return NextResponse.json({ error: 'Forbidden' }, { status: 403 });",
+    "{ error: 'Forbidden' }",
   ], label);
 }
 

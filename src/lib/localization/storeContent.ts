@@ -25,12 +25,7 @@ export function getStoreSourceLanguage(): string {
 }
 
 export function getStoreRenderLanguage(storeDetails?: any): string {
-    const managedLanguages = getStoreManagedLanguages(storeDetails);
-    const defaultLanguage = String(storeDetails?.defaultLanguage || '').trim().toLowerCase();
-
-    return managedLanguages.includes(defaultLanguage)
-        ? defaultLanguage
-        : managedLanguages[0] || CANONICAL_SOURCE_LANGUAGE;
+    return normalizeStoreLanguagePolicy(storeDetails).defaultLanguage;
 }
 
 export function getStoreLanguageLabel(languageCode: string): string {

@@ -3144,6 +3144,12 @@
       "indexes": []
     },
     {
+      "collectionGroup": "analyticsDeliveryReceipts",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "menuIntelligence",
       "fieldPath": "validUntil",
       "ttl": true,

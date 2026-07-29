@@ -1041,6 +1041,8 @@ function verifyPwaTrackingDiagnostics() {
   const standaloneDetector = read('src/lib/pwa/standaloneDetector.ts');
   const installTracker = read('src/lib/pwa/installTracker.ts');
   const visitCounter = read('src/lib/pwa/visitCounter.ts');
+  const storageValue = read('src/lib/pwa/storageValue.ts');
+  const customerAppController = read('src/components/customerApp/CustomerAppController.tsx');
   const installPrompt = read('src/components/customerApp/InstallPrompt.tsx');
   const mobileSettings = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
   const desktopSettings = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
@@ -1057,6 +1059,7 @@ function verifyPwaTrackingDiagnostics() {
   assertNoDirectConsole(standaloneDetector, 'Customer App standalone detector');
   assertNoDirectConsole(installTracker, 'Customer App install tracker');
   assertNoDirectConsole(visitCounter, 'Customer App visit counter');
+  assertNoDirectConsole(storageValue, 'Customer App persisted scalar boundary');
   assertNoDirectConsole(installPrompt, 'Customer App install prompt');
   assertNoDirectConsole(mobileSettings, 'Mobile Customer App settings screen');
   assertNoDirectConsole(desktopSettings, 'Desktop Customer App settings tab');
@@ -1071,6 +1074,17 @@ function verifyPwaTrackingDiagnostics() {
   assertIncludes(installDetection, 'reportedInstallDetectionFailure', 'Customer App install detection one-per-path guard');
   assertIncludes(installDetection, 'hasMatchMedia', 'Customer App install detection bounded browser-capability context');
   assertIncludes(shortcutDetector, 'customer_app_shortcut_tracking_failed', 'Customer App shortcut tracking diagnostics');
+  assertIncludes(shortcutDetector, 'customer_app_shortcut_scope_invalid', 'Customer App shortcut invalid scope diagnostics');
+  assertIncludes(shortcutDetector, 'customer_app_shortcut_session_guard_failed', 'Customer App shortcut completion guard diagnostics');
+  assertIncludes(shortcutDetector, 'getTenantStoreStorageKey', 'Customer App shortcut tenant/store session key');
+  assertIncludes(shortcutDetector, 'shortcutTrackingInFlight', 'Customer App shortcut in-flight de-duplication');
+  assertIncludes(shortcutDetector, 'parseCanonicalPwaTimestamp(rawCompletion)', 'Customer App shortcut exact completion marker');
+  assertIncludes(shortcutDetector, 'window.sessionStorage.removeItem(shortcutScopeKey)', 'Customer App shortcut corrupt completion eviction');
+  assert(
+    shortcutDetector.indexOf('window.sessionStorage.setItem(shortcutScopeKey, String(Date.now()))')
+      > shortcutDetector.indexOf('await trackEvent(SHORTCUT_EVENT_MAP[source]'),
+    'Customer App shortcut completion marker must be written only after acknowledged analytics tracking',
+  );
   assertIncludes(shortcutDetector, 'customer_app_shortcut_source_parse_failed', 'Customer App shortcut source parse diagnostics');
   assertIncludes(shortcutDetector, 'reportedShortcutSourceParseFailure', 'Customer App shortcut source parse one-per-path guard');
   assertIncludes(shortcutDetector, "getBoundedPwaStringContext('search', search)", 'Customer App shortcut source bounded search context');
@@ -1083,6 +1097,7 @@ function verifyPwaTrackingDiagnostics() {
   assertIncludes(standaloneDetector, "getBoundedPwaStringContext('storageKey', storageKey)", 'Customer App open storage-key bounded context');
   assertIncludes(standaloneDetector, 'STANDALONE_SESSION_STORAGE_TEST_KEY', 'Customer App open storage test key constant');
   assertIncludes(installTracker, 'customer_app_install_tracking_failed', 'Customer App install tracking diagnostics');
+  assertIncludes(installTracker, 'customer_app_install_scope_invalid', 'Customer App install invalid scope diagnostics');
   assertIncludes(installTracker, 'reportedInstallStorageFailures', 'Customer App prompt-shown storage one-per-operation guard');
   assertIncludes(installTracker, 'customer_app_install_dedupe_storage_unavailable', 'Customer App install de-dupe storage availability diagnostics');
   assertIncludes(installTracker, 'customer_app_install_dedupe_read_failed', 'Customer App install de-dupe read diagnostics');
@@ -1105,6 +1120,43 @@ function verifyPwaTrackingDiagnostics() {
   assertIncludes(visitCounter, "getBoundedPwaStringContext('storageKey', storageKey)", 'Customer App prompt storage-key bounded context');
   assertIncludes(visitCounter, "getBoundedPwaStringContext('search', search)", 'Customer App direct install bounded search context');
   assertIncludes(visitCounter, 'VISIT_COUNTER_STORAGE_TEST_KEY', 'Customer App prompt storage test key constant');
+  assertIncludes(storageValue, 'parseCanonicalPwaTimestamp', 'Customer App canonical timestamp boundary');
+  assertIncludes(storageValue, 'parseCanonicalPwaCount', 'Customer App canonical count boundary');
+  assertIncludes(storageValue, 'Number.isSafeInteger(timestamp)', 'Customer App timestamp safe-integer boundary');
+  assertIncludes(visitCounter, 'MAX_PERSISTED_VISIT_COUNT', 'Customer App visit-count cap');
+  assertIncludes(visitCounter, 'parseCanonicalPwaCount', 'Customer App visit-count parser usage');
+  assertIncludes(visitCounter, 'parseCanonicalPwaTimestamp', 'Customer App dismissal parser usage');
+  assertIncludes(installTracker, 'parseCanonicalPwaTimestamp', 'Customer App install-marker parser usage');
+  assertIncludes(installTracker, 'getTenantStoreStorageKey(INSTALL_FIRED_KEY_PREFIX, tenantId, storeId)', 'Customer App install tenant/store de-dupe key');
+  assertIncludes(installTracker, 'getTenantStoreStorageKey(PROMPT_SHOWN_AT_KEY_PREFIX, tenantId, storeId)', 'Customer App prompt-shown tenant/store key');
+  assertIncludes(visitCounter, 'getTenantStoreStorageKey(VISIT_COUNT_KEY_PREFIX, tenantId, storeId)', 'Customer App visit tenant/store key');
+  assertIncludes(visitCounter, 'getTenantStoreStorageKey(DISMISSED_AT_KEY_PREFIX, tenantId, storeId)', 'Customer App dismissal tenant/store key');
+  assertIncludes(customerAppController, 'incrementVisitCount(tenantId, storeId)', 'Customer App controller tenant/store visit scope');
+  assertIncludes(customerAppController, 'canShowPrompt(tenantId, storeId, directIntent)', 'Customer App controller tenant/store prompt scope');
+  assertIncludes(customerAppController, 'markPromptDismissed(tenantId, storeId)', 'Customer App controller tenant/store dismissal scope');
+  assertIncludes(customerAppController, 'processedPromptScopeRef.current === promptScopeKey', 'Customer App controller one visit/eligibility pass per tenant/store scope');
+  assertIncludes(customerAppController, "const promptScopeKey = getTenantStoreStorageKey(", 'Customer App controller canonical tenant/store scope guard');
+  assertIncludes(customerAppController, 'const featureOn = FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && Boolean(promptScopeKey);', 'Customer App controller must guard every listener and side effect by canonical scope');
+  assertIncludes(customerAppController, 'setDeferredPrompt(null)', 'Customer App controller clears a prior-scope native install event');
+  assertIncludes(customerAppController, 'setShouldShowPrompt(false)', 'Customer App controller clears prior-scope prompt visibility');
+  assertIncludes(installPrompt, 'recordPromptShown(tenantId, storeId);', 'Customer App operational prompt marker independent of analytics');
+  assertIncludes(installPrompt, 'reportedPromptScopeRef.current === promptScopeKey', 'Customer App prompt shown once per mounted tenant/store scope');
+  assert(
+    installPrompt.indexOf('recordPromptShown(tenantId, storeId);')
+      < installPrompt.indexOf('if (trackingEnabled) {'),
+    'Customer App prompt marker must not depend on analytics consent',
+  );
+  assertIncludes(standaloneDetector, 'getTenantStoreStorageKey', 'Customer App open tenant/store session key');
+  assertIncludes(standaloneDetector, 'customer_app_open_scope_invalid', 'Customer App open invalid scope diagnostics');
+  assertIncludes(standaloneDetector, 'appOpenTrackingInFlight', 'Customer App open in-flight guard');
+  assertIncludes(standaloneDetector, 'parseCanonicalPwaTimestamp', 'Customer App iOS prompt parser usage');
+  assertIncludes(standaloneDetector, 'parseCanonicalPwaTimestamp(rawCompletion)', 'Customer App open exact completion marker');
+  assertIncludes(standaloneDetector, 'window.sessionStorage.removeItem(scopedOpenKey)', 'Customer App open corrupt completion eviction');
+  assert(
+    standaloneDetector.indexOf('window.sessionStorage.setItem(scopedOpenKey, String(Date.now()))')
+      > standaloneDetector.indexOf('await trackEvent(TrackingEvent.CUSTOMER_APP_OPENED'),
+    'Customer App open completion marker must be written only after acknowledged analytics tracking',
+  );
   assertIncludes(installPrompt, 'customer_app_native_install_prompt_failed', 'Customer App native install prompt diagnostics');
   assertIncludes(mobileSettings, 'customer_app_mobile_settings_save_failed', 'Mobile Customer App settings diagnostics');
   assertIncludes(mobileSettings, 'customer_app_mobile_install_link_copy_failed', 'Mobile Customer App install-link copy diagnostics');
@@ -1206,7 +1258,8 @@ function verifyFreshnessHook() {
 function verifyDigitalScreenDiagnostics() {
   const campaignDal = read('src/database/campaigns/index.ts');
   const serverScreenDal = read('src/database/campaigns/serverScreen.ts');
-  const screenInvalidation = read('src/lib/screen/screenInvalidation.ts');
+  const screenInvalidation = read('src/lib/screen/serverScreenInvalidation.ts');
+  const revalidateMenuRoute = read('src/app/api/revalidate/menu/route.ts');
   const screenDiagnostics = read('src/lib/screen/screenDiagnostics.ts');
   const storesDal = read('src/database/stores/index.tsx');
   const brandPropagation = read('src/database/multiOutlet/brandPropagation.ts');
@@ -1278,15 +1331,17 @@ function verifyDigitalScreenDiagnostics() {
   assertIncludes(serverScreenDal, 'tokenLength: token.length', 'server screen bounded token context');
   assertIncludes(serverScreenDal, 'storeIdLength: storeId.length', 'server screen bounded store context');
   assertIncludes(serverScreenDal, 'baseProjectIdLength: String(baseProjectId || "").length', 'server screen bounded project context');
-  assertIncludes(screenInvalidation, 'logScreenInvalidationFailure', 'screen invalidation secure logging');
-  assertIncludes(screenInvalidation, 'digital_screen_projection_build_failed', 'screen invalidation projection failure logging');
-  assertIncludes(screenInvalidation, 'digital_screen_content_version_touch_failed', 'screen invalidation content-version failure logging');
-  assertIncludes(screenInvalidation, 'projectIdLength: projectId.length', 'screen invalidation bounded project context');
+  assertIncludes(screenInvalidation, 'logServerScreenTouchFailure', 'screen invalidation secure logging');
+  assertIncludes(screenInvalidation, 'digital_screen_server_content_version_touch_failed', 'screen invalidation content-version failure logging');
+  assertIncludes(screenInvalidation, 'storeIdLength: storeId.length', 'screen invalidation bounded store context');
+  assertIncludes(screenInvalidation, 'getPrivateScreenTokenCacheTag(screenToken)', 'screen invalidation exact token cache tag');
+  assertIncludes(revalidateMenuRoute, 'body.touchScreen === true', 'protected screen refresh request');
+  assertNotIncludes(revalidateMenuRoute, "'screen-data'", 'removed global screen cache fan-out');
   assertIncludes(storesDal, 'DIGITAL_SCREEN_STORE_OUTPUT_FIELDS', 'store output screen refresh field guard');
-  assertIncludes(storesDal, 'await touchDigitalScreenContentVersion(data.storeId, "updateStore");', 'store output screen refresh');
+  assertIncludes(storesDal, 'touchScreen: hasDigitalScreenStoreOutputFieldChanges(data)', 'store output screen refresh');
   assertIncludes(brandPropagationBoundary, 'hasDigitalScreenBrandPropagationFields', 'multi-outlet screen refresh field guard');
   assertIncludes(brandPropagationRoute, 'storeIds: [masterStoreScope.documentId, ...propagationResult.targetOutletIds]', 'multi-outlet screen refresh uses committed target outlets');
-  assertIncludes(brandPropagationRoute, 'includeScreenDataTag: refreshScreens', 'multi-outlet screen refresh keeps field-sensitive global invalidation');
+  assertNotIncludes(brandPropagationRoute, 'includeScreenDataTag', 'multi-outlet screen refresh avoids global invalidation');
   assertIncludes(brandPropagationRoute, "touchDigitalScreenContentVersionForStoreServer(storeId, 'brandPropagation')", 'multi-outlet screen refresh');
   assertIncludes(screenDiagnostics, 'logScreenSettingsFailure', 'screen settings secure logging');
   assertIncludes(screenDiagnostics, 'logScreenDisplayFailure', 'screen display secure logging');

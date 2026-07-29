@@ -56,12 +56,19 @@ assert(!localLogs.includes('String(e.reason)'), 'ticket logs must not stringify 
 for (const content of [localLogs, consoleBuffer]) {
   includes(content, 'emailTextPattern', 'diagnostic bare-email redaction');
   includes(content, 'bearerTextPattern', 'diagnostic bearer redaction');
+  includes(content, 'sanitizeLogData({ value }).value', 'diagnostic contained object projection');
+  assert(!content.includes('JSON.stringify(value,'), 'diagnostic buffers must not invoke unknown toJSON hooks');
+  assert(!content.includes('sanitizeLogText(String(value))'), 'diagnostic buffers must not broadly stringify unknown values');
 }
 
 includes(instrumentationClient, 'sendDefaultPii: false', 'client monitoring PII boundary');
 includes(instrumentationClient, 'maskAllInputs: true', 'replay input masking');
 includes(instrumentationClient, 'maskAllText: true', 'replay text masking');
 includes(instrumentationClient, 'blockAllMedia: true', 'replay media blocking');
+includes(instrumentationClient, 'networkCaptureBodies: false', 'replay network body denial');
+includes(instrumentationClient, 'networkDetailAllowUrls: []', 'replay network detail deny-by-default');
+includes(instrumentationClient, 'beforeAddRecordingEvent: () => null', 'replay custom URL-bearing frame denial');
+includes(instrumentationClient, 'beforeSendTransaction(event)', 'client trace sanitizer');
 includes(sentryShared, 'sanitizeMonitoringEvent', 'monitoring event sanitizer');
 includes(sentryShared, 'summarizeMonitoringString', 'monitoring string minimization');
 

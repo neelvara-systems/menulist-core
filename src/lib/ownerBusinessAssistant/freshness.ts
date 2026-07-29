@@ -6,7 +6,12 @@ export function formatOwnerBusinessHealthDateKey(value?: string | null): string 
   if (!value || !DATE_KEY_PATTERN.test(value)) return null;
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
-  if (Number.isNaN(date.getTime())) return value;
+  if (
+    Number.isNaN(date.getTime())
+    || date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day
+  ) return null;
 
   return new Intl.DateTimeFormat('en', {
     day: 'numeric',

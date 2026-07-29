@@ -22,11 +22,13 @@ No parallel implementation is admitted.
 | Presentation configuration document | Do not add. Governed relations remain the displayed structure. |
 | Map correction writes | Route to existing Entity Management and candidate review. |
 | Demand overlay | Product validation pending; no code scope admitted. |
-| Action badges | Keep Daily Brief deep links one-way; do not couple the map to an action store. |
+| Owner review context | Admit one validated entity focus from Product Friction Evidence or another governed owner surface; do not couple the map to an action store. |
 
-The current implementation therefore has no repository-level code gap from this
-proposal. The remaining evidence gap is founder comprehension and repeated
-owner demand for an entity-level activity overlay.
+The current implementation now includes the only justified cross-feature
+closure: a validated `entity` URL context can focus an already-loaded node, and
+the canonical-answer action carries the same entity into the existing editor.
+The remaining evidence gap is founder comprehension and repeated owner demand
+for an entity-level activity overlay.
 
 ## Governance Data Flow
 
@@ -52,6 +54,16 @@ The summary also stores the three invalidation counters used by its payload. On 
 - missing, invalid, or regressed evidence: freshness unverified.
 
 The source-version snapshot is read before graph queries. A concurrent mutation after that point therefore produces a safely stale result rather than pairing newer evidence with older graph data.
+
+## Owner Context Handoff
+
+`KnowledgeMapDashboard` normalizes the optional `entity` query value with the
+shared governance ID boundary. The requested entity is selected only when it
+exists in the exact-scope graph. Selecting **Review canonical answers** sends
+the same validated entity to the existing Canonical Answer Editor, which
+filters its already-loaded answer set. If the entity has no answer, the create
+proposal prefills it only after matching the current loaded entity options. No
+map node, filter, or destination state is persisted.
 
 ## Public Data Flow
 
@@ -87,6 +99,8 @@ Related links are selected from the compact category payload already sent for ar
 - Missing summary: explain that the first nightly index has not completed.
 - No active entity: reconcile the previous graph to an empty current summary and show an explicit empty-ontology state.
 - Invalid, incomplete, orphaned, or wrong-scope summary: show a generic load failure and log no private payload.
+- Invalid or absent URL focus: ignore it and use the normal bounded selection.
+- Valid URL focus absent from the exact-scope graph: do not use it.
 - Source changes after rebuild: keep the map usable but show `Rebuild needed`.
 - Missing legacy source-version evidence: keep the map usable but show `Freshness pending`.
 - No relation: keep the selected entity visible and show a no-relationship state.

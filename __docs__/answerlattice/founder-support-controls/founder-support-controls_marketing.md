@@ -19,7 +19,7 @@ Founder Support Controls provide repeatable evidence that configured priority su
 
 - Reusable answer tests with source, version, required-claim, and supporting-reference evidence.
 - Advisory ready, review, or blocked proof status for priority release questions.
-- After the dedicated hardening is implemented and verified: provider-backed RAG cannot produce passing critical proof.
+- Provider-backed RAG cannot produce passing critical proof.
 - Release-scoped checks and owner-reviewed rollback proposals.
 - Read-only current-versus-proposed checks for explicitly linked priority questions before approval.
 - Contextual, expiring known-issue notices.
@@ -30,7 +30,7 @@ Founder Support Controls provide repeatable evidence that configured priority su
 ## Forbidden Claims
 
 - Automatic quality guarantee.
-- A claim that critical RAG proof is blocked before the pending evaluator/UI hardening is implemented and verified.
+- A claim that the critical-proof rule guarantees factual correctness, completeness, or customer resolution.
 - Independent factual-correctness, completeness, or verified-resolution guarantee from deterministic tests alone.
 - Automatic rollback or incident resolution.
 - Provider-backed simulation of unapproved answer content.

@@ -6,6 +6,8 @@ type PlausibleWindow = Window & {
 };
 
 type MarketingEventParams = Record<string, string | number | boolean | undefined>;
+type PublicWebsiteAnalyticsConsentChoice = 'accepted' | 'declined';
+type PublicWebsiteKind = 'answerlattice' | 'menulist';
 type PlausibleFunction = ((eventName: string, options?: { interactive?: boolean }) => void) & {
     q?: IArguments[];
 };
@@ -22,6 +24,7 @@ const MARKETING_EVENT_PARAM_MAX_LENGTH_BY_KEY: Record<string, number> = {
     utm_source: 80,
 };
 const reportedPlausibleConsentStorageFailures = new Set<string>();
+const runtimeConsentByWebsite: Partial<Record<PublicWebsiteKind, PublicWebsiteAnalyticsConsentChoice>> = {};
 
 function normalizeEventName(eventName?: string | null): string | undefined {
     const normalized = eventName?.trim();
@@ -81,7 +84,7 @@ function getActivePublicWebsiteConsentKey(): string {
     return MENULIST_ANALYTICS_CONSENT_KEY;
 }
 
-function getActivePublicWebsiteKind(): 'answerlattice' | 'menulist' {
+function getActivePublicWebsiteKind(): PublicWebsiteKind {
     return isAnswerlatticePublicWebsite() ? 'answerlattice' : 'menulist';
 }
 
@@ -98,7 +101,19 @@ function logPlausibleConsentStorageFailure(error: unknown, consentKey: string) {
     });
 }
 
-function hasAcceptedPublicWebsiteAnalyticsConsent(): boolean {
+export function setPublicWebsiteAnalyticsRuntimeConsent(
+    choice: PublicWebsiteAnalyticsConsentChoice,
+): void {
+    if (typeof window === 'undefined') return;
+    runtimeConsentByWebsite[getActivePublicWebsiteKind()] = choice;
+}
+
+export function hasAcceptedPublicWebsiteAnalyticsConsent(): boolean {
+    if (typeof window === 'undefined') return false;
+    const websiteKind = getActivePublicWebsiteKind();
+    const runtimeChoice = runtimeConsentByWebsite[websiteKind];
+    if (runtimeChoice) return runtimeChoice === 'accepted';
+
     const consentKey = getActivePublicWebsiteConsentKey();
 
     try {
@@ -128,15 +143,12 @@ export function trackPlausibleEvent(eventName?: string | null) {
     if (typeof window === 'undefined') return;
     if (process.env.NODE_ENV === 'development') return;
     if (!hasPlausibleAnalyticsForActiveWebsite()) return;
+    if (!hasAcceptedPublicWebsiteAnalyticsConsent()) return;
 
     const normalizedEventName = normalizeEventName(eventName);
     if (!normalizedEventName) return;
 
     const analyticsWindow = window as PlausibleWindow;
-    if (typeof analyticsWindow.plausible !== 'function' && !hasAcceptedPublicWebsiteAnalyticsConsent()) {
-        return;
-    }
-
     getOrCreatePlausibleQueue(analyticsWindow)(normalizedEventName);
 }
 
@@ -145,6 +157,7 @@ export function trackGoogleMarketingEvent(
     params?: MarketingEventParams,
 ) {
     if (typeof window === 'undefined') return;
+    if (!hasAcceptedPublicWebsiteAnalyticsConsent()) return;
 
     const normalizedEventName = normalizeEventName(eventName);
     if (!normalizedEventName) return;

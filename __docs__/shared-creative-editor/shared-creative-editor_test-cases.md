@@ -17,7 +17,7 @@
 | Internal smoke route | `/creative-editor-smoke` renders only outside production and returns 404 in production. |
 | Browser smoke QA route | `/creative-editor-smoke?qa=1` completes with `data-creative-editor-qa-status="passed"` after validating real canvas paint, top-bar toggles, rail switching, drawer insertions, keyboard creation shortcuts, floating toolbar anchoring, modal focus, preview export, layer panel rows, text-field focus retention, and staged Escape. |
 | Browser stress QA route | `/creative-editor-smoke?qa=1&variant=stress` completes with `data-creative-editor-qa-status="passed"` while rendering a large mixed-layer design. |
-| MyCodex deployed preview route | `https://www.menulist.digital/creative-editor-test` renders only after MyCodex auth and `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE` is enabled; otherwise it fails closed. |
+| MyCodex local preview route | `http://localhost:3000/__mycodex/creative-editor-test` renders only when `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE` is enabled; otherwise it fails closed. |
 
 ## Editor Behavior
 
@@ -148,6 +148,7 @@
 | Delete layer | Layer is removed and selection clears. |
 | Owner-readable undo redo | Undo and Redo show the action label being reversed or restored instead of a generic history message. |
 | Local autosave restore | After editing a document, a newer browser-local draft is detected on reload and can be restored or dismissed without calling product persistence. |
+| Local autosave scope and corruption | Delimiter-bearing product/workspace/document values cannot collide; malformed, oversized, cross-product, cross-workspace, or different-document payloads are rejected and removed; unavailable storage remains non-fatal and observable. |
 | Mobile review mode | On a narrow viewport, Review mode opens the download check, fits the output frame, and hides low-frequency rail/drawer space while keeping preview/download controls reachable. |
 | Preview | Preview opens a watermark-free image snapshot and closes without changing the document. |
 | Top-bar download | Download in the top toolbar exports the active workspace frame as PNG without requiring a selected layer or open inspector. |

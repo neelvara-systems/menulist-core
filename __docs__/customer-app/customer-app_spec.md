@@ -260,7 +260,7 @@ If the cached project-summary lookup used to choose `/menu` is unavailable, the 
 | Samsung Internet | Uses `beforeinstallprompt` or manual instructions           |
 | Safari iOS       | Shows custom instructions: "Tap Share → Add to Home Screen" |
 
-**Visit Persistence:** Visit count is persisted in `localStorage` (not `sessionStorage`) so the 3rd-visit trigger works across separate browsing sessions. Dismissal timestamp is also persisted in `localStorage` for the 30-day suppression window. Visit-count and dismissal-storage failures log bounded `customer_app_prompt_*` diagnostics only, preserve the existing prompt fallback behavior, and create no fallback write path.
+**Visit Persistence:** Visit count is persisted in `localStorage` (not `sessionStorage`) under exact tenant/store identity so the 3rd-visit trigger works across separate browsing sessions without platform-host tenant collisions. Dismissal timestamp is likewise tenant/store scoped for the 30-day suppression window. Visit-count and dismissal-storage failures log bounded `customer_app_prompt_*` diagnostics only, preserve the existing prompt fallback behavior, and create no fallback write path.
 
 ### 4. App Shortcuts
 

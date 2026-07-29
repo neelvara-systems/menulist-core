@@ -154,7 +154,8 @@ forbidToken(designPresets, "MenuLayout.TABS,", 'Owner selectable design preset h
 
 [
   'export function getActivePublicItemPriceAttributes',
-  'attribute as ActivePublicItemPriceAttribute).active !== false',
+  "readOwnValue(attribute, 'active') !== false",
+  "hasDisplayPrice(readOwnValue(attribute, 'price'))",
   'export function getPublicItemListPriceLabel',
   'const minPrice = Math.min(...numericPrices);',
   'const maxPrice = Math.max(...numericPrices);',
@@ -408,6 +409,22 @@ function verifyRuntimeDesignBoundary() {
   }
   if (getActivePublicItemPriceAttributes({ attributes: [{ price: Number.NaN }] }).length !== 0) {
     failures.push('Public option prices must exclude non-finite numeric values');
+  }
+  if (getActivePublicItemPriceAttributes(new Proxy({}, {
+    get() {
+      throw new Error('public price getter must remain contained');
+    },
+  })).length !== 0) {
+    failures.push('Malformed public item price access must fail closed');
+  }
+  if (getPublicItemListPriceLabel({
+    attributes: [{
+      get price() {
+        throw new Error('public option price getter must remain contained');
+      },
+    }],
+  }, '₹') !== null) {
+    failures.push('Malformed public option price access must not reach the rendered label');
   }
   if (normalizePublicMenuBackground('https://cdn.example.com/menu.webp') !== 'https://cdn.example.com/menu.webp') {
     failures.push('Public HTTPS menu background must remain usable');

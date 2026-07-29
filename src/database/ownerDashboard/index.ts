@@ -1615,6 +1615,27 @@ function normalizeOwnerDashboardData(data: any, projectId: string): OwnerDashboa
     };
 }
 
+export function normalizeOwnerDashboardSettledCacheValue(
+    value: unknown,
+    expectedProjectId: string,
+): OwnerDashboardData | null {
+    const projectId = normalizeAnalyticsProjectId(expectedProjectId);
+    if (!projectId || !isRecord(value) || value.projectId !== projectId) return null;
+    return normalizeOwnerDashboardData(value, projectId);
+}
+
+export function normalizeOwnerDashboardDailyCacheValue(value: unknown): DailyViewData | null {
+    return isRecord(value) ? normalizeDailyViewData(value) : null;
+}
+
+export function normalizeOwnerDashboardWeeklyCacheValue(value: unknown): WeeklyViewData | null {
+    return isRecord(value) ? normalizePeriodViewData<WeeklyViewData>(value) : null;
+}
+
+export function normalizeOwnerDashboardMonthlyCacheValue(value: unknown): MonthlyViewData | null {
+    return isRecord(value) ? normalizePeriodViewData<MonthlyViewData>(value) : null;
+}
+
 function emptyOwnerDashboardData(projectId: string): OwnerDashboardData {
     return {
         overview: null,

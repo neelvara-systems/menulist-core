@@ -9,6 +9,7 @@ import { buildQrCodeFilename } from '../../src/lib/utils/qrCode';
 import { getQrCodeFilename } from '../../src/lib/utils/feedbackQrCode';
 import {
     listLocalMenuCardExports,
+    projectMenuCardLocalHistoryRecord,
     saveLocalMenuCardExport,
 } from '../../src/lib/menu-card-export/repository/menuCardExportRepository';
 
@@ -164,6 +165,25 @@ function testScopedBestEffortHistory(): void {
     recordLocalPdfDownload(storeAScope, 'same-project-id', 'pdf-hash-1');
     assert.ok(readLocalPdfDownloadAt(storeAScope, 'same-project-id'));
     assert.equal(readLocalPdfDownloadAt(storeBScope, 'same-project-id'), null);
+    storage.setItem('menulist_last_pdf_download_1%3A10_same-project-id', '1e3');
+    assert.equal(readLocalPdfDownloadAt(storeAScope, 'same-project-id'), null);
+    storage.setItem('menulist_last_pdf_download_1%3A10_same-project-id', String(Date.now() + 60_000));
+    assert.equal(readLocalPdfDownloadAt(storeAScope, 'same-project-id'), null);
+
+    const validHistoryRecord = listLocalMenuCardExports('same-project-id', '1:10')[0];
+    assert.ok(validHistoryRecord);
+    assert.equal(projectMenuCardLocalHistoryRecord({ ...validHistoryRecord, pageCount: 1.5 }), null);
+    assert.equal(projectMenuCardLocalHistoryRecord({ ...validHistoryRecord, preset: 'unknown' }), null);
+    assert.equal(projectMenuCardLocalHistoryRecord({ ...validHistoryRecord, generatedAt: 'tomorrow' }), null);
+    storage.setItem(
+        'menulist_menu_card_exports_1%3A10_same-project-id',
+        JSON.stringify([{ ...validHistoryRecord, pageCount: -1 }]),
+    );
+    assert.deepEqual(listLocalMenuCardExports('same-project-id', '1:10'), []);
+    assert.equal(storage.getItem('menulist_menu_card_exports_1%3A10_same-project-id'), null);
+    storage.setItem('menulist_menu_card_exports_1%3A10_same-project-id', '{');
+    assert.deepEqual(listLocalMenuCardExports('same-project-id', '1:10'), []);
+    assert.equal(storage.getItem('menulist_menu_card_exports_1%3A10_same-project-id'), null);
 
     storage.rejectWrites = true;
     assert.doesNotThrow(() => recordLocalPdfDownload(storeBScope, 'same-project-id', 'pdf-hash-2'));

@@ -3,7 +3,11 @@
 import { useEffect } from 'react';
 import Script from 'next/script';
 import PublicCookieConsentBanner, { type PublicCookieConsentChoice } from '@/components/shared/publicCookieConsent/PublicCookieConsentBanner';
-import { trackPlausibleEvent } from '@lib/website/plausible';
+import {
+    setPublicWebsiteAnalyticsRuntimeConsent,
+    trackGoogleMarketingEvent,
+    trackPlausibleEvent,
+} from '@lib/website/plausible';
 import AnswerlatticePlausibleAnalytics from './AnswerlatticePlausibleAnalytics';
 import {
     cleanAnswerlatticeAnalyticsString,
@@ -62,6 +66,7 @@ function clearKnownGoogleAnalyticsCookies() {
 }
 
 function applyAnswerlatticeConsent(choice: PublicCookieConsentChoice) {
+    setPublicWebsiteAnalyticsRuntimeConsent(choice);
     const win = window as AnswerlatticeWindow;
     if (choice === 'declined') {
         win.plausible = undefined;
@@ -97,10 +102,7 @@ function AnswerlatticeConversionTracker() {
 
             trackPlausibleEvent(eventName);
 
-            const win = window as AnswerlatticeWindow;
-            if (typeof win.gtag !== 'function') return;
-
-            win.gtag('event', eventName, {
+            trackGoogleMarketingEvent(eventName, {
                 event_category: cleanAnswerlatticeAnalyticsString(target.dataset.answerlatticeCategory, 80) || 'answerlattice_website',
                 event_label: cleanAnswerlatticeAnalyticsString(target.dataset.answerlatticeLabel || target.textContent, 80),
                 page_path: getAnswerlatticeAnalyticsPagePath(),

@@ -8,9 +8,9 @@
  * 
  * Update Schedule: Every 6 months or when spam increases
  * 
- * To update:
+ * To atomically update and validate the artifact:
  * ```bash
- * curl -s "https://raw.githubusercontent.com/disposable/disposable-email-domains/master/domains.json" -o src/lib/validation/disposable-domains-full.json
+ * npm run maintenance:update-disposable-domains
  * ```
  * 
  * Impact: Blocks 60-80% of spam signups
@@ -18,8 +18,29 @@
 
 import disposableDomainsJson from './disposable-domains-full.json';
 
-// Convert JSON array to Set for O(1) lookup
-const FULL_DISPOSABLE_DOMAINS = new Set<string>(disposableDomainsJson as string[]);
+const DOMAIN_PATTERN = /^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/;
+
+function normalizeDomainCandidate(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const domain = value.trim().toLowerCase();
+    if (
+        !domain
+        || domain.length > 253
+        || !domain.includes('.')
+        || domain.includes('..')
+        || !DOMAIN_PATTERN.test(domain)
+    ) {
+        return null;
+    }
+    return domain;
+}
+
+// Validate the update artifact at runtime instead of asserting its shape.
+const FULL_DISPOSABLE_DOMAINS = new Set<string>(
+    (Array.isArray(disposableDomainsJson) ? disposableDomainsJson : [])
+        .map(normalizeDomainCandidate)
+        .filter((domain): domain is string => Boolean(domain)),
+);
 
 /**
  * Fallback list in case JSON import fails
@@ -241,23 +262,20 @@ export const DISPOSABLE_EMAIL_DOMAINS_FALLBACK = new Set<string>([
  * ```
  */
 export function isDisposableEmail(email: string): boolean {
-    if (!email || typeof email !== 'string') {
-        return false;
-    }
-    
-    const domain = email.split('@')[1]?.toLowerCase()?.trim();
-    
-    if (!domain) {
-        return false;
-    }
-    
+    const domain = getEmailDomain(email);
+    if (!domain) return false;
+
     // Check full list first (10,000+ domains from GitHub)
-    if (FULL_DISPOSABLE_DOMAINS.size > 0) {
-        return FULL_DISPOSABLE_DOMAINS.has(domain);
+    const disposableDomains = FULL_DISPOSABLE_DOMAINS.size > 0
+        ? FULL_DISPOSABLE_DOMAINS
+        : DISPOSABLE_EMAIL_DOMAINS_FALLBACK;
+
+    let candidate = domain;
+    while (candidate.includes('.')) {
+        if (disposableDomains.has(candidate)) return true;
+        candidate = candidate.slice(candidate.indexOf('.') + 1);
     }
-    
-    // Fallback to manual list if JSON import failed
-    return DISPOSABLE_EMAIL_DOMAINS_FALLBACK.has(domain);
+    return false;
 }
 
 /**
@@ -267,10 +285,17 @@ export function isDisposableEmail(email: string): boolean {
  * @returns domain or null
  */
 export function getEmailDomain(email: string): string | null {
-    if (!email || typeof email !== 'string') {
+    if (!email || typeof email !== 'string') return null;
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const separatorIndex = normalizedEmail.indexOf('@');
+    if (
+        separatorIndex <= 0
+        || separatorIndex !== normalizedEmail.lastIndexOf('@')
+        || separatorIndex === normalizedEmail.length - 1
+    ) {
         return null;
     }
-    
-    const domain = email.split('@')[1]?.toLowerCase()?.trim();
-    return domain || null;
+
+    return normalizedEmail.slice(separatorIndex + 1);
 }

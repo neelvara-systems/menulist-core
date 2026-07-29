@@ -100,6 +100,14 @@ firebase deploy --project campaigncue-qa --config firebase-campaigncue.json --on
 | Preview | `campaigncue-qa` | Requires CampaignCue Firebase env vars and deploy using `firebase-campaigncue.json`. |
 | Production | `campaigncue` | Requires CampaignCue Firebase env vars and deploy using `firebase-campaigncue.json`. |
 
+Production and preview runtime (`NODE_ENV=production`) always use dedicated
+CampaignCue mode even if a stale environment value requests `shared`, `same`,
+or `default`. Shared-mode compatibility is limited to local development and
+emulator work. Public/server project values and service-account `project_id`
+must exactly equal the deployment-matrix target (`campaigncue-qa` or
+`campaigncue`); whitespace, MenuList/Answerlattice IDs, coercible values, and
+other project IDs fail closed before a CampaignCue Admin app is initialized.
+
 Actual Firebase project creation, credentials, App Check configuration, and rule/index/storage deploy remain external setup. CampaignCue deploy files now exist:
 
 - `firebase-campaigncue.json`

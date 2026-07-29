@@ -248,7 +248,7 @@ function verifyRoutesAndUi() {
   const middleware = read("src/proxy.ts");
 
   assertIncludes(routes, 'SIGNALDESK_BASE_PATH = "/signaldesk"', "SignalDesk base path");
-  assertIncludes(routes, 'SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH = "/sd"', "SignalDesk menulist.digital alias path");
+  assertIncludes(routes, 'SIGNALDESK_SHORT_ALIAS_PATH = "/sd"', "SignalDesk short alias path");
   assertIncludes(pathProvider, "withSignalDeskBasePath", "SignalDesk path provider");
   assertIncludes(layout, "SignalDeskPathProvider", "SignalDesk layout base-path provider");
   assertIncludes(layout, "AntdThemeProvider", "SignalDesk layout uses shared AntD theme provider");
@@ -267,7 +267,7 @@ function verifyRoutesAndUi() {
   assertIncludes(signinComponent, "getSafeCallbackUrl", "SignalDesk sign-in validates its callback route");
   assertNotIncludes(signinComponent, "firebaseAuth", "SignalDesk sign-in does not bootstrap MenuList Firebase claims");
   assertIncludes(layout, "x-product-base-path", "SignalDesk layout reads middleware base path");
-  assertIncludes(middleware, "buildSignalDeskAliasRewritePath", "Middleware rewrites /sd alias");
+  assertIncludes(middleware, "buildSignalDeskAliasRewritePath", "Middleware rewrites local /sd alias");
   assertIncludes(middleware, "setSignalDeskProductHeaders", "Middleware sets SignalDesk product headers");
   assertIncludes(middleware, "X-Robots-Tag", "Middleware noindexes SignalDesk");
 
@@ -469,7 +469,18 @@ function verifyApiSecurityAndActions() {
   assertIncludes(actions, '"run-ai-volume-batch": "provider_run"', "AI volume runs are blocked on mobile as provider work");
   assertIncludes(actions, '? "BATCH_OPERATION"', "AI volume runs use the bounded batch rate limit");
   assertIncludes(actions, 'maxEstimatedCostUsd: z.number().min(0.01).max(5)', "AI volume founder cost maximum is bounded");
-  assertIncludes(actions, "return NextResponse.json({ data: { drafts } });", "Array-returning content draft generation uses the bounded object response envelope");
+  assertIncludes(actions, "return signalDeskPrivateJson({ data: { drafts } });", "Array-returning content draft generation uses the bounded private object response envelope");
+  assertIncludes(apiGuards, "export const SIGNALDESK_PRIVATE_RESPONSE_HEADERS = {", "SignalDesk shared private response policy");
+  assertIncludes(apiGuards, '"Cache-Control": "private, no-store, max-age=0"', "SignalDesk shared non-storage policy");
+  assertIncludes(apiGuards, "export const withSignalDeskPrivateHeaders = <T extends NextResponse>(response: T): T => {", "SignalDesk shared typed helper-response policy");
+  assertIncludes(apiGuards, "withSignalDeskPrivateHeaders(NextResponse.json(body, init))", "SignalDesk JSON responses apply protected headers after construction");
+  assertIncludes(apiGuards, "response: withSignalDeskPrivateHeaders(bodyResult.response)", "SignalDesk bounded-body response private policy");
+  assertIncludes(actions, "signalDeskPrivateJson", "SignalDesk actions use the shared private JSON response boundary");
+  assertNotIncludes(actions, "NextResponse.json", "SignalDesk action route direct unprotected JSON response");
+  [overviewRoute, workspaceRoute, killSwitches].forEach((source, index) => {
+    assertIncludes(source, "signalDeskPrivateJson", `SignalDesk authenticated route ${index + 1} shared private JSON boundary`);
+    assertNotIncludes(source, "NextResponse.json", `SignalDesk authenticated route ${index + 1} direct unprotected JSON response`);
+  });
   assertIncludes(dal, '"generate-content-distribution-drafts": projectSignalDeskCommonActionAcknowledgement', "Content draft generation response is validated before entering client state");
   assertIncludes(killSwitches, "parseSignalDeskJsonBody", "Kill-switch route shared JSON parser");
   assertIncludes(killSwitches, "logSignalDeskValidationFailure", "Kill-switch route validation logging");
@@ -1053,7 +1064,9 @@ function verifyApiSecurityAndActions() {
   assertIncludes(webhookRoute, "getSignalDeskWebhookRequestErrorStatus", "Webhook route separates caller defects from transient processing failures");
   assertIncludes(webhookRoute, '"Retry-After": "30"', "Webhook route asks providers to retry transient processing failures");
   assertIncludes(webhookRoute, 'status: requestErrorStatus || 503', "Webhook route does not acknowledge transient persistence failures as caller errors");
-  assertIncludes(webhookRoute, 'const NO_STORE_HEADERS = { "Cache-Control": "no-store" };', "Webhook responses are not cached");
+  assertIncludes(webhookRoute, '"Cache-Control": "no-store, max-age=0"', "Webhook responses are not cached");
+  assertIncludes(webhookRoute, '"X-Content-Type-Options": "nosniff"', "Webhook responses disable MIME sniffing");
+  assertIncludes(webhookRoute, "Object.entries(NO_STORE_HEADERS).forEach", "Webhook bounded-body failures retain protected response headers");
   assertNotIncludes(webhookRoute, "request.text()", "Webhook route direct raw body parser");
   assertNotIncludes(webhookRoute, 'key: `signaldesk:webhook:${provider}:${request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"}`', "Webhook route does not store raw request IP in rate-limit keys");
   assertNotIncludes(webhookRoute, 'error: error instanceof Error ? error.message : "Webhook failed"', "Webhook route does not log raw exception messages");
@@ -1088,7 +1101,9 @@ function verifyApiSecurityAndActions() {
   assertIncludes(webhookServer, "qualifySignalDeskRevenueAccountServer", "Interested provider replies invoke the revenue projection path");
   assertIncludes(webhookServer, 'status: "duplicate"', "Webhook duplicate event status");
   assertIncludes(outcomeBridgeRoute, "readBoundedTextBody", "Outcome bridge body is bounded");
-  assertIncludes(outcomeBridgeRoute, 'bodyResult.response.headers.set("Cache-Control", "no-store")', "Outcome bridge bounded-body failures remain no-store");
+  assertIncludes(outcomeBridgeRoute, '"Cache-Control": "no-store, max-age=0"', "Outcome bridge responses are not cached");
+  assertIncludes(outcomeBridgeRoute, '"X-Content-Type-Options": "nosniff"', "Outcome bridge responses disable MIME sniffing");
+  assertIncludes(outcomeBridgeRoute, "Object.entries(NO_STORE_HEADERS).forEach", "Outcome bridge bounded-body failures retain protected response headers");
   assertIncludes(outcomeBridgeRoute, "checkRateLimit", "Outcome bridge is rate limited");
   assertIncludes(outcomeBridgeRoute, "failClosedOnProviderError: true", "Outcome bridge fails closed when rate-limit storage is unavailable");
   assertIncludes(outcomeBridgeRoute, 'status: providerUnavailable ? 503 : 429', "Outcome bridge separates retryable provider failure from caller limits");
@@ -2015,13 +2030,13 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(e2eLocal, "unresolvedAiAuditCount === 1", "AI unresolved state emits one audit event in E2E");
   assertIncludes(e2eLocal, "injected research completion acknowledgement loss", "Research Agent final batch acknowledgement loss has E2E coverage");
 
-  assertIncludes(integrations, "MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID", "Apify Actor ID env is product-scoped");
+  assertIncludes(integrations, "SIGNALDESK_APIFY_SOURCE_ACTOR_ID", "Apify Actor ID env is product-scoped");
   [
-    "MENULIST_SIGNALDESK_GEMINI_AI_KEY",
-    "MENULIST_SIGNALDESK_GEMINI_AI_KEY_2",
-    "MENULIST_SIGNALDESK_GEMINI_AI_KEY_3",
-    "MENULIST_SIGNALDESK_GEMINI_AI_KEY_4",
-    "MENULIST_SIGNALDESK_AI_MODEL",
+    "SIGNALDESK_GEMINI_AI_KEY",
+    "SIGNALDESK_GEMINI_AI_KEY_2",
+    "SIGNALDESK_GEMINI_AI_KEY_3",
+    "SIGNALDESK_GEMINI_AI_KEY_4",
+    "SIGNALDESK_AI_MODEL",
   ].forEach((token) => assertIncludes(integrations, token, `SignalDesk AI integration env ${token}`));
   assertIncludes(keyManager, "export type GeminiKeyEnvVarCandidates", "Gemini key manager exposes scoped candidate type");
   assertIncludes(keyManager, "constructor(keyEnvVarCandidates: GeminiKeyEnvVarCandidates = KEY_ENV_VAR_CANDIDATES)", "Gemini key manager accepts scoped env candidates");
@@ -2038,13 +2053,13 @@ function verifyConnectorProviderAndInvestmentControls() {
   [stagingEnv, productionEnv].forEach((envTemplate, index) => {
     const label = index === 0 ? "SignalDesk staging env" : "SignalDesk production env";
     [
-      "NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE=separate",
-      "MENULIST_SIGNALDESK_FIREBASE_MODE=separate",
-      "MENULIST_SIGNALDESK_GEMINI_AI_KEY=",
-      "MENULIST_SIGNALDESK_GEMINI_AI_KEY_2=",
-      "MENULIST_SIGNALDESK_GEMINI_AI_KEY_3=",
-      "MENULIST_SIGNALDESK_GEMINI_AI_KEY_4=",
-      "MENULIST_SIGNALDESK_AI_MODEL=",
+      "NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE=separate",
+      "SIGNALDESK_FIREBASE_MODE=separate",
+      "SIGNALDESK_GEMINI_AI_KEY=",
+      "SIGNALDESK_GEMINI_AI_KEY_2=",
+      "SIGNALDESK_GEMINI_AI_KEY_3=",
+      "SIGNALDESK_GEMINI_AI_KEY_4=",
+      "SIGNALDESK_AI_MODEL=",
     ].forEach((token) => assertIncludes(envTemplate, token, `${label} ${token}`));
   });
   assertIncludes(aiProvider, "SIGNALDESK_AI_RESPONSE_PARSE_FAILED", "SignalDesk AI provider parse failure code");
@@ -2090,9 +2105,9 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(database, 'RESEARCH_TABLE_ROWS: "signaldeskResearchTableRows"', "Research Agent table row collection");
   assertIncludes(database, 'PROOF_PERMISSIONS: "signaldeskProofPermissions"', "Proof permission ledger collection");
   assertIncludes(firestoreRules, "match /signaldeskProofPermissions/{docId}", "Proof permissions are explicitly internal-readable");
-  assertIncludes(integrations, 'OUTCOME_BRIDGE_SECRET: "MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET"', "Outcome bridge uses a SignalDesk-only secret");
-  assertIncludes(stagingEnv, "MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET", "Staging documents the outcome bridge secret");
-  assertIncludes(productionEnv, "MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET", "Production documents the outcome bridge secret");
+  assertIncludes(integrations, 'OUTCOME_BRIDGE_SECRET: "SIGNALDESK_OUTCOME_BRIDGE_SECRET"', "Outcome bridge uses a SignalDesk-only secret");
+  assertIncludes(stagingEnv, "SIGNALDESK_OUTCOME_BRIDGE_SECRET", "Staging documents the outcome bridge secret");
+  assertIncludes(productionEnv, "SIGNALDESK_OUTCOME_BRIDGE_SECRET", "Production documents the outcome bridge secret");
   assertIncludes(types, "SignalDeskResearchRunSummary", "Research Agent run type");
   assertIncludes(types, "SignalDeskResearchTableRowSummary", "Research Agent table row type");
   assertIncludes(types, "SignalDeskAiVolumeRunSummary", "AI volume parent summary type");
@@ -2609,8 +2624,8 @@ function verifyFirebaseIsolation() {
   assertIncludes(config, "SIGNALDESK_REQUIRED_FIREBASE_MODE", "SignalDesk Firebase config enforces the required mode");
   assertIncludes(config, "signaldeskAdminStorageBucket", "SignalDesk Firebase config exposes the validated admin bucket");
   assertIncludes(config, "signaldeskClientStorageBucket", "SignalDesk Firebase config exposes the validated client bucket");
-  assertIncludes(admin, "__MENULIST_SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__", "SignalDesk Admin bootstrap caches one validated outcome");
-  assertIncludes(client, "__MENULIST_SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__", "SignalDesk client bootstrap caches one validated outcome");
+  assertIncludes(admin, "__SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__", "SignalDesk Admin bootstrap caches one validated outcome");
+  assertIncludes(client, "__SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__", "SignalDesk client bootstrap caches one validated outcome");
   assertIncludes(database, 'TARGETS: "signaldeskTargets"', "SignalDesk product-local collection names");
   assertIncludes(database, 'SELF_SERVICE_CTAS: "signaldeskSelfServiceCtas"', "SignalDesk self-service CTA collection");
   assertIncludes(database, 'CONTENT_DISTRIBUTION_DRAFTS: "signaldeskContentDistributionDrafts"', "SignalDesk content distribution collection");
@@ -2914,12 +2929,12 @@ function verifyDocsTruth() {
 
   assertIncludes(readme, "private growth control room", "SignalDesk README internal boundary");
   assertIncludes(readme, "observe, monitor, and approve", "SignalDesk README solo-owner posture");
-  assertIncludes(readme, "SignalDesk AI assist uses only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*`", "SignalDesk README AI credential boundary");
+  assertIncludes(readme, "SignalDesk AI assist uses only `SIGNALDESK_GEMINI_AI_KEY*`", "SignalDesk README AI credential boundary");
   assertIncludes(readme, "| Product code | `SD` via `PRODUCT_IDS.SIGNALDESK` |", "SignalDesk README current product code");
   assertNotIncludes(readme, "Future product code", "SignalDesk README product code drift");
   assertIncludes(impl, "observe -> monitor -> approve -> pause or redirect", "SignalDesk implementation posture");
   assertIncludes(impl, '| Product code | `PRODUCT_IDS.SIGNALDESK = "SD"` is implemented.', "SignalDesk implementation current product code");
-  assertIncludes(impl, "SignalDesk-only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*` pool", "SignalDesk implementation scoped AI key pool");
+  assertIncludes(impl, "SignalDesk-only `SIGNALDESK_GEMINI_AI_KEY*` pool", "SignalDesk implementation scoped AI key pool");
   assertIncludes(impl, "18 account/use records and 17 provider-scoped budgets", "SignalDesk implementation documents exact seed registry cardinality");
   assertIncludes(impl, "any near-match or founder marker prevents migration", "SignalDesk implementation documents exact-only legacy migration");
   assertIncludes(impl, "July 15 Source-Policy And Transactional Import Hardening", "SignalDesk implementation documents source-policy/import hardening");

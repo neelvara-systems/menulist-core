@@ -5,6 +5,8 @@ import {
 } from '@lib/security/securityDiagnostics';
 import { createHmac, timingSafeEqual } from 'crypto';
 
+const RAZORPAY_WEBHOOK_SIGNATURE_PATTERN = /^[a-f0-9]{64}$/;
+
 /**
  * Validates the signature of a Razorpay webhook request using HMAC-SHA256
  * 
@@ -44,11 +46,18 @@ export async function validateRazorpayWebhookSignature(
 ): Promise<boolean> {
   try {
     // Validate inputs
-    if (!requestBody || !signature || !secret) {
+    if (!requestBody || typeof signature !== 'string' || !signature || typeof secret !== 'string' || !secret) {
       logSecurityDiagnostic('razorpay_webhook_validator_missing_parameters', {
         hasBody: !!requestBody,
         hasSignature: !!signature,
         hasSecret: !!secret,
+        ...getBoundedSecurityStringContext('provider', 'razorpay'),
+      });
+      return false;
+    }
+    if (!RAZORPAY_WEBHOOK_SIGNATURE_PATTERN.test(signature)) {
+      logSecurityDiagnostic('razorpay_webhook_validator_invalid_signature_shape', {
+        signatureLength: signature.length,
         ...getBoundedSecurityStringContext('provider', 'razorpay'),
       });
       return false;

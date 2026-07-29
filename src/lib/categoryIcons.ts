@@ -12,12 +12,20 @@ function resolveIconBusinessCategory(businessType?: string, businessCategory?: s
     return resolveBusinessCategory(businessType, businessCategory) || normalizeBusinessCategory(businessType);
 }
 
+const safeRead = (value: object, key: string): unknown => {
+    try {
+        return Reflect.get(value, key);
+    } catch {
+        return undefined;
+    }
+};
+
 export function normalizeCategoryIconValue(icon: unknown): string {
     if (typeof icon === 'string') return icon.trim();
 
     if (icon && typeof icon === 'object') {
         for (const key of ['icon', 'value', 'name']) {
-            const candidate = (icon as Record<string, unknown>)[key];
+            const candidate = safeRead(icon, key);
             if (typeof candidate === 'string' && candidate.trim()) {
                 return candidate.trim();
             }

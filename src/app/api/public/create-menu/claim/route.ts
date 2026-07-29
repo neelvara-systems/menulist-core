@@ -42,6 +42,7 @@ import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
 import { normalizePublicDraftSourceForProject } from '@lib/public-menu-entry/publicDraftSource';
+import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 import { resolvePublicMenuEntryProjectSlug } from '@lib/public-menu-entry/claimProjectSlug';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
@@ -68,7 +69,6 @@ import { z } from 'zod';
 
 const COLLECTION = DB_COLLECTIONS.PUBLIC_MENU_DRAFTS;
 const PUBLIC_MENU_CLAIM_MAX_BODY_BYTES = 8 * 1024;
-const PUBLIC_MENU_DRAFT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function normalizePublicMenuClaimNumericDocumentId(
     value: unknown,
@@ -144,7 +144,7 @@ function mergeDefinedObject<T extends Record<string, any>>(value: T | null | und
 }
 
 const ClaimSchema = z.object({
-    draftId: z.string().regex(PUBLIC_MENU_DRAFT_ID_PATTERN),
+    draftId: z.string().refine((value) => normalizePublicMenuDraftId(value) === value),
     businessName: z.string().min(2).max(100),
     businessType: z.string().max(80).optional(),
     businessCategory: z.string().max(80).optional(),
@@ -768,7 +768,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             { name: 'menu-store-tag', run: async () => revalidateTag(`menu-store-${result.storeId}`, { expire: 0 }) },
             { name: 'store-tag', run: async () => revalidateTag(`store-${result.storeId}`, { expire: 0 }) },
             { name: 'client-stores-tag', run: async () => revalidateTag('client-stores', { expire: 0 }) },
-            { name: 'screen-data-tag', run: async () => revalidateTag('screen-data', { expire: 0 }) },
             {
                 name: 'screen-content-version',
                 run: async () => touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim'),

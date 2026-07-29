@@ -37,6 +37,8 @@ import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_ROUNDED_BODY_STYLE } from './men
 interface ExtractionReviewSheetProps {
     comparisonResult: ComparisonEngineOutput;
     jobId: string;
+    tenantId: unknown;
+    storeId: unknown;
     onDiscard: () => void;
     onSaveComplete: () => void;
     primaryLang: string;
@@ -139,6 +141,8 @@ function ItemRow({
 export default function ExtractionReviewSheet({
     comparisonResult,
     jobId,
+    tenantId,
+    storeId,
     onDiscard,
     onSaveComplete,
     primaryLang,
@@ -146,6 +150,7 @@ export default function ExtractionReviewSheet({
     visible,
 }: ExtractionReviewSheetProps) {
     const t = useTranslations('MobileMenu');
+    const dismissalScope = useMemo(() => ({ tenantId, storeId }), [storeId, tenantId]);
     const reviewIdentity = getReviewPreviewIdentity(projectId, jobId);
     const activeReviewIdentityRef = useRef(reviewIdentity);
     activeReviewIdentityRef.current = reviewIdentity;
@@ -284,7 +289,7 @@ export default function ExtractionReviewSheet({
 
         setIsDiscarding(true);
         try {
-            markMenuProcessingJobAsDismissed(jobId);
+            markMenuProcessingJobAsDismissed(dismissalScope, jobId);
             await discardExtractionChanges(jobId);
             if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
                 return;
@@ -292,7 +297,7 @@ export default function ExtractionReviewSheet({
             Toast.show({ content: t('changesDiscarded'), duration: 1600 });
             onDiscard();
         } catch (error) {
-            clearMenuProcessingJobDismissal(jobId);
+            clearMenuProcessingJobDismissal(dismissalScope, jobId);
             if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
                 return;
             }
@@ -305,20 +310,20 @@ export default function ExtractionReviewSheet({
                 setIsDiscarding(false);
             }
         }
-    }, [jobId, onDiscard, reviewIdentity, t]);
+    }, [dismissalScope, jobId, onDiscard, reviewIdentity, t]);
 
     const handleCloseNoChanges = useCallback(async () => {
         const submittedReviewIdentity = reviewIdentity;
         setIsDiscarding(true);
         try {
-            markMenuProcessingJobAsDismissed(jobId);
+            markMenuProcessingJobAsDismissed(dismissalScope, jobId);
             await discardExtractionChanges(jobId);
             if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
                 return;
             }
             onDiscard();
         } catch (error) {
-            clearMenuProcessingJobDismissal(jobId);
+            clearMenuProcessingJobDismissal(dismissalScope, jobId);
             if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
                 return;
             }
@@ -331,7 +336,7 @@ export default function ExtractionReviewSheet({
                 setIsDiscarding(false);
             }
         }
-    }, [jobId, onDiscard, reviewIdentity, t]);
+    }, [dismissalScope, jobId, onDiscard, reviewIdentity, t]);
 
     if (!visible) return null;
 

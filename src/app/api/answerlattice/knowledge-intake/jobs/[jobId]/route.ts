@@ -7,18 +7,19 @@ import {
 import { normalizeAnswerlatticeKnowledgeIntakeJobId } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import { logAnswerlatticeKnowledgeIntakeFailure } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../../../readRateLimit';
 
 export const GET = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
     if (!jobId) {
-        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Invalid knowledge intake job.' }, { status: 400 });
     }
 
     const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'knowledge-intake-job');
@@ -28,7 +29,7 @@ export const GET = withAuth(async (request: NextRequest, session, params: { jobI
 
     try {
         const bundle = await getKnowledgeIntakeBundle(access.context.scope, jobId);
-        return NextResponse.json({ bundle: serializeIntakeValue(bundle) }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ bundle: serializeIntakeValue(bundle) });
     } catch (error) {
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -37,6 +38,6 @@ export const GET = withAuth(async (request: NextRequest, session, params: { jobI
                 scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to load knowledge intake job.') }, { status });
+        return answerlatticeKnowledgeIntakeJson({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to load knowledge intake job.') }, { status });
     }
 });

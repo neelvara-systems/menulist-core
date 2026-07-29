@@ -88,6 +88,21 @@ const updatePrompt = read('src/components/common/OwnerAppUpdatePrompt.tsx');
   'window.location.reload()',
 ].forEach((token) => assertIncludes(updatePrompt, token, 'owner update prompt'));
 
+const deploymentBadge = read('src/components/common/DeploymentBuildBadge.tsx');
+[
+  'parseDeploymentDebugIdentity(raw)',
+  'window.sessionStorage.removeItem(DEPLOYMENT_IDENTITY_STORAGE_KEY)',
+  'deployment_badge_visibility_storage_read_failed',
+  'deployment_badge_visibility_storage_write_failed',
+].forEach((token) => assertIncludes(deploymentBadge, token, 'deployment badge storage boundary'));
+
+const deploymentDebug = read('src/constants/deploymentDebug.ts');
+[
+  'normalizeDeploymentDebugIdentity',
+  'DEPLOYMENT_DEBUG_ID_MAX_LENGTH',
+  'DEPLOYMENT_DEBUG_NAME_MAX_LENGTH',
+].forEach((token) => assertIncludes(deploymentDebug, token, 'deployment identity DTO boundary'));
+
 const offlinePage = read('src/app/offline/page.tsx');
 assertIncludes(offlinePage, 'latest information', 'shared offline fallback');
 assert(!offlinePage.includes('latest live menu'), 'shared offline fallback must not claim customer-only context');

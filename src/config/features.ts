@@ -7,9 +7,9 @@ export const FEATURE_FLAGS = {
     /**
      * Enable the MyCodex documentation reader.
      *
-     * This is a private developer surface mounted through /__mycodex locally
-     * and the dedicated menulist.digital host on Vercel. It must not claim
-     * MenuList or Answerlattice production domains.
+     * This is a private developer surface mounted through /__mycodex locally.
+     * It must not claim MenuList, Answerlattice, or any discarded public
+     * product domain.
      */
     ENABLE_MYCODEX_READER: true,
 

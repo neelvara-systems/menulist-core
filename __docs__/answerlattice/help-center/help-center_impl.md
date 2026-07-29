@@ -26,7 +26,9 @@ The owner route is MenuList UI, but search/content/ticket work uses only an expl
 
 The July 16 item-28 pass adds no alternate support backend. Browser search response parsing now normalizes bounded related-content projections and related article buttons build internal `/help-center/kb/articles/{encodedId}` routes. Ticket attachment admission is centralized in `supportTicketAttachmentBoundary.ts`; signed download URLs must match the configured Answerlattice bucket plus selected ticket tenant/store path before opening and are never logged. Firestore rules preserve prior message/status arrays exactly, validate one appended entry, bind the actor to Firebase Auth, and make satisfaction write-once after resolution/closure.
 
-The July 18 feature-flow pass binds every Help Center context cache to an exact `workspace:{tId}:{sId}` key and gives platform ticket lists a separate `platform` audience. Category and changelog request coalescing use per-scope maps rather than process-wide promises. Help Chat draft keys include exact workspace and consistent authenticated user identity; text is stored in a strict 24-hour envelope, legacy/foreign-scope keys are purged, and image drafts are never persisted. Managed FAQ load failure stays visible instead of silently replacing approved data with static copy.
+The July 18 feature-flow pass binds every Help Center context cache to an exact `workspace:{tId}:{sId}` key and gives platform ticket lists a separate `platform` audience. Category and changelog request coalescing use per-scope maps rather than process-wide promises. Help Chat draft keys include exact workspace and consistent authenticated user identity; text is stored in a strict 24-hour envelope, legacy/foreign-scope keys are purged, and image drafts are never persisted. Draft clearing and cleanup are failure-contained and emit bounded diagnostics when browser storage is denied, so clearing a parent-controlled input cannot crash Help Chat. Managed FAQ load failure stays visible instead of silently replacing approved data with static copy.
+
+The changelog viewer treats its device-local last-viewed marker as untrusted: only canonical non-future integer timestamps are admitted, invalid values are evicted, and the marker advances only after an initial changelog page has actually loaded. A failed or empty initial fetch therefore cannot suppress future New badges.
 
 The public-content transport also binds that initiating workspace. Category, article, FAQ and changelog requests send the expected tenant/store only as corroboration; the authenticated route derives authority from the session, rejects a mismatch before cache reads, and acknowledges the exact admitted scope. The browser rejects a missing/mismatched acknowledgement. Category/article caches discard obsolete settlement, while FAQ/changelog/category direct consumers clear or ignore former-scope state through effect ownership or keyed rendering.
 
@@ -192,6 +194,12 @@ Answerlattice KB owner content scope boundary: Help Center KB categories, articl
 
 - `src/components/organisms/ArticleView/index.tsx` — Full article renderer
 - `src/components/organisms/ArticleViewModal/index.tsx` — Modal wrapper
+
+The renderer synchronizes its read-only Tiptap document whenever the selected
+article changes. The modal fences each asynchronous article load to the
+selection that initiated it, clears stale content while the next article is
+loading, and records bounded diagnostics when a fetch fails. An older request
+must never overwrite a newer article selection.
 
 ### 2.8 Knowledge Base Management (Platform Admin)
 

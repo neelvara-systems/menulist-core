@@ -21,7 +21,18 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from '
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_RELEASES;
 const MAX_RELEASES_PER_LOAD = 100;
-const RELEASE_ACTION_RESPONSE_MAX_BYTES = 64 * 1024;
+const RELEASE_ACTION_RESPONSE_MAX_BYTES = 256 * 1024;
+
+export class AnswerlatticeReleaseClientError extends Error {
+    constructor(
+        public readonly code: string,
+        message: string,
+    ) {
+        super(message);
+        this.name = 'AnswerlatticeReleaseClientError';
+        Object.setPrototypeOf(this, AnswerlatticeReleaseClientError.prototype);
+    }
+}
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 
@@ -67,7 +78,16 @@ const executeReleaseAction = async (
     const payload = await readJsonResponseWithLimit<unknown>(response, RELEASE_ACTION_RESPONSE_MAX_BYTES)
         .catch(() => null);
     if (!response.ok) {
-        throw new Error('Release action failed');
+        const errorPayload = payload && typeof payload === 'object' && !Array.isArray(payload)
+            ? payload as Record<string, unknown>
+            : null;
+        const code = typeof errorPayload?.code === 'string'
+            ? errorPayload.code.slice(0, 80)
+            : 'release_action_failed';
+        const errorMessage = typeof errorPayload?.error === 'string'
+            ? errorPayload.error.slice(0, 240)
+            : 'Release action failed';
+        throw new AnswerlatticeReleaseClientError(code, errorMessage);
     }
     const parsed = AnswerlatticeReleaseActionResultSchema.safeParse(payload);
     if (!parsed.success) throw new Error('Release action returned an invalid response');
@@ -157,6 +177,7 @@ export const addRelease = async (
 export const activateRelease = async (
     releaseId: string,
     requestId: string | undefined,
+    impactFingerprint: string,
     expectedScope: { tId: number; sId: number },
 ) => apiCallComposer(
     async () => {
@@ -168,10 +189,38 @@ export const activateRelease = async (
             requestId: requestId || createRuntimeId('release_activation'),
             scope,
             releaseId: normalizedReleaseId,
+            impactFingerprint,
         }, expectedScope);
         if (result.action !== 'activate') throw new Error('Unexpected release action response');
         return result;
     },
-    { releaseId, hasRequestId: Boolean(requestId), hasExpectedScope: Boolean(expectedScope) },
+    {
+        releaseId,
+        hasRequestId: Boolean(requestId),
+        hasImpactFingerprint: Boolean(impactFingerprint),
+        hasExpectedScope: Boolean(expectedScope),
+    },
     'activateRelease',
+);
+
+export const previewReleaseImpact = async (
+    releaseId: string,
+    expectedScope: { tId: number; sId: number },
+) => apiCallComposer(
+    async () => {
+        const normalizedReleaseId = normalizeAnswerlatticeReleaseId(releaseId);
+        if (!normalizedReleaseId) throw new Error('Invalid Answerlattice release ID');
+        const scope = await getActiveReleaseScope(expectedScope);
+        const result = await executeReleaseAction({
+            action: 'preview_impact',
+            requestId: createRuntimeId('release_impact_preview'),
+            scope,
+            releaseId: normalizedReleaseId,
+            includeAnswerTestProof: true,
+        }, expectedScope);
+        if (result.action !== 'preview_impact') throw new Error('Unexpected release action response');
+        return result;
+    },
+    { releaseId, hasExpectedScope: Boolean(expectedScope) },
+    'previewReleaseImpact',
 );

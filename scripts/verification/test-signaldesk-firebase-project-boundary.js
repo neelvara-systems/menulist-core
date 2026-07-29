@@ -40,13 +40,13 @@ const loadFreshBootstrapState = () => {
   }
   if (preinitializeClientProject) {
     firebaseApp.initializeApp({
-      apiKey: process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_API_KEY || "existing-test-api-key",
-      appId: process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_APP_ID || "existing-test-app-id",
-      authDomain: process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN,
-      messagingSenderId: process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MESSAGING_SENDER_ID,
+      apiKey: process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_API_KEY || "existing-test-api-key",
+      appId: process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_APP_ID || "existing-test-app-id",
+      authDomain: process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN,
+      messagingSenderId: process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_MESSAGING_SENDER_ID,
       projectId: preinitializeClientProject,
       storageBucket: process.env[`${TEST_PREFIX}PREINITIALIZE_CLIENT_BUCKET`]
-        || process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET,
+        || process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET,
     }, "menulist-signaldesk");
   }
 
@@ -113,8 +113,8 @@ const cleanEnvironment = () => {
   const env = { ...process.env };
   for (const key of Object.keys(env)) {
     if (
-      key.startsWith("MENULIST_SIGNALDESK_")
-      || key.startsWith("NEXT_PUBLIC_MENULIST_SIGNALDESK_")
+      key.startsWith("SIGNALDESK_")
+      || key.startsWith("NEXT_PUBLIC_SIGNALDESK_")
       || key.startsWith(TEST_PREFIX)
       || [
         "FIRESTORE_EMULATOR_HOST",
@@ -153,16 +153,16 @@ const withoutKeys = (value, keys) => Object.fromEntries(
 );
 
 const exactDedicatedEnvironment = {
-  MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_API_KEY: "signaldesk-test-api-key",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_APP_ID: "signaldesk-test-app-id",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "menulist-signaldesk-qa.firebaseapp.com",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MESSAGING_SENDER_ID: "123456789",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
+  SIGNALDESK_FIREBASE_MODE: "separate",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_API_KEY: "signaldesk-test-api-key",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_APP_ID: "signaldesk-test-app-id",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "menulist-signaldesk-qa.firebaseapp.com",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MESSAGING_SENDER_ID: "123456789",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "separate",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
 };
 
 const assertNoSignalDeskBootstrap = (state, expectedErrorCode) => {
@@ -196,8 +196,8 @@ assert.equal(exactDedicated.adminFirestoreInitialized, false);
 
 const exactAdminEnvironment = {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_CLIENT_EMAIL: "signaldesk-test@example.invalid",
-  MENULIST_SIGNALDESK_FIREBASE_PRIVATE_KEY: testPrivateKey,
+  SIGNALDESK_FIREBASE_CLIENT_EMAIL: "signaldesk-test@example.invalid",
+  SIGNALDESK_FIREBASE_PRIVATE_KEY: testPrivateKey,
 };
 const exactAdmin = runCase("exact dedicated Admin configuration", {
   ...exactAdminEnvironment,
@@ -215,7 +215,7 @@ assert.equal(exactAdmin.reloadReusedClientApp, true);
 
 const adminCannotUsePublicBucket = runCase(
   "Admin cannot fall back to public Storage bucket",
-  withoutKeys(exactAdminEnvironment, ["MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET"]),
+  withoutKeys(exactAdminEnvironment, ["SIGNALDESK_FIREBASE_STORAGE_BUCKET"]),
 );
 assert.equal(adminCannotUsePublicBucket.boundary.valid, true);
 assert.equal(adminCannotUsePublicBucket.isClientConfigured, true);
@@ -226,13 +226,13 @@ assert.equal(adminCannotUsePublicBucket.clientAppName, "menulist-signaldesk");
 
 const exactProduction = runCase("exact production dedicated configuration", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk.firebasestorage.app",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk.firebasestorage.app",
   NEXT_PUBLIC_ENV: "production",
   NEXT_PUBLIC_VERCEL_ENV: "production",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "menulist-signaldesk.firebaseapp.com",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk.firebasestorage.app",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "menulist-signaldesk.firebaseapp.com",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk.firebasestorage.app",
   NODE_ENV: "production",
   VERCEL: "1",
   VERCEL_ENV: "production",
@@ -253,44 +253,44 @@ assertNoSignalDeskBootstrap(runCase("QA project in production", {
 
 assertNoSignalDeskBootstrap(runCase("public/private mode conflict", {
   ...exactDedicatedEnvironment,
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "shared",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "shared",
 }), "MODE_CONFLICT");
 
 assertNoSignalDeskBootstrap(runCase("shared mode", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_MODE: "shared",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "shared",
+  SIGNALDESK_FIREBASE_MODE: "shared",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "shared",
 }), "SHARED_MODE_NOT_ALLOWED");
 
 assertNoSignalDeskBootstrap(runCase("invalid mode", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_MODE: "isolated",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "isolated",
+  SIGNALDESK_FIREBASE_MODE: "isolated",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "isolated",
 }), "INVALID_MODE");
 
 assertNoSignalDeskBootstrap(runCase("public/private project conflict", {
   ...exactDedicatedEnvironment,
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
 }), "PROJECT_ID_CONFLICT");
 
 assertNoSignalDeskBootstrap(runCase("wrong deployment project", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-qa",
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-qa",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-qa",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-qa",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
 }), "PROJECT_ID_MISMATCH");
 
 assertNoSignalDeskBootstrap(runCase("non-default database", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-tenant-db",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-tenant-db",
+  SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-tenant-db",
+  NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-tenant-db",
 }), "NON_DEFAULT_DATABASE_NOT_ALLOWED");
 
 const explicitDefaultDatabase = runCase("explicit default database", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "(default)",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "(default)",
+  SIGNALDESK_FIRESTORE_DATABASE_ID: "(default)",
+  NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID: "(default)",
 });
 assert.equal(explicitDefaultDatabase.boundary.valid, true);
 assert.equal(explicitDefaultDatabase.clientFirestoreInitialized, true);
@@ -298,42 +298,42 @@ assert.equal(explicitDefaultDatabase.clientFirestoreInitialized, true);
 assertNoSignalDeskBootstrap(runCase(
   "missing storage bucket",
   withoutKeys(exactDedicatedEnvironment, [
-    "MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET",
-    "NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET",
+    "SIGNALDESK_FIREBASE_STORAGE_BUCKET",
+    "NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET",
   ]),
 ), "MISSING_STORAGE_BUCKET");
 
 assertNoSignalDeskBootstrap(runCase("storage bucket conflict", {
   ...exactDedicatedEnvironment,
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.appspot.com",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.appspot.com",
 }), "STORAGE_BUCKET_CONFLICT");
 
 assertNoSignalDeskBootstrap(runCase("foreign project storage bucket", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
 }), "STORAGE_BUCKET_PROJECT_MISMATCH");
 
 assertNoSignalDeskBootstrap(runCase("invalid storage bucket", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "https://storage.example/bucket",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "https://storage.example/bucket",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "https://storage.example/bucket",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "https://storage.example/bucket",
 }), "INVALID_STORAGE_BUCKET");
 
 const legacyDefaultBucket = runCase("appspot default bucket", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.appspot.com",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.appspot.com",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.appspot.com",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.appspot.com",
 });
 assert.equal(legacyDefaultBucket.boundary.valid, true);
 assert.equal(legacyDefaultBucket.clientAppStorageBucket, "menulist-signaldesk-qa.appspot.com");
 
 const canonicalizedBucket = runCase("canonicalized project bucket", {
   ...exactDedicatedEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "  menulist-signaldesk-qa  ",
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "  gs://menulist-signaldesk-qa.firebasestorage.app/  ",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "  menulist-signaldesk-qa  ",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "  gs://menulist-signaldesk-qa.firebasestorage.app/  ",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "  menulist-signaldesk-qa  ",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "  gs://menulist-signaldesk-qa.firebasestorage.app/  ",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "  menulist-signaldesk-qa  ",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "  gs://menulist-signaldesk-qa.firebasestorage.app/  ",
 });
 assert.equal(canonicalizedBucket.boundary.valid, true);
 assert.equal(canonicalizedBucket.configStorageBucket, "menulist-signaldesk-qa.firebasestorage.app");
@@ -344,13 +344,13 @@ const emulatorProjectId = "demo-signaldesk-firebase-boundary";
 const emulatorEnvironment = {
   FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080",
   GCLOUD_PROJECT: emulatorProjectId,
-  MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: emulatorProjectId,
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_API_KEY: "signaldesk-emulator-api-key",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_APP_ID: "signaldesk-emulator-app-id",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "localhost",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: emulatorProjectId,
+  SIGNALDESK_FIREBASE_MODE: "separate",
+  SIGNALDESK_FIREBASE_PROJECT_ID: emulatorProjectId,
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_API_KEY: "signaldesk-emulator-api-key",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_APP_ID: "signaldesk-emulator-app-id",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "localhost",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "separate",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: emulatorProjectId,
 };
 const emulator = runCase("dedicated emulator", {
   ...emulatorEnvironment,
@@ -378,25 +378,25 @@ assert.ok(emulator.allClientApps.some((app) => app.name === "[DEFAULT]" && app.p
 assertNoSignalDeskBootstrap(runCase("foreign emulator project", {
   FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080",
   GCLOUD_PROJECT: "demo-menulist",
-  MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "demo-menulist",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "demo-menulist",
+  SIGNALDESK_FIREBASE_MODE: "separate",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "demo-menulist",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "separate",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "demo-menulist",
 }), "EMULATOR_PROJECT_MISMATCH");
 
 assertNoSignalDeskBootstrap(runCase("malformed SignalDesk emulator project", {
   FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080",
   GCLOUD_PROJECT: "demo-signaldesk-",
-  MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "demo-signaldesk-",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "demo-signaldesk-",
+  SIGNALDESK_FIREBASE_MODE: "separate",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "demo-signaldesk-",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "separate",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "demo-signaldesk-",
 }), "EMULATOR_PROJECT_MISMATCH");
 
 assertNoSignalDeskBootstrap(runCase("foreign emulator storage bucket", {
   ...emulatorEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "demo-menulist.appspot.com",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "demo-menulist.appspot.com",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "demo-menulist.appspot.com",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "demo-menulist.appspot.com",
 }), "STORAGE_BUCKET_PROJECT_MISMATCH");
 
 const staleAdminApp = runCase("stale named Admin app", {
@@ -449,10 +449,10 @@ try {
     project_id: "menulist-qa",
   }));
   const mismatchedCredential = runCase("service-account project mismatch", {
-    MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-    MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
-    MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
-    MENULIST_SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS: mismatchedCredentialPath,
+    SIGNALDESK_FIREBASE_MODE: "separate",
+    SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
+    SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
+    SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS: mismatchedCredentialPath,
   });
   assert.equal(mismatchedCredential.boundary.valid, true);
   assert.equal(mismatchedCredential.adminAppName, null);
@@ -464,10 +464,10 @@ try {
     project_id: "menulist-signaldesk-qa",
   }));
   const matchingCredential = runCase("service-account project match", {
-    MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-    MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
-    MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
-    MENULIST_SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS: matchingCredentialPath,
+    SIGNALDESK_FIREBASE_MODE: "separate",
+    SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
+    SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
+    SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS: matchingCredentialPath,
     [`${TEST_PREFIX}RELOAD_BOOTSTRAPS`]: "1",
   });
   assert.equal(matchingCredential.boundary.valid, true);

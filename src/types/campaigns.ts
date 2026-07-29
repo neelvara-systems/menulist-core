@@ -411,7 +411,9 @@ export interface ScreenStoreInfo {
     name: string;
     logoUrl?: string;
     menuQrUrl: string;
+    currencyCode?: string;
     currencySymbol?: string;
+    locale?: string;
     activePlanType?: string | null;
 }
 
@@ -468,7 +470,9 @@ export interface ScreenSlide {
  */
 export interface DigitalScreenState {
     enabled: boolean;
-    screenToken: string; // High-entropy token for URL (22 chars, ~130-bit; legacy stores may have 8-char)
+    // Legacy summaries may still contain the bearer token until an authorized
+    // management read migrates it into the server-only screen control document.
+    screenToken?: string;
     lastRefreshed: Timestamp;
 
     // INVALIDATION: Lightweight event-based refresh trigger
@@ -491,6 +495,10 @@ export interface DigitalScreenState {
     // Updated once per day per screen via /api/screen/seen
     // NOT a heartbeat - just "I was alive today"
     screenLastSeenAt?: Timestamp;
+}
+
+export interface DigitalScreenOwnerState extends DigitalScreenState {
+    screenToken: string;
 }
 
 /**

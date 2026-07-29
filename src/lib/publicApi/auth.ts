@@ -41,6 +41,7 @@ export const PULL_API_SCHEMA_VERSION = "1.0";
 export const PULL_API_RESPONSE_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=300";
 export const PULL_API_ERROR_CACHE_CONTROL = "private, no-store";
 export const PULL_API_RESPONSE_VARY = "X-API-Key";
+export const PULL_API_CONTENT_TYPE_OPTIONS = "nosniff";
 export const PULL_API_KEY_RATE_LIMIT = 60;
 export const PULL_API_PREAUTH_RATE_LIMIT = PULL_API_KEY_RATE_LIMIT * 4;
 export const PULL_API_RATE_LIMIT_WINDOW_SECONDS = 60;
@@ -126,6 +127,7 @@ export function buildPullApiResponseHeaders(etag: string): Record<string, string
         'Cache-Control': PULL_API_RESPONSE_CACHE_CONTROL,
         'ETag': etag,
         'Vary': PULL_API_RESPONSE_VARY,
+        'X-Content-Type-Options': PULL_API_CONTENT_TYPE_OPTIONS,
     };
 }
 
@@ -161,7 +163,7 @@ export function apiError(
     code: string,
     message: string,
     status: number,
-    headers?: Record<string, string>,
+    headers?: HeadersInit,
 ): NextResponse {
     return NextResponse.json(
         { error: { code, message } },
@@ -169,17 +171,21 @@ export function apiError(
     );
 }
 
+export function buildPullApiErrorHeaders(headers: HeadersInit = {}): Headers {
+    const responseHeaders = new Headers(headers);
+    responseHeaders.set('Cache-Control', PULL_API_ERROR_CACHE_CONTROL);
+    responseHeaders.set('Vary', PULL_API_RESPONSE_VARY);
+    responseHeaders.set('X-Content-Type-Options', PULL_API_CONTENT_TYPE_OPTIONS);
+    return responseHeaders;
+}
+
 export function pullApiError(
     code: string,
     message: string,
     status: number,
-    headers: Record<string, string> = {},
+    headers: HeadersInit = {},
 ): NextResponse {
-    return apiError(code, message, status, {
-        'Cache-Control': PULL_API_ERROR_CACHE_CONTROL,
-        'Vary': PULL_API_RESPONSE_VARY,
-        ...headers,
-    });
+    return apiError(code, message, status, buildPullApiErrorHeaders(headers));
 }
 
 export function pullApiRateLimitError(result: {

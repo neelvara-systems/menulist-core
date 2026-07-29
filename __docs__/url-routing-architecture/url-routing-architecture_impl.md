@@ -307,18 +307,18 @@ For each tenant:
 | Neelvara | `localhost:3000/__neelvara` | `neelvara.menulist.online` | `neelvara.com`, `www.neelvara.com` | Static parent/entity trust website |
 | Answerlattice | `localhost:3000/__answerlattice`  | `answerlattice.menulist.online`, `www.answerlattice.menulist.online`           | `answerlattice.com`, `www.answerlattice.com`         | Answerlattice website and product routes          |
 | CampaignCue | `localhost:3000/__campaigncue` | `campaigncue.menulist.online` | `campaigncue.ai`, `www.campaigncue.ai` | CampaignCue website and workspace routes |
-| MyCodex  | `localhost:3000/__mycodex`   | `menulist.digital`, `www.menulist.digital` | `menulist.digital`, `www.menulist.digital` | Internal documentation reader on Vercel      |
-| SignalDesk | `localhost:3000/signaldesk` | `signaldesk.menulist.online` | `signaldesk.menulist.ai` | Private MenuList marketing and distribution app |
+| MyCodex  | `localhost:3000/__mycodex`   | no active domain | no active domain | Internal static documentation reader |
+| SignalDesk | `localhost:3000/signaldesk` | `signaldesk.menulist.online` | `signaldesk.menulist.online` | Private MenuList marketing and distribution app |
 
 Source of truth: `src/constants/deploymentTargets.ts`.
 
 Neelvara is deliberately a product-domain site route, not a MenuList tenant/custom domain and not a database-backed product. It rewrites to `/sites/neelvara`, has no owner/product app route, and uses an empty Firebase project id in `src/constants/deploymentTargets.ts`.
 
-Internal portfolio aliases `/nv`, `/ml`, `/al`, and `/cc` are guarded by `src/middleware.ts` and only resolve on the MyCodex product host or already-resolved MyCodex requests. They do not change product slugs, env names, Firebase targets, or public canonical URLs. `/nv` is only a shortcut to the Neelvara public site route group.
+Internal portfolio aliases `/nv`, `/ml`, `/al`, and `/cc` are not active on a public host because MyCodex has no active domain. They do not change product slugs, env names, Firebase targets, or public canonical URLs.
 
-SignalDesk also has a MyCodex-host app alias: `/sd`. `https://menulist.digital/sd` rewrites to `/signaldesk`, `/sd/targets` rewrites to `/signaldesk/targets`, and `/sd/signin` rewrites to the shared sign-in page so the callback can return to `/sd`. This alias is for private testing/operation only and does not make SignalDesk a public `/sites` product.
+SignalDesk uses the dedicated private host `signaldesk.menulist.online`. The old MyCodex-host `/sd` dependency is removed from public routing and does not make SignalDesk a public `/sites` product.
 
-`menulist.digital` is deliberately a product domain, not a MenuList tenant/custom domain. Middleware must rewrite it to `/sites/mycodex` before the client-domain branch can treat unknown hosts as restaurant custom domains.
+MyCodex has no active product domain. Do not reintroduce a MyCodex domain without updating the deployment matrix and this routing contract first.
 
 MyCodex is an internal documentation reader. It reserves `MC` as its internal product code, but runtime routing and session checks use the `mycodex` slug. Outside localhost, `src/middleware.ts` requires a signed MyCodex session cookie before rewriting protected pages to `/sites/mycodex`. Unauthenticated MyCodex requests redirect to `/login`, where `src/app/sites/mycodex/api/session/route.ts` validates `MYCODEX_BASIC_AUTH_USER` and `MYCODEX_BASIC_AUTH_PASSWORD` server-side and sets an `HttpOnly` `mycodex_session` cookie. MyCodex responses also set no-index/no-follow robot headers and serve a product-scoped disallow-all `robots.txt`; these crawler restrictions are scoped to MyCodex and do not change MenuList tenant/menu SEO or Answerlattice public-site discovery.
 

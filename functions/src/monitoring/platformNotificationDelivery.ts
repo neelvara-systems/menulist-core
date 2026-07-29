@@ -3,6 +3,7 @@ import {
   PLATFORM_NOTIFICATION_TRIGGER_TYPES,
   type PlatformNotificationRegistryEntry,
 } from '../sharedData/platformNotificationRegistry';
+import { normalizePlatformNotificationEmail } from '../sharedData/platformNotificationRecipient';
 import { isFunctionFeatureEnabled } from '../constants/features';
 import { logger } from '../lib/logger';
 import { sendEmailViaSMTP } from '../messaging/providers/resend';
@@ -33,11 +34,11 @@ const PLATFORM_ALERT_EMAIL_DELIVERY_FAILED = 'ops_platform_alert_email_delivery_
 const PLATFORM_ALERT_WHATSAPP_DELIVERY_FAILED = 'ops_platform_alert_whatsapp_delivery_failed';
 
 function resolvePlatformRecipientEmail(): string | null {
-  return (
+  return normalizePlatformNotificationEmail(
     process.env.PLATFORM_ALERT_EMAIL_TO ||
     process.env.INTERNAL_NOTIFICATION_EMAIL ||
-    ''
-  ).trim() || null;
+    '',
+  );
 }
 
 function resolvePlatformRecipientWhatsApp(): string | null {
@@ -120,7 +121,13 @@ function getBoundedPlatformDeliveryLogStringContext(
   label: string,
   value: unknown,
 ): PlatformDeliveryLogContext {
-  const normalized = value === undefined || value === null ? '' : String(value);
+  const normalized = typeof value === 'string'
+    ? value
+    : typeof value === 'number' && Number.isFinite(value)
+      ? String(value)
+      : typeof value === 'boolean'
+        ? String(value)
+        : '';
   return {
     [`${label}Present`]: normalized.length > 0,
     [`${label}Length`]: normalized.length,

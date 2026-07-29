@@ -7,7 +7,7 @@
 
 It does not certify the current worktree, target environment, external providers, deploy state, or production host.
 
-The July 16 local audit source-gates 5 seconds / 36-check preview polling, signed-in admission, current existing-account extraction/publish permissions, canonical price/slug/project truth, safe claimed draft cleanup, and session handoff. Approved app release remains pending.
+The July 28 current-worktree audit additionally source-gates one in-flight intake submission and the shared exact draft UUID projector across browser response, preview route, poll, and claim boundaries. The earlier local audit source-gates 5 seconds / 36-check preview polling, signed-in admission, current existing-account extraction/publish permissions, canonical price/slug/project truth, safe claimed draft cleanup, and session handoff. Approved app release remains pending.
 
 ## Required current-worktree gates
 

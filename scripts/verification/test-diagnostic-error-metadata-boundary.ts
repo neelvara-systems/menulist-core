@@ -11,9 +11,15 @@ import {
     getBoundedErrorStringField,
     getBoundedErrorStatus,
 } from '../../src/lib/monitoring/boundedLogContext';
+import { getImageProviderRequestLogContext } from '../../src/lib/imageProviderDiagnostics';
 import {
     getBoundedFunctionsErrorContext as getMenuListFunctionsErrorContext,
 } from '../../functions/src/utils/boundedErrorContext';
+import {
+    getAnalyticsErrorContext,
+    getAnalyticsIdContext,
+} from '../../functions/src/analytics/analyticsDiagnostics';
+import { getGeminiErrorContext } from '../../functions/src/services/gemini/geminiDiagnostics';
 import {
     getBoundedFunctionsErrorContext as getAnswerlatticeFunctionsErrorContext,
 } from '../../functions-answerlattice/src/utils/boundedErrorContext';
@@ -53,6 +59,16 @@ for (const getFunctionsErrorContext of [
         sourceStatusCode: undefined,
     });
 }
+assert.deepEqual(getAnalyticsErrorContext(throwingError), {
+    code: undefined,
+    name: 'object',
+    status: undefined,
+});
+assert.deepEqual(getGeminiErrorContext(throwingError), {
+    code: undefined,
+    name: 'object',
+    status: undefined,
+});
 
 const nested = {
     error: {
@@ -74,6 +90,53 @@ const throwingProxy = new Proxy({}, {
 });
 assert.equal(getBoundedErrorCodeAtPath(throwingProxy, ['error', 'code']), undefined);
 assert.equal(getBoundedErrorNumberAtPath(throwingProxy, ['response', 'status']), undefined);
+assert.deepEqual(getAnalyticsErrorContext(throwingProxy), {
+    code: undefined,
+    name: 'object',
+    status: undefined,
+});
+assert.deepEqual(getGeminiErrorContext(throwingProxy), {
+    code: undefined,
+    name: 'object',
+    status: undefined,
+});
+
+let analyticsIdCoercionAttempted = false;
+assert.deepEqual(getAnalyticsIdContext({
+    toString: () => {
+        analyticsIdCoercionAttempted = true;
+        throw new Error('must not coerce analytics identifiers');
+    },
+}), {
+    present: false,
+    length: 0,
+});
+assert.equal(analyticsIdCoercionAttempted, false);
+assert.deepEqual(getAnalyticsIdContext(1204), {
+    present: true,
+    length: 4,
+});
+
+let imagePageCoercionAttempted = false;
+assert.deepEqual(getImageProviderRequestLogContext({
+    operation: 'search',
+    page: {
+        valueOf: () => {
+            imagePageCoercionAttempted = true;
+            throw new Error('must not coerce image-provider page metadata');
+        },
+    },
+    provider: 'test',
+}), {
+    operation: 'search',
+    orientationLength: 0,
+    orientationPresent: false,
+    page: undefined,
+    provider: 'test',
+    queryLength: 0,
+    queryPresent: false,
+});
+assert.equal(imagePageCoercionAttempted, false);
 
 const sourceFiles: string[] = [];
 const visit = (directory: string): void => {

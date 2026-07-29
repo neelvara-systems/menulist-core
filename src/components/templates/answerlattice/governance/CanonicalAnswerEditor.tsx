@@ -15,6 +15,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useCanonicalAnswers } from '@hook/answerlattice/useCanonicalAnswers';
 import { useEntities } from '@hook/answerlattice/useEntities';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import {
+    normalizeAnswerlatticeCanonicalAnswerId,
+    normalizeAnswerlatticeEntityId,
+} from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticePublicCitationUrl } from '@lib/answerlattice/publicAnswerContracts';
 import {
     ANSWERLATTICE_ANSWER_STATUS,
@@ -58,7 +62,8 @@ import {
 } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { createRuntimeId } from '@lib/runtime/randomId';
-import { useCallback, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
     LuCheck,
@@ -136,6 +141,12 @@ export default function CanonicalAnswerEditor() {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const routeContextQuery = searchParams.toString();
+    const requestedEntityId = normalizeAnswerlatticeEntityId(searchParams.get('entity')) || '';
+    const requestedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(searchParams.get('answer')) || '';
     const isMobile = screens.md !== true;
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;
@@ -159,6 +170,7 @@ export default function CanonicalAnswerEditor() {
     const [createSteps, setCreateSteps] = useState<AnswerlatticeProcedureStep[]>([{ ...DEFAULT_STEP }]);
     const [savingProposal, setSavingProposal] = useState(false);
     const [creatingProposal, setCreatingProposal] = useState(false);
+    const handledAnswerContextRef = useRef('');
 
     const entityOptions = useMemo(() =>
         (entities || []).map(e => ({ label: `${e.name} (${e.type})`, value: e.id })),
@@ -195,6 +207,13 @@ export default function CanonicalAnswerEditor() {
         return map;
     }, [entities]);
 
+    const clearRouteContext = useCallback((key: 'answer' | 'entity') => {
+        const nextParams = new URLSearchParams(routeContextQuery);
+        if (!nextParams.has(key)) return;
+        nextParams.delete(key);
+        router.replace(`${pathname}${nextParams.size ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+    }, [pathname, routeContextQuery, router]);
+
     const openDetail = useCallback((answer: AnswerlatticeCanonicalAnswer) => {
         setSelectedAnswer(answer);
         setDrawerOpen(true);
@@ -224,6 +243,44 @@ export default function CanonicalAnswerEditor() {
             })),
         });
     }, [form, setSelectedAnswer]);
+
+    useEffect(() => {
+        if (!requestedAnswerId) {
+            handledAnswerContextRef.current = '';
+            return;
+        }
+        if (loading || !tId || !sId) return;
+        const contextKey = `${tId}:${sId}:${requestedAnswerId}`;
+        if (handledAnswerContextRef.current === contextKey) return;
+        const requestedAnswer = answers.find(answer => answer.id === requestedAnswerId);
+        if (!requestedAnswer) return;
+        handledAnswerContextRef.current = contextKey;
+        openDetail(requestedAnswer);
+    }, [answers, loading, openDetail, requestedAnswerId, sId, tId]);
+
+    const visibleAnswers = useMemo(() => (
+        requestedEntityId
+            ? answers.filter(answer => answer.scope.entityIds.includes(requestedEntityId))
+            : answers
+    ), [answers, requestedEntityId]);
+    const requestedAnswerMissing = Boolean(
+        requestedAnswerId
+        && !loading
+        && !answers.some(answer => answer.id === requestedAnswerId),
+    );
+    const focusedEntityName = requestedEntityId
+        ? entityMap.get(requestedEntityId) || requestedEntityId
+        : '';
+    const openCreateProposal = useCallback(() => {
+        createForm.resetFields();
+        if (
+            requestedEntityId
+            && entityOptions.some(option => option.value === requestedEntityId)
+        ) {
+            createForm.setFieldsValue({ entityIds: [requestedEntityId] });
+        }
+        setCreateModalOpen(true);
+    }, [createForm, entityOptions, requestedEntityId]);
 
     const handleSave = useCallback(async () => {
         if (!selectedAnswer || savingProposal) return;
@@ -655,7 +712,7 @@ export default function CanonicalAnswerEditor() {
                 <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
                     <Space>
                         <Title level={5} style={{ margin: 0 }}>Canonical Answers</Title>
-                        <Badge count={answers.length} style={{ backgroundColor: token.colorPrimary }} />
+                        <Badge count={visibleAnswers.length} style={{ backgroundColor: token.colorPrimary }} />
                         {driftedAnswers.length > 0 && (
                             <Badge count={`${driftedAnswers.length} drifted`} style={{ backgroundColor: token.colorWarning }} />
                         )}
@@ -664,14 +721,36 @@ export default function CanonicalAnswerEditor() {
                         <Button icon={<LuRefreshCw />} onClick={refresh} loading={loading} type="text">
                             Refresh
                         </Button>
-                        <Button type="primary" icon={<LuPlus />} onClick={() => setCreateModalOpen(true)}>
+                        <Button type="primary" icon={<LuPlus />} onClick={openCreateProposal}>
                             New answer proposal
                         </Button>
                     </Space>
                 </Flex>
 
+                {requestedEntityId ? (
+                    <Alert
+                        closable
+                        message={`Showing answers for ${focusedEntityName}`}
+                        description="This focus came from an owner review surface. Clear it to review every canonical answer."
+                        onClose={() => clearRouteContext('entity')}
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                        type="info"
+                    />
+                ) : null}
+                {requestedAnswerMissing ? (
+                    <Alert
+                        closable
+                        message="The requested canonical answer is no longer available"
+                        onClose={() => clearRouteContext('answer')}
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                        type="warning"
+                    />
+                ) : null}
+
                 <Table
-                    dataSource={answers}
+                    dataSource={visibleAnswers}
                     columns={columns}
                     rowKey="id"
                     loading={loading}
@@ -680,12 +759,12 @@ export default function CanonicalAnswerEditor() {
                     scroll={{ x: 'max-content' }}
                     locale={{
                         emptyText: (
-                            <Empty description="No approved answers yet">
+                            <Empty description={requestedEntityId ? 'No canonical answers are linked to this product area' : 'No approved answers yet'}>
                                 <Space direction="vertical" size={8} align="center">
                                     <Text type="secondary">
                                         Start with one answer tied to a product entity, or generate drafts from Knowledge Intake first.
                                     </Text>
-                                    <Button type="primary" icon={<LuPlus />} onClick={() => setCreateModalOpen(true)}>
+                                    <Button type="primary" icon={<LuPlus />} onClick={openCreateProposal}>
                                         Prepare first answer
                                     </Button>
                                 </Space>
@@ -699,7 +778,11 @@ export default function CanonicalAnswerEditor() {
             <Drawer
                 title={editMode ? 'Propose Canonical Answer Update' : 'Canonical Answer Detail'}
                 open={drawerOpen}
-                onClose={() => { setDrawerOpen(false); setEditMode(false); }}
+                onClose={() => {
+                    setDrawerOpen(false);
+                    setEditMode(false);
+                    clearRouteContext('answer');
+                }}
                 width={isMobile ? '100%' : 640}
                 extra={
                     editMode ? (

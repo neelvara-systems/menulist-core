@@ -187,7 +187,7 @@ forbidToken(route, 'console.error', 'Temporary Status route diagnostics');
   'params.deps.revalidate(`menu-store-${storeId}`)',
   'params.deps.revalidate(`store-${storeId}`)',
   "params.deps.revalidate('client-stores')",
-  "params.deps.revalidate('screen-data')",
+  "params.deps.touchScreen(storeId)",
   'Promise.allSettled',
 ].forEach((token) => requireToken(postCommitHelper, token, 'Temporary Status post-commit helper'));
 
@@ -323,7 +323,7 @@ forbidToken(mobileHours, 'if (!res.ok) throw new Error();', 'Mobile Today Tempor
 [
   'export function getActiveTempStatus(',
   'if (!Number.isFinite(nowMs) || !Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) return null;',
-  'normalizeTempStatusMessage(type, status.message)',
+  "normalizeTempStatusMessage(type, readOwnValue(value, 'message'))",
   'TEMP_STATUS_MESSAGE_MAX_LENGTH = 100',
 ].forEach((token) => requireToken(statusBoundary, token, 'Canonical Temporary Status boundary'));
 [
@@ -401,7 +401,7 @@ forbidToken(publicBusinessApi, 'tempStatus: storeData.tempStatus ? {', 'Public b
   '## Source Gate',
   '`npm run verify:temporary-status-boundary`',
   'ENABLE_TEMP_STATUS: true',
-  'screen-data',
+  'affected Digital Screen hashed token cache tag',
   'Owner Business Assistant',
   'public pull API hides expired temporary status values',
 ].forEach((token) => requireToken(readme, token, 'Temporary Status README'));
@@ -413,7 +413,7 @@ forbidToken(readme, 'ENABLE_TEMP_STATUS: false', 'Temporary Status README stale 
   'src/app/client/obp/OBPResolvedSurface.tsx',
   'Session tenant/store IDs pass through the shared Firestore document-ID guard',
   'public pull API hides expired temporary status values',
-  'screen-data',
+  'hashed token cache tag',
   'Owner Business Assistant',
   'A Firestore transaction re-reads the current store and tenant',
   'transaction-current store',
@@ -426,7 +426,7 @@ forbidToken(impl, 'src/app/_client/obp/OBPContent.tsx', 'Temporary Status implem
   'validates compact/nested session tenant/store aliases through the shared exact permission-scope guard',
   '4KB bounded JSON',
   '8KB',
-  'screen-data',
+  'hashed token cache tag',
   'Owner Business Assistant',
   'public pull API returns `null` for expired temporary statuses',
   'Two transaction reads (current store + tenant)',
@@ -462,7 +462,7 @@ forbidToken(impl, 'src/app/_client/obp/OBPContent.tsx', 'Temporary Status implem
   'Current Source Boundary',
   'src/app/client/obp/OBPResolvedSurface.tsx',
   'default `true`',
-  'screen-data',
+  'exact Digital Screen hashed-token invalidation',
   'Transaction-current store and tenant state',
 ].forEach((token) => requireToken(validationDoc, token, 'Temporary Status validation doc'));
 forbidToken(validationDoc, 'default `false`', 'Temporary Status validation stale flag');

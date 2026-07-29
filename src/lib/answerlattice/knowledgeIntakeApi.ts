@@ -3,7 +3,10 @@ import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissio
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
 import {
@@ -21,6 +24,26 @@ import { getBoundedErrorStringField } from '@lib/monitoring/boundedLogContext';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { NextRequest, NextResponse } from 'next/server';
+
+export function answerlatticeKnowledgeIntakeJson(
+    body: unknown,
+    init: ResponseInit = {},
+): NextResponse {
+    const headers = new Headers(init.headers);
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return NextResponse.json(body, { ...init, headers });
+}
+
+export function withAnswerlatticeKnowledgeIntakePrivateHeaders<T extends NextResponse>(
+    response: T,
+): T {
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+}
 
 export type AnswerlatticeIntakeApiContext = {
     scope: {
@@ -185,18 +208,18 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
     } = {},
 ): Promise<{ context: AnswerlatticeIntakeApiContext; response?: never } | { context?: never; response: NextResponse }> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE) {
-        return { response: NextResponse.json({ error: 'Answerlattice knowledge intake is not enabled.' }, { status: 404 }) };
+        return { response: answerlatticeKnowledgeIntakeJson({ error: 'Answerlattice knowledge intake is not enabled.' }, { status: 404 }) };
     }
 
     const scope = resolveAnswerlatticeSessionScope(session);
     const tId = normalizeAnswerlatticeScopeDocumentId(scope?.tenantId);
     const sId = normalizeAnswerlatticeScopeDocumentId(scope?.storeId);
     if (!tId || !sId) {
-        return { response: NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 400 }) };
+        return { response: answerlatticeKnowledgeIntakeJson({ error: 'Answerlattice workspace is not available.' }, { status: 400 }) };
     }
     const actorId = resolveCurrentSessionUserDocumentId(session);
     if (!actorId) {
-        return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+        return { response: answerlatticeKnowledgeIntakeJson({ error: 'Forbidden' }, { status: 403 }) };
     }
 
     if (options.rateLimitKey && options.rateLimit && options.rateWindow) {
@@ -209,7 +232,7 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
         if (!rateLimit.allowed) {
             if (rateLimit.reason === 'provider_unavailable') {
                 return {
-                    response: NextResponse.json(
+                    response: answerlatticeKnowledgeIntakeJson(
                         { error: 'Knowledge Intake is temporarily unavailable. Please try again later.' },
                         { headers: { 'Cache-Control': 'private, no-store' }, status: 503 },
                     ),
@@ -227,7 +250,7 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
                 window: options.rateWindow,
             }, 'medium');
             return {
-                response: NextResponse.json(
+                response: answerlatticeKnowledgeIntakeJson(
                     {
                         error: 'Too many requests. Please wait before trying again.',
                         retryAfter: waitSeconds,
@@ -249,18 +272,20 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
     }
 
     const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-    if (permission.response) return { response: permission.response };
+    if (permission.response) {
+        return { response: withAnswerlatticeKnowledgeIntakePrivateHeaders(permission.response) };
+    }
     if (
         permission.access.scope.tenantId !== tId
         || permission.access.scope.storeId !== sId
     ) {
-        return { response: NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 403 }) };
+        return { response: answerlatticeKnowledgeIntakeJson({ error: 'Answerlattice workspace is not available.' }, { status: 403 }) };
     }
 
     if (options.requireActiveLicense) {
         const license = await hasActiveAnswerlatticeLicense(tId, sId);
         if (license.allowed !== true) {
-            return { response: NextResponse.json({ error: license.message }, { status: license.status }) };
+            return { response: answerlatticeKnowledgeIntakeJson({ error: license.message }, { status: license.status }) };
         }
     }
 

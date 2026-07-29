@@ -21,7 +21,7 @@ npm run verify:temporary-status-boundary
 4. The route reads at most 4KB and validates the discriminated Zod request.
 5. A Firestore transaction re-reads the current store and tenant, rejects missing, inactive, deleted, blocked, tenant-mismatched, or permission-revoked authority, then requires `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE` from the transaction-current store.
 6. Within that transaction, `set` writes a future-expiry normalized `stores/{storeId}.tempStatus`; `clear` deletes that field. Concurrent store/tenant authority changes conflict and retry rather than permitting a stale permission decision to write public truth.
-7. `runStorePublicTruthPostCommitEffects()` attempts menu, store, client-store, and `screen-data` tags with `Promise.allSettled`. The route also touches Digital Screens and invalidates the Owner Business Assistant packet cache through that helper.
+7. `runStorePublicTruthPostCommitEffects()` attempts menu, store, and client-store tags with `Promise.allSettled`. The route also touches the affected Digital Screen content version and hashed token cache tag, and invalidates the Owner Business Assistant packet cache through that helper.
 8. A post-commit effect failure returns `{ success: true, effectsPending: true }`; only a failed store mutation returns the fixed 500 response.
 
 This ordering prevents expensive/authorized work on rate-limit-provider outage and prevents owner clients from rolling back after persisted truth has already committed.

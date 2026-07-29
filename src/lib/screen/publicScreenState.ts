@@ -19,11 +19,10 @@ export const getPublicScreenStateDocRef = (storeId: string | number) => (
 
 export function toPublicScreenState(
     storeId: string | number,
-    screen: Pick<DigitalScreenState, "contentVersion" | "enabled" | "lastContentChangeAt" | "screenToken">,
+    screen: Pick<DigitalScreenState, "contentVersion" | "enabled" | "lastContentChangeAt">,
 ): PublicScreenState | null {
     const normalizedStoreId = String(storeId || "").trim();
-    const screenToken = String(screen?.screenToken || "").trim();
-    if (!normalizedStoreId || !screenToken) return null;
+    if (!normalizedStoreId) return null;
 
     const parsedContentVersion = Number(screen.contentVersion || 1);
     const contentVersion = Number.isFinite(parsedContentVersion)
@@ -41,7 +40,7 @@ export function toPublicScreenState(
 
 export async function syncPublicScreenState(
     storeId: string | number,
-    screen: Pick<DigitalScreenState, "contentVersion" | "enabled" | "lastContentChangeAt" | "screenToken">,
+    screen: Pick<DigitalScreenState, "contentVersion" | "enabled" | "lastContentChangeAt">,
 ) {
     const publicState = toPublicScreenState(storeId, screen);
     if (!publicState) return;

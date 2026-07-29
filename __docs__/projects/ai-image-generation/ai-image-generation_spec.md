@@ -93,7 +93,7 @@ Active provider/model truth is `GEMINI_MODELS.IMAGE_GEN` (`gemini-2.5-flash-imag
 - All owner routes use `withAuth()` and store permission enforcement.
 - Worker admission uses the configured GCP project header and timing-safe shared-secret comparison.
 - Request/response bodies, prompt fields, reference downloads, generated media, logs, and stored errors are bounded.
-- Provider/accounting logs store shapes and counts, not image bytes, prompts, secrets, or raw owner payloads.
+- Provider/accounting logs store shapes and counts, not image bytes, prompts, secrets, raw owner payloads, or raw provider metadata. Image-provider response logging inspects at most 100 candidates and 100 parts per candidate and allowlists only non-negative safe-integer token totals (`cachedContentTokenCount`, `candidatesTokenCount`, `promptTokenCount`, `thoughtsTokenCount`, and `totalTokenCount`).
 - Batch work uses deterministic IDs, item leases, maximum attempts, bounded prompt/upload concurrency, and capped per-store worker rate limiting.
 - Prompt-cache hits are zero-unit operations; non-cache successful images consume the shared generated-image credit rate.
 - Batch item payloads are pruned after 7 days and terminal job documents after 30 days. Public generated-media deletion is disabled until global exclusive-reference proof exists.

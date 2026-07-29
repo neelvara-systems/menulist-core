@@ -1,11 +1,52 @@
 # MenuList — Changelog
 
+## July 29, 2026 - Digital Screens Truth and TV Output Hardening
+
+- Screen bearer tokens now live in server-only private controls; permission-checked owner API transactions update canonical state, private control, and the token-free listener mirror together.
+- Direct client screen/mirror writes are denied, legacy tokens have a guarded ordered backfill, and public/seen resolvers reconcile exact store and tenant identity.
+- Screen caches are token/store scoped; online output cannot be replaced by stale local content, and expired owner offers trigger a deadline refresh.
+- Menu Board now adapts page packing for 720p, 1080p, wide, and portrait displays with a shorter bounded rotation; prices use the store locale.
+- Owner artwork is not center-cropped, the adjustment preview marks safe and reserved areas, and store branding no longer overlaps MenuList attribution.
+- Owner status now says `Link ready`, `Seen recently`, or `Check TV`; duplicate slide UI and the broken setup deep link were removed.
+- Source verification includes lifecycle behavior, Firestore rules emulator coverage, private-control migration guards, TypeScript, lint, and TV browser smoke. Firebase/Vercel/physical-device evidence remains an external release gate.
+
+## July 28, 2026 - Browser Reaction And Color-State Integrity
+
+- **Answerlattice reactions stay with their originating content** - optimistic completions are fenced to the exact content, changelog page, actor, tenant, and workspace; a slow prior request cannot overwrite the counters, modal, messages, or loading state of a newly selected item.
+- **Reaction acknowledgements reject future state** - future-dated device-local entries are evicted instead of pinning themselves inside the bounded reaction map.
+- **Recent color persistence is deterministic** - React state updaters are now side-effect free, malformed recent/favorite lists hydrate independently, and invalid lists are evicted.
+- **Recent colors are visible and usable** - the existing app-settings color picker now renders its recent-color history with a clear action, while RGBA previews use the typed shared converter instead of an unchecked `any` path.
+- **Public menu intake admits one request at a time** - rapid photo, drop, or link events cannot start duplicate browser submissions before the disabled state renders, and request failures retain bounded diagnostics.
+- **Draft identity has one exact contract** - create responses, preview routes, polling, and claim now share the canonical UUID projector; whitespace, path separators, malformed IDs, and unknown response values fail closed.
+- **Owner extraction job identities fail before client data access** - start requests/responses, active-job queries/results, cancellation refs, ignore sets, and development triggers reuse the existing exact project/job projectors instead of trusting runtime strings.
+
+## July 28, 2026 - Owner Export Browser Persistence Hardening
+
+- **Owner export browser history now fails closed** - Menu Card Export re-projects device-local records through exact preset, bounded text, positive safe-integer page-count, canonical non-future timestamp, and project identity checks; corrupt records and malformed envelopes are evicted. Legacy quick-PDF freshness markers reject coercible exponent and future values.
+- **Transient analytics and extraction state now fails closed** - Anonymous analytics sessions require a canonical UUID v4 and canonical non-future timestamp. Menu-processing dismissal history is tenant/store scoped, bounded, corruption-evicting, and removed with all related dynamic keys during sign-out.
+- **Image-generation browser preferences now match the API contract** - Store-scoped local preferences retain their compatible key but reject invalid scope, unknown aspect ratios, oversized strings/arrays, future timestamps, and malformed envelopes before they reach owner generation state.
+- **Customer App browser counters and dedupe now converge correctly** - Visit/install/dismiss/prompt values reject coercible, unbounded, or future state. Standalone app-open tracking is tenant/store scoped, concurrency guarded, and marks completion only after the analytics event succeeds.
+- **Runtime presentation state now fails safely** - Forced-desktop browser state accepts only bounded same-app paths and reports storage failures; error pages admit only exact six-digit persisted theme colors instead of arbitrary CSS strings.
+
+## July 29, 2026 - Answerlattice Owner Decision And Release Safety
+
+- **Owner decisions keep their evidence context** - Founder Daily Brief friction opens the exact product area, coverage repair opens Canonical Answers, Friction evidence opens the matching Knowledge Map concept, the map carries that concept into Canonical Answer review, release impact opens linked Answer Tests, and failed tests open the exact approved answer.
+- **Handoffs are validated and cost-neutral** - entity, answer, and release identifiers are revalidated against already-loaded tenant-scoped data; URL context adds no Firestore read, write, listener, scheduler, provider call, or persisted owner state.
+- **Feature boundaries remain intact** - the wiring does not turn Knowledge Map into a friction dashboard, Answer Tests into a release engine, Founder Daily Brief into task management, or canonical governance into automatic repair.
+- **Founder Daily Brief stays quiet when no decision is needed** - generic intake and isolated uncovered entities no longer manufacture urgency; high-priority Support Board work, answer risk, friction, failures, escalations, and paired demand/coverage evidence remain actionable.
+- **Product Friction evidence is explainable** - the existing compact summary now projects canonical misses, fallback outcomes, escalations, negative feedback, and resolution failures as bounded evidence components without a new collection, query, listener, or model call.
+- **Release activation requires current support-impact review** - the owner previews directly affected approved answers and linked current Answer Tests before activation; a deterministic fingerprint is revalidated at claim and commit so changed knowledge cannot publish from stale review.
+- **Critical Answer Tests fail closed on provider fallback** - provider-backed RAG cannot certify critical proof, while unchanged legacy cases remain readable and safely deactivatable.
+- **Scope remains bounded** - no workflow builder, recurring test scheduler, model judge, new Firestore family, Storage artifact, autonomous publication, or separate critical-test product was added.
+- **Public website now explains the connected owner path** - the compressed homepage, Product, Support Control, Knowledge Governance, Knowledge Base, Changelog, FAQ, Updates, metadata, and website docs now distinguish Daily Brief, private Knowledge Map, advisory Product Friction Evidence, release impact, Answer Tests, and public article topic maps without adding Firebase cost.
+- **QA Functions upload remains operator-blocked** - the narrow `answerlatticeSupportBoardSummaryOnWrite` and `answerlatticeNightly` deployment stopped before upload because the Firebase CLI was not authenticated; no QA revision changed.
+
 ## July 28, 2026 - Answerlattice Owner Features 2-5 Documentation Review
 
 - **Product Truth Map remains Knowledge Map** - the shipped, bounded owner graph is retained; raw ontology views, hierarchy editors, separate snapshots, map-specific persistence, and decorative health scores are rejected.
-- **Customer Friction Map remains Product Friction Evidence** - the later code pass may expose already-collected deterministic evidence components in the current summary and UI, but no journey analytics, tracking SDK, root-cause classifier, or additional Firebase hot path is admitted.
-- **Release Impact Guard remains the release and Answer Tests workflow** - the later code pass is limited to a bounded pre-activation direct-impact preview with a revalidated fingerprint; no workflow builder, release-control subsystem, or new Firestore family is admitted.
-- **Critical Answer Test Suite remains Answer Tests** - the current proof loop already covers the owner job; the only admitted later hardening is to prevent provider-backed RAG from producing passing critical proof while preserving legacy cases for explicit blocked review.
+- **Customer Friction Map remains Product Friction Evidence** - the admitted implementation was limited to exposing already-collected deterministic evidence components in the current summary and UI; no journey analytics, tracking SDK, root-cause classifier, or additional Firebase hot path was admitted.
+- **Release Impact Guard remains the release and Answer Tests workflow** - the admitted implementation was limited to a bounded pre-activation direct-impact preview with a revalidated fingerprint; no workflow builder, release-control subsystem, or new Firestore family was admitted.
+- **Critical Answer Test Suite remains Answer Tests** - the current proof loop already covers the owner job; the admitted hardening prevents provider-backed RAG from producing passing critical proof while preserving legacy cases for explicit blocked review.
 - **Claims stay source-true** - the documents separate implemented behavior, validated later code scope, validation-only ideas, and rejected scope. No runtime, Firebase, website, build, or deployment change is claimed by this documentation pass.
 
 ## July 28, 2026 - Answerlattice Feature 1 Owner Action Center Documentation
@@ -13,8 +54,8 @@
 - **One feature, not two** - the external Owner Action Center concept is governed as an improvement to Founder Daily Brief rather than a new route, queue, dashboard, or collection.
 - **The owner contract is stricter** - ranked cards must represent current, evidence-backed, source-resolvable conditions; a complete healthy packet is allowed to show no actions.
 - **Task-management scope is rejected** - no snooze, dismissal, handled-today, manual completion, SLA queue, AI priority score, or assistant-owned action lifecycle is admitted.
-- **Firebase cost remains frozen** - the documented code pass must reuse the existing six compact summary reads and may project already-loaded top-failing, high-priority, and friction fields without another document, query, listener, write, scheduler, or model call.
-- **Code behavior is not claimed yet** - this entry records the completed documentation decision; quiet-state and qualification changes remain pending the separate code-level Feature 1 pass.
+- **Firebase cost remains frozen** - the admitted code pass reuses the existing six compact summary reads and projects already-loaded top-failing, high-priority, and friction fields without another document, query, listener, write, scheduler, or model call.
+- **Historical decision closed on July 29** - this entry recorded the documentation decision first; the quiet-state, qualification, and contextual handoff changes are now implemented and verified.
 
 ## July 28, 2026 - Answerlattice Owner Friction Prioritization
 
@@ -29196,3 +29237,103 @@ TEMPLATE FOR NEW ENTRIES:
 - Concurrent link-import requests that lose the active-job claim now require confirmed private Storage deletion before forgetting their object path.
 - If deletion fails, the route persists the already validated artifact metadata as a durable seven-day cleanup record; if both deletion and recording fail, the request fails visibly.
 - The extraction source gate pins this order while the existing pure retention suite proves exact missing-job artifacts remain safely cleanup-eligible.
+
+## July 28, 2026 — Browser Theme And Deployment Identity Boundaries
+
+- Owner deployment identity is now an exact bounded session DTO; malformed or oversized values are evicted and unavailable session storage cannot interrupt the owner provider or deployment badge.
+- MenuList website and Answerlattice public theme providers admit only exact Light/System/Dark values, remove corrupt state, and keep the page usable when localStorage read/remove/write operations fail.
+- OBP theme persistence now self-heals invalid values and reports bounded cleanup failures.
+- Focused behavior, owner PWA, MenuList website, OBP, Answerlattice website, TypeScript, lint and diff gates pass. No Firebase infrastructure or deployment operation was required.
+
+## July 28, 2026 — Public Analytics Consent Revocation
+
+- MenuList and Answerlattice custom analytics events now recheck the current product-specific accepted choice on every Plausible or Google emission.
+- Changing from accepted to declined stops later CTA, resource and onboarding event pings even when vendor functions remain loaded; Answerlattice direct event callers now use the same shared gate.
+- Invalid persisted consent values are removed and product-specific cleanup failures remain independently observable.
+- Focused runtime, public-website, Answerlattice website, TypeScript, lint and diff gates pass. No analytics vendor, Firebase or deployment operation was executed.
+
+## July 28, 2026 — Editor Browser-State Isolation And Recovery
+
+- Menu Editor welcome/outlet onboarding dismissals are now partitioned by exact tenant and store, use one bounded marker, and reset correctly when the active store changes.
+- Image zoom hints tolerate unavailable/corrupt browser storage; zoom drag bounds use the untransformed image dimensions and an explicit current image ref.
+- Shared Creative Editor browser drafts now use collision-safe product/workspace/source/document keys, the authoritative bounded document schema, and exact current scope checks before recovery.
+- Corrupt or cross-scope drafts are removed, browser-draft failures are observable without blocking export or product save, and Help Chat attempts every scoped/legacy draft removal even when one key fails.
+- Focused storage, Help Center, Creative Editor, printable-asset, full CampaignCue/rules, TypeScript, lint and diff gates cover the repair. No Firebase infrastructure or deployment source changed.
+## July 28, 2026 — Help Center Article Selection Consistency
+
+- Article previews now synchronize their read-only editor content when the selected article changes.
+- Modal article loads are fenced to their initiating selection, so a slower previous request cannot overwrite a newer article.
+- Failed article fetches now resolve to the existing unavailable state and emit bounded diagnostics instead of producing an unhandled rejection.
+- Changelog preview data uses precise public rendering and reaction types without broad casts.
+- The Help Center aggregate, exact TypeScript, focused lint and diff-integrity gates cover the repair. No Firebase infrastructure or deployment source changed.
+## July 28, 2026 — Failure-Diagnostic Coercion Boundaries
+
+- MenuList Functions analytics diagnostics now use the shared bounded exception projector for name, code, and status instead of reading unknown object properties directly.
+- Analytics identifier and image-provider page metadata now accept scalar values only; diagnostic construction cannot invoke attacker- or provider-controlled coercion methods.
+- Throwing getter, Proxy, object-coercion, valid numeric ID, and page metadata regressions run in the shared diagnostic boundary suite.
+- The Functions build, exact TypeScript, focused lint and diff-integrity gates cover the repair. Cloud Functions source changed; QA deployment is blocked because the current Firebase CLI session is not authenticated.
+## July 28, 2026 — AI Provider Retry Classification Safety
+
+- Shared AI provider retry and rate-limit classification now accepts `unknown`, uses safe nested-field projectors, and tolerates throwing getters, Proxies, and enumeration traps.
+- Retry delays accept only finite numbers or exact numeric strings; invalid earlier fields no longer hide a valid later retry hint.
+- Provider error messages remain excluded from classification and diagnostics.
+- A focused behavior suite now runs inside the AI accounting aggregate. Exact TypeScript, focused lint and diff-integrity gates cover the repair. No provider call, billing write, Firebase infrastructure, or deployment source changed.
+## July 28, 2026 — Owner OBP Preview Project Contract
+
+- The shared owner/public menu renderer now types its input as full project truth composed with the optional project-summary slug and cover image it actually consumes.
+- Broad project casts were removed; preview slug and image reads now stay visible to TypeScript.
+- The public-business-truth source gate pins the composed contract and rejects restoration of the casts.
+- Exact TypeScript, focused lint and diff-integrity gates cover the repair. No project data, cache, Firebase infrastructure, or deployment source changed.
+## July 28, 2026 — Browser AI Response Runtime Contracts
+
+- The shared browser AI response reader now returns a validated object record instead of manufacturing whichever generic DTO a caller requests.
+- New-item, SEO, description, translation, business-copy, batch-trigger, image-generation, and image-edit clients continue through their existing domain normalizers.
+- Generated and edited image payloads now validate every item, accept only the shared JPEG/PNG/WebP policy, and reject mismatched data-URL MIME prefixes.
+- A focused response boundary suite now runs inside the AI accounting aggregate. Exact TypeScript, focused lint and diff-integrity gates cover the repair. No provider, billing, Firebase infrastructure, or deployment operation occurred.
+- Business-copy localization now uses the exact store-language subset, validates legacy localized maps/lists, and never coerces unknown values during merge/clamping.
+
+## July 28, 2026 — SignalDesk Demand Timestamp Contract
+
+- Demand event, summary and idempotency-claim timestamps now tolerate hostile or malformed persisted objects without leaking arbitrary getter, Proxy, method or date-range exceptions.
+- Immutable event-day replay uses the same bounded timestamp projector as admission, so a changed or corrupt timestamp cannot acknowledge a retry against the wrong daily summary.
+- A focused behavior suite covers valid timestamps, non-finite and out-of-range values, throwing accessors/Proxies/methods, hostile document Proxies and post-validation mutation; it now runs in the SignalDesk aggregate.
+
+## July 28, 2026 — Storage Failure And Legacy-Denial Contract
+
+- Storage deletion error-code projection now contains throwing provider getters and Proxies, preserving the stable `unknown` response instead of replacing the original delete failure.
+- The Storage source gate now verifies the infrastructure tracker’s active, stronger legacy-path wording instead of requiring a retired phrase.
+- A contradictory rules comment now matches the enforced behavior: unscoped legacy project objects are denied to direct clients, not read-only.
+- The complete Storage aggregate and rules emulator pass. QA rules deployment remains blocked because the Firebase CLI is not authenticated.
+
+## July 28, 2026 — Gemini Failure Diagnostic Projection
+
+- MenuList Functions Gemini diagnostics now obtain error name, code and status through the shared exception-contained projector instead of reading unknown provider properties directly.
+- The shared diagnostic behavior suite covers the Gemini wrapper with throwing getters and Proxies across all 3,629 scanned runtime source files.
+- Functions TypeScript build, focused lint and diff integrity pass. The affected QA Functions deployment remains blocked by missing Firebase CLI authentication.
+
+## July 28, 2026 — Shared DAL Diagnostic Safety
+
+- Client and server DAL composers now summarize diagnostic arguments through one exception-contained metadata projector, so hostile objects or arrays cannot replace the original operation/session failure.
+- Loader request IDs no longer interpolate caller arguments; they use a non-sensitive module sequence and timestamp.
+- DAL function labels are bounded, while existing active-session admission, safe owner copy, loader settlement and original-error propagation remain unchanged.
+- A focused behavior suite now runs in the complete auth/security failure matrix.
+
+## July 29, 2026 — Public Accent And Stable Asset Ordering
+
+- OBP, Customer App manifests, viewport metadata, startup images and WebApplication JSON-LD now share one fail-closed hex-color projector; malformed legacy values use existing safe fallbacks instead of creating divergent public branding.
+- Platform asset active-first rendering now sorts a copy instead of mutating React state arrays during render.
+- The legacy image-to-base64 utility now preserves its empty fallback when invoked outside a browser or without a 2D canvas context.
+- Focused behavior, exact TypeScript and lint gates cover canonical/fallback colors and caller-owned ordering.
+
+## July 29, 2026 — Localized AI Context And Item URL Safety
+
+- Business Copy/default-project context extraction now tolerates malformed localized getters and Proxies while retaining later valid text.
+- Canonical item URLs now preserve uppercase absolute HTTP(S) bases, existing relative query/hash state and encoded item/language identity without throwing on malformed input.
+- Focused behavior, exact TypeScript, lint and diff-integrity gates cover both boundaries.
+
+## July 29, 2026 — Bounded Batch And Editor-Text Runtime Contracts
+
+- Non-finite concurrency can no longer acknowledge a batch without running workers, and failed-onboarding mapping cleanup contains malformed store-ID access.
+- Answerlattice editor text extraction is cycle-, depth-, node- and character-bounded with safe unknown-field access; embedding input correctly falls back from blank/invalid persisted plain text.
+- Dormant route and IE helpers now return truthful, typed results if reused.
+- Focused behavior, exact TypeScript, lint and diff-integrity gates cover these repairs.

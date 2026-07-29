@@ -30,17 +30,23 @@ export const normalizeActiveStoreContextValue = (value: unknown): ActiveStoreCon
 const readActiveStoreContextValue = (): ActiveStoreContextValue | null => {
     if (typeof window === "undefined") return null;
 
+    const removeInvalidStoredContext = () => {
+        try {
+            window.localStorage.removeItem(ACTIVE_STORE_CONTEXT_STORAGE_KEY);
+        } catch {
+            // Storage can be unavailable in private or embedded browser contexts.
+        }
+    };
+
     try {
         const stored = window.localStorage.getItem(ACTIVE_STORE_CONTEXT_STORAGE_KEY);
         if (!stored) return null;
 
-        const legacyStoreId = normalizeStoreSwitchStoreId(stored);
-        if (legacyStoreId) {
-            return { baseStoreId: 0, storeId: legacyStoreId, tenantId: 0 };
-        }
-
-        return normalizeActiveStoreContextValue(JSON.parse(stored));
+        const activeContext = normalizeActiveStoreContextValue(JSON.parse(stored));
+        if (!activeContext) removeInvalidStoredContext();
+        return activeContext;
     } catch {
+        removeInvalidStoredContext();
         return null;
     }
 };

@@ -24,6 +24,7 @@ import { getBrandName, getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { normalizeOBPExternalHttpsUrl } from '@lib/obp/publicLinks';
+import { normalizeOBPPublicPhotoUrls } from '@lib/obp/publicPhotos';
 import { normalizeStarterActivationTimestamp } from '@lib/onboarding/starterActivation';
 import {
     buildAddress,
@@ -219,15 +220,12 @@ function buildPotentialActions(reservationUrl?: string, orderUrl?: string): Reco
  * Build image schema. Combines logo + preview business photos into an image array.
  * Schema.org image can be a single URL or array of URLs.
  */
-function buildImageSchema(logo?: string, photos?: string[], businessCover?: string): Record<string, any> {
-    const images: string[] = [];
-    if (businessCover) images.push(businessCover);
-    if (logo) images.push(logo);
-    if (photos?.length) {
-        for (const p of photos.filter(Boolean).slice(0, 3)) {
-            if (!images.includes(p)) images.push(p);
-        }
-    }
+function buildImageSchema(logo?: unknown, photos?: unknown, businessCover?: unknown): Record<string, unknown> {
+    const images = normalizeOBPPublicPhotoUrls([
+        businessCover,
+        logo,
+        ...normalizeOBPPublicPhotoUrls(photos).slice(0, 3),
+    ]);
     if (images.length === 0) return {};
     return { image: images.length === 1 ? images[0] : images };
 }

@@ -160,6 +160,15 @@ assert(normalizeContentFeedbackStorageEnvelope({
   ...storageEnvelope,
   entries: { 'article-1': { ...storageEnvelope.entries['article-1'], private: true } },
 }, storageScope, 'user-1') === null, 'reaction cache entries with unknown fields must fail closed');
+assert(normalizeContentFeedbackStorageEnvelope({
+  ...storageEnvelope,
+  entries: {
+    'article-1': {
+      ...storageEnvelope.entries['article-1'],
+      timestamp: new Date(Date.now() + 60_000).toISOString(),
+    },
+  },
+}, storageScope, 'user-1') === null, 'future-dated reaction cache entries must fail closed');
 assert(getContentFeedbackStorageKey('article', storageScope, 'user/1').includes(':1:101:user%2F1'), 'reaction cache keys must include scope and encoded user identity');
 
 const dal = read('src/database/feedback/index.ts');
@@ -272,6 +281,10 @@ assert(changelogPreview.includes('updateContentFeedbackWithAudit({'), 'changelog
 assert(!feedbackHook.includes('Promise.all('), 'feedback UI must not launch coupled side effects independently');
 assert(!feedbackHook.includes('submitComment'), 'feedback hook must expose one acknowledged mutation instead of a split comment writer');
 assert(feedbackHook.includes('mutationInFlightRef.current'), 'feedback hook must reject concurrent duplicate mutations');
+assert(feedbackHook.includes('activeOperationScopeKeyRef.current === scopeKey'), 'feedback hook must reject stale async completions after content, actor, or workspace changes');
+assert(feedbackHook.includes('mutationTokenRef.current === token'), 'feedback hook must prevent an older completion from ending a newer scoped mutation');
+assert(feedbackHook.includes('endMutation(mutationToken, mutationScopeKey)'), 'feedback hook completion must be fenced to the originating operation');
+assert(feedbackHook.includes('mutationTokenRef.current += 1;'), 'feedback hook scope resets must invalidate pending async completions');
 assert(feedbackHook.includes('isSubmitting'), 'feedback hook must expose visible in-flight state');
 assert(feedbackHook.includes('applyAuthoritativeFeedbackCounts(result)'), 'feedback UI must reconcile optimistic counters to the authoritative server response');
 assert(feedbackHook.includes('Math.max(0, previousLikes - 1)'), 'feedback UI must never render a negative optimistic like count');
@@ -283,6 +296,7 @@ assert(!changelogDal.includes('export const updateChangelogFeedback'), 'the spli
 assert(!customerIdentity.includes('...((session?.sourceContext'), 'actor snapshots must not spread arbitrary session source-context fields');
 assert(contentFeedbackStorage.includes('content-feedback-v${CONTENT_FEEDBACK_STORAGE_VERSION}:${contentType}:${scope.tId}:${scope.sId}'), 'reaction cache keys must partition tenant/store');
 assert(contentFeedbackStorage.includes('normalizeEnvelope(JSON.parse(stored) as unknown, scope, userId)'), 'reaction cache JSON must re-enter a runtime envelope boundary');
+assert(contentFeedbackStorage.includes('timestamp.getTime() <= Date.now()'), 'reaction cache timestamps must reject future-dated entries that can pin bounded state');
 assert(contentFeedbackStorage.includes('localStorage.removeItem(key)'), 'invalid reaction caches must be evicted');
 assert(contentFeedbackStorage.includes('CONTENT_FEEDBACK_STORAGE_MAX_ENTRIES = 500'), 'reaction cache growth must be bounded');
 assert(feedbackHook.includes('setFeedbackGiven(feedbackStatus)'), 'workspace/content changes must clear stale reaction acknowledgement when no scoped entry exists');

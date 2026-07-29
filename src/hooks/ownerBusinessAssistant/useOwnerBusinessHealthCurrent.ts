@@ -5,6 +5,7 @@ import { getCachedData, removeCachedData, setCachedData, shouldRevalidate } from
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import {
   OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
+  projectOwnerBusinessAssistantCurrentResponse,
   readOwnerBusinessAssistantCurrentResponse,
   type OwnerBusinessAssistantCurrentResponse,
 } from '@lib/ownerBusinessAssistant/clientResponses';
@@ -29,7 +30,7 @@ export function useOwnerBusinessHealthCurrent(projectId?: string, storeScopeKey?
   const session = useClientAuthSession();
   const clientScope = useMemo(
     () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
-    [session?.sId, session?.tId, storeScopeKey],
+    [session?.sId, session?.tId, session?.uId, session?.user?.id, storeScopeKey],
   );
   const enabled = Boolean(clientScope)
     && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
@@ -41,16 +42,18 @@ export function useOwnerBusinessHealthCurrent(projectId?: string, storeScopeKey?
   const cacheKey = clientScope
     ? `${OWNER_BUSINESS_ASSISTANT_CACHE.browserCurrentPrefix}:${clientScope.cacheScope}:${projectId || 'all'}`
     : null;
-  const cached = typeof window !== 'undefined' && cacheKey
-    ? getCachedData<OwnerBusinessAssistantCurrentResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
+  const cachedValue = typeof window !== 'undefined' && cacheKey
+    ? getCachedData<unknown>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
-  const cachedNotReady = isNotReadyFallbackResponse(cached);
+  const cached = projectOwnerBusinessAssistantCurrentResponse(cachedValue);
+  if (cacheKey && cachedValue !== undefined && !cached) removeCachedData(cacheKey);
+  const cachedNotReady = isNotReadyFallbackResponse(cached || undefined);
 
   const swr = useSWR<OwnerBusinessAssistantCurrentResponse>(
     enabled && clientScope ? [url, clientScope.cacheScope] as const : null,
     fetcher,
     {
-      fallbackData: cachedNotReady ? undefined : cached,
+      fallbackData: cachedNotReady ? undefined : cached || undefined,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       revalidateIfStale: typeof window === 'undefined' || !cacheKey ? false : cachedNotReady || shouldRevalidate(cacheKey),

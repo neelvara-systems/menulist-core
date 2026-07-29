@@ -72,7 +72,6 @@ const summaryProjectWriter = read('src/lib/firestore/summaryProjectsWriter.ts');
 const decisionBlocksScoring = read('functions/src/decisionBlocksScoring.ts');
 const obpContent = read('src/app/client/obp/OBPContent.tsx');
 const campaignServerScreen = read('src/database/campaigns/serverScreen.ts');
-const screenInvalidation = read('src/lib/screen/screenInvalidation.ts');
 const businessRoute = read('src/app/api/public/v1/business/route.ts');
 const menuRoute = read('src/app/api/public/v1/menu/route.ts');
 const keyRoute = read('src/app/api/store/public-api-key/route.ts');
@@ -130,7 +129,7 @@ const changelog = read('__docs__/changelog.md');
   'normalizeSummaryProjectLocalizedText',
   'withAuthoritativeSummaryProjectId',
 ].forEach((token) => requireToken(obpContent, token, 'OBP summary runtime boundary'));
-[campaignServerScreen, screenInvalidation].forEach((source) => {
+[campaignServerScreen].forEach((source) => {
   ['isActiveRegularSummaryProject', 'isDefaultSummaryProject', 'withAuthoritativeSummaryProjectId']
     .forEach((token) => requireToken(source, token, 'Digital screen summary runtime boundary'));
 });
@@ -176,6 +175,7 @@ requireToken(features, 'ENABLE_PUBLIC_API: true', 'Platform Pull API feature fla
   'PULL_API_RESPONSE_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=300"',
   'PULL_API_ERROR_CACHE_CONTROL = "private, no-store"',
   'PULL_API_RESPONSE_VARY = "X-API-Key"',
+  'PULL_API_CONTENT_TYPE_OPTIONS = "nosniff"',
   'PULL_API_KEY_RATE_LIMIT = 60',
   'PULL_API_PREAUTH_RATE_LIMIT = PULL_API_KEY_RATE_LIMIT * 4',
   'PULL_API_RATE_LIMIT_WINDOW_SECONDS = 60',
@@ -190,9 +190,14 @@ requireToken(features, 'ENABLE_PUBLIC_API: true', 'Platform Pull API feature fla
   'export function generatePullApiETag(payload: Record<string, unknown>): string',
   'return generateETag(buildPullApiETagPayload(payload));',
   'export function buildPullApiResponseHeaders(etag: string): Record<string, string>',
+  "'X-Content-Type-Options': PULL_API_CONTENT_TYPE_OPTIONS",
   'export function pullApiError(',
-  "'Cache-Control': PULL_API_ERROR_CACHE_CONTROL",
-  "'Vary': PULL_API_RESPONSE_VARY",
+  'export function buildPullApiErrorHeaders(headers: HeadersInit = {}): Headers',
+  'const responseHeaders = new Headers(headers);',
+  "responseHeaders.set('Cache-Control', PULL_API_ERROR_CACHE_CONTROL);",
+  "responseHeaders.set('Vary', PULL_API_RESPONSE_VARY);",
+  "responseHeaders.set('X-Content-Type-Options', PULL_API_CONTENT_TYPE_OPTIONS);",
+  'buildPullApiErrorHeaders(headers)',
   'export function pullApiRateLimitError(result:',
   "result.reason === 'provider_unavailable'",
   "pullApiError('SERVICE_UNAVAILABLE', 'Service temporarily unavailable', 503",
@@ -366,11 +371,11 @@ forbidToken(menuRoute, 'projectData as any', 'Public menu pull project cast');
 ].forEach((token) => requireToken(businessProjection, token, 'Public business pull shared projection boundary'));
 [
   'export function getActiveTempStatus(',
-  'const type = normalizeTempStatusType(status.type);',
-  "typeof status.expiresAt !== 'string'",
-  'const expiresAtMs = Date.parse(status.expiresAt);',
+  "const type = normalizeTempStatusType(readOwnValue(value, 'type'));",
+  "typeof expiresAt !== 'string'",
+  'const expiresAtMs = Date.parse(expiresAt);',
   'expiresAtMs <= nowMs',
-  'message: normalizeTempStatusMessage(type, status.message)',
+  "message: normalizeTempStatusMessage(type, readOwnValue(value, 'message'))",
 ].forEach((token) => requireToken(tempStatusBoundary, token, 'Shared active temporary-status runtime boundary'));
 [
   'export function normalizeBusinessAttributes(value: unknown)',
@@ -387,15 +392,19 @@ forbidToken(menuRoute, 'projectData as any', 'Public menu pull project cast');
   'function normalizeSessionDocumentId(value: unknown): string | null',
   'documentId.length <= PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH',
   'isValidFirestoreDocumentId(documentId)',
-  'const { tId: rawTenantId, sId: rawStoreId } = session',
-  'const tenantId = normalizeSessionDocumentId(rawTenantId);',
-  'const storeId = normalizeSessionDocumentId(rawStoreId);',
+  'resolveStorePermissionSessionScope,',
+  'resolveCurrentSessionUserDocumentId',
+  'const sessionScope = resolveStorePermissionSessionScope(session);',
+  'const actorId = normalizeSessionDocumentId(resolveCurrentSessionUserDocumentId(session));',
+  'const tenantId = sessionScope.tenantScope.documentId;',
+  'const storeId = sessionScope.storeScope.documentId;',
   'requireAnyStorePermissionForStoreData(',
   '[PERMISSIONS.MANAGE_INTEGRATIONS]',
+  'const actorRateLimitHash = hashPublicRateLimitValue(actorId);',
   'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
   'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
   'const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);',
-  'key: `api-key-mgmt:${storeRateLimitHash}`',
+  'key: `api-key-mgmt:${actorRateLimitHash}:${storeRateLimitHash}`',
   'const PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES = 1024;',
   "storeId: z.string().min(1).max(PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH)",
   "tenantId: z.string().min(1).max(PUBLIC_API_KEY_SESSION_DOCUMENT_ID_MAX_LENGTH)",
@@ -430,7 +439,12 @@ forbidToken(menuRoute, 'projectData as any', 'Public menu pull project cast');
   "logSecurityDiagnostic('public_api_key_revoked'",
   "logSecurityFailure('public_api_key_management_failed'",
   'failClosedOnProviderError: true',
-  "const PUBLIC_API_KEY_RESPONSE_HEADERS = { 'Cache-Control': 'private, no-store' };",
+  "'Cache-Control': 'private, no-store, max-age=0'",
+  "'Pragma': 'no-cache'",
+  "'X-Content-Type-Options': 'nosniff'",
+  'function withPublicApiKeyResponseHeaders(response: NextResponse): NextResponse',
+  'function publicApiKeyJson(',
+  'if (bodyResult.ok === false) return withPublicApiKeyResponseHeaders(bodyResult.response);',
   'function getPublicApiKeyRateLimitResponse(result:',
   "result.reason === 'provider_unavailable'",
   'status: providerUnavailable ? 503 : 429',
@@ -444,8 +458,11 @@ requireOrder(
   keyRoute,
   [
     'if (!FEATURE_FLAGS.ENABLE_PUBLIC_API)',
-    'const tenantId = normalizeSessionDocumentId(rawTenantId);',
-    'const storeId = normalizeSessionDocumentId(rawStoreId);',
+    'const sessionScope = resolveStorePermissionSessionScope(session);',
+    'const actorId = normalizeSessionDocumentId(resolveCurrentSessionUserDocumentId(session));',
+    'const tenantId = sessionScope.tenantScope.documentId;',
+    'const storeId = sessionScope.storeScope.documentId;',
+    'const actorRateLimitHash = hashPublicRateLimitValue(actorId);',
     'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
     'readBoundedJsonBody(request, PUBLIC_API_KEY_ACTION_MAX_BODY_BYTES',
     'RequestSchema.safeParse(body)',
@@ -457,6 +474,9 @@ requireOrder(
 );
 forbidToken(keyRoute, 'apiKey: apiKey', 'Public API key management route raw key storage');
 forbidToken(keyRoute, 'key: `api-key-mgmt:${storeId}`', 'Public API key management route raw limiter key');
+forbidToken(keyRoute, 'key: `api-key-mgmt:${storeRateLimitHash}`', 'Public API key management shared store-only limiter key');
+forbidToken(keyRoute, 'const { tId: rawTenantId, sId: rawStoreId } = session', 'Public API key management partial session scope');
+forbidToken(keyRoute, 'session.user?.id || session.uId', 'Public API key management first-match actor alias');
 forbidToken(keyRoute, 'doc(String(storeId))', 'Public API key management route raw store ref');
 forbidToken(keyRoute, "secureLog('[Public API] Key generated'", 'Public API key management raw generated log');
 forbidToken(keyRoute, "secureLog('[Public API] Key revoked'", 'Public API key management raw revoked log');

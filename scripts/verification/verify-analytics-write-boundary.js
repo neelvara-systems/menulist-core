@@ -251,6 +251,16 @@ function verifySourceBoundaries() {
   ]) {
     assert(analyticsIndexExemptions.has(fieldPath), `analytics ${fieldPath} must stay exempt from unused single-field indexing`);
   }
+  assert(
+    (firestoreIndexes.fieldOverrides || []).some((override) => (
+      override.collectionGroup === 'analyticsDeliveryReceipts'
+      && override.fieldPath === 'expiresAt'
+      && override.ttl === true
+      && Array.isArray(override.indexes)
+      && override.indexes.length === 0
+    )),
+    'analytics delivery receipts must retain native TTL without indexes',
+  );
 
   assertIncludes(analyticsRules, 'allow create, update, delete: if false;', 'analytics client mutation rule');
   assertNotIncludes(analyticsRules, 'isTenantStoreCreate(request.resource.data)', 'analytics client create admission');
@@ -259,10 +269,13 @@ function verifySourceBoundaries() {
   assertNotIncludes(clientDal, 'setDoc(dailyDocRef', 'browser analytics direct Firestore mutation');
   assertNotIncludes(clientDal, 'writeAnalyticsEventNow', 'browser analytics dead direct writer');
   assertIncludes(clientDal, 'subtractFlushedAnalyticsData(current.updateData, flushedData)', 'analytics in-flight snapshot drain');
+  assertIncludes(clientDal, 'const flushedDeliveryId = queued.deliveryId;', 'analytics retry-stable delivery identity');
+  assertIncludes(clientDal, 'current.deliveryId = createRandomIdSegment(32);', 'analytics post-acknowledgement delivery identity rotation');
   assertIncludes(clientDal, 'isRetryableAnalyticsFlushError', 'analytics retry classification');
   assertIncludes(clientDal, 'current.retryCount >= ANALYTICS_QUEUE_MAX_RETRY_COUNT', 'analytics bounded retry count');
   assertIncludes(clientDal, 'normalizePersistedAnalyticsQueue(', 'analytics persisted queue DTO admission');
   assertIncludes(queueBoundary, 'const queueKey = getAnalyticsQueueKey(tenantId, storeId, projectId, dateString);', 'analytics canonical restored queue key');
+  assertIncludes(queueBoundary, 'ANALYTICS_DELIVERY_ID_PATTERN', 'analytics persisted delivery identity contract');
   assertIncludes(queueBoundary, 'dateString > currentDate', 'analytics future persisted date rejection');
   assertIncludes(browserState, 'normalizeAnalyticsSessionMilestoneState', 'analytics session milestone DTO boundary');
   assertIncludes(browserState, 'normalizeStoredAnalyticsEntrySource', 'analytics stored source DTO boundary');
@@ -361,13 +374,20 @@ function verifySourceBoundaries() {
     'analytics calendar date must fail before target Firestore reads',
   );
   assertNotIncludes(publicRoute, 'newestAcceptedDate', 'analytics future accepted date window');
+  assertIncludes(publicRoute, 'deliveryId: z.string().regex(/^[a-z0-9]{32}$/)', 'public analytics delivery identity schema');
+  assertIncludes(publicRoute, 'deliveryId: data.deliveryId', 'public analytics delivery identity forwarding');
   assertIncludes(serverWrite, 'const policyData = filterAnalyticsUpdateData(updateData);', 'Admin analytics shared field policy');
+  assertIncludes(serverWrite, 'DB_COLLECTIONS.ANALYTICS_DELIVERY_RECEIPTS', 'public analytics durable delivery receipt collection');
+  assertIncludes(serverWrite, 'return firestoreAdmin.runTransaction(async (transaction) => {', 'public analytics atomic receipt/counter transaction');
+  assertIncludes(serverWrite, "if (receiptSnapshot.exists) return { status: 'duplicate' as const };", 'public analytics exact delivery replay');
+  assertIncludes(serverWrite, 'transaction.create(receiptRef, {', 'public analytics delivery receipt creation');
   assertIncludes(serverWrite, 'date: analyticsDateKey,', 'Admin analytics UI date compatibility field');
   assertIncludes(serverWrite, 'localDate: analyticsDateKey,', 'Admin analytics settlement date field');
+  assertIncludes(rules, 'match /analyticsDeliveryReceipts/{receiptId}', 'analytics delivery receipt server-only rules boundary');
   assertIncludes(analyticsHook, 'return `analytics:${type}:${JSON.stringify(parts)}`;', 'analytics collision-safe browser cache key');
   assertNotIncludes(analyticsHook, 'parts.filter(Boolean).join', 'analytics ambiguous browser cache key');
   assert(
-    packageJson.scripts['verify:analytics-write-boundary'] === 'node scripts/verification/verify-analytics-write-boundary.js && npm run test:analytics:browser-boundary && npm run test:analytics:normalizer && npm run test:analytics:admin-write && npm run test:analytics:owner-action-receipts',
+    packageJson.scripts['verify:analytics-write-boundary'] === 'node scripts/verification/verify-analytics-write-boundary.js && npm run test:analytics:browser-boundary && npm run test:analytics:normalizer && npm run test:analytics:admin-write && npm run test:analytics:owner-action-receipts && npm run test:analytics:rules',
     'package.json must expose verify:analytics-write-boundary',
   );
   assert(

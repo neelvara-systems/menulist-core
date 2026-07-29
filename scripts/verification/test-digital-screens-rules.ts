@@ -15,6 +15,7 @@ import {
     getDocs,
     setDoc,
     Timestamp,
+    updateDoc,
 } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT || 'demo-digital-screens-rules';
@@ -22,6 +23,8 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const SAFE_SCREEN_PATH = 'platformSummary/screen_42';
 const DISABLED_SCREEN_PATH = 'platformSummary/screen_43';
 const LEGACY_SCREEN_PATH = 'platformSummary/screen_44';
+const CAMPAIGN_SCREEN_PATH = 'platformSummary/campaigns_42';
+const PRIVATE_CONTROL_PATH = 'platformSummary/screenControl_42';
 
 const publicScreenState = (storeId: string, enabled = true) => ({
     contentVersion: 1,
@@ -53,6 +56,25 @@ async function run(): Promise<void> {
                     ...publicScreenState('44'),
                     screenToken: 'legacy-public-bearer-token',
                 }),
+                setDoc(doc(db, CAMPAIGN_SCREEN_PATH), {
+                    status: 'ready',
+                    screen: {
+                        contentVersion: 1,
+                        currentMinConfidence: 0,
+                        enabled: true,
+                        lastContentChangeAt: Timestamp.fromDate(new Date('2026-07-16T06:00:00.000Z')),
+                        lastRefreshed: Timestamp.fromDate(new Date('2026-07-16T06:00:00.000Z')),
+                        ownerOverrideEnabled: false,
+                        pinnedSlides: [],
+                    },
+                }),
+                setDoc(doc(db, PRIVATE_CONTROL_PATH), {
+                    createdAt: Timestamp.fromDate(new Date('2026-07-16T06:00:00.000Z')),
+                    screenToken: 'private-screen-token-42',
+                    storeId: '42',
+                    tenantId: '1',
+                    updatedAt: Timestamp.fromDate(new Date('2026-07-16T06:00:00.000Z')),
+                }),
             ]);
         });
 
@@ -79,7 +101,7 @@ async function run(): Promise<void> {
             uId: 'owner-42',
         }).firestore() as unknown as Firestore;
 
-        await assertSucceeds(setDoc(doc(ownerDb, SAFE_SCREEN_PATH), {
+        await assertFails(setDoc(doc(ownerDb, SAFE_SCREEN_PATH), {
             ...publicScreenState('42'),
             contentVersion: 2,
         }));
@@ -87,6 +109,25 @@ async function run(): Promise<void> {
             ...publicScreenState('42'),
             contentVersion: 3,
             screenToken: 'must-not-be-written',
+        }));
+        await assertSucceeds(getDoc(doc(ownerDb, CAMPAIGN_SCREEN_PATH)));
+        await assertFails(getDoc(doc(ownerDb, PRIVATE_CONTROL_PATH)));
+        await assertSucceeds(updateDoc(doc(ownerDb, CAMPAIGN_SCREEN_PATH), {
+            status: 'updated',
+        }));
+        await assertFails(updateDoc(doc(ownerDb, CAMPAIGN_SCREEN_PATH), {
+            'screen.contentVersion': 2,
+        }));
+        await assertFails(setDoc(doc(ownerDb, 'platformSummary/campaigns_43'), {
+            screen: {
+                contentVersion: 1,
+                currentMinConfidence: 0,
+                enabled: true,
+                lastContentChangeAt: Timestamp.now(),
+                lastRefreshed: Timestamp.now(),
+                ownerOverrideEnabled: false,
+                pinnedSlides: [],
+            },
         }));
 
         process.stdout.write('Digital Screens Firestore rules tests passed.\n');

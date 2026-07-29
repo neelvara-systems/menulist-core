@@ -7,8 +7,10 @@ import {
     normalizeStoreSwitchStoreId,
 } from '../../src/lib/multiOutlet/storeSwitchAccess';
 import {
+    ACTIVE_STORE_CONTEXT_STORAGE_KEY,
     applyActiveStoreContextValueToSession,
     normalizeActiveStoreContextValue,
+    readActiveStoreContextId,
 } from '../../src/lib/multiOutlet/activeStoreContext';
 import type LoginUserType from '../../src/types/loginUser';
 
@@ -103,5 +105,43 @@ assert.equal(
 );
 assert.equal(normalizeActiveStoreContextValue({ baseStoreId: '22', storeId: 33, tenantId: 11 }), null);
 assert.equal(normalizeActiveStoreContextValue({ baseStoreId: 22, storeId: '033', tenantId: 11 }), null);
+
+const originalWindow = globalThis.window;
+const storageValues = new Map<string, string>();
+const removedStorageKeys: string[] = [];
+const localStorageDouble = {
+    getItem: (key: string) => storageValues.get(key) ?? null,
+    removeItem: (key: string) => {
+        removedStorageKeys.push(key);
+        storageValues.delete(key);
+    },
+    setItem: (key: string, value: string) => {
+        storageValues.set(key, value);
+    },
+};
+Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage: localStorageDouble },
+});
+
+storageValues.set(ACTIVE_STORE_CONTEXT_STORAGE_KEY, JSON.stringify(validActiveContext));
+assert.equal(readActiveStoreContextId(), 33, 'structured owner-scoped context should survive refresh');
+
+storageValues.set(ACTIVE_STORE_CONTEXT_STORAGE_KEY, '33');
+assert.equal(readActiveStoreContextId(), null, 'legacy scalar context must not drive SessionProvider');
+assert.ok(removedStorageKeys.includes(ACTIVE_STORE_CONTEXT_STORAGE_KEY));
+
+storageValues.set(ACTIVE_STORE_CONTEXT_STORAGE_KEY, '{"storeId":33}');
+assert.equal(readActiveStoreContextId(), null, 'partially scoped context must be evicted');
+assert.equal(storageValues.has(ACTIVE_STORE_CONTEXT_STORAGE_KEY), false);
+
+if (originalWindow === undefined) {
+    Reflect.deleteProperty(globalThis, 'window');
+} else {
+    Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: originalWindow,
+    });
+}
 
 console.log('Store-switch access boundary tests passed.');

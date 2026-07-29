@@ -1,6 +1,6 @@
 # Founder Daily Brief Help
 
-> **Publication status:** Existing Daily Brief behavior is live. Publish the strict quiet-state and qualification wording only after the Feature 1 code-level acceptance tests pass.
+> **Publication status:** Strict qualification, quiet-state, and owner handoff behavior are implemented and locally verified. Hosted QA remains a release gate.
 
 ## What It Does
 
@@ -34,13 +34,17 @@ After launch verification is ready, Daily Brief becomes the normal management ho
 ## How To Use It
 
 1. Review the factual launch-verification status.
-2. Start with the first action; it is the highest support-truth risk visible in current summaries.
+2. Start with the first action; it is the highest qualified support-truth risk visible in current summaries.
 3. Review up to three secondary actions only when needed.
 4. Approve, edit, or reject work inside the linked governed screen.
 5. Use `I shipped a change` to record affected entities and surfaces before running the existing release checks.
 6. Return to Daily Brief after the next summary refresh.
 
 An item clears when its owning source no longer reports the condition. There is no separate Mark complete button in Daily Brief.
+
+When a friction card names a product area, opening it keeps that entity focused
+in Product Friction Evidence. A low-coverage repair opens Canonical Answers,
+where answer review and mutation remain governed.
 
 ## When Nothing Needs You
 

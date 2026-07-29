@@ -35,6 +35,10 @@ import {
     isAnswerlatticeProductStarterPackCaseId,
 } from '@lib/answerlattice/firstTrustedAnswerPackContracts';
 import { AnswerlatticeKnowledgeIntakeJobSchema } from '@lib/answerlattice/knowledgeIntakeContracts';
+import {
+    getAnswerlatticeAnswerContextRoute,
+    normalizeAnswerlatticeOwnerReleaseContext,
+} from '@lib/answerlattice/ownerDecisionNavigation';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type {
@@ -66,12 +70,13 @@ import {
     theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuArchiveRestore,
     LuCheck,
     LuClipboardCheck,
+    LuExternalLink,
     LuFlaskConical,
     LuPencil,
     LuPlus,
@@ -265,13 +270,19 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
+    const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const routeContextQuery = searchParams.toString();
+    const requestedReleaseId = normalizeAnswerlatticeOwnerReleaseContext(searchParams.get('release')) || '';
     const isMobile = screens.md !== true;
     const isLaunchMode = entryMode === 'launch';
     const launchProofQuery = isLaunchMode ? '?includeLaunchProof=1' : '';
     const tId = Number(session?.tId || 0);
     const sId = Number(session?.sId || 0);
     const [form] = Form.useForm<TestFormValues>();
+    const selectedRiskLevel = Form.useWatch('riskLevel', form);
+    const selectedCaseIsActive = Form.useWatch('active', form);
     const [summary, setSummary] = useState<AnswerlatticeAnswerTestSummary>(() => createEmptyAnswerlatticeAnswerTestSummary(0, 0));
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -294,6 +305,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
     const [productPackGenerating, setProductPackGenerating] = useState(false);
     const [lastPackWasCached, setLastPackWasCached] = useState<boolean | null>(null);
     const [currentLaunchProof, setCurrentLaunchProof] = useState<AnswerlatticeActivationAnswerTestSummary | null>(null);
+    const handledReleaseContextRef = useRef('');
 
     const loadSummary = useCallback(async () => {
         if (!tId || !sId || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS) return;
@@ -416,6 +428,16 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
 
     const submitCase = useCallback(async () => {
         const values = await form.validateFields();
+        if (
+            values.riskLevel === 'critical'
+            && values.expectedSource === 'rag'
+            && (values.active !== false || !editingCase)
+        ) {
+            message.error(
+                'Critical tests must use approved canonical or FAQ truth, ticket escalation, or no approved answer.',
+            );
+            return;
+        }
         const now = new Date().toISOString();
         const nextCase: AnswerlatticeAnswerTestCase = {
             id: editingCase?.id || createRuntimeId('case'),
@@ -650,20 +672,53 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
         });
     }, [executeRun, selectedIds.length, summary.cases]);
 
-    const openReleaseCheck = useCallback(async () => {
+    const openReleaseCheck = useCallback(async (preferredReleaseId?: string) => {
+        const normalizedPreferredReleaseId = normalizeAnswerlatticeOwnerReleaseContext(preferredReleaseId);
         setReleaseModalOpen(true);
-        if (releases.length > 0 || !tId || !sId) return;
+        if (releases.length > 0) {
+            setSelectedReleaseId(current => (
+                normalizedPreferredReleaseId && releases.some(release => release.id === normalizedPreferredReleaseId)
+                    ? normalizedPreferredReleaseId
+                    : current || releases[0]?.id
+            ));
+            return;
+        }
+        if (!tId || !sId) return;
         setReleaseLoading(true);
         try {
             const list = await getReleases(tId, sId);
             setReleases(list || []);
-            setSelectedReleaseId(list?.[0]?.id);
+            setSelectedReleaseId(
+                normalizedPreferredReleaseId && list?.some(release => release.id === normalizedPreferredReleaseId)
+                    ? normalizedPreferredReleaseId
+                    : list?.[0]?.id,
+            );
         } catch {
             message.error('Could not load releases.');
         } finally {
             setReleaseLoading(false);
         }
-    }, [releases.length, sId, tId]);
+    }, [releases, sId, tId]);
+
+    useEffect(() => {
+        if (!requestedReleaseId) {
+            handledReleaseContextRef.current = '';
+            return;
+        }
+        if (!tId || !sId || isLaunchMode) return;
+        const contextKey = `${tId}:${sId}:${requestedReleaseId}`;
+        if (handledReleaseContextRef.current === contextKey) return;
+        handledReleaseContextRef.current = contextKey;
+        void openReleaseCheck(requestedReleaseId);
+    }, [isLaunchMode, openReleaseCheck, requestedReleaseId, sId, tId]);
+
+    const closeReleaseCheck = useCallback(() => {
+        setReleaseModalOpen(false);
+        if (!searchParams.has('release')) return;
+        const nextParams = new URLSearchParams(routeContextQuery);
+        nextParams.delete('release');
+        router.replace(`${pathname}${nextParams.size ? `?${nextParams.toString()}` : ''}`, { scroll: false });
+    }, [pathname, routeContextQuery, router, searchParams]);
 
     const applyResultAsExpectation = useCallback(async (result: AnswerlatticeAnswerTestCaseResult) => {
         const target = summary.cases.find(testCase => testCase.id === result.caseId);
@@ -1065,7 +1120,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                     >
                         Run full runtime
                     </Button>
-                    <Button icon={<LuRocket />} onClick={openReleaseCheck} disabled={activeCount === 0} style={ACTION_BUTTON_STYLE}>Check a release</Button>
+                    <Button icon={<LuRocket />} onClick={() => void openReleaseCheck()} disabled={activeCount === 0} style={ACTION_BUTTON_STYLE}>Check a release</Button>
                 </Flex>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
                     Canonical and release checks use 0 provider credits. {(selectedActiveCount || activeCount) > ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES
@@ -1186,6 +1241,18 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                                         )}
                                         {result.failures.map(failure => <Text key={failure} type="danger">{failure}</Text>)}
                                         <Space wrap>
+                                            {!result.passed && result.answerId && (
+                                                <Button
+                                                    icon={<LuExternalLink />}
+                                                    onClick={() => router.push(getAnswerlatticeAnswerContextRoute(
+                                                        getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
+                                                        result.answerId,
+                                                    ))}
+                                                    style={ACTION_BUTTON_STYLE}
+                                                >
+                                                    Review approved answer
+                                                </Button>
+                                            )}
                                             {!result.passed && (
                                                 <Popconfirm
                                                     title="Adopt the current route and evidence?"
@@ -1232,8 +1299,41 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                         <TextArea rows={3} maxLength={500} placeholder="Why did my invoice fail?" />
                     </Form.Item>
                     <Flex gap={12} vertical={isMobile}>
-                        <Form.Item name="expectedSource" label="Expected route" style={{ flex: 1 }} rules={[{ required: true }]}>
-                            <Select options={Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }))} />
+                        <Form.Item
+                            name="expectedSource"
+                            label="Expected route"
+                            style={{ flex: 1 }}
+                            dependencies={['riskLevel', 'active']}
+                            extra={selectedRiskLevel === 'critical'
+                                ? 'Critical proof requires owner-approved truth or a safe fallback route.'
+                                : undefined}
+                            rules={[
+                                { required: true },
+                                ({ getFieldValue }) => ({
+                                    validator: async (_, value) => {
+                                        const blocksCriticalRag = getFieldValue('riskLevel') === 'critical'
+                                            && value === 'rag'
+                                            && (getFieldValue('active') !== false || !editingCase);
+                                        if (blocksCriticalRag) {
+                                            throw new Error(
+                                                'Knowledge fallback cannot certify an active critical answer test.',
+                                            );
+                                        }
+                                    },
+                                }),
+                            ]}
+                        >
+                            <Select
+                                options={Object.entries(SOURCE_LABELS).map(([value, label]) => ({
+                                    value,
+                                    label: value === 'rag' && selectedRiskLevel === 'critical'
+                                        ? `${label} - not valid for critical proof`
+                                        : label,
+                                    disabled: value === 'rag'
+                                        && selectedRiskLevel === 'critical'
+                                        && (selectedCaseIsActive !== false || !editingCase),
+                                }))}
+                            />
                         </Form.Item>
                         <Form.Item name="minimumConfidence" label="Minimum confidence" style={{ flex: 1 }}>
                             <Select allowClear options={['high', 'medium', 'low', 'none'].map(value => ({ value, label: value }))} />
@@ -1304,7 +1404,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             <Modal
                 title="Check release safety"
                 open={releaseModalOpen}
-                onCancel={() => setReleaseModalOpen(false)}
+                onCancel={closeReleaseCheck}
                 onOk={() => selectedReleaseId && executeRun('canonical_only', { releaseId: selectedReleaseId })}
                 okText="Run affected tests"
                 confirmLoading={releaseLoading || runningMode === 'canonical_only'}

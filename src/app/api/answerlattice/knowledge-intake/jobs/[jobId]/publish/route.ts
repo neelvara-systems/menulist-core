@@ -13,13 +13,14 @@ import {
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
@@ -28,7 +29,7 @@ const KNOWLEDGE_INTAKE_PUBLISH_MAX_BODY_BYTES = 16 * 1024;
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
     if (!jobId) {
-        return NextResponse.json({ error: 'Invalid knowledge intake job.' }, { status: 400 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Invalid knowledge intake job.' }, { status: 400 });
     }
 
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -45,7 +46,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return answerlatticeKnowledgeIntakeJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid publish request.' },
                 { status: bodyResult.response.status },
             );
@@ -58,10 +59,10 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             publishedCount: result.published.length,
             scope: access.context.scope,
         }));
-        return NextResponse.json({ result: serializeIntakeValue(result) }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ result: serializeIntakeValue(result) });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Invalid publish request.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'Invalid publish request.' }, { status: 400 });
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -70,6 +71,6 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
                 scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to publish accepted intake items.') }, { status });
+        return answerlatticeKnowledgeIntakeJson({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to publish accepted intake items.') }, { status });
     }
 });

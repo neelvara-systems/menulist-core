@@ -31,16 +31,20 @@ interface PublicCookieConsentBannerProps {
 const reportedConsentStorageFailures = new Set<string>();
 
 function logConsentStorageFailure(
-    operation: 'read' | 'write',
+    operation: 'read' | 'remove' | 'write',
     error: unknown,
     storageKey: string,
 ): void {
-    const shapeKey = `${operation}:${storageKey.length}`;
+    const shapeKey = `${operation}:${storageKey}`;
     if (reportedConsentStorageFailures.has(shapeKey)) return;
     reportedConsentStorageFailures.add(shapeKey);
 
     logRuntimeFailure('public_cookie_consent_storage_failed', error, {
-        fallbackPolicy: operation === 'read' ? 'show_consent_panel' : 'keep_page_runtime_choice',
+        fallbackPolicy: operation === 'read'
+            ? 'show_consent_panel'
+            : operation === 'remove'
+                ? 'ignore_corrupt_persisted_choice'
+                : 'keep_page_runtime_choice',
         operation,
         ...getBoundedRuntimeStringContext('storageKey', storageKey),
     });
@@ -49,7 +53,14 @@ function logConsentStorageFailure(
 function readStoredChoice(storageKey: string): PublicCookieConsentChoice | null {
     try {
         const stored = window.localStorage.getItem(storageKey);
-        return stored === 'accepted' || stored === 'declined' ? stored : null;
+        if (stored === 'accepted' || stored === 'declined') return stored;
+        if (stored === null) return null;
+        try {
+            window.localStorage.removeItem(storageKey);
+        } catch (error) {
+            logConsentStorageFailure('remove', error, storageKey);
+        }
+        return null;
     } catch (error) {
         logConsentStorageFailure('read', error, storageKey);
         return null;

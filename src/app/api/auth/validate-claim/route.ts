@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { normalizeAuthClaimToken } from "@lib/auth/claimTokenBoundary";
+import { authPrivateJson } from "@lib/auth/authApiResponse";
 import {
   assertMessagingUserClaimIsAvailable,
   claimTokenTimestampLikeToMillis,
@@ -19,7 +20,7 @@ import {
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 const db = admin.firestore();
 
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
     });
     if (!rl.allowed) {
       const providerUnavailable = rl.reason === 'provider_unavailable';
-      return NextResponse.json(
+      return authPrivateJson(
         {
           error: providerUnavailable
             ? "Account setup is temporarily unavailable. Please try again shortly."
@@ -94,14 +95,14 @@ export async function GET(request: NextRequest) {
     const token = normalizeAuthClaimToken(searchParams.get("token"));
 
     if (!token) {
-      return NextResponse.json({ valid: false, error: "Invalid or expired claim link." }, { status: 400 });
+      return authPrivateJson({ valid: false, error: "Invalid or expired claim link." }, { status: 400 });
     }
 
     // Find user by claimToken
     const userDoc = await getUniqueMessagingUserByClaimToken(db, token);
 
     if (!userDoc) {
-      return NextResponse.json({ valid: false, error: "Invalid or expired claim link." }, { status: 404 });
+      return authPrivateJson({ valid: false, error: "Invalid or expired claim link." }, { status: 404 });
     }
 
     const userData = userDoc.data();
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
       if (error.status === 410) {
         await clearExpiredClaimTokenIfUnchanged(userDoc.ref, token);
       }
-      return NextResponse.json(
+      return authPrivateJson(
         {
           valid: false,
           error: error.status === 410
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
 
     // Return minimal info for the login page welcome message
     const phone = getClaimPreviewText(userData.phone, "", 40);
-    return NextResponse.json({
+    return authPrivateJson({
       valid: true,
       status: "valid",
       preview: "claim-token",
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof ClaimTokenUnavailableError) {
-      return NextResponse.json(
+      return authPrivateJson(
         { valid: false, error: "Invalid or expired claim link." },
         { status: error.status },
       );
@@ -145,6 +146,6 @@ export async function GET(request: NextRequest) {
       error,
       buildValidateClaimFailureLogContext(request, searchParams.get("token")),
     );
-    return NextResponse.json({ valid: false, error: "Internal error" }, { status: 500 });
+    return authPrivateJson({ valid: false, error: "Internal error" }, { status: 500 });
   }
 }

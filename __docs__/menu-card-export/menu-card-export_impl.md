@@ -225,7 +225,7 @@ export type MenuCardExportRecord = {
 };
 ```
 
-The implemented local history stores file names and source hashes only. Keys are scoped by tenant, store, and project so equal project IDs in different outlets/accounts cannot share browser history. Legacy project-only keys are not read. A rejected `localStorage` write is best-effort: it may omit persistence, but it cannot turn an already delivered file into an owner-visible export failure. No Firebase artifact path is stored because no Storage upload occurs.
+The implemented local history stores file names and source hashes only. Keys are scoped by tenant, store, and project so equal project IDs in different outlets/accounts cannot share browser history. Legacy project-only keys are not read. Browser values are untrusted: each record is projected through the exact preset, bounded-string, positive safe-integer page-count, canonical non-future ISO timestamp, and exact project contract before use. An invalid record, oversized array, or malformed JSON envelope is removed instead of becoming owner-visible history. A rejected `localStorage` write is best-effort: it may omit persistence, but it cannot turn an already delivered file into an owner-visible export failure. No Firebase artifact path is stored because no Storage upload occurs.
 
 `MenuCardExportSettings` must be narrow and serializable:
 

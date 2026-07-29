@@ -5,31 +5,23 @@ import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast } from "@reduxSlices/toast";
 import { reduxStore } from "@reduxStore/index";
 import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
+import {
+    createDalLoaderRequestId,
+    getDalFunctionName,
+    summarizeDalArgs,
+} from './dalDiagnostics';
 
 type DalOperation<T> = () => Promise<T> | T;
 
-const summarizeDalArgs = (args: unknown[]) => args.slice(0, -1).map((arg) => {
-    if (arg === null || arg === undefined) return arg;
-    if (Array.isArray(arg)) return { type: 'array', length: arg.length };
-    if (typeof arg === 'object') {
-        return {
-            type: 'object',
-            keys: Object.keys(arg).slice(0, 8),
-        };
-    }
-    if (typeof arg === 'string') return { type: 'string', length: arg.length };
-    return { type: typeof arg };
-});
-
 export const apiCallComposerClient = async <T>(fn: DalOperation<T>, ...args: unknown[]): Promise<T> => {
-    const functionName = typeof args[args.length - 1] === 'string' ? args[args.length - 1] : 'unknownDalCall';
+    const functionName = getDalFunctionName(args);
     const session = await getActiveSession();
     if (!Boolean(session?.user)) {
         reduxStore.dispatch(showErrorToast("User not logged in"));
         throw new Error('dal_client_session_required');
     }
 
-    const requestId = `${args[0]}_${Date.now()}`;
+    const requestId = createDalLoaderRequestId();
     try {
         reduxStore.dispatch(startLoader(requestId))
         const response = await fn();

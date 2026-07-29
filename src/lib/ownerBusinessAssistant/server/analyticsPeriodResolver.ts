@@ -5,7 +5,6 @@ import type {
 } from '../types';
 
 const PERIOD_SYNONYMS: Array<{ key: OwnerBusinessAnalyticsPeriodKey; patterns: RegExp[] }> = [
-  { key: 'today', patterns: [/today/i, /so far/i] },
   { key: 'yesterday', patterns: [/yesterday/i] },
   { key: 'thisWeek', patterns: [/this week/i, /current week/i] },
   { key: 'lastWeek', patterns: [/last week/i, /previous week/i] },
@@ -13,8 +12,11 @@ const PERIOD_SYNONYMS: Array<{ key: OwnerBusinessAnalyticsPeriodKey; patterns: R
   { key: 'lastMonth', patterns: [/last month/i, /previous month/i] },
   { key: 'last7Days', patterns: [/last 7/i, /seven days/i, /7 days/i] },
   { key: 'last30Days', patterns: [/last 30/i, /thirty days/i, /30 days/i] },
+  { key: 'today', patterns: [/today/i] },
   { key: 'overall', patterns: [/overall/i, /all time/i, /total/i] },
 ];
+
+const SO_FAR_PATTERN = /so far/i;
 
 const CUSTOM_DATE_PATTERNS = [
   /\b\d{4}-\d{1,2}-\d{1,2}\b/,
@@ -33,10 +35,11 @@ export function resolveOwnerBusinessAnalyticsPeriod(
   analytics?: Pick<OwnerBusinessAnalyticsIndexDoc, 'periods'>,
 ): OwnerBusinessAnalyticsPeriod | null {
   if (!analytics) return null;
+  if (hasUnsupportedCustomDate(question)) return null;
 
   const matched = PERIOD_SYNONYMS.find((entry) => entry.patterns.some((pattern) => pattern.test(question)));
   if (matched) return analytics.periods[matched.key] || null;
-  if (hasUnsupportedCustomDate(question)) return null;
+  if (SO_FAR_PATTERN.test(question)) return analytics.periods.today || null;
 
   return analytics.periods.today
     || analytics.periods.thisWeek

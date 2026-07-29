@@ -16,13 +16,14 @@ import {
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
@@ -34,13 +35,13 @@ export const PATCH = withAuth(async (
     params: { jobId: string; sourceId: string },
 ) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SOURCE_GOVERNANCE) {
-        return NextResponse.json({ error: 'Answerlattice source governance is not enabled.' }, { status: 404 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Answerlattice source governance is not enabled.' }, { status: 404 });
     }
 
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
     const sourceId = normalizeAnswerlatticeKnowledgeIntakeSourceId(params.sourceId);
     if (!jobId || !sourceId) {
-        return NextResponse.json({ error: 'Invalid knowledge source.' }, { status: 400 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Invalid knowledge source.' }, { status: 400 });
     }
 
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -57,7 +58,7 @@ export const PATCH = withAuth(async (
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return answerlatticeKnowledgeIntakeJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid source governance details.' },
                 { status: bodyResult.response.status },
             );
@@ -77,16 +78,15 @@ export const PATCH = withAuth(async (
             sourceId,
             sourceType: result.source.type,
         }));
-        return NextResponse.json(
+        return answerlatticeKnowledgeIntakeJson(
             {
                 source: serializeIntakeValue(result.source),
                 governanceUpdates: serializeIntakeValue(result.governanceUpdates),
             },
-            { headers: { 'Cache-Control': 'private, no-store' } },
         );
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Invalid source governance details.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'Invalid source governance details.' }, { status: 400 });
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -101,7 +101,7 @@ export const PATCH = withAuth(async (
                 },
             );
         }
-        return NextResponse.json(
+        return answerlatticeKnowledgeIntakeJson(
             { error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to update source governance.') },
             { status },
         );

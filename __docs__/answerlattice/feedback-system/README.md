@@ -1,7 +1,7 @@
 # Feedback System — Feature Documentation
 
 > **Status:** IMPLEMENTED
-> **Last Updated:** 2026-07-19
+> **Last Updated:** 2026-07-28
 > **Parent Feature:** Help Center
 > **Audit Type:** Codebase-first, every file read
 
@@ -89,6 +89,7 @@ It also includes a governed content-reaction system for published articles, chan
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-28 | 1.10.0 | Fenced optimistic reaction completion to the exact content, page, actor and workspace so stale requests cannot overwrite a newly selected item; future-dated browser acknowledgements now fail closed |
 | 2026-07-19 | 1.9.0 | Moved Help Center creation behind a fail-closed authenticated server route with deterministic replay handling; blocked direct client creates; excluded widget-only roles from private review; added bounded server-authoritative reaction actor state; hid internal state documents; and labeled owner metrics as the latest loaded 200-row window |
 | 2026-07-19 | 1.8.0 | Restricted shared feedback reads to support-control or exact-self access, added submit/reaction retry safety and mobile touch parity, reconciled optimistic counters to server authority, removed identity duplication from derived Help Center signals, and aligned docs with FAQ reactions plus the protected server transaction |
 | 2026-07-11 | 1.7.0 | Partitioned browser reaction acknowledgement by tenant, store, user and content type; added an identity-bearing runtime envelope, invalid-cache eviction, bounded null-prototype maps and workspace-switch state reset |

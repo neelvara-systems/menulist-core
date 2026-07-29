@@ -145,7 +145,15 @@ const frictionSnapshot = {
         entityId: 'billing',
         entityName: 'Billing',
         entityType: 'feature',
-        last7d: { queryCount: 8, escalationCount: 1, lowConfidenceCount: 2, frictionScore: 10 },
+        last7d: {
+            queryCount: 8,
+            ticketCount: 2,
+            chatNegativeCount: 1,
+            escalationCount: 1,
+            canonicalMissCount: 2,
+            lowConfidenceCount: 2,
+            frictionScore: 10,
+        },
         previous7d: { queryCount: 4, frictionScore: 5 },
         trendDirection: 'rising',
         trendScore: 2,
@@ -172,6 +180,34 @@ const projectedFrictionSnapshot = parseAnswerlatticeFrictionSnapshot({
 }, scope);
 assert.ok(projectedFrictionSnapshot);
 assert.equal('privateLegacyPayload' in projectedFrictionSnapshot, false);
+assert.deepEqual(projectedFrictionSnapshot.topFrictionEntities[0].last7d, {
+    queryCount: 8,
+    ticketCount: 2,
+    chatNegativeCount: 1,
+    escalationCount: 1,
+    canonicalMissCount: 2,
+    lowConfidenceCount: 2,
+    frictionScore: 10,
+});
+const {
+    ticketCount: _legacyTicketCount,
+    chatNegativeCount: _legacyChatNegativeCount,
+    canonicalMissCount: _legacyCanonicalMissCount,
+    ...legacyLast7d
+} = frictionSnapshot.topFrictionEntities[0].last7d;
+const projectedLegacyFrictionSnapshot = parseAnswerlatticeFrictionSnapshot({
+    ...frictionSnapshot,
+    topFrictionEntities: [{
+        ...frictionSnapshot.topFrictionEntities[0],
+        last7d: legacyLast7d,
+    }],
+}, scope);
+assert.ok(projectedLegacyFrictionSnapshot);
+assert.equal(
+    'ticketCount' in projectedLegacyFrictionSnapshot.topFrictionEntities[0].last7d,
+    false,
+    'legacy summaries remain readable without invented component zeroes',
+);
 assert.equal(parseAnswerlatticeFrictionSnapshot({ ...frictionSnapshot, frictionLevel: 'HEALTHY' }, scope), null);
 assert.equal(parseAnswerlatticeFrictionSnapshot({
     ...frictionSnapshot,
@@ -184,6 +220,37 @@ assert.equal(parseAnswerlatticeFrictionSnapshot({
         last7d: { ...frictionSnapshot.topFrictionEntities[0].last7d, escalationCount: 9 },
     }],
 }, scope), null);
+assert.equal(parseAnswerlatticeFrictionSnapshot({
+    ...frictionSnapshot,
+    topFrictionEntities: [{
+        ...frictionSnapshot.topFrictionEntities[0],
+        last7d: {
+            ...frictionSnapshot.topFrictionEntities[0].last7d,
+            ticketCount: 5,
+            chatNegativeCount: 2,
+        },
+    }],
+}, scope), null, 'component totals cannot exceed the admitted evidence total');
+assert.equal(parseAnswerlatticeFrictionSnapshot({
+    ...frictionSnapshot,
+    topFrictionEntities: [{
+        ...frictionSnapshot.topFrictionEntities[0],
+        last7d: {
+            ...frictionSnapshot.topFrictionEntities[0].last7d,
+            canonicalMissCount: 1,
+        },
+    }],
+}, scope), null, 'canonical-miss projection must match the retained daily-row count');
+assert.equal(parseAnswerlatticeFrictionSnapshot({
+    ...frictionSnapshot,
+    topFrictionEntities: [{
+        ...frictionSnapshot.topFrictionEntities[0],
+        last7d: {
+            ...legacyLast7d,
+            ticketCount: 2,
+        },
+    }],
+}, scope), null, 'partial evidence breakdowns must fail closed');
 assert.equal(parseAnswerlatticeFrictionSnapshot({
     ...frictionSnapshot,
     window: { ...calendarWindow, currentStartDate: '2026-07-10' },
@@ -246,6 +313,38 @@ assert.deepEqual(projectFrictionInsightsStateForScope(tenantAState, 0, 0), {
 const rootShared = fs.readFileSync(path.join(ROOT, 'src/data/shared/answerlatticeSupportMetrics.ts'), 'utf8');
 const functionShared = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/sharedData/answerlatticeSupportMetrics.ts'), 'utf8');
 assert.equal(rootShared, functionShared, 'support metrics shared data must stay byte-for-byte mirrored');
+assert.ok(
+    rootShared.includes('export interface AnswerlatticeFrictionEvidenceComponents'),
+    'shared metrics must declare the bounded friction evidence components',
+);
+
+const frictionAggregation = fs.readFileSync(
+    path.join(ROOT, 'functions-answerlattice/src/answerlattice/frictionAggregation.ts'),
+    'utf8',
+);
+assert.ok(
+    frictionAggregation.includes('agg.last7d.ticketCount += stat.ticketCount'),
+    'snapshot aggregation must project retained ticket evidence',
+);
+assert.ok(
+    frictionAggregation.includes('agg.last7d.chatNegativeCount += stat.chatNegativeCount'),
+    'snapshot aggregation must project retained negative-feedback evidence',
+);
+assert.ok(
+    frictionAggregation.includes('agg.last7d.canonicalMissCount += stat.lowConfidenceCount'),
+    'snapshot aggregation must name retained canonical-miss evidence explicitly',
+);
+
+const frictionUi = fs.readFileSync(
+    path.join(ROOT, 'src/components/templates/answerlattice/governance/FrictionTab.tsx'),
+    'utf8',
+);
+assert.ok(frictionUi.includes('Support evidence load'), 'owner UI must name the aggregate precisely');
+assert.ok(frictionUi.includes('Breakdown available after the next nightly refresh.'), 'legacy summaries need an explicit breakdown state');
+assert.ok(!frictionUi.includes('queryCount} questions'), 'mixed evidence totals must not be described as questions');
+assert.ok(frictionUi.includes('suggestedActions={insight.suggestedActions}'), 'validated advisory actions must reach the owner review surface');
+assert.ok(frictionUi.includes('Open in Knowledge Map'), 'friction evidence must preserve entity context into the Knowledge Map');
+assert.ok(frictionUi.includes("normalizeAnswerlatticeEntityId(searchParams.get('entity'))"), 'Daily Brief entity context must be revalidated');
 
 const nightly = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/answerlatticeNightly.ts'), 'utf8');
 assert.ok(nightly.includes('.limit(sourceLimit + 1)'), 'coverage must use cap+1 saturation detection');

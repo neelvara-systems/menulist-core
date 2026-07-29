@@ -98,6 +98,13 @@ function verifyEditorQaHooks() {
   assertIncludes(editor, 'chromeMode?: "embedded" | "full"', "Editor exposes explicit chrome mode contract");
   assertIncludes(editor, 'chromeMode = "full"', "Editor defaults to full product chrome");
   assertIncludes(editor, 'const browserDraftsEnabled = chromeMode === "full"', "Editor disables browser drafts in embedded mode");
+  assertIncludes(editor, "getCreativeEditorDraftStorageKey({", "Editor constructs collision-safe browser draft keys");
+  assertIncludes(editor, "creativeEditorDocumentSchema.safeParse(value)", "Editor validates imported and browser draft documents at runtime");
+  assertIncludes(editor, "payload.id !== initialEditorDocument.id", "Editor rejects a different-document browser draft");
+  assertIncludes(editor, "payload.productContext.productId !== documentRef.current.productContext.productId", "Editor rejects a cross-product browser draft");
+  assertIncludes(editor, "payload.productContext.workspaceId || undefined", "Editor compares browser draft workspace identity");
+  assertIncludes(editor, "creative_editor_browser_draft_storage_failed", "Editor reports bounded browser draft storage failures");
+  assertNotIncludes(editor, "const isCreativeEditorDocument =", "Editor does not restore the retired shallow document check");
   assertIncludes(editor, 'const showInternalExportTools = chromeMode === "full"', "Editor hides internal export shortcuts in embedded mode");
   assertIncludes(editor, 'data-chrome-mode={chromeMode}', "Editor root exposes chrome mode for layout verification");
   assertIncludes(editor, 'chromeMode === "full"', "Editor top chrome is full-mode only");
@@ -132,19 +139,21 @@ function verifyDocsAndScripts() {
 
   assertIncludes(packageJson, "verify:creative-editor-smoke", "Package exposes creative editor smoke verifier");
   assertIncludes(readme, "/creative-editor-smoke?qa=1", "Shared editor README documents QA smoke route");
-  assertIncludes(readme, "https://www.menulist.digital/creative-editor-test", "Shared editor README documents deployed preview route");
+  assertIncludes(readme, "http://localhost:3000/__mycodex/creative-editor-test", "Shared editor README documents local MyCodex preview route");
   assertIncludes(impl, "focus restoration", "Shared editor impl documents focus restoration");
   assertIncludes(impl, "stress variant", "Shared editor impl documents stress variant");
   assertIncludes(impl, "ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE", "Shared editor impl documents deployed preview gate");
+  assertIncludes(impl, "collision-safe segments", "Shared editor impl documents browser draft key isolation");
+  assertIncludes(tests, "Local autosave scope and corruption", "Shared editor tests document adversarial draft recovery");
   assertNotIncludes(readme, OLD_EDITOR_TEST_ENV_NAME, "Shared editor README");
   assertNotIncludes(impl, OLD_EDITOR_TEST_ENV_NAME, "Shared editor impl");
   assertNotIncludes(tests, OLD_EDITOR_TEST_ENV_NAME, "Shared editor tests");
   assertNotIncludes(validation, OLD_EDITOR_TEST_ENV_NAME, "Shared editor validation");
   assertIncludes(tests, "verify:creative-editor-smoke", "Shared editor tests include static verifier");
-  assertIncludes(tests, "/creative-editor-test", "Shared editor tests include deployed preview route");
+  assertIncludes(tests, "/creative-editor-test", "Shared editor tests include local preview route");
   assertIncludes(tests, "Keyboard traversal", "Shared editor tests include accessibility traversal");
   assertIncludes(validation, "Creative Editor Smoke QA", "Shared editor validation documents browser QA");
-  assertIncludes(validation, "MyCodex Deployed Editor Preview", "Shared editor validation documents deployed preview route");
+  assertIncludes(validation, "MyCodex Editor Preview", "Shared editor validation documents local preview route");
   assertIncludes(brandedQrReadme, "The shared Creative Editor QR drawer provides guided action-card presets", "Branded QR README documents editor QR action presets");
   assertIncludes(brandedQrImpl, "Project style changes and campaign starters must preserve those QR safety fields", "Branded QR impl documents QR safety preservation");
   assertIncludes(brandedQrTests, "QR drawer shows guided action presets", "Branded QR tests include editor QR action presets");

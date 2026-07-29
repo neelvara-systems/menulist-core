@@ -7,7 +7,7 @@ import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 const DOCUMENT_ID = '1_101_menu-project_daily_2026-07-11';
 const documentRef = firestoreAdmin.collection('analytics').doc(DOCUMENT_ID);
 
-const write = (updateData: Record<string, unknown>) => writePublicAnalyticsEventAdmin({
+const write = (updateData: Record<string, unknown>, deliveryId: string) => writePublicAnalyticsEventAdmin({
     updateData,
     tenantId: '1',
     storeId: '101',
@@ -15,6 +15,7 @@ const write = (updateData: Record<string, unknown>) => writePublicAnalyticsEvent
     dateString: '2026-07-11',
     storeTimeZone: 'UTC',
     businessDayEndTime: '03:00',
+    deliveryId,
 });
 
 async function run(): Promise<void> {
@@ -22,8 +23,8 @@ async function run(): Promise<void> {
     await documentRef.delete().catch(() => undefined);
 
     await Promise.all([
-        write({ totalViews: 2, 'viewsByItem.item_1': 2, 'itemNames.item_1': 'Lunch' }),
-        write({ totalViews: 3, 'viewsByItem.item_2': 3, 'itemNames.item_2': 'Dinner' }),
+        write({ totalViews: 2, 'viewsByItem.item_1': 2, 'itemNames.item_1': 'Lunch' }, 'a'.repeat(32)),
+        write({ totalViews: 3, 'viewsByItem.item_2': 3, 'itemNames.item_2': 'Dinner' }, 'b'.repeat(32)),
     ]);
 
     const afterConcurrentWrites = await documentRef.get();
@@ -42,11 +43,18 @@ async function run(): Promise<void> {
         'viewsByItem.constructor': 100,
         'itemNames.prototype': 'forged',
         'hourlyClicksByItem.__proto__.12': 100,
-    });
+    }, 'c'.repeat(32));
     const afterDangerousKeys = (await documentRef.get()).data() || {};
     assert.equal(afterDangerousKeys.totalViews, 5, 'rejected object-meta keys must not alter persisted counters');
     assert.equal(Object.prototype.hasOwnProperty.call(afterDangerousKeys.viewsByItem || {}, 'constructor'), false);
     assert.equal(Object.prototype.hasOwnProperty.call(afterDangerousKeys.itemNames || {}, 'prototype'), false);
+
+    const duplicateDeliveryId = 'd'.repeat(32);
+    const firstDelivery = await write({ totalViews: 4 }, duplicateDeliveryId);
+    const duplicateDelivery = await write({ totalViews: 4 }, duplicateDeliveryId);
+    assert.equal(firstDelivery.status, 'applied');
+    assert.equal(duplicateDelivery.status, 'duplicate');
+    assert.equal((await documentRef.get()).data()?.totalViews, 9, 'duplicate delivery must not increment twice');
 
     await assert.rejects(
         () => writePublicAnalyticsEventAdmin({
@@ -55,6 +63,7 @@ async function run(): Promise<void> {
             storeId: '101',
             projectId: 'menu-project',
             dateString: '2026-07-11',
+            deliveryId: 'e'.repeat(32),
         }),
         /Invalid public analytics write scope/,
     );
@@ -65,6 +74,7 @@ async function run(): Promise<void> {
             storeId: '101',
             projectId: 'menu-project',
             dateString: '2026-02-30',
+            deliveryId: 'f'.repeat(32),
         }),
         /Invalid public analytics write scope/,
     );

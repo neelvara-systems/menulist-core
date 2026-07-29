@@ -21,7 +21,7 @@ Owner public-link assignment is shared by mobile and desktop settings. Once the 
 
 URL resolution remains server-side infrastructure. Subdomain and custom-domain setup are already exposed through the existing desktop and mobile Domain Settings screens; both surfaces use the same authenticated server boundaries and store state.
 
-MyCodex is the exception inside this doc set because `menulist.digital` is an installable internal reader surface. Its PWA support is still infrastructure-scoped: mobile users get the MyCodex manifest, app icon, Apple launch image, and offline fallback automatically from the product host. The service worker does not cache private documentation content.
+MyCodex currently has no active public domain. If a private MyCodex host is approved later, its PWA support remains infrastructure-scoped: mobile users get the MyCodex manifest, app icon, Apple launch image, and offline fallback from that product host. The service worker must not cache private documentation content.
 
 ---
 
@@ -32,7 +32,7 @@ Mobile users (customers visiting menus via phone) benefit from this feature auto
 - **Permanent URLs** — QR codes scanned on phone always work even after menu rename
 - **CDN caching** — Faster menu load on mobile via Vercel Edge
 - **301 redirects** — Old shared links redirect correctly on mobile browsers
-- **MyCodex install identity** — `menulist.digital` installs as MyCodex, not as MenuList or Answerlattice
+- **MyCodex install identity** — no active public MyCodex install host exists today
 
 No new mobile component or separate mobile data path is needed.
 

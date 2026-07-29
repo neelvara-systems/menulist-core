@@ -38,6 +38,40 @@ interface CacheEntry<T> {
     date: string; // YYYY-MM-DD for date-based invalidation
 }
 
+const CACHE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+function isCanonicalCacheDate(value: unknown): value is string {
+    if (typeof value !== 'string' || !CACHE_DATE_PATTERN.test(value)) return false;
+    const parsed = Date.parse(`${value}T00:00:00.000Z`);
+    return Number.isFinite(parsed) && new Date(parsed).toISOString().slice(0, 10) === value;
+}
+
+function normalizeCacheDayKey(value: unknown): string | null {
+    return isCanonicalCacheDate(value) ? value : null;
+}
+
+function projectCacheEntry<T>(value: unknown, now = Date.now()): CacheEntry<T> | null {
+    if (
+        !isRecord(value)
+        || !Object.prototype.hasOwnProperty.call(value, 'data')
+        || !Number.isSafeInteger(value.timestamp)
+        || (value.timestamp as number) <= 0
+        || (value.timestamp as number) > now
+        || !isCanonicalCacheDate(value.date)
+    ) {
+        return null;
+    }
+    return {
+        data: value.data as T,
+        timestamp: value.timestamp as number,
+        date: value.date,
+    };
+}
+
 /**
  * Get today's date in YYYY-MM-DD format
  */
@@ -52,7 +86,9 @@ function getTodayDate(): string {
  */
 function isCacheValid(entry: CacheEntry<unknown>, maxAgeMs?: number, dayKey?: string): boolean {
     const now = Date.now();
-    const today = dayKey || getTodayDate();
+    const normalizedDayKey = dayKey === undefined ? getTodayDate() : normalizeCacheDayKey(dayKey);
+    if (!normalizedDayKey) return false;
+    const today = normalizedDayKey;
 
     // If entry is from a different day, it's stale (scheduler has new data)
     if (entry.date !== today) {
@@ -60,7 +96,14 @@ function isCacheValid(entry: CacheEntry<unknown>, maxAgeMs?: number, dayKey?: st
     }
 
     // If maxAge specified, check TTL
-    if (maxAgeMs && (now - entry.timestamp) > maxAgeMs) {
+    if (
+        maxAgeMs !== undefined
+        && (
+            !Number.isSafeInteger(maxAgeMs)
+            || maxAgeMs <= 0
+            || (now - entry.timestamp) > maxAgeMs
+        )
+    ) {
         return false;
     }
 
@@ -123,7 +166,7 @@ function cleanupOldEntries(): void {
             const entries = keys.map(key => {
                 try {
                     const raw = localStorage.getItem(key);
-                    const parsed = raw ? JSON.parse(raw) : null;
+                    const parsed = raw ? projectCacheEntry<unknown>(JSON.parse(raw)) : null;
                     return { key, timestamp: parsed?.timestamp || 0 };
                 } catch {
                     return { key, timestamp: 0 };
@@ -159,9 +202,9 @@ export function getCachedData<T>(key: string, maxAgeMs?: number, dayKey?: string
 
         if (!raw) return undefined;
 
-        const entry: CacheEntry<T> = JSON.parse(raw);
+        const entry = projectCacheEntry<T>(JSON.parse(raw));
 
-        if (!isCacheValid(entry, maxAgeMs, dayKey)) {
+        if (!entry || !isCacheValid(entry, maxAgeMs, dayKey)) {
             localStorage.removeItem(cacheKey);
             return undefined;
         }
@@ -183,11 +226,15 @@ export function getCachedData<T>(key: string, maxAgeMs?: number, dayKey?: string
  */
 export function setCachedData<T>(key: string, data: T, dayKey?: string): void {
     try {
+        const normalizedDayKey = dayKey === undefined
+            ? getTodayDate()
+            : normalizeCacheDayKey(dayKey);
+        if (!normalizedDayKey || typeof data === 'undefined') return;
         const cacheKey = createCacheKey(key);
         const entry: CacheEntry<T> = {
             data,
             timestamp: Date.now(),
-            date: dayKey || getTodayDate(),
+            date: normalizedDayKey,
         };
 
         localStorage.setItem(cacheKey, JSON.stringify(entry));
@@ -207,11 +254,15 @@ export function setCachedData<T>(key: string, data: T, dayKey?: string): void {
         if (e instanceof DOMException && e.name === 'QuotaExceededError') {
             cleanupOldEntries();
             try {
+                const normalizedDayKey = dayKey === undefined
+                    ? getTodayDate()
+                    : normalizeCacheDayKey(dayKey);
+                if (!normalizedDayKey || typeof data === 'undefined') return;
                 const cacheKey = createCacheKey(key);
                 const entry: CacheEntry<T> = {
                     data,
                     timestamp: Date.now(),
-                    date: dayKey || getTodayDate(),
+                    date: normalizedDayKey,
                 };
                 localStorage.setItem(cacheKey, JSON.stringify(entry));
             } catch {
@@ -290,8 +341,16 @@ export function shouldRevalidate(key: string, dayKey?: string): boolean {
 
         if (!raw) return true; // No cache, need to fetch
 
-        const entry: CacheEntry<unknown> = JSON.parse(raw);
-        const today = dayKey || getTodayDate();
+        const entry = projectCacheEntry<unknown>(JSON.parse(raw));
+        if (!entry) {
+            localStorage.removeItem(cacheKey);
+            return true;
+        }
+        const today = dayKey === undefined ? getTodayDate() : normalizeCacheDayKey(dayKey);
+        if (!today) {
+            localStorage.removeItem(cacheKey);
+            return true;
+        }
 
         return entry.date !== today;
     } catch {
@@ -309,7 +368,11 @@ export function getCacheDate(key: string): string | null {
 
         if (!raw) return null;
 
-        const entry: CacheEntry<unknown> = JSON.parse(raw);
+        const entry = projectCacheEntry<unknown>(JSON.parse(raw));
+        if (!entry) {
+            localStorage.removeItem(cacheKey);
+            return null;
+        }
         return entry.date;
     } catch {
         return null;

@@ -39,6 +39,7 @@ import {
     hasPublishedMenuProject,
 } from '@lib/menuPresence/presenceReadiness';
 import type { DigitalScreenSeenTimestamp } from '@lib/screen/screenTimestamp';
+import { getDigitalScreenHealth } from '@lib/screen/screenHealth';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildPrintableAssetsUrl } from '@lib/printable-asset-templates/navigation';
 import {
@@ -981,6 +982,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     }
 
     // ── Main render ──────────────────────────────────────────────
+    const digitalScreenHealth = getDigitalScreenHealth(data.screenLastSeenAt);
 
     return (
         <div style={{ margin: '0 auto', maxWidth: 1080, padding: '24px clamp(16px, 3vw, 32px)', width: '100%' }}>
@@ -1367,6 +1369,9 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                     <LuMonitor size={18} />
                                     <Text strong>Menu Board</Text>
                                     <Tag style={primaryTagStyle}>Main TV</Tag>
+                                    <Tag color={digitalScreenHealth.state === 'recent' ? 'success' : digitalScreenHealth.state === 'stale' ? 'warning' : 'default'}>
+                                        {digitalScreenHealth.summary}
+                                    </Tag>
                                 </Flex>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
                                     Full {labels.offeringLower} with categories, items, and prices
@@ -1441,7 +1446,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                                 Show your {labels.offeringLower} on TVs or wall displays
                             </Text>
                         </Flex>
-                        <Button size="small" href="/business-settings" style={{ flexShrink: 0 }}>
+                        <Button size="small" href="/business-settings?section=digital-screens" style={{ flexShrink: 0 }}>
                             Set Up
                         </Button>
                     </Flex>

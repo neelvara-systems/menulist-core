@@ -1,36 +1,43 @@
 
-type gradientConfigObj = {
-    type: string,
-    props: any,
-    colors: any[]
-}
-
-export const getGradientValue = (configObj: gradientConfigObj) => {
-    const colors = configObj.colors;
-    let { direction, type } = configObj.props;
-    if (type.includes("radial")) {
-        type = 'radial'
+type GradientConfig = {
+    colors: readonly string[];
+    props?: {
+        direction?: string;
+        type?: string;
     };
-    let colorsString = '';
-    colors.map((c, i) => {
-        colorsString = `${colorsString}${c}${i != colors.length - 1 ? ', ' : ''}`
-    })
-    return (`${type}-gradient(${direction}, ${colorsString})`);
-}
+    type: string;
+};
 
+export const getGradientValue = (configObj: GradientConfig): string => {
+    const colors = configObj.colors
+        .filter((color) => typeof color === 'string' && color.trim().length > 0)
+        .map((color) => color.trim());
+    const direction = configObj.props?.direction?.trim() || '';
+    const sourceType = configObj.props?.type?.trim() || configObj.type.trim();
+    const type = sourceType.toLowerCase().includes('radial') ? 'radial' : sourceType;
 
-export const getStyleValueAndType = (propertyValue: any) => {
-    let value: any = 0;
-    let type: any = "px";
-    if (Boolean(propertyValue)) {
-        if (`${propertyValue}`?.includes("%")) {
-            type = "%";
-            value = propertyValue.split("%")[0];
-        } else if (propertyValue?.includes("px")) {
-            type = "px";
-            value = propertyValue.split("px")[0];
-        }
+    if (!type || colors.length === 0) return '';
+    return `${type}-gradient(${[direction, ...colors].filter(Boolean).join(', ')})`;
+};
+
+export type StyleValueAndType = {
+    type: '%' | 'px';
+    value: number | string;
+};
+
+export const getStyleValueAndType = (propertyValue: unknown): StyleValueAndType => {
+    if (typeof propertyValue === 'number' && Number.isFinite(propertyValue)) {
+        return { value: propertyValue, type: 'px' };
     }
+    if (typeof propertyValue !== 'string') return { value: 0, type: 'px' };
 
-    return { value, type }
-}
+    const match = propertyValue.trim().match(/^(-?(?:\d+(?:\.\d*)?|\.\d+))\s*(%|px)$/i);
+    if (!match) return { value: 0, type: 'px' };
+    const unit = match[2].toLowerCase();
+    if (unit !== '%' && unit !== 'px') return { value: 0, type: 'px' };
+
+    return {
+        value: match[1],
+        type: unit,
+    };
+};

@@ -1,12 +1,12 @@
 # Digital Screens — Documentation Hub
 
 **Feature:** In-Store Digital Menu Display (TV/Tablet Screens)
-**Status:** 🔒 v2.3 LOCKED (readability, owner-trust, token-free listener isolation, bounded diagnostics, lifecycle recovery, permission parity, and dedicated source-gate verification applied July 2026) — Only readability/reliability/security/scale fixes allowed.
+**Status:** 🔒 v2.3 LOCKED (truth, readability, owner trust, private bearer-token isolation, bounded diagnostics, lifecycle recovery, permission parity, and dedicated source-gate verification applied July 29, 2026) — Only readability/reliability/security/scale fixes allowed.
 **One-liner:** "Your current menu on your shop TV. One link. No separate screen editing."
 
 ## Source Gate
 
-Digital Screens copy must stay tied to the active screen runtime: `/screen/[token]` uses a 60-second `screen-data` server cache, both screen clients render cache-first from localStorage, and connected screens refresh after an acknowledged public-output change bumps `screen.contentVersion` and the public-safe `platformSummary/screen_{storeId}` listener mirror. Do not describe screen freshness as immediate, absolute, or independent of the cache/listener boundary. Guard with `npm run verify:digital-screens-boundary`.
+Digital Screens copy must stay tied to the active screen runtime. The bearer token lives in the server-only private control document `platformSummary/screenControl_{storeId}`; canonical display settings live in `platformSummary/campaigns_{storeId}.screen`; and the anonymous listener sees only the token-free `platformSummary/screen_{storeId}` mirror. `/screen/[token]` uses a 60-second token-hashed state cache plus a store-scoped menu cache. Browser-local content is admitted only while offline and only when its `contentVersion` equals the server-rendered version. Connected screens refresh after an acknowledged public-output change bumps `screen.contentVersion`. Do not describe freshness as immediate or absolute. Guard with `npm run verify:digital-screens-boundary`.
 
 ---
 
@@ -37,7 +37,9 @@ June 2026 hardening keeps that boundary while making the feature owner-trustwort
 - Unexpected seen-write failures now return a retryable response, so a transient failure is not cached locally as that day's successful signal.
 - The global Digital Screens kill switch now closes both the public display route and the seen endpoint, while desktop/mobile owner entry points require the Digital Screens permission before reading screen state. Desktop and mobile Menu Manager also omit the bearer link unless that permission is present.
 - Expired custom slides no longer consume the three-slide allowance: owner reads hide them and the next screen mutation prunes their Firestore references. Storage retention remains governed by the shared media lifecycle rather than the display-expiry timer.
-- Highlights preserves the last valid cached slide payload when a fresh server render is empty and clamps its active slide index when the refreshed rotation shrinks, preventing a temporary blank frame.
+- Browser-local fallback is offline-only and version-matched; an online empty/current response cannot be replaced by old menu items or slides.
+- Menu Board uses height-aware one/two/three-column pagination, a compact 720p layout, a 12-second page interval, and a 500-item fallback ceiling. Custom artwork renders without destructive cropping, shows owner safe-area/QR reservations before save, and reloads at expiry so an old offer cannot remain on a long-running TV.
+- Owner health copy distinguishes `Link ready`, `Seen recently`, and `Check TV`; it never equates a generated link or an old daily signal with a live connection.
 - Public token resolvers, menu fallback helpers, invalidation, and reload utilities no longer direct-console raw screen tokens, project IDs, slide IDs, settings, or error objects; failures use normalized bounded diagnostics.
 - `npm run verify:digital-screens-boundary` now locks the screen-token route, public-safe `platformSummary/screen_{storeId}` mirror, seen-signal cheap-fail ordering, screen cache invalidation touches, owner copy/open acknowledgement guards, and Digital Screens docs parity as a dedicated source gate.
 
@@ -77,7 +79,10 @@ src/config/features.ts                      # DIGITAL_SCREENS_* feature flags + 
 src/lib/screen/                             # Utilities, slide generators, renderer
 src/lib/screen/screenContent.ts             # Content normalization, price parsing, tags, captions, screen menu extraction
 src/lib/screen/publicScreenState.ts         # Public-safe listener mirror for screen content version
-src/lib/screen/screenInvalidation.ts        # Public-cache-linked screen content version touch + menu projection refresh
+src/lib/screen/screenManagementServer.ts    # Authorized atomic owner state/control/mirror mutations
+src/lib/screen/privateScreenControl.ts      # Private token document identity + hashed cache tags
+src/lib/screen/serverScreenInvalidation.ts  # Server-only version touch + token-cache invalidation
+src/app/api/digital-screens/route.ts        # Permission-checked owner management boundary
 src/app/screen/[token]/page.tsx             # Server component (SSR, projection/fallback menu resolution, mode routing)
 src/app/screen/[token]/ScreenDisplay.tsx    # Highlights mode client (rotation, cache, listener)
 src/app/screen/[token]/MenuBoardDisplay.tsx # Menu Board mode client (v2.0 — full menu, pagination)
@@ -87,7 +92,8 @@ src/database/campaigns/serverScreen.ts      # Public screen DAL: token lookup, p
 src/database/campaigns/index.ts             # Owner/session DAL: setup, settings, uploads, version bumps
 src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
 scripts/verification/verify-digital-screens-boundary.js # Dedicated local source gate for Digital Screens
-scripts/backfill-digital-screen-public-mirrors.ts # Guarded dry-run/write migration for legacy token-bearing listener mirrors
+scripts/backfill-digital-screen-public-mirrors.ts # Guarded token-free listener mirror migration
+scripts/backfill-digital-screen-private-controls.ts # Guarded canonical-token to private-control migration
 ```
 
 ---

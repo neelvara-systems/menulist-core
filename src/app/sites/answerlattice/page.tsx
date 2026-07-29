@@ -31,7 +31,6 @@ import {
     ANSWERLATTICE_DEMO_SURFACE_ASSETS,
     ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION,
     ANSWERLATTICE_PRODUCT_AREA_ASSETS,
-    ANSWERLATTICE_PRODUCT_PREVIEW_ASSETS,
 } from './answerlatticeWebsiteAssets';
 import { ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SITE_TITLE } from './siteConfig';
 
@@ -449,12 +448,36 @@ const TRUST_CARDS = [
 ];
 
 const REVIEW_SIGNALS = [
-    'Missing answers',
-    'Repeated questions',
-    'Stale answers after releases',
-    'Low-rated responses',
-    'Support-heavy product areas',
-    'Tickets that should become reusable help',
+    {
+        title: 'Daily Brief',
+        detail: 'See up to four qualified decisions, or a clear quiet state when current evidence needs no action.',
+        href: '/product/support-control',
+    },
+    {
+        title: 'Knowledge Map',
+        detail: 'Inspect product relationships, approved-answer coverage, drift, and review state.',
+        href: '/product/knowledge-governance',
+    },
+    {
+        title: 'Product Friction Evidence',
+        detail: 'Compare mapped product areas and open the exact area creating current support pressure.',
+        href: '/product/knowledge-governance',
+    },
+    {
+        title: 'Release impact',
+        detail: 'Review directly linked approved answers and current Answer Tests before activating a versioned release.',
+        href: '/product/changelog',
+    },
+    {
+        title: 'Answer Tests',
+        detail: 'Check critical questions, required claims, evidence, fallback, and safe escalation before reuse.',
+        href: '/product/knowledge-governance',
+    },
+    {
+        title: 'Article topic maps',
+        detail: 'Let readers scan a published guide by topic without exposing private governance data.',
+        href: '/product/knowledge-base',
+    },
 ];
 
 const BUILT_FOR = [
@@ -1341,34 +1364,46 @@ function ConnectedLoopSection({ basePath }: { basePath: string }) {
     );
 }
 
-function FounderReviewSection() {
+function FounderReviewSection({ basePath }: { basePath: string }) {
     return (
-        <section className="px-4 py-20 sm:px-6">
-            <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.18fr_0.82fr] lg:items-center">
+        <section id="owner-decision-system" className="scroll-mt-24 px-4 py-20 sm:px-6">
+            <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center">
                 <div className="order-2 rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3 lg:order-1">
                     <AnswerlatticeAssetImage
-                        asset={ANSWERLATTICE_PRODUCT_PREVIEW_ASSETS['Feedback review']}
+                        asset={ANSWERLATTICE_PRODUCT_AREA_ASSETS['Review approved answers']}
                         assetSlotId="home.product-overview.feature-cards"
-                        assetRole="legacy-home-founder-review"
+                        assetRole="owner-decision-system"
                         className="rounded-[1.5rem] border border-white/[0.08]"
                     />
                 </div>
                 <div className="order-1 lg:order-2" data-answerlattice-reveal>
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Founder review loop</p>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Owner decision system</p>
                     <h2 className="text-3xl font-bold leading-tight text-white sm:text-4xl">
-                        Know what to fix in support every week.
+                        Open once. Know what deserves your decision.
                     </h2>
                     <p className="mt-5 text-base leading-relaxed text-[#a0a0c0]">
-                        AnswerLattice shows missing answers, repeated questions, stale answers, low-rated responses, and support-heavy product areas so support improves without guesswork.
+                        The Daily Brief prioritizes qualified current work. Knowledge Map shows where it belongs. Friction evidence explains demand, while release impact and Answer Tests help you review changes before users depend on them.
                     </p>
-                    <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-7 grid gap-x-6 sm:grid-cols-2">
                         {REVIEW_SIGNALS.map((item) => (
-                            <div key={item} className="flex items-start gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 text-sm text-[#d6d6ef]">
-                                <LuCheckCircle className="mt-0.5 shrink-0 text-teal-300" size={16} aria-hidden />
-                                {item}
-                            </div>
+                            <AnswerlatticeLink
+                                key={item.title}
+                                basePath={basePath}
+                                href={item.href}
+                                className="group grid min-h-[7.25rem] grid-cols-[1.25rem_minmax(0,1fr)_1rem] gap-3 border-t border-white/[0.09] py-4 text-left"
+                            >
+                                <LuCheckCircle className="mt-1 shrink-0 text-teal-300" size={17} aria-hidden />
+                                <span>
+                                    <span className="block text-sm font-semibold text-white">{item.title}</span>
+                                    <span className="mt-1.5 block text-sm leading-6 text-[#8f8faa]">{item.detail}</span>
+                                </span>
+                                <LuArrowRight className="mt-1 text-[#676784] transition group-hover:translate-x-0.5 group-hover:text-teal-200" size={16} aria-hidden />
+                            </AnswerlatticeLink>
                         ))}
                     </div>
+                    <p className="mt-5 text-sm leading-6 text-[#737391]">
+                        These views reuse governed summaries and explicit owner navigation. They do not publish answers, change releases, or create a second task system.
+                    </p>
                 </div>
             </div>
         </section>
@@ -1425,8 +1460,9 @@ export default async function AnswerlatticeHomePage() {
                  * <SupportSuiteSection basePath={basePath} />
                  * <SupportSurfaceStorySection />
                  * <ProductOverviewSection basePath={basePath} />
-                 */}
+                */}
                 <ConnectedLoopSection basePath={basePath} />
+                <FounderReviewSection basePath={basePath} />
                 <InstallSurfaceSection basePath={basePath} />
                 <FounderFitBoundarySection />
                 <PricingPreviewSection basePath={basePath} />

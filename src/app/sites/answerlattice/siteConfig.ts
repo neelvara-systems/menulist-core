@@ -30,7 +30,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product',
         title: 'Product | AnswerLattice',
-        description: 'Turn scattered product material into approved support, then test critical answers before releases, show temporary issue notices, review compact support health, and export approved support truth.',
+        description: 'Turn scattered product material into approved support, then use Daily Brief, Knowledge Map, Product Friction Evidence, release impact, and Answer Tests to keep it current.',
         priority: 0.9,
         changeFrequency: 'weekly',
     },
@@ -51,14 +51,14 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/product/support-control',
         title: 'Help Center and Tickets | AnswerLattice',
-        description: 'Turn scattered product knowledge into hosted help, docs, FAQs, custom owner answers, changelog support, fallback tickets, feedback, and weekly support review.',
+        description: 'Turn scattered product knowledge into hosted help, article topic maps, FAQs, ticket fallback, feedback review, and a qualified read-only Daily Brief.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
     {
         path: '/product/knowledge-governance',
-        title: 'Review Approved Answers | AnswerLattice',
-        description: 'Review approved answers, stale support, repeated misses, coverage signals, and launch readiness.',
+        title: 'Knowledge Map and Approved Answer Review | AnswerLattice',
+        description: 'Use Knowledge Map, Product Friction Evidence, Answer Tests, and release impact to review approved answers and keep support truth current.',
         priority: 0.82,
         changeFrequency: 'monthly',
     },
@@ -249,7 +249,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/updates',
         title: 'Updates | AnswerLattice',
-        description: 'Recent AnswerLattice product updates across knowledge intake, launch setup, team access, widget runtime, feedback review, Support Board, compiled context, support review, and public website work.',
+        description: 'Recent AnswerLattice product updates across Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, hosted help, and support safety.',
         priority: 0.72,
         changeFrequency: 'weekly',
     },
@@ -305,7 +305,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/faq',
         title: 'FAQ | AnswerLattice',
-        description: 'Answers to common questions founders ask about AnswerLattice setup, knowledge intake, team access, in-app help, hosted help, approved answers, feedback review, Support Board, pricing, tickets, and data handling.',
+        description: 'Answers about AnswerLattice setup, Daily Brief, Knowledge Map, article topic maps, Answer Tests, release impact, approved answers, pricing, tickets, and data handling.',
         priority: 0.7,
         changeFrequency: 'monthly',
     },

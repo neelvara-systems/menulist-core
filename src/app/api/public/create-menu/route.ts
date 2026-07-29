@@ -43,6 +43,7 @@ import { checkSafeMode } from '@lib/ops/safeMode';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
+import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedFormDataBody, readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -64,7 +65,6 @@ const ALLOWED_TYPES = new Set<string>(PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES);
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ACTIVE_DRAFT_STATUSES = new Set(['pending', 'processing']);
 const REUSABLE_DRAFT_STATUSES = new Set(['pending', 'processing', 'completed']);
-const PUBLIC_MENU_DRAFT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE = 'We could not prepare this menu. Upload a clearer photo or try another public menu link.';
 const PUBLIC_MENU_ENTRY_REUSED_DRAFT = 'public_menu_entry_reused_draft';
 const PUBLIC_MENU_ENTRY_REUSED_LINK_DRAFT = 'public_menu_entry_reused_link_draft';
@@ -900,7 +900,7 @@ export const GET = withAuth(async (req: NextRequest, session) => {
     const statusOnly = searchParams.get('statusOnly') === '1' || searchParams.get('statusOnly') === 'true';
     const userId = String(session?.user?.id || '');
 
-    if (!draftId || !PUBLIC_MENU_DRAFT_ID_PATTERN.test(draftId)) {
+    if (!normalizePublicMenuDraftId(draftId)) {
         return NextResponse.json(
             { success: false, error: 'Invalid draftId parameter.' },
             { status: 400 }

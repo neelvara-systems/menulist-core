@@ -8,11 +8,19 @@ const LEGACY_HELP_CHAT_DRAFT_PREFIX = 'chat-draft-';
 export const ANSWERLATTICE_HELP_CHAT_DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const ANSWERLATTICE_HELP_CHAT_DRAFT_MAX_LENGTH = 2000;
 
-const normalizeConsistentUserId = (sessionOrUser: any): string | null => {
+const asRecord = (value: unknown): Record<string, unknown> | null => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null
+);
+
+const normalizeConsistentUserId = (sessionOrUser: unknown): string | null => {
+    const record = asRecord(sessionOrUser);
+    const user = asRecord(record?.user);
     const suppliedIds = [
-        sessionOrUser?.uId,
-        sessionOrUser?.user?.id,
-        sessionOrUser?.user?.uId,
+        record?.uId,
+        user?.id,
+        user?.uId,
     ].filter((value) => value !== undefined && value !== null);
 
     if (suppliedIds.length === 0) return null;
@@ -69,7 +77,7 @@ export const parseAnswerlatticeHelpChatDraft = (
     }
 };
 
-export const resolveAnswerlatticeHelpChatDraftScope = (sessionOrUser: any): string | null => {
+export const resolveAnswerlatticeHelpChatDraftScope = (sessionOrUser: unknown): string | null => {
     const scope = resolveAnswerlatticeSessionScope(sessionOrUser);
     const userId = normalizeConsistentUserId(sessionOrUser);
     if (!scope || !userId) return null;
@@ -98,7 +106,9 @@ export const getAnswerlatticeHelpChatDraftKeys = (
 export const getLegacyHelpChatDraftKeys = (
     sessionId: string | null | undefined,
 ): AnswerlatticeHelpChatDraftKeys => {
-    const keySuffix = sessionId || 'new';
+    const keySuffix = sessionId === null || sessionId === undefined
+        ? 'new'
+        : normalizeAnswerlatticeChatSessionId(sessionId) || 'invalid';
     return {
         draftKey: `chat-draft-${keySuffix}`,
         imageDraftKey: `chat-draft-image-${keySuffix}`,

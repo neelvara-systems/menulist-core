@@ -17,6 +17,7 @@ import {
     ANSWERLATTICE_WORKSPACE_PROFILE_REVISION_FIELD,
 } from '@lib/answerlattice/workspaceProfileContracts';
 import { saveAnswerlatticeWorkspaceProfileAdmin } from '@lib/answerlattice/workspaceProfileServer';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -105,12 +106,14 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     }
     const scope = resolveSessionScope(session);
     if (!scope) return workspaceProfileJson({ error: 'Not onboarded' }, 400);
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return workspaceProfileJson({ error: 'Forbidden' }, 403);
 
     try {
         const rateLimitResult = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey(
                 'answerlattice-workspace-profile',
-                session.uId,
+                actorId,
                 scope.tenantId,
                 scope.storeId,
             ),

@@ -10,6 +10,7 @@ import {
 } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import { logAnswerlatticeKnowledgeIntakeFailure } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
@@ -20,7 +21,7 @@ import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
 } from '@type/answerlattice';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 
@@ -54,7 +55,7 @@ export const PATCH = withAuth(async (request: NextRequest, session, params: { jo
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
     const itemId = normalizeAnswerlatticeKnowledgeIntakeReviewItemId(params.itemId);
     if (!jobId || !itemId) {
-        return NextResponse.json({ error: 'Invalid review item.' }, { status: 400 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Invalid review item.' }, { status: 400 });
     }
 
     const access = await requireAnswerlatticeKnowledgeIntakeContext(request, session, {
@@ -71,7 +72,7 @@ export const PATCH = withAuth(async (request: NextRequest, session, params: { jo
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return answerlatticeKnowledgeIntakeJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid review item update.' },
                 { status: bodyResult.response.status },
             );
@@ -79,10 +80,10 @@ export const PATCH = withAuth(async (request: NextRequest, session, params: { jo
 
         const parsed = ReviewItemPatchSchema.parse(bodyResult.data);
         const item = await updateKnowledgeIntakeReviewItem(access.context.scope, jobId, itemId, parsed, access.context.actor);
-        return NextResponse.json({ item: serializeIntakeValue(item) }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ item: serializeIntakeValue(item) });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return NextResponse.json({ error: 'Invalid review item update.' }, { status: 400 });
+            return answerlatticeKnowledgeIntakeJson({ error: 'Invalid review item update.' }, { status: 400 });
         }
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -92,6 +93,6 @@ export const PATCH = withAuth(async (request: NextRequest, session, params: { jo
                 scope: access.context.scope,
             });
         }
-        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to update review item.') }, { status });
+        return answerlatticeKnowledgeIntakeJson({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to update review item.') }, { status });
     }
 });

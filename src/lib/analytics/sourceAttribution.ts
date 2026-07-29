@@ -60,8 +60,6 @@ export function withAnalyticsSource(url: string, entrySource: AnalyticsEntrySour
             : `${parsed.pathname}${parsed.search}${parsed.hash}`;
     } catch (error) {
         logSourceAttributionFailure(error, url, entrySource);
-        const separator = url.includes('?') ? '&' : '?';
-        const encodedSource = encodeURIComponent(entrySource);
-        return `${url}${separator}entry_source=${encodedSource}`;
+        return url;
     }
 }

@@ -18,6 +18,7 @@
 
 import { FEATURE_FLAGS } from "@config/features";
 import { getMenuItemsForScreenServer, getScreenDataByTokenServer, getUsableScreenMenuProjection } from "@database/campaigns/serverScreen";
+import { getPrivateScreenTokenCacheTag } from "@lib/screen/privateScreenControl";
 import { SCREEN_CONFIG } from "@lib/screen/screenRenderer";
 import { generateScreenSlides } from "@lib/screen/slideGenerator";
 import { isValidScreenToken } from "@lib/screen/utils";
@@ -29,17 +30,38 @@ import ScreenDisplay from "./ScreenDisplay";
 // OPT-6: Cache screen data reads at Vercel edge (60s TTL)
 // Eliminates redundant Firestore reads when multiple screens share a token
 // or when the same screen refreshes within the cache window
-const getCachedScreenData = unstable_cache(
-    getScreenDataByTokenServer,
-    ['screen-data-by-token'],
-    { revalidate: 60, tags: ['screen-data'] }
-);
+async function getCachedScreenData(token: string) {
+    const tokenTag = getPrivateScreenTokenCacheTag(token);
+    return unstable_cache(
+        () => getScreenDataByTokenServer(token),
+        ['screen-data-by-token', tokenTag],
+        { revalidate: 60, tags: [tokenTag] },
+    )();
+}
 
-const getCachedMenuItems = unstable_cache(
-    getMenuItemsForScreenServer,
-    ['screen-menu-items'],
-    { revalidate: 60, tags: ['screen-data'] }
-);
+async function getCachedMenuItems(
+    storeId: string,
+    tenantId: string,
+    activeSpecialMenuId: string | null,
+    baseProjectId: string | null,
+) {
+    return unstable_cache(
+        () => getMenuItemsForScreenServer(
+            storeId,
+            tenantId,
+            activeSpecialMenuId,
+            baseProjectId,
+        ),
+        [
+            'screen-menu-items',
+            storeId,
+            tenantId,
+            activeSpecialMenuId || 'no-special-menu',
+            baseProjectId || 'no-base-project',
+        ],
+        { revalidate: 60, tags: [`menu-store-${storeId}`] },
+    )();
+}
 
 interface PageProps {
     params: Promise<{ token: string }>;

@@ -18,8 +18,9 @@
 - Cross-workspace or coercive entity scope fails.
 - Activation marks affected approved answers for review and audits the change.
 - Activation invalidates canonical cache and compiled source state.
-- A malformed affected answer returns the release to pending.
-- Retry completes after the malformed answer is repaired.
+- A malformed affected answer rejects preview or activation and leaves the
+  release pending.
+- Retry completes after the malformed answer is repaired and previewed again.
 
 ## Pre-Activation Impact Preview
 
@@ -39,6 +40,12 @@
 - Workspace transition clears preview UI and cannot settle activation into the
   later workspace.
 - Owner cancellation after preview leaves the note private and release pending.
+- Each affected-answer link carries one validated answer ID and opens the
+  existing Canonical Answer Editor without changing the draft or preview.
+- Linked-test review carries one bounded release ID; Answer Tests revalidates it
+  and preselects only an exact loaded release.
+- Opening either review link causes no preview write, test run, provider call,
+  or activation.
 
 ## Changelog emulator
 
@@ -75,3 +82,5 @@
 - Narrow-width form and public timeline have no overlap or horizontal clipping.
 - Direct-impact preview is understandable on desktop and narrow widths.
 - Stale preview requires review again and does not publish.
+- Affected-answer and linked-test review links remain usable without losing the
+  private draft.

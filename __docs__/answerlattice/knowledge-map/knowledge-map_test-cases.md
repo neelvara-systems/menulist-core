@@ -16,10 +16,14 @@
 12. Entity-candidate review is reachable without adding another data read.
 13. Removing the final active entity reconciles the old graph to an empty summary instead of leaving stale nodes indefinitely.
 14. The map does not read or persist a second display-parent hierarchy.
-15. Daily Brief actions may deep-link into the map, but map loading does not depend on an action document.
+15. Governed owner surfaces may deep-link into the map with a validated entity ID, but map loading does not depend on an action document.
 16. No demand, friction, or release overlay appears without an admitted bounded source contract.
 17. Owner correction actions route to the existing owning workflow rather than mutating map presentation state.
 18. No overall product-health score is derived.
+19. Invalid URL entity context is ignored.
+20. Valid URL context focuses only an entity present in the exact-scope loaded graph.
+21. Canonical-answer handoff preserves the selected entity and performs no write, listener, or per-node read.
+22. An entity-focused first-answer proposal prefills only an entity present in the loaded tenant entity list.
 
 ## Public Content Contract
 

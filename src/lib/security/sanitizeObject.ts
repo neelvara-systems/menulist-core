@@ -8,6 +8,38 @@
  */
 
 const DANGEROUS_KEYS = ['__proto__', 'constructor', 'prototype'] as const;
+const DANGEROUS_KEY_SET = new Set<string>(DANGEROUS_KEYS);
+
+const copyOwnSafeProperties = <T extends Record<string, unknown>>(
+    data: T,
+    excludedKeys: ReadonlySet<string>,
+): Partial<T> => {
+    const safeData: Partial<T> = {};
+    let keys: string[];
+
+    try {
+        keys = Object.keys(data);
+    } catch {
+        return safeData;
+    }
+
+    for (const key of keys) {
+        if (DANGEROUS_KEY_SET.has(key) || excludedKeys.has(key)) continue;
+
+        try {
+            Object.defineProperty(safeData, key, {
+                configurable: true,
+                enumerable: true,
+                value: Reflect.get(data, key),
+                writable: true,
+            });
+        } catch {
+            // A malformed accessor must not break authentication/session reads.
+        }
+    }
+
+    return safeData;
+};
 
 /**
  * Remove dangerous prototype pollution keys from an object
@@ -21,17 +53,8 @@ const DANGEROUS_KEYS = ['__proto__', 'constructor', 'prototype'] as const;
  * const safe = removeDangerousKeys(dbData);
  * ```
  */
-export function removeDangerousKeys<T extends Record<string, any>>(data: T): Partial<T> {
-    const safeData: any = {};
-    
-    for (const key in data) {
-        // Skip dangerous keys
-        if (!DANGEROUS_KEYS.includes(key as any)) {
-            safeData[key] = data[key];
-        }
-    }
-    
-    return safeData;
+export function removeDangerousKeys<T extends Record<string, unknown>>(data: T): Partial<T> {
+    return copyOwnSafeProperties(data, DANGEROUS_KEY_SET);
 }
 
 /**
@@ -49,20 +72,11 @@ export function removeDangerousKeys<T extends Record<string, any>>(data: T): Par
  * ]);
  * ```
  */
-export function removeKeys<T extends Record<string, any>>(
+export function removeKeys<T extends Record<string, unknown>>(
     data: T, 
     excludeKeys: readonly string[]
 ): Partial<T> {
-    const excludeSet = new Set(excludeKeys);
-    const safeData: any = {};
-    
-    for (const key in data) {
-        if (!excludeSet.has(key)) {
-            safeData[key] = data[key];
-        }
-    }
-    
-    return safeData;
+    return copyOwnSafeProperties(data, new Set(excludeKeys));
 }
 
 // Export dangerous keys constant for reuse

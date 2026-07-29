@@ -1227,7 +1227,11 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     return (
         <Flex vertical style={{ width: "100%", paddingBottom: 24, height: "100%" }}>
             <LoadingMessage open={Boolean(fileProcessingId)} />
-            <EditorWelcomeBanner isMasterLinked={isMasterLinked} />
+            <EditorWelcomeBanner
+                isMasterLinked={isMasterLinked}
+                storeId={storeDetails?.storeId}
+                tenantId={storeDetails?.tenantId}
+            />
             <Card
                 size="small"
                 styles={{

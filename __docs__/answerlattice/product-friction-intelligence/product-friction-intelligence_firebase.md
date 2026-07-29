@@ -10,8 +10,9 @@ One deterministic per-entity, per-UTC-day row containing exact scope, schema ver
 
 One deterministic server-owned snapshot for the latest complete UTC seven-day comparison.
 
-The next admitted schema may add bounded top-entity component counts already
-aggregated from the same daily rows. This is not a new snapshot family.
+The current additive projection includes bounded top-entity component counts
+already aggregated from the same daily rows. Legacy snapshots remain readable.
+This is not a new snapshot family.
 
 ### `platformSummary/friction_{tId}_{sId}`
 
@@ -24,11 +25,12 @@ One optional server-owned advisory summary linked to a strictly normalized deter
 - Nightly cleanup: one exact `pId: AL + tId + sId + date` query, at most 100 deletes, and a fixed-run-clock UTC cutoff; invalid rows or failed commit fail the task instead of returning a success count.
 - Weekly: one snapshot read, one provider operation, one accounting write attempt for every completed provider response (including rejected output), and one source-read/advisory-write transaction only for valid output. Firestore may retry the transaction under contention; a changed source produces no advisory write.
 - Owner surface: one deterministic snapshot read and one optional advisory read.
+- Daily Brief focus and Knowledge Map links: zero operations until the owner
+  opens the destination; no friction listener or navigation write.
 
-The admitted component-breakdown hardening changes neither owner read count nor
-nightly query count. It may add bounded numeric fields to the existing daily
-and snapshot payloads. Summary and row byte limits must be checked before the
-schema revision is committed.
+The component-breakdown hardening changes neither owner read count nor nightly
+query count. It adds bounded numeric fields to the existing compact snapshot
+payload and remains within the existing ten-entity cap.
 
 Actual cost must be measured from Firebase and AI-operation accounting. Static cost promises are not maintained.
 
@@ -46,6 +48,14 @@ The maintained dedicated and shared index files include the friction history/cle
 ## Deployment
 
 Function changes require a narrow QA deployment of `answerlatticeNightly`; this exact product-aware daily-stat query also requires both maintained index manifests to be deployed to the matching environment. Rules deployment is required only when rules source changes.
+
+### July 29, 2026 QA attempt
+
+The narrow deployment of `answerlatticeNightly` and the related live Support
+Board summary function stopped before upload because the local Firebase CLI was
+not authenticated: `Failed to authenticate, have you run firebase login?`.
+Source, contract, emulator, rules, typecheck, lint, and Functions-build gates
+passed. No QA Function revision changed.
 
 ## Rejected Firebase Expansion
 

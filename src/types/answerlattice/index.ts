@@ -17,6 +17,7 @@
 
 import { Timestamp } from "firebase/firestore";
 import type { ProductId } from "@constant/product";
+import type { AnswerlatticeFrictionEvidenceComponents } from "@data/shared/answerlatticeSupportMetrics";
 import type { SourceContext } from "@type/multiProduct";
 import type { Content } from "@tiptap/core";
 
@@ -1307,7 +1308,7 @@ export interface AnswerlatticeFrictionEntitySummary {
         escalationCount: number;
         lowConfidenceCount: number;
         frictionScore: number;
-    };
+    } & Partial<AnswerlatticeFrictionEvidenceComponents>;
     previous7d: {
         queryCount: number;
         frictionScore: number;

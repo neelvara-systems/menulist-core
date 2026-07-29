@@ -408,13 +408,14 @@ Do not mark platform alert delivery production-ready until dashboard visibility,
 
 ---
 
-## Step 8B: Digital Screens Token-Free Public Mirror Cutover
+## Step 8B: Digital Screens Private Control And Public Mirror Cutover
 
 > **Ordered migration — do not deploy the tightened Firestore rule first.** Existing
-> `platformSummary/screen_{storeId}` documents may still contain the bearer
-> `screenToken`. The new rule accepts only the token-free public projection, so an
-> out-of-order rules deploy can disconnect screens before the writers and stored
-> mirrors are migrated.
+> `platformSummary/screen_{storeId}` mirrors may still contain the bearer token,
+> while canonical `campaigns_{storeId}.screen` may also hold the legacy token.
+> The new rules deny client mirror writes, preserve server-managed canonical screen
+> state, and hide `screenControl_{storeId}`. An out-of-order deploy can strand a
+> link before the private control is populated.
 
 Run the following in **QA first**, in this exact order:
 
@@ -443,17 +444,32 @@ npm run backfill:digital-screen-public-mirrors -- --project-id menulist-qa --all
 npm run backfill:digital-screen-public-mirrors -- --project-id menulist-qa --all-screens --write --confirm-project menulist-qa
 ```
 
-5. Verify sampled and connected QA mirrors contain no `screenToken`, contain only the
-   five public fields above, and that collection listing remains denied.
-6. Only then deploy the tightened Firestore rule:
+5. Dry-run the canonical-token-to-private-control migration:
+
+```bash
+npm run backfill:digital-screen-private-controls -- --project-id menulist-qa --all-screens
+```
+
+6. Apply it only after the dry run is clean:
+
+```bash
+npm run backfill:digital-screen-private-controls -- --project-id menulist-qa --all-screens --write --confirm-project menulist-qa
+```
+
+7. Verify sampled and connected QA stores have one scope-matched
+   `screenControl_{storeId}`, no canonical `screen.screenToken`, and a five-field
+   token-free public mirror. Confirm private controls and mirror writes are denied
+   to authenticated clients and public collection listing remains denied.
+8. Only then deploy the tightened Firestore rule:
 
 ```bash
 firebase deploy --project menulist-qa --config firebase.json --only firestore:rules --non-interactive
 ```
 
-7. On a real screen device, verify initial load, live content-version refresh,
-   disabled-screen refusal, loaded-offline fallback, and recovery after connectivity
-   returns. Record evidence in the production-readiness audit.
+9. On real 720p and 1080p screen devices, verify initial load, full menu rotation,
+   price/QR readability, artwork safe areas, live content-version refresh,
+   disabled-screen refusal, version-matched offline fallback, expiry-time poster
+   removal, and recovery after connectivity returns. Record evidence in the audit.
 
 Stop the rollout on any Vercel, IAM, Functions, migration, rule, or device failure.
 Do not continue to production until QA is clean. Repeat the same order with project

@@ -37,6 +37,9 @@ for (const token of [
   'clearUserContext()',
   'DEPLOYMENT_IDENTITY_STORAGE_KEY',
   "'mobileMenuActiveProcessingJob'",
+  'AUTHENTICATED_SESSION_STORAGE_PREFIXES',
+  "'dismissedMenuProcessingJobs:'",
+  'removeStoragePrefixes(sessionStorage, AUTHENTICATED_SESSION_STORAGE_PREFIXES)',
 ]) {
   includes(cleanup, token, 'authenticated browser cleanup');
 }

@@ -23,6 +23,7 @@ export const DB_COLLECTIONS = {
     BILLING_PROVIDER_PLANS: "billingProviderPlans",
     TOPUPS: "topups",
     ANALYTICS: "analytics",
+    ANALYTICS_DELIVERY_RECEIPTS: "analyticsDeliveryReceipts",
     INSIGHTS: "insights",
     AI: "ai",
     //users collections

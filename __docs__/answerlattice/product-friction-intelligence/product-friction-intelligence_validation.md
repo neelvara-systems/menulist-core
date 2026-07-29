@@ -36,14 +36,16 @@ The strongest owner value is:
 | Mobile ranked drill-down | Direction accepted | Use a stacked evidence list, not a canvas or tree. |
 | Nightly summary-first Firebase design | Implemented | Keep current scheduler, deterministic rows, compact summaries, and no owner listener. |
 
-## Exact Later Code Scope
+## Implemented Code Scope
 
-1. Project existing deterministic evidence components into the top-entity
+1. Projected existing deterministic evidence components into the top-entity
    snapshot contract.
-2. Harden server/browser parsing and legacy behavior.
-3. Replace inaccurate mixed-evidence wording.
-4. Make the support-evidence load label and calculation inspectable.
-5. Preserve the two-read owner cost and existing scheduler queries.
+2. Hardened server/browser parsing and legacy behavior.
+3. Replaced inaccurate mixed-evidence wording.
+4. Made the support-evidence load label and calculation inspectable.
+5. Preserved the two-read owner cost and existing scheduler queries.
+6. Rendered strict entity-specific advisory actions and linked ranked evidence
+   to the existing read-only Knowledge Map without adding a new read model.
 
 ## Validation-Only Scope
 
@@ -51,7 +53,7 @@ The strongest owner value is:
 - product-surface journey placement;
 - owner-confirmed cause taxonomy;
 - release-window correlation;
-- links from a ranked entity to a filtered evidence surface.
+- a new filtered raw-evidence surface or raw support-event explorer.
 
 These items require real-client mapping and decision evidence before code.
 
@@ -70,5 +72,7 @@ These items require real-client mapping and decision evidence before code.
 
 Feature 3 remains Product Friction Evidence. A bounded component-breakdown
 hardening pass is justified because it uses already-retained evidence and helps
-the owner interpret why an entity ranked highly. The larger journey-map vision
-is a customer-validation question, not approved implementation scope.
+the owner interpret why an entity ranked highly. The bounded Knowledge Map
+handoff is also justified because it preserves the same governed entity without
+copying metrics or authority. The larger journey-map vision is a
+customer-validation question, not approved implementation scope.

@@ -1,6 +1,9 @@
 import { DEFAULT_FOOD_BUSINESS_DAY_END_TIME, getAnalyticsSettlementCycleDateKey } from './businessDay';
 import { isValidAnalyticsTimeZone } from './timeZoneDiagnostics';
 
+const ANALYTICS_DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+export const ANALYTICS_DATE_RANGE_MAX_DAYS = 3_660;
+
 function formatParts(date: Date, timeZone?: string): { year: string; month: string; day: string; hour?: string; minute?: string } {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: isValidAnalyticsTimeZone(timeZone, 'analytics_date_key') ? timeZone : 'UTC',
@@ -32,33 +35,60 @@ export function getAnalyticsHourKey(date: Date = new Date(), timeZone?: string):
 }
 
 export function parseAnalyticsDateKey(dateKey: string): Date {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  return new Date(Date.UTC(year, (month || 1) - 1, day || 1));
+  const match = ANALYTICS_DATE_KEY_PATTERN.exec(dateKey);
+  if (!match) throw new RangeError('Invalid analytics date key.');
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(0);
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+  if (
+    date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day
+  ) {
+    throw new RangeError('Invalid analytics date key.');
+  }
+  return date;
 }
 
 export function formatAnalyticsDateKey(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  let year: number;
+  let month: string;
+  let day: string;
+  try {
+    year = Date.prototype.getUTCFullYear.call(date);
+    month = String(Date.prototype.getUTCMonth.call(date) + 1).padStart(2, '0');
+    day = String(Date.prototype.getUTCDate.call(date)).padStart(2, '0');
+  } catch {
+    throw new RangeError('Invalid analytics date.');
+  }
+  if (!Number.isFinite(year)) throw new RangeError('Invalid analytics date.');
+  return `${String(year).padStart(4, '0')}-${month}-${day}`;
 }
 
 export function addDaysToAnalyticsDateKey(dateKey: string, days: number): string {
+  if (!Number.isSafeInteger(days) || Math.abs(days) > ANALYTICS_DATE_RANGE_MAX_DAYS) {
+    throw new RangeError('Invalid analytics date offset.');
+  }
   const date = parseAnalyticsDateKey(dateKey);
   date.setUTCDate(date.getUTCDate() + days);
   return formatAnalyticsDateKey(date);
 }
 
 export function getAnalyticsDateRange(startDateKey: string, endDateKey: string): string[] {
-  const dates: string[] = [];
-  let currentKey = startDateKey;
-
-  while (currentKey <= endDateKey) {
-    dates.push(currentKey);
-    currentKey = addDaysToAnalyticsDateKey(currentKey, 1);
+  const start = parseAnalyticsDateKey(startDateKey);
+  const end = parseAnalyticsDateKey(endDateKey);
+  const dayCount = Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
+  if (dayCount <= 0) return [];
+  if (dayCount > ANALYTICS_DATE_RANGE_MAX_DAYS) {
+    throw new RangeError('Analytics date range is too large.');
   }
-
-  return dates;
+  return Array.from({ length: dayCount }, (_, index) => (
+    formatAnalyticsDateKey(new Date(start.getTime() + index * 86_400_000))
+  ));
 }
 
 export function getAnalyticsWeekday(dateKey: string): number {

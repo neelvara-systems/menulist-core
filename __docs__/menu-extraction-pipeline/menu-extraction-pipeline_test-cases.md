@@ -1,7 +1,7 @@
 # Menu Extraction Pipeline — Test Cases
 
 **Status:** Implemented
-**Last Updated:** July 15, 2026
+**Last Updated:** July 28, 2026
 
 ## Owner Upload
 
@@ -21,6 +21,9 @@
 - A `block` menu-intake decision returns 422 and no job.
 - A `confirm` or `notice` decision without `identityOverrideConfirmed` returns 409 and no job.
 - Existing active jobs are reused.
+- Whitespace/path-shaped project IDs fail before the start route or active-job query.
+- A malformed job ID in a successful start response fails before reuse, development triggering, or downstream state.
+- Cancellation rejects malformed job IDs before a Firestore document ref, and active-job discovery drops malformed returned document IDs.
 
 ## Public Create-Menu
 

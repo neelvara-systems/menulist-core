@@ -1,6 +1,6 @@
 'use client';
 
-import { sanitizeErrorForLog } from '@lib/security/secureLogger';
+import { sanitizeErrorForLog, sanitizeLogData } from '@lib/security/secureLogger';
 
 type ConsoleLevel = 'debug' | 'error' | 'info' | 'log' | 'warn';
 
@@ -36,23 +36,35 @@ function sanitizeText(value: string): string {
     return redacted.length > MAX_ARG_LENGTH ? `${redacted.slice(0, MAX_ARG_LENGTH)}...[truncated]` : redacted;
 }
 
+function isConsoleError(value: unknown): value is Error {
+    try {
+        return value instanceof Error;
+    } catch {
+        return false;
+    }
+}
+
 function serializeConsoleArg(value: unknown): string {
-    if (value instanceof Error) {
+    if (isConsoleError(value)) {
         return sanitizeText(JSON.stringify(sanitizeErrorForLog(value)));
     }
 
     if (typeof value === 'string') return sanitizeText(value);
 
+    if (
+        value === null
+        || typeof value === 'number'
+        || typeof value === 'boolean'
+    ) {
+        return String(value);
+    }
+    if (typeof value !== 'object') return `[${typeof value}]`;
+
+    const sanitized = sanitizeLogData({ value }).value;
     try {
-        return sanitizeText(JSON.stringify(value, (_key, entryValue) => {
-            if (typeof entryValue === 'function') return '[Function]';
-            if (entryValue instanceof Error) {
-                return sanitizeErrorForLog(entryValue);
-            }
-            return entryValue;
-        }));
+        return sanitizeText(JSON.stringify(sanitized));
     } catch {
-        return sanitizeText(String(value));
+        return '[Unserializable]';
     }
 }
 

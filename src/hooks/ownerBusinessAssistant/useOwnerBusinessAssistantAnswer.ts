@@ -12,8 +12,8 @@ import type {
 } from '@lib/ownerBusinessAssistant/types';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
+  buildOwnerBusinessAssistantThreadStorageKey,
   resolveOwnerBusinessAssistantClientScope,
-  type OwnerBusinessAssistantClientScope,
 } from '@lib/ownerBusinessAssistant/clientScope';
 
 const OWNER_BUSINESS_ASSISTANT_SAFE_ERROR = 'Business Health could not answer that.';
@@ -45,11 +45,6 @@ const isOwnerBusinessAssistantSafeError = (error: unknown): error is OwnerBusine
     && (error as { code?: unknown }).code === OWNER_BUSINESS_ASSISTANT_SAFE_ERROR_CODE
   )
 );
-
-const buildThreadStorageKey = (
-  projectId: string | undefined,
-  scope: OwnerBusinessAssistantClientScope,
-) => `ownerBusinessAssistant-thread:${scope.cacheScope}:${projectId || 'all'}`;
 
 const createThreadId = () => createRuntimeId('oba');
 const readStoredThreadId = (storageKey: string): string | undefined => {
@@ -95,7 +90,7 @@ export function useOwnerBusinessAssistantAnswer(
   const session = useClientAuthSession();
   const clientScope = useMemo(
     () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
-    [session?.sId, session?.tId, storeScopeKey],
+    [session?.sId, session?.tId, session?.uId, session?.user?.id, storeScopeKey],
   );
   const [answer, setAnswer] = useState<OwnerBusinessAssistantAnswer | null>(null);
   const [threadId, setThreadId] = useState<string | undefined>(undefined);
@@ -126,7 +121,7 @@ export function useOwnerBusinessAssistantAnswer(
       };
     }
 
-    const storageKey = buildThreadStorageKey(projectId, clientScope);
+    const storageKey = buildOwnerBusinessAssistantThreadStorageKey(projectId, clientScope);
     const existing = readStoredThreadId(storageKey);
     const nextThreadId = existing || createThreadId();
     if (!existing) writeStoredThreadId(storageKey, nextThreadId);
@@ -146,7 +141,7 @@ export function useOwnerBusinessAssistantAnswer(
       return undefined;
     }
 
-    const storageKey = buildThreadStorageKey(projectId, clientScope);
+    const storageKey = buildOwnerBusinessAssistantThreadStorageKey(projectId, clientScope);
     const nextThreadId = normalizeOwnerBusinessAssistantThreadId(threadId)
       || readStoredThreadId(storageKey)
       || createThreadId();
@@ -217,7 +212,7 @@ export function useOwnerBusinessAssistantAnswer(
       }
       const normalizedAnswerThreadId = normalizeOwnerBusinessAssistantThreadId(answerData.threadId);
       if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && normalizedAnswerThreadId && typeof window !== 'undefined') {
-        writeStoredThreadId(buildThreadStorageKey(projectId, clientScope), normalizedAnswerThreadId);
+        writeStoredThreadId(buildOwnerBusinessAssistantThreadStorageKey(projectId, clientScope), normalizedAnswerThreadId);
         setThreadId(normalizedAnswerThreadId);
         setLastQuestion((current) => current ? { ...current, threadId: normalizedAnswerThreadId } : current);
       }

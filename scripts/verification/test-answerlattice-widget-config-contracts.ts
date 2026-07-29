@@ -125,7 +125,8 @@ assert.ok(widgetConfigRoute.includes("response.headers.set('Cache-Control', 'pri
 assert.ok(widgetConfigRoute.includes('saveAnswerlatticeWidgetConfigAdmin({'));
 assert.ok(widgetConfigRoute.includes("code: 'ANSWERLATTICE_WIDGET_CONFIG_CONFLICT'"));
 assert.ok(widgetConfigRoute.indexOf('checkRateLimit({') < widgetConfigRoute.indexOf('requireAnswerlatticePermission(request, session'));
-assert.ok(widgetKeyRoute.includes("response.headers.set('Cache-Control', 'private, no-store')"));
+assert.ok(widgetKeyRoute.includes('ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS'));
+assert.ok(widgetKeyRoute.includes('response.headers.set(name, value)'));
 assert.ok(widgetKeyRoute.includes('Revoke an old key before creating another.'));
 assert.ok(!widgetKeyRoute.includes('Delete an old key before creating another.'));
 assert.ok(publicWidgetConfigRoute.includes('const buildErrorResponse'));

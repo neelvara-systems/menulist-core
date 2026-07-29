@@ -35,6 +35,7 @@ async function run(): Promise<void> {
 
     await Promise.all([
         cards.doc('al-open').set(makeCard('AL', 'needs_answer', 'high')),
+        cards.doc('al-resolved-high').set(makeCard('AL', 'resolved', 'high')),
         cards.doc('foreign-open').set(makeCard('ML', 'needs_answer', 'high')),
         cards.doc('other-scope').set({ ...makeCard('AL', 'needs_answer', 'high'), sId: 7102 }),
     ]);
@@ -44,7 +45,7 @@ async function run(): Promise<void> {
         openCards: 1,
         needsAnswerCards: 1,
         highPriorityCards: 1,
-        totalRecentCards: 1,
+        totalRecentCards: 2,
     });
 
     const refreshed = await refreshAnswerlatticeSupportBoardLiveSummary({
@@ -56,7 +57,9 @@ async function run(): Promise<void> {
     assert.equal(refreshed.written, true);
     const summary = (await summaryRef.get()).data();
     assert.equal(summary?.pId, 'AL');
-    assert.equal(summary?.totalRecentCards, 1);
+    assert.equal(summary?.openCards, 1);
+    assert.equal(summary?.highPriorityCards, 1);
+    assert.equal(summary?.totalRecentCards, 2);
 
     const rejected = await refreshAnswerlatticeSupportBoardLiveSummary({
         before: null,

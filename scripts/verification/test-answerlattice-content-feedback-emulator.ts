@@ -7,7 +7,10 @@ import {
 } from '../../src/lib/answerlattice/contentFeedbackServer';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
-import { cleanupAnswerlatticeOperationalRetention } from '../../functions-answerlattice/src/answerlattice/dataRetention';
+import {
+    cleanupAnswerlatticeOperationalRetention,
+    getAnswerlatticeRetentionExpiry,
+} from '../../functions-answerlattice/src/answerlattice/dataRetention';
 import {
     getAnswerlatticeBundleLockDocId,
     getAnswerlatticeBundleManifestDocId,
@@ -17,6 +20,14 @@ import {
 import { storageAdmin } from '../../functions-answerlattice/src/firebaseAdmin';
 
 const scope = { tId: 1, sId: 101 };
+assert.equal(
+    getAnswerlatticeRetentionExpiry('ownerNotificationRateLimits', 0).toMillis(),
+    2 * 24 * 60 * 60 * 1000,
+);
+assert.throws(
+    () => getAnswerlatticeRetentionExpiry('ownerNotificationRateLimits', Number.NaN),
+    /answerlattice_retention_from_invalid/,
+);
 const actor = {
     id: 'owner-1',
     name: 'Owner',

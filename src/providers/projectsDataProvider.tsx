@@ -1,42 +1,45 @@
-'use client'
+'use client';
 
-import { BatchImageGenerationJobType, Project } from '@template/main-app/projects/types';
-import { createContext, useEffect, useState } from 'react';
+import type { BatchImageGenerationJobType, Project } from '@template/main-app/projects/types';
+import {
+    createContext,
+    type Dispatch,
+    type ReactNode,
+    type SetStateAction,
+} from 'react';
 
 export type ProjectsDataProviderType = {
-
     activeProject: Project | null;
-    setActiveProject: any;
+    setActiveProject: (project: Project) => void;
     currentView: number;
-    setCurrentView: any;
-    activeBatchImageJob: BatchImageGenerationJobType;
-    setActiveBatchImageJob: any;
-}
+    setCurrentView: Dispatch<SetStateAction<number>>;
+    activeBatchImageJob: BatchImageGenerationJobType | null;
+    setActiveBatchImageJob: Dispatch<SetStateAction<BatchImageGenerationJobType | null>>;
+};
 
-const InititalState: ProjectsDataProviderType = {
-
+const INITIAL_STATE: ProjectsDataProviderType = {
     activeProject: null,
-    setActiveProject: () => { },
+    setActiveProject: () => undefined,
     currentView: 1,
-    setCurrentView: () => { },
+    setCurrentView: () => undefined,
     activeBatchImageJob: null,
-    setActiveBatchImageJob: () => { },
-}
+    setActiveBatchImageJob: () => undefined,
+};
 
-export const ProjectsDataContext = createContext<ProjectsDataProviderType>(InititalState)
+export const ProjectsDataContext = createContext<ProjectsDataProviderType>(INITIAL_STATE);
 
-function ProjectsDataProvider({ children, contextData }: { children: any, contextData: ProjectsDataProviderType }) {
-    const [contextState, setContextState] = useState(contextData)
-
-    useEffect(() => {
-        setContextState(contextData)
-    }, [contextData])
-
+function ProjectsDataProvider({
+    children,
+    contextData,
+}: {
+    children: ReactNode;
+    contextData: ProjectsDataProviderType;
+}) {
     return (
-        <ProjectsDataContext.Provider value={contextState} >
+        <ProjectsDataContext.Provider value={contextData}>
             {children}
         </ProjectsDataContext.Provider>
-    )
+    );
 }
 
-export default ProjectsDataProvider
+export default ProjectsDataProvider;

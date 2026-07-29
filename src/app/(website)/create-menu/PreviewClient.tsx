@@ -18,6 +18,10 @@ import { useWebsitePath } from '@/components/website/shared/WebsiteProductPathPr
 import type { OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import {
+    PUBLIC_CREATE_MENU_LAST_CLAIM_KEY,
+    serializePublicCreateMenuLastClaimHandoff,
+} from '@lib/publicCreateMenu/lastClaimHandoff';
 
 interface ExtractedCategory {
     id: string;
@@ -75,6 +79,7 @@ type PreviewClaimResponse = {
     officialPageUrl?: unknown;
     projectId?: unknown;
     storeId?: unknown;
+    tenantId?: unknown;
     subdomain?: unknown;
     success?: unknown;
 };
@@ -474,14 +479,28 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 return;
             }
             if (typeof window !== 'undefined') {
-                if (data.storeId && data.isNewAccount) {
-                    window.sessionStorage.setItem('menulist:create-menu:last-claim', JSON.stringify({
-                        projectId: data.projectId,
-                        storeId: data.storeId,
-                        subdomain: data.subdomain,
-                    }));
-                } else {
-                    window.sessionStorage.removeItem('menulist:create-menu:last-claim');
+                try {
+                    const serializedHandoff = data.isNewAccount === true
+                        ? serializePublicCreateMenuLastClaimHandoff({
+                            projectId: data.projectId,
+                            storeId: data.storeId,
+                            subdomain: data.subdomain,
+                            tenantId: data.tenantId,
+                        })
+                        : null;
+                    if (data.isNewAccount === true && !serializedHandoff) {
+                        throw new Error('public_create_menu_claim_handoff_invalid');
+                    }
+                    if (serializedHandoff) {
+                        window.sessionStorage.setItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY, serializedHandoff);
+                    } else {
+                        window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
+                    }
+                } catch (error) {
+                    logRuntimeFailure('public_create_menu_claim_handoff_storage_failed', error, {
+                        ...getBoundedRuntimeStringContext('draftId', draftId),
+                        isNewAccount: data.isNewAccount === true,
+                    });
                 }
             }
             try {

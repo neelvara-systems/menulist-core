@@ -4,12 +4,12 @@ import MenuPageNew from "@template/main-app/projects/b2cView/menuPage/menuPageNe
 import OBPResolvedSurface from "@/app/client/obp/OBPResolvedSurface"
 import PreviewNavigationGuard from "@/components/shared/PreviewNavigationGuard"
 import { DeviceTypes, PageType } from "@template/main-app/projects/b2cView/types"
-import { PrecomputedDecisionBlocks, Project } from "@template/main-app/projects/types"
+import { PrecomputedDecisionBlocks, Project, ProjectSummaryData } from "@template/main-app/projects/types"
 import { StoreDataType } from "@type/platform/store"
 
 interface MainContentRendererProps {
   activeDeviceType: DeviceTypes;
-  projectData: Project;
+  projectData: Project & Partial<Pick<ProjectSummaryData, 'projectImage' | 'slug'>>;
   /**
    * Store details passed explicitly so public menu rendering does not
    * depend on PlatformGlobalDataContext (a dashboard-scoped provider).
@@ -45,7 +45,7 @@ function MainContentRenderer({
 
   const brandAccentColor = projectData?.config?.design?.brand?.accentColor;
   const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
-  const previewProjectSlug = (projectData as any)?.slug || 'menu';
+  const previewProjectSlug = projectData.slug || 'menu';
   const previewMenuInfo = {
     hasMenu: Boolean(projectData),
     defaultSlug: previewProjectSlug,
@@ -53,7 +53,7 @@ function MainContentRenderer({
       isDefault: true,
       name: projectData.name || 'Menu',
       projectId: projectData.projectId || 'preview',
-      projectImage: (projectData as any)?.projectImage || null,
+      projectImage: projectData.projectImage || null,
       slug: previewProjectSlug,
     }] : [],
   };

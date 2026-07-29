@@ -6,12 +6,6 @@ import { GenerateImageViaApiPayloadBatchType } from "@template/main-app/projects
 
 const BATCH_IMAGE_TRIGGER_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 
-type BatchImageTriggerApiResponse = {
-    data?: unknown;
-    remainingBalance?: unknown;
-    transaction?: unknown;
-};
-
 export type BatchImageTriggerResult = {
     failedItemIds: string[];
     jobId: string;
@@ -49,7 +43,7 @@ async function triggerBatchImageGenerationApi(payload: GenerateImageViaApiPayloa
         if (!response.ok) {
             throw createAiServiceHttpError('ai_batch_image_trigger_request_failed', response);
         }
-        const responseJson = await readAiServiceResponseJson<BatchImageTriggerApiResponse>(response, {
+        const responseJson = await readAiServiceResponseJson(response, {
             context: {
                 ...getBoundedAiServiceStringContext('projectId', payload.projectId),
                 ...getBoundedAiServiceStringContext('jobId', payload.jobId),

@@ -6,11 +6,11 @@ import {
     logSignalDeskFailure,
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
+    signalDeskPrivateJson,
 } from "@lib/signaldesk/apiGuards";
 import { loadSignalDeskOverviewServer } from "@lib/signaldesk/server";
 import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 
 export const GET = withAuth(async (request: NextRequest, session) => {
     const disabled = requireSignalDeskRuntime();
@@ -29,7 +29,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
     try {
         const overview = await loadSignalDeskOverviewServer(accessResult.access);
-        return NextResponse.json({ data: overview }, {
+        return signalDeskPrivateJson({ data: overview }, {
             headers: {
                 "Cache-Control": "private, no-store",
             },
@@ -43,6 +43,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 ...getSignalDeskAccessLogContext(accessResult.access),
             },
         );
-        return NextResponse.json({ error: "Failed to load SignalDesk" }, { status: 500 });
+        return signalDeskPrivateJson({ error: "Failed to load SignalDesk" }, { status: 500 });
     }
 });

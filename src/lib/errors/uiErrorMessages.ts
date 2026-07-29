@@ -34,13 +34,16 @@ export function extractUiErrorMessage(error: unknown): string | null {
         return error;
     }
 
-    if (error instanceof Error) {
-        return error.message;
-    }
-
-    if (error && typeof error === 'object' && 'message' in error) {
-        const message = (error as { message?: unknown }).message;
-        return typeof message === 'string' ? message : null;
+    if (error && typeof error === 'object') {
+        try {
+            if (!Object.prototype.hasOwnProperty.call(error, 'message')) {
+                return null;
+            }
+            const message = Reflect.get(error, 'message');
+            return typeof message === 'string' ? message : null;
+        } catch {
+            return null;
+        }
     }
 
     return null;

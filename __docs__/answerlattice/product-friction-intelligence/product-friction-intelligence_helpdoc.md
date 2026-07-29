@@ -13,6 +13,11 @@ Use this view to decide what to inspect next. Review the linked support evidence
 
 The AI-assisted review summary is advisory. It can organize already admitted evidence, but it does not approve answers, prove a defect, or change product truth.
 
+Use **Open in Knowledge Map** or **Review evidence** to inspect the selected
+governed product concept and its answer coverage. The link preserves only the
+entity identity. The map does not copy the friction metric and does not change
+product or support truth.
+
 Answerlattice does not automatically know that a high-evidence area is a
 product bug, confusing interface, policy problem, or missing document. Confirm
 the cause from the product, release, approved knowledge, and customer evidence

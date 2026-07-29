@@ -9,8 +9,13 @@ This is the step-by-step setup guide to follow from scratch. It is written for
 the human setup work: what to open, what to create, what to fill, and what must
 be true before moving to the next step.
 
+For the first real setup pass, start with:
+[MenuList Staging QA Setup Guide](./menulist-staging-qa-setup.md). Use this
+combined guide only after MenuList QA is live and verified.
+
 Use the companion technical runbooks for exact env and command detail:
 
+- [MenuList Staging QA Setup Guide](./menulist-staging-qa-setup.md)
 - [Product Domains, Accounts, And Environment Setup Checklist](./three-product-environment-setup.md)
 - [Firebase Functions Secrets Setup](../../functions/src/envSetup.md)
 - [Deployment Environment Setup](./domain-environment-setup.md)
@@ -31,8 +36,9 @@ Rules for this setup:
   logins for each product.
 - Create separate Firebase projects per database-backed product and environment.
 - Do not create Firebase for Neelvara or MyCodex.
-- Use full product names in env variables. Do not use `ML_*`, `AL_*`, `CC_*`,
-  `MC_*`, `SD_*`, or `NV_*` env prefixes.
+- Use full product names in env variables. MenuList product values use
+  `MENULIST_*`; public MenuList browser values use `NEXT_PUBLIC_MENULIST_*`.
+  Do not use `ML_*`, `AL_*`, `CC_*`, `MC_*`, `SD_*`, or `NV_*` env prefixes.
 - Never paste real secret values into docs, tickets, chat, screenshots, or git.
 
 Stop immediately if:
@@ -67,18 +73,18 @@ Stop immediately if:
 | Neelvara | static parent site | `https://neelvara.menulist.online` | `https://neelvara.com` | none |
 | Answerlattice | product | `https://answerlattice.menulist.online` | `https://answerlattice.com` | `answerlattice-qa` / `answerlattice` |
 | CampaignCue | product | `https://campaigncue.menulist.online` | `https://campaigncue.ai` | `campaigncue-qa` / `campaigncue` |
-| SignalDesk | private product surface | `https://signaldesk.menulist.online` | `https://signaldesk.menulist.ai` | `menulist-signaldesk-qa` / `menulist-signaldesk` |
-| MyCodex | static private PWA | `https://menulist.digital` | `https://menulist.digital` | none |
+| SignalDesk | private product surface | `https://signaldesk.menulist.online` | use `menulist.online` family unless later contract changes it | `menulist-signaldesk-qa` / `menulist-signaldesk` |
+| MyCodex | static private PWA | no active domain in new setup | no active domain in new setup | none |
 
 Internal codes exist only for product identity/data contracts:
 
 | Product | Internal code | Env prefix |
 | --- | --- | --- |
-| MenuList | `ML` | generic existing keys such as `GEMINI_AI_KEY` |
+| MenuList | `ML` | `MENULIST_*`; public browser keys are `NEXT_PUBLIC_MENULIST_*` |
 | Answerlattice | `AL` | `ANSWERLATTICE_*` |
 | CampaignCue | `CC` | `CAMPAIGNCUE_*` |
 | MyCodex | `MC` | `MYCODEX_*` only for static auth/session |
-| SignalDesk | `SD` | `MENULIST_SIGNALDESK_*` |
+| SignalDesk | `SD` | `SIGNALDESK_*` |
 | Neelvara | none | `NEXT_PUBLIC_NEELVARA_*` for static site values |
 
 Do not type `ML`, `AL`, `CC`, `MC`, or `SD` into env variable names unless an
@@ -123,7 +129,6 @@ What to do:
 3. Confirm these existing domains are in the same owner-controlled account:
    - `menulist.ai`
    - `menulist.online`
-   - `menulist.digital`
    - `answerlattice.com`
 4. Search and purchase these domains if available at checkout:
    - `neelvara.com`
@@ -140,7 +145,6 @@ Expected result:
   - `neelvara.com`
   - `menulist.ai`
   - `menulist.online`
-  - `menulist.digital`
   - `answerlattice.com`
   - `campaigncue.ai`
 - Auto-renew and MFA are enabled.
@@ -374,7 +378,7 @@ Authorized domain checklist:
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
 | `campaigncue` | `campaigncue.ai`, `www.campaigncue.ai` |
 | `menulist-signaldesk-qa` | `localhost`, `signaldesk.menulist.online` |
-| `menulist-signaldesk` | `signaldesk.menulist.ai` |
+| `menulist-signaldesk` | `signaldesk.menulist.online` unless a later contract creates a separate production host |
 
 Expected result:
 
@@ -406,7 +410,7 @@ Vercel env mapping:
 | MenuList | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` using `menulist-qa` | same keys using `menulist` |
 | Answerlattice | `ANSWERLATTICE_FIREBASE_PROJECT_ID`, `ANSWERLATTICE_FIREBASE_CLIENT_EMAIL`, `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` using `answerlattice-qa` | same keys using `answerlattice` |
 | CampaignCue | `CAMPAIGNCUE_FIREBASE_PROJECT_ID`, `CAMPAIGNCUE_FIREBASE_CLIENT_EMAIL`, `CAMPAIGNCUE_FIREBASE_PRIVATE_KEY` using `campaigncue-qa` | same keys using `campaigncue` |
-| SignalDesk | `MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID`, `MENULIST_SIGNALDESK_FIREBASE_CLIENT_EMAIL`, `MENULIST_SIGNALDESK_FIREBASE_PRIVATE_KEY` using `menulist-signaldesk-qa` | same keys using `menulist-signaldesk` |
+| SignalDesk | `SIGNALDESK_FIREBASE_PROJECT_ID`, `SIGNALDESK_FIREBASE_CLIENT_EMAIL`, `SIGNALDESK_FIREBASE_PRIVATE_KEY` using `menulist-signaldesk-qa` | same keys using `menulist-signaldesk` |
 
 Expected result:
 
@@ -439,7 +443,6 @@ Authorized JavaScript origins:
 - `https://app.menulist.ai`
 - `https://answerlattice.com`
 - `https://campaigncue.ai`
-- `https://signaldesk.menulist.ai`
 
 Authorized redirect URIs:
 
@@ -452,7 +455,6 @@ Authorized redirect URIs:
 - `https://app.menulist.ai/api/auth/callback/google`
 - `https://answerlattice.com/api/auth/callback/google`
 - `https://campaigncue.ai/api/auth/callback/google`
-- `https://signaldesk.menulist.ai/api/auth/callback/google`
 
 Expected result:
 
@@ -487,8 +489,6 @@ Add these staging domains:
 - `answerlattice.menulist.online`
 - `campaigncue.menulist.online`
 - `signaldesk.menulist.online`
-- `menulist.digital`
-- `www.menulist.digital`
 
 Add these production domains:
 
@@ -497,7 +497,6 @@ Add these production domains:
 - `app.menulist.ai`
 - `help.menulist.ai`
 - `support.menulist.ai`
-- `signaldesk.menulist.ai`
 - `neelvara.com`
 - `www.neelvara.com`
 - `answerlattice.com`
@@ -532,7 +531,7 @@ Expected result:
 
 - Vercel shows every domain as configured.
 - Staging domains work before production cutover.
-- `neelvara.com`, `campaigncue.ai`, and `signaldesk.menulist.ai` resolve before
+- `neelvara.com` and `campaigncue.ai` resolve before
   production smoke testing.
 
 Stop if:
@@ -567,9 +566,13 @@ What to do:
 
 Important Gemini naming:
 
-- MenuList and CampaignCue use `GEMINI_AI_KEY`.
+- MenuList uses `MENULIST_GEMINI_AI_KEY` for owner setup records, with the
+  current `GEMINI_AI_KEY` runtime/Functions alias filled until the code and
+  Functions declarations are fully migrated.
+- CampaignCue uses the current shared `GEMINI_AI_KEY` path unless its product
+  contract is changed later.
 - Answerlattice uses `ANSWERLATTICE_GEMINI_AI_KEY`.
-- SignalDesk uses `MENULIST_SIGNALDESK_GEMINI_AI_KEY`.
+- SignalDesk uses `SIGNALDESK_GEMINI_AI_KEY`.
 - Do not create `CAMPAIGNCUE_GEMINI_AI_KEY`, `AL_GEMINI_AI_KEY`,
   `CC_GEMINI_AI_KEY`, or `SD_GEMINI_AI_KEY`.
 
@@ -1011,9 +1014,8 @@ SignalDesk staging:
 
 MyCodex:
 
-- Open `https://menulist.digital`.
-- Confirm private static access works.
-- Confirm no Firebase project is required.
+- No public domain is configured in new setup.
+- Confirm no Firebase project is required if the static reader is used locally.
 
 Expected result:
 
@@ -1054,8 +1056,7 @@ Production smoke checks:
 - `https://www.answerlattice.com`
 - `https://campaigncue.ai`
 - `https://www.campaigncue.ai`
-- `https://signaldesk.menulist.ai`
-- `https://menulist.digital`
+- `https://signaldesk.menulist.online` if SignalDesk is intentionally active
 
 Expected result:
 

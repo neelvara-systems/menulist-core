@@ -1,53 +1,94 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
+import {
+    EDITOR_ONBOARDING_MARKER,
+    getEditorOnboardingStorageKeys,
+    isEditorOnboardingMarker,
+} from '@lib/browserStorage/editorOnboarding';
 import { Alert, Button, Flex, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 import { LuLink, LuSparkles } from 'react-icons/lu';
+import {
+    getBoundedMenuEditorStringContext,
+    logMenuEditorFailure,
+} from '../utils/editorDiagnostics';
 
 const { Text } = Typography;
 
-const STORAGE_KEYS = {
-    WELCOME_DISMISSED: 'editor_welcome_dismissed',
-    OUTLET_ONBOARDING_SEEN: 'editor_outlet_onboarding_seen',
-};
+type EditorOnboardingStorageOperation = 'read' | 'remove_invalid' | 'write';
+const reportedStorageFailures = new Set<EditorOnboardingStorageOperation>();
 
 interface EditorWelcomeBannerProps {
     isMasterLinked: boolean;
+    storeId: unknown;
+    tenantId: unknown;
 }
 
 export default function EditorWelcomeBanner({
-    isMasterLinked
+    isMasterLinked,
+    storeId,
+    tenantId,
 }: EditorWelcomeBannerProps) {
     const [showWelcome, setShowWelcome] = useState(false);
     const [showOutletBanner, setShowOutletBanner] = useState(false);
     const labels = useOfferingLabels();
 
     useEffect(() => {
+        setShowWelcome(false);
+        setShowOutletBanner(false);
         if (!FEATURE_FLAGS.ENABLE_EDITOR_ONBOARDING) return;
 
-        // Check if welcome banner should show (first-time Editor visit)
-        const welcomeDismissed = localStorage.getItem(STORAGE_KEYS.WELCOME_DISMISSED);
-        if (!welcomeDismissed) {
-            setShowWelcome(true);
-        }
+        const storageKeys = getEditorOnboardingStorageKeys(tenantId, storeId);
+        if (!storageKeys) return;
 
-        // Check if outlet banner should show (first-time outlet store)
-        if (isMasterLinked) {
-            const outletSeen = localStorage.getItem(STORAGE_KEYS.OUTLET_ONBOARDING_SEEN);
-            if (!outletSeen) {
-                setShowOutletBanner(true);
+        try {
+            const welcomeDismissed = localStorage.getItem(storageKeys.welcomeDismissed);
+            const outletSeen = localStorage.getItem(storageKeys.outletSeen);
+
+            setShowWelcome(!isEditorOnboardingMarker(welcomeDismissed));
+            setShowOutletBanner(isMasterLinked && !isEditorOnboardingMarker(outletSeen));
+
+            const invalidKeys = [
+                welcomeDismissed !== null && !isEditorOnboardingMarker(welcomeDismissed)
+                    ? storageKeys.welcomeDismissed
+                    : null,
+                outletSeen !== null && !isEditorOnboardingMarker(outletSeen)
+                    ? storageKeys.outletSeen
+                    : null,
+            ].filter((key): key is string => Boolean(key));
+            for (const key of invalidKeys) {
+                try {
+                    localStorage.removeItem(key);
+                } catch (error) {
+                    logStorageFailure('remove_invalid', error, key, tenantId, storeId);
+                }
             }
+        } catch (error) {
+            logStorageFailure('read', error, storageKeys.welcomeDismissed, tenantId, storeId);
+            // The banner is optional UI; unavailable storage must not break the editor.
+            setShowWelcome(true);
+            setShowOutletBanner(isMasterLinked);
         }
-    }, [isMasterLinked]);
+    }, [isMasterLinked, storeId, tenantId]);
 
     const dismissWelcome = () => {
         setShowWelcome(false);
-        localStorage.setItem(STORAGE_KEYS.WELCOME_DISMISSED, 'true');
+        persistDismissal('welcomeDismissed');
     };
 
     const dismissOutletBanner = () => {
         setShowOutletBanner(false);
-        localStorage.setItem(STORAGE_KEYS.OUTLET_ONBOARDING_SEEN, 'true');
+        persistDismissal('outletSeen');
+    };
+
+    const persistDismissal = (keyName: 'outletSeen' | 'welcomeDismissed'): void => {
+        const storageKeys = getEditorOnboardingStorageKeys(tenantId, storeId);
+        if (!storageKeys) return;
+        try {
+            localStorage.setItem(storageKeys[keyName], EDITOR_ONBOARDING_MARKER);
+        } catch (error) {
+            logStorageFailure('write', error, storageKeys[keyName], tenantId, storeId);
+        }
     };
 
     if (!FEATURE_FLAGS.ENABLE_EDITOR_ONBOARDING) return null;
@@ -95,4 +136,21 @@ export default function EditorWelcomeBanner({
             )}
         </Flex>
     );
+}
+
+function logStorageFailure(
+    operation: EditorOnboardingStorageOperation,
+    error: unknown,
+    storageKey: string,
+    tenantId: unknown,
+    storeId: unknown,
+): void {
+    if (reportedStorageFailures.has(operation)) return;
+    reportedStorageFailures.add(operation);
+    logMenuEditorFailure('menu_editor_onboarding_storage_failed', error, {
+        operation,
+        ...getBoundedMenuEditorStringContext('storageKey', storageKey),
+        ...getBoundedMenuEditorStringContext('tenantId', tenantId),
+        ...getBoundedMenuEditorStringContext('storeId', storeId),
+    });
 }

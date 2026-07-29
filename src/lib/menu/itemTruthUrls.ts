@@ -5,13 +5,21 @@ export function buildCanonicalItemUrl(baseUrl: string, itemId?: string | null, l
     const normalizedItemId = String(itemId || '').trim();
     if (!normalizedBase || !normalizedItemId) return normalizedBase;
 
-    const url = new URL(normalizedBase, 'https://menulist.ai');
-    url.searchParams.set(ITEM_QUERY_PARAM, normalizedItemId);
-    if (language) {
-        url.searchParams.set('lang', language);
-    }
+    try {
+        const isAbsoluteHttpUrl = /^https?:\/\//i.test(normalizedBase);
+        const url = new URL(normalizedBase, 'https://menulist.ai');
+        if (isAbsoluteHttpUrl && url.protocol !== 'http:' && url.protocol !== 'https:') return normalizedBase;
 
-    return normalizedBase.startsWith('http')
-        ? url.toString()
-        : `${url.pathname}${url.search}${url.hash}`;
+        url.searchParams.set(ITEM_QUERY_PARAM, normalizedItemId);
+        const normalizedLanguage = language?.trim();
+        if (normalizedLanguage) {
+            url.searchParams.set('lang', normalizedLanguage);
+        }
+
+        return isAbsoluteHttpUrl
+            ? url.toString()
+            : `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+        return normalizedBase;
+    }
 }

@@ -30,6 +30,18 @@ export class AICapacityError extends Error {
     }
 }
 
+export function isAICapacityError(error: unknown): error is AICapacityError {
+    if (error instanceof AICapacityError) return true;
+    if (!error || typeof error !== 'object') return false;
+
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(error, 'name');
+        return descriptor?.value === 'AICapacityError';
+    } catch {
+        return false;
+    }
+}
+
 /**
  * Check a fetch response for 402 capacity errors.
  * Call this before checking response.ok in AI service functions.

@@ -182,6 +182,28 @@ assert.deepEqual(filterUnreferencedAnswerlatticeChatImageUrls(
     [removedImageUrl, sharedImageUrl, removedImageUrl, 'data:image/png;base64,AA=='],
     { messages: [{ image: { source: sharedImageUrl } }] },
 ), [removedImageUrl], 'branch cleanup must preserve URLs retained by another message');
+assert.deepEqual(collectAnswerlatticeChatImageUrls({
+    messages: [{
+        get image() {
+            throw new Error('chat image getter must remain contained');
+        },
+    }],
+}), []);
+assert.deepEqual(collectAnswerlatticeChatImageUrls({
+    messages: new Proxy([], {
+        get() {
+            throw new Error('chat message array access must remain contained');
+        },
+    }),
+}), []);
+assert.deepEqual(filterUnreferencedAnswerlatticeChatImageUrls(
+    new Proxy([], {
+        get() {
+            throw new Error('chat cleanup candidate access must remain contained');
+        },
+    }),
+    { messages: [] },
+), []);
 assert.equal(isAnswerlatticeChatImageStoragePath(
     'chatSessions/chatimages/71/701/upload.png',
     { tId: 71, sId: 701 },

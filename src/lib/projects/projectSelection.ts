@@ -1,3 +1,5 @@
+import { normalizeMultiOutletNumericDocumentId } from '@lib/multiOutlet/projectIdBoundary';
+
 export type SelectableProject = {
     active?: boolean;
     deleted?: boolean;
@@ -9,15 +11,11 @@ const OWNER_SELECTED_PROJECT_KEY = 'mobileSelectedProjectId';
 const LEGACY_DASHBOARD_PROJECT_KEY = 'menulist_dashboard_project_id';
 
 function getOwnerProjectStoreScope(storeId?: string | number | null) {
-    if (storeId === null || storeId === undefined || storeId === '') return null;
-    const normalized = String(storeId);
-    return normalized && normalized !== '0' ? normalized : null;
+    return normalizeMultiOutletNumericDocumentId(storeId)?.documentId ?? null;
 }
 
 function getOwnerProjectTenantScope(tenantId?: string | number | null) {
-    if (tenantId === null || tenantId === undefined || tenantId === '') return null;
-    const normalized = String(tenantId);
-    return normalized && normalized !== '0' ? normalized : null;
+    return normalizeMultiOutletNumericDocumentId(tenantId)?.documentId ?? null;
 }
 
 function getOwnerProjectStorageKey(
@@ -93,14 +91,13 @@ export function resolveSelectableProject<T extends SelectableProject>(
     preferredProjectId?: string | null,
 ) {
     const availableProjects = projects.filter((project) => project.deleted !== true);
-    const activeProjects = availableProjects.filter((project) => project.active !== false);
-    const selectionPool = activeProjects.length ? activeProjects : availableProjects.length ? availableProjects : projects;
+    if (!availableProjects.length) return null;
 
-    if (!selectionPool.length) return null;
+    const activeProjects = availableProjects.filter((project) => project.active !== false);
+    const selectionPool = activeProjects.length ? activeProjects : availableProjects;
 
     if (preferredProjectId) {
-        const preferredProject = availableProjects.find((project) => project.projectId === preferredProjectId)
-            || projects.find((project) => project.projectId === preferredProjectId);
+        const preferredProject = availableProjects.find((project) => project.projectId === preferredProjectId);
         if (preferredProject) return preferredProject;
     }
 

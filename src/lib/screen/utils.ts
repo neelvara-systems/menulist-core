@@ -89,6 +89,25 @@ export function isValidScreenToken(token: string): boolean {
 // (onSnapshot + 6hr timer + 30min offline can all fire close together)
 const RELOAD_GUARD_MS = 30000; // Minimum 30s between reloads
 
+export function shouldSuppressScreenReload(
+    lastReloadValue: string | null,
+    nowMilliseconds: number = Date.now(),
+): boolean {
+    if (
+        !lastReloadValue
+        || !/^[1-9]\d{0,15}$/.test(lastReloadValue)
+        || !Number.isSafeInteger(nowMilliseconds)
+        || nowMilliseconds < 0
+    ) {
+        return false;
+    }
+
+    const lastReloadMilliseconds = Number(lastReloadValue);
+    return Number.isSafeInteger(lastReloadMilliseconds)
+        && lastReloadMilliseconds <= nowMilliseconds
+        && nowMilliseconds - lastReloadMilliseconds < RELOAD_GUARD_MS;
+}
+
 /**
  * Guarded page reload for screen components
  * Throttles reloads to prevent rapid consecutive refreshes from multiple triggers
@@ -105,11 +124,11 @@ export function guardedReload(componentName: string, screenToken: string): void 
     const guardKey = getScreenReloadGuardKey(componentName, screenToken);
     try {
         if (guardKey) {
-            const lastReload = parseInt(localStorage.getItem(guardKey) || '0', 10);
-            if (Date.now() - lastReload < RELOAD_GUARD_MS) {
+            const nowMilliseconds = Date.now();
+            if (shouldSuppressScreenReload(localStorage.getItem(guardKey), nowMilliseconds)) {
                 return;
             }
-            localStorage.setItem(guardKey, String(Date.now()));
+            localStorage.setItem(guardKey, String(nowMilliseconds));
         }
     } catch (error) {
         logScreenDisplayFailure("screen_guarded_reload_storage_failed", error, {

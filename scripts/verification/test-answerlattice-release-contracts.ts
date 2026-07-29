@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { Timestamp } from 'firebase/firestore';
 import {
     ANSWERLATTICE_RELEASE_MAX_ENTITY_CHANGES,
@@ -53,17 +55,44 @@ assert.equal(parseAnswerlatticeReleaseAction({
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, releasedAt: 'not-a-date' }), null, 'release timestamps must be ISO dates');
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, versionNormalized: 2_004_002 }), null, 'version labels and normalized versions must agree');
 assert.equal(parseAnswerlatticeReleaseAction({ ...validCreate, versionLabel: 'v2.4.1' }), null, 'stored release labels must use canonical numeric form');
-assert.equal(parseAnswerlatticeReleaseAction({ action: 'activate', requestId: 'activate_12345', scope: validCreate.scope, releaseId: 'release/unsafe' }), null);
+assert.equal(parseAnswerlatticeReleaseAction({
+    action: 'activate',
+    requestId: 'activate_12345',
+    scope: validCreate.scope,
+    releaseId: 'release/unsafe',
+    impactFingerprint: 'b'.repeat(64),
+}), null);
 assert.deepEqual(parseAnswerlatticeReleaseAction({
     action: 'activate',
     requestId: 'activate_12345',
     scope: validCreate.scope,
     releaseId: 'release_safe',
+    impactFingerprint: 'b'.repeat(64),
 }), {
     action: 'activate',
     requestId: 'activate_12345',
     scope: validCreate.scope,
     releaseId: 'release_safe',
+    impactFingerprint: 'b'.repeat(64),
+});
+assert.equal(parseAnswerlatticeReleaseAction({
+    action: 'activate',
+    requestId: 'activate_12345',
+    scope: validCreate.scope,
+    releaseId: 'release_safe',
+}), null, 'activation requires a current impact fingerprint');
+assert.deepEqual(parseAnswerlatticeReleaseAction({
+    action: 'preview_impact',
+    requestId: 'preview_12345',
+    scope: validCreate.scope,
+    releaseId: 'release_safe',
+    includeAnswerTestProof: true,
+}), {
+    action: 'preview_impact',
+    requestId: 'preview_12345',
+    scope: validCreate.scope,
+    releaseId: 'release_safe',
+    includeAnswerTestProof: true,
 });
 
 const timestamp = Timestamp.fromMillis(1_700_000_000_000);
@@ -98,6 +127,43 @@ assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
     replayed: false,
     scope: validCreate.scope,
 }).success, true);
+const validImpactPreview = {
+    success: true,
+    action: 'preview_impact',
+    releaseId: 'release_safe',
+    status: 'pending',
+    impactFingerprint: 'c'.repeat(64),
+    affectedAnswerCount: 1,
+    reviewRequiredCount: 1,
+    affectedAnswers: [{
+        answerId: 'answer-billing',
+        title: 'Billing limits',
+        lastValidatedInVersion: 1_000_000,
+        currentDriftFlag: false,
+        currentReviewRequired: false,
+        willRequireReview: true,
+        matchReason: 'direct_entity_binding',
+        matchedEntityCount: 1,
+    }],
+    answerTestProof: {
+        state: 'missing',
+        linkedCaseCount: 1,
+        criticalCaseCount: 1,
+        failedCaseCount: 0,
+        criticalFailureCount: 0,
+        lastRunAt: null,
+    },
+    scope: validCreate.scope,
+};
+assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse(validImpactPreview).success, true);
+assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
+    ...validImpactPreview,
+    affectedAnswerCount: 0,
+}).success, false, 'preview answer totals must match the bounded projection');
+assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
+    ...validImpactPreview,
+    reviewRequiredCount: 0,
+}).success, false, 'preview review totals must be derived from the bounded projection');
 assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
     success: true,
     action: 'create',
@@ -105,5 +171,14 @@ assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
     status: 'pending',
     replayed: false,
 }).success, false, 'release responses must acknowledge their exact workspace');
+
+const changelogEditor = readFileSync(
+    path.join(process.cwd(), 'src/components/templates/platform/changelog/addEditChangelog.tsx'),
+    'utf8',
+);
+assert.match(changelogEditor, /getAnswerlatticeAnswerContextRoute\(/);
+assert.match(changelogEditor, /Review answer/);
+assert.match(changelogEditor, /getAnswerlatticeReleaseContextRoute\(/);
+assert.match(changelogEditor, /Review linked Answer Tests/);
 
 process.stdout.write('Answerlattice release contract tests passed.\n');

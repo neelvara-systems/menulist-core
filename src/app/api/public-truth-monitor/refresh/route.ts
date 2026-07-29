@@ -16,6 +16,11 @@ import {
     logPublicTruthMonitorApiFailure,
 } from "@lib/public-truth-tools/publicTruthMonitorDiagnostics";
 import {
+    publicTruthMonitorJson,
+    withPublicTruthMonitorPrivateHeaders,
+} from "@lib/public-truth-tools/publicTruthMonitorApiResponse";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
+import {
     evaluatePublicTruthMonitorEntitlement,
     isPublicTruthMonitorEnabled,
 } from "@lib/public-truth-tools/publicTruthMonitorEntitlements";
@@ -44,13 +49,13 @@ const ENDPOINT = "/api/public-truth-monitor/refresh";
 export const POST = withAuth(async (request, session) => {
     try {
         if (!isPublicTruthMonitorEnabled()) {
-            return NextResponse.json({ error: "Feature disabled" }, { status: 404 });
+            return publicTruthMonitorJson({ error: "Feature disabled" }, { status: 404 });
         }
 
         const rateLimitResponse = await checkDataWriteLimit({
-            failClosedOnProviderError: process.env.NODE_ENV === "production",
+            failClosedOnProviderError: true,
         });
-        if (rateLimitResponse) return rateLimitResponse;
+        if (rateLimitResponse) return withPublicTruthMonitorPrivateHeaders(rateLimitResponse);
 
         const jsonBody = await parsePublicTruthMonitorJsonBody(request);
         if (!jsonBody.success) {
@@ -58,7 +63,8 @@ export const POST = withAuth(async (request, session) => {
                 ...getPublicTruthMonitorSecurityLogContext(session, request, ENDPOINT),
             }, "medium");
             return ("response" in jsonBody && jsonBody.response)
-                || NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+                ? withPublicTruthMonitorPrivateHeaders(jsonBody.response)
+                : publicTruthMonitorJson({ error: "Invalid JSON" }, { status: 400 });
         }
 
         const validation = validateAPIInput(PublicTruthMonitorRefreshRequestSchema, jsonBody.data);
@@ -69,19 +75,23 @@ export const POST = withAuth(async (request, session) => {
                     ...getPublicTruthMonitorBoundedStringContext("validationError", errorMsg),
                 }),
             }, "medium");
-            return NextResponse.json({ error: "Invalid input", details: errorMsg }, { status: 400 });
+            return publicTruthMonitorJson({ error: "Invalid input", details: errorMsg }, { status: 400 });
         }
 
         const sessionScope = getPublicTruthMonitorSessionScope(session);
         if (!sessionScope) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return publicTruthMonitorJson({ error: "Forbidden" }, { status: 403 });
+        }
+        const actorId = resolveCurrentSessionUserDocumentId(session);
+        if (!actorId) {
+            return publicTruthMonitorJson({ error: "Forbidden" }, { status: 403 });
         }
 
         if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)) {
             logger.security("Tenant Access Violation - Public Truth Monitor Refresh API", {
                 ...getPublicTruthMonitorSecurityLogContext(session, request, ENDPOINT),
             }, "critical");
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return publicTruthMonitorJson({ error: "Forbidden" }, { status: 403 });
         }
 
         const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);
@@ -94,7 +104,7 @@ export const POST = withAuth(async (request, session) => {
             sessionScope.storeScope.numericId,
             sessionScope.tenantScope.numericId,
         );
-        if (permissionError) return permissionError;
+        if (permissionError) return withPublicTruthMonitorPrivateHeaders(permissionError);
 
         const entitlementEvaluation = await evaluatePublicTruthMonitorServerEntitlementWithAuthority({
             session,
@@ -102,14 +112,14 @@ export const POST = withAuth(async (request, session) => {
         });
         const { activeSubscription, entitlement } = entitlementEvaluation;
         if (!entitlement.allowed) {
-            return NextResponse.json({
+            return publicTruthMonitorJson({
                 error: "Public truth history unavailable",
                 message: entitlement.message,
                 reason: entitlement.reason,
             }, { status: entitlement.reason === "feature_off" ? 404 : 403 });
         }
         if (!activeSubscription?.id) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return publicTruthMonitorJson({ error: "Forbidden" }, { status: 403 });
         }
 
         const generatedAt = new Date().toISOString();
@@ -169,19 +179,21 @@ export const POST = withAuth(async (request, session) => {
                     current,
                     entitlement,
                     entry,
-                    generatedByUserId: session.uId || session.user?.id,
+                    generatedByUserId: actorId,
                     sId: sessionScope.storeScope.documentId,
                     tId: sessionScope.tenantScope.documentId,
                 }),
             });
         } catch (error) {
             if (error instanceof PublicTruthMonitorScopeChangedError) {
-                return finalPermissionError || NextResponse.json({ error: "Forbidden" }, { status: 403 });
+                return finalPermissionError
+                    ? withPublicTruthMonitorPrivateHeaders(finalPermissionError)
+                    : publicTruthMonitorJson({ error: "Forbidden" }, { status: 403 });
             }
             throw error;
         }
 
-        return NextResponse.json({
+        return publicTruthMonitorJson({
             data: {
                 entitlement,
                 report,
@@ -198,6 +210,6 @@ export const POST = withAuth(async (request, session) => {
                 ...getPublicTruthMonitorBoundedStringContext("userId", session?.uId || session?.user?.id),
             },
         );
-        return NextResponse.json({ error: "Public truth history could not refresh" }, { status: 500 });
+        return publicTruthMonitorJson({ error: "Public truth history could not refresh" }, { status: 500 });
     }
 });

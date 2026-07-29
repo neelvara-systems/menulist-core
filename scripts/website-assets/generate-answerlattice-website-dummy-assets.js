@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const sharp = require('sharp');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const WIDTH = 1440;
@@ -289,6 +290,50 @@ const ASSETS = [
         answer: 'The release note links to the affected approved answer and drift review.',
         chips: ['Release context', 'Affected answer', 'Drift visible'],
     },
+    {
+        slug: 'answerlattice-owner-decision-system',
+        group: 'Owner decision system',
+        title: 'What deserves review today',
+        subtitle: 'A bounded brief sends the owner to the exact answer, release, or map context that needs a decision.',
+        scene: 'owner-decision',
+        accent: COLORS.teal,
+        chips: ['Read-only brief', 'Qualified evidence', 'Owner decides'],
+        format: 'webp',
+        publicRoot: true,
+    },
+    {
+        slug: 'answerlattice-knowledge-map',
+        group: 'Knowledge Map',
+        title: 'Product truth, organized for review',
+        subtitle: 'A curated product hierarchy shows answer coverage, drift, and review state without exposing the raw graph.',
+        scene: 'knowledge-map',
+        accent: COLORS.violet,
+        chips: ['Curated hierarchy', 'Coverage visible', 'Drift review'],
+        format: 'webp',
+        publicRoot: true,
+    },
+    {
+        slug: 'answerlattice-release-assurance',
+        group: 'Release assurance',
+        title: 'Check support before activation',
+        subtitle: 'Release impact and Answer Tests expose affected approved answers, stale guidance, and safe abstention paths.',
+        scene: 'release-assurance',
+        accent: COLORS.amber,
+        chips: ['Linked answers', 'Answer Tests', 'Owner confirmation'],
+        format: 'webp',
+        publicRoot: true,
+    },
+    {
+        slug: 'answerlattice-article-topic-map',
+        group: 'Hosted help',
+        title: 'Understand a guide at a glance',
+        subtitle: 'Published article headings become an accessible topic path with approved summaries and related guides.',
+        scene: 'topic-map',
+        accent: COLORS.cyan,
+        chips: ['Published headings', 'Mobile drill-down', 'Public only'],
+        format: 'webp',
+        publicRoot: true,
+    },
 ];
 
 function ensureDir(dir) {
@@ -361,7 +406,12 @@ function statusDot(x, y, fill) {
 }
 
 function browserShell(asset, body) {
-    const chipRow = (asset.chips || []).map((item, index) => chip(420 + index * 178, 430, item, asset.accent)).join('');
+    let chipX = 420;
+    const chipRow = (asset.chips || []).map((item) => {
+        const currentX = chipX;
+        chipX += Math.max(116, item.length * 10 + 34) + 12;
+        return chip(currentX, 430, item, asset.accent);
+    }).join('');
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
     <defs>
@@ -647,6 +697,149 @@ function renderProactive(asset) {
         ${paragraph(986, 572, 'Need help finishing your import? Here is the reviewed setup answer.', 28, 18, '#dffdf8', 4, 27)}`);
 }
 
+function renderOwnerDecision(asset) {
+    const decisions = [
+        ['Review billing role answer', 'Open answer review', COLORS.amber],
+        ['Check release impact', 'Open linked answers + tests', COLORS.red],
+        ['Approve import guidance', 'Open owner decision', COLORS.teal],
+        ['No other qualified work', 'Quiet state', COLORS.green],
+    ];
+    return browserShell(asset, `
+        ${rect(420, 470, 494, 512, 30, COLORS.panel, COLORS.line)}
+        ${text(454, 522, 'Daily Brief', 27, COLORS.text, 800)}
+        ${text(454, 554, 'Up to four qualified decisions', 16, COLORS.muted, 650)}
+        ${decisions.map(([title, route, color], index) => {
+            const y = 594 + index * 88;
+            return `${rect(452, y, 430, 68, 18, index === 0 ? alpha(color, 0.08) : 'rgba(255,255,255,0.035)', index === 0 ? alpha(color, 0.36) : COLORS.lineSoft)}
+                ${statusDot(474, y + 24, color)}
+                ${text(496, y + 29, title, 17, COLORS.text, 760)}
+                ${text(496, y + 52, route, 14, COLORS.muted, 650)}`;
+        }).join('')}
+        ${rect(944, 470, 304, 512, 30, COLORS.panel, COLORS.line)}
+        ${text(976, 522, 'Decision context', 25, COLORS.text, 800)}
+        ${text(976, 565, 'Billing', 18, asset.accent, 800)}
+        ${text(976, 598, 'Roles and permissions', 19, COLORS.text, 760)}
+        ${paragraph(976, 638, 'The selected brief item keeps its product area, answer, evidence, and next route attached.', 28, 17, COLORS.muted, 4, 25)}
+        ${rect(976, 768, 238, 58, 18, alpha(asset.accent, 0.11), alpha(asset.accent, 0.38))}
+        ${text(998, 804, 'Open answer review', 17, '#dffdf8', 800)}
+        ${rect(976, 848, 238, 58, 18, 'rgba(255,255,255,0.045)', COLORS.lineSoft)}
+        ${text(998, 884, 'View in Knowledge Map', 16, COLORS.muted, 760)}
+        ${text(420, 1030, 'Brief item', 16, COLORS.muted, 700)}
+        <path d="M510 1024 H738" stroke="${asset.accent}" stroke-width="2" stroke-linecap="round"/>
+        ${text(766, 1030, 'Evidence', 16, COLORS.muted, 700)}
+        <path d="M842 1024 H1018" stroke="${asset.accent}" stroke-width="2" stroke-linecap="round"/>
+        ${text(1044, 1030, 'Owner decision', 16, '#dffdf8', 800)}`);
+}
+
+function renderKnowledgeMap(asset) {
+    const nodes = [
+        { x: 446, y: 570, width: 140, label: 'Sample SaaS', color: asset.accent, active: true },
+        { x: 642, y: 506, width: 150, label: 'Billing', color: COLORS.amber, active: true },
+        { x: 642, y: 582, width: 150, label: 'Onboarding', color: COLORS.green },
+        { x: 642, y: 658, width: 150, label: 'Team', color: COLORS.cyan },
+        { x: 642, y: 734, width: 150, label: 'Integrations', color: COLORS.blue },
+        { x: 838, y: 488, width: 176, label: 'Payment roles', color: COLORS.amber, active: true },
+        { x: 838, y: 564, width: 176, label: 'Plan changes', color: COLORS.green },
+        { x: 838, y: 640, width: 176, label: 'Invoices', color: COLORS.teal },
+    ];
+    return browserShell(asset, `
+        ${rect(420, 470, 622, 512, 30, COLORS.panel, COLORS.line)}
+        <path d="M586 598 C618 598 610 534 642 534 M586 598 C618 598 610 610 642 610 M586 598 C618 598 610 686 642 686 M586 598 C618 598 610 762 642 762" stroke="${alpha(asset.accent, 0.55)}" stroke-width="2" fill="none"/>
+        <path d="M792 534 C816 534 814 516 838 516 M792 534 C816 534 814 592 838 592 M792 534 C816 534 814 668 838 668" stroke="${alpha(COLORS.amber, 0.55)}" stroke-width="2" fill="none"/>
+        ${nodes.map((node) => `${rect(node.x, node.y, node.width, 56, 17, node.active ? alpha(node.color, 0.14) : 'rgba(255,255,255,0.04)', node.active ? alpha(node.color, 0.48) : COLORS.lineSoft)}
+            ${text(node.x + 18, node.y + 35, node.label, 16, node.active ? '#f5fffd' : COLORS.muted, node.active ? 800 : 700)}`).join('')}
+        ${rect(444, 862, 574, 88, 20, 'rgba(255,255,255,0.035)', COLORS.lineSoft)}
+        ${statusDot(470, 892, COLORS.green)}${text(490, 898, 'Covered', 15, COLORS.muted, 700)}
+        ${statusDot(604, 892, COLORS.amber)}${text(624, 898, 'Needs review', 15, COLORS.muted, 700)}
+        ${statusDot(790, 892, COLORS.red)}${text(810, 898, 'Drift', 15, COLORS.muted, 700)}
+        ${text(470, 928, 'Primary hierarchy only. Related context appears after selection.', 15, COLORS.faint, 650)}
+        ${rect(1072, 470, 176, 512, 30, COLORS.panel, COLORS.line)}
+        ${text(1098, 522, 'Selected', 16, COLORS.muted, 750)}
+        ${paragraph(1098, 566, 'Payment roles', 15, 21, COLORS.text, 2, 27)}
+        ${text(1098, 646, 'Coverage', 14, COLORS.faint, 750)}
+        ${text(1098, 674, 'Approved', 16, COLORS.green, 800)}
+        ${text(1098, 726, 'Freshness', 14, COLORS.faint, 750)}
+        ${text(1098, 754, 'Review due', 16, COLORS.amber, 800)}
+        ${text(1098, 806, 'Opened from', 14, COLORS.faint, 750)}
+        ${paragraph(1098, 834, 'Friction evidence', 15, 15, COLORS.muted, 2, 22)}
+        ${text(420, 1032, 'Structure', 16, COLORS.muted, 700)}
+        ${text(612, 1032, 'Coverage', 16, COLORS.muted, 700)}
+        ${text(802, 1032, 'Freshness', 16, COLORS.muted, 700)}
+        ${text(1010, 1032, 'Owner review', 16, '#dffdf8', 800)}`);
+}
+
+function renderReleaseAssurance(asset) {
+    const testRows = [
+        ['Billing role source', 'Passed', COLORS.green],
+        ['API key location', 'Needs review', COLORS.amber],
+        ['Unsupported claim', 'Safe abstention', COLORS.cyan],
+    ];
+    return browserShell(asset, `
+        ${rect(420, 470, 394, 512, 30, COLORS.panel, COLORS.line)}
+        ${text(452, 522, 'Release impact', 26, COLORS.text, 800)}
+        ${text(452, 562, 'API keys moved', 20, asset.accent, 800)}
+        ${text(452, 592, 'to Developer Settings', 20, COLORS.text, 760)}
+        ${paragraph(452, 638, 'Directly linked approved answers and tests are inspected before activation.', 34, 17, COLORS.muted, 3, 25)}
+        ${['API key location answer', 'Setup article guidance', 'Developer settings FAQ'].map((item, index) => {
+            const y = 752 + index * 62;
+            const stale = index === 0;
+            return `${rect(450, y, 334, 46, 15, stale ? alpha(COLORS.amber, 0.08) : 'rgba(255,255,255,0.035)', stale ? alpha(COLORS.amber, 0.4) : COLORS.lineSoft)}
+                ${statusDot(470, y + 23, stale ? COLORS.amber : COLORS.green)}
+                ${text(490, y + 29, item, 15, COLORS.text, 700)}`;
+        }).join('')}
+        ${rect(844, 470, 404, 512, 30, COLORS.panel, COLORS.line)}
+        ${text(876, 522, 'Answer Tests', 26, COLORS.text, 800)}
+        ${testRows.map(([label, result, color], index) => {
+            const y = 584 + index * 100;
+            return `${rect(874, y, 344, 78, 18, 'rgba(255,255,255,0.035)', COLORS.lineSoft)}
+                ${text(898, y + 31, label, 16, COLORS.text, 740)}
+                ${statusDot(900, y + 55, color)}
+                ${text(920, y + 61, result, 15, color, 800)}`;
+        }).join('')}
+        ${rect(874, 898, 344, 54, 18, alpha(asset.accent, 0.11), alpha(asset.accent, 0.4))}
+        ${text(902, 932, 'Owner confirms activation', 17, '#fff7df', 800)}
+        ${text(420, 1030, 'Release change', 16, COLORS.muted, 700)}
+        <path d="M548 1024 H714" stroke="${asset.accent}" stroke-width="2" stroke-linecap="round"/>
+        ${text(738, 1030, 'Affected truth', 16, COLORS.muted, 700)}
+        <path d="M860 1024 H1010" stroke="${asset.accent}" stroke-width="2" stroke-linecap="round"/>
+        ${text(1036, 1030, 'Test + review', 16, '#fff7df', 800)}`);
+}
+
+function renderTopicMap(asset) {
+    const topics = [
+        { x: 652, y: 500, width: 188, label: 'Requirements', color: COLORS.teal },
+        { x: 652, y: 580, width: 188, label: 'Connect Slack', color: COLORS.cyan, active: true },
+        { x: 652, y: 660, width: 188, label: 'Authorize access', color: COLORS.blue },
+        { x: 652, y: 740, width: 188, label: 'Troubleshoot', color: COLORS.amber },
+    ];
+    return browserShell(asset, `
+        ${rect(420, 470, 450, 512, 30, COLORS.panel, COLORS.line)}
+        ${rect(448, 496, 168, 42, 16, 'rgba(255,255,255,0.045)', COLORS.lineSoft)}
+        ${text(476, 523, 'Article', 16, COLORS.muted, 750)}
+        ${rect(624, 496, 188, 42, 16, alpha(asset.accent, 0.12), alpha(asset.accent, 0.4))}
+        ${text(652, 523, 'Topic map', 16, '#dff8ff', 800)}
+        ${rect(462, 616, 152, 58, 18, alpha(asset.accent, 0.12), alpha(asset.accent, 0.42))}
+        ${text(484, 652, 'Connect Slack', 17, '#e9fbff', 800)}
+        <path d="M614 645 C636 645 630 528 652 528 M614 645 C636 645 630 608 652 608 M614 645 C636 645 630 688 652 688 M614 645 C636 645 630 768 652 768" stroke="${alpha(asset.accent, 0.55)}" stroke-width="2" fill="none"/>
+        ${topics.map((topic) => `${rect(topic.x, topic.y, topic.width, 56, 17, topic.active ? alpha(topic.color, 0.14) : 'rgba(255,255,255,0.04)', topic.active ? alpha(topic.color, 0.48) : COLORS.lineSoft)}
+            ${text(topic.x + 18, topic.y + 35, topic.label, 16, topic.active ? '#f5fffd' : COLORS.muted, topic.active ? 800 : 700)}`).join('')}
+        ${text(462, 902, 'Built from published headings only', 15, COLORS.faint, 700)}
+        ${rect(900, 470, 348, 512, 30, COLORS.panel, COLORS.line)}
+        ${text(932, 522, 'Connect Slack', 24, COLORS.text, 800)}
+        ${paragraph(932, 566, 'Open integrations, choose Slack, and authorize the workspace with an eligible admin role.', 34, 17, COLORS.muted, 4, 25)}
+        ${text(932, 704, 'Related published guides', 16, COLORS.faint, 750)}
+        ${['Slack permissions', 'Connection errors', 'Disconnect Slack'].map((item, index) => {
+            const y = 746 + index * 62;
+            return `${rect(930, y, 288, 46, 15, 'rgba(255,255,255,0.035)', COLORS.lineSoft)}
+                ${text(952, y + 29, item, 16, COLORS.text, 700)}`;
+        }).join('')}
+        ${text(420, 1030, 'Desktop map', 16, COLORS.muted, 700)}
+        <path d="M528 1024 H780" stroke="${asset.accent}" stroke-width="2" stroke-linecap="round"/>
+        ${text(804, 1030, 'Mobile drill-down', 16, COLORS.muted, 700)}
+        <path d="M936 1024 H1060" stroke="${asset.accent}" stroke-width="2" stroke-linecap="round"/>
+        ${text(1084, 1030, 'Open guide', 16, '#dff8ff', 800)}`);
+}
+
 function renderDemo(asset) {
     return renderWidget(asset);
 }
@@ -669,6 +862,10 @@ function svgFor(asset) {
         proactive: renderProactive,
         demo: renderDemo,
         table: renderTable,
+        'owner-decision': renderOwnerDecision,
+        'knowledge-map': renderKnowledgeMap,
+        'release-assurance': renderReleaseAssurance,
+        'topic-map': renderTopicMap,
     };
     return (renderers[asset.scene] || renderWorkspace)(asset);
 }
@@ -697,18 +894,34 @@ function renderTable(asset) {
         }).join('')}`);
 }
 
-function generate() {
+async function generate() {
     ensureDir(PUBLIC_OUT_DIR);
     ensureDir(SOURCE_OUT_DIR);
-    const manifest = ASSETS.map((asset) => {
+    const proofAssetsOnly = process.argv.includes('--proof-assets-only');
+    const manifest = [];
+
+    for (const asset of ASSETS) {
+        const format = asset.format || 'png';
         const svgPath = path.join(SOURCE_OUT_DIR, `${asset.slug}.svg`);
-        const pngPath = path.join(PUBLIC_OUT_DIR, `${asset.slug}.png`);
+        const outputDir = asset.publicRoot ? path.join(ROOT, 'public') : PUBLIC_OUT_DIR;
+        const outputPath = path.join(outputDir, `${asset.slug}.${format}`);
 
-        fs.writeFileSync(svgPath, normalizeSvg(svgFor(asset)), 'utf8');
-        execFileSync('sips', ['-s', 'format', 'png', svgPath, '--out', pngPath], { stdio: 'ignore' });
+        ensureDir(outputDir);
+        if (!proofAssetsOnly || asset.publicRoot) {
+            fs.writeFileSync(svgPath, normalizeSvg(svgFor(asset)), 'utf8');
+            if (format === 'webp') {
+                await sharp(Buffer.from(fs.readFileSync(svgPath, 'utf8')))
+                    .webp({ quality: 82, effort: 6 })
+                    .toFile(outputPath);
+            } else {
+                execFileSync('sips', ['-s', 'format', format, svgPath, '--out', outputPath], { stdio: 'ignore' });
+            }
+        }
 
-        return {
-            file: `${asset.slug}.png`,
+        manifest.push({
+            file: asset.publicRoot
+                ? `public/${asset.slug}.${format}`
+                : `public/answerlattice-website-assets/dummy/${asset.slug}.${format}`,
             source: `${asset.slug}.svg`,
             width: WIDTH,
             height: HEIGHT,
@@ -716,8 +929,8 @@ function generate() {
             title: asset.title,
             detail: asset.subtitle,
             scene: asset.scene,
-        };
-    });
+        });
+    }
 
     fs.writeFileSync(
         path.join(SOURCE_OUT_DIR, 'manifest.json'),
@@ -725,8 +938,12 @@ function generate() {
         'utf8'
     );
 
-    console.log(`Generated ${manifest.length} AnswerLattice website PNG assets in ${PUBLIC_OUT_DIR}`);
+    const renderedCount = proofAssetsOnly ? ASSETS.filter((asset) => asset.publicRoot).length : ASSETS.length;
+    console.log(`Generated ${renderedCount} AnswerLattice website assets.`);
     console.log(`Wrote source SVGs and manifest in ${SOURCE_OUT_DIR}`);
 }
 
-generate();
+generate().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});

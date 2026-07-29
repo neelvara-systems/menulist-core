@@ -5,6 +5,7 @@ import { getCachedData, removeCachedData, setCachedData, shouldRevalidate } from
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import {
   OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
+  projectOwnerBusinessAssistantAnalyticsResponse,
   readOwnerBusinessAssistantAnalyticsResponse,
   type OwnerBusinessAssistantAnalyticsResponse,
 } from '@lib/ownerBusinessAssistant/clientResponses';
@@ -28,7 +29,7 @@ export function useOwnerBusinessAnalyticsIndex(projectId?: string, storeScopeKey
   const session = useClientAuthSession();
   const clientScope = useMemo(
     () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
-    [session?.sId, session?.tId, storeScopeKey],
+    [session?.sId, session?.tId, session?.uId, session?.user?.id, storeScopeKey],
   );
   const enabled = Boolean(clientScope)
     && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
@@ -41,17 +42,19 @@ export function useOwnerBusinessAnalyticsIndex(projectId?: string, storeScopeKey
   const cacheKey = clientScope
     ? `${OWNER_BUSINESS_ASSISTANT_CACHE.browserAnalyticsPrefix}:${clientScope.cacheScope}:${projectId || 'all'}`
     : null;
-  const cached = typeof window !== 'undefined' && cacheKey
-    ? getCachedData<OwnerBusinessAssistantAnalyticsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
+  const cachedValue = typeof window !== 'undefined' && cacheKey
+    ? getCachedData<unknown>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
+  const cached = projectOwnerBusinessAssistantAnalyticsResponse(cachedValue);
+  if (cacheKey && cachedValue !== undefined && !cached) removeCachedData(cacheKey);
 
-  const cachedMissingAnalytics = !hasAnalyticsData(cached);
+  const cachedMissingAnalytics = !hasAnalyticsData(cached || undefined);
 
   const swr = useSWR<OwnerBusinessAssistantAnalyticsResponse>(
     enabled && clientScope ? [url, clientScope.cacheScope] as const : null,
     fetcher,
     {
-      fallbackData: cachedMissingAnalytics ? undefined : cached,
+      fallbackData: cachedMissingAnalytics ? undefined : cached || undefined,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       revalidateIfStale: typeof window === 'undefined' || !cacheKey ? false : cachedMissingAnalytics || shouldRevalidate(cacheKey),

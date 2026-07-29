@@ -43,8 +43,11 @@ const claimRoute = read('src/app/api/public/create-menu/claim/route.ts');
 const priceTruth = read('src/lib/pricing/projectPriceTruth.ts');
 const slugBoundary = read('src/lib/public-menu-entry/claimProjectSlug.ts');
 const createClient = read('src/app/(website)/create-menu/CreateMenuClient.tsx');
+const publicDraftId = read('src/lib/public-menu-entry/publicDraftId.ts');
+const previewPage = read('src/app/(website)/create-menu/preview/[draftId]/page.tsx');
 const previewClient = read('src/app/(website)/create-menu/PreviewClient.tsx');
 const successClient = read('src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx');
+const lastClaimHandoff = read('src/lib/publicCreateMenu/lastClaimHandoff.ts');
 const maintenance = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
 const readme = read('__docs__/public-menu-entry/README.md');
 const spec = read('__docs__/public-menu-entry/public-menu-entry_spec.md');
@@ -131,7 +134,9 @@ requireOrder(createRoute, [
 
 [
   'export function normalizeExtractedMenuPriceTruth',
-  'if (Array.isArray(item.attributes))',
+  "const attributes = readRecordField(item, 'attributes');",
+  'if (!Array.isArray(attributes)) continue;',
+  'applyPriceAssignments(assignments);',
   'return menuData;',
 ].forEach((token) => requireToken(priceTruth, token, 'Extracted menu price boundary'));
 
@@ -154,7 +159,7 @@ requireOrder(createRoute, [
   "revalidateTag(`menu-store-${result.storeId}`, { expire: 0 })",
   "revalidateTag(`store-${result.storeId}`, { expire: 0 })",
   "revalidateTag('client-stores', { expire: 0 })",
-  "revalidateTag('screen-data', { expire: 0 })",
+  "touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim')",
 ].forEach((token) => requireToken(claimRoute, token, 'Public Menu Entry claim route'));
 requireOrder(claimRoute, [
   'const storeDoc = await transaction.get(storeRef);',
@@ -177,8 +182,19 @@ requireOrder(claimRoute, [
 [
   'event.currentTarget.value = \'\';',
   'accept="image/jpeg,image/png,image/webp"',
+  'submissionInFlightRef.current',
+  'normalizePublicMenuDraftId(payload?.draftId)',
+  'public_create_menu_request_failed',
 ].forEach((token) => requireToken(createClient, token, 'Public Menu Entry source chooser'));
 forbidToken(createClient, 'capture="environment"', 'Public Menu Entry source chooser');
+forbidToken(createClient, 'isNonEmptyString(payload?.draftId)', 'Public Menu Entry draft response boundary');
+[
+  'PUBLIC_MENU_DRAFT_ID_PATTERN',
+  'value !== value.trim()',
+].forEach((token) => requireToken(publicDraftId, token, 'Public Menu Entry draft ID boundary'));
+requireToken(createRoute, 'normalizePublicMenuDraftId(draftId)', 'Public Menu Entry poll draft ID boundary');
+requireToken(claimRoute, 'normalizePublicMenuDraftId(value) === value', 'Public Menu Entry claim draft ID boundary');
+requireToken(previewPage, 'if (!draftId) notFound();', 'Public Menu Entry preview route draft ID boundary');
 
 [
   'CREATE_MENU_PREVIEW_POLL_INTERVAL_MS = 5_000',
@@ -195,6 +211,8 @@ forbidToken(createClient, 'capture="environment"', 'Public Menu Entry source cho
   '{!hasExistingAccount ? <AnimateStaggerChild',
   'await Promise.race([',
   'public_create_menu_claim_session_refresh_failed',
+  'serializePublicCreateMenuLastClaimHandoff({',
+  'public_create_menu_claim_handoff_storage_failed',
 ].forEach((token) => requireToken(previewClient, token, 'Public Menu Entry preview/claim client'));
 requireOrder(previewClient, [
   'if (attempts >= CREATE_MENU_PREVIEW_MAX_POLLS)',
@@ -209,7 +227,21 @@ forbidToken(previewClient, '[fetchDraft, pollCount', 'Public Menu Entry preview 
   'await Promise.race([',
   'public_create_menu_success_session_refresh_failed',
   "window.location.assign('/use-menulist')",
+  'parsePublicCreateMenuLastClaimHandoff(rawClaim)',
+  'resolveStorePermissionSessionScope(session)',
+  'claim.tenantId !== sessionScope.tenantScope.numericId',
+  'claim.storeId !== sessionScope.storeScope.numericId',
 ].forEach((token) => requireToken(successClient, token, 'Public Menu Entry success handoff'));
+[
+  'PUBLIC_CREATE_MENU_LAST_CLAIM_KEY',
+  'version: 1',
+  'LAST_CLAIM_MAX_AGE_MS',
+  'normalizeStorePermissionScopeDocumentId(record.tenantId)',
+  'normalizeStorePermissionScopeDocumentId(record.storeId)',
+  'normalizeStorePermissionScopeDocumentId(record.projectId)',
+  'Object.keys(record).some',
+].forEach((token) => requireToken(lastClaimHandoff, token, 'Public Menu Entry exact last-claim handoff'));
+forbidToken(successClient, 'const claim = rawClaim ? JSON.parse(rawClaim) : null;', 'Public Menu Entry unvalidated browser handoff');
 
 [
   ".collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)",

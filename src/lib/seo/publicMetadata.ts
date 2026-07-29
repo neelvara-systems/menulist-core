@@ -20,6 +20,23 @@ export interface PublicSharePreviewMeta {
     url: string;
 }
 
+function readStringValues(value: object): string[] {
+    try {
+        return Object.keys(value)
+            .slice(0, 64)
+            .flatMap((key) => {
+                try {
+                    const entry = Reflect.get(value, key);
+                    return typeof entry === 'string' ? [entry] : [];
+                } catch {
+                    return [];
+                }
+            });
+    } catch {
+        return [];
+    }
+}
+
 export function normalizeMetaText(value: unknown, fallback = ''): string {
     if (typeof value === 'string') {
         const trimmed = value.trim();
@@ -27,8 +44,7 @@ export function normalizeMetaText(value: unknown, fallback = ''): string {
     }
 
     if (value && typeof value === 'object') {
-        const candidates = Object.values(value as Record<string, unknown>)
-            .filter((entry): entry is string => typeof entry === 'string')
+        const candidates = readStringValues(value)
             .map((entry) => entry.trim())
             .filter(Boolean);
 
@@ -41,12 +57,17 @@ export function normalizeMetaText(value: unknown, fallback = ''): string {
 }
 
 export function normalizeSeoKeywords(keywords?: string[] | string): string[] {
-    const values = Array.isArray(keywords)
-        ? keywords
-        : String(keywords || '').split(',');
+    let values: unknown[];
+    try {
+        values = Array.isArray(keywords)
+            ? Array.from(keywords)
+            : typeof keywords === 'string' ? keywords.split(',') : [];
+    } catch {
+        return [];
+    }
 
     return values
-        .map((item) => String(item || '').trim())
+        .flatMap((item) => typeof item === 'string' ? [item.trim()] : [])
         .filter(Boolean);
 }
 

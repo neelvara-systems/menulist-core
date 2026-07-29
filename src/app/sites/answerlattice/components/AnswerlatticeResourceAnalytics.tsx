@@ -1,16 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
-import { trackPlausibleEvent } from '@lib/website/plausible';
+import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
 import {
     cleanAnswerlatticeAnalyticsString,
     getAnswerlatticeAnalyticsPagePath,
     getAnswerlatticeAnalyticsUrl,
 } from './answerlatticeAnalyticsUtils';
-
-type AnswerlatticeAnalyticsWindow = Window & {
-    gtag?: (...args: unknown[]) => void;
-};
 
 const trackedReferrers = [
     { group: 'chatgpt', hosts: ['chatgpt.com', 'chat.openai.com'] },
@@ -89,20 +85,15 @@ export default function AnswerlatticeResourceAnalytics({
 
         trackPlausibleEvent('answerlattice_resource_page_viewed');
 
-        const analyticsWindow = window as AnswerlatticeAnalyticsWindow;
-        if (typeof analyticsWindow.gtag === 'function') {
-            analyticsWindow.gtag('event', 'answerlattice_resource_page_view', payload);
-        }
+        trackGoogleMarketingEvent('answerlattice_resource_page_view', payload);
 
         if (referrerMatch) {
             trackPlausibleEvent('answerlattice_ai_referral_detected');
 
-            if (typeof analyticsWindow.gtag === 'function') {
-                analyticsWindow.gtag('event', 'answerlattice_ai_referral_detected', {
-                    ...payload,
-                    referrer_group: referrerMatch.group,
-                });
-            }
+            trackGoogleMarketingEvent('answerlattice_ai_referral_detected', {
+                ...payload,
+                referrer_group: referrerMatch.group,
+            });
         }
     }, [cluster, pageType, slug]);
 

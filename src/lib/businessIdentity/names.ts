@@ -13,21 +13,35 @@ function cleanText(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
 }
 
+const readStoreField = (
+    store: StoreIdentityLike | null | undefined,
+    key: keyof StoreIdentityLike,
+): unknown => {
+    if (!store) return undefined;
+    try {
+        return Reflect.get(store, key);
+    } catch {
+        return undefined;
+    }
+};
+
 export function stripMainStoreSuffix(value: string): string {
     return value.replace(MAIN_STORE_SUFFIX, '').trim();
 }
 
 export function getBrandName(store?: StoreIdentityLike | null, fallback = 'Business'): string {
-    const tenantName = cleanText(store?.tenantName);
+    const tenantName = cleanText(readStoreField(store, 'tenantName'));
     if (tenantName) return tenantName;
 
-    const storeName = cleanText(store?.name) || cleanText(store?.storeName);
+    const storeName = cleanText(readStoreField(store, 'name')) || cleanText(readStoreField(store, 'storeName'));
     const normalizedStoreName = stripMainStoreSuffix(storeName);
-    return normalizedStoreName || fallback || 'Business';
+    return normalizedStoreName || fallback;
 }
 
 export function getStoreName(store?: StoreIdentityLike | null, fallback = 'Store'): string {
-    return cleanText(store?.name) || cleanText(store?.storeName) || fallback || 'Store';
+    return cleanText(readStoreField(store, 'name'))
+        || cleanText(readStoreField(store, 'storeName'))
+        || fallback;
 }
 
 export function getStoreContextName(store?: StoreIdentityLike | null, fallback = 'Business'): string {

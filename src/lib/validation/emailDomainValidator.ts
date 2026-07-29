@@ -9,6 +9,31 @@
 
 import { isDisposableEmail, getEmailDomain } from './disposableEmailDomains';
 
+const DOMAIN_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+const RESERVED_EMAIL_DOMAINS = [
+    'localhost',
+    'local',
+    'test',
+    'example.com',
+    'example.org',
+] as const;
+
+function isReservedEmailDomain(domain: string): boolean {
+    return RESERVED_EMAIL_DOMAINS.some((reservedDomain) => (
+        domain === reservedDomain || domain.endsWith(`.${reservedDomain}`)
+    ));
+}
+
+function hasCanonicalDomainSyntax(domain: string): boolean {
+    if (domain.length > 253) return false;
+    const labels = domain.split('.');
+    return labels.length >= 2 && labels.every((label) => (
+        label.length > 0
+        && label.length <= 63
+        && DOMAIN_LABEL_PATTERN.test(label)
+    ));
+}
+
 /**
  * Email validation result
  */
@@ -74,9 +99,8 @@ export function validateEmailDomain(email: string): EmailValidationResult {
         };
     }
     
-    // Check 2: Block localhost and local domains
-    const localDomains = ['localhost', 'local', 'test', 'example.com', 'example.org'];
-    if (localDomains.some(local => domain.includes(local))) {
+    // Check 2: Block exact reserved domains and their subdomains.
+    if (isReservedEmailDomain(domain)) {
         return {
             valid: false,
             reason: 'Local or test email domains are not allowed',
@@ -103,9 +127,9 @@ export function validateEmailDomain(email: string): EmailValidationResult {
         };
     }
     
-    // Check 5: Domain should not be too short (at least x.y format)
+    // Check 5: Enforce canonical DNS label and total-domain bounds.
     const domainParts = domain.split('.');
-    if (domainParts.length < 2 || domainParts.some(part => part.length === 0)) {
+    if (!hasCanonicalDomainSyntax(domain)) {
         return {
             valid: false,
             reason: 'Invalid email domain format',
@@ -115,7 +139,7 @@ export function validateEmailDomain(email: string): EmailValidationResult {
     
     // Check 6: TLD should be at least 2 characters
     const tld = domainParts[domainParts.length - 1];
-    if (tld.length < 2) {
+    if (tld.length < 2 || !/[a-z]/.test(tld)) {
         return {
             valid: false,
             reason: 'Invalid top-level domain',
@@ -141,8 +165,15 @@ export function validateEmailDomain(email: string): EmailValidationResult {
 export function validateEmail(email: string): EmailValidationResult {
     // Basic Zod-style format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (!email || !emailRegex.test(email)) {
+
+    const separatorIndex = typeof email === 'string' ? email.indexOf('@') : -1;
+    if (
+        !email
+        || email.length > 254
+        || separatorIndex <= 0
+        || separatorIndex > 64
+        || !emailRegex.test(email)
+    ) {
         return {
             valid: false,
             reason: 'Invalid email format'

@@ -19,20 +19,26 @@ not justify a second map, event pipeline, or analytics store.
 - optional source-current advisory summary;
 - two-read owner surface.
 
-### Bounded later code scope
+### Implemented evidence-breakdown hardening
 
-1. Extend the next summary schema with top-entity `ticketCount`,
+1. The existing summary schema additively projects top-entity `ticketCount`,
    `chatNegativeCount`, `escalationCount`, and
    `canonicalMissCount`/`lowConfidenceCount` totals already present in the
    normalized daily rows.
-2. Update the shared root/Functions contracts byte-for-byte.
-3. Update strict server and browser parsers, summary byte guards, and retained
-   legacy compatibility.
-4. Replace owner-visible `questions` wording with `support-evidence events`.
-5. Rename the aggregate UI label to `Support evidence load` while preserving
+2. The shared root/Functions component contracts remain byte-for-byte equal.
+3. Strict parsing admits either the complete component set or the retained
+   legacy shape; partial or contradictory component totals fail closed.
+4. Owner-visible mixed totals use `support-evidence events`.
+5. The aggregate UI label is `Support evidence load` and preserves
    the documented calculation.
-6. Add explicit contract tests proving that component counts do not exceed the
+6. Contract tests prove that component counts do not exceed the
    admitted evidence total.
+7. Narrow viewports use a stacked evidence list while desktop keeps the bounded
+   ranked table.
+8. Optional `entity` URL context is governance-ID validated and only reorders
+   the already-loaded top-ten list when that entity is present.
+9. Ranked rows and strictly admitted entity-specific advisory actions link to
+   the existing Knowledge Map with the selected entity.
 
 No workflow tree, release overlay, root-cause percentages, or classification
 write is admitted in this code scope.
@@ -80,6 +86,9 @@ Every completed provider response is written to the scoped AI-operation ledger b
 - strict projectors validate and normalize product, numeric scope, schema, contiguous complete windows, timestamps, counts, ordering, bounds, prompt metadata, and advisory status, then return only declared owner fields.
 - `useFrictionInsights.ts` uses `Promise.allSettled`; optional advisory failure does not hide a valid deterministic snapshot. Loaded state carries an exact scope key, and render-time projection rejects prior-scope state before the next effect runs.
 - `FrictionTab.tsx` renders explicit empty, mapping-needed, stale, and load-failure states.
+- `FrictionTab.tsx` renders the strict advisory `suggestedActions` array only
+  for entity IDs present in the admitted snapshot and routes those actions to
+  read-only map review.
 
 ## Security and Permissions
 
@@ -99,3 +108,6 @@ The bounded evidence-breakdown projection uses rows the 14-day aggregation
 already reads. It may enlarge one daily row and one compact summary within
 existing byte guards, but it adds no query, owner read, listener, provider
 call, or new document family.
+
+Entity-focused URL handoffs add no Firestore operation. The Knowledge Map pays
+its existing two point reads only after the owner explicitly opens it.

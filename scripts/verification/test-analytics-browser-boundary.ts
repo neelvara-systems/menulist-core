@@ -21,10 +21,28 @@ import {
 import { toCoarseAnalyticsLocationKey } from '../../src/lib/analytics/geo';
 import { filterAnalyticsUpdateData } from '../../src/lib/analytics/writePolicy';
 import { getSearchDedupStorageKey } from '../../src/lib/analytics/searchDedup';
+import { clearSession, getSessionId, refreshSession } from '../../src/lib/analytics/session';
+import { withAnalyticsSource } from '../../src/lib/analytics/sourceAttribution';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
+
+assert(
+  withAnalyticsSource('/menu?campaign=summer#offers', 'obp')
+    === '/menu?campaign=summer&entry_source=obp#offers',
+  'analytics source must be inserted before the URL fragment',
+);
+assert(
+  withAnalyticsSource('https://example.com/menu#offers', 'qr')
+    === 'https://example.com/menu?entry_source=qr#offers',
+  'absolute analytics source URLs must preserve fragments',
+);
+const malformedAnalyticsUrl = 'https://[invalid/menu#offers';
+assert(
+  withAnalyticsSource(malformedAnalyticsUrl, 'obp') === malformedAnalyticsUrl,
+  'unparseable analytics URLs must remain byte-identical after bounded diagnostics',
+);
 
 const now = new Date('2026-07-11T12:00:00.000Z');
 const validQueued = {
@@ -34,6 +52,7 @@ const validQueued = {
   dateString: '2026-07-11',
   storeTimeZone: 'UTC',
   businessDayEndTime: '03:00',
+  deliveryId: 'a'.repeat(32),
   updateData: {
     totalViews: 2,
     'viewsByDevice.mobile': 2,
@@ -61,6 +80,7 @@ const invalidEntries = [
   ['stale-date', { ...validQueued, dateString: '2026-07-09' }],
   ['bad-count', { ...validQueued, eventCount: '2' }],
   ['bad-retry', { ...validQueued, retryCount: -1 }],
+  ['bad-delivery', { ...validQueued, deliveryId: 'not-a-delivery-id' }],
   ['empty-policy', { ...validQueued, updateData: { unknownMetric: 1 } }],
 ];
 assert(
@@ -294,5 +314,57 @@ for (const acceptedKey of [
 ]) {
   assert(searchPolicy[acceptedKey] === 1, `${acceptedKey} must survive its semantic key policy`);
 }
+
+class AnalyticsSessionStorageMock {
+  private readonly values = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  removeItem(key: string): void {
+    this.values.delete(key);
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}
+
+const analyticsSessionStorage = new AnalyticsSessionStorageMock();
+Object.defineProperty(globalThis, 'window', { configurable: true, value: {} });
+Object.defineProperty(globalThis, 'sessionStorage', {
+  configurable: true,
+  value: analyticsSessionStorage,
+});
+const storedSessionId = '11111111-1111-4111-8111-111111111111';
+analyticsSessionStorage.setItem('menulist_session_id', storedSessionId);
+analyticsSessionStorage.setItem('menulist_session_timestamp', String(Date.now()));
+assert(getSessionId() === storedSessionId, 'canonical active analytics session must be reused');
+
+analyticsSessionStorage.setItem('menulist_session_id', 'attacker-controlled');
+analyticsSessionStorage.setItem('menulist_session_timestamp', String(Date.now()));
+assert(
+  getSessionId() !== 'attacker-controlled',
+  'malformed persisted analytics session ID must be replaced',
+);
+
+analyticsSessionStorage.setItem('menulist_session_id', storedSessionId);
+analyticsSessionStorage.setItem('menulist_session_timestamp', '1e3');
+assert(getSessionId() !== storedSessionId, 'coercible analytics timestamp must be rejected');
+
+analyticsSessionStorage.setItem('menulist_session_id', storedSessionId);
+analyticsSessionStorage.setItem('menulist_session_timestamp', String(Date.now() + 60_000));
+assert(getSessionId() !== storedSessionId, 'future analytics timestamp must be rejected');
+
+analyticsSessionStorage.setItem('menulist_session_id', 'attacker-controlled');
+analyticsSessionStorage.setItem('menulist_session_timestamp', String(Date.now()));
+refreshSession();
+assert(
+  analyticsSessionStorage.getItem('menulist_session_id') === null
+  && analyticsSessionStorage.getItem('menulist_session_timestamp') === null,
+  'refresh must evict a malformed analytics session envelope',
+);
+clearSession();
 
 process.stdout.write('Analytics browser boundary tests passed.\n');

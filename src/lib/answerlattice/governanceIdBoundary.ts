@@ -31,9 +31,16 @@ export function normalizeAnswerlatticeResolvedEntityId(value: unknown): string |
 }
 
 export function normalizeAnswerlatticeResolvedEntityIds(values: unknown, maxItems: number): string[] {
-    const raw = typeof values === 'string'
-        ? values.split(/[\n,]/)
-        : Array.isArray(values) ? values : [];
+    if (!Number.isSafeInteger(maxItems) || maxItems < 1) return [];
+
+    let raw: unknown[];
+    try {
+        raw = typeof values === 'string'
+            ? values.split(/[\n,]/)
+            : Array.isArray(values) ? Array.from(values) : [];
+    } catch {
+        return [];
+    }
 
     return Array.from(new Set(
         raw

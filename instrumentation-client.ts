@@ -27,10 +27,18 @@ if (isSentryMonitoringEnabled && monitoringDsn.client) {
                 blockAllMedia: true,
                 maskAllInputs: true,
                 maskAllText: true,
+                networkCaptureBodies: false,
+                networkDetailAllowUrls: [],
+                // Replay's callback covers SDK custom frames, including
+                // navigation/network/performance URLs. Masked DOM frames remain.
+                beforeAddRecordingEvent: () => null,
             }),
         ],
         beforeSend(event, hint) {
             return shouldSendMonitoringEvent(hint) ? sanitizeMonitoringEvent(event) : null;
+        },
+        beforeSendTransaction(event) {
+            return sanitizeMonitoringEvent(event);
         },
     });
 }

@@ -24,6 +24,7 @@
 - Priority is communicated with text and not color alone.
 - No swipe, snooze, dismiss, drag, or manual completion interaction is added.
 - Evidence detail remains in the owning responsive workflow; Daily Brief does not add a mobile-only drawer or extra read path.
+- Friction links preserve the selected entity and canonical-coverage links open the existing responsive Canonical Answers workflow.
 
 ## Not Supported
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { AICapacityError } from '@services/ai/capacityError';
+import { isAICapacityError } from '@services/ai/capacityError';
 import { Button, Flex, Typography } from 'antd';
 import React, { useCallback } from 'react';
 import { FaBolt } from 'react-icons/fa';
@@ -53,11 +53,7 @@ const AICapacityGate: React.FC<AICapacityGateProps> & {
  * Use in catch blocks to distinguish capacity errors from real errors.
  */
 AICapacityGate.isCapacityError = (error: unknown): boolean => {
-    if (error instanceof AICapacityError) return true;
-    if (error && typeof error === 'object' && 'name' in error) {
-        return (error as any).name === 'AICapacityError';
-    }
-    return false;
+    return isAICapacityError(error);
 };
 
 /**

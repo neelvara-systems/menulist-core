@@ -882,6 +882,10 @@ contains(
     'MENU_PROCESSING_JOB_START_REJECTED_CODE',
     'menu_processing_job_start_response_parse_failed',
     'menu_processing_job_start_response_invalid',
+    'normalizeMenuExtractionJobId(payload?.jobId)',
+    'normalizeMenuExtractionProjectId(projectId)',
+    'const normalizedJobId = normalizeMenuExtractionJobId(jobId);',
+    'const normalizedProjectId = normalizeMenuExtractionProjectId(projectId);',
   ],
   'Client helper creates jobs through protected API, handles reuse, and uses bounded diagnostics/status-only response handling',
 );
@@ -1910,8 +1914,8 @@ contains(
     'CREATE_MENU_RESPONSE_JSON_MAX_BYTES',
     'public_create_menu_response_parse_failed',
     'public_create_menu_response_invalid',
-    'isNonEmptyString(payload?.draftId)',
-    'router.push(`${createMenuPreviewPath}/${payload.draftId}`)',
+    'normalizePublicMenuDraftId(payload?.draftId)',
+    'router.push(`${createMenuPreviewPath}/${draftId}`)',
     "setError(t('CreateMenu.uploadFailed'))",
     "setError(t('CreateMenu.linkFailed'))",
   ],
@@ -2930,6 +2934,41 @@ contains(
     "content: t('discardChangesFailed')",
   ],
   'Mobile extraction review sheet uses bounded diagnostics and generic translated errors',
+);
+
+contains(
+  'src/lib/extraction/menuProcessingDismissal.ts',
+  [
+    'getTenantStoreStorageKey',
+    'getMenuProcessingDismissalStorageKey',
+    'MENU_PROCESSING_DISMISS_MAX_RECORDS',
+    'Number.isSafeInteger(dismissedAt)',
+    'dismissedAt > nowMs',
+    'expiresAt - dismissedAt > MENU_PROCESSING_DISMISS_MAX_TTL_MS',
+    'writeDismissals(storageKey, map)',
+  ],
+  'Menu-processing dismissal persistence is tenant/store scoped and bounded',
+);
+
+contains(
+  'src/components/templates/main-app/projects/index.tsx',
+  [
+    'menuProcessingDismissalScope',
+    'getDismissedMenuProcessingJobIds(menuProcessingDismissalScope)',
+    'markMenuProcessingJobAsDismissed(menuProcessingDismissalScope, activeProcessingJobId)',
+  ],
+  'Desktop menu-processing dismissal consumers use the active tenant/store scope',
+);
+
+contains(
+  'src/components/mobile/screens/MobileMenuScreen.tsx',
+  [
+    'menuProcessingDismissalScope',
+    'getDismissedMenuProcessingJobIds(menuProcessingDismissalScope)',
+    'tenantId={storeDetails?.tenantId}',
+    'storeId={storeDetails?.storeId}',
+  ],
+  'Mobile menu-processing dismissal consumers use the active tenant/store scope',
 );
 
 notContains(
@@ -4252,7 +4291,7 @@ contains(
   [
     "where('tId', '==', String(session.tId ?? ''))",
     "where('sId', '==', String(session.sId ?? ''))",
-    "where('projectId', '==', projectId)",
+    "where('projectId', '==', normalizedProjectId)",
     "where('uId', '==', session.uId)",
     "where('status', 'in', ['pending', 'processing', 'preview_ready'])",
   ],
@@ -4265,7 +4304,7 @@ ordered(
     'export async function checkExistingActiveJob',
     "where('tId', '==', String(session.tId ?? ''))",
     "where('sId', '==', String(session.sId ?? ''))",
-    "where('projectId', '==', projectId)",
+    "where('projectId', '==', normalizedProjectId)",
     "where('uId', '==', session.uId)",
   ],
   'Client active-job query scopes current tenant/store before project/user filters',

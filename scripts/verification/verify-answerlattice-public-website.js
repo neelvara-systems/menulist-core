@@ -110,6 +110,27 @@ const onboarding = read(`${WEBSITE_ROOT}/get-started/OnboardingForm.tsx`);
 const onboardingPage = read(`${WEBSITE_ROOT}/get-started/page.tsx`);
 const billingPlans = read('src/lib/billing/productBillingPlans.ts');
 const structuredData = read(`${WEBSITE_ROOT}/components/StructuredData.tsx`);
+const themeProvider = read(`${WEBSITE_ROOT}/components/AnswerlatticeThemeProvider.tsx`);
+const websiteImpl = read(`${WEBSITE_DOCS_ROOT}/answerlattice-website_impl.md`);
+const analytics = read(`${WEBSITE_ROOT}/components/AnswerlatticeAnalytics.tsx`);
+const resourceAnalytics = read(`${WEBSITE_ROOT}/components/AnswerlatticeResourceAnalytics.tsx`);
+const knowledgeMapWebsiteDoc = read('__docs__/answerlattice/knowledge-map/knowledge-map_website.md');
+
+[
+  'readStoredTheme()',
+  'window.localStorage.removeItem(ANSWERLATTICE_THEME_STORAGE_KEY)',
+  "logAnswerlatticeThemeStorageFailure('read', error)",
+  "logAnswerlatticeThemeStorageFailure('remove', error)",
+  "logAnswerlatticeThemeStorageFailure('write', error)",
+].forEach((token) => assertIncludes(themeProvider, token, 'Answerlattice theme storage boundary'));
+assertIncludes(websiteImpl, 'invalid values are evicted', 'Answerlattice theme persistence documentation');
+assertIncludes(analytics, 'setPublicWebsiteAnalyticsRuntimeConsent(choice);', 'Answerlattice immediate runtime analytics consent projection');
+assertIncludes(analytics, "trackGoogleMarketingEvent(eventName, {", 'Answerlattice consent-gated conversion event helper');
+assertIncludes(resourceAnalytics, "trackGoogleMarketingEvent('answerlattice_resource_page_view', payload);", 'Answerlattice consent-gated resource event helper');
+assertNotIncludes(analytics, "win.gtag('event'", 'Answerlattice direct conversion event bypass');
+assertNotIncludes(resourceAnalytics, "analyticsWindow.gtag('event'", 'Answerlattice direct resource event bypass');
+assertNotIncludes(onboarding, "win.gtag('event'", 'Answerlattice direct onboarding event bypass');
+assertIncludes(websiteImpl, 'Every custom event rechecks the current product-specific consent choice', 'Answerlattice consent revocation documentation');
 
 assertIncludes(pricing, 'getAnswerlatticePlans', 'public pricing plan source');
 assertIncludes(pricing, "plan.billingInterval === 'MONTH'", 'public pricing monthly packaging');
@@ -215,9 +236,18 @@ assertNotIncludes(supportLoopDemo, 'getFirestore', 'support-loop demo Firebase d
 const homepage = read(`${WEBSITE_ROOT}/page.tsx`);
 const productPage = read(`${WEBSITE_ROOT}/product/page.tsx`);
 const widgetProductPage = read(`${WEBSITE_ROOT}/product/page-aware-widget/page.tsx`);
+const supportControlProductPage = read(`${WEBSITE_ROOT}/product/support-control/page.tsx`);
+const knowledgeGovernanceProductPage = read(`${WEBSITE_ROOT}/product/knowledge-governance/page.tsx`);
+const productFeatures = read(`${WEBSITE_ROOT}/productFeatures.ts`);
+const updatesPage = read(`${WEBSITE_ROOT}/updates/page.tsx`);
 const websiteStyles = read(`${WEBSITE_ROOT}/styles.css`);
 assertIncludes(homepage, 'Answer what is known. Catch what is missing. Improve it once.', 'homepage support-loop focus');
 assertIncludes(homepage, 'Why this answer is trusted', 'homepage trusted-answer proof');
+assertIncludes(homepage, '<FounderReviewSection basePath={basePath} />', 'homepage active owner-decision section');
+assertIncludes(homepage, 'id="owner-decision-system"', 'homepage owner-decision anchor');
+assertIncludes(homepage, 'Open once. Know what deserves your decision.', 'homepage owner-decision promise');
+assertIncludes(homepage, 'Article topic maps', 'homepage public article-navigation capability');
+assertIncludes(homepage, 'They do not publish answers, change releases, or create a second task system.', 'homepage owner-decision mutation boundary');
 assertIncludes(
     homepage,
     'Deferred homepage sections retained for one-line reactivation.',
@@ -251,6 +281,32 @@ assertNotIncludes(
     'homepage active product-overview mount',
 );
 assertNotIncludes(productPage, 'Everything your SaaS needs', 'product hero broad inventory headline');
+for (const capability of [
+  'Start with a daily support brief',
+  'Inspect the Knowledge Map',
+  'Prioritize friction with evidence',
+  'Review release impact',
+  'Run saved Answer Tests',
+]) {
+  assertIncludes(productPage, capability, `product owner-decision capability ${capability}`);
+}
+assertIncludes(productPage, 'Provider-backed fallback cannot certify critical proof.', 'product critical-proof boundary');
+assertIncludes(supportControlProductPage, 'clear quiet state when complete evidence needs no action', 'Support Control qualified quiet state');
+assertIncludes(supportControlProductPage, 'sanitized published headings', 'Support Control public topic-map boundary');
+assertIncludes(knowledgeGovernanceProductPage, 'One product model, several owner decisions.', 'Knowledge Governance connected model');
+assertIncludes(knowledgeGovernanceProductPage, 'Knowledge Map is a governed decision view, not a raw graph or diagram editor.', 'Knowledge Map raw-graph boundary');
+assertIncludes(knowledgeGovernanceProductPage, 'No map, metric, test, or impact preview changes support truth automatically.', 'Knowledge Governance mutation boundary');
+assertIncludes(productFeatures, 'Publish readable article topic maps', 'Knowledge Base topic-map capability');
+assertIncludes(productFeatures, 'Reject stale previews', 'Changelog stale-impact boundary');
+assertIncludes(faq, 'a clear quiet state when complete evidence needs no action', 'FAQ qualified Daily Brief truth');
+assertIncludes(faq, 'does not expose a raw graph or become a diagram editor', 'FAQ Knowledge Map boundary');
+assertIncludes(faq, 'Private ontology, source, canonical-answer, ticket, and governance records do not enter the public payload.', 'FAQ public topic-map boundary');
+assertNotIncludes(faq, 'Knowledge Intake review counts', 'stale Daily Brief intake-count claim');
+assertIncludes(updatesPage, 'Owner decisions now keep their product context', 'public owner-decision update');
+assertIncludes(updatesPage, 'validated product-area context into governed answer review', 'public Knowledge Map handoff boundary');
+assertNotIncludes(updatesPage, 'exact validated answer context', 'unsupported public answer-specific handoff');
+assertNotIncludes(updatesPage, 'Daily Founder Brief', 'retired public Daily Brief label');
+assertIncludes(knowledgeMapWebsiteDoc, 'validated product-area context into governed answer review', 'Knowledge Map website handoff contract');
 assertIncludes(widgetProductPage, 'Opt-in guided resolution', 'widget bounded guided-resolution copy');
 assertIncludes(widgetProductPage, 'AnswerLattice does not click controls or change product data.', 'widget guided-resolution action boundary');
 assertIncludes(websiteStyles, '.al-page-flow > section.al-page-hero', 'mobile structured-data hero spacing boundary');

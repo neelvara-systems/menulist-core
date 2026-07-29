@@ -5,7 +5,8 @@ import { normalizeOptionalMenuPrice } from "@lib/validation/pricing.schema";
 
 const SCREEN_TEXT_MAX_DEFAULT = 120;
 const OWNER_CAPTION_MAX = 48;
-const SCREEN_MENU_PROJECTION_ITEM_LIMIT = 200;
+export const SCREEN_MENU_PROJECTION_ITEM_LIMIT = 200;
+export const SCREEN_MENU_RENDER_ITEM_LIMIT = 500;
 
 const LOCALIZED_TEXT_KEYS = [
     "en",
@@ -77,11 +78,36 @@ export function parseScreenPrice(value: unknown): number | string | undefined {
     return text;
 }
 
-export function formatScreenPrice(price?: number | string, currencySymbol = "₹"): string {
+const SCREEN_CURRENCY_REGION: Record<string, string> = {
+    AED: "AE",
+    AUD: "AU",
+    CAD: "CA",
+    EUR: "IE",
+    GBP: "GB",
+    INR: "IN",
+    NZD: "NZ",
+    SGD: "SG",
+    USD: "US",
+};
+
+export function resolveScreenNumberLocale(currencyCode = "INR", language?: unknown): string {
+    const normalizedCurrency = String(currencyCode || "INR").trim().toUpperCase();
+    const normalizedLanguage = typeof language === "string"
+        ? language.trim().toLowerCase().split("-")[0]
+        : "";
+    const safeLanguage = /^[a-z]{2,3}$/.test(normalizedLanguage) ? normalizedLanguage : "en";
+    return `${safeLanguage}-${SCREEN_CURRENCY_REGION[normalizedCurrency] || "US"}`;
+}
+
+export function formatScreenPrice(
+    price?: number | string,
+    currencySymbol = "₹",
+    locale = "en-IN",
+): string {
     const normalized = parseScreenPrice(price);
     if (normalized === undefined) return "Ask";
     if (typeof normalized === "number") {
-        return `${currencySymbol || ""}${normalized.toLocaleString("en-IN")}`;
+        return `${currencySymbol || ""}${normalized.toLocaleString(locale)}`;
     }
     return formatMenuPrice(normalized, currencySymbol);
 }
@@ -222,7 +248,10 @@ export function extractScreenMenuItemsFromProject(
     options: { limit?: number } = {},
 ): MenuItemForSlide[] {
     const extractedItems: MenuItemForSlide[] = [];
-    const itemLimit = Math.max(1, Math.min(options.limit || SCREEN_MENU_PROJECTION_ITEM_LIMIT, SCREEN_MENU_PROJECTION_ITEM_LIMIT));
+    const itemLimit = Math.max(
+        1,
+        Math.min(options.limit || SCREEN_MENU_RENDER_ITEM_LIMIT, SCREEN_MENU_RENDER_ITEM_LIMIT),
+    );
 
     for (const file of (projectData?.files || [])) {
         const categories = Array.isArray(file?.extractedData?.data?.categories)

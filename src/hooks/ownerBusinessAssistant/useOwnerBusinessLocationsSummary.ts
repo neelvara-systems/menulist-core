@@ -1,10 +1,11 @@
 import useSWR from 'swr';
 import { FEATURE_FLAGS } from '@config/features';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
-import { getCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
+import { getCachedData, removeCachedData, setCachedData, shouldRevalidate } from '@lib/cache/swrLocalStorageProvider';
 import { OWNER_BUSINESS_ASSISTANT_CACHE, OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import {
   OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY,
+  projectOwnerBusinessAssistantLocationsResponse,
   readOwnerBusinessAssistantLocationsResponse,
   type OwnerBusinessAssistantLocationsResponse,
 } from '@lib/ownerBusinessAssistant/clientResponses';
@@ -31,7 +32,7 @@ export function useOwnerBusinessLocationsSummary(
   const session = useClientAuthSession();
   const clientScope = useMemo(
     () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
-    [session?.sId, session?.tId, storeScopeKey],
+    [session?.sId, session?.tId, session?.uId, session?.user?.id, storeScopeKey],
   );
   const requestedTenantScope = scopeKey === undefined || scopeKey === null || scopeKey === ''
     ? clientScope?.tenantId
@@ -43,16 +44,18 @@ export function useOwnerBusinessLocationsSummary(
   const cacheKey = clientScope && scopeMatches
     ? `${OWNER_BUSINESS_ASSISTANT_CACHE.browserLocationsPrefix}:${clientScope.cacheScope}`
     : null;
-  const cached = typeof window !== 'undefined' && cacheKey
-    ? getCachedData<OwnerBusinessAssistantLocationsResponse>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
+  const cachedValue = typeof window !== 'undefined' && cacheKey
+    ? getCachedData<unknown>(cacheKey, OWNER_BUSINESS_ASSISTANT_CACHE.browserReadModelTtlMs)
     : undefined;
+  const cached = projectOwnerBusinessAssistantLocationsResponse(cachedValue);
+  if (cacheKey && cachedValue !== undefined && !cached) removeCachedData(cacheKey);
   const swr = useSWR<OwnerBusinessAssistantLocationsResponse>(
     FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH && enabled && clientScope && scopeMatches
       ? [url, clientScope.tenantId, clientScope.storeId] as const
       : null,
     fetcher,
     {
-      fallbackData: cached,
+      fallbackData: cached || undefined,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       revalidateIfStale: typeof window === 'undefined' || !cacheKey ? false : shouldRevalidate(cacheKey),

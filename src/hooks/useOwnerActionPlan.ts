@@ -1,6 +1,10 @@
-import { getOwnerDashboardSettled } from '@database/ownerDashboard';
+import {
+    getOwnerDashboardSettled,
+    normalizeOwnerDashboardSettledCacheValue,
+} from '@database/ownerDashboard';
 import {
     getCachedData,
+    removeCachedData,
     setCachedData,
     shouldRevalidate,
 } from '@lib/cache/swrLocalStorageProvider';
@@ -42,10 +46,15 @@ async function cachedSettledFetcher(
     cacheKey: string,
     fetcher: () => Promise<OwnerDashboardData | null>,
     schedulerCacheKey: string,
+    projectId: string,
 ): Promise<OwnerDashboardData | null> {
     if (!shouldRevalidate(cacheKey, schedulerCacheKey)) {
-        const cached = getCachedData<OwnerDashboardData>(cacheKey, undefined, schedulerCacheKey);
-        if (cached !== undefined) return cached;
+        const cached = getCachedData<unknown>(cacheKey, undefined, schedulerCacheKey);
+        if (cached !== undefined) {
+            const normalized = normalizeOwnerDashboardSettledCacheValue(cached, projectId);
+            if (normalized) return normalized;
+            removeCachedData(cacheKey);
+        }
     }
 
     const data = await fetcher();
@@ -71,8 +80,15 @@ export function useOwnerActionPlan(projectId?: string | null): UseOwnerActionPla
     );
     const cacheKey = canFetch ? createCacheKey(tId!, sId!, projectId!) : null;
     const fallbackData = useMemo(
-        () => cacheKey ? getCachedData<OwnerDashboardData>(cacheKey, undefined, schedulerCacheKey) : undefined,
-        [cacheKey, schedulerCacheKey],
+        () => {
+            if (!cacheKey || !projectId) return undefined;
+            const cached = getCachedData<unknown>(cacheKey, undefined, schedulerCacheKey);
+            if (cached === undefined) return undefined;
+            const normalized = normalizeOwnerDashboardSettledCacheValue(cached, projectId);
+            if (!normalized) removeCachedData(cacheKey);
+            return normalized || undefined;
+        },
+        [cacheKey, projectId, schedulerCacheKey],
     );
 
     const { data, isLoading } = useSWR(
@@ -81,6 +97,7 @@ export function useOwnerActionPlan(projectId?: string | null): UseOwnerActionPla
             cacheKey!,
             () => getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime),
             schedulerCacheKey,
+            projectId!,
         ),
         {
             ...SWR_CONFIG,

@@ -7,13 +7,21 @@ export const normalizePersistedOnboardingScopeId = (value: unknown): number | nu
     return Number.isSafeInteger(numericId) && String(numericId) === raw ? numericId : null;
 };
 
+const getPersistedStoreId = (store: object): unknown => {
+    try {
+        return Reflect.get(store, "storeId");
+    } catch {
+        return undefined;
+    }
+};
+
 export const removeCompensatedStoreFromMappings = (stores: unknown, storeId: number) => (
     Array.isArray(stores)
         ? stores.filter((store) => (
             !store
             || typeof store !== "object"
             || Array.isArray(store)
-            || normalizePersistedOnboardingScopeId((store as Record<string, unknown>).storeId) !== storeId
+            || normalizePersistedOnboardingScopeId(getPersistedStoreId(store)) !== storeId
         ))
         : []
 );

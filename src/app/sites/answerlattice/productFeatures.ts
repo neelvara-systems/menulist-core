@@ -214,7 +214,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         heroBullets: [
             'Import starter knowledge and files',
             'Attach articles to product pages',
-            'Feed Help Center, widget, and review',
+            'Publish readable article topic maps',
         ],
         proofTitle: 'Manage support knowledge without building a docs empire.',
         proofDescription:
@@ -245,6 +245,11 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                 description:
                     'Use the same reviewed article set across hosted help, widget answers, related content, and Help Center surfaces.',
             },
+            {
+                title: 'Let readers scan by topic',
+                description:
+                    'Published articles can show a topic map built from sanitized headings so readers can jump to the section they need without exposing private governance data.',
+            },
         ],
         workflowTitle: 'From rough notes to trusted support source.',
         workflowDescription:
@@ -253,7 +258,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
             { title: 'Bring content in', description: 'Upload files or add starter support content from existing product material.' },
             { title: 'Review generated drafts', description: 'Check article drafts and related FAQs before publishing.' },
             { title: 'Attach product context', description: 'Map articles to pages, workflows, entities, and tags.' },
-            { title: 'Serve where needed', description: 'Use approved content in hosted help, widget answers, and related suggestions.' },
+            { title: 'Serve where needed', description: 'Use approved content in hosted help, article topic maps, widget answers, and related suggestions.' },
         ],
         connectedTitle: 'Articles should feed the full support loop.',
         connectedDescription:
@@ -383,7 +388,7 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         heroBullets: [
             'Publish release notes for customers',
             'Map changes to product surfaces',
-            'Review affected support answers after releases',
+            'Review linked answers and tests before activation',
         ],
         proofTitle: 'Explain what changed and what support must review.',
         proofDescription:
@@ -405,9 +410,14 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                     'Point users to updated docs and help owners find support content that needs follow-up.',
             },
             {
-                title: 'Trigger stale-answer review',
+                title: 'Preview direct answer impact',
                 description:
-                    'A release can expose stale answers, deprecated flows, or scope conflicts before users receive wrong help.',
+                    'Before a versioned release is activated, review directly linked approved answers and current linked Answer Tests.',
+            },
+            {
+                title: 'Reject stale previews',
+                description:
+                    'If the answer, version, or governance inputs change during review, AnswerLattice requires a fresh owner confirmation.',
             },
             {
                 title: 'Show latest context in support',
@@ -419,10 +429,10 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
         workflowDescription:
             'AnswerLattice treats product changes as support events. When the product moves, support content gets a review path.',
         workflowSteps: [
-            { title: 'Write the release note', description: 'Describe what changed in customer-readable language.' },
-            { title: 'Assign affected surfaces', description: 'Map the update to pages, workflows, entities, tags, and related articles.' },
-            { title: 'Review stale support', description: 'Check approved answers and FAQs that may now be outdated.' },
-            { title: 'Publish support context', description: 'Expose the update through hosted help and in-app support where useful.' },
+            { title: 'Draft the release note', description: 'Describe what changed in customer-readable language while the versioned note remains private.' },
+            { title: 'Assign changed product areas', description: 'Map the update to product entities, pages, workflows, tags, and related articles.' },
+            { title: 'Review direct impact', description: 'Inspect linked approved answers and current linked Answer Tests without changing either one.' },
+            { title: 'Confirm and activate', description: 'The owner confirms the current preview before the governed release activates and the linked note publishes.' },
         ],
         connectedTitle: 'Every product change can become support context.',
         connectedDescription:
@@ -448,6 +458,11 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
                 title: 'Does AnswerLattice auto-change answers after a release?',
                 description:
                     'No. Release impact can create review work, but official answers remain human-approved.',
+            },
+            {
+                title: 'Can an old impact preview activate a release?',
+                description:
+                    'No. If the directly linked answer or governance inputs change, the preview must be refreshed and confirmed again.',
             },
         ],
     },

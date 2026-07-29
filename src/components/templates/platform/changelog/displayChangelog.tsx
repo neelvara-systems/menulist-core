@@ -9,6 +9,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { useChangelogCache } from '@hook/useChangelogCache';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { parseChangelogLastViewedAt } from '@lib/changelog/lastViewed';
 import { getTextFromTiptapJson } from '@lib/tiptap';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
@@ -51,6 +52,21 @@ const itemVariants: Variants = {
 const { useToken } = theme;
 
 const LAST_VIEWED_KEY = 'changelog_last_viewed_at';
+type ChangelogLastViewedStorageOperation = 'read' | 'remove' | 'write';
+
+function logChangelogLastViewedStorageFailure(
+    operation: ChangelogLastViewedStorageOperation,
+    error: unknown,
+) {
+    const failureCode = operation === 'read'
+        ? 'platform_changelog_last_viewed_read_failed'
+        : operation === 'remove'
+            ? 'platform_changelog_last_viewed_remove_failed'
+            : 'platform_changelog_last_viewed_write_failed';
+    logRuntimeFailure(failureCode, error, {
+        surface: 'platform_changelog_display',
+    });
+}
 
 function isNewEntry(entry: AnswerlatticeReadableChangelogEntry, lastViewedAt: number): boolean {
     if (!lastViewedAt) return false;
@@ -81,6 +97,7 @@ function DisplayChangelog({
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
     const [filtersOpen, setFiltersOpen] = useState(false);
+    const [hasLoadedInitialPage, setHasLoadedInitialPage] = useState(false);
     const dispatch = useAppDispatch();
     const { token } = useToken();
     const screens = Grid.useBreakpoint();
@@ -91,25 +108,33 @@ function DisplayChangelog({
     useEffect(() => {
         try {
             const stored = localStorage.getItem(LAST_VIEWED_KEY);
-            lastViewedRef.current = stored ? parseInt(stored, 10) : 0;
+            const lastViewedAt = parseChangelogLastViewedAt(stored);
+            lastViewedRef.current = lastViewedAt || 0;
+            if (stored && lastViewedAt === null) {
+                try {
+                    localStorage.removeItem(LAST_VIEWED_KEY);
+                } catch (error) {
+                    logChangelogLastViewedStorageFailure('remove', error);
+                }
+            }
         } catch (error) {
-            logRuntimeFailure('platform_changelog_last_viewed_read_failed', error, {
-                surface: 'platform_changelog_display',
-            });
+            logChangelogLastViewedStorageFailure('read', error);
         }
+    }, []);
 
-        // Update lastViewed after 2s delay so user sees "New" badges first
+    // Update only after initial changelog truth is actually available, then
+    // delay so the user can see the New badges before the next visit.
+    useEffect(() => {
+        if (!hasLoadedInitialPage) return;
         const timer = setTimeout(() => {
             try {
                 localStorage.setItem(LAST_VIEWED_KEY, Date.now().toString());
             } catch (error) {
-                logRuntimeFailure('platform_changelog_last_viewed_write_failed', error, {
-                    surface: 'platform_changelog_display',
-                });
+                logChangelogLastViewedStorageFailure('write', error);
             }
         }, 2000);
         return () => clearTimeout(timer);
-    }, []);
+    }, [hasLoadedInitialPage]);
 
     const handleTagChange = (tag: string, checked: boolean) => {
         const nextSelectedTags = checked
@@ -156,6 +181,7 @@ function DisplayChangelog({
                 setChangelogPage(page as ChangelogPage);
                 setEntries(page.entries || []);
                 setHasMore(page.nextPageId !== null);
+                setHasLoadedInitialPage(true);
             } else {
                 setEntries([]);
                 setHasMore(false);

@@ -13,7 +13,6 @@ export type StorePublicTruthPostCommitDependencies = {
 export async function runStorePublicTruthPostCommitEffects(params: {
     chunkSize: number;
     deps: StorePublicTruthPostCommitDependencies;
-    includeScreenDataTag?: boolean;
     storeIds: string[];
     tenantId: string;
 }): Promise<StorePublicTruthPostCommitResult> {
@@ -41,11 +40,9 @@ export async function runStorePublicTruthPostCommitEffects(params: {
         ])));
     }
 
-    const globalEffects = [runEffect(() => params.deps.revalidate('client-stores'))];
-    if (params.includeScreenDataTag !== false) {
-        globalEffects.push(runEffect(() => params.deps.revalidate('screen-data')));
-    }
-    recordResults(await Promise.allSettled(globalEffects));
+    recordResults(await Promise.allSettled([
+        runEffect(() => params.deps.revalidate('client-stores')),
+    ]));
 
     return {
         effectsPending: failedEffectCount > 0,

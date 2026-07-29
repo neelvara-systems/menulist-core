@@ -11,7 +11,7 @@ import { getBoundedRuntimeStringContext } from '@lib/runtime/runtimeDiagnostics'
 import { resolveOwnerBusinessAssistantClientScope } from '@lib/ownerBusinessAssistant/clientScope';
 import { useMemo } from 'react';
 
-const fetcher = async ([url]: readonly [string, string]): Promise<OwnerBusinessAssistantThreadResponse> => {
+const fetcher = async ([url]: readonly [string, string, string]): Promise<OwnerBusinessAssistantThreadResponse> => {
   const response = await fetch(url, OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY);
   const payload = await readOwnerBusinessAssistantThreadResponse(response, {
     ...getBoundedRuntimeStringContext('url', url),
@@ -24,7 +24,7 @@ export function useOwnerBusinessAssistantThread(threadId?: string, storeScopeKey
   const session = useClientAuthSession();
   const clientScope = useMemo(
     () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
-    [session?.sId, session?.tId, storeScopeKey],
+    [session?.sId, session?.tId, session?.uId, session?.user?.id, storeScopeKey],
   );
   const enabled = FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_THREADS && Boolean(threadId) && Boolean(clientScope);
   const params = new URLSearchParams();
@@ -33,7 +33,7 @@ export function useOwnerBusinessAssistantThread(threadId?: string, storeScopeKey
     ? `${OWNER_BUSINESS_ASSISTANT_ENDPOINTS.thread(threadId)}${params.toString() ? `?${params.toString()}` : ''}`
     : null;
   const { data, error, isLoading, mutate } = useSWR<OwnerBusinessAssistantThreadResponse>(
-    enabled && url && clientScope ? [url, clientScope.cacheScope] as const : null,
+    enabled && url && clientScope ? [url, clientScope.cacheScope, clientScope.actorId] as const : null,
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 60 * 1000 },
   );

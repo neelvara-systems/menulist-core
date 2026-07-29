@@ -22,6 +22,7 @@ import { normalizeMenuListPublicEntityIdentityAliases } from "@lib/publicTruth/e
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
+import { getPrivateScreenControlDocId } from "@lib/screen/privateScreenControl";
 import {
     isCurrentScreenSeenPublicScope,
     resolveUniqueLegacyScreenSeenStoreId,
@@ -32,6 +33,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 const TOKEN_RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
+const TOKEN_RATE_LIMIT_ATTEMPTS = 4;
 const SCREEN_TOKEN_PATTERN = /^[a-z0-9_-]{6,24}$/i;
 const STORE_ID_PATTERN = /^\d+$/;
 const SCREEN_SEEN_MAX_BODY_BYTES = 1024;
@@ -65,6 +67,7 @@ const getUtcDateKey = (value: unknown): string | null => {
 type ScreenSeenCommitResult = 'already_seen' | 'ineligible' | 'recorded';
 
 const commitCurrentScreenSeen = async (params: {
+    controlRef: FirebaseFirestore.DocumentReference;
     screenRef: FirebaseFirestore.DocumentReference;
     storeId: string;
     token: string;
@@ -74,21 +77,32 @@ const commitCurrentScreenSeen = async (params: {
     const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
 
     return firestoreAdmin.runTransaction(async (transaction) => {
-        const [screenSnapshot, storeSnapshot] = await Promise.all([
+        const [controlSnapshot, screenSnapshot, storeSnapshot] = await Promise.all([
+            transaction.get(params.controlRef),
             transaction.get(params.screenRef),
             transaction.get(storeRef),
         ]);
+        const control = controlSnapshot.data();
         const screen = screenSnapshot.data()?.screen;
         const storeData = storeSnapshot.data();
         const tenantScope = normalizeMenuListPublicEntityIdentityAliases([
             storeData?.tenantId,
             storeData?.tId,
         ]);
+        const privateTokenMatches = controlSnapshot.exists
+            && control?.screenToken === params.token
+            && String(control?.storeId || "") === storeScope.documentId;
+        const legacyTokenMatches = !controlSnapshot.exists
+            && screen?.screenToken === params.token;
         if (
             !screenSnapshot.exists
-            || screen?.screenToken !== params.token
+            || (!privateTokenMatches && !legacyTokenMatches)
             || screen?.enabled !== true
             || !tenantScope
+            || (
+                controlSnapshot.exists
+                && String(control?.tenantId || "") !== tenantScope.documentId
+            )
         ) {
             return 'ineligible';
         }
@@ -183,7 +197,7 @@ export async function POST(request: NextRequest) {
             : 'legacy';
         const tokenRateLimit = await checkRateLimit({
             key: `screen-seen:token:${storeHashSegment}:${screenTokenHash}`,
-            limit: 1,
+            limit: TOKEN_RATE_LIMIT_ATTEMPTS,
             window: TOKEN_RATE_LIMIT_WINDOW_SECONDS,
         });
         if (!tokenRateLimit.allowed) {
@@ -191,28 +205,50 @@ export async function POST(request: NextRequest) {
         }
 
         const summaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY);
+        let controlRef: FirebaseFirestore.DocumentReference;
         let docRef: FirebaseFirestore.DocumentReference;
         let targetStoreId: string;
 
         if (normalizedStoreId) {
+            controlRef = summaryRef.doc(getPrivateScreenControlDocId(normalizedStoreId));
             docRef = summaryRef.doc(`campaigns_${normalizedStoreId}`);
             targetStoreId = normalizedStoreId;
         } else {
-            // Fallback: query by token (backwards compatibility)
-            const snapshot = await summaryRef.where('screen.screenToken', '==', token).limit(2).get();
-            const legacyStoreId = resolveUniqueLegacyScreenSeenStoreId(
-                snapshot.docs.map((candidate) => candidate.id),
-            );
-            if (!legacyStoreId) {
+            const privateSnapshot = await summaryRef.where('screenToken', '==', token).limit(2).get();
+            if (privateSnapshot.size === 1) {
+                const match = privateSnapshot.docs[0].id.match(/^screenControl_(\d{1,20})$/);
+                const privateStoreId = match?.[1] || "";
+                if (
+                    !privateStoreId
+                    || String(privateSnapshot.docs[0].data()?.storeId || "") !== privateStoreId
+                ) {
+                    return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
+                }
+                controlRef = privateSnapshot.docs[0].ref;
+                docRef = summaryRef.doc(`campaigns_${privateStoreId}`);
+                targetStoreId = privateStoreId;
+            } else if (privateSnapshot.empty) {
+                // Compatibility window for token-bearing summaries not yet migrated.
+                const legacySnapshot = await summaryRef
+                    .where('screen.screenToken', '==', token)
+                    .limit(2)
+                    .get();
+                const legacyStoreId = resolveUniqueLegacyScreenSeenStoreId(
+                    legacySnapshot.docs.map((candidate) => candidate.id),
+                );
+                if (!legacyStoreId) {
+                    return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
+                }
+                controlRef = summaryRef.doc(getPrivateScreenControlDocId(legacyStoreId));
+                docRef = legacySnapshot.docs[0].ref;
+                targetStoreId = legacyStoreId;
+            } else {
                 return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
             }
-
-            const docSnap = snapshot.docs[0];
-            docRef = docSnap.ref;
-            targetStoreId = legacyStoreId;
         }
 
         const commitResult = await commitCurrentScreenSeen({
+            controlRef,
             screenRef: docRef,
             storeId: targetStoreId,
             token,

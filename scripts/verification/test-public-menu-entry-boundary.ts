@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { resolvePublicMenuEntryProjectSlug } from '@lib/public-menu-entry/claimProjectSlug';
+import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
 
 const extracted = normalizeExtractedMenuPriceTruth({
@@ -26,5 +27,11 @@ assert.equal(resolvePublicMenuEntryProjectSlug({
 assert.equal(resolvePublicMenuEntryProjectSlug({
     existing: { previousSlugs: ['feedback-menu'] },
 }, 'Feedback', '1-new-1'), 'feedback-menu-1-new-1');
+
+const draftId = '123e4567-e89b-42d3-a456-426614174000';
+assert.equal(normalizePublicMenuDraftId(draftId), draftId);
+assert.equal(normalizePublicMenuDraftId(` ${draftId}`), null);
+assert.equal(normalizePublicMenuDraftId(`${draftId}/child`), null);
+assert.equal(normalizePublicMenuDraftId('not-a-draft'), null);
 
 console.log('Public Menu Entry boundary tests passed.');

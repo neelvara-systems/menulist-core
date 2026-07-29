@@ -5,6 +5,7 @@ export const ANSWERLATTICE_TRANSLATION_SOURCE_LOCALE = 'en-US' as const;
 export const ANSWERLATTICE_TRANSLATION_SOURCE_HASH_PATTERN = /^[a-f0-9]{64}$/;
 export const ANSWERLATTICE_TRANSLATED_TITLE_MAX_CHARS = 300;
 export const ANSWERLATTICE_TRANSLATED_CONTENT_MAX_CHARS = 12_000;
+const ANSWERLATTICE_TRANSLATION_SOURCE_MAX_NODES = 10_000;
 
 const TranslationProviderOutputSchema = z.object({
     translatedTitle: z.string().trim().min(1).max(ANSWERLATTICE_TRANSLATED_TITLE_MAX_CHARS),
@@ -32,37 +33,73 @@ export const getAnswerlatticeTranslationDraftWriteBlockReason = (input: {
     return input.existingTranslation ? 'translation_exists' : null;
 };
 
+const readNodeValue = (node: object, key: PropertyKey): unknown => {
+    try {
+        return Reflect.get(node, key);
+    } catch {
+        return undefined;
+    }
+};
+
 export const extractAnswerlatticeArticlePlainText = (node: unknown): string => {
-    if (!node) return '';
-    if (typeof node === 'string') return node;
-    if (typeof node !== 'object' || Array.isArray(node)) return '';
-
-    const record = node as Record<string, unknown>;
-    if (record.type === 'text') {
-        return typeof record.text === 'string' ? record.text : '';
-    }
-
-    if (!Array.isArray(record.content)) return '';
+    const seen = new WeakSet<object>();
+    let visitedNodes = 0;
     let text = '';
-    for (const child of record.content) {
-        text += extractAnswerlatticeArticlePlainText(child);
-        if (
-            child
-            && typeof child === 'object'
-            && !Array.isArray(child)
-            && ['paragraph', 'heading', 'bulletList', 'orderedList'].includes(String((child as Record<string, unknown>).type || ''))
-        ) {
-            text += '\n\n';
+
+    const append = (value: string) => {
+        if (!value || text.length >= ANSWERLATTICE_TRANSLATED_CONTENT_MAX_CHARS) return;
+        text += value.slice(0, ANSWERLATTICE_TRANSLATED_CONTENT_MAX_CHARS - text.length);
+    };
+    const visit = (value: unknown): void => {
+        if (!value || text.length >= ANSWERLATTICE_TRANSLATED_CONTENT_MAX_CHARS) return;
+        if (typeof value === 'string') {
+            append(value);
+            return;
         }
-    }
+        if (typeof value !== 'object' || Array.isArray(value) || seen.has(value)) return;
+        visitedNodes += 1;
+        if (visitedNodes > ANSWERLATTICE_TRANSLATION_SOURCE_MAX_NODES) return;
+        seen.add(value);
+
+        const type = readNodeValue(value, 'type');
+        if (type === 'text') {
+            const nodeText = readNodeValue(value, 'text');
+            if (typeof nodeText === 'string') append(nodeText);
+            return;
+        }
+
+        const content = readNodeValue(value, 'content');
+        if (!Array.isArray(content)) return;
+        try {
+            for (const child of content) {
+                visit(child);
+                const childType = child && typeof child === 'object' && !Array.isArray(child)
+                    ? readNodeValue(child, 'type')
+                    : undefined;
+                if (
+                    typeof childType === 'string'
+                    && ['paragraph', 'heading', 'bulletList', 'orderedList']
+                        .includes(childType)
+                ) {
+                    append('\n\n');
+                }
+                if (text.length >= ANSWERLATTICE_TRANSLATED_CONTENT_MAX_CHARS) break;
+            }
+        } catch {
+            return;
+        }
+    };
+
+    visit(node);
     return text;
 };
 
 export const getAnswerlatticeArticleTranslationSource = (
     article: Record<string, unknown>,
 ): { title: string; plainContent: string; sourceHash: string } => {
-    const title = typeof article.title === 'string' ? article.title.trim() : '';
-    const plainContent = extractAnswerlatticeArticlePlainText(article.content)
+    const titleValue = readNodeValue(article, 'title');
+    const title = typeof titleValue === 'string' ? titleValue.trim() : '';
+    const plainContent = extractAnswerlatticeArticlePlainText(readNodeValue(article, 'content'))
         .replace(/\s+\n/g, '\n')
         .trim();
     const sourceHash = createHash('sha256')

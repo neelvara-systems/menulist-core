@@ -32,6 +32,7 @@ const dashboardPage = read('src/app/(answerlattice)/answerlattice/dashboard/page
 const activationPage = read('src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx');
 const answerlatticeBasePage = read('src/app/(answerlattice)/answerlattice/page.tsx');
 const assistantLib = read('src/lib/answerlattice/ownerSupportAssistant.ts');
+const ownerDecisionNavigation = read('src/lib/answerlattice/ownerDecisionNavigation.ts');
 const assistantContracts = read('src/lib/answerlattice/ownerSupportAssistantContracts.ts');
 const assistantUi = read('src/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant.tsx');
 const assistantPage = read('src/app/(answerlattice)/answerlattice/support-assistant/page.tsx');
@@ -107,10 +108,22 @@ assertIncludes(assistantLib, 'const snapshots = await db.getAll(...refs);', 'bou
 assertIncludes(assistantLib, "readModel: { firestoreReads: packet.cacheHit ? 0 : 6, source: 'summary_only', cacheHit: packet.cacheHit }", 'summary-only read model');
 assertIncludes(assistantLib, 'const DAILY_ACTION_LIMIT = 4;', 'bounded daily action count');
 assertIncludes(assistantLib, 'answer-outcome-review', 'explicit outcome review action');
+assertIncludes(assistantLib, 'high-priority-support-board', 'qualified high-priority Support Board action');
+assertIncludes(assistantLib, "friction?.frictionLevel === 'HIGH'", 'high-friction qualification');
+assertIncludes(assistantLib, 'const hasCoverageRepairEvidence', 'paired coverage-repair qualification');
 assertIncludes(assistantLib, 'friction?.topFrictionEntities[0]', 'bounded highest-friction entity projection');
-assertIncludes(assistantLib, "`${ANSWERLATTICE_ROUTES.GOVERNANCE}/friction`", 'existing Friction governance route');
+assertIncludes(assistantLib, 'trust?.topFailingEntities[0]', 'bounded highest-failure evidence projection');
+assertIncludes(assistantLib, 'getAnswerlatticeEntityContextRoute(', 'entity-focused Friction governance route');
+assertIncludes(assistantLib, 'topFrictionEntity?.entityId', 'highest-friction entity route context');
+assertIncludes(assistantLib, "href: `${ANSWERLATTICE_ROUTES.GOVERNANCE}/answers`", 'coverage repair canonical-answer route');
+assertIncludes(assistantLib, "cta: 'Review canonical answers'", 'coverage repair owner action');
 assertIncludes(assistantLib, 'This prioritization reuses the loaded friction summary and adds no read or model call.', 'friction action cost boundary');
-assertIncludes(assistantLib, "href: `${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1`", 'release-change founder handoff');
+assertNotIncludes(assistantLib, "id: 'release-safety'", 'ranked daily actions');
+assertNotIncludes(assistantLib, "id: 'cost-guard'", 'ranked daily actions');
+assertNotIncludes(assistantLib, "id: 'knowledge-intake-review'", 'ranked daily actions');
+assertIncludes(assistantLib, 'const attentionCount = dailyBrief.actions.length;', 'qualified attention count');
+assertIncludes(assistantLib, 'Nothing needs your decision right now', 'quiet-state headline');
+assertIncludes(assistantLib, 'No current answer risk, qualified support gap, or launch blocker', 'quiet-state explanation');
 assertIncludes(assistantLib, "'release'", 'release intent');
 assertIncludes(assistantLib, "'install'", 'install intent');
 assertIncludes(assistantLib, "'reply'", 'reply intent');
@@ -121,9 +134,14 @@ assertNotIncludes(assistantLib, '@google/genai', 'Founder Daily Brief server run
 assertNotIncludes(assistantLib, 'generateContent', 'Founder Daily Brief server runtime');
 assertNotIncludes(assistantLib, 'answerlattice_aiOperations', 'Founder Daily Brief server runtime');
 assertNotIncludes(assistantLib, '.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).add(', 'Founder Daily Brief server runtime');
+assertIncludes(ownerDecisionNavigation, 'normalizeAnswerlatticeEntityId(entityId)', 'entity context validation');
+assertIncludes(ownerDecisionNavigation, 'normalizeAnswerlatticeCanonicalAnswerId(answerId)', 'answer context validation');
+assertIncludes(ownerDecisionNavigation, 'normalizeAnswerlatticeOwnerReleaseContext(releaseId)', 'release context validation');
 
 assertIncludes(assistantUi, 'Daily Support Brief', 'Support Assistant UI title');
 assertIncludes(assistantUi, "Today&apos;s plan", 'Support Assistant UI daily plan');
+assertIncludes(assistantUi, 'brief.dailyBrief.actions.length === 0', 'Support Assistant UI quiet-state gate');
+assertIncludes(assistantUi, 'Nothing needs your decision right now', 'Support Assistant UI quiet-state copy');
 assertIncludes(assistantUi, 'renderDailyAction(brief.dailyBrief.actions[0], true)', 'Support Assistant UI primary action');
 assertIncludes(assistantUi, 'brief.dailyBrief.actions.slice(1)', 'Support Assistant UI secondary actions');
 assertIncludes(assistantUi, 'Launch verification', 'Support Assistant UI launch verification');
@@ -151,12 +169,14 @@ assertIncludes(queryRoute, 'checkRateLimit', 'query route rate limit');
 assertIncludes(queryRoute, 'ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT', 'query route permission');
 
 assertIncludes(productPage, 'Start with a daily support brief', 'Answerlattice product page');
-assertIncludes(productPage, 'reads summaries and stays read-only', 'Answerlattice product page read-only claim');
+assertIncludes(productPage, 'reads compact summaries, stays read-only', 'Answerlattice product page read-only claim');
 assertNotIncludes(productPage, 'Ask a read-only Support Assistant', 'Answerlattice product page duplicate card');
-assertIncludes(supportControlPage, 'Daily Founder Brief', 'Support Control public page');
+assertIncludes(supportControlPage, 'qualified read-only Daily Brief', 'Support Control public page');
 assertIncludes(supportControlPage, 'performs no mutation', 'Support Control public page boundary');
 assertIncludes(faqPage, 'What does Daily Brief change?', 'Answerlattice FAQ');
-assertIncludes(updatesPage, 'read-only Daily Founder Brief', 'Answerlattice updates page');
+assertIncludes(updatesPage, 'read-only Daily Brief', 'Answerlattice updates page');
+assertNotIncludes(supportControlPage, 'Daily Founder Brief', 'retired Support Control public label');
+assertNotIncludes(updatesPage, 'Daily Founder Brief', 'retired updates public label');
 
 assertIncludes(answerlatticeReadme, 'Founder Daily Brief', 'Answerlattice README index');
 assertIncludes(ownerAssistantReadme, 'dailyBrief', 'Owner Support Assistant README');

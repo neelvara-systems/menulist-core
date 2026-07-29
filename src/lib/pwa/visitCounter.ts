@@ -1,7 +1,7 @@
 /**
  * PWA Visit Counter & Dismissal Suppression
  *
- * Tracks per-store visit count in localStorage to gate the install prompt.
+ * Tracks per-tenant/store visit count in localStorage to gate the install prompt.
  * Also records 30-day dismissal windows so dismissed prompts stay dismissed.
  *
  * Per spec:
@@ -13,7 +13,9 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
+import { parseCanonicalPwaCount, parseCanonicalPwaTimestamp } from './storageValue';
 
 const VISIT_COUNT_KEY_PREFIX = 'menulist_customerApp_visits_';
 const DISMISSED_AT_KEY_PREFIX = 'menulist_customerApp_dismissedAt_';
@@ -21,6 +23,7 @@ const VISIT_COUNTER_STORAGE_TEST_KEY = '__menulist_customer_app_prompt_test__';
 const DEFAULT_PROMPT_THRESHOLD = 3;
 const DISMISS_SUPPRESSION_DAYS = 30;
 const DISMISS_SUPPRESSION_MS = DISMISS_SUPPRESSION_DAYS * 24 * 60 * 60 * 1000;
+const MAX_PERSISTED_VISIT_COUNT = 1_000_000;
 
 type PromptStorageOperation =
   | 'visit_increment'
@@ -33,7 +36,7 @@ let reportedDirectInstallIntentParseFailure = false;
 
 function getPromptThreshold(): number {
   const v = FEATURE_FLAGS.CUSTOMER_APP_PROMPT_VISIT_THRESHOLD;
-  if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v;
+  if (typeof v === 'number' && Number.isSafeInteger(v) && v > 0) return v;
   return DEFAULT_PROMPT_THRESHOLD;
 }
 
@@ -55,7 +58,11 @@ function logPromptStorageFailure(
   });
 }
 
-function isStorageAvailable(operation: PromptStorageOperation, storeId: string | number): boolean {
+function isStorageAvailable(
+  operation: PromptStorageOperation,
+  tenantId: string | number,
+  storeId: string | number,
+): boolean {
   if (typeof window === 'undefined') return false;
   try {
     window.localStorage.setItem(VISIT_COUNTER_STORAGE_TEST_KEY, '1');
@@ -83,16 +90,16 @@ function logDirectInstallIntentParseFailure(error: unknown, search: string): voi
 }
 
 /**
- * Increment the per-store visit counter and return the new total.
+ * Increment the per-tenant/store visit counter and return the new total.
  * Safe no-op on server render or when localStorage is unavailable.
  */
-export function incrementVisitCount(storeId: string | number): number {
-  if (!isStorageAvailable('visit_increment', storeId)) return 0;
-  const key = `${VISIT_COUNT_KEY_PREFIX}${storeId}`;
+export function incrementVisitCount(tenantId: string | number, storeId: string | number): number {
+  const key = getTenantStoreStorageKey(VISIT_COUNT_KEY_PREFIX, tenantId, storeId);
+  if (!key || !isStorageAvailable('visit_increment', tenantId, storeId)) return 0;
   try {
     const raw = window.localStorage.getItem(key);
-    const current = raw ? parseInt(raw, 10) : 0;
-    const next = Number.isFinite(current) ? current + 1 : 1;
+    const current = raw ? parseCanonicalPwaCount(raw, MAX_PERSISTED_VISIT_COUNT) : 0;
+    const next = current === null ? 1 : Math.min(current + 1, MAX_PERSISTED_VISIT_COUNT);
     window.localStorage.setItem(key, String(next));
     return next;
   } catch (error) {
@@ -110,13 +117,17 @@ export function incrementVisitCount(storeId: string | number): number {
 /**
  * Read the current visit count without incrementing.
  */
-export function getVisitCount(storeId: string | number): number {
-  if (!isStorageAvailable('visit_read', storeId)) return 0;
-  const key = `${VISIT_COUNT_KEY_PREFIX}${storeId}`;
+export function getVisitCount(tenantId: string | number, storeId: string | number): number {
+  const key = getTenantStoreStorageKey(VISIT_COUNT_KEY_PREFIX, tenantId, storeId);
+  if (!key || !isStorageAvailable('visit_read', tenantId, storeId)) return 0;
   try {
     const raw = window.localStorage.getItem(key);
-    const n = raw ? parseInt(raw, 10) : 0;
-    return Number.isFinite(n) ? n : 0;
+    const count = raw ? parseCanonicalPwaCount(raw, MAX_PERSISTED_VISIT_COUNT) : 0;
+    if (count === null) {
+      window.localStorage.removeItem(key);
+      return 0;
+    }
+    return count;
   } catch (error) {
     logPromptStorageFailure(
       'customer_app_prompt_visit_read_failed',
@@ -132,9 +143,9 @@ export function getVisitCount(storeId: string | number): number {
 /**
  * Record a dismissal timestamp for the 30-day suppression window.
  */
-export function markPromptDismissed(storeId: string | number): void {
-  if (!isStorageAvailable('dismissal_write', storeId)) return;
-  const key = `${DISMISSED_AT_KEY_PREFIX}${storeId}`;
+export function markPromptDismissed(tenantId: string | number, storeId: string | number): void {
+  const key = getTenantStoreStorageKey(DISMISSED_AT_KEY_PREFIX, tenantId, storeId);
+  if (!key || !isStorageAvailable('dismissal_write', tenantId, storeId)) return;
   try {
     window.localStorage.setItem(key, String(Date.now()));
   } catch (error) {
@@ -151,15 +162,24 @@ export function markPromptDismissed(storeId: string | number): void {
 /**
  * True if the prompt was dismissed within the last 30 days.
  */
-export function isPromptSuppressedByDismissal(storeId: string | number): boolean {
-  if (!isStorageAvailable('dismissal_read', storeId)) return false;
-  const key = `${DISMISSED_AT_KEY_PREFIX}${storeId}`;
+export function isPromptSuppressedByDismissal(
+  tenantId: string | number,
+  storeId: string | number,
+): boolean {
+  const key = getTenantStoreStorageKey(DISMISSED_AT_KEY_PREFIX, tenantId, storeId);
+  if (!key || !isStorageAvailable('dismissal_read', tenantId, storeId)) return false;
   try {
     const raw = window.localStorage.getItem(key);
     if (!raw) return false;
-    const dismissedAt = parseInt(raw, 10);
-    if (!Number.isFinite(dismissedAt)) return false;
-    return Date.now() - dismissedAt < DISMISS_SUPPRESSION_MS;
+    const now = Date.now();
+    const dismissedAt = parseCanonicalPwaTimestamp(raw, now);
+    if (dismissedAt === null) {
+      window.localStorage.removeItem(key);
+      return false;
+    }
+    const suppressed = now - dismissedAt < DISMISS_SUPPRESSION_MS;
+    if (!suppressed) window.localStorage.removeItem(key);
+    return suppressed;
   } catch (error) {
     logPromptStorageFailure(
       'customer_app_prompt_dismissal_read_failed',
@@ -204,10 +224,15 @@ export function hasDirectInstallIntent(search?: string): boolean {
  * the visit-count threshold. We still respect the dismissal window to avoid
  * spamming customers who explicitly said "no" recently.
  */
-export function canShowPrompt(storeId: string | number, directIntent: boolean = false): boolean {
-  if (isPromptSuppressedByDismissal(storeId)) return false;
+export function canShowPrompt(
+  tenantId: string | number,
+  storeId: string | number,
+  directIntent: boolean = false,
+): boolean {
+  if (!getTenantStoreStorageKey(VISIT_COUNT_KEY_PREFIX, tenantId, storeId)) return false;
+  if (isPromptSuppressedByDismissal(tenantId, storeId)) return false;
   if (directIntent) return true;
-  const visits = getVisitCount(storeId);
+  const visits = getVisitCount(tenantId, storeId);
   if (visits < getPromptThreshold()) return false;
   return true;
 }

@@ -9,7 +9,8 @@ export const dynamic = 'force-dynamic';
  * - `menu-store-{storeId}` — invalidates project data + decision blocks for one store
  * - `store-{storeId}` — legacy per-store tag for store-scoped cached helpers
  * - `client-stores` — invalidates public store lookup data used by OBP, menus, PWA shortcuts, and compliance pages
- * - `screen-data` — invalidates digital screen SSR reads
+ * Digital screen state is refreshed separately through a store-scoped content
+ * version touch and an exact hashed bearer-token cache tag.
  *
  * Usage:
  *   // Per-store (preferred — via storeId shorthand):
@@ -34,6 +35,7 @@ import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
+import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
@@ -45,7 +47,7 @@ import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 const STORE_ID_PATTERN = /^\d{1,20}$/;
 const VALID_TAG_PATTERNS = [/^menu-store-\d{1,20}$/, /^store-\d{1,20}$/];
 const VALID_TAG_DESCRIPTIONS = ['menu-store-{numericStoreId}', 'store-{numericStoreId}'];
-const VALID_EXACT_TAGS = ['client-stores', 'screen-data'];
+const VALID_EXACT_TAGS = ['client-stores'];
 
 const StoreIdSchema = z.union([
     z.string().trim().min(1).max(20),
@@ -53,8 +55,13 @@ const StoreIdSchema = z.union([
 ]);
 
 const RevalidateMenuRequestSchema = z.object({
+    projectId: z.union([
+        z.string().trim().min(1).max(160),
+        z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    ]).optional(),
     storeId: StoreIdSchema.optional(),
     tags: z.array(z.string().trim().min(1).max(128)).max(10).optional(),
+    touchScreen: z.boolean().optional(),
 }).refine(
     (value) => value.storeId !== undefined || (Array.isArray(value.tags) && value.tags.length > 0),
     { message: "Provide storeId or tags" },
@@ -212,7 +219,7 @@ async function handleRevalidateMenuCache(
             if (sessionAccess && !canMenuRevalidationSessionAccessStore(sessionAccess, storeId)) {
                 return NextResponse.json({ error: "Forbidden" }, { status: 403 });
             }
-            tags = [`menu-store-${storeId}`, `store-${storeId}`, 'client-stores', 'screen-data'];
+            tags = [`menu-store-${storeId}`, `store-${storeId}`, 'client-stores'];
         } else if (body.tags) {
             if (sessionAccess && !sessionAccess.platformSession) {
                 return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -228,6 +235,13 @@ async function handleRevalidateMenuCache(
             );
         }
         tagCount = tags.length;
+
+        const screenTouch = requestedStoreId && body.touchScreen === true
+            ? await touchDigitalScreenContentVersionForStoreServer(
+                requestedStoreId,
+                body.projectId !== undefined ? 'menuProjectRevalidation' : 'menuCacheRevalidation',
+            )
+            : { touched: false };
 
         // Revalidate each tag
         for (const tag of tags) {
@@ -245,6 +259,7 @@ async function handleRevalidateMenuCache(
             revalidated: true,
             tags,
             ownerBusinessAssistant,
+            screenTouch,
             timestamp: Date.now(),
         });
     } catch (error) {

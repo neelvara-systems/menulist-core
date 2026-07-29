@@ -8,17 +8,21 @@ Recommended concise copy:
 
 > Ship a release note, identify the approved answers it may affect, and publish only after the governed release check completes.
 
-Do not publish pre-activation review wording until the preventive preview and
-stale-fingerprint enforcement pass source, emulator, and hosted owner-flow
-verification.
+Source and local emulator verification support buyer-safe wording that a
+versioned release review shows directly linked approved answers and current
+linked Answer Tests before owner confirmation. Do not claim hosted reliability,
+customer outcomes, or completed QA deployment until hosted owner-flow evidence
+exists.
 
 ## Demonstration sequence
 
 1. Founder drafts version `2.4.1` and selects Billing and Permissions.
-2. The note remains Draft while Answerlattice evaluates linked approved answers.
-3. One answer is marked Review required with release evidence.
-4. The linked note becomes Published.
-5. A customer sees the public note without internal IDs or governance metadata.
+2. The note remains Draft while Answerlattice shows directly linked approved
+   answers and current linked Answer Tests proof.
+3. The founder confirms the current impact preview.
+4. One affected answer is marked Review required during activation.
+5. The linked note becomes Published.
+6. A customer sees the public note without internal IDs or governance metadata.
 
 ## Do not imply
 
@@ -35,4 +39,6 @@ verification.
 
 ## Evidence status
 
-The source lifecycle and local emulator evidence are verified. Do not present hosted reliability, customer outcomes, or deployment completion as verified until QA readback exists.
+The source lifecycle, stale-preview enforcement, direct answer/test preview, and
+local emulator evidence are verified. Public pages may explain those product
+controls while preserving the hosted-QA and customer-outcome boundary.

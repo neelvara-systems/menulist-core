@@ -37,8 +37,7 @@ async function run(): Promise<void> {
         'screen:102',
         'assistant:55:102',
         'cache:client-stores',
-        'cache:screen-data',
-    ], 'one failed effect must not stop later stores or global invalidation');
+    ], 'one failed effect must not stop later stores or shared discovery invalidation');
 
     const success = await runTenantNamePostCommitEffects({
         chunkSize: 20,
@@ -79,13 +78,11 @@ async function run(): Promise<void> {
         'screen:151',
         'assistant:151',
         'cache:client-stores',
-        'cache:screen-data',
     ], 'a synchronous Next cache failure must not skip later public-truth effects');
 
     const brandTags: string[] = [];
     await runStorePublicTruthPostCommitEffects({
         chunkSize: 20,
-        includeScreenDataTag: false,
         storeIds: ['201'],
         tenantId: '55',
         deps: {
@@ -94,7 +91,7 @@ async function run(): Promise<void> {
             touchScreen: async () => undefined,
         },
     });
-    assert(!brandTags.includes('screen-data'), 'non-screen brand propagation must not invalidate the global screen tag');
+    assert(!brandTags.includes('screen-data'), 'post-commit effects must not invalidate the retired global screen tag');
     assert(brandTags.includes('client-stores'), 'brand propagation must always invalidate client-store discovery');
 
     const invalidChunkStores: string[] = [];

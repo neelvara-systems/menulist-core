@@ -36,7 +36,7 @@ import {
 import {
     SIGNALDESK_API_BASE_PATH,
     SIGNALDESK_BASE_PATH,
-    SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH,
+    SIGNALDESK_SHORT_ALIAS_PATH,
 } from '@constant/signaldesk/routes';
 import {
     ANSWERLATTICE_HOSTED_HELP_DEV_PREFIX,
@@ -408,10 +408,6 @@ const MYCODEX_PRODUCT_ALIAS_ROUTES: Array<{
     { prefix: '/cc', productId: 'campaigncue' },
 ];
 
-const MYCODEX_PRODUCT_ALIAS_HOSTS = new Set([
-    'menulist.digital',
-    'www.menulist.digital',
-]);
 const MYCODEX_INTERNAL_BASE_PATH = '/sites/mycodex';
 
 const SIGNALDESK_HOST_PASSTHROUGH_PATHS = [
@@ -421,8 +417,7 @@ const SIGNALDESK_HOST_PASSTHROUGH_PATHS = [
 ] as const;
 
 function canUseInternalProductAliases(hostname: string | null, knownProductId: string | null): boolean {
-    const normalizedHost = normalizeHostname(hostname);
-    return knownProductId === MYCODEX_PRODUCT_SLUG || MYCODEX_PRODUCT_ALIAS_HOSTS.has(normalizedHost);
+    return knownProductId === MYCODEX_PRODUCT_SLUG && isTrustedLocalDevelopmentRequest(hostname);
 }
 
 function isSignalDeskHostPassthroughPath(pathname: string): boolean {
@@ -484,7 +479,7 @@ function resolveSignalDeskMyCodexAliasPath(pathname: string): {
     basePath: string;
     strippedPath: string;
 } | null {
-    const prefix = SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH;
+    const prefix = SIGNALDESK_SHORT_ALIAS_PATH;
     const appPrefix = `${prefix}/app`;
     if (pathname === appPrefix || pathname.startsWith(`${appPrefix}/`)) {
         return {
@@ -689,7 +684,7 @@ export async function proxy(request: NextRequest) {
         return applySecurityHeaders(request, response);
     }
 
-    // Internal/test-only aliases for portfolio/product landing pages:
+    // Local/internal aliases for portfolio/product landing pages:
     // /nv -> Neelvara, /ml -> MenuList, /al -> Answerlattice, /cc -> CampaignCue,
     // /sd -> SignalDesk private app.
     // Production canonical domains continue through the normal product routing.
@@ -735,7 +730,7 @@ export async function proxy(request: NextRequest) {
     // SignalDesk is a private product host. Its canonical app and API paths
     // must not become alternate entry points on MenuList or sister-product
     // domains. Local development remains path-based, and the dedicated host
-    // and /sd alias have already been handled above.
+    // and any local/internal short alias has already been handled above.
     if (isSignalDeskRuntimePath(pathname) && !isTrustedLocalDevelopmentRequest(hostname)) {
         return applySecurityHeaders(request, new NextResponse(null, { status: 404 }));
     }

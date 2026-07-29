@@ -2,8 +2,8 @@
  * CampaignCue Firebase Admin — separate Firebase runtime.
  *
  * CampaignCue workspace, campaign, trust, asset, schedule, and analytics data
- * must not be written to MenuList or Answerlattice Firebase projects unless an
- * explicit shared-mode override is used for local/emulator work.
+ * must not be written to MenuList or Answerlattice Firebase projects. An
+ * explicit shared-mode override is accepted only outside production.
  */
 
 import { admin } from "./firebaseAdminCompat";
@@ -16,12 +16,12 @@ import {
     CAMPAIGNCUE_FIREBASE_APP_NAME,
     CAMPAIGNCUE_FIREBASE_CREDENTIAL_PREFIX,
     CAMPAIGNCUE_FIREBASE_ENV,
-    CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
     type CampaignCueAdminCredentialPrefix,
 } from "@constant/campaigncue/firebase";
 import {
     campaigncueFirebaseProjectId,
     campaigncueFirestoreDatabaseId,
+    isExpectedCampaignCueProjectId,
     shouldUseSharedCampaignCueFirebase,
 } from "./campaigncueConfig";
 import {
@@ -29,9 +29,7 @@ import {
     logFirebaseAdminFailure,
 } from "./firebaseAdminDiagnostics";
 
-const getCampaignCueProjectId = () =>
-    CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS.map((key) => process.env[key]).find(Boolean) ||
-    campaigncueFirebaseProjectId;
+const getCampaignCueProjectId = () => campaigncueFirebaseProjectId;
 
 const getCampaignCueStorageBucket = () =>
     process.env[CAMPAIGNCUE_FIREBASE_ENV.STORAGE_BUCKET] ||
@@ -50,6 +48,17 @@ function getAdminCredential(prefix: CampaignCueAdminCredentialPrefix): admin.cre
     const clientEmail = process.env[`${prefix}_CLIENT_EMAIL`];
 
     if (!projectId || !privateKey || !clientEmail) return null;
+    if (
+        prefix === CAMPAIGNCUE_FIREBASE_CREDENTIAL_PREFIX
+        && !isExpectedCampaignCueProjectId(projectId, campaigncueFirebaseProjectId)
+    ) {
+        logFirebaseAdminFailure("campaigncue_admin_project_mismatch", undefined, {
+            credentialSource: "env",
+            product: "campaigncue",
+            usesProductCredential: true,
+        }, { developmentOnly: true });
+        return null;
+    }
 
     try {
         return admin.credential.cert({
@@ -76,12 +85,15 @@ function getCampaignCueFileCredential(): admin.credential.Credential | null {
             ? credentialPath
             : path.join(/* turbopackIgnore: true */ process.cwd(), credentialPath);
         const raw = JSON.parse(fs.readFileSync(/* turbopackIgnore: true */ resolvedPath, "utf8"));
-        const projectId = raw.project_id || getCampaignCueProjectId();
+        const projectId = raw.project_id;
         const privateKey = raw.private_key;
         const clientEmail = raw.client_email;
 
         if (!projectId || !privateKey || !clientEmail) {
             throw new Error("Missing project_id, private_key, or client_email in CampaignCue service-account file.");
+        }
+        if (!isExpectedCampaignCueProjectId(projectId, campaigncueFirebaseProjectId)) {
+            throw new Error("CampaignCue service-account project does not match the governed deployment target.");
         }
 
         return admin.credential.cert({

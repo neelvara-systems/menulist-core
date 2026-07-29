@@ -1443,7 +1443,7 @@ function verifyMultiLocationBoundary() {
     'targetOutletIds: targetOutlets.map((outlet) => outlet.id)',
     'runStorePublicTruthPostCommitEffects({',
     'chunkSize: BRAND_PROPAGATION_EFFECT_CHUNK_SIZE',
-    'includeScreenDataTag: refreshScreens',
+    "touchDigitalScreenContentVersionForStoreServer(storeId, 'brandPropagation')",
     'storeIds: [masterStoreScope.documentId, ...propagationResult.targetOutletIds]',
     "touchDigitalScreenContentVersionForStoreServer(storeId, 'brandPropagation')",
     "logMultiOutletFailure('multi_outlet_brand_propagation_post_commit_effect_failed'",
@@ -1746,7 +1746,7 @@ function verifyMultiLocationBoundary() {
     'Promise.allSettled(storeIds.flatMap((storeId) => [',
     'offset += chunkSize',
     "params.deps.revalidate('client-stores')",
-    "params.deps.revalidate('screen-data')",
+    "params.deps.touchScreen(storeId)",
     'effectsPending: failedEffectCount > 0',
   ].forEach((token) => assertIncludes(storePublicTruthPostCommit, token, 'Shared store public-truth post-commit effect isolation'));
   assert(packageJson.scripts['test:tenant-name-post-commit'], 'package.json must expose tenant-name post-commit regression');

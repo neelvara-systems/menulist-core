@@ -9,6 +9,7 @@ export type ErrorPageThemeSettings = {
 export type ErrorPageThemeSource = 'global-error-boundary' | 'error-page-theme-wrapper';
 
 const REDUX_PERSIST_STORAGE_KEY = 'persist:nextjs';
+const THEME_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     typeof value === 'object'
@@ -18,7 +19,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
 
 const getOptionalThemeColor = (value: unknown, fallback: string): string => {
     if (typeof value !== 'string') return fallback;
-    return value.trim().length > 0 ? value : fallback;
+    return THEME_COLOR_PATTERN.test(value) ? value : fallback;
 };
 
 export const getDefaultErrorPageTheme = (): ErrorPageThemeSettings => ({

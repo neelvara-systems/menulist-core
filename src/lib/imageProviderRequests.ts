@@ -6,13 +6,19 @@ const IMAGE_PROVIDER_MAX_PAGE = 50;
 const IMAGE_PROVIDER_MAX_QUERY_LENGTH = 120;
 
 export const normalizeImageProviderPage = (page: unknown): number => {
-    const normalized = Number(page);
+    const normalized = typeof page === 'number'
+        ? page
+        : typeof page === 'string' && page.trim().length > 0
+            ? Number(page)
+            : Number.NaN;
     if (!Number.isFinite(normalized)) return 1;
     return Math.max(1, Math.min(IMAGE_PROVIDER_MAX_PAGE, Math.floor(normalized)));
 };
 
 export const normalizeImageProviderOrientation = (orientation: unknown): string => {
-    const normalized = String(orientation ?? '').trim().toLowerCase();
+    const normalized = typeof orientation === 'string'
+        ? orientation.trim().toLowerCase()
+        : '';
     if (normalized === BACKGROUND_IMAGES_ORIENTATIONS.PORTRAIT) return BACKGROUND_IMAGES_ORIENTATIONS.PORTRAIT;
     if (normalized === BACKGROUND_IMAGES_ORIENTATIONS.SQUARE) return BACKGROUND_IMAGES_ORIENTATIONS.SQUARE;
     return BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE;
@@ -25,7 +31,7 @@ export const normalizePixabayImageProviderOrientation = (orientation: unknown): 
 };
 
 export const normalizeImageProviderQuery = (query: unknown): string => {
-    return String(query ?? '')
+    return (typeof query === 'string' ? query : '')
         .trim()
         .replace(/\s+/g, ' ')
         .slice(0, IMAGE_PROVIDER_MAX_QUERY_LENGTH);

@@ -104,7 +104,7 @@ const OPERATING_MODES: Array<{
         title: 'Approved Answer Review',
         description: 'Keep answers trustworthy as the product changes.',
         icon: LuShieldCheck,
-        items: ['Approved answers', 'Product map', 'Stale review', 'Signal queue', 'Coverage'],
+        items: ['Approved answers', 'Knowledge Map', 'Friction evidence', 'Answer Tests', 'Release impact'],
     },
 ];
 
@@ -131,7 +131,7 @@ const FEATURE_SECTIONS: Array<{
         description: 'Give users a support home for docs, FAQs, owner answers, changelog, and common product questions. The help center and widget should work from the same reviewed knowledge.',
         image: 'Help center and tickets',
         icon: LuBookOpen,
-        bullets: ['Docs and articles', 'FAQ and owner answers', 'Release notes', 'Custom help domains', 'Ticket fallback'],
+        bullets: ['Docs and article topic maps', 'FAQ and owner answers', 'Release notes', 'Custom help domains', 'Ticket fallback'],
         reverse: true,
     },
 ];
@@ -145,8 +145,8 @@ const PRODUCT_PAGE_ASSET_SLOT_IDS: Record<keyof typeof ANSWERLATTICE_PRODUCT_ARE
 
 const TRUST_ITEMS = [
     {
-        title: 'Product map',
-        detail: 'Features, plans, roles, workflows, states, integrations, and errors can become support concepts.',
+        title: 'Knowledge Map',
+        detail: 'Review product relationships, answer coverage, drift, and support concepts without exposing a raw internal graph.',
         meta: 'Context',
     },
     {
@@ -170,30 +170,37 @@ const FOUNDER_CONTROL_CARDS = [
     {
         eyebrow: 'Every day',
         title: 'Start with a daily support brief',
-        description: 'See the smallest useful support plan for today, then ask follow-up questions about answer risk, support gaps, intake review, release checks, setup safety, and cost guardrails. It reads summaries and stays read-only.',
+        description: 'See up to four qualified current decisions, or a clear quiet state when complete evidence needs no action. The brief reads compact summaries, stays read-only, and routes you to the governed review screen.',
         href: '/product/support-control',
         cta: 'See daily support control',
     },
     {
+        eyebrow: 'Product truth',
+        title: 'Inspect the Knowledge Map',
+        href: '/product/knowledge-governance',
+        description: 'Review product relationships, approved-answer coverage, drift, and review state from the existing bounded graph summary. It is a governed decision view, not a raw graph or diagram editor.',
+        cta: 'Explore knowledge governance',
+    },
+    {
+        eyebrow: 'Customer pressure',
+        title: 'Prioritize friction with evidence',
+        description: 'Compare mapped product areas across completed seven-day windows, then open the exact area in Knowledge Map. Weighted support load helps prioritize review; it is not a root-cause or product-health score.',
+        href: '/product/knowledge-governance',
+        cta: 'See friction review',
+    },
+    {
         eyebrow: 'Before release',
-        title: 'Run saved answer tests',
-        description: 'Keep up to 100 priority questions and check the expected approved answer, FAQ/owner answer, provider fallback, escalation, no-answer path, required wording, and supporting references. Critical failures mark release proof blocked; deterministic checks are regression evidence, not an independent correctness guarantee, and never change a release.',
+        title: 'Review release impact',
+        description: 'See directly linked approved answers and current linked Answer Tests before activating a versioned release. Owner confirmation remains required, and stale impact previews are rejected.',
+        href: '/product/changelog',
+        cta: 'See release governance',
+    },
+    {
+        eyebrow: 'Answer assurance',
+        title: 'Run saved Answer Tests',
+        description: 'Check priority questions, expected sources, required or forbidden claims, evidence, fallback, escalation, and no-answer behavior. Provider-backed fallback cannot certify critical proof.',
         href: '/product/knowledge-governance',
         cta: 'Review answer controls',
-    },
-    {
-        eyebrow: 'Release safety',
-        title: 'Recheck only affected cases',
-        description: 'Connect tests to product entities and releases so a release check stays bounded to the questions that could have changed.',
-        href: '/product/changelog',
-        cta: 'See release support',
-    },
-    {
-        eyebrow: 'Human review',
-        title: 'Prepare a rollback proposal',
-        description: 'A failed check can prepare a prior audited answer version for Governance review. It never overwrites the live answer or applies a rollback automatically.',
-        href: '/product/knowledge-governance',
-        cta: 'See the review model',
     },
     {
         eyebrow: 'During an issue',
@@ -208,13 +215,6 @@ const FOUNDER_CONTROL_CARDS = [
         description: 'Optionally sign short-lived visitor context on your server. Invalid tokens lose signed-only identity claims while normal page-aware support continues.',
         href: '/developers/verified-visitor-context',
         cta: 'Read the developer boundary',
-    },
-    {
-        eyebrow: 'Debug handoff',
-        title: 'Attach links, not recordings',
-        description: 'Pass up to three allowlisted HTTPS links from your own diagnostics system. AnswerLattice stores them with private widget-search activity and never fetches or embeds them.',
-        href: '/developers/verified-visitor-context',
-        cta: 'Review evidence links',
     },
     {
         eyebrow: 'Data portability',
@@ -586,9 +586,9 @@ function FounderControlSection({ basePath }: { basePath: string }) {
         <section className="border-y border-white/[0.06] bg-white/[0.012] px-4 py-20 sm:px-6">
             <div className="mx-auto max-w-7xl">
                 <SectionHeader
-                    eyebrow="Founder controls"
-                    title="Test support before release. Stay clear when something breaks."
-                    description="These controls protect the support layer around launches and incidents without turning AnswerLattice into a status platform, session recorder, or automatic change system."
+                    eyebrow="Owner decision system"
+                    title="Move from today&apos;s priority to reviewed support truth."
+                    description="Daily Brief, Knowledge Map, Product Friction Evidence, release impact, and Answer Tests share the same governed product model. Each view keeps the owner in control and routes to the next exact review step."
                 />
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     {FOUNDER_CONTROL_CARDS.map((item) => (

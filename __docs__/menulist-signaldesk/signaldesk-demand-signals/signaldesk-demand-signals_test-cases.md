@@ -2,7 +2,7 @@
 
 **Status:** Current regression matrix
 **Created:** June 23, 2026
-**Runtime reconciled:** July 21, 2026
+**Runtime reconciled:** July 28, 2026
 
 ## Runtime Tests
 
@@ -18,6 +18,8 @@
 | DEM-T008 | Replay claim exists but event/summary is missing or malformed | Fail closed instead of acknowledging duplicate. |
 | DEM-T009 | Suppressed target produces compact demand | Signal is retained; suppression remains unchanged and no outreach starts. |
 | DEM-T010 | Demand feature flag is off | Operator and downstream demand writes are blocked/skipped. |
+| DEM-T011 | Persisted timestamp has a throwing getter, Proxy trap, throwing method, non-finite value, or out-of-range date | The exact event, summary, or claim contract error is returned; no arbitrary exception escapes and no write proceeds. |
+| DEM-T012 | A previously validated timestamp later becomes invalid | Replay-day derivation fails with `DEMAND_SIGNAL_EVENT_INVALID`; it never acknowledges the retry or addresses a different summary. |
 
 ## Surface Tests
 
@@ -32,6 +34,7 @@
 
 ```bash
 npm run test:signaldesk:demand-signals-boundary
+npm run test:signaldesk:demand-signal-contracts
 npm run test:signaldesk:workspace-contracts
 npm run test:signaldesk:workspace-client-contracts
 npm run verify:signaldesk

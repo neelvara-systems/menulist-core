@@ -1,6 +1,6 @@
 # AnswerLattice Website Test Cases
 
-> **Last audited:** July 28, 2026
+> **Last audited:** July 29, 2026
 
 ## Automated Source Gate
 
@@ -24,9 +24,11 @@ The gate verifies:
 10. Trust and Privacy render shared retention constants and preserve the Gemini no-training/zero-retention non-claim.
 11. Terms preserve the operating trade-name, customer-content, cancellation/end-of-cycle, deletion, answer-reliance, and legal-completion boundaries.
 12. Root mail uses only the `nodemailer9` alias resolved to `9.0.3`, direct root `nodemailer` remains absent for NextAuth optional-peer compatibility, and Answerlattice Functions retain their independent `9.0.3` pin.
-13. The homepage preserves the compressed support-loop sequence, trusted-answer evidence, and dedicated-route handoffs instead of rendering overlapping feature-inventory bands, while retaining the three inactive mounts inside the explicit deferred JSX comment block.
-14. The widget product page keeps Guided Resolution opt-in and explicitly denies clicking controls or changing product data.
-15. The complete website documentation dossier exists.
+13. The homepage preserves the compressed support-loop sequence and actively mounts one owner-decision section while retaining the three inactive inventory mounts inside the explicit deferred JSX comment block.
+14. Homepage, Product, Support Control, Knowledge Governance, Knowledge Base, Changelog, FAQ, Updates, metadata, and system coverage use the same Daily Brief, Knowledge Map, Product Friction Evidence, release-impact, Answer Tests, and article-topic-map boundaries.
+15. Daily Brief copy contains the qualified quiet state; friction is not presented as root cause or product health; Knowledge Map is not presented as a public raw graph; release previews and tests do not claim automatic mutation or factual certainty.
+16. The widget product page keeps Guided Resolution opt-in and explicitly denies clicking controls or changing product data.
+17. The complete website documentation dossier exists.
 
 ## Functional Cases
 
@@ -46,6 +48,8 @@ The gate verifies:
 14. `npm ls nodemailer nodemailer9 --all` succeeds with only the root `nodemailer9@npm:nodemailer@9.0.3` runtime, and the security audit reports no Nodemailer advisory.
 15. At 390px and 1280px widths, the signup action appears before proof/fit content, hero trust chips wrap without horizontal clipping, and both demo stage navigations remain reachable.
 16. The page-aware widget page describes declared targets, verified events, and explicit handoff without implying browser control, arbitrary actions, or automatic publication.
+17. At 390px and 1280px widths, the owner-decision rows wrap without clipping, preserve at least 44px link targets, and keep the governance product image framed beside or below the copy.
+18. Knowledge Base distinguishes public article topic maps from private Knowledge Map data, while Changelog keeps owner confirmation and stale-preview refresh explicit.
 
 ## External Release Evidence
 

@@ -6,6 +6,8 @@
  * Normalizes names for consistent matching during comparison engine operations.
  */
 
+const NON_UNICODE_WORD_SPACE_PATTERN = new RegExp('[^\\p{L}\\p{M}\\p{N}\\s]', 'gu');
+
 /**
  * Normalize a name for comparison
  * 
@@ -24,15 +26,14 @@
  * normalizeName("  French Fries  ") → "french fries"
  * normalizeName("Spring Rolls 🥢") → "spring rolls"
  */
-export function normalizeName(raw: string | undefined | null): string {
-    if (!raw) return '';
+export function normalizeName(raw: unknown): string {
+    if (typeof raw !== 'string' || !raw) return '';
 
     return raw
         .toLowerCase()
         .trim()
         .replace(/\s+/g, ' ')                    // Collapse multiple spaces
-        .replace(/[^\w\s\u00C0-\u024F\u1E00-\u1EFF]/g, '') // Remove punctuation/symbols (keep letters, numbers, spaces, accented chars)
-        .replace(/[\uD83C-\uDBFF][\uDC00-\uDFFF]/g, '')    // Remove emoji surrogate pairs
+        .replace(NON_UNICODE_WORD_SPACE_PATTERN, '')  // Keep every supported script and its marks
         .trim();                                  // Final trim after removals
 }
 
@@ -44,7 +45,7 @@ export function normalizeName(raw: string | undefined | null): string {
  * @returns Normalized name string
  */
 export function getNormalizedNameFromObject(
-    nameObj: Record<string, string> | string | undefined,
+    nameObj: unknown,
     primaryLang: string = 'en'
 ): string {
     if (!nameObj) return '';
@@ -53,9 +54,23 @@ export function getNormalizedNameFromObject(
         return normalizeName(nameObj);
     }
 
-    // Try primary language first, then fall back to first available
-    const name = nameObj[primaryLang] || Object.values(nameObj)[0] || '';
-    return normalizeName(name);
+    if (typeof nameObj !== 'object' || Array.isArray(nameObj)) return '';
+
+    try {
+        const primary = Reflect.get(nameObj, primaryLang);
+        if (typeof primary === 'string' && primary) return normalizeName(primary);
+        for (const key of Object.keys(nameObj).slice(0, 64)) {
+            try {
+                const candidate = Reflect.get(nameObj, key);
+                if (typeof candidate === 'string' && candidate) return normalizeName(candidate);
+            } catch {
+                continue;
+            }
+        }
+    } catch {
+        return '';
+    }
+    return '';
 }
 
 export default normalizeName;

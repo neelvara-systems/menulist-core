@@ -25,5 +25,15 @@ assert.equal(normalizeStorageDeleteErrorCode({ code: "" }), "unknown");
 assert.equal(normalizeStorageDeleteErrorCode(null), "unknown");
 assert.equal(normalizeStorageDeleteErrorCode("storage/unauthorized"), "unknown");
 assert.equal(normalizeStorageDeleteErrorCode({ code: "x".repeat(200) }).length, 80);
+assert.equal(normalizeStorageDeleteErrorCode(Object.defineProperty({}, "code", {
+    get() {
+        throw new Error("hostile getter");
+    },
+})), "unknown");
+assert.equal(normalizeStorageDeleteErrorCode(new Proxy({}, {
+    get() {
+        throw new Error("hostile proxy");
+    },
+})), "unknown");
 
 console.log("Storage delete boundary regression passed.");

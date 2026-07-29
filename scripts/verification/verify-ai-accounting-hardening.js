@@ -61,6 +61,34 @@ for (const route of billableRoutes) {
 }
 
 {
+  const imageOperationLogging = read('src/lib/ai/imageOperationLogging.ts');
+  [
+    'MAX_PROVIDER_CANDIDATES_TO_INSPECT',
+    'MAX_PROVIDER_PARTS_TO_INSPECT',
+    'readNonNegativeSafeInteger',
+    'summarizeUsageMetadata',
+    'cachedContentTokenCount',
+    'candidatesTokenCount',
+    'promptTokenCount',
+    'thoughtsTokenCount',
+    'totalTokenCount',
+    'summarizeImageProviderResponse',
+  ].forEach((token) => assert(
+    imageOperationLogging.includes(token),
+    `image provider logging keeps bounded allowlisted token ${token}`,
+  ));
+  [
+    'sanitizeImageGenerationConfigForLogging',
+    'summarizeUploadedImage',
+    'usageMetadata: maybeResponse?.usageMetadata',
+    'as ImageLike',
+  ].forEach((token) => assert(
+    !imageOperationLogging.includes(token),
+    `image provider logging excludes dormant/raw token ${token}`,
+  ));
+}
+
+{
   const adminPreparation = read('src/lib/media/prepareMediaImageAdmin.ts');
   [
     '@napi-rs/canvas',
@@ -733,7 +761,9 @@ for (const route of billableRoutes) {
     "key.toLowerCase().includes('message')",
     'const getProviderErrorIndicators',
     'const normalizeRetryAfterSeconds',
-    'source.details?.retryDelay',
+    "['details', 'retryDelay']",
+    'getUnknownObjectValueAtPath(error, path)',
+    "getBoundedErrorNumberAtPath(error, ['status']) === 429",
     "indicators.includes('resource_exhausted')",
   ].forEach((token) => {
     assert(providerErrors.includes(token), `AI provider error helper includes structured provider token ${token}`);
@@ -743,6 +773,7 @@ for (const route of billableRoutes) {
     'String(error',
     'retry in',
     'message.match',
+    'error: any',
     'quota exceeded',
     'rate limit',
   ].forEach((token) => {
@@ -2359,7 +2390,7 @@ for (const helper of imageEditingPromptHelpers) {
 
   const client = read('src/components/templates/main-app/projects/generateTranslations.ts');
   [
-    'readAiServiceResponseJson<MenuTranslationApiResponse>',
+    'readAiServiceResponseJson(response,',
     'MENU_TRANSLATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024',
     'menu_translation_response_parse_failed',
     'menu_translation_response_invalid',
@@ -2421,6 +2452,8 @@ for (const helper of imageEditingPromptHelpers) {
     'sourceStatusCode',
     'parseFailureCode',
     'invalidFailureCode',
+    'Promise<Record<string, unknown>>',
+    'return payload as Record<string, unknown>;',
   ].forEach((token) => {
     assert(aiServiceDiagnostics.includes(token), `AI service diagnostics helper includes ${token}`);
   });
@@ -2463,11 +2496,20 @@ for (const helper of imageEditingPromptHelpers) {
 
   boundedAiResponseClients.forEach(([label, relPath, maxBytesToken, parseFailureCode, invalidFailureCode]) => {
     const source = read(relPath);
-    assert(source.includes('readAiServiceResponseJson<'), `${label} parses successful responses through the bounded AI response helper`);
+    assert(source.includes('readAiServiceResponseJson(response,'), `${label} parses successful responses through the bounded AI response helper`);
+    assert(!source.includes('readAiServiceResponseJson<'), `${label} must not apply an unchecked generic response DTO`);
     assert(source.includes(maxBytesToken), `${label} declares response byte cap ${maxBytesToken}`);
     assert(source.includes(parseFailureCode), `${label} logs parse failures with ${parseFailureCode}`);
     assert(source.includes(invalidFailureCode), `${label} logs invalid responses with ${invalidFailureCode}`);
     assert(!source.includes('const responseJson = await response.json()'), `${label} must not parse unbounded response JSON`);
+  });
+  assert(!aiServiceDiagnostics.includes('return payload as T;'), 'AI response helper must not manufacture a caller-selected DTO type');
+  [
+    'src/services/ai/image/generateImageViaApi.ts',
+    'src/services/ai/image/editImageViaApi.ts',
+  ].forEach((relPath) => {
+    const source = read(relPath);
+    assert(source.includes('normalizeAiImageResponseItems(responseJson.data)'), `${relPath} validates every returned image item`);
   });
 
   const aiTranslationRequestPolicyClients = [
@@ -2545,7 +2587,8 @@ for (const helper of imageEditingPromptHelpers) {
 
   const businessCopyLocalization = read('src/services/ai/businessCopy/localizeBusinessCopyResult.ts');
   [
-    'readAiServiceResponseJson<BusinessCopyTranslationApiResponse>',
+    'readAiServiceResponseJson(response,',
+    "getUnknownObjectValueAtPath(responseJson.data, ['translationsByLanguage'])",
     'BUSINESS_COPY_TRANSLATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024',
     'business_copy_batch_translation_response_parse_failed',
     'business_copy_batch_translation_response_invalid',

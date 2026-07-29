@@ -8,7 +8,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Updates',
-    description: 'AnswerLattice product updates that affect launch setup, in-app help, hosted help, approved answers, ticket fallback, feedback review, Support Board, support review, pricing, and safety.',
+    description: 'AnswerLattice product updates across Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, hosted help, approved answers, and support safety.',
     alternates: { canonical: '/updates' },
 };
 
@@ -24,6 +24,15 @@ async function getBasePath(): Promise<string> {
 }
 
 const UPDATES = [
+    {
+        date: 'July 29, 2026',
+        title: 'Owner decisions now keep their product context',
+        items: [
+            'Daily Brief now shows only qualified current decisions and can return a clear quiet state when complete evidence needs no owner action.',
+            'Product Friction Evidence can open the selected product area in Knowledge Map, and Knowledge Map can carry that validated product-area context into governed answer review.',
+            'Release impact keeps directly linked approved answers and current linked Answer Tests together before owner confirmation. These handoffs reuse existing summaries and add no listener, model call, map snapshot, or automatic publication.',
+        ],
+    },
     {
         date: 'July 28, 2026',
         title: 'Knowledge Map makes governed support structure easier to review',
@@ -56,7 +65,7 @@ const UPDATES = [
         title: 'Founder controls added for releases, incidents, and support portability',
         items: [
             'Owners can save priority answer tests, run deterministic approved-answer checks, recheck release-linked cases, and prepare rollback proposals without overwriting live answers.',
-            'Known Issue Mode can show a contextual, expiring widget notice while permanent approved answers remain unchanged, and Support Assistant now includes a read-only Daily Founder Brief from compact summaries.',
+            'Known Issue Mode can show a contextual, expiring widget notice while permanent approved answers remain unchanged, and Support Assistant now includes a read-only Daily Brief from compact summaries.',
             'Optional signed visitor context, exact-host diagnostic links, and bounded support-truth export add trust and portability without accepting browser workspace scope, recording sessions, or exporting private conversations.',
         ],
     },

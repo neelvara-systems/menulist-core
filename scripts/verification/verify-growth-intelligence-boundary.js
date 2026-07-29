@@ -29,8 +29,11 @@ const attribution = read('src/lib/growth/acquisitionAttribution.ts');
   "POWERED_BY: 'powered_by'",
   "PRODUCT_LOOP: 'product_loop'",
   'normalizeGrowthAcquisitionAttribution',
+  "typeof primary === 'string'",
+  "typeof fallback === 'string'",
   'buildCreateMenuPath',
 ].forEach((token) => requireToken(attribution, token, 'acquisition attribution contract'));
+forbidToken(attribution, 'const source = String(', 'acquisition attribution contract');
 ['tenantId', 'storeId', 'customerId', 'ownerId', 'referrer']
   .forEach((token) => forbidToken(attribution, token, 'acquisition URL contract'));
 
@@ -68,6 +71,8 @@ const growthReadModel = read('src/lib/ops/founderGrowthReadModel.ts');
   "const SUMMARY_DOC_ID = 'founderMonitorGrowth'",
   'DB_COLLECTIONS.PUBLIC_MENU_DRAFTS',
   'transaction.get(draftRef)',
+  'normalizeGrowthAcquisitionAttribution(',
+  'isSameAttribution(persistedAttribution, attribution)',
   'growthTelemetry.draftCreatedRecordedAt',
   'growthTelemetry.businessClaimedRecordedAt',
   'FieldValue.increment(1)',

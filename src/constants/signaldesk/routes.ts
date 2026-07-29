@@ -1,5 +1,5 @@
 export const SIGNALDESK_BASE_PATH = "/signaldesk";
-export const SIGNALDESK_MENULIST_DIGITAL_ALIAS_PATH = "/sd";
+export const SIGNALDESK_SHORT_ALIAS_PATH = "/sd";
 export const SIGNALDESK_API_BASE_PATH = "/api/signaldesk";
 
 export const SIGNALDESK_ROUTES = {

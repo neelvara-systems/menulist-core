@@ -4,7 +4,7 @@
 
 ## Source Gate
 
-Website copy must describe Digital Screens as a current approved menu source display, not as instant or absolute freshness. The active runtime uses a 60-second `screen-data` cache, cache-first clients, public cache invalidation, and the screen content-version listener. Guard with `npm run verify:digital-screens-boundary`.
+Website copy must describe Digital Screens as a current approved menu source display, not as instant or absolute freshness. The active runtime keeps the bearer link in a private control, uses token/store-scoped 60-second caches, admits browser-local output only offline for the same version, and refreshes through the content-version listener. Guard with `npm run verify:digital-screens-boundary`.
 
 ## Hero Section
 

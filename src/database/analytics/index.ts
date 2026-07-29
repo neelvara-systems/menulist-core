@@ -16,11 +16,13 @@ import {
   ANALYTICS_QUEUE_MAX_STORAGE_CHARS,
   getAnalyticsQueueKey,
   mergeAnalyticsUpdateData,
+  normalizeAnalyticsDeliveryId,
   normalizePersistedAnalyticsQueue,
   subtractFlushedAnalyticsData,
 } from "@lib/analytics/queueBoundary";
 import { filterAnalyticsUpdateData, type AnalyticsWriteValue } from "@lib/analytics/writePolicy";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { createRandomIdSegment } from "@lib/runtime/randomId";
 import { doc, getDoc } from "firebase/firestore";
 
 // Base collection path
@@ -52,6 +54,7 @@ type QueuedAnalyticsWrite = {
   dateString: string;
   storeTimeZone?: string;
   businessDayEndTime?: string;
+  deliveryId: string;
   updateData: Record<string, AnalyticsWriteValue>;
   eventCount: number;
   retryCount: number;
@@ -110,6 +113,7 @@ const persistAnalyticsQueue = () => {
         dateString: queued.dateString,
         storeTimeZone: queued.storeTimeZone,
         businessDayEndTime: queued.businessDayEndTime,
+        deliveryId: queued.deliveryId,
         updateData: queued.updateData,
         eventCount: queued.eventCount,
         retryCount: queued.retryCount,
@@ -166,9 +170,12 @@ const writeAnalyticsEventViaPublicApi = async (
   dateString: string,
   storeTimeZone?: string,
   businessDayEndTime?: string,
+  deliveryId?: string,
 ) => {
   const policyData = filterAnalyticsUpdateData(updateData);
   if (Object.keys(policyData).length === 0) return;
+  const normalizedDeliveryId = normalizeAnalyticsDeliveryId(deliveryId);
+  if (!normalizedDeliveryId) throw new Error('Invalid analytics delivery ID');
 
   const response = await fetch('/api/public/analytics/track', {
     cache: 'no-store',
@@ -187,6 +194,7 @@ const writeAnalyticsEventViaPublicApi = async (
       dateString,
       storeTimeZone,
       businessDayEndTime,
+      deliveryId: normalizedDeliveryId,
     }),
   });
 
@@ -244,6 +252,7 @@ const flushAnalyticsQueueKey = async (queueKey: string) => {
   queued.flushTimer = undefined;
   const flushedData = { ...queued.updateData };
   const flushedEventCount = queued.eventCount;
+  const flushedDeliveryId = queued.deliveryId;
 
   try {
     await writeAnalyticsEventViaPublicApi(
@@ -254,6 +263,7 @@ const flushAnalyticsQueueKey = async (queueKey: string) => {
       queued.dateString,
       queued.storeTimeZone,
       queued.businessDayEndTime,
+      flushedDeliveryId,
     );
 
     const current = analyticsWriteQueue.get(queueKey);
@@ -264,6 +274,8 @@ const flushAnalyticsQueueKey = async (queueKey: string) => {
       current.createdAt = Date.now();
       if (current.eventCount === 0 || Object.keys(current.updateData).length === 0) {
         analyticsWriteQueue.delete(queueKey);
+      } else {
+        current.deliveryId = createRandomIdSegment(32);
       }
     }
     reportedAnalyticsQueueFailures.delete(queueKey);
@@ -357,6 +369,7 @@ const enqueueAnalyticsWrite = (
     dateString,
     storeTimeZone,
     businessDayEndTime,
+    deliveryId: createRandomIdSegment(32),
     updateData: { ...policyData },
     eventCount: 1,
     retryCount: 0,
@@ -385,6 +398,7 @@ if (typeof window !== 'undefined') {
         dateString: queued.dateString,
         storeTimeZone: queued.storeTimeZone,
         businessDayEndTime: queued.businessDayEndTime,
+        deliveryId: queued.deliveryId,
         updateData: queued.updateData,
         eventCount: queued.eventCount,
         retryCount: queued.retryCount,

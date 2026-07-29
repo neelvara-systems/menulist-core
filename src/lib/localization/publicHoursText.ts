@@ -24,7 +24,7 @@ export function localizePublicHoursText(
         'Hours not available': t('menu.hoursNotAvailable'),
         'Open': t('menu.open'),
     };
-    if (exactLabels[value]) return exactLabels[value];
+    if (Object.prototype.hasOwnProperty.call(exactLabels, value)) return exactLabels[value];
 
     const localizeDay = (day: string): string => {
         const matchedDay = DAY_NAMES.find((entry) => entry === day);

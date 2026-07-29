@@ -27,9 +27,9 @@ import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { ResellerAddLocationCapacitySchema } from "@lib/validation/resellerSchemas";
-import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
+import { resellerPrivateJson, withResellerPrivateHeaders } from "../readRateLimit";
 
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 
@@ -46,7 +46,7 @@ export const POST = withAuth(async (request, session) => {
 
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            return NextResponse.json({ error: "Feature not available." }, { status: 404 });
+            return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
         }
 
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
@@ -54,18 +54,21 @@ export const POST = withAuth(async (request, session) => {
         const rateLimitResult = await checkRateLimit({
             key: `reseller-add-location:${resellerRateLimitHash}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({
-                error: "Too many requests. Please try again later.",
+            return resellerPrivateJson({
+                error: rateLimitResult.reason === 'provider_unavailable'
+                    ? "Service temporarily unavailable. Please try again later."
+                    : "Too many requests. Please try again later.",
                 resetAt: rateLimitResult.resetAt,
-            }, { status: 429 });
+            }, { status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429 });
         }
 
         const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid input',
         });
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);
         const validation = validateAPIInput(ResellerAddLocationCapacitySchema, bodyResult.data);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
@@ -74,7 +77,7 @@ export const POST = withAuth(async (request, session) => {
                 endpoint: '/api/reseller/add-location-capacity',
                 error: errorMsg,
             }, 'medium');
-            return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
+            return resellerPrivateJson({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
         const { storeId, tenantId, locationCount, operationId } = validation.data;
@@ -88,7 +91,7 @@ export const POST = withAuth(async (request, session) => {
             );
         if (isPlatformUser) {
             if (!await getCurrentPlatformUser(session)) {
-                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
             }
         } else if (!isActiveResellerProfileForSession({
             actorId: resellerId,
@@ -100,7 +103,7 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedSecurityRouteContext(session, request),
                 ...getBoundedResellerApiStringContext('resellerId', resellerId),
             }, 'high');
-            return NextResponse.json({ error: "Reseller profile not found or inactive." }, { status: 403 });
+            return resellerPrivateJson({ error: "Reseller profile not found or inactive." }, { status: 403 });
         }
 
         const subsSnapshot = await firestoreAdmin
@@ -116,14 +119,14 @@ export const POST = withAuth(async (request, session) => {
             .get();
 
         if (subsSnapshot.empty) {
-            return NextResponse.json({ error: "No manual subscription found for this store." }, { status: 404 });
+            return resellerPrivateJson({ error: "No manual subscription found for this store." }, { status: 404 });
         }
 
         const existingSub = subsSnapshot.docs[0];
         const existingSubData = existingSub.data();
         const existingScope = getMenuListSubscriptionEntitlementScope(existingSubData);
         if (!existingScope || existingScope.tenantId !== tenantId || existingScope.storeId !== storeId) {
-            return NextResponse.json({ error: "No manual subscription found for this store." }, { status: 404 });
+            return resellerPrivateJson({ error: "No manual subscription found for this store." }, { status: 404 });
         }
 
         if (existingSubData.resellerId !== resellerId && !isPlatformUser) {
@@ -135,27 +138,27 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedResellerApiStringContext('subscriptionId', existingSub.id),
                 ...getBoundedResellerApiStringContext('actualResellerId', existingSubData.resellerId),
             }, 'high');
-            return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
         }
 
         if (existingSubData.status !== 'active') {
-            return NextResponse.json({ error: "Renew this client before adding another location." }, { status: 400 });
+            return resellerPrivateJson({ error: "Renew this client before adding another location." }, { status: 400 });
         }
 
         const pricingTier = existingSubData.resellerPricingTier;
         if (!pricingTier) {
-            return NextResponse.json({ error: "Missing reseller pricing tier. Renew this client before adding another location." }, { status: 400 });
+            return resellerPrivateJson({ error: "Missing reseller pricing tier. Renew this client before adding another location." }, { status: 400 });
         }
 
         const validUntil = existingSubData.validUntil || existingSubData.cycleEndDate || existingSubData.subscriptionEndDate;
         const validUntilDate = resellerMutationDate(validUntil);
         if (!validUntilDate || validUntilDate.getTime() <= Date.now()) {
-            return NextResponse.json({ error: "Renew this client before adding another location." }, { status: 400 });
+            return resellerPrivateJson({ error: "Renew this client before adding another location." }, { status: 400 });
         }
 
         const topup = calculateOfflineLocationTopup({ locationCount, pricingTier, validUntil: validUntilDate });
         if (topup.daysRemaining <= 0 || topup.amountPaise <= 0) {
-            return NextResponse.json({ error: "Renew this client before adding another location." }, { status: 400 });
+            return resellerPrivateJson({ error: "Renew this client before adding another location." }, { status: 400 });
         }
 
         const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(existingSub.id);
@@ -322,7 +325,7 @@ export const POST = withAuth(async (request, session) => {
 
         if (!operationResult.validUntil) throw new Error('Location capacity result is missing its expiry.');
 
-        return NextResponse.json({
+        return resellerPrivateJson({
             success: true,
             amountExpected: operationResult.amountExpected,
             daysRemaining: operationResult.daysRemaining,
@@ -338,7 +341,7 @@ export const POST = withAuth(async (request, session) => {
         logResellerApiFailure('reseller_add_location_capacity_route_failed', error, {
             ...getBoundedResellerApiStringContext('resellerId', resellerId),
         });
-        return NextResponse.json(
+        return resellerPrivateJson(
             { error: 'Failed to add location capacity. Please try again.' },
             { status: 500 },
         );

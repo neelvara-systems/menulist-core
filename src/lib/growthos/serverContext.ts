@@ -2,6 +2,7 @@ import { buildGrowthOSSourceFacts, hashGrowthOSSourceFacts } from "@lib/growthos
 import { rankGrowthOSActions } from "@lib/growthos/actionRanking";
 import { computeGrowthOSReadiness } from "@lib/growthos/readiness";
 import { evaluateGrowthOSServerEntitlement } from "@lib/growthos/serverEntitlements";
+import { resolveStorePermissionSessionScope } from "@lib/permissions/scopeDocumentId";
 import {
     readGrowthOSProjectDataServer,
     readGrowthOSStoreDataServer,
@@ -33,16 +34,25 @@ export interface GrowthOSSourceSnapshot {
     storeData?: any;
 }
 
+const requireGrowthOSSessionScope = (session: unknown) => {
+    const scope = resolveStorePermissionSessionScope(session);
+    if (!scope) {
+        throw new Error("GrowthOS workspace is unavailable");
+    }
+    return scope;
+};
+
 export async function loadGrowthOSSourceSnapshot(params: {
     projectId: string;
     session: any;
     storeData?: any;
 }): Promise<GrowthOSSourceSnapshot> {
-    const storeData = params.storeData ?? await readGrowthOSStoreDataServer(params.session.sId);
+    const scope = requireGrowthOSSessionScope(params.session);
+    const storeData = params.storeData ?? await readGrowthOSStoreDataServer(scope.storeScope.documentId);
     const projectData = await readGrowthOSProjectDataServer({
         projectId: params.projectId,
-        tId: params.session.tId,
-        sId: params.session.sId,
+        tId: scope.tenantScope.documentId,
+        sId: scope.storeScope.documentId,
     });
 
     if (!projectData) {
@@ -53,8 +63,8 @@ export async function loadGrowthOSSourceSnapshot(params: {
         projectData,
         projectId: params.projectId,
         storeData,
-        tId: params.session.tId,
-        sId: params.session.sId,
+        tId: scope.tenantScope.documentId,
+        sId: scope.storeScope.documentId,
     });
     const sourceFactsHash = hashGrowthOSSourceFacts(facts);
     const readiness = computeGrowthOSReadiness(facts);
@@ -72,7 +82,8 @@ export async function loadGrowthOSServerContext(params: {
     projectId: string;
     session: any;
 }): Promise<GrowthOSServerContext> {
-    const storeData = await readGrowthOSStoreDataServer(params.session.sId);
+    const scope = requireGrowthOSSessionScope(params.session);
+    const storeData = await readGrowthOSStoreDataServer(scope.storeScope.documentId);
     const entitlement = await evaluateGrowthOSServerEntitlement({
         session: params.session,
         storeData,
@@ -90,8 +101,8 @@ export async function loadGrowthOSServerContext(params: {
 
     if (!snapshot.projectData || !snapshot.facts) {
         const summary = await readGrowthOSSummaryServer({
-            storeId: params.session.sId,
-            tenantId: params.session.tId,
+            storeId: scope.storeScope.documentId,
+            tenantId: scope.tenantScope.documentId,
         });
         return {
             actions: [],
@@ -104,8 +115,8 @@ export async function loadGrowthOSServerContext(params: {
 
     const actions = rankGrowthOSActions(snapshot.facts);
     const summary = await readGrowthOSSummaryServer({
-        storeId: params.session.sId,
-        tenantId: params.session.tId,
+        storeId: scope.storeScope.documentId,
+        tenantId: scope.tenantScope.documentId,
     });
 
     return {
@@ -126,9 +137,10 @@ export function buildGrowthOSEmptySummary(params: {
     sourceFactsHash?: string;
     readiness?: GrowthOSPreflightResult;
 }): GrowthOSSummaryDocument {
+    const scope = requireGrowthOSSessionScope(params.session);
     return {
-        tId: String(params.session.tId),
-        sId: String(params.session.sId),
+        tId: scope.tenantScope.documentId,
+        sId: scope.storeScope.documentId,
         date: new Date().toISOString().split("T")[0],
         sourceFactsHash: params.sourceFactsHash,
         eligible: false,

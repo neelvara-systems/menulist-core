@@ -25,6 +25,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { detectInstalled, type BeforeInstallPromptEvent } from '@lib/pwa/installDetection';
 import { fireInstalledEventOnce } from '@lib/pwa/installTracker';
 import { detectAndTrackShortcutLaunch } from '@lib/pwa/shortcutSourceDetector';
@@ -35,7 +36,7 @@ import {
     incrementVisitCount,
     markPromptDismissed
 } from '@lib/pwa/visitCounter';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import InstallPrompt from './InstallPrompt';
 
 interface Props {
@@ -68,17 +69,35 @@ export default function CustomerAppController({
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [shouldShowPrompt, setShouldShowPrompt] = useState(false);
     const [installedInThisSession, setInstalledInThisSession] = useState(false);
+    const processedPromptScopeRef = useRef<string | null>(null);
 
-    // Guard: feature off entirely → render nothing, do nothing.
-    const featureOn = FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA;
+    const promptScopeKey = getTenantStoreStorageKey(
+        'customer-app-controller',
+        tenantId,
+        storeId,
+    );
+    // Guard every listener, side effect and render path when feature or
+    // canonical tenant/store identity is unavailable.
+    const featureOn = FEATURE_FLAGS.ENABLE_CUSTOMER_APP_PWA && Boolean(promptScopeKey);
 
     // ── One-time visit counting + standalone + shortcut detection ──
     useEffect(() => {
         if (!featureOn) return;
         if (typeof window === 'undefined') return;
+        if (!promptScopeKey) {
+            setDeferredPrompt(null);
+            setShouldShowPrompt(false);
+            setInstalledInThisSession(false);
+            return;
+        }
+        if (processedPromptScopeRef.current === promptScopeKey) return;
+        processedPromptScopeRef.current = promptScopeKey;
+        setDeferredPrompt(null);
+        setShouldShowPrompt(false);
+        setInstalledInThisSession(false);
 
         // 1. Increment visit count (this visit counts even if we don't show the prompt).
-        incrementVisitCount(storeId);
+        incrementVisitCount(tenantId, storeId);
 
         // 2. Fire OPENED event if this is a standalone-mode launch.
         void detectAndTrackAppOpen(storeId, { tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, includeLocation: locationTrackingEnabled });
@@ -94,9 +113,9 @@ export default function CustomerAppController({
         const eligible =
             promoteInstallation &&
             !detectInstalled() &&
-            canShowPrompt(storeId, directIntent);
+            canShowPrompt(tenantId, storeId, directIntent);
         if (eligible) setShouldShowPrompt(true);
-    }, [featureOn, storeId, tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, locationTrackingEnabled, promoteInstallation]);
+    }, [featureOn, promptScopeKey, storeId, tenantId, storeTimeZone, businessDayEndTime, trackingEnabled, locationTrackingEnabled, promoteInstallation]);
 
     // ── beforeinstallprompt capture (Chromium only) ──
     useEffect(() => {
@@ -142,7 +161,7 @@ export default function CustomerAppController({
             trackingEnabled={trackingEnabled}
             locationTrackingEnabled={locationTrackingEnabled}
             onDismiss={() => {
-                markPromptDismissed(storeId);
+                markPromptDismissed(tenantId, storeId);
                 setShouldShowPrompt(false);
             }}
             onInstallAccepted={() => {

@@ -620,7 +620,8 @@ assert(
 });
 [
   'New project uploads use `projects/files/{tId}/{sId}/{fileId}`',
-  'legacy project Storage paths deny direct client access',
+  'Legacy `MenuListAi/project/...` paths contain no tenant/store identity',
+  '`storage.rules` denies all direct client reads, writes, and deletes',
 ].forEach((token) => {
   assert(tracker.includes(token), `infrastructure tracker documents storage-path token ${token}`);
 });

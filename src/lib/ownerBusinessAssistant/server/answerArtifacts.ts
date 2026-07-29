@@ -1,7 +1,7 @@
 import type { OwnerAssistantAnswerArtifact, OwnerBusinessAnalyticsPeriod } from '../types';
 
 const formatNumber = (value?: number) => {
-  if (typeof value !== 'number' || Number.isNaN(value)) return '0';
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '0';
   return new Intl.NumberFormat('en').format(value);
 };
 

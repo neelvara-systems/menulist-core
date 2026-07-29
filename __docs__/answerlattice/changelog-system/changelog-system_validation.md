@@ -1,6 +1,7 @@
 # Release Impact Guard External Proposal Validation
 
 Reviewed: 2026-07-28
+Implemented: 2026-07-29
 
 This review compares the attached `Release Impact Guard` proposal with the
 current immutable release registry, versioned changelog lifecycle, release
@@ -26,14 +27,14 @@ review step to the existing versioned release lifecycle:
   answers and marks version drift transactionally.
 - Answer Tests can run an explicitly linked release check.
 - Rollback creates a governed proposal and never overwrites a live answer.
-- Current changelog publishing creates and activates the release in one attempt;
-  there is no owner impact-review pause before activation.
+- Versioned publishing now pauses on a bounded owner impact review before
+  activation.
 
 ## Proposal Matrix
 
 | Proposal | Status | Decision |
 |---|---|---|
-| Preventive canonical-answer review | Missing and valuable | Admit as the bounded pre-activation preview. |
+| Preventive canonical-answer review | Implemented | Kept as the bounded pre-activation preview. |
 | Release-scoped critical tests | Implemented separately | Compose current proof into preview; do not create another test engine. |
 | Release and changelog separation | Implemented | Preserve exact dependency and private-draft boundary. |
 | Immutable release history | Implemented | Preserve. |
@@ -49,7 +50,7 @@ review step to the existing versioned release lifecycle:
 | Release Guard summary document | Rejected | Current list/detail access does not justify another summary without telemetry. |
 | CI/CD deployment gate | Rejected | Answerlattice does not own deployment. |
 
-## Exact Later Code Scope
+## Implemented Code Scope
 
 1. Strict `preview_impact` release action.
 2. Shared direct affected-answer projector for preview and activation.
@@ -60,6 +61,14 @@ review step to the existing versioned release lifecycle:
 7. Private/no-store responses, exact permission and workspace scope, rate
    limiting, response-size limits, idempotency, and emulator proof.
 8. No new Firestore document family.
+9. Direct links from the preview to the affected canonical answer and the
+   existing release-scoped Answer Tests workflow, using validated URL context
+   only.
+
+Contract and emulator tests prove deterministic repeat preview, zero preview
+writes, stale-fingerprint rejection, active replay identity, malformed affected
+answer rejection, activation recovery, and exact workspace scope. Hosted
+desktop/narrow-width evidence remains a release certification gate.
 
 ## Validation-Only Scope
 

@@ -260,9 +260,15 @@ function verifyClient(client) {
 
 function verifySharedBlockHelper(helper) {
   [
-    'entity?.blocked === true',
-    'entity?.tenantBlocked === true',
-    'entity?.blockDetails?.blocked === true',
+    'export function isPlatformEntityBlocked(entity: unknown): boolean',
+    "const blocked = safeRead(entity, 'blocked');",
+    "const tenantBlocked = safeRead(entity, 'tenantBlocked');",
+    "const blockDetails = safeRead(entity, 'blockDetails');",
+    'if (!blocked.ok || !tenantBlocked.ok || !blockDetails.ok) return true;',
+    "const nestedBlocked = safeRead(blockDetails.value, 'blocked');",
+    'blocked.value === true',
+    'tenantBlocked.value === true',
+    'nestedBlocked.value === true',
     'reason.trim()',
     "source: 'platform_settings' as const",
     'blockedAt: now',

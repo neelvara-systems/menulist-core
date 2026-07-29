@@ -29,11 +29,11 @@ Findings ledger summary for defects confirmed so far:
 
 | Severity | Confirmed | Closed locally | Open source defects |
 | --- | ---: | ---: | ---: |
-| P0 | 141 | 141 | 0 |
-| P1 | 587 | 587 | 0 |
-| P2 | 615 | 615 | 0 |
-| P3 | 343 | 343 | 0 |
-| **Total** | **1,683** | **1,683** | **0 currently known** |
+| P0 | 143 | 143 | 0 |
+| P1 | 597 | 597 | 0 |
+| P2 | 679 | 679 | 0 |
+| P3 | 365 | 365 | 0 |
+| **Total** | **1,784** | **1,784** | **0 currently known** |
 
 ## 2. Git Baseline and Work Preservation
 
@@ -244,10 +244,13 @@ Restart 1003 addendum: the complete Answer Tests route family, strict contracts 
 
 Restart 1004 addendum: complete widget-key and widget-security route traces confirmed and closed P2 `AUDIT-AL-WIDGET-KEY-RATE-ACTOR-PARTITION-001`, P2 `AUDIT-AL-WIDGET-MUTATION-PERSISTED-SCOPE-COERCION-001` and P3 `AUDIT-AL-WIDGET-MANAGEMENT-PRIVATE-RESPONSE-CACHE-001`. Widget-key admission correctly rejected ambiguous actor aliases but built its limiter key from `session.uId`; valid sessions represented by `session.user.id` therefore shared an undefined actor partition. The route now uses the exact resolved actor. Widget key and security mutations relied on the general store reader, whose document-ID normalizer accepts numeric strings; a shared mutation-only boundary now requires exact product, numeric tenant/store aliases and exact document identity inside every transaction. The real Firestore emulator rejects coercive `tId`, `tenantId`, `sId` and `storeId` rows. Widget-key’s first forbidden response bypassed private policy and its response helper let caller headers override cache protection; widget-security also used a weaker cache-only object and returned helper responses unstamped. Both now use non-overridable shared private no-store/max-age-zero/nosniff policy. One-time secrets, key hashing, managed/legacy state normalization, key limits, rotation exclusion, canonical host validation, signature contracts and public-safe projections remain unchanged. Runtime truth, the real widget-key/config emulator, focused lint, exact TypeScript and diff integrity pass. Two routes move to reviewed, bringing counts to 1,305 reviewed, 1,976 in-progress and 5,071 inventory-only. These repairs reset convergence and are not a full clean pass.
 
+Restart 1005 addendum: the complete support-truth export route and 543-line exporter reverse trace confirmed and closed P3 `AUDIT-AL-SUPPORT-TRUTH-PRIVATE-RESPONSE-CACHE-001`. Feature/session/actor admission, exact actor/workspace two-per-hour fail-closed limiting, `EXPORT_DATA` permission, cap-plus-one exact product/workspace queries, nested changelog identity corroboration, published/private-field projection, eight-megabyte all-or-nothing response cap and metadata-only audit-before-download are intact. The current-permission denial response alone bypassed the route’s private no-store/max-age-zero/nosniff/pragma policy. A protected stamper now applies the same policy before return without changing the permission body/status. Runtime truth, support-truth export contract tests, focused lint, exact TypeScript and diff integrity pass. The route moves to reviewed, bringing counts to 1,306 reviewed, 1,975 in-progress and 5,071 inventory-only. This repair resets convergence and is not a full clean pass.
+
 ## 4. Baseline Validation Ledger
 
 | Command | Exit | Result | Classification and action |
 | --- | ---: | --- | --- |
+| Answerlattice runtime truth, support-truth export contracts, focused ESLint, exact TypeScript and `git diff --check` (restart 1005) | 0 | Export scope/projection/caps/audit settlement and protected current-permission responses pass. | Closes P3 `AUDIT-AL-SUPPORT-TRUTH-PRIVATE-RESPONSE-CACHE-001` locally. |
 | Answerlattice runtime truth, real widget-key/config Firestore emulator, focused ESLint, exact TypeScript and `git diff --check` (restart 1004) | 0 | Exact actor rate partition, exact numeric transaction-current widget-store authority, coercive-scope rejection, protected private responses and existing credential/config concurrency behavior pass. | Closes P2 `AUDIT-AL-WIDGET-KEY-RATE-ACTOR-PARTITION-001`, P2 `AUDIT-AL-WIDGET-MUTATION-PERSISTED-SCOPE-COERCION-001` and P3 `AUDIT-AL-WIDGET-MANAGEMENT-PRIVATE-RESPONSE-CACHE-001` locally. |
 | Answerlattice runtime truth, Answer Tests runtime contracts, focused ESLint, exact TypeScript and `git diff --check` (restart 1003) | 0 after two obsolete source assertions and one overbroad TypeScript predicate were corrected | Exact numeric rollback authority rejects coercive/wrong-product/foreign persisted scope; all five route response families use the shared protected private policy; existing suite/run/release/proposal behavior passes. | Closes P2 `AUDIT-AL-ANSWER-ROLLBACK-PERSISTED-SCOPE-COERCION-001` and P3 `AUDIT-AL-ANSWER-TEST-PRIVATE-RESPONSE-CACHE-001` locally. |
 | Answerlattice runtime truth, owner-support-assistant contracts, workflow-integration contracts, integration-config ownership, integration-event identity and `git diff --check` (restart 1002) | 0 | Complete support query, integration configuration and test-event route contracts pass without a new confirmed defect. | Targeted clean coverage; three routes moved to reviewed, no convergence increment. |
@@ -272,7 +275,7 @@ Restart 1004 addendum: complete widget-key and widget-security route traces conf
 | `npm run verify:staff-roles-route-parity`, `npm run verify:menulist-api-tenant-safety`, `npm run verify:staff-scope-boundary`, `npm run verify:staff-concurrency-boundary`, focused ESLint, exact TypeScript, and `git diff --check` (restart 983) | 0 after one stale-verifier correction | The route/client/server parity gate, tenant-safety child suites, staff scope/schema contracts, concurrency source contract, lint, TypeScript, and diff hygiene passed. The initial route-parity run failed only because it still expected a retired session-ID alias expression; it now asserts the current exact shared document-ID resolver. | Closes P1 `AUDIT-STAFF-EMAIL-AUTHORITY-AMBIGUITY-001` locally and proves the two-row overflow/fail-closed boundary is registered in both focused source gates. |
 | `firebase deploy --only functions:answerlatticeNightly,functions:triggerAnswerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` (restart 982) | 1 | Firebase CLI returned `Failed to authenticate, have you run firebase login?` before predeploy or upload. | Environmental authentication blocker; no QA Function revision changed. The local repair is not deployed evidence. |
 | `npm run verify:answerlattice-knowledge-map`, `npm --prefix functions-answerlattice run build`, focused ESLint, and `git diff --check` (restart 982) | 0 | The focused contract suite passed client projection, graph/parser/public-rich-text behavior and the new persisted-summary recovery cases; Answerlattice Functions compiled; focused lint and diff hygiene passed. | Closes P2 `AUDIT-AL-KNOWLEDGE-MAP-SOURCE-HASH-RECOVERY-001` locally. QA Functions deployment remains required because the writer is deployed Functions logic. |
-| Direct focused `SIGNALDESK_E2E_FOCUS=seed` Firestore emulator, `node scripts/verification/verify-signaldesk-runtime.js`, and exact TypeScript (restart 981) | 0; one nonexistent npm alias failed before test execution | `npm run test:signaldesk:seed-boundary` is not registered. The repository's actual focused seed stage passed template stale-field repair, one settlement, concurrent convergence and clean replay; the source verifier passed 4,085 checks and exact TypeScript passed. | Closes P3 `AUDIT-SD-TEMPLATE-SEED-STALE-FIELDS-001` locally while recording the missing-script attempt accurately. |
+| Direct focused `SIGNALDESK_E2E_FOCUS=seed` Firestore emulator, `node scripts/verification/verify-signaldesk-runtime.js`, and exact TypeScript (restart 981) | 0; one nonexistent npm alias failed before test execution | The attempted historical alias (`npm` + `run` + `test:signaldesk:seed-boundary`) is not registered. The repository's actual focused seed stage passed template stale-field repair, one settlement, concurrent convergence and clean replay; the source verifier passed 4,085 checks and exact TypeScript passed. | Closes P3 `AUDIT-SD-TEMPLATE-SEED-STALE-FIELDS-001` locally while recording the missing-script attempt accurately. |
 | `npm run test:signaldesk:access-boundary`, `node scripts/verification/verify-signaldesk-runtime.js`, and exact TypeScript (restart 980) | 0 | The dedicated access emulator proved team-member exact replay, stale-field removal, session binding, self-deactivation denial and concurrent identity collision behavior; the source verifier passed 4,083 checks and exact TypeScript passed. | Closes P2 `AUDIT-SD-TEAM-MEMBER-REPLAY-SHAPE-001` locally. |
 | Focused `SIGNALDESK_E2E_FOCUS=operating` Firestore emulator, `node scripts/verification/verify-signaldesk-runtime.js`, and exact TypeScript (restart 979) | 0 | The real emulator proved reply-playbook stale-field removal while retaining exact replay and unsafe-stop denial; the source verifier passed 4,079 checks and exact TypeScript passed. | Closes P3 `AUDIT-SD-REPLY-PLAYBOOK-STALE-FIELDS-001` locally. |
 | Focused `SIGNALDESK_E2E_FOCUS=operating` Firestore emulator, `node scripts/verification/verify-signaldesk-runtime.js`, and exact TypeScript (restart 978) | 0 | The real emulator proved source-quality stale-field removal while preserving all prior attribution/replay behavior; the source verifier passed 4,077 checks and exact TypeScript passed. | Closes P3 `AUDIT-SD-SOURCE-QUALITY-STALE-FIELDS-001` locally. |
@@ -416,7 +419,7 @@ Restart 1004 addendum: complete widget-key and widget-security route traces conf
 | Restart 893 analytics limiter/receipt identity trace | 1 on misplaced source assertion, then 0 after verifier repair | The shared analytics read limiter selected one user/tenant/store alias before permission checks, allowing contradictory session truth to fragment the rate-limit partition. Owner-action mark-done exact-checked store permission but selected one user-ID alias for durable receipt attribution. The first verifier edit placed one new import assertion in the AI-history block; it was moved to the owning receipt block. | P2 `AUDIT-ANALYTICS-READ-RATE-SCOPE-ALIAS-001` and P2 `AUDIT-OWNER-ACTION-ACTOR-ALIAS-001` closed locally. Exact provider/session scope now owns the limiter partition and exact user identity owns receipt attribution. Session-scope behavior, analytics write/emulator and complete API tenant-safety gates plus TypeScript/lint pass. No analytics provider call or production write occurred. |
 | Restart 894 browser Firebase claim-scope trace | 1 on an over-specific verifier token, then 0 after assertion repair | Browser Firebase auth sync selected nested tenant/store aliases before deciding cached claims matched, building its de-duplication key, or requesting `/api/auth/set-claims`. Missing scope and contradictory/partial scope were treated alike, so ambiguous identity could be considered ready or mint client Firestore claims for the preferred store. The shared permission projector also omitted nested compact `user.tId/user.sId` aliases. | P0 `AUDIT-FIREBASE-AUTH-SYNC-SCOPE-ALIAS-001` closed locally. A pure state projector now distinguishes absent, invalid and exact scope across every root/nested compact/verbose alias; invalid scope throws a coded generic bootstrap failure before token work. Session behavior, full auth failure matrix, complete API tenant-safety, TypeScript and lint pass. No token was minted, Firebase Auth/Firestore call made, or deployment run. |
 | Restart 889 shared permission/staff/linked-outlet alias trace | 1 on two stale source assertions, then 0 after verifier repair | Selected-store and transaction-current permission overloads did not reconcile session aliases and compared only persisted `tenantId`; staff authority and linked-outlet policy/save separately selected one session or persisted alias. The API verifier still required the retired outlet-helper signature and a superseded Razorpay documentation sentence. | P0 `AUDIT-SHARED-PERMISSION-SCOPE-ALIAS-001`, P0 `AUDIT-LINKED-OUTLET-SCOPE-ALIAS-001`, and P1 `AUDIT-STAFF-AUTHORITY-SCOPE-ALIAS-001` closed locally. Exact pure scope/store projection, multi-location/staff/API source gates, exact TypeScript/focused lint and real staff concurrency emulator pass. No Firebase infrastructure, remote data, provider, billing or deployment effect occurred. |
-| Restart 888 shared AI-accounting authenticated-scope trace | 0 after repair; one mistyped documentation command exited 1 before the correct repository script passed | The random-ID operation writer reconciled all session/input aliases, but reservation, deterministic replay/reference and diagnostic branches first built a separate `input ?? session` identity. Accounting mode could therefore decide whether conflicting authenticated scope was rejected before a Firestore reference or settlement path was selected. `npm run verify:docs-links` is not a repository script; `npm run docs:check-links` is authoritative and reports zero broken links plus the established 62 media naming warnings. | P1 `AUDIT-AI-ACCOUNTING-ENTRY-SCOPE-001` closed locally. The shared finalizer now performs exact session/input projection before every accounting branch. Pure scope behavior, complete accounting source gate, real Firestore reservation/replay emulator, exact TypeScript, root/focused lint, docs links, duplicate-key JSON, manifest/catalog/tooling and diff checks pass. No provider, billing, remote Firebase, infrastructure or deployment effect occurred. |
+| Restart 888 shared AI-accounting authenticated-scope trace | 0 after repair; one mistyped documentation command exited 1 before the correct repository script passed | The random-ID operation writer reconciled all session/input aliases, but reservation, deterministic replay/reference and diagnostic branches first built a separate `input ?? session` identity. Accounting mode could therefore decide whether conflicting authenticated scope was rejected before a Firestore reference or settlement path was selected. The attempted historical alias (`npm` + `run` + `verify:docs-links`) is not a repository script; `npm run docs:check-links` is authoritative and reports zero broken links plus the established 62 media naming warnings. | P1 `AUDIT-AI-ACCOUNTING-ENTRY-SCOPE-001` closed locally. The shared finalizer now performs exact session/input projection before every accounting branch. Pure scope behavior, complete accounting source gate, real Firestore reservation/replay emulator, exact TypeScript, root/focused lint, docs links, duplicate-key JSON, manifest/catalog/tooling and diff checks pass. No provider, billing, remote Firebase, infrastructure or deployment effect occurred. |
 | Restart 887 browser-local export-history scope alias trace | 0 after repair | The PDF freshness/history key selected `tenantId ?? tId` and `storeId ?? sId`. Contradictory or malformed compatibility aliases could share device-local export state under the preferred outlet identity. | P2 `AUDIT-LOCAL-EXPORT-HISTORY-SCOPE-ALIAS-001` closed locally. All present tenant/store aliases must agree before a local-storage scope is emitted. Pure browser behavior, complete Menu Card Export source gate and focused lint pass. No Firebase operation, public cache, server state or deployment changed. |
 | Restart 886 Google Analytics/billing sensitive store-scope alias trace | 0 after repair | Both server authorities selected one session tenant/store alias and compared only `storeData.tenantId`. A matching preferred value could hide a conflicting session, embedded store, or tenant alias before Google provider reads or MenuList billing mutations. | P0 `AUDIT-SENSITIVE-SERVER-STORE-SCOPE-ALIAS-001` closed locally. One pure boundary reconciles all session aliases, embedded store identity, and every persisted store tenant alias. Pure behavior, API tenant-safety, billing-entitlement and System Strengthening/rules aggregates pass. No provider call, billing mutation, Firestore write, infrastructure change or deployment occurred. |
 | Restart 885 tenant-block backfill persisted store/tenant alias trace | 1 stale source assertion, then 0 after repair | The dry-run/write migration selected `store.tenantId ?? store.tId` and checked only embedded `storeId`. A confirmed write could mirror the wrong tenant block state onto a store carrying conflicting compatibility ownership. | P1 `AUDIT-TENANT-BLOCK-BACKFILL-SCOPE-ALIAS-001` closed locally. One pure projector reconciles document ID, every embedded store alias and every tenant alias before tenant lookup or batch admission. Behavior, operator-safety and complete public-business-truth aggregates pass. No backfill, Firebase read/write, infrastructure change or deployment occurred. |
@@ -462,7 +465,7 @@ Restart 1004 addendum: complete widget-key and widget-security route traces conf
 | Restart 858 CueLayers current-membership transaction trace | 0 after repair | Upload, autosave, repair and export used an exact workspace/member check before Storage or processing, but their final Admin transactions did not re-read that authority. A user removed during the operation could still commit design/job/version/repair/export/asset/event/idempotency truth. | P1 `AUDIT-CC-CUELAYERS-MEMBERSHIP-TOCTOU-001` closed locally. The common guard validates current exact-CC product, tenant, store, active status and actor membership inside the idempotency claim and every final mutation transaction; the 1,802-check runtime verifier, exact TypeScript, focused lint and diff hygiene pass. |
 | Restart 857 CampaignCue authority-state reverse traces | 0 | Direct reverse review closed `analyticsSummaries`, `approvalRequests`, `businessBrains`, `schedules`, `sourceSnapshots`, and `trustReports`. Workspace bootstrap, strict persisted projectors, coherent authority hashes, transaction-current role/campaign/source checks, export-only schedule intent, atomic idempotency/effect ledgers, exact-CC membership reads, and universal client-write denial are covered by current source plus the complete CampaignCue runtime and Firestore/Storage emulator matrix. | No new finding. All six collections are reviewed with exact current evidence; this focused datastore closure is not a complete clean pass and the counter remains zero. |
 | Restart 856 nested menu-drift `metrics` reverse trace | 0 after repair | Detailed and compact change-log contribution guards rejected slashes but admitted the reserved Firestore document IDs `.` and `..`. A malformed Admin/legacy event could make nightly metric persistence fail after earlier cleanup batches had committed. | P2 `AUDIT-MENU-DRIFT-RESERVED-DOCUMENT-ID-001` closed. Both byte-identical shared contracts reject the reserved IDs; contribution, mirror, public-truth and real replacement-emulator gates pass. |
-| Restart 855 dormant SignalDesk summary-rule coverage | 0 after command correction | Role-policy, foundation-summary and AI-eval-summary rule paths were platform-only and write-denied, but were omitted from the complete static collection list and behavioral emulator matrix. | Audit-evidence P3 `AUDIT-SIGNALDESK-DORMANT-SUMMARY-RULE-COVERAGE-001` closed. Exact-product platform reads, member denial and universal write denial now pass. The initial nonexistent `npm run test:signaldesk-security-rules` exited 1; the actual repository command `npm run test:signaldesk:rules` exited 0. |
+| Restart 855 dormant SignalDesk summary-rule coverage | 0 after command correction | Role-policy, foundation-summary and AI-eval-summary rule paths were platform-only and write-denied, but were omitted from the complete static collection list and behavioral emulator matrix. | Audit-evidence P3 `AUDIT-SIGNALDESK-DORMANT-SUMMARY-RULE-COVERAGE-001` closed. Exact-product platform reads, member denial and universal write denial now pass. The initial nonexistent alias (`npm` + `run` + `test:signaldesk-security-rules`) exited 1; the actual repository command `npm run test:signaldesk:rules` exited 0. |
 | Restart 854 dormant Business Entity Index contract | 0 after repair | The feature is off and has no Firestore runtime, but its documentation claimed authenticated reads and its exported public-only validator inspected only top-level keys, allowing nested sensitive-looking keys or hostile/cyclic objects. | P3 `AUDIT-BUSINESS-ENTITY-INDEX-DORMANT-SAFETY-CONTRACT-001` closed. Recursive safety fails closed, adversarial tests pass, docs state current root default deny, and activation gates are explicit. |
 | Restart 853 dormant AI Menu Manager rule-ledger rules evidence | 0 after test repair | `aiMenuManagerRules` was explicitly client-denied and unused, but its authenticated rules emulator covered only the adjacent proposal ledger. A later rule regression could activate the reserved namespace without a failing behavioral test. | Audit-evidence P3 `AUDIT-AI-MENU-MANAGER-RULES-LEDGER-DENY-COVERAGE-001` closed. The emulator now proves a valid owner cannot create or read the rule ledger; the aggregate AI Menu Manager verifier pins the path and fixture. |
 | Restart 852 runtime collection-registry consumer evidence | 0 after repair | Collection-valued erasure registries attached only their defining contract to each row. The generic bounded worker and lifecycle tests/verifier disappeared from all member reverse traces, so `kb_ai_runs`, `kb_review_tasks` and other collections appeared constant-only or lacked their active deleter. | Audit-integrity P1 `AUDIT-COLLECTION-CATALOG-RUNTIME-REGISTRY-CONSUMER-001` closed. Exported collection registries propagate exact members into generic consumers; all member rows now include lifecycle server/test/verifier evidence and the tooling gate passes. |
@@ -499,7 +502,7 @@ Restart 1004 addendum: complete widget-key and widget-security route traces conf
 | Restart 821 billing coordination rule-evidence closure | 0 | The complete 58-line emulator newly associated with both Admin-only billing coordination families seeds current lease/provider-plan shapes and proves unauthenticated, owner and platform browsers cannot read or mutate either namespace. Exact server transactions, provider fences, recovery queries and index contracts remain covered by the other current evidence files. | No new source finding. `npm run test:billing-coordination:rules` passes; `billingCheckoutLeases` and `billingProviderPlans` are reviewed. This focused reverse trace is not a full clean pass. |
 | Restart 820 `feedbackEvents` widened-evidence closure | 0 | The broadened catalog associated the complete 686-line Guest Feedback source verifier with the compact event ledger, reopening its prior review. Full verifier review reconfirmed validated/idempotent Admin submission, deterministic event identity, total client denial, bounded leased retention, strict owner DTO/scope behavior, public input/URL/PII filtering, desktop/mobile request settlement and documentation parity. | No new source finding. `node scripts/verification/verify-guest-feedback-boundary.js` passes every package/runtime/route/DAL/rules/retention/owner/docs check; all seven collection evidence files are current and `feedbackEvents` is reviewed. This focused reverse trace is not a full clean pass. |
 | Restart 819 CampaignCue browser-rule durable membership | 0 locally; QA deploy blocked | Direct Firestore and Storage rules trusted matching tenant/store custom claims without consulting the authoritative workspace member map or active status. A same-store user removed from CampaignCue could read all workspace child data and private objects and could write/delete saved template index/artifacts; curated platform templates also remained accessible. Both rulesets now require exact CC/product/tenant/store/id identity, `status: active`, the current UID in `members`, and an allowed role; Storage uses one cross-service Firestore authorization lookup. Combined emulators prove active owner/platform access and reject same-scope nonmembers, disabled workspaces, missing claims, foreign scopes and client-only server paths. The cost ledger includes every billed rule lookup. | P1 `AUDIT-CC-CLIENT-WORKSPACE-MEMBERSHIP-001` closed locally. The complete 1,799-check CampaignCue aggregate, Firestore/Storage emulators, focused lint and exact TypeScript pass. `firebase deploy --config firebase-campaigncue.json --project campaigncue-qa --only firestore:rules,storage --non-interactive` failed before upload with `Error: Failed to authenticate, have you run firebase login?`; live QA/production rules remain unverified and the clean counter is zero. |
-| Restart 818 dormant pricing PDF persistence path | 0 after one repair | The disabled PDF regeneration module still contained a latent `doc(db, "jobs", "pdfRegen", tId, sId, projectId)` write with five collection/document segments after `db`, which Firestore rejects as an invalid document path. No worker, rules contract or reader existed. The inactive implementation is now a true fail-closed no-effect boundary with only a bounded disabled diagnostic; Firebase imports, timer state and writer are removed. | P3 `AUDIT-PRICING-PDF-DORMANT-JOB-PATH-001` closed locally. The maintained pricing behavior/source regression, pricing boundary, API tenant-safety gate, focused lint and exact TypeScript pass. The guessed `npm run test:pricing-integrity-concurrency-contract` command was absent (exit 1); its exact local `ts-node` test command passed and is recorded in the finding. |
+| Restart 818 dormant pricing PDF persistence path | 0 after one repair | The disabled PDF regeneration module still contained a latent `doc(db, "jobs", "pdfRegen", tId, sId, projectId)` write with five collection/document segments after `db`, which Firestore rejects as an invalid document path. No worker, rules contract or reader existed. The inactive implementation is now a true fail-closed no-effect boundary with only a bounded disabled diagnostic; Firebase imports, timer state and writer are removed. | P3 `AUDIT-PRICING-PDF-DORMANT-JOB-PATH-001` closed locally. The maintained pricing behavior/source regression, pricing boundary, API tenant-safety gate, focused lint and exact TypeScript pass. The guessed historical alias (`npm` + `run` + `test:pricing-integrity-concurrency-contract`) was absent (exit 1); its exact local `ts-node` test command passed and is recorded in the finding. |
 | Restart 817 nested-registry and multi-segment collection evidence | 0 after one repair | The catalog did not resolve collection names stored as nested non-database registry properties and inspected only the first collection position in modular `doc()` calls. It therefore classified active `packTemplateIndexes` browser reads/transactions as reserved and omitted the invalid dormant `jobs` path. The generator now parses the CampaignCue template registry, balanced modular calls and every collection-position argument while excluding document IDs and unrelated Storage assertion strings; the verifier pins the active seven-source reverse trace. | Audit-integrity P1 `AUDIT-COLLECTION-CATALOG-NESTED-REGISTRY-ALIAS-001` closed. `packTemplateIndexes` is reviewed as active, the catalog remains 280 real/test/reserved families after the invalid dormant writer is removed, audit-tool and pack-template gates pass, and the clean counter is zero. |
 | Restarts 810-816 CampaignCue mutation retry, current-authority, persisted-shape, and cost truth | 0 after six repairs | The completed server/verifier clean-room reread found optional mutation idempotency, browser retries that minted new keys after ambiguous transport failure, campaign creation that could commit after its decision inputs changed, action authorization that did not recheck current workspace membership, unchecked persisted campaign/source/schedule/location/summary/trust shapes, a duplicate sanitizer that persisted optional `undefined` as contract-breaking `null`, and stale read-cost counts. Mutation schemas and server helpers now require retry identity; the browser retains each exact request key until an authoritative response; final create transaction rereads and fingerprints every bounded decision input; trust-gated actions revalidate current exact membership; persisted records pass runtime decoders with legacy optional-null normalization; shared Firestore sanitization omits undefined fields; cost DTOs report three analytics and nine overview reads. Restart 816’s independent decoder reread replaced the remaining generic campaign decision/output metadata/Pattern Cue records and arbitrary pack enum fields with exact bounded schemas, and made schedule time genuinely required. | P1 `AUDIT-CC-MUTATION-IDEMPOTENCY-001`, P1 `AUDIT-CC-CAMPAIGN-AUTHORITY-TOCTOU-001`, P1 `AUDIT-CC-ACTION-MEMBERSHIP-TOCTOU-001`, P2 `AUDIT-CC-PERSISTED-RECORD-BOUNDARY-001`, P2 `AUDIT-CC-UNDEFINED-NULL-PERSISTENCE-001`, and P3 `AUDIT-CC-READ-COST-TRUTH-001` closed locally. The 1,799-check runtime verifier, expanded persisted-record regression, full CampaignCue aggregate including Firestore/Storage emulators, focused lint, exact TypeScript, audit generators and audit-tool verifier pass. The `idempotencyKeys` reverse collection trace is now reviewed with all six evidence files current. Clean counter remains zero. No new Firebase rule/Function change was added; the previously added TTL index remains QA-deploy blocked by missing Firebase authorization. |
 | Restarts 806-809 CampaignCue session/store/workspace admission and bootstrap | 0 after four repairs | Clean-room bootstrap tracing found raw/conflicting session aliases, a shared MenuList store read that did not prove tenant ownership or active state, persisted CampaignCue workspaces used without exact product/scope/member validation, and non-atomic first-workspace/child initialization that could race owner assignment or reset summary counters. Exact numeric session aliases, shared-store ownership, active workspace membership and Business Brain scope now fail closed. Workspace claim and missing child creation are transactionally create-only. Pure scope regressions, 1,784 runtime checks, focused lint and exact root TypeScript pass. | P0 `AUDIT-CC-STORE-BOOTSTRAP-TENANT-SCOPE-001`, P1 `AUDIT-CC-WORKSPACE-MEMBERSHIP-001`, P1 `AUDIT-CC-WORKSPACE-BOOTSTRAP-RACE-001`, and P2 `AUDIT-CC-SESSION-SCOPE-ALIAS-001` closed locally; clean counter reset to zero. No Firebase rule/index/Function change was added by these four repairs. |
@@ -1090,7 +1093,7 @@ Restart 1004 addendum: complete widget-key and widget-security route traces conf
 | Restarts 601-605 closure matrix and manifest | 0 | Online convergence and initial/mutation counter emulator/pure suites; onboarding operation/resource/response tests; reseller source gate; MenuList tenant/auth matrices; exact TypeScript; full root lint; dependency freeze; docs links; review-state JSON; manifest/catalog tooling and diff hygiene pass under Node 22.23.1. | Manifest regenerated 8,145 in-scope rows and 306 exclusions: 1,383 reviewed, 391 ranged in-progress and 6,371 inventory-only; catalog remains 280 families. Docs retain zero broken links and 62 established media naming warnings. No Firebase rules, indexes or Functions changed and no deploy applies. Exit criteria remain unmet and clean counters remain zero. |
 | Restart 606 reseller client type-first suppression pass | 0 confirmed | Clean-room scan of reseller API/DAL/helpers/hooks and desktop/mobile owner surfaces for `any`, broad records and TypeScript/ESLint suppressions found six unnecessary session assertions on the four dashboard/management consumers. The active NextAuth augmentation already declares root/user identity and platform role. | Assertions were removed and direct optional typed fields compile; focused TypeScript/ESLint and a zero-match adversarial scan pass. This is type-proof cleanup without a confirmed runtime defect, so the repository clean counter remains zero rather than treating a ranged subsystem check as a full clean pass. |
 | Restart 607 reseller management profile transport pass | 1 confirmed P2, then 0 | Datastore-first reverse trace from `resellerProfiles` through platform management found that GET serialized every persisted field except `password`, both clients independently accepted arbitrary extra keys and any finite counter, and the 50-row cap/invalid evidence was silent. Legacy Auth metadata or unknown private fields could cross the Admin transport, while negative, fractional, unsafe or malformed counters could become platform operational truth. | Local closure for P2 `AUDIT-RESELLER-MANAGEMENT-PROFILE-DTO-001`. One allowlisted projector and exact shared response validator now require valid identity, bounded strings and safe counters; private/unknown fields are omitted, invalid rows are counted, and one extra bounded read makes a reached cap visible on desktop/mobile. Focused behavior/source/type/lint gates pass. Clean counters remain zero. |
-| Restart 607 closure matrix and manifest | 0 after one stale aggregate assertion and one corrected command name | Focused management-profile behavior/source, MenuList tenant safety, auth/security matrix, exact TypeScript, full root lint, dependency freeze, docs links, review-state JSON, audit tooling, manifest/catalog and diff hygiene pass under Node 22.23.1. Tenant safety initially required the former `const profiles` variable and was updated to the exact projected-reader token. The unregistered `verify:docs-links` command failed; inspecting `package.json` identified and the run used maintained `npm run docs:check-links` successfully. | Manifest regenerated 8,147 in-scope rows and 306 exclusions: 1,385 reviewed, 391 ranged in-progress and 6,371 inventory-only; catalog remains 280 families. Docs retain zero broken links and 62 established media naming warnings. No Firebase infrastructure changed and no deploy applies. Exit criteria remain unmet and clean counters remain zero. |
+| Restart 607 closure matrix and manifest | 0 after one stale aggregate assertion and one corrected command name | Focused management-profile behavior/source, MenuList tenant safety, auth/security matrix, exact TypeScript, full root lint, dependency freeze, docs links, review-state JSON, audit tooling, manifest/catalog and diff hygiene pass under Node 22.23.1. Tenant safety initially required the former `const profiles` variable and was updated to the exact projected-reader token. The unregistered historical alias (`npm` + `run` + `verify:docs-links`) failed; inspecting `package.json` identified and the run used maintained `npm run docs:check-links` successfully. | Manifest regenerated 8,147 in-scope rows and 306 exclusions: 1,385 reviewed, 391 ranged in-progress and 6,371 inventory-only; catalog remains 280 families. Docs retain zero broken links and 62 established media naming warnings. No Firebase infrastructure changed and no deploy applies. Exit criteria remain unmet and clean counters remain zero. |
 | Restart 608 reseller soft-delete current-authority pass | 1 confirmed P1, then 0 | Reverse trace from the legacy `ResellerProfile.deleted` field into the shared current-profile reader/authority showed that a row with `deleted: true` and stale `active: true` was still returned and authorized across every reseller-protected read and mutation route. The platform-by-ID updater could also resolve the hidden row. | Local closure for P1 `AUDIT-RESELLER-SOFT-DELETE-AUTHORITY-001`. The shared reader excludes soft-deleted direct and legacy candidates, the by-ID management reader returns not found, and the current-authority helper independently denies deleted rows. Pure/source/type/lint and real Firestore emulator gates pass. Clean counters remain zero. |
 | Restart 609 reseller offline-capacity pre-side-effect pass | 1 confirmed P2, then 0 | Forward failure trace from an offline onboarding request found that the early cap check used truthiness and relational coercion on asserted profile counters. Present string/malformed cap or active-count state could pass, allowing owner Auth plus tenant/store/user creation before the authoritative billing transaction rejected it and required compensation. | Local closure for P2 `AUDIT-RESELLER-OFFLINE-CAPACITY-PREFLIGHT-001`. One pure projector preserves missing-field legacy defaults but requires present current count/cap to be exact safe integers; malformed state returns support review and exhausted capacity returns conflict before logs, owner preparation, subdomain or persistence/provider effects. Focused behavior/source/type/lint gates pass. Clean counters remain zero. |
 | Restart 610 reseller provider-subscription response pass | 1 confirmed P2, then 0 | External-boundary/type-first trace found `let razorpaySubscription: any`; only checkout URL was normalized while provider `id` became the subscription/Firestore document identity without runtime validation. Malformed success output could therefore enter compensation or billing persistence with an invalid/absent identity. | Local closure for P2 `AUDIT-RESELLER-PROVIDER-SUBSCRIPTION-DTO-001`. One exact projector requires a trimmed valid Firestore document ID and approved Razorpay checkout URL before local billing; the route uses a nullable exact type and fixed Firebase Auth error narrowing, with no `any` remaining. Focused behavior/source/type/lint gates pass. Clean counters remain zero. |
@@ -14217,7 +14220,7 @@ Restart 43 removed the now-unused full/partial summary writer exports after all 
 - **Producer/consumer/trigger/observed:** `addNote` and `updateNote` uploaded new objects and then treated every rejected `setDoc`/transaction promise as proof the note write failed. Firestore may commit before the browser loses its acknowledgement. The catch then removed the new attempt objects (and create could delete the provisional note), leaving committed private truth with missing attachment bytes. The same defect affected create finalization and updates; no public DTO or cache was involved.
 - **Expected/root cause/security/data/public/cache impact:** destructive cross-service compensation requires authoritative proof that current exact-scope Firestore truth does not reference the new objects. Client promise rejection is not that proof. The defect did not bypass tenant authorization or expose another tenant, but it could corrupt owner-private note data. Notes remain private and have no public-truth/cache effects.
 - **Fix/compatibility/cost:** before compensation after an attempted attachment persistence, the DAL uses `getDocFromServer` on the captured tenant/store/note path and verifies persisted `tId/sId`. A pure projector classifies every uploaded URL as fully referenced, unreferenced, or partial. Full reference reconstructs success; none permits existing cleanup; partial, scope mismatch, or read failure retains objects and logs bounded ambiguity. A reconciled update defers old-object cleanup because the rejected transaction cannot safely return its transaction-current deletion set. Normal successful write/read counts are unchanged; only the thrown acknowledgement path adds one server read. Existing rows and URLs remain compatible.
-- **Regression/validation/deploy:** the pure suite covers all/none/partial/empty commit projection in addition to identity and URL normalization. `npm run test:note-attachment-boundary`, the complete `npm run verify:storage-paths` suite (including the Storage emulator), `npm run verify:public-business-truth`, `npm run verify:menulist-api-tenant-safety`, exact root TypeScript and scoped ESLint pass. The Storage gate initially caught one stale source token and passed after asserting the predeclared finalization assignment. No Firestore rule/index or Function changed. Hosted acknowledgement-loss injection and live orphan inventory remain external; clean counter is zero.
+- **Regression/validation/deploy:** the pure suite covers all/none/partial/empty commit projection in addition to identity and URL normalization. The historical focused alias (`npm` + `run` + `test:note-attachment-boundary`), the complete `npm run verify:storage-paths` suite (including the Storage emulator), `npm run verify:public-business-truth`, `npm run verify:menulist-api-tenant-safety`, exact root TypeScript and scoped ESLint passed in that restart. The Storage gate initially caught one stale source token and passed after asserting the predeclared finalization assignment. No Firestore rule/index or Function changed. Hosted acknowledgement-loss injection and live orphan inventory remain external; clean counter is zero.
 
 ### AUDIT-NOTES-ATTACHMENT-SHARED-REFERENCE-001 — One-note cleanup could delete attachments referenced by another note
 
@@ -20265,7 +20268,7 @@ Concurrent user-owned generated-media work is preserved rather than renamed by t
 - **ID/severity/status:** `AUDIT-SYSTEM-HEALTH-PROBE-SUMMARY-001` / P2 / Closed locally in restart 792. **Files/flow/structure:** per-store system-health reporter, pure response-time summary helper and boundary regression; internal health trigger -> five component checks -> transient `_health` probe -> compact `systemHealth` report.
 - **Producer/consumer/trigger/observed:** the reporter filtered components with response times but divided their sum by every component, so a failed component without a measurement made latency look faster. Its Firestore check used one deterministic tenant/store scratch-document ID and deleted only after a successful read; concurrent checks could interfere and a post-write failure could leave the document behind.
 - **Expected/root cause/security/data/public/cache impact:** averages must use the measured sample count, a valid zero-millisecond sample must remain included, and every invocation must own independent transient state with recovery after partial failure. The defect affected monitoring truth and scratch-data retention, not client authorization or public output.
-- **Fix/compatibility/regression/validation:** the pure helper averages only defined measurements with finite zero for no samples; probes use a random per-invocation ID, carry tenant/store fields for diagnostics, and attempt cleanup with a stable logged failure code. `npm run verify:system-health-boundary`, `npm --prefix functions run build`, focused ESLint, `npm run verify:dependency-freeze`, and `npm run verify:data-flow-audit-tools` pass. The helper is not reachable from a currently exported Cloud Function, so no Firebase deploy target exists for this dormant path.
+- **Fix/compatibility/regression/validation:** the pure helper averages only defined measurements with finite zero for no samples; probes use a random per-invocation ID, carry tenant/store fields for diagnostics, and attempt cleanup with a stable logged failure code. The historical focused alias (`npm` + `run` + `verify:system-health-boundary`), `npm --prefix functions run build`, focused ESLint, `npm run verify:dependency-freeze`, and `npm run verify:data-flow-audit-tools` passed in that restart. The helper is not reachable from a currently exported Cloud Function, so no Firebase deploy target exists for this dormant path.
 
 ### AUDIT-MENU-DRIFT-ROLLING-WINDOW-DURATION-001 — Thirty-day drift counters admitted nearly thirty-one days
 
@@ -20447,7 +20450,7 @@ Concurrent user-owned generated-media work is preserved rather than renamed by t
 - **Producer/consumer/trigger/observed:** although `isBackgroundPDFRegenEnabled()` returned false, the module retained a timer and `doc(db, "jobs", "pdfRegen", tId, sId, projectId)` writer. Firestore document references require an even number of path segments; the five segments after `db` would throw if the feature were enabled. No worker, reader, rules path, retry contract or cost model existed.
 - **Expected/root cause/security/data/public/cache impact:** a disabled feature must not retain an apparently activatable persistence path that cannot produce a valid document and has no end-to-end consumer. Present reachability was fail-closed, so this is latent P3 reliability/data-pipeline risk; no live write, tenant exposure, public truth or cache mutation occurred.
 - **Fix/files/backward compatibility:** Firebase imports, timer/debounce state and writer were removed. The exported compatibility functions remain, return disabled/no-effect behavior, and emit only the existing bounded diagnostic. Future activation now explicitly requires a valid collection/document contract, worker, rules, retries and cost proof.
-- **Regression/validation/re-audit:** the behavior test proves no side effect and source tests forbid Firebase writer symbols. The guessed `npm run test:pricing-integrity-concurrency-contract` did not exist (exit 1); the exact `npx ts-node --compiler-options '{"module":"CommonJS","target":"ES2022"}' -r tsconfig-paths/register scripts/verification/test-pricing-integrity-concurrency-contract.ts` substitute passed. `npm run verify:pricing-integrity-boundary`, `npm run verify:menulist-api-tenant-safety`, focused lint and exact TypeScript pass. Restart 818 reset the clean counter.
+- **Regression/validation/re-audit:** the behavior test proves no side effect and source tests forbid Firebase writer symbols. The guessed historical alias (`npm` + `run` + `test:pricing-integrity-concurrency-contract`) did not exist (exit 1); the exact `npx ts-node --compiler-options '{"module":"CommonJS","target":"ES2022"}' -r tsconfig-paths/register scripts/verification/test-pricing-integrity-concurrency-contract.ts` substitute passed. `npm run verify:pricing-integrity-boundary`, `npm run verify:menulist-api-tenant-safety`, focused lint and exact TypeScript pass. Restart 818 reset the clean counter.
 
 ### AUDIT-CC-CLIENT-WORKSPACE-MEMBERSHIP-001 — CampaignCue client rules trusted scope claims instead of durable membership
 
@@ -20725,7 +20728,7 @@ Concurrent user-owned generated-media work is preserved rather than renamed by t
 - **Producer/consumer/trigger/observed:** the three explicit rule paths require the shared `canReadSignalDesk` helper, but the verifier's summary collection list omitted them and no behavioral fixture exercised their access. Repository search found no active first-party runtime producer or consumer.
 - **Expected/root cause/security/tenant/data/public/cache impact:** every explicit direct-read namespace must prove exact product binding, intended actor access and client-write denial. The current rules were already PLATFORM-only and required `resource.data.pId == SD`, so no active exposure was confirmed; the gap could allow a future rule regression to bypass the maintained suite.
 - **Fix/files/backward compatibility:** all three collections join the complete static collection list. Admin-only fixtures seed exact-product rows, then the emulator proves active member denial, PLATFORM read success and PLATFORM write denial. Existing rules and dormant persistence behavior are unchanged.
-- **Regression/validation/re-audit:** the first attempted command, `npm run test:signaldesk-security-rules`, does not exist and exited 1. The actual package script `npm run test:signaldesk:rules` passed the Firestore and Storage emulator suite. The three summary rows plus default-denied `signaldeskImportRows` are directly certified.
+- **Regression/validation/re-audit:** the first attempted historical alias (`npm` + `run` + `test:signaldesk-security-rules`) does not exist and exited 1. The actual package script `npm run test:signaldesk:rules` passed the Firestore and Storage emulator suite. The three summary rows plus default-denied `signaldeskImportRows` are directly certified.
 
 ### AUDIT-MENU-DRIFT-RESERVED-DOCUMENT-ID-001 — Malformed item IDs could abort derived metric replacement
 
@@ -21989,7 +21992,7 @@ Concurrent user-owned generated-media work is preserved rather than renamed by t
 - **Expected/root cause/security/tenant/data/public/cache impact:** a server-seeded deterministic authority should retain valid intentional business content but converge to its canonical persisted field set. The root cause was semantic validation without raw-shape normalization. Workspace projection prevented confirmed field leakage and draft fingerprints bind only approved fields, so the concrete persistence drift is P3. SignalDesk is product-separated and no billing, public cache, Redux, SWR or local storage applies.
 - **Fix/files/backward compatibility:** the seed transaction now creates a missing template as before. For an existing valid row, it compares raw keys with the canonical seed key set; only a mismatch triggers exact replacement built from the existing row's validated canonical values. Current subject/body/status/variables and timestamps are preserved rather than reset to defaults.
 - **Files changed/regression:** `src/lib/signaldesk/workflowServer.ts`, `scripts/verification/e2e-signaldesk-local.js`, `scripts/verification/verify-signaldesk-runtime.js`, and audit artifacts. The seed emulator injects `stalePrivateField`, proves its removal and exactly one seed settlement, then verifies concurrent clean replay emits no further audit/timeline/cost effect.
-- **Validation/re-audit:** the direct focused seed Firestore emulator passes; `node scripts/verification/verify-signaldesk-runtime.js` passes 4,085 checks and exact TypeScript passes. The attempted `npm run test:signaldesk:seed-boundary` failed before execution because no such script exists. Restart 981 re-read the sole producer, strict projector, three workspace consumers, draft creation, approval revalidation/fingerprint coupling, test-only template writers, browser rules and index needs.
+- **Validation/re-audit:** the direct focused seed Firestore emulator passes; `node scripts/verification/verify-signaldesk-runtime.js` passes 4,085 checks and exact TypeScript passes. The attempted historical alias (`npm` + `run` + `test:signaldesk:seed-boundary`) failed before execution because no such script exists. Restart 981 re-read the sole producer, strict projector, three workspace consumers, draft creation, approval revalidation/fingerprint coupling, test-only template writers, browser rules and index needs.
 
 ### AUDIT-AL-KNOWLEDGE-MAP-SOURCE-HASH-RECOVERY-001 — Matching source hash concealed an invalid graph summary
 
@@ -22250,3 +22253,3238 @@ Concurrent user-owned generated-media work is preserved rather than renamed by t
 - **Fix/files/backward compatibility:** widget-key copies caller headers into `Headers` then applies the shared protected values last; all JSON, including missing actor, uses that helper. Both routes stamp helper responses with the shared constant. Bodies, statuses, retry metadata and one-time secret semantics remain unchanged.
 - **Files changed/regression:** both routes, runtime-truth assertions and audit artifacts. The gate pins fresh header copying, protected merge order, private missing-actor behavior and shared widget-security response policy.
 - **Validation/re-audit:** the restart 1004 matrix passes.
+
+### AUDIT-AL-SUPPORT-TRUTH-PRIVATE-RESPONSE-CACHE-001 — Export permission failures bypassed the protected response policy
+
+- **Finding ID/severity/status:** `AUDIT-AL-SUPPORT-TRUTH-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1005.
+- **File/function/flow/structure:** `src/app/api/answerlattice/support-truth-export/route.ts::POST`; flow `AL-SUPPORT-TRUTH-EXPORT-1005`; authenticated export/error response.
+- **Producer/consumer/trigger/observed:** feature, session, actor, limiter, generated attachment and route-created error responses used private no-store/max-age-zero, pragma no-cache and nosniff. The current `EXPORT_DATA` permission helper response was returned directly, leaving that branch outside the route policy.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated export response must carry the same protected non-storage policy. The export never began before permission and no knowledge payload entered this branch, so no direct data exposure was confirmed; the concrete cache-policy inconsistency is P3. Persistence, audit, public truth, billing, queues and providers are unaffected.
+- **Fix/files/backward compatibility:** a generic stamper applies every route-protected header to the permission response before return. Existing body, status and any permission metadata remain unchanged.
+- **Files changed/regression:** support-truth export route, its runtime-truth source assertion and audit artifacts. The gate requires the protected permission-response path.
+- **Validation/re-audit:** direct runtime truth, `npm run test:answerlattice-support-truth-export-contracts`, focused ESLint, exact root TypeScript and `git diff --check` pass. Restart 1005 re-read the full route, exporter, audit writer, client and contract/source gates.
+
+## Restart 1006 addendum — Answerlattice AI-assisted knowledge/governance mutation routes
+
+Restart 1006 completed a full line-by-line route review of translation, article entity extraction, FAQ-from-article generation and mutation-proposal draft regeneration. It traced actor/session admission, SAFE_MODE and rate admission, permission, bounded request parsing, initial and transaction-current Firestore authority, provider request/output handling, mutation settlement, AI-operation telemetry, retries, private response construction and final consumers. Three defects were confirmed and closed, so `consecutiveCleanFullPasses` remains `0`. The four routes move from in-progress to reviewed; the shared scope helper and aggregate verifier remain conservatively in-progress outside the directly reviewed ranges.
+
+Validation passed under Node 22.23.1: `npm run test:answerlattice-entity-extraction-contracts`, `npm run test:answerlattice-canonical-scope`, `npm run test:answerlattice-multi-language-contracts`, `npm run verify:answerlattice-faq-boundary`, direct `node scripts/verification/verify-answerlattice-runtime-truth.js`, focused ESLint, exact `npx tsc --noEmit --incremental false`, and `git diff --check`. The first combined focused test stopped on a stale translation source assertion that required direct `PRODUCT_IDS` checks; it was updated to prove the new exact shared authority boundary, then the unchanged behavior suite passed. No Firebase rules, indexes, Storage rules or Cloud Function source changed, so no Firebase deployment was triggered.
+
+### AUDIT-AL-AI-MUTATION-PERSISTED-SCOPE-COERCION-001 — Provider-backed mutations accepted string-valued persisted authority
+
+- **Finding ID/severity/status:** `AUDIT-AL-AI-MUTATION-PERSISTED-SCOPE-COERCION-001` / P2 / Closed locally in restart 1006.
+- **File/function/flow/structure:** `sessionScope.ts::isExactAnswerlatticePersistedAuthority`; the four reviewed route handlers; `kb_articles`, `answerlattice_entities` and `answerlattice_mutationProposals`; flows `AL-ARTICLE-TRANSLATION-1006`, `AL-ARTICLE-ENTITY-EXTRACTION-1006`, `AL-ARTICLE-FAQ-GENERATION-1006`, `AL-GOVERNANCE-DRAFT-REGENERATION-1006`.
+- **Producer/consumer/trigger/observed:** authenticated numeric session scope was compared to stored authority through normalizers that admit canonical numeric strings. A malformed row with `tId: "11"` or `sId: "22"` could therefore authorize provider spend and subsequent mutation; aliases could also be normalized rather than treated as schema corruption.
+- **Expected/root cause/security/tenant/data/public/cache impact:** Admin-SDK mutation authority must require exact `pId=AL` and numeric primary `tId`/`sId`, with any supplied aliases agreeing by type and value. The paths and numeric value still matched the current workspace, so no different-tenant exposure was demonstrated, but poisoned/legacy authority could receive provider-backed writes and coupled audit/cache effects. Translation drafts remain private; FAQ/entity/governance public truth is unchanged unless later approved/published.
+- **Fix/files/backward compatibility:** one shared exact persisted-authority predicate requires exact product, numeric primary scope and exact optional aliases. All initial and transaction-current reads use it. Valid active documents are unchanged; malformed legacy rows now fail through existing 403/404/409 paths and require explicit data repair rather than silent mutation.
+- **Regression/validation/closure:** canonical-scope behavior rejects numeric strings, malformed aliases and wrong products; multi-language and runtime source gates require both initial and current checks. All focused/type/lint/diff gates above pass. Closed in restart 1006.
+
+### AUDIT-AL-AI-MUTATION-PRIVATE-RESPONSE-CACHE-001 — Authenticated AI mutation responses lacked one protected storage invariant
+
+- **Finding ID/severity/status:** `AUDIT-AL-AI-MUTATION-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1006.
+- **File/function/flow/structure:** all four reviewed route response branches; authenticated validation, authorization, limiter, provider and mutation result DTOs.
+- **Producer/consumer/trigger/observed:** translation protected most route-created responses but returned missing-actor and permission failures outside its helper, and caller headers could override its local policy. The other routes returned handler, SAFE_MODE and permission responses without a consistent response-side private storage contract.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated mutation response must be `private, no-store, max-age=0` and `nosniff`, independent of browser request settings and branch origin. No authorization bypass or private-field projection defect was found; the confirmed risk was browser/intermediary retention of tenant-private operational responses.
+- **Fix/files/backward compatibility:** all routes reuse `ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS`; route-created JSON copies caller headers before applying protected values, while SAFE_MODE/permission responses are stamped before return. Bodies, statuses, rate metadata and mutation semantics remain unchanged.
+- **Regression/validation/closure:** multi-language and runtime gates pin shared policy, protected permission responses and exact route construction. Focused/type/lint/diff gates pass. Closed in restart 1006.
+
+### AUDIT-AL-INTERNAL-AI-LOG-FAILURE-CONTAINMENT-001 — Best-effort telemetry failures replayed successful provider work
+
+- **Finding ID/severity/status:** `AUDIT-AL-INTERNAL-AI-LOG-FAILURE-CONTAINMENT-001` / P2 / Closed locally in restart 1006.
+- **File/function/flow/structure:** entity extraction provider callback and draft-regeneration post-provider settlement; `recordAnswerlatticeAiOperation`; internal AI operation logs.
+- **Producer/consumer/trigger/observed:** both calls declare `billingMode: "internal"`, but awaited the operation-log write without containment. A telemetry outage discarded a valid provider result before entity settlement, or entered draft claim recovery and marked a valid generation failed, causing retries to repeat provider work. Translation and FAQ generation already treated the same internal log as best-effort.
+- **Expected/root cause/security/tenant/data/public/cache impact:** the billing contract states operation logging is best-effort while confirmed paid credit debit failures remain blocking. Internal telemetry must not manufacture provider failure or draft-state rollback. No credit debit is weakened because these two calls do not use billable reservation/finalization.
+- **Fix/files/backward compatibility:** both log writes remain awaited but catch only their own failure, emit bounded tenant/store/entity/request diagnostics, and allow the already successful provider result to continue. Provider errors, parsing failures, transaction conflicts and mutation failures still fail normally.
+- **Regression/validation/closure:** runtime truth requires both containment diagnostics; focused route tests, exact TypeScript, lint and diff hygiene pass. Closed in restart 1006.
+
+## Restart 1007 addendum — credential claim sync and messaging-account ownership transfer
+
+Restart 1007 completed full-file review of `/api/auth/set-claims` and `/api/auth/claim-account`, including exact actor/email identity, product/workspace selection, canonical store ownership, role/permission derivation, supplied UID corroboration, Firebase Auth claim/token effects, anonymous claim-token modes, reservation/finalization/compensation, public-cache recovery and client response contracts. Three defects were closed; the clean-pass counter remains zero.
+
+Validation passed under Node 22.23.1: `npm run test:set-claims-workspace-boundary`, `npm run test:claim-account-post-commit`, `npm run verify:auth-onboarding-flow` and its onboarding subscription child, direct auth/security failure-matrix and MenuList tenant-safety gates, exact TypeScript, focused ESLint and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-AUTH-CREDENTIAL-RESPONSE-CACHE-001 — Custom-token and one-time account-claim responses were storable by default
+
+- **Finding ID/severity/status:** `AUDIT-AUTH-CREDENTIAL-RESPONSE-CACHE-001` / P1 / Closed locally in restart 1007.
+- **File/function/flow/structure:** `src/app/api/auth/set-claims/route.ts::POST`; `src/app/api/auth/claim-account/route.ts::POST`; flows `AUTH-FIREBASE-CLAIM-SYNC-1007` and `AUTH-MESSAGING-ACCOUNT-CLAIM-1007`; Firebase custom-token/claims and ownership-transfer acknowledgement DTOs.
+- **Producer/consumer/trigger/observed:** set-claims returns one or two Firebase custom tokens plus complete client claims after current-session and canonical-workspace verification. Claim-account consumes a high-entropy one-time token and returns ownership-transfer scope. Neither route imposed response-side no-store headers on every branch, relying on browser request policy and framework behavior.
+- **Expected/root cause/security/tenant/data/public/cache impact:** bearer-style custom tokens and sensitive authentication mutation outcomes must never be retained by shared or browser HTTP caches. Authorization, token entropy, transaction scope and DTO construction were otherwise correct, but accidental caching of a successful set-claims response could expose reusable authentication material, making this P1. No cross-tenant claim minting or incorrect ownership transfer was confirmed.
+- **Fix/files/backward compatibility:** set-claims now applies non-overridable `private, no-store, max-age=0`, `Pragma: no-cache` and `nosniff` to every success/error, including bounded-body helper responses. Claim-account applies `no-store`, `Pragma: no-cache` and `nosniff` across all anonymous/authenticated modes and helper responses. Bodies, statuses, custom-token content and transaction semantics are unchanged.
+- **Regression/validation/closure:** auth/security and tenant-safety gates pin both route policies and helper-response stamping; all restart 1007 gates pass. Closed in restart 1007.
+
+### AUDIT-SET-CLAIMS-RATE-LIMIT-FAILOPEN-001 — Credential minting continued when limiter state was unavailable
+
+- **Finding ID/severity/status:** `AUDIT-SET-CLAIMS-RATE-LIMIT-FAILOPEN-001` / P2 / Closed locally in restart 1007.
+- **File/function/flow/structure:** set-claims actor-partitioned `AUTH_CLAIM_SYNC` admission before Firestore/Auth reads and custom-token minting.
+- **Producer/consumer/trigger/observed:** the route hashed the exact session actor and rate-limited before expensive work, but omitted `failClosedOnProviderError`. The shared limiter can admit a fallback when provider state is unavailable, allowing repeated Firebase user lookup/create, claim mutation and custom-token minting during an admission outage.
+- **Expected/root cause/security/tenant/data/public/cache impact:** a credential-minting endpoint must stop when limiter state cannot be established. Exact actor, email, membership, store and tenant checks prevented privilege escalation, but availability/cost amplification and uncontrolled token churn were concrete.
+- **Fix/files/backward compatibility:** admission now fails closed, distinguishes provider outage and returns bounded 503 while retaining normal exhausted 429 behavior and rate metadata. All identity and claim semantics remain unchanged.
+- **Regression/validation/closure:** auth/security and tenant-safety gates require fail-closed configuration and provider-outage distinction; focused and exact gates pass. Closed in restart 1007.
+
+## Restart 1008 addendum — Help Center search and reseller billing/read boundaries
+
+Restart 1008 completed full-file review of `/api/helpCenter/search-kb`, the description prompt helper and its only validated caller, all reseller client/monthly-summary reads, reseller read admission, reseller management, manual-payment confirmation, renewal, location-capacity mutation, and the complete reseller onboarding route. The forward trace covered actor/product/workspace authority, bounded validation, Firestore queries/transactions, provider compensation, entitlement/referral convergence, output projection, HTTP caching and failure behavior. Three defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:help-center-boundary`, `node scripts/verification/verify-answerlattice-runtime-truth.js`, `npm run verify:reseller-dashboard-boundary`, all eight non-emulator reseller boundary suites, focused ESLint and `git diff --check`. The exact root TypeScript run did not pass because concurrent shared-worktree changes in `src/lib/answerlattice/releaseContracts.ts` and `src/lib/answerlattice/releaseServer.ts` currently produce three unrelated Zod/action-union errors; no affected reseller or Help Center file appears in those diagnostics. No Firebase infrastructure source changed.
+
+### AUDIT-AL-HELP-CENTER-SEARCH-PRIVATE-RESPONSE-CACHE-001 — Help Center helper responses and caller headers could bypass private storage policy
+
+- **Finding ID/severity/status:** `AUDIT-AL-HELP-CENTER-SEARCH-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1008.
+- **File/function/flow/structure:** `src/app/api/helpCenter/search-kb/route.ts::{POST,searchJsonResponse,withSearchResponseHeaders}`; Answerlattice support-search request/response and support-credit reservation flow `AL-HELP-CENTER-SEARCH-1008`.
+- **Producer/consumer/trigger/observed:** authenticated Help Center search projected a bounded public-safe result, but `searchJsonResponse` applied its cache header before spreading caller headers, allowing a future caller to override it. The shared AI limiter response and bounded-body rejection bypassed the helper entirely. Search answers and workspace-specific support state therefore lacked one route-wide private non-storage invariant.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated search response must retain protected `private, no-store, max-age=0` and `nosniff` headers independently of caller-supplied headers or helper origin. Exact workspace authority, response field projection, credit settlement and datastore behavior were intact, so the confirmed impact is response-cache isolation rather than a direct cross-tenant read.
+- **Fix/files/backward compatibility:** response headers are now normalized through `Headers`, protected values are applied last, and limiter/bounded-body responses are stamped before return. Bodies, statuses, rate metadata, search semantics and accounting are unchanged.
+- **Regression/validation/closure:** `verify-help-center-boundary`, the behavior-oriented Help Center runtime boundary suite and Answerlattice runtime truth pin header precedence and helper-response coverage. All focused gates pass. Closed in restart 1008.
+
+### AUDIT-RESELLER-RATE-LIMIT-FAILOPEN-001 — Reseller financial/account mutations and private reads bypassed admission during provider outage
+
+- **Finding ID/severity/status:** `AUDIT-RESELLER-RATE-LIMIT-FAILOPEN-001` / P2 / Closed locally in restart 1008.
+- **File/function/flow/structure:** `src/app/api/reseller/readRateLimit.ts::applyResellerReadRateLimit`; mutation admission in `manage`, `onboard`, `confirm-payment`, `renew` and `add-location-capacity`; reseller profile, subscription, reseller-transaction, tenant/store/user and Firebase Auth/provider effects; flows `ML-RESELLER-READ-1008`, `ML-RESELLER-MANAGE-1008`, `ML-RESELLER-ONBOARD-1008`, `ML-RESELLER-CONFIRM-1008`, `ML-RESELLER-RENEW-1008` and `ML-RESELLER-LOCATION-CAPACITY-1008`.
+- **Producer/consumer/trigger/observed:** every route used hashed actor/profile keys and bounded limits, but omitted `failClosedOnProviderError`. The shared limiter explicitly defaults to fail-open, so provider loss admitted unlimited billing/account mutations, Firebase Auth/provider work, Firestore transactions and private financial reads.
+- **Expected/root cause/security/tenant/data/public/cache impact:** when distributed admission state is unavailable, these sensitive and cost-bearing operations must stop before input parsing, reads, provider calls or writes. Existing role, resource ownership and transaction checks still prevented a confirmed different-tenant mutation, but admission/cost and duplicate-work controls were bypassable.
+- **Fix/files/backward compatibility:** all reseller read/write admission now fails closed. Provider outage returns retryable 503 while actual exhaustion remains 429; hashed keys, normal limits, response metadata, authorization and mutation/idempotency semantics are unchanged.
+- **Regression/validation/closure:** the reseller boundary verifier pins fail-closed configuration and 503/429 distinction for the shared read helper, every common mutation and platform management. All focused reseller suites pass. Closed in restart 1008.
+
+### AUDIT-RESELLER-MUTATION-PRIVATE-RESPONSE-CACHE-001 — Reseller onboarding and billing mutation responses lacked private non-storage protection
+
+- **Finding ID/severity/status:** `AUDIT-RESELLER-MUTATION-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1008.
+- **File/function/flow/structure:** all JSON and bounded-body response branches in reseller `manage`, `onboard`, `confirm-payment`, `renew` and `add-location-capacity`; owner login identifiers, subscription/transaction acknowledgements and validation/failure DTOs.
+- **Producer/consumer/trigger/observed:** read routes already used the shared `resellerPrivateJson` policy, but mutations returned direct framework JSON and raw bounded-body helper responses. A successful onboarding response contains login email/phone username and business/subscription identifiers; billing mutations contain financial operation state. Their cache safety depended on framework/browser behavior.
+- **Expected/root cause/security/tenant/data/public/cache impact:** authenticated account and financial mutation responses must be explicitly private and non-storable. No bearer credential or owner password is returned, authorization remained exact and public truth was not cached through these responses, so the concrete risk is P3.
+- **Fix/files/backward compatibility:** all route-created JSON now reuses the existing non-overridable reseller private response constructor, and a typed shared header stamper covers bounded-body helper responses while preserving their concrete `NextResponse` type/status/body. Existing payloads and mutation behavior are unchanged.
+- **Regression/validation/closure:** the reseller verifier forbids direct `NextResponse.json` in the mutation family and requires the shared constructor plus helper-response stamping. Focused ESLint, reseller tests and diff hygiene pass. Closed in restart 1008.
+
+## Restart 1009 addendum — SignalDesk authenticated, webhook and outcome response boundaries
+
+Restart 1009 performed a response-first reverse trace across every SignalDesk API route: authenticated overview/workspace/action/kill-switch surfaces, provider webhook challenge/delivery and the signed outcome bridge. The trace included shared runtime/access/rate/body guards, all 68 action discriminants and dispatch reachability, mobile blocking, response construction and retry/error behavior. One defect was closed. The 2,486-line action router remains conservatively in-progress because its individual server implementations and every large embedded schema were not all re-read in this restart; the other five routes and shared guard are fully reviewed. `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `node scripts/verification/verify-signaldesk-runtime.js` (4,103 checks), focused ESLint, exact root TypeScript and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-SD-RESPONSE-CACHE-001 — SignalDesk sensitive success and helper responses lacked one protected non-storage invariant
+
+- **Finding ID/severity/status:** `AUDIT-SD-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1009.
+- **File/function/flow/structure:** `src/lib/signaldesk/apiGuards.ts`; `src/app/api/signaldesk/{actions,overview,workspace,kill-switches,outcomes}/route.ts`; `src/app/api/signaldesk/webhooks/[provider]/route.ts`; SignalDesk founder operations, provider configuration, approvals, spend/send actions, target/contact data, inbound webhooks and signed outcome acknowledgements.
+- **Producer/consumer/trigger/observed:** overview/workspace protected only their success DTOs; their guard/validation/failure branches did not share that policy. The action and kill-switch routers returned dozens of direct authenticated JSON responses. Shared runtime/access/rate/body helpers returned unprotected responses. Webhook bounded-body failures returned raw helper responses, and outcome/webhook no-store responses lacked a consistent `nosniff` invariant.
+- **Expected/root cause/security/tenant/data/public/cache impact:** authenticated SignalDesk operational/PII-adjacent data must be `private, no-store, max-age=0`; public webhook/outcome responses and every early failure must be `no-store, max-age=0`; all JSON/text responses must disable MIME sniffing. Authorization, permissions, idempotency, signatures and datastore scopes remained intact, so no direct cross-tenant or provider-auth bypass was found.
+- **Fix/files/backward compatibility:** shared SignalDesk guards now own typed, non-overridable private JSON/header helpers and stamp bounded-body failures. All authenticated routes use that constructor; the action router has no direct JSON response calls. Public integration routes apply protected no-store/nosniff headers to helper failures and existing success/error branches. Bodies, statuses, retry headers and runtime semantics are unchanged.
+- **Regression/validation/closure:** the 4,103-check SignalDesk gate requires shared header precedence, forbids direct unprotected JSON in authenticated routes, and pins webhook/outcome helper-failure coverage. Exact TypeScript, focused lint and diff hygiene pass. Closed in restart 1009.
+
+## Restart 1010 addendum — AI capacity status, current platform authority and intake discovery
+
+Restart 1010 completed full-file review of `/api/ai-packs/status`, `/api/platform/current-access` and `/api/answerlattice/knowledge-intake/discover`, including their permission/current-user/intake admission helpers, callers and focused source/behavior gates. Two defects were closed. `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: Knowledge Intake discovery contracts; AI pack exact-scope contracts; Ops Control Room including the Firestore force-republish lease emulator; Internal Ops runtime boundaries; Answerlattice runtime truth; auth/security failure matrix; MenuList tenant safety; focused ESLint; exact root TypeScript; and `git diff --check`. During validation, two concurrent source evolutions were reconciled in source gates without reverting them: the Answerlattice changelog sequence now includes impact preview/owner confirmation, and the platform Answerlattice intake monitor now uses its protected `privateJson` response helper. No Firebase infrastructure source changed.
+
+### AUDIT-AI-PACK-STATUS-READ-ADMISSION-001 — Billing-capacity status reads had no route-specific admission control
+
+- **Finding ID/severity/status:** `AUDIT-AI-PACK-STATUS-READ-ADMISSION-001` / P2 / Closed locally in restart 1010.
+- **File/function/flow/structure:** `src/app/api/ai-packs/status/route.ts::GET`; current user/store permission, MenuList subscription/capacity read and boolean owner DTO; flow `ML-AI-PACK-STATUS-1010`.
+- **Producer/consumer/trigger/observed:** any authenticated caller could repeatedly invoke exact session-scope parsing, current billing-permission reads and subscription/capacity reads without a route-specific rate limit. Authorization prevented another store's data from being returned, but the intended Firestore/cost abuse boundary was absent.
+- **Expected/root cause/security/tenant/data/public/cache impact:** admission must occur after no-read scope syntax validation but before permission/capacity datastore work, partitioned by exact current actor and fail-closed on provider uncertainty. No write, public truth, billing balance or entitlement mutation occurs.
+- **Fix/files/backward compatibility:** the route now uses the existing DATA_READ policy, hashes the shared exact session user ID, fails closed and distinguishes retryable 503 from exhausted 429. Valid response semantics remain boolean-only and unchanged.
+- **Regression/validation/closure:** AI pack focused tests, auth/security and tenant-safety gates pin identity, ordering and fail-closed behavior. All restart 1010 checks pass. Closed in restart 1010.
+
+### AUDIT-AUTHENTICATED-STATUS-RESPONSE-CACHE-001 — Three scoped status/discovery routes protected only selected response branches
+
+- **Finding ID/severity/status:** `AUDIT-AUTHENTICATED-STATUS-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1010.
+- **File/function/flow/structure:** AI pack status success/permission/rate/failure; platform current-access rate/auth/success; Answerlattice intake discovery access/body/validation/fetch/success/failure responses.
+- **Producer/consumer/trigger/observed:** AI pack status had no explicit response cache policy. Platform access used `private, no-store` per branch but lacked protected precedence and `nosniff`. Intake discovery protected only successful page/link responses; shared access denial, bounded-body error, schema error and fetch failure were unprotected.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated status, authorization and workspace discovery response must be `private, no-store, max-age=0` with `nosniff`, including helper-originated responses and caller-supplied headers. DTOs remained bounded and exact authorization was intact, so the confirmed risk is storage isolation rather than a direct tenant leak.
+- **Fix/files/backward compatibility:** each route now has a typed private response boundary; protected values are applied after caller headers and helper responses are stamped. Bodies, statuses, retry metadata, capacity semantics and fetch behavior are unchanged.
+- **Regression/validation/closure:** focused AI pack, Ops and Answerlattice gates require private header policy and helper-response coverage. Exact TypeScript, focused lint and diff hygiene pass. Closed in restart 1010.
+
+## Restart 1011 addendum — Answerlattice Knowledge Intake route-family response reverse trace
+
+Restart 1011 re-read all 11 Answerlattice Knowledge Intake route handlers as one authenticated persistence/publication family, plus the complete shared API admission boundary. The reverse trace compared feature gates, canonical ID admission, dashboard and mutation rate limits, workspace/permission/license scope, bounded JSON and multipart failures, validation errors, service failures, successful private projections, SAFE_MODE responses and final owner-hook consumers. One defect was closed, so `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: direct Answerlattice runtime truth; Knowledge Intake URL, discovery, schema and scope-state contract suites; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firestore rules, indexes, Storage rules or Firebase Function source changed.
+
+### AUDIT-AL-KNOWLEDGE-INTAKE-PRIVATE-RESPONSE-CACHE-001 — Knowledge Intake protected only successful responses consistently
+
+- **Finding ID/severity/status:** `AUDIT-AL-KNOWLEDGE-INTAKE-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1011.
+- **File/function/flow/structure:** `src/lib/answerlattice/knowledgeIntakeApi.ts::{answerlatticeKnowledgeIntakeJson,withAnswerlatticeKnowledgeIntakePrivateHeaders,requireAnswerlatticeKnowledgeIntakeContext}` and every route below `src/app/api/answerlattice/knowledge-intake/`; authenticated job/source/review/governance/media/entity/publish/starter-pack DTOs; flow family `AL-KNOWLEDGE-INTAKE-1011`.
+- **Producer/consumer/trigger/observed:** successful job, bundle, source, analysis, media, review, governance, publish, discovery and entity responses generally set `private, no-store`, while feature/ID/schema/service failures, some shared access responses and raw bounded-body/form-data responses did not. The starter-pack and discovery routes separately implemented partial local policies, allowing sibling branches to drift.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated intake response must enforce the shared `private, no-store, max-age=0` and `nosniff` contract with protected values applied after caller headers. Exact tenant/store authorization, scoped datastore calls, publication logic and DTO projection were intact; no cross-tenant read or incorrect publication was found, so the concrete issue is P3 response-storage isolation rather than a persistence defect.
+- **Fix/files/backward compatibility:** the existing Knowledge Intake API boundary now owns a typed JSON constructor and typed response stamper backed by `ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS`. All 11 routes use the constructor for route-created JSON; bounded-body, multipart, permission and SAFE_MODE helper responses are stamped before return. The shared context helper now protects feature, workspace, actor, rate, permission and license failures at their origin. Payloads, status codes, retry metadata, rate limits, datastore operations and publication semantics are unchanged.
+- **Files changed/regression:** the shared intake API boundary, all 11 Knowledge Intake route files, the Knowledge Intake and starter-pack ranges of `scripts/verification/verify-answerlattice-runtime-truth.js`, and audit artifacts. The source gate enumerates the route family, requires the shared JSON boundary in every file, forbids direct `NextResponse.json` bypasses and pins protected header precedence.
+- **Validation/re-audit:** all restart 1011 checks above pass. The first runtime-truth run correctly exposed a stale starter-pack assertion tied to its retired local header object; the assertion now requires the stronger shared boundary. Closed in restart 1011.
+
+## Restart 1012 addendum — Answerlattice actor-partition reverse trace and product-surface summary rebuild
+
+Restart 1012 fully re-read the product-surface summary rebuild route and its request/scope contract, client acknowledgement and verifier ranges. Its rate-key defect triggered a reverse search of every `buildAnswerlatticeRateLimitKey` call that still consumed `session.uId`; the affected workspace-profile save, notification test, widget-config save and operations-status read admission ranges were reviewed and repaired together. Those four larger route files remain conservatively in-progress outside the named admission ranges. Two defects were closed, so `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: direct Answerlattice runtime truth; product-surface summary, workspace-profile and widget-config contract suites; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. The initial widget-config contract replay exposed an unrelated stale assertion for the already-strengthened widget-key shared private response policy; the gate was reconciled to the current shared constant/stamper and then passed. No Firebase infrastructure source changed.
+
+### AUDIT-AL-RATE-ACTOR-PARTITION-002 — Five Answerlattice rate keys used one non-authoritative session alias
+
+- **Finding ID/severity/status:** `AUDIT-AL-RATE-ACTOR-PARTITION-002` / P2 / Closed locally in restart 1012.
+- **File/function/flow/structure:** product-surface summary rebuild, workspace-profile save, notification test, widget-config save and operations-status read routes; pre-authorization distributed admission keys; flow family `AL-ACTOR-RATE-PARTITION-1012`.
+- **Producer/consumer/trigger/observed:** each route derived an exact Answerlattice workspace but passed `session.uId` directly into the hashed actor/workspace rate key. The repository supports corroborated actor aliases through `resolveCurrentSessionUserDocumentId`; a valid session represented only by another accepted alias could therefore enter an undefined/shared actor partition, making unrelated users consume one another's capacity and weakening per-actor admission.
+- **Expected/root cause/security/tenant/data/public/cache impact:** admission must use the same conflict-aware current-user identity used by authorization. Current permission and exact datastore-scope checks still prevented unauthorized reads/writes, so no cross-tenant data access was confirmed; the concrete impact is P2 abuse/cost/availability isolation across actors in one workspace.
+- **Fix/files/backward compatibility:** all five routes resolve the current actor once, reject missing or ambiguous identity before limiter/datastore/provider work and pass that resolved document ID into the existing key builder. Route limits, windows, workspace dimensions, permission checks and successful behavior are unchanged.
+- **Files changed/regression:** the five routes, actor-partition ranges of the Answerlattice runtime-truth gate and audit artifacts. The gate pins the resolver, pre-admission rejection, exact actor variable in every key and absence of `session.uId` key input.
+- **Validation/re-audit:** all restart 1012 gates above pass. Closed in restart 1012.
+
+### AUDIT-AL-PRODUCT-SUMMARY-PRIVATE-RESPONSE-CACHE-001 — Summary rebuild responses lacked a protected private policy
+
+- **Finding ID/severity/status:** `AUDIT-AL-PRODUCT-SUMMARY-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1012.
+- **File/function/flow/structure:** `src/app/api/answerlattice/product-surfaces/rebuild-summary/route.ts::POST`; authenticated feature/rate/permission/body/scope/rebuild responses; flow `AL-PRODUCT-SUMMARY-REBUILD-1012`.
+- **Producer/consumer/trigger/observed:** every branch returned direct JSON, and the current-permission response was forwarded without a route-level cache policy. The response contains exact workspace acknowledgement and derived product-surface summary counts.
+- **Expected/root cause/security/tenant/data/public/cache impact:** authenticated workspace summary mutation responses must be `private, no-store, max-age=0` with `nosniff`, including helper-originated failures and with protected precedence over caller headers. Exact request/current scope corroboration and rebuild persistence were correct, so no incorrect write or public leak was found; the concrete issue is P3 response-storage isolation.
+- **Fix/files/backward compatibility:** a local constructor backed by `ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS` now owns all JSON branches, applies protected headers last, and a typed stamper protects permission responses. Bodies, statuses, diagnostics and summary rebuild behavior are unchanged.
+- **Files changed/regression:** the route, product-surface summary ranges of the runtime-truth gate and audit artifacts. The gate requires shared policy, precedence, permission stamping, exact scoped success acknowledgement and no direct JSON bypass.
+- **Validation/re-audit:** all restart 1012 gates above pass. Closed in restart 1012.
+
+## Restart 1013 addendum — MenuList Public Truth Monitor read/write pair
+
+Restart 1013 re-read both Public Truth Monitor routes end to end with their shared session-scope, entitlement, report, transaction-authority, client-DAL/SWR and server/client contract tests. The trace covered feature/auth/rate admission, bounded refresh input, exact tenant/store and current permission, active-subscription authority, project selection, report/entry construction, atomic capped summary merge, read projection, helper failures, response storage and actor attribution. Three defects were closed, so `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:public-truth-monitor-addon`, client and server Public Truth Monitor contract suites, `npm run verify:menulist-api-tenant-safety` with its three child suites, focused ESLint, exact `npx tsc --noEmit --incremental false`, and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-PUBLIC-TRUTH-MONITOR-RATE-FAILOPEN-001 — Monitor reads and writes admitted requests when limiter state was unavailable outside production
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-TRUTH-MONITOR-RATE-FAILOPEN-001` / P2 / Closed locally in restart 1013.
+- **File/function/flow/structure:** summary `GET` and refresh `POST`; DATA_READ/DATA_WRITE distributed admission before protected Firestore reads and the atomic summary transaction; flows `ML-PUBLIC-TRUTH-SUMMARY-1013` and `ML-PUBLIC-TRUTH-REFRESH-1013`.
+- **Producer/consumer/trigger/observed:** both routes explicitly set `failClosedOnProviderError` only when `NODE_ENV` was production. Preview, QA and other non-production deployed/runtime modes could therefore admit repeated protected reads or report-generation/transaction writes during provider uncertainty.
+- **Expected/root cause/security/tenant/data/public/cache impact:** security/cost admission must fail closed consistently in every environment where the route can execute. Exact tenant/store, permission and transaction-current entitlement checks prevented unauthorized scope access, but read/write amplification and uncontrolled repeated summary work remained possible.
+- **Fix/files/backward compatibility:** both calls now set unconditional fail-closed policy. Normal quotas, actor/tenant hashing, successful reads/writes and 429 behavior are unchanged; provider uncertainty consistently returns the helper's retryable 503.
+- **Files changed/regression:** both routes, Public Truth Monitor verifier and audit artifacts. The gate pins unconditional fail-closed configuration.
+- **Validation/re-audit:** all restart 1013 checks above pass. Closed in restart 1013.
+
+### AUDIT-PUBLIC-TRUTH-MONITOR-ACTOR-ATTRIBUTION-001 — Refresh persisted first-alias actor identity
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-TRUTH-MONITOR-ACTOR-ATTRIBUTION-001` / P2 / Closed locally in restart 1013.
+- **File/function/flow/structure:** refresh `POST` and `buildPublicTruthMonitorSummary` input; persisted `platformSummary/publicTruthMonitor_{storeId}.generatedByUserId`.
+- **Producer/consumer/trigger/observed:** after exact workspace and permission admission, refresh wrote `session.uId || session.user?.id`. That chooses one alias rather than requiring the repository's conflict-aware actor resolution, permitting missing/ambiguous or stale alias attribution in durable history.
+- **Expected/root cause/security/tenant/data/public/cache impact:** durable audit attribution must use the same exact current-user document identity accepted by authorization. Store/tenant and permission checks still protected the write, so no foreign summary mutation was confirmed; the concrete issue is P2 audit/data-integrity drift.
+- **Fix/files/backward compatibility:** refresh resolves `resolveCurrentSessionUserDocumentId(session)`, rejects missing or conflicting identity before store reads/writes and persists only that admitted actor ID. Valid current sessions retain the same identifier.
+- **Files changed/regression:** refresh route, focused verifier and audit artifacts. The gate requires exact resolution, durable use and absence of first-alias fallback.
+- **Validation/re-audit:** all restart 1013 checks above pass. Closed in restart 1013.
+
+### AUDIT-PUBLIC-TRUTH-MONITOR-PRIVATE-RESPONSE-CACHE-001 — Monitor responses and helper failures were storable by default
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-TRUTH-MONITOR-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1013.
+- **File/function/flow/structure:** both monitor routes plus `src/lib/public-truth-tools/publicTruthMonitorApiResponse.ts`; entitlement/report/summary and validation/permission/rate responses.
+- **Producer/consumer/trigger/observed:** route-created JSON and rate, bounded-body and permission helper responses did not enforce an authenticated private non-storage policy. Successful responses include exact workspace-derived entitlement, readiness report and saved summary history.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated branch must be `private, no-store, max-age=0` with `nosniff`, with protected values applied after caller headers. Runtime DTO validation, SWR scope keys and server authorization were correct; no observed cache leak occurred, making this P3 response-storage isolation.
+- **Fix/files/backward compatibility:** a small shared response boundary constructs protected JSON and stamps helper-originated `NextResponse` objects. Both routes use it on every success/error/authorization/rate/body branch. Payloads, statuses, rate metadata, persistence and SWR semantics are unchanged.
+- **Files changed/regression:** new shared response boundary, both routes, Public Truth Monitor verifier and audit artifacts. The gate requires the shared policy/precedence, both helper types and no direct JSON bypass.
+- **Validation/re-audit:** all restart 1013 checks above pass. Closed in restart 1013.
+
+## Restart 1014 addendum — Answerlattice Help Center article embedding route
+
+Restart 1014 re-read the article-embedding route and its shared embedding service, article-ID boundary, current article scope/product claim, provider call, transactional claim/finalization, cache-version update, AI-operation accounting and platform Article Modal consumer. Three defects were closed, so `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: Answerlattice KB article-ID and article-mutation boundary suites, direct Answerlattice runtime truth, focused ESLint, exact `npx tsc --noEmit --incremental false`, and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-AL-ARTICLE-EMBEDDING-ACTOR-ATTRIBUTION-001 — Embedding accounting used one optional session alias
+
+- **Finding ID/severity/status:** `AUDIT-AL-ARTICLE-EMBEDDING-ACTOR-ATTRIBUTION-001` / P2 / Closed locally in restart 1014.
+- **File/function/flow/structure:** `src/app/api/helpCenter/article-embedding/route.ts::POST`; actor passed to `embedAnswerlatticeArticle` and downstream AI operation/audit attribution; flow `AL-ARTICLE-EMBEDDING-1014`.
+- **Producer/consumer/trigger/observed:** after current knowledge permission, the route passed `session.user?.id` directly. Sessions admitted through another canonical alias or carrying conflicting aliases could create missing/stale durable operation attribution even though workspace authority remained permission-derived.
+- **Expected/root cause/security/tenant/data/public/cache impact:** provider-backed durable operations must use the repository's conflict-aware current-user document resolver and reject missing/ambiguous identity before permission/provider work. Exact article product/workspace checks prevented a foreign article mutation; the concrete impact is P2 operation-ledger/data-integrity drift.
+- **Fix/files/backward compatibility:** the route resolves `resolveCurrentSessionUserDocumentId(session)`, rejects a missing/ambiguous actor and passes only that exact ID downstream. Valid sessions preserve current behavior.
+- **Files changed/regression:** route, article-embedding ranges of the Answerlattice runtime-truth gate and audit artifacts. The gate pins exact actor admission, ordering and durable use.
+- **Validation/re-audit:** all restart 1014 checks above pass. Closed in restart 1014.
+
+### AUDIT-AL-ARTICLE-EMBEDDING-PRIVATE-RESPONSE-CACHE-001 — Embedding protected only its success response
+
+- **Finding ID/severity/status:** `AUDIT-AL-ARTICLE-EMBEDDING-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1014.
+- **File/function/flow/structure:** every SAFE_MODE, rate, actor, permission, bounded-body, validation, conflict, provider-throttle, success and failure response in the embedding route.
+- **Producer/consumer/trigger/observed:** success used `private, no-store`; all helper responses and route-created failures were unprotected, and success omitted max-age-zero/nosniff. The endpoint exposes authenticated article operation state and retry metadata.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated branch must share non-overridable `private, no-store, max-age=0` and `nosniff`. Authorization, provider settlement and persistence were correct, so no direct tenant leak was found; the concrete issue is P3 response-storage isolation.
+- **Fix/files/backward compatibility:** a protected local JSON constructor backed by `ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS` owns every route-created response, and a typed stamper protects SAFE_MODE/rate/permission/body helper responses. Bodies, statuses and retry headers are preserved.
+- **Files changed/regression:** route, runtime-truth source gate and audit artifacts. The gate requires the shared policy, protected precedence, helper stamping and absence of direct JSON bypasses.
+- **Validation/re-audit:** all restart 1014 checks above pass. Closed in restart 1014.
+
+### AUDIT-AL-ARTICLE-EMBEDDING-FAILURE-SCOPE-001 — Post-admission failures discarded workspace observability
+
+- **Finding ID/severity/status:** `AUDIT-AL-ARTICLE-EMBEDDING-FAILURE-SCOPE-001` / P3 / Closed locally in restart 1014.
+- **File/function/flow/structure:** route catch diagnostic `answerlattice_article_embedding_route_failed`; admitted tenant/store scope.
+- **Producer/consumer/trigger/observed:** the catch always logged `tId` and `sId` as undefined, including provider, persistence, cache-version and accounting failures occurring after exact permission-derived scope admission.
+- **Expected/root cause/security/tenant/data/public/cache impact:** critical post-admission failures must retain bounded tenant/store identifiers for diagnosis without logging payload content. This did not alter user data or expose sensitive fields, but made scoped failure recovery materially harder.
+- **Fix/files/backward compatibility:** the route captures permission-derived scope once and reuses it for the service call and bounded failure context; failures before admission remain intentionally unscoped.
+- **Files changed/regression:** route, runtime-truth source gate and audit artifacts. The gate pins admitted scope capture, service use and optional failure metadata.
+- **Validation/re-audit:** all restart 1014 checks above pass. Closed in restart 1014.
+
+## Restart 1015 addendum — Answerlattice governed release route
+
+Restart 1015 performed a clean full-route re-review of `/api/answerlattice/releases` against the current create, impact-preview and fingerprint-confirmed activation contracts and server lifecycle. Feature-independent auth, exact actor/workspace rate admission, current knowledge permission, bounded discriminated input, server-owned scope corroboration, idempotency, current persisted release/entity/answer authority, preview non-mutation, activation lease/fingerprint fencing, public error codes and private response policy were all rechecked. No new route defect was confirmed. This is a targeted clean re-review rather than a full repository pass, so `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: release contract tests, the real Firestore release emulator including impact-preview behavior, direct Answerlattice runtime truth, focused ESLint, exact `npx tsc --noEmit --incremental false`, and `git diff --check`. No Firebase infrastructure source changed.
+
+## Restart 1016 addendum — GrowthOS guarded review-reply route and shared entitlement scope
+
+Restart 1016 fully re-read `/api/growthos/reviews/suggest`, the deterministic review guard, request schema/parser, entitlement reader, client DAL and desktop/mobile consumers. The route defect triggered a reverse review of shared GrowthOS server entitlement scope used by the remaining GrowthOS API family. Three defects were closed. The other GrowthOS mutation routes remain separately content-reopened and will be re-reviewed against the corrected shared scope; `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: the 192-check GrowthOS verifier, GrowthOS client/rate/timestamp contracts, the real Firestore transaction emulator, focused ESLint, exact `npx tsc --noEmit --incremental false`, and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-GROWTHOS-ENTITLEMENT-SESSION-ALIAS-001 — Shared entitlement selected only root session scope aliases
+
+- **Finding ID/severity/status:** `AUDIT-GROWTHOS-ENTITLEMENT-SESSION-ALIAS-001` / P2 / Closed locally in restart 1016.
+- **File/function/flow/structure:** `src/lib/growthos/serverEntitlements.ts::evaluateGrowthOSServerEntitlement`; store/subscription entitlement reads consumed by GrowthOS routes.
+- **Producer/consumer/trigger/observed:** the helper independently normalized only `session.tId` and `session.sId`. It ignored accepted nested/alternate aliases and did not require all supplied aliases to agree, so a stale root alias could select entitlement authority while current nested scope differed, or an otherwise valid nested-only session could be treated as unscoped.
+- **Expected/root cause/security/tenant/data/public/cache impact:** entitlement reads must use the repository's exact all-alias current session scope. Downstream store/subscription ownership checks limited exposure, but inconsistent session shapes could select or deny the wrong entitlement read, making this P2 tenant/data-contract risk.
+- **Fix/files/backward compatibility:** the helper now uses `resolveStorePermissionSessionScope` and passes its canonical numeric tenant/store IDs to existing store and subscription readers. Valid agreeing aliases retain behavior; missing/conflicting aliases fail closed.
+- **Files changed/regression:** shared entitlement helper, GrowthOS source verifier and audit artifacts. The verifier pins all-alias resolution and forbids root-only selection/coercion.
+- **Validation/re-audit:** all restart 1016 checks above pass. Closed in restart 1016.
+
+### AUDIT-GROWTHOS-REVIEW-ADMISSION-SCOPE-001 — Review admission collapsed missing actor/workspace identity into shared rate partitions
+
+- **Finding ID/severity/status:** `AUDIT-GROWTHOS-REVIEW-ADMISSION-SCOPE-001` / P2 / Closed locally in restart 1016.
+- **File/function/flow/structure:** GrowthOS review-suggest `POST`; hashed distributed rate key and tenant verification before entitlement evaluation; flow `GROWTHOS-REVIEW-SUGGEST-1016`.
+- **Producer/consumer/trigger/observed:** the route hashed `session.uId || session.user?.id || "unknown"` plus raw root tenant/store aliases, then called `verifyTenantAccess` with the same raw scope. Missing or conflicting aliases could enter shared `"unknown"` capacity partitions and bypass exact all-alias admission semantics.
+- **Expected/root cause/security/tenant/data/public/cache impact:** a protected route must reject missing/ambiguous actor or workspace identity before rate/entitlement work and partition capacity by exact admitted values. The reply guard is pure and performs no write/provider call, so no public-truth mutation occurred; the concrete impact is P2 actor/tenant capacity and entitlement isolation.
+- **Fix/files/backward compatibility:** the route resolves exact actor and all workspace aliases, rejects failure before limiter work, hashes canonical actor/tenant/store IDs and verifies tenant access with canonical numeric scope. Limits and valid output are unchanged.
+- **Files changed/regression:** route, GrowthOS verifier and audit artifacts. The gate pins exact resolvers, canonical verification, hashed partitions and absence of `"unknown"` fallback.
+- **Validation/re-audit:** all restart 1016 checks above pass. Closed in restart 1016.
+
+### AUDIT-GROWTHOS-REVIEW-PRIVATE-RESPONSE-CACHE-001 — Authenticated review suggestions had no response-side storage policy
+
+- **Finding ID/severity/status:** `AUDIT-GROWTHOS-REVIEW-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1016.
+- **File/function/flow/structure:** every feature/rate/body/validation/scope/entitlement/success/failure branch in review-suggest; `src/lib/growthos/apiResponse.ts`.
+- **Producer/consumer/trigger/observed:** direct JSON and raw bounded-body helper responses were storable by default. Success contains owner-supplied review classification and a prepared reply.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated response must be `private, no-store, max-age=0` with `nosniff` and protected precedence. Input validation and local output guard were correct; no observed cache leak occurred, so this is P3 response-storage isolation.
+- **Fix/files/backward compatibility:** a GrowthOS-owned protected response primitive now constructs JSON and stamps helper responses; review-suggest uses it on every branch. Bodies, statuses, retry metadata and deterministic guard output are unchanged.
+- **Files changed/regression:** new GrowthOS response helper, route, verifier and audit artifacts. The gate pins shared headers/precedence, helper stamping and absence of direct JSON bypass.
+- **Validation/re-audit:** all restart 1016 checks above pass. Closed in restart 1016.
+
+## Restart 1017 addendum — GrowthOS refresh, kit generation and export mutations
+
+Restart 1017 completed a fresh full-file forward and reverse review of the remaining GrowthOS mutation routes, their shared server context, export/replay persistence functions, write admission, request/response helpers and desktop/mobile DAL consumers. The trace covered feature admission, exact actor/workspace authority, bounded strict input, entitlement, project/menu source reads, summary/kit/export transactions, idempotent replay, stale-source fencing, response storage and failure diagnostics. Four defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:growthos` with 241 source/deterministic checks, GrowthOS client/rate/timestamp contracts and the real Firestore transaction emulator; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-GROWTHOS-MUTATION-SESSION-ALIAS-001 — Mutation reads and writes selected only root session workspace aliases
+
+- **Finding ID/severity/status:** `AUDIT-GROWTHOS-MUTATION-SESSION-ALIAS-001` / P2 / Closed locally in restart 1017.
+- **File/function/flow/structure:** GrowthOS refresh/generate/export `POST`; `loadGrowthOSSourceSnapshot`, `loadGrowthOSServerContext`, `buildGrowthOSEmptySummary`; tenant/store/project/menu/summary/kit/export flows `GROWTHOS-REFRESH-1017`, `GROWTHOS-GENERATE-1017` and `GROWTHOS-EXPORT-1017`.
+- **Producer/consumer/trigger/observed:** the routes and shared context repeatedly selected `session.tId` and `session.sId` independently for tenant verification, reads, generated IDs and persisted summaries. Accepted nested/alternate session aliases were ignored, and conflicting supplied aliases were not rejected at this boundary. That could deny a valid nested-only session or let a stale root alias select a different workspace than the current session contract.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every tenant-sensitive read, operation ID, summary and write must derive from one all-alias-correlated current workspace before rate, Firestore or entitlement work. Existing DAL ownership checks reduced exposure, but selecting an inconsistent scope for Admin SDK reads/writes is a P2 tenant/data-integrity defect.
+- **Fix/files/backward compatibility:** each route resolves `resolveStorePermissionSessionScope` once, rejects missing/conflicting scope and uses its canonical numeric IDs for access checks and document IDs for every read/write. Shared context independently requires the same exact scope for all callers. Valid agreeing session shapes are unchanged.
+- **Files changed/regression:** three routes, shared server context, GrowthOS verifier and audit artifacts. The verifier requires canonical scope use and forbids raw root session scope in this family.
+- **Validation/re-audit:** all restart 1017 checks above pass. Closed in restart 1017.
+
+### AUDIT-GROWTHOS-WRITE-ADMISSION-SCOPE-001 — Generic write admission was not bound to the admitted store or route session
+
+- **Finding ID/severity/status:** `AUDIT-GROWTHOS-WRITE-ADMISSION-SCOPE-001` / P2 / Closed locally in restart 1017.
+- **File/function/flow/structure:** refresh/generate/export admission before input parsing and Firestore work; distributed DATA_WRITE limiter.
+- **Producer/consumer/trigger/observed:** all three routes called the generic `checkDataWriteLimit`, which independently loaded another active session and keyed only a first-match `session.user.id` plus tenant. It omitted store and route identity. Different outlets shared one mutation budget, while disagreement between the authenticated route session and the helper session could admit or reject against a different actor/workspace snapshot.
+- **Expected/root cause/security/tenant/data/public/cache impact:** expensive transactional mutations must rate-limit the exact actor, tenant and store already admitted by the route, fail closed on provider uncertainty and keep route families separately observable. The prior helper did fail closed, so this finding concerns identity/partition correctness rather than provider-outage bypass.
+- **Fix/files/backward compatibility:** a GrowthOS write guard accepts only the exact resolved actor/tenant/store, hashes every key segment, includes the route operation and uses the existing DATA_WRITE policy with fail-closed behavior and bounded 429/503 responses. Normal limits and mutation semantics are unchanged.
+- **Files changed/regression:** new GrowthOS API guard, three routes, verifier and audit artifacts. The verifier pins hashed actor/tenant/store partitions, fail-closed configuration and absence of the generic helper.
+- **Validation/re-audit:** all restart 1017 checks above pass. Closed in restart 1017.
+
+### AUDIT-GROWTHOS-EXPORT-ACTOR-ATTRIBUTION-001 — Durable export settlement selected a first-match actor from an unchecked session object
+
+- **Finding ID/severity/status:** `AUDIT-GROWTHOS-EXPORT-ACTOR-ATTRIBUTION-001` / P2 / Closed locally in restart 1017.
+- **File/function/flow/structure:** `recordGrowthOSExportServer`, `readGrowthOSExportReplayServer`; export document identity, `createdBy`, idempotency replay and kit status settlement.
+- **Producer/consumer/trigger/observed:** persistence accepted `session: any` and selected `session.uId || session.user?.id`. Conflicting actor aliases were not rejected, so replay ownership and durable attribution could use a stale first alias even when the route's current actor differed. Replay also re-derived tenant/store from raw session aliases.
+- **Expected/root cause/security/tenant/data/public/cache impact:** the authenticated route must establish one exact actor/workspace and persistence must accept those explicit values rather than reinterpret an untyped session. This affected durable audit attribution and actor-bound idempotent replay; no already-written legacy export shape requires migration.
+- **Fix/files/backward compatibility:** the route resolves the exact actor once and passes it directly to replay and settlement. Persistence now requires explicit `actorId`, `tId` and `sId`, validates them as document IDs and compares canonical values during replay. Existing export documents and operation IDs remain compatible.
+- **Files changed/regression:** export route, GrowthOS server DAL, real Firestore transaction emulator, verifier and audit artifacts. The emulator replays concurrent exports with the explicit actor contract; source gates forbid session-derived attribution.
+- **Validation/re-audit:** all restart 1017 checks above pass. Closed in restart 1017.
+
+### AUDIT-GROWTHOS-MUTATION-PRIVATE-RESPONSE-CACHE-001 — GrowthOS mutation responses and bounded-body failures were storable by default
+
+- **Finding ID/severity/status:** `AUDIT-GROWTHOS-MUTATION-PRIVATE-RESPONSE-CACHE-001` / P3 / Closed locally in restart 1017.
+- **File/function/flow/structure:** every feature, actor/scope, rate, body, validation, access, entitlement, replay, conflict, success and failure response in refresh/generate/export.
+- **Producer/consumer/trigger/observed:** the routes used direct framework JSON and returned bounded-body helper responses unchanged. Successful bodies contain tenant-scoped menu action summaries, generated Growth Kits or export settlement state, but no route-wide response storage policy existed.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every authenticated response must retain protected `private, no-store, max-age=0` and `nosniff` headers, including early helper responses. Authorization and DTO contents were otherwise correct, so the concrete defect is P3 cache isolation rather than a confirmed cross-tenant response.
+- **Fix/files/backward compatibility:** all route-created responses use the GrowthOS private JSON helper introduced in restart 1016, and bounded parser responses are stamped before return. Status codes, bodies, retry metadata and client contracts are unchanged.
+- **Files changed/regression:** three routes, shared response helper usage, verifier and audit artifacts. The verifier forbids direct JSON bypass and requires protected helper-response coverage in every mutation route.
+- **Validation/re-audit:** all restart 1017 checks above pass. Closed in restart 1017.
+
+## Restart 1018 addendum — Platform Pull public business and menu APIs
+
+Restart 1018 completed a public-output-first re-review of `/api/public/v1/business` and `/api/public/v1/menu`, shared key validation/target eligibility, MenuList product and identity correlation, business projection, linked-outlet metadata projection, stable response identity and POS snapshot serialization. The trace covered missing/malformed/duplicate/current/legacy credentials, fail-closed pre-auth and per-key admission, tenant/store lifecycle, default-project summary authority, master-linked outlet resolution, public/private field projection, ETag/304 behavior, cache partitioning and failure diagnostics. One defect was closed. Because this restart found a defect, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:platform-pull-api-boundary` and its target-eligibility/response-identity/linked-outlet behavior suite; `npm run verify:public-business-truth` and its four child boundary suites; `npm run verify:menulist-api-tenant-safety` and its three child suites; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-PLATFORM-PULL-PROTECTED-HEADER-PRECEDENCE-001 — Pull error callers could override the private response policy
+
+- **Finding ID/severity/status:** `AUDIT-PLATFORM-PULL-PROTECTED-HEADER-PRECEDENCE-001` / P3 / Closed locally in restart 1018.
+- **File/function/flow/structure:** `src/lib/publicApi/auth.ts::{pullApiError,buildPullApiResponseHeaders}`; every business/menu feature, key, rate, target, no-menu and internal-error response; API-key-gated business/menu DTOs.
+- **Producer/consumer/trigger/observed:** `pullApiError` built protected `Cache-Control` and `Vary` fields before spreading caller headers, so a retry or future error caller could replace the private/no-store policy or remove API-key partitioning. Success/304 and error responses also lacked one shared explicit MIME-sniffing invariant.
+- **Expected/root cause/security/tenant/data/public/cache impact:** route-owned privacy and partition headers must be applied after caller metadata and remain non-overridable. Current rate callers supplied only `Retry-After`, so no observed response was already overriding cache isolation; the concrete failure path was latent and P3. API-key authority, Firestore scope, public field projection, ETag identity and payload content were unaffected.
+- **Fix/files/backward compatibility:** `buildPullApiErrorHeaders` normalizes caller headers through `Headers` and applies private/no-store, API-key `Vary` and `nosniff` last. Shared success/304 headers now also include `nosniff`. Bodies, status codes, ETags, cache lifetimes, retry metadata and client contracts are unchanged.
+- **Files changed/regression:** shared public API auth/response helper, platform-pull verifier and audit artifacts. The verifier pins protected precedence, success/error `nosniff` and the shared error-header constructor.
+- **Validation/re-audit:** all restart 1018 checks above pass. Closed in restart 1018.
+
+## Restart 1019 addendum — password mutation and anonymous claim preview
+
+Restart 1019 completed a security-first review of `/api/auth/change-password` and `/api/auth/validate-claim`, their actor/token boundaries, current-user authority, Firebase Auth identity/provider calls, MenuList session-revocation infrastructure, response parsers and desktop/mobile consumers. The reverse trace included `users` claim-token lookup/expiry cleanup, password metadata and revocation markers, the access-status monitor, browser sign-out and bounded diagnostics. Three defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Firebase’s current primary documentation confirms that password changes are major account changes that invalidate Firebase refresh tokens. MenuList also has an independent NextAuth session authority, so the repair uses the repository’s existing `sessionRevokedAt` access-status contract rather than assuming Firebase revocation covers both systems: [Firebase Manage User Sessions](https://firebase.google.com/docs/auth/admin/manage-sessions).
+
+Validation passed under Node 22.23.1: `npm run verify:change-password-boundary`, current-platform-user tests, the new auth account response behavior test, `npm run verify:auth-security-failure-matrix` and its ten child suites, `npm run verify:menulist-api-tenant-safety` and its three child suites, `npm run verify:auth-onboarding-flow` and its children, `npm run docs:check-links` with zero broken links and the same 62 non-error governed media filename warnings, focused ESLint, exact `npx tsc --noEmit --incremental false`, and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-CHANGE-PASSWORD-SESSION-REVOCATION-001 — Password changes left independent MenuList server sessions active
+
+- **Finding ID/severity/status:** `AUDIT-CHANGE-PASSWORD-SESSION-REVOCATION-001` / P1 / Closed locally in restart 1019.
+- **File/function/flow/structure:** password-change post-provider settlement; `users.passwordChangedAt`, `authTokensRevokedAt`, `sessionRevokedAt`; desktop/mobile account access; `/api/auth/access-status`.
+- **Producer/consumer/trigger/observed:** the route changed the Firebase Auth password and wrote only `passwordChangedAt`. Firebase invalidates its own refresh tokens after the major account change, but MenuList’s independent NextAuth JWT access is revoked through persisted session markers and the existing focus/30-second access monitor. A stolen MenuList server session could therefore remain active until normal JWT expiry after the owner changed the password.
+- **Expected/root cause/security/tenant/data/public/cache impact:** a successful credential change must invalidate all older Firebase and MenuList sessions and require a fresh login. This is P1 because the old behavior preserved unauthorized server-session access after an owner security action; no tenant scope or public truth changed.
+- **Fix/files/backward compatibility:** after the authoritative Firebase password update, the existing metadata write now records `passwordChangedAt`, `authTokensRevokedAt`, and `sessionRevokedAt` at the same timestamp. Success requires `reauthenticationRequired: true`; the bounded client parser rejects weaker success envelopes, and both desktop/mobile surfaces immediately call the existing dual Firebase/NextAuth sign-out helper. Other open sessions are rejected by the existing access-status monitor. Metadata failure remains bounded and post-commit so the API never falsely says an already changed password failed.
+- **Files changed/regression:** password route, account response contract, desktop/mobile consumers, auth docs, focused verifier, new client response behavior test and audit artifacts. The gates require revocation markers, exact acknowledgement, immediate sign-out and separate post-commit sign-out diagnostics.
+- **Validation/re-audit:** all restart 1019 checks above pass. Closed in restart 1019.
+
+### AUDIT-CHANGE-PASSWORD-ACTOR-ALIAS-001 — Password admission selected a first-match session actor
+
+- **Finding ID/severity/status:** `AUDIT-CHANGE-PASSWORD-ACTOR-ALIAS-001` / P2 / Closed locally in restart 1019.
+- **File/function/flow/structure:** actor derivation before AUTH_SENSITIVE rate admission, body parsing, current-user read and provider work.
+- **Producer/consumer/trigger/observed:** the route selected `session.uId || session.user.id`, normalized that one value and used it for the limiter before `getCurrentUser` later applied the exact all-alias contract. Conflicting aliases could therefore consume another actor’s capacity partition and produce inconsistent admission/error behavior, even though the later current-user read stopped the password write.
+- **Expected/root cause/security/tenant/data/public/cache impact:** all supplied actor aliases must agree before any admission or provider work. No cross-user password mutation was possible because `getCurrentUser` failed closed, but actor-scoped security capacity and audit behavior were incorrect.
+- **Fix/files/backward compatibility:** the route resolves `resolveCurrentSessionUserDocumentId` first, retains its existing strict 160-character/document-ID guard, and rejects missing/conflicting/malformed identity before hashing the rate key. Valid agreeing sessions are unchanged.
+- **Files changed/regression:** password route and three auth/tenant source gates. They require the exact resolver before limiter/body/provider/document operations and forbid the first-match actor pattern.
+- **Validation/re-audit:** all restart 1019 checks above pass. Closed in restart 1019.
+
+### AUDIT-AUTH-CREDENTIAL-STATE-RESPONSE-CACHE-001 — Password and claim-token state responses were storable by default
+
+- **Finding ID/severity/status:** `AUDIT-AUTH-CREDENTIAL-STATE-RESPONSE-CACHE-001` / P2 / Closed locally in restart 1019.
+- **File/function/flow/structure:** every change-password response including bounded-body failures; every validate-claim rate/invalid/expired/success/failure response; masked claim preview and credential-mutation acknowledgement.
+- **Producer/consumer/trigger/observed:** both routes returned direct framework JSON, and change-password returned raw bounded-body helper failures. Validate-claim success exposes business identity and masked phone state to a bearer-style claim URL; change-password exposes security mutation outcomes. Neither route imposed response-side non-storage headers.
+- **Expected/root cause/security/tenant/data/public/cache impact:** token-derived claim preview and authenticated credential state must be private and non-storable on every branch. No cache leak was observed, but caching a successful claim preview or password result is a concrete security/privacy failure path, making the family P2.
+- **Fix/files/backward compatibility:** a shared auth response helper applies non-overridable `private, no-store, max-age=0`, `Pragma: no-cache`, and `nosniff`. Both routes use it on every branch, and the bounded password-body response is stamped before return. Bodies and statuses are unchanged apart from the intentional password reauthentication acknowledgement above.
+- **Files changed/regression:** shared auth response helper, both routes, source gates, docs and audit artifacts. The gates forbid direct JSON bypass and pin protected header precedence/helper-response coverage.
+- **Validation/re-audit:** all restart 1019 checks above pass. Closed in restart 1019.
+
+## Restart 1020 addendum — MenuList Platform Pull API key lifecycle
+
+Restart 1020 completed a mutation-first and secret-output reverse review of `POST /api/store/public-api-key`, its session actor/workspace derivation, fail-closed distributed admission, bounded request parsing, tenant/store/product/lifecycle checks, current store-role permission, transactional hash-only generation/revocation, one-time raw-secret response, bounded diagnostics and Business Settings consumer. Three defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:platform-pull-api-boundary` and its target-eligibility/response-identity/linked-outlet suite; `npm run verify:menulist-api-tenant-safety` and its three child suites; `npm run docs:check-links` with zero broken links and the same 62 non-error governed media filename warnings; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-PUBLIC-API-KEY-SESSION-SCOPE-ALIASES-001 — Key management selected only root tenant/store session aliases
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-API-KEY-SESSION-SCOPE-ALIASES-001` / P2 / Closed locally in restart 1020.
+- **File/function/flow/structure:** `src/app/api/store/public-api-key/route.ts::POST`; Platform Pull credential generation/revocation; `stores/{storeId}.publicApi`.
+- **Producer/consumer/trigger/observed:** the route selected only `session.tId` and `session.sId` for limiter identity, tenant/store reads, request-scope comparison and transaction refs. Nested/alternate aliases accepted elsewhere in the session contract were ignored, and conflicting supplied aliases reached rate admission and transaction reads before the permission helper eventually failed closed.
+- **Expected/root cause/security/tenant/data/public/cache impact:** a secret-bearing tenant mutation must derive one all-alias-correlated actor/workspace before any admission or Firestore work. The transaction permission check prevented a cross-tenant write or secret disclosure, but scope selection and tenant-sensitive reads were inconsistent with the authoritative session contract.
+- **Fix/files/backward compatibility:** the route now uses `resolveStorePermissionSessionScope` and `resolveCurrentSessionUserDocumentId`, rejects missing/conflicting values, and derives every subsequent ID from the canonical exact scope. Valid agreeing legacy/root/nested session shapes remain supported.
+- **Files changed/regression:** key route, Platform Pull verifier, MenuList tenant-safety verifier, feature docs and audit artifacts. Both gates require exact all-alias scope/actor derivation and forbid the prior first-match patterns.
+- **Validation/re-audit:** all restart 1020 checks above pass. Closed in restart 1020.
+
+### AUDIT-PUBLIC-API-KEY-MANAGER-RATE-PARTITION-001 — One manager could exhaust the entire store key-management allowance
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-API-KEY-MANAGER-RATE-PARTITION-001` / P3 / Closed locally in restart 1020.
+- **File/function/flow/structure:** key-management distributed limiter before body/Firestore work.
+- **Producer/consumer/trigger/observed:** the fail-closed limiter was keyed only by a hashed store ID. Any manager with `MANAGE_INTEGRATIONS` could consume the five-request window shared by every other manager at that store, producing avoidable same-tenant denial of service and ambiguous actor telemetry.
+- **Expected/root cause/security/tenant/data/public/cache impact:** mutation capacity must be partitioned by exact actor and store while retaining hashed provider keys and fail-closed outage behavior. This did not bypass authorization or alter persisted/public truth, so it is P3 reliability/availability.
+- **Fix/files/backward compatibility:** the limiter key now combines hashed exact actor and store segments. The five-per-minute policy, provider-failure semantics, `Retry-After` behavior and raw-ID non-disclosure are unchanged.
+- **Files changed/regression:** key route, both source gates, docs and audit artifacts. The gates require actor-plus-store ordering and forbid store-only/raw limiter keys.
+- **Validation/re-audit:** all restart 1020 checks above pass. Closed in restart 1020.
+
+### AUDIT-PUBLIC-API-KEY-SECRET-RESPONSE-CACHE-001 — One-time raw key and failure responses did not share a complete protected policy
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-API-KEY-SECRET-RESPONSE-CACHE-001` / P2 / Closed locally in restart 1020.
+- **File/function/flow/structure:** every feature, actor/scope, rate, bounded-body, validation, permission, success and failure response from key management; one-time `ml_` raw credential DTO.
+- **Producer/consumer/trigger/observed:** successful key responses used only `private, no-store`; feature, onboarding, validation, permission and internal failures could bypass even that partial header object, and bounded-body helper responses were returned unchanged. The generated success body contains the only raw copy of a durable external credential.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every branch of a secret-management route must enforce non-overridable private/non-storage and MIME-sniffing headers. No cache leak was observed, but storing or reusing the one-time credential response is a concrete security failure path.
+- **Fix/files/backward compatibility:** a route-owned JSON constructor and helper-response stamper apply `private, no-store, max-age=0`, `Pragma: no-cache`, and `nosniff` after caller headers. Bodies, statuses, retry metadata and UI response contracts are unchanged.
+- **Files changed/regression:** key route, Platform Pull verifier, tenant-safety verifier, docs and audit artifacts. The gates require protected header precedence and bounded-body/permission response stamping.
+- **Validation/re-audit:** all restart 1020 checks above pass. Closed in restart 1020.
+
+## Restart 1021 addendum — billing state-machine and Razorpay provider boundaries
+
+Restart 1021 performed a datastore/provider-boundary reverse review of the previously inventory-only subscription transition table, shared Razorpay subscription fetch/quantity/error classifier, checkout response projector, webhook signature validator, hosted-payment URL projector, top-up document IDs, plan-entitlement helper and cancellation normalization. The trace followed persisted/provider scalars into owner outlet quantity mutations, cancellation/pause/resume/upgrade, signed webhooks, entitlement mirrors and recovery/error behavior. Two defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Razorpay's current primary documentation confirms that webhook authentication is a raw-body HMAC-SHA256 digest sent in `X-Razorpay-Signature`, and that subscription update `quantity` is an integer: [Validate and Test Webhooks](https://razorpay.com/docs/webhooks/validate-test/?locale=en-US), [Update Subscription API](https://razorpay.com/docs/api/payments/subscriptions/update-subscription/?preferred-country=IN).
+
+Validation passed under Node 22.23.1: `npm run test:payment-checkout-boundary`; `npm run verify:billing-entitlement-boundary`; `npm run verify:auth-security-failure-matrix` and its ten child suites; `npm run docs:check-links` with zero broken links and the same 62 non-error governed media filename warnings; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No provider network call, real charge, Firestore mutation, Firebase infrastructure change or deploy occurred.
+
+### AUDIT-BILLING-STATE-MACHINE-MUTABLE-PROJECTION-001 — Transition introspection exposed the live global transition table
+
+- **Finding ID/severity/status:** `AUDIT-BILLING-STATE-MACHINE-MUTABLE-PROJECTION-001` / P2 / Closed locally in restart 1021.
+- **File/function/flow/structure:** `src/lib/billing/subscriptionStateMachine.ts::getAllowedSubscriptionTransitions`; subscription/payment/webhook/grace/reconciliation transition authority.
+- **Producer/consumer/trigger/observed:** the exported introspection helper returned `VALID_TRANSITIONS[from]` directly as a mutable array. Any present or future caller that sorted, spliced, cleared or appended to the result would mutate the module-level table, changing which later financial transitions were admitted for every request in that process.
+- **Expected/root cause/security/tenant/data/public/cache impact:** read-only state-machine inspection must not grant mutation capability over billing authority. No existing caller was found mutating the array, so no persisted corruption is proven; the concrete shared-process failure path can admit or deny later subscription status writes and is P2 financial/data-integrity risk.
+- **Fix/files/backward compatibility:** the transition table and log helper now use readonly arrays, and introspection returns a fresh readonly copy. Transition values, same-state idempotency and all current writers are unchanged.
+- **Files changed/regression:** state machine, payment/provider behavior test, billing source gate, Razorpay docs and audit artifacts. The behavior test clears its returned copy and proves `active -> paused` remains admitted and a fresh full transition list remains intact.
+- **Validation/re-audit:** all restart 1021 checks above pass. Closed in restart 1021.
+
+### AUDIT-RAZORPAY-PROVIDER-INPUT-ERROR-BOUNDARY-001 — Shared provider helpers coerced stored IDs, trusted caller quantity and could throw while classifying an error
+
+- **Finding ID/severity/status:** `AUDIT-RAZORPAY-PROVIDER-INPUT-ERROR-BOUNDARY-001` / P2 / Closed locally in restart 1021.
+- **File/function/flow/structure:** `src/lib/billing/subscriptionProviderSync.ts`; outlet create/deactivate quantity settlement and compensation, subscription fetch/cancel/pause/resume/upgrade selection; `src/lib/razorpay/webhook-validator.ts`.
+- **Producer/consumer/trigger/observed:** the managed-subscription selector coerced persisted runtime values through `String(...).trim()`, provider fetch/update helpers accepted their exported string/number parameters without runtime admission, and the UPI unsupported classifier dereferenced several `any` properties outside a safety boundary. A malformed object could invoke conversion behavior; a caller regression could send a malformed ID/quantity to Razorpay; and a throwing SDK/proxy error getter could replace the original billing failure with a secondary exception during recovery classification. The webhook validator also allocated/compared arbitrary header strings before enforcing the documented digest shape.
+- **Expected/root cause/security/tenant/data/public/cache impact:** provider side effects must receive exact admitted IDs and bounded integer quantity, and error recovery must never throw while inspecting untrusted provider error objects. Webhook signature shape must fail cheaply before HMAC comparison. Tenant authority remained upstream, but malformed provider calls or secondary classifier failures could leave outlet capacity settlement/compensation pending or misreported, making this P2 billing reliability/data consistency.
+- **Fix/files/backward compatibility:** one exact `sub_...` projector is used before selection, fetch and update; quantity must be a positive safe integer no greater than the existing 31-location subscription maximum before the provider client is imported. Error inspection accepts only string fields inside a catch-all boundary. Webhook signatures must be exact 64-character lowercase hex before raw-body HMAC-SHA256 timing-safe comparison. Valid provider IDs, quantities and signatures are unchanged.
+- **Files changed/regression:** provider sync, webhook validator, behavior test, billing verifier, Razorpay docs and audit artifacts. Tests cover manual/valid/whitespace/throwing ID inputs, invalid IDs and over-limit quantities failing before provider import, UPI classification, throwing proxy fallback, valid digest acceptance and malformed digest rejection.
+- **Validation/re-audit:** all restart 1021 checks above pass. Closed in restart 1021.
+
+## Restart 1022 addendum — Redux Persist, SWR localStorage and owner-dashboard cache truth
+
+Restart 1022 used a browser-state and tenant-switch-first trace across every Redux slice, root persistence configuration, SSR-safe storage, provider/persistor singleton, authenticated browser cleanup, SWR localStorage cache, tenant/store/project key construction, Owner Dashboard/Owner Action Plan, OBP Dashboard, Customer App Dashboard and Owner Business Assistant cache consumers. Redux persistence contains only device theme/layout and modal state; loader/toast remain non-persisted, and no tenant/store/project data is retained there. Two localStorage cache defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run test:swr-local-storage-provider`; direct maintained `scripts/verification/test-redux-state-contract.ts`; `npm run verify:owner-dashboard-today-boundary`; `npm run verify:analytics-write-boundary` with browser/normalizer and two real Firestore emulator suites; `npm run verify:auth-security-failure-matrix` with its ten child suites; focused ESLint; exact `npx tsc --noEmit --incremental false`; `npm run docs:check-links` with `0` broken links and the same `62` pre-existing naming warnings; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-SWR-PERSISTED-CACHE-ENVELOPE-001 — Persisted cache metadata was trusted through a generic assertion
+
+- **Finding ID/severity/status:** `AUDIT-SWR-PERSISTED-CACHE-ENVELOPE-001` / P2 / Closed locally in restart 1022.
+- **File/function/flow/structure:** `src/lib/cache/swrLocalStorageProvider.ts::{getCachedData,setCachedData,shouldRevalidate,getCacheDate,cleanupOldEntries}`; every persisted dashboard/read-model cache entry.
+- **Producer/consumer/trigger/observed:** `JSON.parse(raw)` was assigned directly to `CacheEntry<T>`. Runtime strings/fractions/future values could enter timestamp arithmetic through coercion, impossible or non-string dates entered day comparisons, missing `data` was accepted, and `getCacheDate(): string | null` could return a non-string. Invalid TTL/day inputs were also treated as normal fallback behavior.
+- **Expected/root cause/security/tenant/data/public/cache impact:** localStorage is an untrusted persistence boundary. Envelope metadata must be exact before it controls read suppression or returns a value. Tenant/store keys prevented direct cross-key collision, but malformed metadata could extend stale owner truth, suppress a Firestore refresh, or violate downstream type assumptions, making this P2 cache/data-integrity risk.
+- **Fix/files/backward compatibility:** one projector requires an own `data` field, positive safe-integer timestamp not in the future, and a real canonical `YYYY-MM-DD` calendar date. Explicit TTL must be a positive safe integer and explicit day keys must be canonical. Invalid reads are evicted; invalid/undefined writes are skipped. Correct v1 entries remain byte-compatible.
+- **Files changed/regression:** cache provider, new behavior test, auth/security source gate, package script, Owner Dashboard docs and audit artifacts. Tests cover valid round-trip plus fractional/string/future timestamps, missing data, numeric/impossible dates, invalid day writes/reads, undefined data and negative TTL.
+- **Validation/re-audit:** all restart 1022 checks above pass. Closed in restart 1022.
+
+### AUDIT-OWNER-DASHBOARD-CACHED-DTO-VALIDATION-001 — Menu owner/action caches bypassed their Firestore read-model normalizers
+
+- **Finding ID/severity/status:** `AUDIT-OWNER-DASHBOARD-CACHED-DTO-VALIDATION-001` / P2 / Closed locally in restart 1022.
+- **File/function/flow/structure:** `src/hooks/useOwnerDashboard.ts`, `src/hooks/useOwnerActionPlan.ts`, `src/database/ownerDashboard/index.ts`; tenant/store/project-scoped Today, settled, daily, weekly and monthly owner read models.
+- **Producer/consumer/trigger/observed:** these hooks called `getCachedData<T>` and used the generic assertion as runtime truth. Fresh Firestore reads passed detailed DAL normalizers, but a persisted/tampered/legacy cache payload bypassed them and could inject malformed counters, arrays, dates or owner action structures. The settled cache also lacked an internal exact project check beyond its storage key.
+- **Expected/root cause/security/tenant/data/public/cache impact:** cache hits must preserve the same DTO and identity contract as authoritative reads. Keys already include tenant/store/project and sign-out clears the namespace, so no confirmed cross-tenant collision existed; malformed cached owner-facing business truth and possible render/runtime failure make this P2 data/public-owner truth defect.
+- **Fix/files/backward compatibility:** the DAL exports settled/daily/weekly/monthly cache projectors reusing its authoritative normalization. Settled payloads must carry the exact expected normalized project ID. Both hooks read `unknown`, reproject every fallback/fetcher hit, evict invalid entries and refetch. OBP and Customer App consumers already had equivalent payload normalization and were unchanged.
+- **Files changed/regression:** Owner Dashboard DAL/hooks, owner-dashboard verifier/docs and audit artifacts. The source gate forbids unchecked generic cache reads and requires every projector/eviction path; analytics emulator coverage proves live read/write behavior remains intact.
+- **Validation/re-audit:** all restart 1022 checks above pass. Closed in restart 1022.
+
+## Restart 1023 addendum — persisted active-store context and permission transition
+
+Restart 1023 used a tenant-switch/session-persistence adversarial trace across the active-store browser contract, signed-session projection, Firebase claim bootstrap, store hydration, subscription sequencing, permission derivation, authenticated browser cleanup, desktop/mobile switch consumers and the protected switch-store route. Two transition defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run test:store-switch-access-boundary`; `npm run test:session-store-context-boundary`; `npm run verify:account-tenant-lifecycle`; `npm run verify:menulist-api-tenant-safety` with its three child suites; `npm run verify:auth-security-failure-matrix` with its ten child suites; focused ESLint; full `npm run lint`; exact `npx tsc --noEmit --incremental false`; `npm run docs:check-links` with `0` broken links and the same `62` pre-existing naming warnings; and `git diff --check`. No Firebase rules, indexes, Storage rules or Functions source changed.
+
+### AUDIT-AUTH-ACTIVE-STORE-LEGACY-REPLAY-001 — SessionProvider still consumed a rejected legacy scalar context
+
+- **Finding ID/severity/status:** `AUDIT-AUTH-ACTIVE-STORE-LEGACY-REPLAY-001` / P2 / Closed locally in restart 1023.
+- **File/function/flow/structure:** `src/lib/multiOutlet/activeStoreContext.ts::{readActiveStoreContextValue,readActiveStoreContextId}`, `src/providers/sessionProvider.tsx` initial active context; tenant/store-scoped browser selection.
+- **Producer/consumer/trigger/observed:** the signed-session projector rejected legacy scalar storage by translating it to an ownerless context, but `readActiveStoreContextId()` returned the scalar target ID directly to `SessionProvider`. A mapped same-tenant target could therefore become the displayed store after refresh even though the stricter Firebase/session path rejected and removed its authority context. Partial or malformed values also remained indefinitely in storage.
+- **Expected/root cause/security/tenant/data/public/cache impact:** browser selection is an untrusted hint and must be admitted identically by every consumer. Only exact structured `{ tenantId, baseStoreId, storeId }` JSON may survive refresh; legacy, partial, malformed and unreadable values must be removed. Server/rules authority and same-tenant membership prevented a confirmed foreign-tenant read, but inconsistent admission could select stale store truth and desynchronize Firebase claims from owner UI/DAL context, making this P2 tenant/data-state risk.
+- **Fix/files/backward compatibility:** the reader now parses only the structured projector and safely evicts every invalid value, including scalar JSON and storage/parser failures. Current structured values are unchanged; intentionally retired scalar persistence is no longer replayed.
+- **Files changed/regression:** active-store context boundary, store-switch behavior suite, multi-location docs and audit artifacts. The behavior test installs a localStorage double and proves valid structured refresh, scalar rejection/removal and partial-object rejection/removal.
+- **Validation/re-audit:** all restart 1023 checks above pass. Closed in restart 1023.
+
+### AUDIT-SESSION-PERMISSION-TRANSITION-STALE-001 — Previous-store permissions survived missing target role truth
+
+- **Finding ID/severity/status:** `AUDIT-SESSION-PERMISSION-TRANSITION-STALE-001` / P1 / Closed locally in restart 1023.
+- **File/function/flow/structure:** `src/providers/sessionProvider.tsx` active-store loading/fallback and permission derivation effects; `RolePermissions` owner desktop/mobile admission.
+- **Producer/consumer/trigger/observed:** store changes updated `storeDetails` without first clearing `userPermissions`. The permission effect returned without writing when the authority store lacked a roles array or the mapped role was absent/had no permissions, leaving the previous store's permission object in the shared provider. On the first target-store render, UI and client-DAL consumers could therefore observe HQ/previous-outlet permissions under the new store context.
+- **Expected/root cause/security/tenant/data/public/cache impact:** a store transition must fail closed until permissions are derived from current authority truth. Missing/unmatched role data must never preserve prior authorization. Protected server routes still reauthorize, but owner surfaces and client Firestore operations depend on this permission object for action admission; stale broader permissions under a valid target store are a P1 authorization and tenant-state defect.
+- **Fix/files/backward compatibility:** target, login-store fallback and failure transitions clear permissions before changing store details. Permission derivation clears on missing authority/roles and always calls the established `getPermissionsForRole`, whose unmatched-role result is an all-false permission object; outlet policy remains applied to that result. Valid platform, HQ, outlet and single-store permissions are unchanged.
+- **Files changed/regression:** session provider, session-store source/behavior gate, multi-location docs and audit artifacts. Regression assertions require the transition clear, unconditional fail-closed role projection and removal of the stale `userRole?.permissions` guard.
+- **Validation/re-audit:** all restart 1023 checks above pass. Closed in restart 1023.
+
+## Restart 1024 addendum — reverse browser-storage trace and personal Business Health thread identity
+
+Restart 1024 enumerated all 96 first-party/test files that touch `localStorage` or `sessionStorage`, then reverse-traced authenticated teardown, scoped project/cache/export/draft keys, Owner Business Assistant browser read models, personal thread creation/recovery, SWR identity, exact server actor ownership, persistence transactions and response projection. One P0 cross-user cache identity defect and one P2 persisted DTO defect were closed, forcing an immediate security/data-flow restart and keeping `consecutiveCleanFullPasses` at `0`.
+
+Validation passed under Node 22.23.1: `npm run test:owner-business-assistant-client-scope`; `npm run test:owner-business-assistant-thread-response`; `npm run test:owner-business-assistant-session-scope`; `npm run verify:owner-business-assistant` with monitor and feedback child suites; `npm run verify:owner-business-health-boundary`; `npm run verify:auth-security-failure-matrix` with ten child suites; `npm run verify:menulist-api-tenant-safety` with three child suites; focused ESLint; full `npm run lint`; exact `npx tsc --noEmit --incremental false`; `npm run docs:check-links` with `0` broken links and the same `62` pre-existing naming warnings; and `git diff --check`. An initially attempted nonexistent `test:owner-business-assistant-thread-boundary` package command failed before any runtime action; the repository's actual `test:owner-business-assistant-thread-response` and aggregate commands were then run successfully. No Firebase infrastructure source changed.
+
+### AUDIT-OBA-BROWSER-THREAD-ACTOR-CACHE-001 — Personal thread browser identity omitted the authenticated actor
+
+- **Finding ID/severity/status:** `AUDIT-OBA-BROWSER-THREAD-ACTOR-CACHE-001` / P0 / Closed locally in restart 1024.
+- **File/function/flow/structure:** `src/lib/ownerBusinessAssistant/clientScope.ts`, `src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts`, `useOwnerBusinessAssistantThread.ts` and all personal-scope hook memoization; `ownerBusinessAssistantThreads` personal conversation DTO/cache.
+- **Producer/consumer/trigger/observed:** the browser client scope and persisted thread key contained tenant/store/project but not the current actor. The thread SWR key contained URL/thread ID plus tenant/store only, and hook memo dependencies watched only tenant/store. If account A and account B used the same tenant/store in one browser runtime, B could inherit A's local thread ID; because the SWR key was identical, already-cached thread content could be returned client-side before a network request reached the server's exact `userId` ownership check. Without memory reuse, the server correctly returned not-found/refused append, but the stale personal ID still caused a broken thread.
+- **Expected/root cause/security/tenant/data/public/cache impact:** personal conversation identity must include the exact authenticated actor at every browser persistence, memo and in-memory cache layer, matching the server document contract. The missing dimension created a possible cross-user private-thread exposure inside one tenant/store, which is P0 even though server persistence and fresh reads already failed closed. Public truth and billing were unaffected.
+- **Fix/files/backward compatibility:** `resolveOwnerBusinessAssistantClientScope` now requires compact/nested actor aliases to resolve exactly and returns `actorId`. Shared business read-model `cacheScope` remains tenant/store scoped for existing invalidation economics, while personal local thread keys contain encoded actor plus an explicit project/all-project component and thread SWR keys include actor separately. Every personal hook memo watches compact and nested actor aliases. Legacy actorless thread keys are no longer read; server thread shape/ownership and valid Firestore costs are unchanged.
+- **Files changed/regression:** client scope, answer/thread/feedback/current/analytics/locations hooks, behavior test, both Owner Business Assistant source gates, implementation/Firebase docs and audit artifacts. Behavior tests prove missing/conflicting actor rejection, same-store actor separation, encoded tuple collision resistance and separation between all-project and a project literally named `all`; source gates require actor-aware local/SWR/memo identities.
+- **Validation/re-audit:** the complete Restart 1024 security/data-flow command set above passes. Closed in restart 1024; the mandatory restart found no additional defect in the server ownership/persistence/response path, but it is not a full repository clean pass.
+
+### AUDIT-OBA-BROWSER-READMODEL-DTO-001 — Persisted Business Health responses bypassed HTTP runtime validation
+
+- **Finding ID/severity/status:** `AUDIT-OBA-BROWSER-READMODEL-DTO-001` / P2 / Closed locally in restart 1024.
+- **File/function/flow/structure:** `src/lib/ownerBusinessAssistant/clientResponses.ts`, `useOwnerBusinessHealthCurrent.ts`, `useOwnerBusinessAnalyticsIndex.ts`, `useOwnerBusinessLocationsSummary.ts`; tenant/store/project-scoped Business Health read-model browser cache.
+- **Producer/consumer/trigger/observed:** fresh current/analytics/locations HTTP payloads passed detailed runtime response validators, but localStorage hits used `getCachedData<ResponseType>` and treated the generic assertion as runtime truth. A tampered, malformed or legacy cached payload could therefore become SWR fallback data and owner-facing Business Health truth without the same nested DTO admission.
+- **Expected/root cause/security/tenant/data/public/cache impact:** persisted browser data is untrusted and cache hits must satisfy the same response contract as fresh network values. Tenant/store/project keying prevented a confirmed key collision, but malformed health status, analytics periods or location summaries could suppress refresh or reach render logic, making this P2 owner-truth/cache/type defect.
+- **Fix/files/backward compatibility:** `clientResponses.ts` exports current, analytics and locations projectors backed by its existing validators. Hooks read cache data as `unknown`, project it, evict invalid values and use only admitted DTOs as fallback. Valid cached envelopes and server/Firestore contracts are unchanged.
+- **Files changed/regression:** shared response boundary, three hooks, Owner Business Assistant hardening behavior/source gate, implementation/Firebase docs and audit artifacts. Runtime assertions admit valid current/null-analytics/empty-locations envelopes and reject malformed variants; source assertions require unknown reads, projection and eviction.
+- **Validation/re-audit:** the complete Restart 1024 command set above passes. Closed in restart 1024.
+
+## Restart 1025 addendum — owner export browser persistence
+
+Restart 1025 continued the browser-storage reverse trace through the legacy quick-PDF freshness marker and Menu Card Export history repository. It traced tenant/store/project key derivation, controller writes after delivery, record serialization, matching-hash reuse, history UI consumption, quota/privacy failure behavior and Firebase-free cost boundaries. Two defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run test:print-export-browser-boundaries`; `npm run verify:menu-card-export`; `npm run verify:pricing-integrity-boundary` and its menu-price behavior suite; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-LOCAL-PDF-HISTORY-TIMESTAMP-001 — Quick-PDF freshness accepted coercible and future timestamps
+
+- **Finding ID/severity/status:** `AUDIT-LOCAL-PDF-HISTORY-TIMESTAMP-001` / P3 / Closed locally in restart 1025.
+- **File/function/flow/structure:** `src/lib/export/localExportHistory.ts::readLocalPdfDownloadAt`; tenant/store/project-scoped device freshness marker.
+- **Producer/consumer/trigger/observed:** the reader applied `Number(raw)` and accepted every finite positive value. Exponent strings such as `1e3`, fractions and future millisecond values could therefore become a typed download timestamp and distort freshness/status behavior.
+- **Expected/root cause/security/tenant/data/public/cache impact:** untrusted browser persistence must match the writer's canonical integer-millisecond representation and cannot claim a download occurred in the future. The key already contained tenant/store/project identity, so this was not a cross-tenant collision; it was a concrete stale/incorrect owner-state risk.
+- **Fix/files/backward compatibility:** the reader now requires a canonical positive digit string, a safe integer and a value no later than the current time. Correct existing timestamp strings remain compatible.
+- **Files changed/regression:** local export history, print/export browser behavior test, Menu Card Export docs/changelog and audit artifacts. The test rejects exponent and future values while preserving scoped valid reads and best-effort writes.
+- **Validation/re-audit:** all restart 1025 checks above pass. Closed in restart 1025.
+
+### AUDIT-MENU-CARD-LOCAL-HISTORY-DTO-001 — Local export history trusted a shallow permissive shape
+
+- **Finding ID/severity/status:** `AUDIT-MENU-CARD-LOCAL-HISTORY-DTO-001` / P2 / Closed locally in restart 1025.
+- **File/function/flow/structure:** `src/lib/menu-card-export/repository/menuCardExportRepository.ts`; `MenuCardLocalHistoryRecord`; matching export/history UI.
+- **Producer/consumer/trigger/observed:** the prior type guard admitted any strings, any preset string, non-integer/negative/unbounded page counts and arbitrary timestamp strings. Malformed JSON was repeatedly ignored but retained. A tampered or legacy browser record could become owner-visible export truth or matching-hash input without satisfying the compile-time DTO.
+- **Expected/root cause/security/tenant/data/public/cache impact:** localStorage is untrusted and every cached record must satisfy the exact finite union, bounded scalar, canonical timestamp and project identity contract. Scoped keys prevented a confirmed foreign-store collision, but malformed persisted truth could corrupt history/freshness UI and downstream assumptions, making this P2.
+- **Fix/files/backward compatibility:** one projector admits exact presets, bounded nonempty strings, positive safe-integer page counts capped at 1,000, canonical non-future ISO timestamps and exact project identity. Invalid records, oversized arrays and malformed JSON are evicted. Valid v1 arrays remain compatible; failed writes remain best-effort after file delivery.
+- **Files changed/regression:** history repository, browser behavior test, Menu Card Export source verifier/docs/changelog and audit artifacts. Tests reject fractional/negative page counts, unknown presets, malformed timestamps and corrupt JSON, and prove eviction.
+- **Validation/re-audit:** all restart 1025 checks above pass. Closed in restart 1025.
+
+## Restart 1026 addendum — transient analytics identity and extraction-review dismissal state
+
+Restart 1026 continued the reverse browser-storage pass through anonymous analytics session identity, desktop/mobile processing-job restoration, extraction-review discard/rollback, account sign-out teardown and the related source/behavior gates. Three defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run test:analytics:browser-boundary`; `npm run test:menu-processing-dismissal-boundary`; `node scripts/verification/verify-menu-extraction-pipeline.js` with 371 source checks; `npm run test:menu-processing-job-listener-boundary`; `npm run verify:account-tenant-lifecycle`; `npm run verify:menulist-api-tenant-safety` with its three child suites; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-ANALYTICS-SESSION-STORAGE-IDENTITY-001 — Anonymous analytics identity trusted arbitrary browser strings
+
+- **Finding ID/severity/status:** `AUDIT-ANALYTICS-SESSION-STORAGE-IDENTITY-001` / P3 / Closed locally in restart 1026.
+- **File/function/flow/structure:** `src/lib/analytics/session.ts::{getSessionId,refreshSession}`; anonymous browser session ID/timestamp; public menu, website and PWA analytics producers.
+- **Producer/consumer/trigger/observed:** session reuse accepted any nonempty ID and used `parseInt` for its timestamp. Arbitrary IDs, exponent/suffix-coercible timestamps and future timestamps could become or remain current analytics attribution; refresh extended any stored ID.
+- **Expected/root cause/security/tenant/data/public/cache impact:** browser persistence is attacker-controlled. Only the writer's canonical UUID v4 plus canonical positive safe-integer, non-future millisecond timestamp inside the 30-minute window may be reused. The payload is anonymous and not an authorization credential, so this is P3 analytics-integrity/deduplication risk rather than tenant exposure.
+- **Fix/files/backward compatibility:** one exact ID predicate and timestamp parser govern reuse. Invalid/future/coercible envelopes are replaced, and refresh removes malformed identity. Correct existing UUID-v4 sessions remain compatible; analytics Firestore shape/cost is unchanged.
+- **Files changed/regression:** analytics session helper, browser analytics behavior suite, tenant-safety source gate, analytics implementation/Firebase docs, changelog and audit artifacts. Tests cover valid reuse, malformed ID replacement, exponent/future timestamp rejection and refresh eviction.
+- **Validation/re-audit:** all restart 1026 checks above pass. Closed in restart 1026.
+
+### AUDIT-MENU-PROCESSING-DISMISSAL-SCOPE-001 — Review dismissals crossed tenant/store browser contexts
+
+- **Finding ID/severity/status:** `AUDIT-MENU-PROCESSING-DISMISSAL-SCOPE-001` / P2 / Closed locally in restart 1026.
+- **File/function/flow/structure:** `src/lib/extraction/menuProcessingDismissal.ts`; Projects and Mobile Menu active-job restoration; desktop/mobile extraction review discard/rollback.
+- **Producer/consumer/trigger/observed:** every account/store in a browser tab shared `dismissedMenuProcessingJobs`, keyed only by job ID. Switching tenant/store could therefore make another workspace treat the same remembered job identifier as dismissed and suppress its review/active-job restoration.
+- **Expected/root cause/security/tenant/data/public/cache impact:** dismissal is owner state and must be partitioned by the exact active tenant/store on every reader/writer/rollback. Server job ownership and Firestore reads remained protected, so no data exposure occurred; hiding current-tenant review work from the owner is a P2 tenant-state/reliability defect.
+- **Fix/files/backward compatibility:** the helper derives an exact numeric tenant/store key with the established browser-storage boundary, and every desktop/mobile parent and review component passes the current scope. The legacy unscoped map is no longer read. Firestore jobs, queries and public menu truth are unchanged.
+- **Files changed/regression:** dismissal helper, Projects/Mobile Menu, desktop/mobile review components/modal, extraction source gate/docs, new behavior test and audit artifacts. The test proves equal job IDs remain isolated across stores and wrong-scope clear cannot remove another scope.
+- **Validation/re-audit:** all restart 1026 checks above pass. Closed in restart 1026.
+
+### AUDIT-MENU-PROCESSING-DISMISSAL-DTO-CLEANUP-001 — Dismissal envelopes were coercible, unbounded, and incompletely cleared
+
+- **Finding ID/severity/status:** `AUDIT-MENU-PROCESSING-DISMISSAL-DTO-CLEANUP-001` / P2 / Closed locally in restart 1026.
+- **File/function/flow/structure:** dismissal record parser/writer and `src/lib/auth/clientSessionCleanup.ts`; job ID/timestamps/TTL/record map; authenticated browser teardown.
+- **Producer/consumer/trigger/observed:** the reader coerced timestamp fields with `Number`, admitted future start times and unbounded maps/retention, and storage failures could throw into review UI. After scoped keys were introduced, exact-key-only sign-out cleanup would also have left dynamic processing/dismissal state in the tab.
+- **Expected/root cause/security/tenant/data/public/cache impact:** transient authenticated state must be bounded, fail safely and be removed during account transition. Malformed values could suppress active processing truth, while retained scoped keys could affect another actor entering the same workspace in the same tab. Server authorization/public truth remained unchanged.
+- **Fix/files/backward compatibility:** the DTO now requires bounded document IDs, safe integer timestamps, non-future dismissal, positive expiry, at most one-hour retention and 100 records. Invalid/corrupt/expired data is evicted and storage rejection is best-effort. Sign-out enumerates and removes all authenticated dynamic processing/dismissal prefixes while preserving unrelated device preferences.
+- **Files changed/regression:** dismissal and client cleanup helpers, lifecycle/extraction source gates/docs, lifecycle and dismissal behavior suites, package test registration, changelog and audit artifacts.
+- **Validation/re-audit:** all restart 1026 checks above pass. Closed in restart 1026.
+
+## Restart 1027 addendum — image-generation browser preference contract
+
+Restart 1027 traced the tenant/store-scoped image-generation preference key, save projection, localStorage serialization, modal hydration/default merge, single/batch generation configs, API/runtime validators, provider boundary and failure diagnostics. One defect was closed. Because this restart found a defect, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:data-flow-audit-regressions`; `npm run verify:auth-security-failure-matrix` with its ten child suites; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-IMAGE-GEN-PREFERENCES-CACHED-DTO-001 — Browser preferences were materially broader than the generation contract
+
+- **Finding ID/severity/status:** `AUDIT-IMAGE-GEN-PREFERENCES-CACHED-DTO-001` / P2 / Closed locally in restart 1027.
+- **File/function/flow/structure:** `src/lib/imageGenPreferences.ts`; `ImageGenPreferences`; `ImageUploadModal` single/batch generation configuration.
+- **Producer/consumer/trigger/observed:** the local parser required only a nonempty category and shallow primitive types. It admitted unbounded arrays/strings, unknown aspect ratios, arbitrary timestamps and unvalidated tenant/store key components. Invalid parsed records returned null but remained persisted; malformed JSON also remained. A tampered/legacy payload could therefore become owner generation state or repeatedly suppress valid defaults until a later API boundary rejected it.
+- **Expected/root cause/security/tenant/data/public/cache impact:** persisted browser preferences must match the same finite, bounded values admitted by the image-generation API and exact store scope. Server/provider routes still validate requests, preventing unauthorized provider work from malformed payloads, but cached owner state and generation reliability were incorrect, making this P2 type/cache pipeline risk.
+- **Fix/files/backward compatibility:** key construction now validates the established positive numeric tenant/store scope while retaining the existing `imgGenPrefs_{tId}_{sId}` format. One projector enforces the API's 20-entry/100-character list limits, known aspect ratios, bounded category/prompt/color fields, booleans and canonical non-future save time on reads and writes. Invalid/malformed entries are evicted. Correct existing preferences remain compatible.
+- **Files changed/regression:** preference helper, runtime storage behavior suite, auth/security source gate, AI Image Generation implementation/Firebase docs, changelog and audit artifacts. Tests cover valid round-trip, invalid scope, unknown ratio, oversized arrays/prompts, future timestamp and malformed-envelope eviction.
+- **Validation/re-audit:** all restart 1027 checks above pass. Closed in restart 1027.
+
+## Restart 1028 addendum — Customer App browser counters and lifecycle deduplication
+
+Restart 1028 traced Customer App visit/prompt/dismiss/install/open browser state through install prompting, standalone detection, iOS inference, analytics event admission, local/session storage deduplication and downstream daily metrics. Two defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:customer-app-pwa` with the new browser-storage behavior suite and both PWA icon boundary suites; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-CUSTOMER-APP-OPEN-COMPLETION-GUARD-001 — App-open tracking was marked complete before the analytics write
+
+- **Finding ID/severity/status:** `AUDIT-CUSTOMER-APP-OPEN-COMPLETION-GUARD-001` / P2 / Closed locally in restart 1028.
+- **File/function/flow/structure:** `src/lib/pwa/standaloneDetector.ts::detectAndTrackAppOpen`; `CUSTOMER_APP_OPENED`; session dedupe and iOS install inference.
+- **Producer/consumer/trigger/observed:** the detector wrote its session marker before awaiting `trackEvent`. A transient analytics failure therefore returned false but permanently suppressed every retry for that browser session. The marker also contained only store ID instead of the full tenant/store identity used by the event.
+- **Expected/root cause/security/tenant/data/public/cache impact:** exactly-once intent requires concurrency admission before the call and durable completion only after acknowledgement. A failed write must remain retryable, and browser cache identity must include every workspace dimension. This affected analytics truth/cost and tenant cache correctness, not authorization or public menu data.
+- **Fix/files/backward compatibility:** a tenant/store-scoped key and in-memory in-flight set suppress concurrent renders. The session marker is written only after successful tracking and the in-flight entry is always released. Invalid/missing scope still allows nonblocking analytics without unsafe persistent dedupe. Existing event payloads and Firestore shape are unchanged.
+- **Files changed/regression:** standalone detector, shared PWA scalar boundary, Customer App source verifier/docs/changelog and audit artifacts. The source gate proves marker ordering, exact key helper use and the in-flight guard.
+- **Validation/re-audit:** all restart 1028 checks above pass. Closed in restart 1028.
+
+### AUDIT-CUSTOMER-APP-PERSISTED-SCALAR-DTO-001 — PWA gates coerced arbitrary counts/timestamps and truthy install markers
+
+- **Finding ID/severity/status:** `AUDIT-CUSTOMER-APP-PERSISTED-SCALAR-DTO-001` / P3 / Closed locally in restart 1028.
+- **File/function/flow/structure:** `visitCounter.ts`, `installTracker.ts`, standalone iOS prompt inference; visit count, dismissal/prompt/install timestamps.
+- **Producer/consumer/trigger/observed:** `parseInt` admitted suffixed/exponent-like values, future dismissal/prompt timestamps remained active, visit counts were unbounded, and any truthy install marker suppressed `CUSTOMER_APP_INSTALLED`. Tampered or corrupt browser state could show/suppress prompts incorrectly and misclassify/suppress analytics.
+- **Expected/root cause/security/tenant/data/public/cache impact:** browser scalars must exactly match writer formats and finite limits. These values do not authorize reads/writes, so this is P3 analytics/prompt reliability rather than exposure.
+- **Fix/files/backward compatibility:** one shared projector admits canonical digit-only safe integers, non-future timestamps and bounded counts. Visit counts cap at 1,000,000; invalid/future/expired values are removed; install dedupe requires a valid timestamp. Correct stored values remain compatible.
+- **Files changed/regression:** shared PWA scalar helper, visit/install/standalone modules, behavior test, Customer App aggregate/source verifier/docs, package registration, changelog and audit artifacts. Tests cover canonical values, suffix/exponent/negative/overflow/future rejection, counter recovery and dismissal eviction.
+- **Validation/re-audit:** all restart 1028 checks above pass. Closed in restart 1028.
+
+## Restart 1029 addendum — forced-desktop and error-theme persistence
+
+Restart 1029 reviewed the remaining shared presentation persistence used before or outside normal Redux/mobile-shell rendering: forced-desktop route selection, explicit return-to-mobile cleanup, persisted Redux error-page theme projection, global/wrapped error consumers and bounded diagnostics. Two P3 defects and one stale documentation statement were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:data-flow-audit-regressions`; `npm run verify:auth-security-failure-matrix` with its ten child suites; `npm run verify:platform-cost-posture-boundary` with both aggregation/client suites; focused ESLint; exact `npx tsc --noEmit --incremental false`; and `git diff --check`. No Firebase infrastructure source changed.
+
+### AUDIT-FORCE-DESKTOP-PERSISTED-PATH-001 — Forced-desktop state accepted arbitrary strings and threw on storage denial
+
+- **Finding ID/severity/status:** `AUDIT-FORCE-DESKTOP-PERSISTED-PATH-001` / P3 / Closed locally in restart 1029.
+- **File/function/flow/structure:** `src/lib/mobile/forceDesktopMode.ts`; route-scoped mobile-to-desktop handoff and return banner.
+- **Producer/consumer/trigger/observed:** path values were written/read without storage failure handling or runtime admission. An arbitrary, oversized, control-character or external-style string could persist, and denied localStorage access could throw while deciding the application shell.
+- **Expected/root cause/security/tenant/data/public/cache impact:** this device preference must admit only bounded same-app absolute paths and fail to mobile without breaking render. It carries no tenant data or authority, so the concrete risk is P3 navigation/reliability.
+- **Fix/files/backward compatibility:** normalization now requires a same-app `/` path capped at 512 characters with no control characters or protocol-relative prefix. Invalid values are removed; read/write/clear failures emit bounded runtime diagnostics and fail safely. Exact valid route-tree and legacy desktop-only `true` behavior remain compatible.
+- **Files changed/regression:** force-desktop helper, runtime storage behavior suite, mobile navigation spec, changelog and audit artifacts. The test covers route-tree matching, sibling refusal, external-style eviction and explicit clear.
+- **Validation/re-audit:** all restart 1029 checks above pass. Closed in restart 1029.
+
+### AUDIT-ERROR-PAGE-PERSISTED-COLOR-001 — Error pages accepted arbitrary persisted CSS strings as theme colors
+
+- **Finding ID/severity/status:** `AUDIT-ERROR-PAGE-PERSISTED-COLOR-001` / P3 / Closed locally in restart 1029.
+- **File/function/flow/structure:** `src/lib/runtime/errorPageTheme.ts`; Redux Persist `clientThemeConfig`; global and wrapped error pages.
+- **Producer/consumer/trigger/observed:** every nonempty persisted string was returned as `colorPrimary`. Tampered/corrupt Redux persistence could therefore inject arbitrary CSS-shaped values into the error-page theme contract rather than the color values produced by the application picker.
+- **Expected/root cause/security/tenant/data/public/cache impact:** emergency error rendering must be deterministic and use a narrow serialized color contract. React/Ant styling and browser CSS parsing limited direct script execution, so this is a P3 presentation/latent external-resource risk rather than confirmed code execution or tenant exposure.
+- **Fix/files/backward compatibility:** persisted light/dark colors must be exact six-digit hex values; invalid strings fall back to the governed defaults. Valid picker output is unchanged.
+- **Files changed/regression:** error-theme projector, auth/security source gate, runtime storage behavior suite, changelog and audit artifacts. The regression proves a URL-shaped CSS value cannot cross into the rendered theme.
+- **Validation/re-audit:** all restart 1029 checks above pass. Closed in restart 1029.
+
+## Restart 1030 addendum — deployment identity, service-worker and public theme persistence
+
+Restart 1030 used a product-separation and corrupt-browser-state trace across the global service-worker registrar, owner update prompt, deployment badge/session identity producer, MenuList website theme provider, Answerlattice theme bootstrap/provider and OBP theme toggle. Service-worker target selection, wrong-worker cleanup and post-cleanup reload ordering remained product-scoped and fail-safe; the owner update prompt compares only same-origin bounded version responses and carries no tenant authority. Three persisted-state defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: exact `npx tsc --noEmit --incremental false --pretty false`; `npm run verify:data-flow-audit-regressions`; `npm run verify:owner-pwa-lifecycle`; `npm run verify:website-public-copy-boundary`; `npm run verify:public-business-truth` with its four child behavior suites; `npm run verify:answerlattice-public-website` with its two child contract suites; focused ESLint; and `git diff --check`. No Firebase rule, index, Storage rule, Function, provider, Firestore, Vercel or deployment operation occurred.
+
+### AUDIT-DEPLOYMENT-IDENTITY-CACHED-DTO-001 — Debug identity storage was unbounded and could interrupt the owner provider
+
+- **Finding ID/severity/status:** `AUDIT-DEPLOYMENT-IDENTITY-CACHED-DTO-001` / P2 / Closed locally in restart 1030.
+- **File/function/flow/structure:** `src/providers/sessionProvider.tsx` deployment identity effect, `src/constants/deploymentDebug.ts`, `src/components/common/DeploymentBuildBadge.tsx`; session-only tenant/store diagnostic DTO.
+- **Producer/consumer/trigger/observed:** the owner provider wrote directly to sessionStorage without a failure boundary, while the badge parsed arbitrary JSON through an assertion and rendered unchecked IDs/names. Denied storage could throw from the shared provider or badge effects, and corrupt/oversized values could survive and reach internal diagnostic output.
+- **Expected/root cause/security/tenant/data/public/cache impact:** a debug-only DTO must never become owner-shell authority or availability risk. It must project exact bounded display fields, remove corrupt state and degrade to build-only output when storage is unavailable. This state does not authorize data access, but the unbounded assertion and shared-provider exception path made it P2 owner reliability/data-boundary risk.
+- **Fix/files/backward compatibility:** one projector now admits only string/finite-safe-integer IDs capped at 128 characters and string names capped at 200, strips surrounding whitespace, rejects controls and removes extra fields. The producer and badge use that projector; malformed JSON/state is evicted and read/write/remove denial produces bounded development diagnostics without interrupting owner work. Existing valid IDs/names and the storage key remain compatible.
+- **Files changed/regression:** deployment constants, session provider, deployment badge, runtime storage behavior test, owner PWA source gate, deployment documentation and audit artifacts. Tests cover projection, extra-field omission, non-finite IDs, oversized names and malformed JSON.
+- **Validation/re-audit:** all restart 1030 checks above pass. Closed in restart 1030.
+
+### AUDIT-PUBLIC-THEME-STORAGE-BOUNDARY-001 — MenuList and Answerlattice theme persistence could throw or apply invalid runtime state
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-THEME-STORAGE-BOUNDARY-001` / P2 / Closed locally in restart 1030.
+- **File/function/flow/structure:** `src/components/website/shadcn/theme-provider.tsx`, `src/lib/website/themePreference.ts`, `src/app/sites/answerlattice/components/AnswerlatticeThemeProvider.tsx`; public Light/System/Dark browser preferences.
+- **Producer/consumer/trigger/observed:** MenuList cast any nonempty `theme` scalar to its TypeScript union during render, so a corrupt value could become an arbitrary document class; both providers used unguarded localStorage operations that could throw during initial render/effect or user theme changes when storage was denied.
+- **Expected/root cause/security/tenant/data/public/cache impact:** localStorage is untrusted and optional. Only exact governed theme values may influence document styling, corrupt state must be removed, and storage denial must retain a usable public page. These are device preferences with no tenant authority, but the MenuList render-time exception/class injection and Answerlattice hydration/toggle exception paths make this P2 public-output reliability/type-boundary risk.
+- **Fix/files/backward compatibility:** MenuList uses a pure exact `light | system | dark` projector before applying classes; both product providers evict invalid values and catch read/remove/write failures with bounded once-per-operation diagnostics. Read failure falls back to System and write failure preserves the in-memory choice. Existing keys and valid preferences remain unchanged and product-specific Answerlattice persistence stays separate.
+- **Files changed/regression:** both theme providers, new MenuList theme projector, data-flow behavior test, both public-website source gates, feature docs and audit artifacts. The behavior test proves an arbitrary stored scalar is rejected; source gates require exact projection, eviction and all three failure paths.
+- **Validation/re-audit:** all restart 1030 checks above pass. Closed in restart 1030.
+
+### AUDIT-OBP-THEME-CORRUPT-EVICTION-001 — Invalid OBP theme values remained permanently replayable
+
+- **Finding ID/severity/status:** `AUDIT-OBP-THEME-CORRUPT-EVICTION-001` / P3 / Closed locally in restart 1030.
+- **File/function/flow/structure:** `src/app/client/obp/OBPThemeToggle.tsx`; browser-local public OBP light/dark choice.
+- **Producer/consumer/trigger/observed:** the reader correctly refused values other than `light` or `dark`, but left corrupt values in localStorage. Every mount and system-theme change reread the same invalid scalar, permanently replaying corruption and making cleanup failures invisible.
+- **Expected/root cause/security/tenant/data/public/cache impact:** invalid persisted UI state should be self-healing and cleanup failure observable. The value grants no authority and was not applied, so this is P3 latent reliability rather than tenant or public-truth exposure.
+- **Fix/files/backward compatibility:** invalid values are removed; removal failures join the existing bounded once-per-operation `obp_theme_storage_*_failed` diagnostic family. Valid light/dark values and system fallback remain unchanged.
+- **Files changed/regression:** OBP toggle, public-business-truth source gate, OBP implementation/Firebase docs and audit artifacts. The gate requires invalid-value eviction plus bounded removal diagnostics.
+- **Validation/re-audit:** all restart 1030 checks above pass. Closed in restart 1030.
+
+## Restart 1031 addendum — public analytics consent and event emission
+
+Restart 1031 traced MenuList and Answerlattice public analytics consent from exact browser persistence through vendor script mounting, runtime consent updates, cookie cleanup, shared Plausible/Google event helpers, delegated CTA events, resource page/referrer events and Answerlattice onboarding completion. CampaignCue remains essential-storage acknowledgement only and mounts no analytics children. One P1 privacy defect and one P3 corrupt-state defect were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:data-flow-audit-regressions`; `npm run verify:website-public-copy-boundary`; `npm run verify:answerlattice-public-website` with both child contract suites; exact `npx tsc --noEmit --incremental false --pretty false`; focused ESLint; and `git diff --check`. No vendor request was made by the regression, no Firestore/Firebase infrastructure changed, and no deployment occurred.
+
+### AUDIT-PUBLIC-ANALYTICS-CONSENT-REVOCATION-001 — Loaded vendor functions bypassed a later declined choice
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-ANALYTICS-CONSENT-REVOCATION-001` / P1 / Closed locally in restart 1031.
+- **File/function/flow/structure:** `src/lib/website/plausible.ts::{trackPlausibleEvent,trackGoogleMarketingEvent}`, MenuList/Answerlattice consent callbacks, Answerlattice conversion/resource/onboarding callers; product-specific public analytics consent.
+- **Producer/consumer/trigger/observed:** Plausible checked persisted acceptance only when its function was absent, and the Google helper checked only whether `window.gtag` existed. After a visitor accepted and later selected Decline, vendor functions could remain loaded. MenuList resource/tool/CTA callers and Answerlattice conversion/resource/onboarding callers could therefore emit subsequent Google event pings; direct Answerlattice callers bypassed the shared boundary entirely.
+- **Expected/root cause/security/tenant/data/public/cache impact:** optional public analytics must require the current accepted choice on every event, including after revocation and when localStorage is unavailable but a page-local choice exists. No tenant data or Firestore truth was involved, but post-revocation third-party event transmission contradicts the privacy/consent contract and is P1.
+- **Fix/files/backward compatibility:** one product-partitioned runtime choice is updated synchronously by both consent callbacks. Plausible and Google helpers now fail closed unless the current runtime or exact persisted choice is accepted, regardless of vendor-function presence. Answerlattice conversion, resource and onboarding events route through the same bounded helper. Accepted event names/payloads and script configuration remain unchanged; Decline immediately stops later custom events while existing cookie cleanup/Google consent updates remain.
+- **Files changed/regression:** shared analytics helper, MenuList consent callback, Answerlattice consent/conversion/resource/onboarding consumers, runtime behavior suite, both public-website source gates, docs and audit artifacts. The behavior test loads both vendor functions, proves accepted events emit once, changes runtime consent to declined and proves both counts remain unchanged.
+- **Validation/re-audit:** all restart 1031 checks above pass. Closed in restart 1031.
+
+### AUDIT-PUBLIC-CONSENT-CORRUPT-EVICTION-001 — Invalid consent scalars remained in browser persistence
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-CONSENT-CORRUPT-EVICTION-001` / P3 / Closed locally in restart 1031.
+- **File/function/flow/structure:** `src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx::readStoredChoice`; MenuList, Answerlattice and CampaignCue product-specific consent/acknowledgement keys.
+- **Producer/consumer/trigger/observed:** values other than exact `accepted`/`declined` were treated as missing but retained. Every mount replayed the same corrupt scalar, and read/write diagnostics used only key length in their once guard, so failures from different same-length product keys could suppress each other.
+- **Expected/root cause/security/tenant/data/public/cache impact:** corrupt optional browser state must self-heal and product operations must retain independent bounded observability. The invalid value did not enable analytics, so this is P3 reliability/evidence rather than exposure.
+- **Fix/files/backward compatibility:** invalid values are removed, cleanup failure has its own bounded fallback diagnostic, and the in-memory once guard partitions by the actual internal key without logging that key. Exact current choices and product-specific storage keys are unchanged.
+- **Files changed/regression:** shared banner, MenuList source gate, public-website docs and audit artifacts. The gate requires invalid-choice eviction and explicit removal fallback policy.
+- **Validation/re-audit:** all restart 1031 checks above pass. Closed in restart 1031.
+
+## Restart 1032 addendum — public menu session state, changelog truth, feedback nudge and Help Chat drafts
+
+Restart 1032 continued the reverse browser-storage trace through public menu language/page/scroll state, the secondary menu-language preference, public feedback nudge, platform/Answerlattice changelog last-viewed state and Answerlattice Help Chat drafts. Eight defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:data-flow-audit-regressions`; `npm run verify:public-business-truth` with its four child behavior suites; `npm run verify:help-center-boundary` with both child suites; the broad `npm run verify:answerlattice-runtime-truth` aggregate, including dedicated/shared Firestore emulator suites; exact `npx tsc --noEmit --incremental false --pretty false`; focused ESLint; `git diff --check`; manifest/catalog regeneration; and `npm run verify:data-flow-audit-tools`. One stale public-business-truth assertion still expected draft-clear diagnostics inside `ChatInput` after clearing moved to the failure-contained shared helper; it was aligned to the current helper boundary and the aggregate passed. No Firebase rule, index, Storage rule, Function or deployment source changed.
+
+The regenerated manifest contains 8,367 in-scope first-party files and 310 explicit exclusions: 1,448 reviewed, 1,896 in-progress and 5,023 inventory-only. The Firestore catalog remains 281 families. These counts prove that repository-wide completion criteria remain unmet.
+
+### AUDIT-PUBLIC-MENU-SESSION-SCOPE-001 — Public session keys omitted tenant and overwrote destination language on transition
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-MENU-SESSION-SCOPE-001` / P2 / Closed locally in restart 1032.
+- **File/function/flow/structure:** `src/components/templates/website/clientWebsite/index.tsx`, `src/lib/localization/publicMenuSessionState.ts`; public menu tenant/store/project language/page/scroll session state.
+- **Producer/consumer/trigger/observed:** session keys contained store/project but not tenant and accepted loose ID fallbacks including `id`, `slug` and shared `default`. On a client-side context change, the write effect could store the previous active language under the destination key before reading destination state. Platform-host navigation can reuse one origin across tenants.
+- **Expected/root cause/security/data/public/cache impact:** every public browser-state key must contain exact tenant, store and project identity, and destination restore must complete before writes resume. No private Firestore data or authority crossed the boundary, but another tenant/project's device state could affect public output, making this P2 tenant/cache/public-render correctness.
+- **Fix/backward compatibility:** one exact helper admits positive numeric tenant/store IDs, a bounded project ID and a finite field union. Loose/default fallbacks are gone. A rendered-key state gate restores the destination language before that key becomes writable. Legacy tab-only keys expire naturally and are no longer read.
+- **Regression/validation:** runtime tests prove tenant and project separation plus malformed-ID refusal; the public-business-truth gate pins all identity dimensions and restore-before-write ordering. All restart 1032 checks pass.
+
+### AUDIT-PUBLIC-MENU-SCROLL-DTO-001 — Persisted scroll accepted coercible and unbounded strings
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-MENU-SCROLL-DTO-001` / P3 / Closed locally in restart 1032.
+- **File/function/flow/structure:** public menu session-state helper and renderer scroll restoration.
+- **Producer/consumer/trigger/observed:** `parseInt` admitted values such as `12junk`; malformed state remained persisted and could drive an arbitrary scroll restoration.
+- **Expected/root cause/impact:** browser storage is untrusted. Scroll must match the writer's canonical nonnegative integer format and a finite UI bound. This state carries no authority, so impact is P3 public-navigation reliability.
+- **Fix/regression:** the projector admits canonical integers from 0 through 10,000,000; malformed values are evicted. Read/remove/write denial emits bounded once-per-operation diagnostics and remains fail-open. Tests cover valid zero, suffix, leading-zero and overflow cases.
+
+### AUDIT-PUBLIC-MENU-LANGUAGE-PROJECT-TRANSITION-001 — Secondary language preference used a one-time restore guard
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-MENU-LANGUAGE-PROJECT-TRANSITION-001` / P2 / Closed locally in restart 1032.
+- **File/function/flow/structure:** `MenuLanguageSwitcher`, `publicMenuLanguagePreference.ts`; owner/public menu language preference.
+- **Producer/consumer/trigger/observed:** a component-lifetime boolean treated every later project key as already restored, allowing the prior active language to be written into a new project's local preference. Loose `id`/`slug` fallbacks also broadened key identity.
+- **Expected/root cause/impact:** restoration evidence must be bound to the exact current key. Cross-project language state could alter rendered public/preview truth but not server authority.
+- **Fix/regression:** exact bounded project IDs construct keys; the guard stores the restored key, blocks writes until that key has been read, and evicts unavailable saved languages with bounded diagnostics. Source and behavior gates pass.
+
+### AUDIT-FEEDBACK-NUDGE-PROJECT-ID-BOUNDARY-001 and AUDIT-FEEDBACK-NUDGE-PROJECT-TRANSITION-001
+
+- **Finding ID/severity/status:** project ID boundary / P3 / Closed; project-transition state / P2 / Closed in restart 1032.
+- **File/function/flow/structure:** `FeedbackNudge`; public project feedback/review links, timed/scroll trigger and tab de-duplication.
+- **Producer/consumer/trigger/observed:** raw project IDs built the guard key and feedback URL. Visible, dismissed and triggered state was component-global, so a client-side project switch could suppress the destination nudge or transiently reuse prior state with the destination link.
+- **Expected/root cause/impact:** malformed project identity must disable the nudge, while all transient UI state must remain bound to the admitted project. The feedback route independently validates input, so no unauthorized write was confirmed; public link and conversion truth were incorrect.
+- **Fix/regression:** the established guest-feedback project projector now governs keys and both URLs. Visible/dismissed/triggered state stores the exact project identity. The public source gate requires those boundaries and the full public-business-truth suite passes.
+
+### AUDIT-PLATFORM-CHANGELOG-VIEWED-BEFORE-LOAD-001 and AUDIT-PLATFORM-CHANGELOG-PERSISTED-TIMESTAMP-001
+
+- **Finding ID/severity/status:** mark-before-load / P2 / Closed; timestamp DTO / P3 / Closed in restart 1032.
+- **File/function/flow/structure:** `displayChangelog.tsx`, `src/lib/changelog/lastViewed.ts`; browser last-viewed marker and New badges.
+- **Producer/consumer/trigger/observed:** the marker advanced two seconds after mount even when the initial changelog fetch failed, suppressing future New badges. Its reader used `parseInt`, admitting suffixed and future values.
+- **Expected/root cause/impact:** viewed truth may advance only after an actual initial page is available, and persisted timestamps must exactly match the writer. This affects owner/platform release truth, not Firestore.
+- **Fix/regression:** a successful-page gate starts the delayed write. A canonical positive safe-integer/nonfuture projector governs reads; invalid state is evicted and storage failures are visible through bounded diagnostics. Runtime regressions reject suffix and future values.
+
+### AUDIT-HELP-CHAT-DRAFT-CLEAR-STORAGE-FAILURE-001 and AUDIT-HELP-CHAT-DRAFT-CLEANUP-OBSERVABILITY-001
+
+- **Finding ID/severity/status:** clear failure / P2 / Closed; silent cleanup / P3 / Closed in restart 1032.
+- **File/function/flow/structure:** `ChatInput.tsx`, `chatUtils.ts`, `helpChatDrafts.ts`; workspace/user/session-scoped local draft lifecycle.
+- **Producer/consumer/trigger/observed:** the parent-controlled clear path called `localStorage.removeItem` directly, so denied storage could throw after New Chat/input clearing. Foreign/legacy/image cleanup swallowed every exception, and the scope helper used `any` plus unchecked nested reads.
+- **Expected/root cause/security/data impact:** optional browser persistence cannot interrupt Help Chat; cleanup failures must be observable without logging draft content or raw keys. Drafts are private device state, so scope/type/availability are material.
+- **Fix/backward compatibility:** send and parent clear use the shared failure-contained clear helper; cleanup emits bounded session-presence diagnostics; session/user projection accepts `unknown` and requires consistent exact identity. Existing valid v2 drafts remain compatible; images are still never persisted and foreign/legacy drafts remain purge-only.
+- **Regression/validation:** runtime tests cover malformed session shapes and conflicting IDs; source gates require failure-contained clear and cleanup diagnostics. Focused Help Center and broad Answerlattice runtime aggregates pass.
+
+## Restart 1033 addendum — Customer App prompt and launch browser identity
+
+Restart 1033 restarted from the remaining inventory-only browser-storage consumers and traced Customer App visit eligibility, dismissal, prompt display, native install-event capture, install dedupe, standalone open, iOS install inference and shortcut launches. Five defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:customer-app-pwa` with browser scalar and both icon-boundary child suites; exact `npx tsc --noEmit --incremental false --pretty false`; focused ESLint; and `git diff --check`. No Firebase or deployment source changed.
+
+### AUDIT-CUSTOMER-APP-PROMPT-TENANT-SCOPE-001 — Visit, dismissal, install and prompt keys omitted tenant identity
+
+- **Finding ID/severity/status:** `AUDIT-CUSTOMER-APP-PROMPT-TENANT-SCOPE-001` / P2 / Closed locally in restart 1033.
+- **File/function/flow/structure:** `visitCounter.ts`, `installTracker.ts`, controller/prompt callers; long-lived Customer App browser prompt/install state.
+- **Producer/consumer/trigger/observed:** keys used only `storeId`, despite platform-host contexts being able to serve multiple tenants on one origin. Equal store IDs could share visit thresholds, dismissal suppression, iOS prompt attribution or install dedupe.
+- **Expected/root cause/security/data/public/cache impact:** every browser identity must include exact tenant and store. This state carries no Firestore authority, but could suppress/show prompts or suppress/attribute analytics across tenants, making it P2 tenant/cache/analytics correctness.
+- **Fix/backward compatibility:** all four families use the shared tenant/store key boundary; invalid identity fails closed. Callers pass both dimensions. Legacy store-only device keys are no longer read.
+- **Regression/validation:** browser tests prove equal store IDs remain separate across tenants and malformed scope cannot use direct-intent bypass; source gates pin all four scoped keys. Customer App aggregate passes.
+
+### AUDIT-CUSTOMER-APP-CONTROLLER-SCOPE-TRANSITION-001 — Controller state and native install event survived a store transition
+
+- **Finding ID/severity/status:** `AUDIT-CUSTOMER-APP-CONTROLLER-SCOPE-TRANSITION-001` / P2 / Closed locally in restart 1033.
+- **File/function/flow/structure:** `CustomerAppController`; visit count, eligibility, captured `beforeinstallprompt`, visible prompt and installed state.
+- **Producer/consumer/trigger/observed:** the broad effect could increment visits repeatedly as non-identity props changed. On a client-side tenant/store switch, visible/installed state and a deferred native install event could survive, potentially showing destination copy while invoking a prior-context install event.
+- **Expected/root cause/impact:** one controller pass belongs to one exact tenant/store; transitions must clear prior-scope state before destination eligibility. This could install or promote the wrong public app context, so it is P2 public/PWA correctness.
+- **Fix/regression:** an exact scope ref admits one visit/eligibility/analytics pass per tenant/store and clears deferred prompt, visibility and session-install state on every admitted transition. Source gates require the transition reset and exact scoped calls.
+
+### AUDIT-CUSTOMER-APP-PROMPT-MARKER-ANALYTICS-COUPLING-001 — Operational prompt truth depended on analytics tracking
+
+- **Finding ID/severity/status:** `AUDIT-CUSTOMER-APP-PROMPT-MARKER-ANALYTICS-COUPLING-001` / P2 / Closed locally in restart 1033.
+- **File/function/flow/structure:** `InstallPrompt`, `recordPromptShown`; iOS prompted-install inference.
+- **Producer/consumer/trigger/observed:** an early `trackingEnabled` return skipped both the analytics event and the operational prompt-shown timestamp. Owners disabling analytics therefore also disabled correct prompt lifecycle/inference.
+- **Expected/root cause/impact:** tracking preference governs event transmission, not necessary local product state. The marker adds no network/Firestore action.
+- **Fix/regression:** the exact tenant/store operational marker is recorded once per mounted scope before the analytics gate; only `CUSTOMER_APP_PROMPT_SHOWN` remains conditional. Source ordering is pinned by the Customer App verifier.
+
+### AUDIT-CUSTOMER-APP-SHORTCUT-IDEMPOTENCY-001 — Shortcut launches had no completion or concurrency guard
+
+- **Finding ID/severity/status:** `AUDIT-CUSTOMER-APP-SHORTCUT-IDEMPOTENCY-001` / P2 / Closed locally in restart 1033.
+- **File/function/flow/structure:** `shortcutSourceDetector.ts`; standalone shortcut analytics.
+- **Producer/consumer/trigger/observed:** each controller effect invocation could submit the same shortcut event again; concurrent calls also duplicated because no in-flight or durable session state existed.
+- **Expected/root cause/analytics/cost impact:** one shortcut source should emit at most once per tenant/store browser session, while a failed event remains retryable.
+- **Fix/regression:** exact tenant/store/source session identity plus an in-memory in-flight set admits one call. The completion timestamp is written only after `trackEvent` acknowledges and is always released in `finally`. Source ordering and identities are verifier-pinned.
+
+### AUDIT-CUSTOMER-APP-LAUNCH-MARKER-DTO-001 — Arbitrary completion strings suppressed open and shortcut events
+
+- **Finding ID/severity/status:** `AUDIT-CUSTOMER-APP-LAUNCH-MARKER-DTO-001` / P3 / Closed locally in restart 1033.
+- **File/function/flow/structure:** standalone open and shortcut session guards.
+- **Producer/consumer/trigger/observed:** any truthy sessionStorage scalar counted as completion. Corrupt/future values could suppress launch analytics for the session.
+- **Expected/root cause/impact:** completion markers must match the canonical non-future timestamp written after acknowledgement. They carry no authority, so impact is P3 analytics reliability.
+- **Fix/regression:** both readers use the canonical timestamp projector and evict invalid markers; source gates require exact projection/eviction.
+
+## Restart 1034 addendum — Public Menu Entry last-claim handoff
+
+Restart 1034 continued the browser-storage reverse trace through the authenticated create-menu claim acknowledgement, session handoff, success-page copy/WhatsApp actions and starter-activation store update. One P2 defect was closed. Because this restart found a defect, `consecutiveCleanFullPasses` remains `0`.
+
+Validation passed under Node 22.23.1: `npm run verify:data-flow-audit-regressions`; `npm run verify:public-menu-entry-boundary` with its behavior child suite; exact `npx tsc --noEmit --incremental false --pretty false`; focused ESLint; and `git diff --check`. The two large client renderers retain honest ranged in-progress evidence. No Firebase or deployment source changed.
+
+### AUDIT-PUBLIC-CREATE-MENU-LAST-CLAIM-HANDOFF-001 — Starter-signal handoff trusted an unversioned browser object
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-CREATE-MENU-LAST-CLAIM-HANDOFF-001` / P2 / Closed locally in restart 1034.
+- **File/function/flow/structure:** create-menu preview claim handler, `lastClaimHandoff.ts`, success-page starter-signal handler; session DTO leading to `stores/{storeId}.starterActivationSignals`.
+- **Producer/consumer/trigger/observed:** the preview stored unchecked `projectId`, `storeId` and `subdomain`; sessionStorage denial after a committed claim threw into the generic claim error and prevented the success redirect. The success page used direct `JSON.parse` plus `Number(claim?.storeId)`, with no version, expiry, extra-field, tenant or current-session comparison before invoking the DAL.
+- **Expected/root cause/security/data/public/cache impact:** browser handoff state is untrusted and optional. It must not interrupt a committed claim, and it may request a starter-signal mutation only for the exact current tenant/store. The DAL independently rechecked current store authorization, preventing a confirmed cross-store write, but malformed/stale state caused broken success flow or repeated rejected writes, making this P2 reliability/tenant/type-boundary risk.
+- **Fix/backward compatibility:** one strict version-1 projector admits exact positive tenant/store/project IDs, canonical bounded subdomain, no extra fields and a nonfuture 24-hour timestamp. Preview storage is failure-contained and redirect continues. Success parsing evicts malformed/expired state and requires exact current session tenant/store before the existing DAL call. Legacy unversioned session values are discarded.
+- **Regression/validation:** behavior tests cover valid round trip, extra fields, malformed IDs and expiry; the Public Menu Entry source gate requires serializer/parser/session-scope comparisons and forbids direct JSON parsing. All restart 1034 checks pass.
+
+## Restart 1035 addendum — Menu Editor onboarding/zoom, Creative Editor drafts and Help Chat cleanup
+
+Restart 1035 continued the browser-state reverse trace through Menu Editor onboarding and image-preview hints, Shared Creative Editor local recovery/import, and the remaining Help Chat cleanup helper. Nine defects were closed. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Forward and reverse trace:
+
+1. active owner tenant/store → `Editor` context → `EditorWelcomeBanner` → exact tenant/store key → bounded `v1` marker → banner state/dismissal;
+2. project source image → `ZoomableImage` → first-use marker → explicit rendered-image ref → wheel/button/touch zoom and bounded drag position;
+3. product/workspace/source/document identity → collision-safe Creative Editor draft key → local document serialization → authoritative runtime schema → exact current product/workspace/document checks → owner restore/dismiss → Fabric document consumer;
+4. Help Chat actor/session scope → current/legacy text/image draft keys → best-effort independent deletion → bounded failure diagnostic.
+
+Validation evidence:
+
+- `npm run verify:data-flow-audit-regressions` — exit 0; runtime browser contracts and pricing concurrency passed.
+- `npm run verify:creative-editor-smoke` — exit 0; 104 source/smoke checks and Fabric 7 boundary tests passed.
+- `npm run test:creative-editor-template-registry-boundaries` — exit 0.
+- `npm run verify:printable-asset-templates` — exit 0.
+- `npm run verify:campaigncue` — exit 0; 1,817 runtime checks, CueLayers/pack/operating-loop suites and CampaignCue Firestore/Storage emulator rules tests passed.
+- `npm run verify:help-center-boundary` — exit 0; source gate, Help Center runtime boundary and ticket-attachment boundary passed.
+- `npm run verify:menu-project-editor-boundary` — exit 0; source gate and all project mutation/upload/time-slot child tests passed.
+- `npx tsc --noEmit --incremental false --pretty false` — exit 0.
+- focused ESLint over every changed TypeScript/TSX source and regression file — exit 0.
+- `git diff --check` — exit 0.
+- The attempted historical alias (`npm` + `run` + `verify:campaigncue-runtime`) exited 1 because no such package script exists; the actual registered aggregate is `npm run verify:campaigncue`, which passed as recorded above. No implementation change was made to mask the operator typo.
+
+No Firestore rules, indexes, Storage rules, Cloud Function logic, provider state, production data or deployment source changed in restart 1035, so no Firebase or Vercel deployment was required.
+
+The regenerated coverage snapshot discovered 8,680 files: 8,370 in scope and 310 explicitly excluded. Current exact-fingerprint status is 1,460 reviewed, 1,897 in-progress and 5,013 inventory-only; the Firestore reverse catalog contains 281 collection identifiers. Audit tooling and JSON object-key integrity passed. These counts prove restart 1035 is not a full clean repository pass.
+
+### AUDIT-EDITOR-ONBOARDING-TENANT-STORE-SCOPE-001 — Store onboarding dismissal was browser-global
+
+- **Finding ID/severity/status:** `AUDIT-EDITOR-ONBOARDING-TENANT-STORE-SCOPE-001` / P2 / Closed locally in restart 1035.
+- **File/function/flow/structure:** `Editor.tsx`, `EditorWelcomeBanner.tsx`, `editorOnboarding.ts`; owner tenant/store context → onboarding dismissal marker → editor banner.
+- **Producer/consumer/trigger/observed:** one owner dismissed `editor_welcome_dismissed` or `editor_outlet_onboarding_seen`; every later tenant/store in that browser consumed the same truthy global key and could lose store-specific onboarding.
+- **Expected/root cause/security/data/public/cache impact:** store-specific UI state must contain exact tenant and store identity. This did not authorize data access, but it crossed owner workspaces and hid required outlet guidance. It does not affect Firestore, public truth or caches.
+- **Fix/backward compatibility:** keys now use the existing exact tenant/store key helper and strict `v1` marker. Invalid or absent scope fails closed without persistence. Legacy global markers are intentionally not migrated because they cannot be assigned safely to a tenant/store; an owner may see the guidance once again per current store.
+- **Regression/validation:** pure key tests prove store separation and malformed scope rejection; the Menu Project Editor source gate pins exact context handoff and scoped key construction.
+
+### AUDIT-EDITOR-ONBOARDING-SCOPE-TRANSITION-001 — Previous-store banner state survived context changes
+
+- **Finding ID/severity/status:** `AUDIT-EDITOR-ONBOARDING-SCOPE-TRANSITION-001` / P2 / Closed locally in restart 1035.
+- **File/function/flow/structure:** `EditorWelcomeBanner` context effect; tenant/store transition → local React state → current owner surface.
+- **Producer/consumer/trigger/observed:** the effect only set banner values to `true`; it did not clear them before reading a new store or when `isMasterLinked` became false. A visible outlet banner could therefore remain after switching context.
+- **Expected/root cause/impact:** each context transition must replace, not merge, prior store UI truth. Both states now reset before exact current-scope hydration. No persistence/public/cache contract changed.
+- **Regression/validation:** the source gate requires both reset branches and exact current `isMasterLinked` admission.
+
+### AUDIT-EDITOR-BROWSER-STORAGE-FAILURE-001 — Onboarding and zoom storage errors escaped UI actions/effects
+
+- **Finding ID/severity/status:** `AUDIT-EDITOR-BROWSER-STORAGE-FAILURE-001` / P3 / Closed locally in restart 1035.
+- **File/function/flow/structure:** `EditorWelcomeBanner`, `ZoomableImage`; browser privacy/quota/storage denial → read/write/remove → owner interaction.
+- **Observed/expected/root cause:** direct unguarded storage calls could throw from mount effects, timers, wheel/click handlers or dismiss actions. Optional hints must never break editing.
+- **Fix/impact:** reads, invalid cleanup and writes are failure-contained with bounded deduplicated Menu Editor diagnostics. On storage denial, onboarding remains usable in memory and the zoom hint remains non-blocking. The existing zoom value `true` remains read-compatible while new writes use `v1`.
+- **Regression/validation:** Menu Project Editor source assertions, focused lint, exact TypeScript and diff integrity pass.
+
+### AUDIT-EDITOR-ZOOM-BOUNDING-DOUBLE-SCALE-001 — Drag bounds multiplied an already transformed image rectangle
+
+- **Finding ID/severity/status:** `AUDIT-EDITOR-ZOOM-BOUNDING-DOUBLE-SCALE-001` / P3 / Closed locally in restart 1035.
+- **File/function/flow/structure:** `ZoomableImage.getBoundedPosition`; rendered image size + current zoom → max drag position.
+- **Producer/consumer/trigger/observed:** `getBoundingClientRect()` reflected the ancestor transform, then the implementation multiplied it by `zoom` again. Delayed source-image changes could also leave the queried image ref unset. Zoomed images could pan beyond the real content bounds.
+- **Expected/fix/impact:** the Next Image owns an explicit ref and bounds use untransformed `offsetWidth`/`offsetHeight`, applying zoom once. This is owner UI correctness only; persisted/public truth is unchanged.
+- **Regression/validation:** the source gate requires the explicit ref and offset-based calculation and forbids the retired double-scale expression.
+
+### AUDIT-CREATIVE-EDITOR-BROWSER-DRAFT-KEY-COLLISION-001 — Delimiter-concatenated draft scopes were ambiguous
+
+- **Finding ID/severity/status:** `AUDIT-CREATIVE-EDITOR-BROWSER-DRAFT-KEY-COLLISION-001` / P2 / Closed locally in restart 1035.
+- **File/function/flow/structure:** `CreativeEditor` autosave key, `creativeEditorDraft.ts`; product/workspace/source/document → local recovery document.
+- **Producer/consumer/trigger/observed:** raw colon-separated values allowed distinct product/workspace/source/document tuples containing delimiters to construct the same key. A later editor could read another scope's local design.
+- **Expected/root cause/security/data impact:** browser recovery identity must be unambiguous across every product/workspace/document dimension. The new version-2 key independently bounds and URI-encodes every exact segment and rejects whitespace/control/oversized values.
+- **Backward compatibility:** old ambiguous keys are not migrated or read. Product-owned persistence remains authoritative, so the tradeoff is loss of legacy browser-only recovery rather than cross-scope restoration.
+- **Regression/validation:** adversarial tests prove delimiter-bearing tuples do not collide; Creative Editor source verification pins helper use.
+
+### AUDIT-CREATIVE-EDITOR-BROWSER-DRAFT-SCHEMA-001 — Local recovery and editor JSON import used a shallow type predicate
+
+- **Finding ID/severity/status:** `AUDIT-CREATIVE-EDITOR-BROWSER-DRAFT-SCHEMA-001` / P2 / Closed locally in restart 1035.
+- **File/function/flow/structure:** `CreativeEditor.parseCreativeEditorDocument`; local draft/imported JSON → normalized pages/elements → Fabric canvas.
+- **Producer/consumer/trigger/observed:** a truthy schema version, canvas, array and product context were enough to cast arbitrary nested values to `CreativeEditorDocument`. Malformed element unions, dimensions, metadata, page counts or strings could reach normalization/Fabric.
+- **Expected/root cause/data/security impact:** compile-time types do not validate browser/filesystem input. Both paths now consume the existing authoritative bounded `creativeEditorDocumentSchema`, which validates canvas, pages, metadata and every discriminated element.
+- **Backward compatibility:** valid current `creative-editor.v1` documents remain accepted. Malformed legacy/browser documents are rejected rather than coerced.
+- **Regression/validation:** the existing template-registry suite proves valid documents and rejects malformed/unknown elements; the Creative Editor source gate proves the UI uses that same schema.
+
+### AUDIT-CREATIVE-EDITOR-BROWSER-DRAFT-SCOPE-001 — A valid draft could replace current document identity
+
+- **Finding ID/severity/status:** `AUDIT-CREATIVE-EDITOR-BROWSER-DRAFT-SCOPE-001` / P2 / Closed locally in restart 1035.
+- **File/function/flow/structure:** browser draft load → normalized recovery offer → `commitDocument`.
+- **Producer/consumer/trigger/observed:** after the shallow check, the loader overwrote only `productContext`; it did not prove stored document ID, product or workspace matched the current editor before offering restoration.
+- **Expected/fix/impact:** schema-valid drafts must also exactly match current document ID, product ID and optional workspace ID. Mismatches are removed and never reach the recovery UI. No server write occurs until existing product save behavior.
+- **Regression/validation:** the source gate pins all three comparisons and the cross-scope cleanup order.
+
+### AUDIT-CREATIVE-EDITOR-BROWSER-DRAFT-OBSERVABILITY-001 — Draft failures were silently swallowed and corrupt JSON repeated
+
+- **Finding ID/severity/status:** `AUDIT-CREATIVE-EDITOR-BROWSER-DRAFT-OBSERVABILITY-001` / P3 / Closed locally in restart 1035.
+- **File/function/flow/structure:** localStorage read/parse/write/dismiss/cleanup → recovery state.
+- **Observed/expected/root cause:** empty catches hid quota/privacy/corruption failures, and malformed JSON could remain to fail every mount. Failures now emit one bounded diagnostic per operation; failed reads/parses attempt cleanup while export and product-owned save continue.
+- **Backward compatibility/impact:** browser-only recovery may be unavailable under storage denial, as before, but the editor remains functional and the failure is now visible without logging document content.
+- **Regression/validation:** Creative Editor source gate, focused lint and exact TypeScript pass.
+
+### AUDIT-HELP-CHAT-DRAFT-PARTIAL-CLEAR-001 — One failed key removal stopped remaining draft cleanup
+
+- **Finding ID/severity/status:** `AUDIT-HELP-CHAT-DRAFT-PARTIAL-CLEAR-001` / P3 / Closed locally in restart 1035.
+- **File/function/flow/structure:** `chatUtils.clearDraft`; successful send/new-chat clear → scoped and legacy text/image keys.
+- **Producer/consumer/trigger/observed:** all removals shared one `try`; one per-key failure skipped every later key and could retain stale text or legacy image data.
+- **Expected/fix/security/data impact:** each unique key is attempted independently. One bounded diagnostic reports attempted/failed counts without draft content. This reduces private browser-data retention and changes no server persistence.
+- **Regression/validation:** Help Center runtime test injects failure on the first removal and proves the other scoped/legacy keys are still deleted; the full Help Center aggregate passes.
+
+## Restart 1036 addendum — Recent colors and Answerlattice content-reaction browser state
+
+Restart 1036 restarted from browser-persistence consumers and traced app-settings color history plus Answerlattice article/changelog/FAQ reaction state from user interaction through local acknowledgement, protected mutation, authoritative response and UI reconciliation. Six defects were closed. `src/utils/webstorage.ts` and its test were also re-read completely; repository-wide callsite search found no runtime consumer, so its historical `salon` namespace is dormant and no runtime defect was assigned. Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+Forward and reverse trace:
+
+1. custom/preset color → canonical bounded hex projector → current recent/favorite refs and React state → optional localStorage list → independent runtime parse/eviction → recent/favorite picker consumer;
+2. content/page/actor/tenant/store identity → scoped browser acknowledgement → optimistic reaction → protected content-feedback transaction → authoritative counters → exact originating operation token → current UI only;
+3. malformed/future local reaction entry → runtime envelope projector → eviction → Firestore counters and active-actor state remain authoritative.
+
+Validation passed under Node 22.23.1: `npm run test:browser-runtime-boundaries`; `npm run test:webstorage-boundary`; `npm run verify:auth-security-failure-matrix`; `npm run verify:answerlattice-feedback` including submission/content emulators plus dedicated/shared feedback and signal rules; `npm run verify:answerlattice-runtime-truth`; exact `npx tsc --noEmit --incremental false --pretty false`; focused ESLint; and `git diff --check`. No Firestore rule, index, Storage rule, Function or deployment source changed.
+
+### AUDIT-RECENT-COLORS-STATE-UPDATER-SIDE-EFFECT-001 — React updater callbacks performed browser writes
+
+- **Finding ID/severity/status:** `AUDIT-RECENT-COLORS-STATE-UPDATER-SIDE-EFFECT-001` / P3 / Closed locally in restart 1036.
+- **File/function/flow/structure:** `useRecentColors.addRecentColor`, `toggleFavorite`; owner color interaction → React update → localStorage.
+- **Producer/consumer/trigger/observed:** both functional state updaters called `localStorage.setItem`. React may invoke updater functions more than once while checking purity, producing duplicated optional side effects and diagnostics.
+- **Expected/root cause/impact:** updater functions must be pure. Current state now lives in refs, the next list is computed once, state is set once, and persistence runs afterward under the existing failure boundary. This changes no server, tenant, public, or cache authority.
+- **Regression:** the browser-runtime source test rejects storage writes inside recent/favorite updater callbacks.
+
+### AUDIT-RECENT-COLORS-PARTIAL-HYDRATION-001 — One malformed color list blocked the other list
+
+- **Finding ID/severity/status:** `AUDIT-RECENT-COLORS-PARTIAL-HYDRATION-001` / P3 / Closed locally in restart 1036.
+- **Observed/root cause:** recent and favorite reads/parses shared one `try`; malformed recent JSON prevented valid favorites from hydrating. Non-array JSON silently became an empty in-memory list while remaining persisted.
+- **Fix/compatibility:** each key independently reads and parses through `parseStoredColorList`; malformed/non-array state is evicted, while valid arrays retain the existing canonical bounded hex projection.
+- **Regression:** behavior cases cover null, valid/canonicalized, non-array and malformed values; source review confirms independent loader calls.
+
+### AUDIT-RECENT-COLORS-DEAD-CONSUMER-001 and AUDIT-ENHANCED-COLOR-PICKER-UNSAFE-RGBA-001
+
+- **Finding ID/severity/status:** unconsumed recent history / P3 / Closed; unchecked RGBA intermediate / P3 / Closed in restart 1036.
+- **File/function/flow/structure:** `EnhancedColorPicker`; color-history hook output and preset/favorite rendering.
+- **Observed/expected:** the hook stored recent history but the sole picker consumer never rendered it, making the persisted feature dead. Favorite/preset rendering routed a typed color string through an untyped `convertRGBtoOBJ` result and `any` property reads merely to reconstruct an RGBA string.
+- **Fix/impact:** the picker renders recent colors with an existing-intent Clear action and uses `hexToRgbA(color, 0.6)` directly for every preview. No new framework, persistence, owner setting or public behavior was introduced.
+- **Regression:** the browser source test requires the recent consumer and rejects the retired `rgbaColors: any` path.
+
+### AUDIT-AL-CONTENT-FEEDBACK-STALE-ASYNC-SCOPE-001 — Old reaction completions mutated newly selected content
+
+- **Finding ID/severity/status:** `AUDIT-AL-CONTENT-FEEDBACK-STALE-ASYNC-SCOPE-001` / P2 / Closed locally in restart 1036.
+- **File/function/flow/structure:** `useFeedback`; article/changelog/FAQ reaction → local acknowledgement → protected API transaction → UI reconciliation.
+- **Producer/consumer/trigger/observed:** an awaiting mutation survived content, changelog-page, actor or workspace changes. Its response, failure rollback, toast and `finally` could overwrite counters/loading/modal state for the destination content; clearing the old lock naively would also let an older `finally` end a newer operation.
+- **Expected/root cause/security/data/public/cache impact:** server writes already retained their captured exact target, but client reconciliation must remain bound to that same target. A JSON tuple scope plus monotonic token now fences every post-await UI effect and completion. Scope reset invalidates the token, clears the old lock/modal/loading state, and permits a new operation; an old failure still repairs only its captured local acknowledgement. No cross-tenant Firestore access was possible, but owner/customer reaction truth on screen was incorrect.
+- **Regression:** the feedback source gate requires exact scope and token checks, fenced completion, and reset invalidation; the full feedback emulator/rules matrix passes.
+
+### AUDIT-AL-CONTENT-FEEDBACK-FUTURE-TIMESTAMP-001 — Future local timestamps could pin bounded reaction state
+
+- **Finding ID/severity/status:** `AUDIT-AL-CONTENT-FEEDBACK-FUTURE-TIMESTAMP-001` / P3 / Closed locally in restart 1036.
+- **Observed/fix:** exact ISO timestamps were admitted regardless of future time and then sorted newest-first, allowing tampered state to retain priority inside the 500-entry map. The runtime envelope now rejects future timestamps and invalid state follows the existing eviction path.
+- **Regression:** behavior coverage creates a future ISO entry and requires the whole envelope to fail closed.
+
+## Restart 1037 addendum — Public create-menu client and draft identity
+
+Restart 1037 restarted from the public intake entry point and re-read the complete 868-line create-menu client, preview route, source gate and draft-ID consumers. Three defects were closed, so `consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-PUBLIC-CREATE-MENU-DRAFT-ID-BOUNDARY-001 — Draft response and route identity used divergent loose contracts
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-CREATE-MENU-DRAFT-ID-BOUNDARY-001` / P3 / Closed locally in restart 1037.
+- **Flow/structure:** protected intake response → browser preview path → preview route → poll query → claim schema → `publicMenuDrafts/{draftId}`.
+- **Observed/root cause:** the client accepted any nonblank `draftId`, while intake polling and claim duplicated their UUID regex and the preview page passed arbitrary path values into the client.
+- **Fix/compatibility:** `normalizePublicMenuDraftId()` is the single exact UUID-shaped projector. Unknown, whitespace-mutated, path-shaped and malformed values fail before navigation, polling, claim or document access. Existing deterministic UUIDs remain byte-identical.
+- **Regression/validation:** pure cases cover valid, whitespace, path and malformed input; the source gate pins all four consumers. `npm run verify:public-menu-entry-boundary`, exact TypeScript, focused ESLint and diff integrity pass.
+
+### AUDIT-PUBLIC-CREATE-MENU-CLIENT-DUPLICATE-SUBMISSION-001 — Rapid browser events entered concurrent intake requests
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-CREATE-MENU-CLIENT-DUPLICATE-SUBMISSION-001` / P2 / Closed locally in restart 1037.
+- **Observed/root cause/cost impact:** photo selection, drop and link submit depended only on React's later rendered disabled state. Multiple events in the same render window could optimize and submit different sources concurrently, consuming quota and possibly creating multiple drafts/jobs despite same-source server dedupe.
+- **Fix:** one immediate ref-backed lock covers both modes from pre-optimization admission through request settlement. Validation failures do not acquire it and every acquired path releases in `finally`.
+- **Regression:** the public source gate requires the lock and the complete client was manually reviewed.
+
+### AUDIT-PUBLIC-CREATE-MENU-CLIENT-FAILURE-OBSERVABILITY-001 — Transport/optimization failures had no diagnostic
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-CREATE-MENU-CLIENT-FAILURE-OBSERVABILITY-001` / P3 / Closed locally in restart 1037.
+- **Observed/fix:** catch branches showed fixed localized copy but did not emit evidence. Both paths now log one bounded failure code with source plus file size/type or link presence/length metadata; raw link, filename, source bytes and response text are excluded.
+
+## Restart 1038 addendum — Owner extraction client project/job identity
+
+Restart 1038 re-read all executable logic in `src/lib/firebase/menuProcessing.ts` from request construction through response parsing, development trigger, cancellation and active-job query/result selection. One P2 boundary defect was closed. Because a defect was found, `consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-MENU-PROCESSING-CLIENT-ID-BOUNDARY-001 — Runtime job/project strings reached client requests and Firestore operations
+
+- **Finding ID/severity/status:** `AUDIT-MENU-PROCESSING-CLIENT-ID-BOUNDARY-001` / P2 / Closed locally in restart 1038.
+- **Flow/structure:** desktop/mobile upload → `createMenuProcessingJob` → protected route response → optional development callable/status hook; cancel action → job ref; active-project check → scoped query → job consumer.
+- **Producer/consumer/trigger/observed:** the helper sent raw project IDs, accepted any nonblank response job ID, built cancellation refs from raw IDs, trusted ignore IDs and returned every matching document ID. The server/rules independently protected authority, but malformed runtime values could cause client Firestore path errors, wrong query behavior or invalid downstream state.
+- **Expected/root cause/security/data impact:** the existing authoritative project/job projectors must govern every boundary, not only API schemas and listeners. Project IDs now normalize before request/query; start response, cancellation, ignore IDs and query results normalize before refs/callables/consumers. Malformed values stop locally with fixed behavior. Tenant/store/user/status predicates remain unchanged.
+- **Regression/validation:** the job-start behavior suite covers canonical and whitespace/path-shaped IDs; the menu-extraction source gate now pins every affected boundary and passes 371/371 checks. Exact TypeScript, focused ESLint and `git diff --check` pass. No Firebase rule, index, Storage rule or Function source changed.
+
+The post-restart coverage regeneration discovered 8,681 files: 8,371 in scope and 310 explicitly excluded. Exact-fingerprint status is 1,474 reviewed, 1,886 in-progress and 5,011 inventory-only; the Firestore reverse catalog contains 281 collection identifiers. These counts are an explicit unmet exit criterion, not a completion claim.
+
+## Restart 1039 addendum — Help Center article selection and changelog presentation
+
+Restart 1039 re-read the complete executable logic in `ArticleView`,
+`ArticleViewModal`, `ChangelogPreview`, and `FaqView`. It traced a selected
+article from changelog/knowledge-base links through the scoped article cache,
+modal request, read-only Tiptap renderer, feedback state, and final customer
+surface. One P2 consistency defect and one P3 error-path defect were closed.
+Because this restart found defects, `consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-AL-ARTICLE-MODAL-STALE-REQUEST-001 — An older article request could overwrite a newer selection
+
+- **Finding ID/severity/status:** `AUDIT-AL-ARTICLE-MODAL-STALE-REQUEST-001` / P2 / Closed locally in restart 1039.
+- **File/function/flow/structure:** `ArticleViewModal` and `ArticleView`; related-article selection → tenant/store-partitioned article cache/fetch → modal state → Tiptap customer output.
+- **Producer/consumer/trigger/observed:** changing from article A to B launched detached async loaders without a lifecycle token. If A completed after B, A replaced `fullArticle`; independently, Tiptap received `content` only at editor construction and could retain the prior document when the prop changed.
+- **Expected/root cause/security/data/public impact:** async completion and rendered content must remain bound to the selection that initiated them. The modal now uses an effect-local active fence, clears stale content while fetching, and ignores callbacks/results/finalizers after selection change or unmount. The renderer explicitly synchronizes the non-editable Tiptap document on content changes. The defect did not change Firestore truth or authorization, but it could display incorrect public support truth for the current selection.
+- **Backward compatibility/cache impact:** the existing scoped cache, request contract, modal unavailable state and feedback flow are unchanged. Full article objects, including valid empty Tiptap documents, are accepted without an unnecessary refetch.
+- **Regression/validation:** `verify-help-center-boundary` pins the editor synchronization, lifecycle fence and stale-result rejection; the full Help Center aggregate, exact TypeScript, focused ESLint and `git diff --check` pass.
+
+### AUDIT-AL-ARTICLE-MODAL-UNHANDLED-LOAD-001 — Article fetch rejection escaped the UI boundary
+
+- **Finding ID/severity/status:** `AUDIT-AL-ARTICLE-MODAL-UNHANDLED-LOAD-001` / P3 / Closed locally in restart 1039.
+- **Observed/root cause:** the effect invoked an async loader without awaiting or catching it. Its `finally` cleared loading, but a rejected scoped fetch still produced an unhandled promise rejection and no feature-specific diagnostic.
+- **Fix/observability:** the promise chain now catches current-selection failures, clears stale article state, emits `answerlattice_article_modal_load_failed` with only bounded article-ID metadata, and then shows the existing unavailable state. Stale failures are ignored because their originating selection no longer owns the UI.
+- **Type cleanup:** the same complete pass replaced changelog description `any[]`, breadcrumb `as any`, and reaction-record `as any` paths with exact strings, React-node items and the existing `ContentFeedbackItem` contract. No runtime behavior or new validator was invented.
+- **Regression/validation:** the Help Center source gate requires bounded failure diagnostics and rejects the retired detached loader.
+
+The full `npm run verify:menu-extraction-pipeline` aggregate initiated in restart
+1038 also completed with exit code 0, including its extraction, publication,
+messaging, rules and Firestore-emulator matrix. Root lint from that restart
+completed with exit code 0.
+
+## Restart 1040 addendum — Functions analytics and image-provider diagnostic metadata
+
+Restart 1040 began a size-ordered re-review of remaining in-progress runtime
+files. It fully read the small diagnostics, route guard, disabled publisher and
+CampaignCue route listed in the review state, then followed every Functions
+analytics diagnostic caller and the three image-provider consumers. Two P3
+failure-path defects were closed. Therefore `consecutiveCleanFullPasses`
+remains `0`.
+
+### AUDIT-FUNCTIONS-ANALYTICS-DIAGNOSTIC-PROJECTION-001 — Error logging could throw while handling the original failure
+
+- **Finding ID/severity/status:** `AUDIT-FUNCTIONS-ANALYTICS-DIAGNOSTIC-PROJECTION-001` / P3 / Closed locally in restart 1040.
+- **File/function/flow/structure:** `functions/src/analytics/analyticsDiagnostics.ts`; scheduled/realtime analytics failure → diagnostic projector → Functions logger.
+- **Observed/root cause:** `name` used a bounded helper, but `code` and `status` were read directly from an unknown object. A getter or Proxy that threw could replace the scheduler/store/project failure while building its log context. Identifier metadata also used `String(value)` for arbitrary unknown values.
+- **Fix/security/data impact:** all exception fields now come from the existing shared Functions projector, and identifier presence/length accepts only string, finite number, bigint, or boolean scalars. No raw identifier or exception message is logged. Domain writes, retries, tenant predicates and scheduler behavior are unchanged.
+- **Regression/validation:** the shared diagnostic behavior test covers throwing getters, throwing Proxies, object coercion and a valid numeric ID. MenuList Functions TypeScript build, exact root TypeScript, focused ESLint and diff integrity pass.
+
+### AUDIT-IMAGE-PROVIDER-DIAGNOSTIC-PAGE-COERCION-001 — Page metadata invoked arbitrary numeric coercion
+
+- **Finding ID/severity/status:** `AUDIT-IMAGE-PROVIDER-DIAGNOSTIC-PAGE-COERCION-001` / P3 / Closed locally in restart 1040.
+- **File/function/flow/structure:** Pixabay/Pexels/Unsplash failure → `getImageProviderRequestLogContext` → secure logger.
+- **Observed/fix:** `Number(payload.page)` could execute a supplied `valueOf`/conversion hook during error handling. The diagnostic now accepts an existing number or an exact decimal string only; other values project to absent page metadata without coercion.
+- **Regression:** a throwing `valueOf` object proves the hook is never invoked and the remaining provider/operation/query/orientation context stays bounded.
+
+## Restart 1041 addendum — Shared AI provider retry/error classification
+
+Restart 1041 followed every consumer of `src/lib/ai/providerErrors.ts` across
+Help Center search/embedding, widget search, Answerlattice translation and FAQ
+generation. One P2 error-path and availability defect was closed. Since a new
+defect was found, `consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-AI-PROVIDER-ERROR-CLASSIFIER-UNSAFE-UNKNOWN-001 — Malformed provider errors could break retry handling
+
+- **Finding ID/severity/status:** `AUDIT-AI-PROVIDER-ERROR-CLASSIFIER-UNSAFE-UNKNOWN-001` / P2 / Closed locally in restart 1041.
+- **Flow/structure:** external AI provider failure → shared classifier/retry delay → route-specific 429 response and accounting finalization.
+- **Producer/consumer/trigger/observed:** the helper accepted `any`, directly traversed nested fields, enumerated unknown objects, and passed unknown retry values into `Number()`. A provider object with throwing accessors, Proxy traps, or coercion hooks could throw during the catch path, replacing the original failure and preventing the route from returning its controlled retry response.
+- **Expected/root cause/security/data/billing impact:** error inspection must be total and side-effect free. Safe path readers now project status/code and retry fields; enumeration fails closed; retry normalization accepts only finite numbers or exact numeric strings. Invalid earlier retry fields no longer suppress a valid later field. No prompt/message text is parsed, no raw provider payload is logged, and AI credit/accounting writers are unchanged.
+- **Regression/validation:** the new behavior suite covers top-level/nested 429 signals, structured exhaustion, message exclusion, retry rounding/fallback, throwing Proxy traps and throwing numeric coercion. The existing AI accounting source gate pins the safe projectors and rejects `error: any`; its source pass, focused test, exact TypeScript, ESLint and diff integrity pass.
+
+## Restart 1042 addendum — Owner OBP preview project/summary contract
+
+Restart 1042 traced the owner preview input from the project document plus
+`platformSummary/projects_{sId}` metadata into `MainContentRenderer`, the OBP
+preview DTO and `OBPResolvedSurface`. One P3 type-contract defect was closed,
+so `consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-OWNER-OBP-PREVIEW-PROJECT-TYPE-DRIFT-001 — Preview metadata was hidden behind broad casts
+
+- **Finding ID/severity/status:** `AUDIT-OWNER-OBP-PREVIEW-PROJECT-TYPE-DRIFT-001` / P3 / Closed locally in restart 1042.
+- **File/flow/structure:** `mainContentRenderer`; owner project state + summary slug/image → preview `ObpMenuInfo` → OBP navigation/cover output.
+- **Observed/root cause:** `Project` intentionally models full project-document fields, while slug and cover image are summary metadata. The renderer nevertheless read both through `(projectData as any)`, hiding producer/consumer drift and allowing future renames or shape changes to compile.
+- **Fix/data/public/cache impact:** the prop now states the actual composition: `Project & Partial<Pick<ProjectSummaryData, 'projectImage' | 'slug'>>`. Both reads are typed, existing `'menu'`/null fallbacks remain, and callers require no new runtime field. There is no persistence, cache, tenant, route, or customer-public output change.
+- **Regression/validation:** the public-business-truth gate requires the composed type and typed reads and rejects the broad cast. Exact TypeScript, focused ESLint and diff integrity pass.
+
+## Restart 1043 addendum — Browser AI response envelopes and image items
+
+Restart 1043 reverse-traced all nine consumers of
+`readAiServiceResponseJson` from same-origin AI route responses through balance
+sync, domain normalizers, image editor/generator state and owner output. One P2
+runtime-contract defect was closed. Because this restart found a defect,
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-AI-SERVICE-RESPONSE-UNCHECKED-GENERIC-001 — Object-only parsing manufactured trusted DTOs
+
+- **Finding ID/severity/status:** `AUDIT-AI-SERVICE-RESPONSE-UNCHECKED-GENERIC-001` / P2 / Closed locally in restart 1043.
+- **File/flow/structure:** `aiServiceDiagnostics` and all browser AI clients; protected same-origin JSON → bounded parser → balance update/domain projection → owner editing surfaces.
+- **Producer/consumer/trigger/observed:** the shared reader proved only non-null, non-array object JSON and then returned `payload as T`. Callers therefore saw fields such as image arrays and translation maps as compile-time trusted even though runtime data was still unknown. Most text clients happened to re-enter existing output normalizers; image generation/editing checked only that `data` was an array and then invoked string methods on unvalidated entries.
+- **Expected/root cause/security/data/billing impact:** the reader now returns `Record<string, unknown>`—the exact contract it proves. Text/translation/batch clients retain their existing projectors, balance sync retains its scalar scope validator, and nested translation data uses the safe path reader. Image clients project every row through one browser-safe normalizer, accepting only the shared JPEG/PNG/WebP MIME policy and exact matching data-URL prefixes. Malformed payloads fail to the existing fixed UI error path. No AI accounting finalizer, credit balance authority, request payload, provider call, or server response changed.
+- **Backward compatibility:** valid raw base64 receives the same canonical data URL; already canonical matching data URLs remain byte-identical; null/absent image data remains an empty result.
+- **Regression/validation:** the new behavior suite covers absent, raw and canonical images plus non-array, wrong scalar, unsupported MIME, missing MIME and mismatched data-URL MIME cases. The AI accounting source gate requires record return types, rejects generic response casts, and pins image normalization. Focused response tests and source gate pass; exact TypeScript, focused ESLint and diff integrity are the owning broader gates.
+
+### AUDIT-BUILDER-CONSTANT-ANY-TYPES-001 — Dormant builder contracts used unconstrained `any`
+
+- **Finding ID/severity/status:** `AUDIT-BUILDER-CONSTANT-ANY-TYPES-001` / P3 / Closed locally in restart 1043.
+- **Observed/fix:** the size-ordered type pass found the legacy exported `ConfigType` identifiers and `COLOR_VARIABLES_LABEL` declared as `any`. Repository-wide consumers use only the separate device constants; no runtime producer depended on the broad types. Identifier/component fields are now strings and the label table is `Record<string, string>`.
+- **Impact:** compile-time tightening only; no builder state, persisted document, public output or cache behavior changed.
+
+### AUDIT-BUSINESS-COPY-LOCALIZATION-UNSAFE-INPUT-001 — Localization helpers coerced unknown browser/state values
+
+- **Finding ID/severity/status:** `AUDIT-BUSINESS-COPY-LOCALIZATION-UNSAFE-INPUT-001` / P3 / Closed locally in restart 1043.
+- **Flow/structure:** generated owner copy + current store language state → localized field merge → desktop/mobile business-settings save.
+- **Observed/root cause:** the localization module used `any` for store language state, cast unknown existing localized values into trusted maps, and used `String(value)` in exported clamp/keyword helpers. Malformed legacy/state values or coercive objects could enter merge logic or throw during a post-generation path.
+- **Fix/data impact:** store language input is the exact `StoreDataType` language/store subset; existing localized text/list values must pass the shared runtime predicates; clamp and keyword parsing accept strings only. Valid localized maps and string lists merge as before, while malformed values are ignored in favor of validated new copy.
+- **Regression:** the translation-output suite covers valid text/list merging, malformed legacy maps and a throwing coercion object.
+
+## Restart 1044 addendum — SignalDesk demand timestamp authority
+
+Restart 1044 re-read the complete demand event, daily summary and idempotency
+claim contracts, then reverse-traced their writers and replay consumer through
+the SignalDesk transaction. It also completed clean full-file re-reviews of the
+Google Analytics configured-property guard and Messaging Onboarding trigger
+wrapper without finding a new defect in those two files. One P2 persisted-data
+failure-path defect was closed, so `consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-SD-DEMAND-TIMESTAMP-VALIDATION-001 — Timestamp validation could execute arbitrary persisted behavior
+
+- **Finding ID/severity/status:** `AUDIT-SD-DEMAND-TIMESTAMP-VALIDATION-001` / P2 / Closed locally in restart 1044.
+- **File/function/flow/structure:** `src/lib/signaldesk/demandSignalContracts.ts::{timestampSchema,parseStrict,getSignalDeskDemandSignalEventDay,assertSignalDeskDemandSignalSummaryMatchesEvent}` and `workflowServer.ts::captureSignalDeskDemandSignalServer`; demand capture/replay → immutable event and claim → deterministic daily summary.
+- **Producer/consumer/trigger/observed:** all three strict document schemas invoked `toMillis()` directly while parsing unknown Firestore data. A throwing getter, Proxy, method, non-finite result or date outside the JavaScript range could escape `safeParse` as an arbitrary exception. Replay and lineage then invoked the method again through a cast, allowing a stateful or corrupted value to fail outside the documented contract path after initial admission.
+- **Expected/root cause/security/data/public/cache impact:** persisted runtime values must fail through stable domain errors before transaction effects. Timestamp access is now exception-contained, requires a finite number and representable date, and the strict parser maps schema access failures to its exact event/summary/claim error. Replay-day and lineage derivation use the same helper and fail with `DEMAND_SIGNAL_EVENT_INVALID`. No MenuList tenant, customer-public output, cache, Redux, SWR, browser storage, provider or billing path consumes these SignalDesk-only documents.
+- **Backward compatibility:** valid Admin Firestore `Timestamp` objects and existing event-day identity remain unchanged. Malformed legacy rows fail closed for repair rather than being acknowledged or merged.
+- **Regression/validation:** `test-signaldesk-demand-signal-contracts.ts` covers valid event/summary/claim rows, throwing getters, Proxies and methods, non-finite/out-of-range values, hostile document Proxies and post-validation mutation. `npm run test:signaldesk:demand-signal-contracts`, `npm run verify:signaldesk` (4,103 source checks plus child suites), exact TypeScript, focused ESLint and `git diff --check` pass.
+
+### Restart 1044 deployment evidence
+
+`firebase projects:list` exited 1 with `Failed to authenticate, have you run
+firebase login?`. The pending MenuList Functions diagnostic change from restart
+1040 therefore cannot be deployed from this environment. Local Functions build
+evidence is complete, but QA runtime behavior remains unverified until an
+authenticated operator deploys the affected MenuList Functions. No SignalDesk
+Firebase Function, rule or index source changed in restart 1044.
+
+## Restart 1045 addendum — Small-contract reverse pass and Storage failure boundaries
+
+Restart 1045 started from the smallest unresolved runtime and type contracts
+rather than changed files. It fully re-read the first twenty files in that
+ordering, including Firestore sanitization, Answerlattice cache/hook scope,
+Firestore document IDs, MyCodex host admission, Redux/browser wrappers,
+diagnostic wrappers and Storage deletion projection. One P3 runtime defect and
+one P3 documentation/verifier drift defect were closed.
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-STORAGE-DELETE-ERROR-PROJECTION-001 — Delete diagnostics could replace the original Storage failure
+
+- **Finding ID/severity/status:** `AUDIT-STORAGE-DELETE-ERROR-PROJECTION-001` / P3 / Closed locally in restart 1045.
+- **File/function/flow/structure:** `storageDeleteBoundary.ts::normalizeStorageDeleteErrorCode`; Firebase Storage delete rejection → bounded response/diagnostic code → caller recovery.
+- **Producer/consumer/trigger/observed:** the catch-path helper accepted `unknown` but read `error.code` directly. A provider object with a throwing accessor or Proxy could throw while reporting the delete failure, violating the helper’s declared stable response contract.
+- **Fix/security/data impact:** code access now uses exception-contained `Reflect.get`; only a bounded nonblank string is returned and every other shape becomes `unknown`. Delete target admission, Firebase reference construction, authorization, actual delete operation and response shape are unchanged.
+- **Regression/validation:** the existing focused suite now covers throwing getter and Proxy inputs. `npm run test:storage-delete-boundary`, the complete `npm run verify:storage-paths` aggregate, exact TypeScript, focused ESLint and diff integrity pass.
+
+### AUDIT-STORAGE-LEGACY-DENIAL-DOC-VERIFIER-001 — Rules commentary and source gate drifted from enforced denial
+
+- **Finding ID/severity/status:** `AUDIT-STORAGE-LEGACY-DENIAL-DOC-VERIFIER-001` / P3 / Closed locally in restart 1045.
+- **File/flow:** `storage.rules`, `verify-storage-path-hardening.js`, infrastructure risk tracker; legacy `MenuListAi/project/...` objects → direct client rule admission.
+- **Observed/expected/root cause:** all four legacy rule matches deny read/write/delete and the active tracker documents that exact contract, but a later rules comment still called the paths “read-only” and the verifier required a retired generic phrase absent from the stronger tracker text. The mismatch produced a false aggregate failure and could mislead future maintenance.
+- **Fix/impact:** the comment now says direct clients are denied, and the verifier pins the tracker’s explicit lack-of-scope plus all-operation denial statements. Rule expressions and live authorization behavior did not change.
+- **Validation/deploy:** the first aggregate rerun collided with a separately launched copy of the same Storage emulator on port 9199; the standalone rules suite passed. A clean serial rerun of the full aggregate then passed, including the emulator. `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` exited 1 with `Failed to authenticate, have you run firebase login?`; QA deployment remains externally blocked.
+
+### AUDIT-FUNCTIONS-GEMINI-DIAGNOSTIC-PROJECTION-001 — Gemini catch paths read unknown provider fields directly
+
+- **Finding ID/severity/status:** `AUDIT-FUNCTIONS-GEMINI-DIAGNOSTIC-PROJECTION-001` / P3 / Closed locally in restart 1045.
+- **File/function/flow:** `functions/src/services/gemini/geminiDiagnostics.ts::getGeminiErrorContext`; owner dashboard/action plan, feedback intelligence and weekly narrative provider failure → Functions log → deterministic fallback/retry path.
+- **Observed/root cause:** the wrapper used the bounded error-name helper but directly read `code` and `status` from the unknown provider object. Throwing accessors or Proxies could replace the original Gemini failure while building its log payload.
+- **Fix/impact:** all three fields now come from `getBoundedFunctionsErrorContext`. No prompt, response, identifier or raw message is logged; provider calls, AI accounting, persisted summaries, retries and deterministic fallbacks are unchanged.
+- **Regression/validation/deploy:** the shared hostile-error suite asserts both throwing getter and Proxy behavior for the Gemini wrapper and passes across 3,629 source files. MenuList Functions build, focused ESLint and diff integrity pass. The affected scheduler/manual analytics Functions still require QA deployment, but Firebase CLI authentication is unavailable.
+
+### AUDIT-DAL-DIAGNOSTIC-ARGUMENT-COERCION-001 — Shared DAL failure logging inspected unknown arguments unsafely
+
+- **Finding ID/severity/status:** `AUDIT-DAL-DIAGNOSTIC-ARGUMENT-COERCION-001` / P2 / Closed locally in restart 1045.
+- **File/function/flow:** `apiCallComposerClient`, `apiCallComposerClientWithoutLoader`, `apiCallComposerServer`, new `dalDiagnostics.ts`; more than one hundred MenuList/Answerlattice DAL operations → active-session admission → database operation → failure log/toast/loader settlement.
+- **Observed/root cause:** all three composers duplicated `Object.keys(arg)` over unknown diagnostic arguments. A Proxy could throw inside the catch path and replace the original Firestore/session/domain error. The loader-enabled client also interpolated `args[0]` before entering its `try`, invoking arbitrary string coercion, placing caller data into Redux loader identity and allowing same-millisecond collisions.
+- **Fix/security/tenant/data impact:** one shared projector emits only string length, array length, up to eight object key names or primitive type, contains hostile inspection as `uninspectable`, and bounds the literal DAL label. Loader IDs now use `dal_<time>_<sequence>` without caller data. Authentication, tenant/store arguments, DAL execution, database reads/writes, owner error copy and original error propagation are unchanged.
+- **Regression/validation:** the new behavior suite covers bounded labels, metadata-only normal values, throwing object/array Proxies and unique caller-data-free loader IDs. The full `npm run verify:auth-security-failure-matrix`, exact TypeScript, focused ESLint and diff integrity pass. The first aggregate attempt had already started before the TypeScript narrowing patch and reported the superseded compile error; the clean rerun passed every child suite.
+
+Restart 1045 coverage regeneration discovered 8,687 files: 8,377 in scope
+and 310 explicitly excluded. Exact-fingerprint status is 1,518 reviewed,
+1,853 in-progress and 5,006 inventory-only. The reviewed count increased by 15
+while this restart added two focused source/test files. These figures remain an
+explicit unmet exit criterion; no clean full pass is claimed.
+
+## Restart 1046 addendum — Public accent output and caller-owned sorting
+
+Restart 1046 continued from the smallest inventory-only runtime contracts and
+reverse-traced public accent color plus the only active-sort consumer. It also
+re-read the compact Menu Card Export helpers, Answerlattice AI client export,
+email runtime alias, hours barrel, project-image display and dead browser image
+conversion utility in the same ordering. Three runtime defects and one audit
+evidence defect were closed. Because this restart found defects,
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-PUBLIC-ACCENT-COLOR-OUTPUT-001 — Malformed legacy colors reached public metadata and rendering
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-ACCENT-COLOR-OUTPUT-001` / P1 / Closed locally in restart 1046.
+- **File/function/flow/structure:** `src/lib/obp/accentColor.ts::{normalizePublicAccentColor,resolveOBPAccentColor}`, `manifestGenerator.ts::buildManifest`, `schemaJsonLd.ts::buildMobileAppSchema`, the public client page, tenant manifest route and startup-image route; persisted `stores.publicPresence.accentColor` → OBP/PWA public truth.
+- **Producer/consumer/trigger/observed:** owner UI normally emits a hex color, but active request schemas only length-bound this legacy-compatible field. OBP used any nonblank string, while viewport metadata, the Web App Manifest, startup image and WebApplication JSON-LD forwarded the raw stored value or applied inconsistent local validation. A malformed or legacy value such as `linear-gradient(...)` therefore produced invalid and divergent public branding output.
+- **Expected/root cause/security/tenant/data/public/cache impact:** every public consumer must derive the same bounded color contract. A shared projector now admits only three- or six-digit hash-prefixed hex, lowercases and expands shorthand, and otherwise uses each surface's existing fallback or omits the optional JSON-LD color. Store authority, tenant resolution, persistence, cache keys and invalidation are unchanged; cached public outputs self-heal on normal expiry/invalidation.
+- **Backward compatibility:** valid six-digit owner colors preserve their visual value; valid shorthand becomes its equivalent six-digit color. Malformed legacy values fail closed to the existing MenuList/OBP fallback rather than requiring a destructive migration.
+- **Regression/validation:** the focused suite covers canonical six-digit and shorthand values, named/gradient/eight-digit/object rejection, OBP fallback, manifest theme/background fallback and JSON-LD omission. Focused ESLint and exact TypeScript pass.
+
+### AUDIT-ACTIVE-SORT-CALLER-MUTATION-001 — Rendering reordered caller-owned React state in place
+
+- **Finding ID/severity/status:** `AUDIT-ACTIVE-SORT-CALLER-MUTATION-001` / P2 / Closed locally in restart 1046.
+- **File/function/flow/structure:** `src/utils/sorting.ts::sortByActive`; Platform Assets category/item Firestore result → React state → active-first render.
+- **Producer/consumer/trigger/observed:** the helper called `Array.prototype.sort` on its input. Both live callers pass arrays held by component state or nested active-category state, so rendering could mutate canonical caller order without `setState`, producing referentially invisible state changes and unstable subsequent edits.
+- **Expected/root cause/security/tenant/data/public/cache impact:** presentation sorting must be pure. The helper now accepts a typed readonly active-item sequence, copies before stable sorting and returns a new array. Firestore data, mutation handlers, tenant authority and public output are unchanged.
+- **Regression/validation:** the focused suite proves active-first stable order, a distinct result array, unchanged input order and null/undefined handling. Focused ESLint and exact TypeScript pass.
+
+### AUDIT-FINDINGS-SUMMARY-ARITHMETIC-001 — Findings rows and reported total disagreed
+
+- **Finding ID/severity/status:** `AUDIT-FINDINGS-SUMMARY-ARITHMETIC-001` / P3 / Closed locally in restart 1046.
+- **File/function/flow:** this audit report's canonical severity summary and `verify-data-flow-audit-tools.js`; findings ledger → completion evidence → final audit reporting.
+- **Observed/root cause/impact:** before the restart-1046 findings were added, the four severity rows summed to 1,686 while the total claimed 1,683. The table was manually updated without a sum invariant, making the audit's own evidence internally false.
+- **Fix/regression:** the current rows and total now agree, including all four restart-1046 findings. The audit-tool verifier parses the canonical P0-P3 summary and fails unless their sum equals the reported total.
+
+### AUDIT-IMAGE-BASE64-SERVER-CONTEXT-001 — Browser type detection threw in a server runtime
+
+- **Finding ID/severity/status:** `AUDIT-IMAGE-BASE64-SERVER-CONTEXT-001` / P3 / Closed locally in restart 1046.
+- **File/function/flow:** `src/utils/imageToBase64.ts::imageToBase64`; optional HTML image → canvas → data URL.
+- **Observed/root cause/impact:** the exported helper evaluated `image instanceof HTMLImageElement` without first establishing that the browser global exists, so a server invocation threw `ReferenceError` instead of returning the existing empty fallback. A browser implementation returning no 2D context was also dereferenced. Repository-wide search finds no active caller, so no current production failure or persistence/public-output effect was demonstrated.
+- **Fix/regression:** the input is now `unknown`; browser globals and the exact image instance are checked before canvas work, and a missing 2D context returns the same empty fallback. The focused Node regression proves server-safe invocation.
+
+Restart 1046 coverage regeneration discovered 8,688 files: 8,378 in scope
+and 310 explicitly excluded. Exact-fingerprint status is 1,549 reviewed,
+1,851 in-progress and 4,978 inventory-only. Compared with restart 1045, 31
+additional current files are reviewed, two fewer are in-progress and 28 fewer
+are inventory-only while the new focused test increases the in-scope set by
+one. These figures remain an explicit unmet exit criterion; no clean full pass
+is claimed.
+
+## Restart 1047 addendum — Localized AI context and canonical item URLs
+
+Restart 1047 continued the smallest inventory-only runtime ordering through
+Menu Card Export DTOs/layout/preflight/render helpers, product-local PWA asset
+maps, website sign-in links, instrumentation, notification template routing,
+Owner Business Assistant fallback/intent helpers, infrastructure/output
+barrels and the active Business Copy and canonical item URL projectors. Two P2
+runtime boundary defects were closed, so `consecutiveCleanFullPasses` remains
+`0`.
+
+### AUDIT-BUSINESS-COPY-FIRST-TEXT-INSPECTION-001 — Localized value inspection could abort owner AI context assembly
+
+- **Finding ID/severity/status:** `AUDIT-BUSINESS-COPY-FIRST-TEXT-INSPECTION-001` / P2 / Closed locally in restart 1047.
+- **File/function/flow/structure:** `src/services/ai/businessCopy/utils.ts::firstText`; persisted store public-presence/project category/item localized values → Business Copy request or default-project AI context → provider input.
+- **Producer/consumer/trigger/observed:** `Object.values` enumerated unknown localized objects and invoked every enumerable getter. A throwing accessor or Proxy escaped the helper, aborting owner Business Copy setup or cached project context construction before the existing provider/fallback behavior.
+- **Expected/root cause/security/tenant/data/public/cache impact:** malformed legacy/local state must be ignored rather than executing arbitrary access behavior. The helper now rejects arrays, exception-contains key enumeration, inspects at most 64 keys, contains each property access independently and still returns the first nonblank string. No tenant authority, provider selection, persistence, credit settlement or public cache changes.
+- **Backward compatibility/regression:** direct strings and normal localized maps preserve trimming/order; a broken earlier property no longer hides a later valid translation. The focused suite covers direct/map/array, throwing getter and enumeration Proxy inputs.
+
+### AUDIT-CANONICAL-ITEM-URL-FAILURE-001 — URL construction threw and misclassified uppercase absolute URLs
+
+- **Finding ID/severity/status:** `AUDIT-CANONICAL-ITEM-URL-FAILURE-001` / P2 / Closed locally in restart 1047.
+- **File/function/flow/structure:** `src/lib/menu/itemTruthUrls.ts::buildCanonicalItemUrl`; tenant/project canonical URL + persisted item ID + active language → metadata, item deep link and shareable customer URL.
+- **Producer/consumer/trigger/observed:** URL parsing was uncontained, so a malformed base could abort public metadata or renderer work. Absolute/relative output selection used case-sensitive `startsWith('http')`; a valid uppercase `HTTPS://` base was therefore returned as a relative path.
+- **Expected/root cause/security/tenant/data/public/cache impact:** canonical URL projection must preserve valid HTTP(S) absolute identity, relative identity and existing query/hash state without throwing. Parsing is now exception-contained, absolute HTTP(S) detection is case-insensitive, language is trimmed and malformed bases return unchanged rather than manufacturing an item URL. Tenant/store/project resolution, item identity encoding, persistence and cache keys are unchanged.
+- **Regression:** the focused suite covers uppercase absolute URLs, encoded item/language identity, relative query/hash preservation, malformed bases and absent item IDs.
+
+Restart 1047 coverage regeneration discovered 8,689 files: 8,379 in scope
+and 310 explicitly excluded. Exact-fingerprint status is 1,579 reviewed,
+1,851 in-progress and 4,949 inventory-only. The newly added focused test grows
+the in-scope set by one while the complete compact batch moves 30 current files
+to reviewed. Exit criteria remain unmet and no clean full pass is claimed.
+
+## Restart 1048 addendum — Bounded execution, editor text and dormant browser utilities
+
+Restart 1048 continued the smallest runtime ordering through Menu Card Export
+preview/artifact/QR contracts, OBP description/hours adapters, Answerlattice
+chat-image policy, Public Truth Monitor request parsing, AI Menu Manager
+registry/approval/local-action boundaries, Storage replacement/cleanup
+projectors, guest-feedback IDs, owner-referral gating and related compact
+support modules. Four P2 runtime defects and two P3 dormant-utility defects were
+closed, so `consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-BOUNDED-CONCURRENCY-NONFINITE-LIMIT-001 — NaN concurrency silently skipped every worker
+
+- **Finding ID/severity/status:** `AUDIT-BOUNDED-CONCURRENCY-NONFINITE-LIMIT-001` / P2 / Closed locally in restart 1048.
+- **File/function/flow:** `src/lib/async/boundedConcurrency.ts::mapWithConcurrency`; batch image task/upload/prompt work and project preset propagation.
+- **Observed/root cause/impact:** `Math.max(1, Math.floor(NaN))` remains `NaN`; runner-array length then becomes zero and the helper returned an array of empty slots without executing work or reporting failure. Active callers currently pass fixed finite constants, but a future configuration or computed limit could acknowledge an entire batch without side effects.
+- **Fix/regression:** the helper accepts readonly inputs and maps every non-finite limit to one worker; finite values retain floor/minimum behavior. The focused suite proves NaN still processes every item in input order.
+
+### AUDIT-ONBOARDING-COMPENSATION-STORE-ID-ACCESS-001 — Malformed mapping access could interrupt failure cleanup
+
+- **Finding ID/severity/status:** `AUDIT-ONBOARDING-COMPENSATION-STORE-ID-ACCESS-001` / P2 / Closed locally in restart 1048.
+- **File/function/flow:** `compensatedStoreMappings.ts::removeCompensatedStoreFromMappings`; failed tenant/store onboarding → user/tenant mapping compensation.
+- **Observed/root cause/impact:** the cleanup filter directly read `store.storeId` from unknown persisted mapping entries. A throwing accessor or Proxy could abort compensation after partial onboarding effects, leaving the newly failed store linked in user state.
+- **Fix/regression:** store-ID access is exception-contained through `Reflect.get`; malformed entries are preserved for explicit repair while the exact compensated canonical store is removed. The focused suite covers a throwing accessor between valid mapping entries.
+
+### AUDIT-EDITOR-PLAIN-TEXT-BOUNDARY-001 — Recursive unknown editor traversal was unbounded and executable
+
+- **Finding ID/severity/status:** `AUDIT-EDITOR-PLAIN-TEXT-BOUNDARY-001` / P2 / Closed locally in restart 1048.
+- **File/function/flow:** `articleEmbeddings.ts::{extractPlainTextFromEditorContent,extractEditortextForComparison}`; Answerlattice article content → embeddings, FAQ generation, exact-entity search and RAG prompts.
+- **Observed/root cause/impact:** recursive `any` traversal directly read unknown fields, had no cycle/depth/node/text bound and could execute getters/Proxies. Corrupt or adversarial stored editor content could overflow the stack, hang traversal, abort retrieval/generation or send an unnecessarily large provider prompt.
+- **Fix/compatibility:** iterative traversal uses safe field reads, a WeakSet cycle fence, depth 64, 10,000 nodes and 64,000 collected characters while preserving text/hard-break/image-alt/title document order and whitespace normalization. Normal articles remain unchanged; oversized/corrupt tails are deterministically truncated.
+- **Regression:** cycle, throwing Proxy, image metadata, ordered text and maximum-length cases pass.
+
+### AUDIT-AL-EMBEDDING-PLAIN-TEXT-FALLBACK-001 — Invalid persisted plain text bypassed valid editor content and invoked coercion
+
+- **Finding ID/severity/status:** `AUDIT-AL-EMBEDDING-PLAIN-TEXT-FALLBACK-001` / P2 / Closed locally in restart 1048.
+- **File/function/flow:** `embeddingSourceBoundary.ts::getAnswerlatticeArticleEmbeddingInput`; persisted article title/plainText/content → bounded embedding text and source hash.
+- **Observed/root cause/impact:** `article.plainText || extract(...)` treated whitespace as authoritative and skipped valid content. `cleanEmbeddingText` then used `String(unknown)`, allowing coercive objects to execute or manufacture `[object Object]` source values.
+- **Fix/regression:** only strings enter text cleaning; normalized nonblank persisted plain text wins, otherwise the bounded editor extractor supplies the body. Tests cover whitespace fallback and a throwing coercion object.
+
+### AUDIT-NAVIGATION-ROUTE-DUPLICATION-001 and AUDIT-IE-DETECTOR-CONSTANT-001 — Dormant browser helpers returned false state
+
+- **Finding IDs/severity/status:** both P3 / Closed locally in restart 1048.
+- **Files/observed:** `src/utils/navigation.ts` searched for `route.url + route.url`, making normal paths fail and returning broad `any`; `DetectUserAgent.ts::isIEDevice` returned `true` unconditionally. Repository-wide search finds no active runtime consumer for either legacy helper, so no current UI failure was demonstrated.
+- **Fix/regression:** route matching is SSR-safe, typed, most-specific-first and segment-aware with an exact root rule. IE detection accepts an optional/user-agent runtime string and matches only IE's MSIE/Trident signatures. Focused tests cover nested/root route selection plus IE/non-IE agents.
+
+Restart 1048 coverage regeneration discovered 8,689 files: 8,379 in scope
+and 310 explicitly excluded. Exact-fingerprint status is 1,606 reviewed,
+1,851 in-progress and 4,922 inventory-only. The complete compact batch moves
+27 current files to reviewed; thousands of files still lack complete direct
+review, so this restart is not a full clean pass and the clean counter remains
+zero.
+
+Restart 1048 closure validation passed `npm run
+verify:data-flow-audit-tools`, `npm run
+verify:data-flow-audit-regressions`, `npm run verify:ai-accounting`, `npm run
+verify:ai-menu-manager`, `npm run test:multi-outlet-store-access-boundary`,
+`npm run verify:answerlattice-runtime-truth`, exact root `npx tsc --noEmit
+--incremental false`, full `npm run lint` and `git diff --check`. The
+Answerlattice aggregate included its separate/shared Firestore rules, Storage
+rules, emulator, scheduler, integration, public API, widget, governance and
+knowledge-map children. Expected negative-rule and failure-path diagnostics
+were asserted by passing suites. No Firebase rule, index or Function source
+changed in this restart, so no infrastructure deploy applied.
+
+## Restart 1049 addendum — Reverse public-consumer and compact boundary review
+
+Restart 1049 restarted from the coverage manifest using a reverse-consumer
+ordering. It traced compact public-output, request-origin, platform-context,
+Menu Card Export, PWA icon, Answer Tests identity/tokenization, linked-outlet
+acknowledgement, SMTP, relative-time, auth metadata and compliance-sanitizer
+helpers back to their active callers. One P2 public-output boundary and one P3
+dormant validation boundary were confirmed and closed, so
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-PUBLIC-MENU-BACKGROUND-DATA-URL-SIZE-001 — Preview data URLs bypassed every size bound
+
+- **Finding ID/severity/status:** `AUDIT-PUBLIC-MENU-BACKGROUND-DATA-URL-SIZE-001` / P2 / Closed locally in restart 1049.
+- **File/function/flow:** `src/lib/menu/publicMenuBackground.ts::normalizePublicMenuBackground`; owner menu-design background selection → preview renderer CSS background.
+- **Producer/consumer/trigger/observed:** preview mode returned any syntactically valid image data URL before the 4,096-character persisted-URL and control-character checks. A corrupt or attacker-controlled preview value could therefore retain and interpolate an arbitrarily large base64 string during render, causing avoidable browser memory and responsiveness failure.
+- **Expected/root cause/security/tenant/data/public/cache impact:** preview-only data URLs remain supported, but are now limited to seven MiB of encoded input and control characters are rejected before either preview or persisted URL admission. HTTPS/relative persisted URL behavior, tenant identity, persistence and cache keys are unchanged.
+- **Regression/validation:** the focused runtime suite proves a small image data URL remains accepted and an oversized valid-base64 preview is rejected. Focused ESLint, exact TypeScript and diff hygiene pass.
+
+### AUDIT-LEGACY-VALIDATION-UNKNOWN-COERCION-001 — Dormant validators executed unknown input coercion
+
+- **Finding ID/severity/status:** `AUDIT-LEGACY-VALIDATION-UNKNOWN-COERCION-001` / P3 / Closed locally in restart 1049.
+- **File/function/flow:** `src/utils/validations.ts`; legacy email/phone/website validation utility. Repository-wide search found no active runtime caller.
+- **Observed/root cause/impact:** every exported validator accepted implicit `any`; regular-expression `.test` could execute attacker-controlled `toString` behavior. An ESLint suppression masked the missing input contract.
+- **Fix/compatibility/regression:** inputs are `unknown`, only strings reach the existing frozen regular expressions, returns are explicit booleans and the suppression is removed. Existing accepted strings retain their behavior. A throwing coercion object is rejected without execution by the focused suite.
+
+### AUDIT-COMPLIANCE-PUBLIC-READ-COST-CONTRACT-001 — Compliance Firebase guide overstated cache-hit reads
+
+- **Finding ID/severity/status:** `AUDIT-COMPLIANCE-PUBLIC-READ-COST-CONTRACT-001` / P3 / Closed locally in restart 1049.
+- **File/flow/trigger:** `__docs__/compliance-pages/compliance-pages_firebase.md` and `verify-compliance-pages-boundary.js`; public compliance render → tagged tenant/store cache → optional direct `compliancePages/{sId}` Admin read → Firebase cost evidence.
+- **Observed/root cause/impact:** the source gate exposed a missing exact direct-read contract. The same table described every component as zero or optional but reported a fixed total of one read, incorrectly charging cache-hit views. This was documentation/cost-evidence drift; runtime caching, tenant isolation, persistence and public output were unchanged.
+- **Fix/validation:** the table now names the direct document read and reports zero or one total read according to tagged-cache state. The focused compliance source/behavior gate passes after the correction.
+
+### AUDIT-AUDIT-LEDGER-HISTORICAL-NPM-COMMANDS-001 — Historical failed aliases violated current command parity
+
+- **Finding ID/severity/status:** `AUDIT-AUDIT-LEDGER-HISTORICAL-NPM-COMMANDS-001` / P3 audit-integrity / Closed locally in restart 1049.
+- **File/trigger/observed:** `__docs__/audits/data-flow-pipeline-deep-audit.md` and `verify-doc-npm-scripts.js`; current documentation command scan → package script registry. Ten ledger references spelled retired or mistyped historical aliases as executable `npm run` commands, so the repository-wide documentation gate failed even though those entries explicitly recorded that the commands did not exist or referred to now-retired focused aliases.
+- **Expected/root cause/impact:** active documentation must contain only currently registered executable npm commands, while historical failure evidence must remain readable without being presented to tooling or operators as runnable current guidance. This affected audit/documentation integrity only; no runtime, tenant, persistence, public output or cache behavior changed.
+- **Fix/validation:** the ledger retains each exact historical script name and exit narrative but expresses the non-runnable invocation as separate `npm` + `run` + alias tokens. Registered replacement/aggregate commands remain executable literals. `npm run verify:doc-npm-scripts` now passes without weakening its repository-wide scan.
+
+Restart 1049 coverage regeneration discovered 8,689 files: 8,379 in scope
+and 310 explicitly excluded. Exact-fingerprint status is 1,619 reviewed,
+1,851 in-progress and 4,909 inventory-only. Thirteen compact runtime/support
+files moved to complete current-content review. Because three new findings were
+confirmed and thousands of records remain incomplete, this is not a clean full
+pass and the clean counter remains zero.
+
+Restart 1049 closure validation passed `npm run
+test:small-runtime-contracts`, focused ESLint, exact root `npx tsc --noEmit
+--incremental false`, `npm run verify:menu-design-presentation-boundary`,
+`npm run test:pwa-icon-storage-boundary`, `npm run
+verify:auth-security-failure-matrix`, `npm run
+verify:compliance-pages-boundary`, `npm run
+verify:data-flow-audit-regressions`, `npm run verify:doc-npm-scripts`, `npm
+run docs:check-links`, `npm run verify:data-flow-audit-tools` and `git diff
+--check`. Documentation links report zero broken links and the same 62
+established founder-approved media filename warnings. No Firebase rule, index,
+Storage rule or Function source changed, so no infrastructure deploy applied.
+
+## Restart 1050 addendum — Reverse serialized DTO, retention and owner-truth review
+
+Restart 1050 traced compact campaign ordering, browser-file sharing, SignalDesk
+access constants, taxonomy exports, branding attribution, Answerlattice
+retention/scheduler/token contracts, owner Business Health/assistant artifacts,
+menu description/trust/presence truth, website metadata, extraction inputs,
+timezone diagnostics, geo coordinates, POS test acknowledgements and messaging
+publish retries from final consumers back to their producers. Seven P2 defects
+were closed; `consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-AL-RETENTION-ZERO-AND-INVALID-FROM-001 — Epoch zero silently became the current time
+
+- **Finding/severity/status:** `AUDIT-AL-RETENTION-ZERO-AND-INVALID-FROM-001` / P2 / Closed locally in restart 1050.
+- **Files/flow:** app and Answerlattice Functions `dataRetention.ts::toMillis`; explicit source timestamp → retention expiry/TTL field → cleanup scheduler.
+- **Observed/root cause/impact:** truthiness treated numeric epoch zero as absent and recalculated expiry from `Date.now()`; non-finite numbers and invalid dates reached `Timestamp.fromMillis` through an opaque downstream failure. Backfills, tests or legacy rows using an explicit epoch could therefore retain operational data far longer than the requested source time.
+- **Fix/compatibility/regression:** only nullish input defaults to now; all explicit values must project to a safe integer millisecond value. Epoch zero remains epoch zero, and invalid values fail with a fixed code before persistence. Root behavior and the real Answerlattice retention emulator prove both app and Functions contracts.
+- **Deploy:** Answerlattice Functions build passes. Scoped QA deployment of `answerlatticeNightly` and `triggerAnswerlatticeNightly` was attempted and blocked before upload by `Error: Failed to authenticate, have you run firebase login?`; no QA revision changed.
+
+### AUDIT-BUSINESS-HEALTH-IMPOSSIBLE-DATE-001 — Invalid calendar dates rolled into owner-facing freshness
+
+- **Finding/severity/status:** `AUDIT-BUSINESS-HEALTH-IMPOSSIBLE-DATE-001` / P2 / Closed locally in restart 1050.
+- **File/flow:** `ownerBusinessAssistant/freshness.ts::formatOwnerBusinessHealthDateKey`; persisted source-window date → Business Health desktop/mobile and assistant freshness text.
+- **Observed/fix/impact:** the shape-only `YYYY-MM-DD` check let JavaScript normalize dates such as February 31 into March, misreporting the data window. UTC year/month/day must now round-trip exactly; impossible dates return null and use the established latest-data fallback. No persistence or cache behavior changed.
+
+### AUDIT-GEO-UNKNOWN-COERCION-001 — Coordinate normalization executed arbitrary coercion
+
+- **Finding/severity/status:** `AUDIT-GEO-UNKNOWN-COERCION-001` / P2 / Closed locally in restart 1050.
+- **File/flow:** `businessIdentity/geoCoordinates.ts::normalizeGeoCoordinateDraft`; desktop/mobile owner values and public map parameters → store identity geo.
+- **Observed/fix/impact:** the `unknown` contract called `String(value)`, allowing a hostile object to execute before numeric/range checks. Only string and number inputs are now admitted; the valid empty-pair, zero and range contracts remain unchanged. Official Business Page and public-business-truth gates pass.
+
+### AUDIT-TRUST-SIGNAL-TIMESTAMP-ACCESS-001 — Public freshness could throw on malformed Timestamp-like data
+
+- **Finding/severity/status:** `AUDIT-TRUST-SIGNAL-TIMESTAMP-ACCESS-001` / P2 / Closed locally in restart 1050.
+- **File/flow:** `menu/trustSignalFreshness.ts`; persisted `lastPublishedAt` → public trust-signal text.
+- **Observed/fix/impact:** broad `any` directly read/called `toDate` and `seconds`; a corrupt getter, Proxy or throwing converter could abort public rendering. The boundary now accepts `unknown`, safely projects Date/string/Timestamp-like shapes and contains access/call failures. Current/future/stale behavior remains unchanged.
+
+### AUDIT-POS-TEST-ACK-RANGE-001 — Malformed success acknowledgements admitted impossible telemetry
+
+- **Finding/severity/status:** `AUDIT-POS-TEST-ACK-RANGE-001` / P2 / Closed locally in restart 1050.
+- **File/flow:** `posSync/testResponse.ts`; protected POS test route response → desktop/mobile success message and diagnostics.
+- **Observed/fix/impact:** any finite status and response time passed, so negative latency, status 0/99/600 and non-string error fields were accepted as the typed DTO. Response time must now be nonnegative, status codes exact safe integers from 100 through 599, and optional errors strings. POS source/parity verification passes.
+
+### AUDIT-OBA-NONFINITE-METRIC-OUTPUT-001 — Assistant artifacts rendered infinity
+
+- **Finding/severity/status:** `AUDIT-OBA-NONFINITE-METRIC-OUTPUT-001` / P2 / Closed locally in restart 1050.
+- **File/flow:** `ownerBusinessAssistant/server/answerArtifacts.ts::formatNumber`; analytics summary → assistant metric row/table.
+- **Observed/fix/impact:** only NaN was rejected; positive/negative infinity reached `Intl.NumberFormat` and could render misleading non-finite owner truth. Every non-finite value now uses the existing zero fallback. Owner Business Assistant aggregate passes.
+
+### AUDIT-DESCRIPTION-QUALITY-HOSTILE-MAP-001 — Malformed description maps could abort menu quality
+
+- **Finding/severity/status:** `AUDIT-DESCRIPTION-QUALITY-HOSTILE-MAP-001` / P2 / Closed locally in restart 1050.
+- **File/flow:** `menu/descriptionQuality.ts`; persisted localized descriptions → menu quality, extraction and owner actions.
+- **Observed/fix/impact:** `Object.values` and indexed reads on unknown objects were uncontained, and arrays could pass one language-specific branch. Enumeration/property failures and arrays now fail closed without aborting the whole quality pipeline. Normal multilingual behavior is unchanged; menu-correctness/quality verification passes.
+
+Restart 1050 coverage regeneration discovered 8,689 files: 8,379 in scope
+and 310 explicitly excluded. Exact-fingerprint status is 1,640 reviewed,
+1,850 in-progress and 4,889 inventory-only. Twenty compact app/runtime files
+and the current full Answerlattice retention Function moved to reviewed; seven
+new defects mean this is not a clean full pass and the clean counter remains
+zero.
+
+Restart 1050 closure validation passed the focused runtime regression, focused
+ESLint, exact root TypeScript, Answerlattice Functions build, real
+Answerlattice Firestore/Storage retention emulator, Answerlattice runtime
+source verifier, Official Business Page, Owner Dashboard Today, menu
+correctness/quality, Owner Business Assistant, POS Sync, full public-business
+truth, full root lint, documentation command parity, audit tooling and diff
+hygiene. `npm --prefix functions-answerlattice run lint` could not run because
+that package defines no `lint` script; root focused/full ESLint covered the
+changed root TypeScript, while the Functions package build compiled its
+changed source. The required scoped QA deploy remains blocked by missing
+Firebase CLI authentication exactly as recorded above.
+
+## Restart 1051 addendum — Auth projection and public normalization boundaries
+
+Restart 1051 continued a reverse public-consumer and security-helper review
+through auth/session object projection, shared localized text/list adapters,
+public menu image/freshness/special-note projection and outbound image-provider
+request normalization. Five P2 defects were confirmed and closed, so
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-AUTH-SANITIZER-INHERITED-PROPERTIES-001 — Inherited fields entered sanitized auth records
+
+- **Finding/severity/status:** `AUDIT-AUTH-SANITIZER-INHERITED-PROPERTIES-001` / P2 / Closed locally in restart 1051.
+- **File/flow:** `src/lib/security/sanitizeObject.ts`; Firestore/auth user object → sanitized server user/session and phone/user DAL records.
+- **Observed/root cause/impact:** both sanitizers used `for...in`, which copies enumerable inherited fields. `removeKeys` also depended on every caller remembering the prototype-pollution key list. A non-plain or polluted input could therefore inject inherited identity, product or role-like fields into the sanitized record, and a throwing Proxy/accessor could abort authentication recovery.
+- **Fix/regression:** one typed projector now enumerates own keys only, always removes the three dangerous keys, contains enumeration/property failures and defines copied values as ordinary own data properties. Tests prove inherited `platformRole`/`pId`, an own `__proto__`, and a throwing enumeration Proxy cannot enter or break the result. Auth/security matrix, exact TypeScript and lint pass.
+
+### AUDIT-LOCALIZATION-RUNTIME-CONTRACT-001 — Shared localization guards were unsound and executable
+
+- **Finding/severity/status:** `AUDIT-LOCALIZATION-RUNTIME-CONTRACT-001` / P2 / Closed locally in restart 1051.
+- **Files/flow:** `src/lib/localization/text.ts` and `src/lib/menu/publicMenuSpecialNote.ts`; persisted project/store/menu localized values → owner selectors, public menus, metadata, manifests, APIs and AI context.
+- **Observed/root cause/impact:** type guards admitted null text values and arbitrary array contents while claiming `Record<string,string>` and `Record<string,string[]>`. `Object.values`/indexed reads and `String(item)` could execute access or coercion hooks from corrupt persisted/local data, aborting public or owner rendering. The special-note resolver also traversed its unknown nested inputs directly.
+- **Fix/compatibility/regression:** localization reads snapshot own entries with exception containment, validate every non-null legacy entry, accept only string list members, and operate from the safe snapshot. Strict exported type guards now match their declared types, while read/conversion helpers retain the established compatibility behavior of ignoring null legacy language slots. Special-note paths use safe nested reads. Tests cover valid/legacy values, false type-guard cases, throwing enumeration and coercion, and the store-note fallback; the complete global/public localization matrix passes.
+
+### AUDIT-PUBLIC-MENU-STRUCTURED-DATA-BOUNDARY-001 — Malformed freshness data could abort public metadata
+
+- **Finding/severity/status:** `AUDIT-PUBLIC-MENU-STRUCTURED-DATA-BOUNDARY-001` / P2 / Closed locally in restart 1051.
+- **File/flow:** `src/lib/menu/publicMenuStructuredData.ts`; project/store timestamps and menu version → public JSON-LD/metadata freshness fields.
+- **Observed/root cause/impact:** broad `any`, direct nested access, an uncontained Timestamp `toDate()` call and `Number(unknown)` allowed malformed persisted values or coercion hooks to throw during public page generation. Fractional/unsafe versions could also enter the structured output.
+- **Fix/regression:** unknown records are read through contained `Reflect` access; Date/Timestamp/scalar conversion returns a fresh finite Date; legacy seconds and epoch zero remain supported; menu versions accept only positive safe integers from numbers or nonblank numeric strings. Throwing Timestamp, Date Proxy, project Proxy and coercive version tests pass with the Official Business Page and public-business-truth gates.
+
+### AUDIT-PUBLIC-MENU-IMAGE-PROJECTION-001 — Public image normalization spread private and executable fields
+
+- **Finding/severity/status:** `AUDIT-PUBLIC-MENU-IMAGE-PROJECTION-001` / P2 / Closed locally in restart 1051.
+- **File/flow:** `src/lib/menu/publicMenuImages.ts`; legacy item image field/collection → public menu, PDP viewer, metadata and menu-quality image presence.
+- **Observed/root cause/impact:** the normalizer spread the entire `UserUploadedFileType` input, including browser-only blob/prepared-media/checksum/ID fields, and directly enumerated unknown collections. Throwing accessors or Proxies could abort public rendering, while the returned public type unnecessarily claimed private upload state.
+- **Fix/regression:** the public projection now contains only the normalized URL and allowlisted string variants, reads each candidate safely and fails closed on malformed collection enumeration. Current consumers use only those fields. Tests prove a throwing private getter is never read, medium variant selection remains intact and a hostile collection yields no image; menu presentation/public truth gates pass.
+
+### AUDIT-IMAGE-PROVIDER-REQUEST-UNKNOWN-COERCION-001 — Provider normalization invoked unknown coercion
+
+- **Finding/severity/status:** `AUDIT-IMAGE-PROVIDER-REQUEST-UNKNOWN-COERCION-001` / P2 / Closed locally in restart 1051.
+- **File/flow:** `src/lib/imageProviderRequests.ts`; owner/provider route input → Pixabay, Pexels or Unsplash outbound URL.
+- **Observed/root cause/impact:** the explicitly unknown page, orientation and query values were passed to `Number()` or `String()`. A caller-defined conversion hook could execute before the existing page/query/orientation bounds and replace controlled provider failure behavior.
+- **Fix/regression:** page admission is scalar number/nonblank string only; orientation/query admission is string only; established defaults, page clamp/floor, whitespace collapse and length bound remain. A throwing `valueOf`/`toString` object proves no hook executes. The auth/security provider source matrix passes.
+
+Restart 1051 coverage regeneration discovered 8,689 files: 8,379 in scope
+and 310 explicitly excluded. Exact-fingerprint status is 1,646 reviewed,
+1,850 in-progress and 4,883 inventory-only. Six current runtime files and the
+expanded focused regression move to reviewed; thousands of files still lack
+complete direct review, so this restart is not a full clean pass and the clean
+counter remains zero.
+
+Restart 1051 validation passed `npm run test:small-runtime-contracts`,
+focused ESLint, exact root `npx tsc --noEmit --incremental false`, `npm run
+verify:global-localization-boundary`, `npm run
+verify:official-business-page-boundary`, `npm run
+verify:menu-design-presentation-boundary`, `npm run
+verify:auth-security-failure-matrix`, `npm run verify:public-business-truth`,
+`npm run verify:data-flow-audit-regressions` and `git diff --check`. No
+Firestore rule/index, Storage rule or Firebase Function source changed in this
+restart, so no infrastructure deployment applies.
+
+## Restart 1082 addendum — Public navigation source attribution
+
+Restart 1082 traced OBP menu cards and external links through URL
+normalization, analytics source attribution, tracking settlement and browser
+navigation. One P3 malformed-URL logic defect was confirmed and closed;
+`consecutiveCleanFullPasses` remains zero.
+
+### AUDIT-ANALYTICS-SOURCE-FALLBACK-FRAGMENT-001
+
+- **Severity/status/files/flow:** P3 / Closed locally /
+  `src/lib/analytics/sourceAttribution.ts` and `OBPMenuCTA.tsx`; public
+  menu/share/QR/OBP URL → `entry_source` projection → native navigation and
+  analytics.
+- **Observed/root cause/impact:** normal URL parsing correctly inserted the
+  source before a fragment. On parse failure, however, both shared and OBP
+  fallback code manually appended `?` or `&` to the end of the original text.
+  If that text contained a fragment, the parameter landed inside the fragment,
+  was not sent as a query, and navigation was mutated despite attribution
+  remaining absent.
+- **Fix/compatibility:** parse failure still emits the existing bounded,
+  capped diagnostic but now returns the original URL byte-for-byte. Valid
+  absolute and relative URLs retain exact query replacement and fragment
+  preservation.
+- **Regression/validation:** the analytics browser suite pins relative and
+  absolute fragment ordering plus byte-identical malformed fallback. The full
+  public-business-truth aggregate, exact TypeScript, focused ESLint and diff
+  hygiene pass.
+
+`OBPMenuCTA` and `OBPExternalLinks` were fully reread. Their remaining behavior
+correctly normalizes public destinations, reconciles real and placeholder
+actions, preserves native alternate/blank navigation, bounds tracking wait to
+800 ms and propagates secondary-card analytics failures to the shared
+navigation handler. Concurrent first-party additions expanded the regenerated
+snapshot during this restart to 8,587 in-scope files and 420 exclusions: 1,778
+reviewed, 1,869 in-progress and 4,940 inventory-only. No additional defect or
+Firebase change was found.
+
+## Restart 1081 addendum — Customer App canonical scope admission
+
+Restart 1081 reviewed the remaining compact OBP language, customer-app mount,
+loading skeleton and theme adapters, then followed the mount into the shared
+Customer App controller and its visit, prompt, install and analytics effects.
+One P2 identity-boundary defect was confirmed and closed.
+`consecutiveCleanFullPasses` remains zero.
+
+### AUDIT-CUSTOMER-APP-INVALID-SCOPE-EVENT-001
+
+- **Severity/status/files/flow:** P2 / Closed locally /
+  `CustomerAppController.tsx` and its PWA source gate; OBP/menu tenant-store
+  props → browser visit/install state → customer-app analytics and install UI.
+- **Observed/root cause/impact:** the first visit/prompt effect derived and
+  rejected an invalid tenant-store storage key, but the independent
+  `beforeinstallprompt` and `appinstalled` effects were guarded only by the
+  feature flag. A malformed or legacy public store with a present store ID and
+  missing/invalid tenant ID could therefore install listeners and pass an
+  install event toward analytics without canonical tenant scope. Downstream
+  helpers also defend their own storage keys, so no cross-tenant persistence
+  was established, but the controller contract was inconsistent and could
+  emit unscoped work.
+- **Fix/regression:** the controller derives its canonical tenant-store scope
+  before all effects. Feature admission now requires both the flag and a valid
+  scope key, suppressing every listener, side effect and render path when
+  identity is invalid. Valid scope transition and prompt behavior are
+  unchanged. The Customer App PWA gate pins the shared guard; its static
+  matrix and storage/icon behavior children, exact TypeScript, focused ESLint
+  and diff hygiene pass.
+
+The fully reread `OBPLanguageSwitcher`, `OBPCustomerAppMount`, `OBPSkeleton`
+and `OBPThemeToggle` adapters produced no additional finding. Their current
+behavior preserves bounded allowlisted attribution parameters, the shared
+controller path, inert loading output, and exact light/dark system/storage
+semantics. Audit-tool regeneration now records 8,392 in-scope files and 310
+exclusions: 1,777 reviewed, 1,868 in-progress and 4,747 inventory-only. No
+Firebase source changed.
+
+## Restart 1080 addendum — OBP public photo projection
+
+Restart 1080 continued the reverse public-output trace through persisted
+Official Business Page photos, starter visual-depth decisions, visible gallery,
+image viewer and JSON-LD image output. One P2 public-rendering defect was
+confirmed and closed, so `consecutiveCleanFullPasses` remains zero.
+
+### AUDIT-OBP-PUBLIC-PHOTO-UNKNOWN-TRAVERSAL-001
+
+- **Severity/status/files/flow:** P2 / Closed locally /
+  `src/lib/obp/publicPhotos.ts`, `OBPResolvedSurface.tsx`,
+  `OBPPhotoStrip.tsx` and `schema.ts`; persisted
+  `store.publicPresence.photos` → OBP layout/gallery/viewer and schema.org
+  `image`.
+- **Observed/root cause/impact:** the surface, gallery and schema independently
+  called `.some`, `.filter`, `.slice` or iteration on the asserted photo array.
+  A malformed persisted collection Proxy or indexed accessor could abort the
+  public business page and its JSON-LD. Non-string values and duplicates could
+  also reach image attributes/React keys despite the declared `string[]`
+  contract.
+- **Fix/compatibility:** one shared projector now requires an actual array,
+  reads only bounded own data descriptors, contains descriptor failures,
+  admits trimmed strings up to 4,096 characters, caps output at 64 and
+  deduplicates without coercion. The surface normalizes once before layout and
+  gallery use; the gallery defends its client boundary again; schema combines
+  normalized cover/logo plus at most three photos. Valid current and legacy
+  string URLs remain unchanged.
+- **Regression/validation:** the OBP public-projection test covers trimming,
+  order, deduplication, null/non-array exclusion, a throwing indexed accessor
+  that remains uncalled and a throwing descriptor Proxy that fails closed.
+  Both OBP and public-business-truth aggregates, exact TypeScript, focused
+  ESLint, audit-tool integrity and diff hygiene pass. The regenerated
+  current-worktree snapshot contains 8,392 in-scope files and 310 exclusions:
+  1,774 reviewed, 1,868 in-progress and 4,750 inventory-only. No Firebase
+  source changed.
+
+## Restart 1079 addendum — OBP localization and public-truth source gates
+
+Restart 1079 reversed from the public Official Business Page consumer into its
+translation dictionaries, interpolation boundary and public-truth regression
+gates. One P2 public-rendering defect and one P3 verifier drift defect were
+confirmed and closed. Because this restart found defects,
+`consecutiveCleanFullPasses` remains zero.
+
+### AUDIT-OBP-I18N-UNKNOWN-TRAVERSAL-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/app/client/obp/i18n.ts`; committed locale dictionary plus runtime
+  interpolation values → brand/outlet OBP headings, status, actions, photos
+  and customer facts.
+- **Observed/root cause/impact:** dotted dictionary lookup used ordinary
+  property access against broad `Record<string, any>` values. A key such as
+  `constructor.name` traversed the object prototype and returned `Object`.
+  Interpolation also read values normally and called broad `String(value)`, so
+  a malformed getter or conversion object could execute or throw while
+  rendering a public page.
+- **Fix/compatibility:** dictionary and interpolation reads now admit only own
+  data descriptors, contain descriptor failures, cap dotted paths, and
+  serialize only finite numbers, booleans and strings. Accessors, inherited
+  properties, objects and non-finite numbers resolve to the established empty
+  placeholder behavior. Current locale fallback and valid scalar
+  interpolation remain unchanged.
+- **Regression:** `test-obp-i18n-boundary.ts` covers current and unknown
+  locales, missing/prototype paths, finite scalar output, non-finite values,
+  inherited values and a throwing getter that remains uncalled. It is a child
+  of the Official Business Page aggregate.
+
+### AUDIT-OBP-VERIFIER-CURRENT-CONTRACT-DRIFT-001
+
+- **Severity/status/files:** P3 / Closed locally /
+  `verify-official-business-page-boundary.js` and
+  `verify-public-business-truth.js`.
+- **Observed/root cause/impact:** the OBP verifier required an exact
+  single-command package string, preventing registration of a behavioral child
+  gate. Concurrent Digital Screen cache work also changed store revalidation
+  to an options-bearing call and removed the browser screen invalidation
+  module, while source assertions still expected the old call/path. A raw-ID
+  log prohibition also searched the entire helper for a token that is valid
+  inside the protected revalidation request body. These were false failures
+  that blocked the maintained public-truth gates; no runtime authorization or
+  cache defect was found.
+- **Fix/regression:** the source gate now requires both OBP source and i18n
+  behavior commands, pins the current options-bearing store cache call and
+  screen touch, and restricts the raw-ID prohibition to logger statements.
+  The concurrent verifier update for the removed browser invalidation module
+  was preserved. Both complete aggregates pass.
+
+Validation passed the focused behavior test, `npm run
+verify:official-business-page-boundary`, `npm run
+verify:public-business-truth` and all four of its behavioral children, exact
+root TypeScript, focused ESLint, audit-tool integrity and diff hygiene. The
+regenerated current-worktree snapshot contains 8,391 in-scope files and 310
+explicit exclusions: 1,775 reviewed, 1,865 in-progress and 4,751
+inventory-only. No Firebase source changed, so no infrastructure deployment
+applies.
+
+## Restart 1078 addendum — Registration email-domain boundary
+
+Restart 1078 restarted from the authentication intake boundary and traced
+email text through syntax checks, canonical domain extraction, reserved-domain
+policy, the 71,743-entry disposable-domain artifact, registration consumers
+and the Auth/Onboarding aggregate. Two P2 validation defects and one P3
+maintenance-integrity defect were confirmed and closed. The repository-wide
+validation replay then exposed and closed one separate P2 compile defect in
+the concurrently changed Digital Screen status header. Because this restart
+found defects, `consecutiveCleanFullPasses` remains zero.
+
+### AUDIT-DISPOSABLE-EMAIL-SUBDOMAIN-BYPASS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/validation/disposableEmailDomains.ts`; registration email →
+  disposable-domain policy → account admission.
+- **Observed/root cause/impact:** disposable detection performed one exact Set
+  lookup. An address on a subdomain such as `user@sub.mailinator.com` bypassed
+  the parent disposable-service entry. This weakened registration abuse
+  controls but did not establish tenant access or persisted-data disclosure.
+- **Fix/compatibility:** email extraction now requires exactly one `@` with
+  nonempty local and domain parts. Detection checks the canonical domain and
+  each bounded parent suffix, so disposable service subdomains are rejected
+  while unrelated sibling domains remain unaffected. Imported JSON values are
+  admitted only after scalar, length, dot and canonical-character validation;
+  the established fallback Set remains available if the validated artifact is
+  empty.
+- **Regression:** `test-email-domain-validation.ts` pins exact and subdomain
+  disposable detection and validates all 71,743 committed artifact entries
+  for uniqueness, lowercase normalization and bounded canonical structure.
+
+### AUDIT-EMAIL-DOMAIN-SUBSTRING-SYNTAX-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/validation/emailDomainValidator.ts`; registration email →
+  syntax/reserved-domain validation → account admission and owner error.
+- **Observed/root cause/impact:** reserved tokens were checked with
+  `domain.includes(...)`, so legitimate permanent domains containing `test`
+  or `local` (for example `contest.com` or `locality.org`) were rejected.
+  Conversely, general validation did not enforce DNS label length, leading or
+  trailing hyphens, total-domain length, local-part length or a nonnumeric
+  top-level label.
+- **Fix/compatibility:** reserved values now match only the exact domain or a
+  subdomain. Domain admission enforces 63-character labels, 253-character
+  total length, canonical label edges, a top-level label containing a letter,
+  a 64-character local part and a 254-character total email. Existing
+  lowercase normalization, disposable blocking and owner-facing result shape
+  are unchanged.
+- **Regression:** the focused suite covers legitimate token-containing
+  domains, reserved exact/subdomain values, invalid labels, numeric TLDs,
+  local/domain/email bounds, multiple separators and a valid punycode label.
+
+### AUDIT-DIGITAL-SCREEN-ICON-EXPORT-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `DigitalScreenSettings/index.tsx`; current screen heartbeat → owner Settings
+  health summary.
+- **Observed/root cause/impact:** concurrent health-state UI work imported
+  `LuCircleAlert`, which the repository's pinned `react-icons/lu` package does
+  not export. Exact TypeScript therefore failed and the affected application
+  source could not build.
+- **Fix/regression:** the stale-state branch now uses the package's verified
+  `LuAlertCircle` export; no screen state, persistence, tenant, cache or
+  customer behavior changed. Exact root TypeScript and focused ESLint pass.
+
+### AUDIT-DISPOSABLE-DOMAIN-UPDATE-ATOMICITY-001
+
+- **Severity/status/file/flow:** P3 / Closed locally /
+  `scripts/update-disposable-email-domains.ts`, the disposable-domain source
+  comment and active security guide; upstream domain artifact → committed
+  registration policy data.
+- **Observed/root cause/impact:** the only documented regeneration path used
+  `curl -s ... -o` directly against the authoritative file. An HTTP failure,
+  truncated body, invalid JSON, duplicate/unsorted list or structurally invalid
+  upstream entry could replace or truncate registration policy data before
+  validation. This was a maintenance-time integrity risk rather than a
+  currently malformed artifact.
+- **Fix/regression:** the repository command downloads with an HTTP status,
+  timeout and five-megabyte bound; validates JSON, minimum population, exact
+  scalar normalization, domain structure, strict ordering and uniqueness; then
+  writes a unique temporary file and atomically renames it. Failure removes
+  the temporary file and preserves the current artifact. The focused test
+  exercises the validator against the entire committed list plus undersized,
+  duplicate and noncanonical variants. The command was not run against the
+  network during this audit because no source-list refresh was requested.
+
+Validation passed `npm run test:email-domain-validation`, the complete `npm
+run verify:auth-onboarding-flow` aggregate and all of its set-claims,
+post-commit and subscription children, exact `npx tsc --noEmit --incremental
+false`, focused ESLint, documentation-command parity, audit-tool integrity and
+`git diff --check`. The first exact TypeScript run correctly failed on the
+independently changed invalid Digital Screen icon export; the compatible
+export correction was applied and the exact command then passed. The
+regenerated current-worktree snapshot contains 8,390 in-scope files and 310
+explicit exclusions: 1,776 reviewed, 1,862 in-progress and 4,752
+inventory-only. No Firebase rule, index, Storage rule or Function source
+changed, so no infrastructure deployment applies.
+
+## Restart 1077 addendum — Menu Card template reverse trace
+
+Restart 1077 reverse-traced all five Menu Card Export template definitions
+through the full/internal registries, exposed preset selector, automatic design
+selection, print pagination/rendering, artifact metadata, print-shop packet and
+owner desktop/mobile consumers. No new confirmed defect was found.
+
+The three exposed templates (`classic`, `compact`, `premium`) support every
+currently exposed owner preset and their configured paper/orientation choices.
+The internal `drinks` and `takeaway` templates retain narrower explicit
+compatibility and are not exposed by the owner selector. Unknown style IDs
+continue to resolve to the established `classic` template. Template IDs,
+families, density and column decisions agree with the already reviewed
+registry/type contracts and downstream layout branches. This is a clean
+targeted reverse slice, not a complete repository pass, so
+`consecutiveCleanFullPasses` remains zero.
+
+## Restart 1076 addendum — Stable client provider contracts
+
+Restart 1076 reviewed the compact client-only, no-SSR, safe-client, website
+session, Ant Design theme/style and login provider slice, including every
+current caller. One P2 and two P3 defects were closed.
+
+### AUDIT-LOGIN-PROVIDER-POST-MOUNT-REMOUNT-001
+
+- **Severity/status/flow:** P2 / Closed locally / login route children →
+  `LoginProviders` → Ant Design theme/toast/loader layer.
+- **Observed/root cause/impact:** the client provider rendered children inside
+  a Fragment for SSR/hydration, then inserted `AntdThemeProvider` after an
+  effect. Changing the parent element type remounted the sign-in form after the
+  first browser paint, creating a concrete window where typed credentials,
+  focus or transient validation state could be lost.
+- **Fix/regression:** the provider now renders the same children-only Ant
+  Design wrapper from the first render; the unnecessary effect/state gate is
+  gone. The Auth/Onboarding source gate pins the stable wrapper and absence of
+  mount-state logic, and its set-claims/claim/subscription children pass with
+  exact TypeScript, focused ESLint and diff hygiene.
+
+### AUDIT-ANTD-PROVIDER-IGNORED-PROP-001
+
+- **Severity/status:** P3 / Closed locally.
+- **Observed/fix:** `AntdThemeProvider` accepted `any` props, allowing
+  `LoginProviders` to pass `ensureReduxContext={true}` even though no such
+  behavior existed. The adjacent comment falsely claimed the provider added
+  Redux. The shared provider now accepts only `PropsWithChildren`; the fake
+  prop and claim are removed, while the root client-provider tree remains the
+  actual Redux authority. TypeScript prevents recurrence.
+
+### AUDIT-ORPHAN-APPEAR-ANIMATION-PROVIDER-001
+
+- **Severity/status:** P3 / Closed locally.
+- **Observed/fix:** repository-wide search found no consumer of
+  `src/providers/appearAnimationProvider.tsx`. Its exported component had an
+  implicit-any child, created an intersection observer, ignored `inView` and
+  always ran the animation immediately, contradicting its only stated
+  responsibility. The orphan broken source was removed; no dependency or
+  active UI changed.
+
+The remaining compact providers were completely reviewed with no new defect:
+their current behavior is a deliberate mount gate, sign-in/password-recovery
+fallback gate, website session boundary, or generated Ant Design style
+insertion. This restart found defects, so `consecutiveCleanFullPasses` remains
+zero.
+
+## Restart 1075 addendum — Project context transition authority
+
+Restart 1075 moved to the previously inventory-only owner Project context and
+traced both desktop and mobile producers through project editors, image upload,
+multi-outlet update awareness, GrowthOS and Today consumers. One P2 state-flow
+defect was confirmed and closed.
+
+### AUDIT-PROJECTS-CONTEXT-PROP-LAG-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/providers/projectsDataProvider.tsx`; current tenant/store project and
+  batch-image state → desktop/mobile owner project descendants.
+- **Observed/root cause:** the provider initialized local state from
+  `contextData` and copied later props only in an effect. Every project or
+  store transition therefore rendered descendants once with the previous
+  active project, current view and batch job before the effect scheduled a
+  second render. The context contract also declared all three setters as
+  `any` and declared the actually nullable batch job as non-null.
+- **Tenant/data/public impact:** persistence operations still pass through
+  downstream scope/authority checks, so no confirmed cross-tenant write was
+  observed. The stale render could nevertheless dispatch an owner action or
+  display job/project truth against the previous selection during a transition.
+  It creates no cache or public-output write by itself.
+- **Fix:** the provider now projects the current prop object directly in the
+  same render. Setters use exact project and React dispatch contracts,
+  `activeBatchImageJob` explicitly includes `null`, children use `ReactNode`,
+  and all broad `any` values were removed.
+- **Regression/validation:** the Menu Project Editor source gate pins the exact
+  setter/null contract, direct provider value and absence of the lagging state
+  mirror. Its full project mutation/upload/time-slot child matrix, exact
+  TypeScript, focused ESLint and diff hygiene pass. No Firebase infrastructure
+  changed. Because this restart found a defect, `consecutiveCleanFullPasses`
+  remains zero.
+
+## Restart 1074 addendum — Support-ticket diagnostic buffer convergence
+
+Restart 1074 reverse-traced the remaining inventory-only browser diagnostic
+buffer from authenticated session bootstrap through console/window/rejection
+capture, bounded retained records, support-ticket persistence and
+post-persistence/account-cleanup deletion. It repeated the exact unsafe
+unknown-object serializer already confirmed under
+`AUDIT-MONITORING-UNKNOWN-INSPECTION-001`, so that finding's affected producer
+set was widened rather than creating a duplicate finding ID.
+
+`localLogsTracker.ts` now uses the same contained own-data projector as the
+client console buffer, admits exact scalar values, avoids `toJSON` and broad
+unknown conversion, contains Error/Proxy inspection, removes broad `any`
+argument arrays and preserves the existing five-record/length/redaction
+contract. The shared behavior test installs the actual ticket logger and proves
+the hostile getter/`toJSON` object is captured without executing either hook.
+Global observability, exact TypeScript, focused ESLint and diff hygiene pass.
+This adjacency repair is not a complete repository pass, so
+`consecutiveCleanFullPasses` remains zero.
+
+## Restart 1073 addendum — Monitoring inspection and alternate-envelope privacy
+
+Restart 1073 restarted from the smallest remaining runtime inventory and
+traced browser console capture, the central secure logger, shared Sentry event
+sanitization, client/server/Edge initialization, tracing transactions and
+error-sampled Replay delivery. Two defects were confirmed and closed locally,
+so `consecutiveCleanFullPasses` remains zero.
+
+### AUDIT-MONITORING-UNKNOWN-INSPECTION-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/security/secureLogger.ts`,
+  `src/lib/monitoring/sentryShared.ts`,
+  `src/lib/debug/clientConsoleBuffer.ts`,
+  `src/lib/localLogs/localLogsTracker.ts`; arbitrary runtime failure/context →
+  bounded console, support-ticket or Sentry diagnostic.
+- **Observed/root cause:** the central logger and Sentry sanitizer used direct
+  enumeration, array traversal, broad string conversion and JSON
+  serialization on unknown values. Getters, Proxies, `toJSON`, `valueOf` or
+  `toString` could execute or throw while the application was already handling
+  a failure. The console wrapper could therefore replace a normal console call
+  with an exception; monitoring could lose the original failure or inspect
+  unintended values.
+- **Security/data/cache/public impact:** attacker-controlled or malformed
+  diagnostic context could cause an availability/observability failure and
+  execute conversion hooks. No tenant datastore, cache or public-truth write
+  occurs in this flow, and no confirmed cross-tenant read was observed.
+- **Fix/backward compatibility:** sanitizers now inspect capped own enumerable
+  data descriptors, skip accessors/symbols, contain Proxy failures, traverse
+  arrays by bounded own numeric descriptors, never stringify non-scalar
+  unknown values, and make sensitive-data inspection fail closed. Error
+  presence/length metadata and valid scalar/log context remain compatible.
+- **Regression/validation:** the behavior suite proves getters and `toJSON`
+  remain uncalled, broken own-key/prototype Proxies cannot throw, sensitive
+  inspection fails closed, and the installed browser console buffer preserves
+  a safe bounded snapshot. Global observability, the full Auth/Security Failure
+  Matrix and its children, exact TypeScript, focused ESLint and diff hygiene
+  pass.
+
+### AUDIT-SENTRY-ALTERNATE-ENVELOPE-PRIVACY-001
+
+- **Severity/status/file/flow:** P1 / Closed locally /
+  `instrumentation-client.ts`, `sentry.server.config.ts`,
+  `sentry.edge.config.ts`; browser/server telemetry → Sentry transaction and
+  Replay envelopes.
+- **Observed/root cause/privacy impact:** `beforeSend` sanitized ordinary error
+  events, but tracing transactions use `beforeSendTransaction`, and Replay
+  custom performance/network/navigation frames use a separate recording
+  envelope. Consequently sampled span descriptions and Replay URLs could
+  bypass the established path/identifier minimizer even while Replay DOM text,
+  inputs and media were masked.
+- **Fix:** all three runtimes now sanitize tracing transactions explicitly.
+  Client Replay explicitly disables network body capture, keeps its network
+  detail allowlist empty, and drops every SDK custom recording frame; masked
+  DOM recording remains available for sampled errors. This prevents custom
+  navigation/resource/request URLs from leaving through Replay without
+  disabling the useful masked visual failure trace.
+- **Regression/validation:** both observability source gates now pin the
+  separate transaction hooks and Replay deny-by-default options. The same full
+  validation matrix listed above passes. No Firebase source or infrastructure
+  changed, and no deploy applies.
+
+## Restart 1072 addendum — SignalDesk Firebase clean product-boundary review
+
+Restart 1072 continued product-boundary-first from the manifest and completely
+re-read SignalDesk's runtime configuration, Admin initializer, browser
+initializer and isolated bootstrap regression matrix. The reverse trace covered
+deployment-stage target selection, private/public mode/project/database/bucket
+correlation, emulator identity, environment and service-account-file
+credentials, named app initialization/reuse, and the Firestore, Storage, Auth
+and Functions consumers.
+
+No new confirmed defect was found. SignalDesk already rejects shared mode in
+every environment, admits only the stage-governed
+`menulist-signaldesk-qa`/`menulist-signaldesk` project outside its dedicated
+emulator namespace, correlates both supported Storage bucket forms to that
+project, rejects non-default Firestore databases, and verifies both environment
+and file credential project identity before creating its named Admin app.
+Existing same-name apps require an in-process fingerprint and exact option
+match, so unrelated default or stale named Firebase apps cannot be reused.
+
+The dedicated boundary test passed and covers missing/conflicting modes,
+production/staging mismatch, foreign projects and buckets, malformed emulator
+identity, stale/unmarked named apps, client-only versus Admin readiness, and
+matching/mismatched service-account files. This is a clean targeted slice, not
+a complete repository pass: `consecutiveCleanFullPasses` remains zero while
+thousands of inventory-only files remain.
+
+## Restart 1071 addendum — CampaignCue Firebase product isolation
+
+Restart 1071 switched product-boundary-first to the previously inventory-only
+CampaignCue client/config selector, then traced its mode/project outputs through
+the complete CampaignCue Admin initializer, protected server consumers,
+deployment matrix and runtime verifier. Two P0 cross-product persistence paths
+were confirmed and closed locally.
+
+### AUDIT-CC-PRODUCTION-SHARED-FIREBASE-001
+
+- **Severity/status/flow:** P0 / Closed locally /
+  `FLOW-CC-FIREBASE-RUNTIME-SELECTION`; deployment environment → CampaignCue
+  Firebase mode → Admin app → every CampaignCue workspace/campaign/source/asset
+  read and write.
+- **Observed/root cause/security/tenant impact:** `shared`, `same` and `default`
+  compatibility aliases were documented for local/emulator use, but
+  `NODE_ENV=production` honored them. A stale or mistaken preview/production
+  environment value could therefore route CampaignCue's separate-product data
+  through the default MenuList Admin app and datastore.
+- **Fix:** production runtime now unconditionally resolves `separate` before
+  considering overrides or matching default-project IDs. Explicit shared mode
+  remains available only outside production for local/emulator compatibility.
+  Missing dedicated credentials fail through the existing owner-safe
+  `CAMPAIGNCUE_FIREBASE_UNAVAILABLE` setup boundary; there is no production
+  fallback to MenuList.
+- **Regression:** the pure test proves production rejects explicit shared mode
+  and same-default-project inference, while development retains both intended
+  compatibility cases. The full CampaignCue aggregate, including real
+  Firestore and Storage rules emulators, passes.
+
+### AUDIT-CC-CREDENTIAL-PROJECT-MISMATCH-001
+
+- **Severity/status/flow:** P0 / Closed locally / the same runtime-selection
+  flow plus CampaignCue env/file/ADC credential initialization.
+- **Observed/root cause/data impact:** explicit public/server project values and
+  service-account `project_id` were accepted without comparing them to the
+  stage-governed `campaigncue-qa`/`campaigncue` target. A CampaignCue credential
+  for MenuList or another accessible project could initialize the named Admin
+  app and perform server-authorized cross-product reads/writes despite separate
+  rules/config files.
+- **Fix/backward compatibility:** the runtime project is always the deployment
+  matrix target. Optional environment project IDs must match it exactly; a
+  mismatch makes client configuration unavailable. CampaignCue env and
+  service-account-file credentials must contain that exact project before
+  `admin.credential.cert` or app initialization. Whitespace, missing file
+  project, cross-product IDs and coercible values fail closed with bounded
+  diagnostics. Correct staging/production credentials are unchanged.
+- **Validation/deployment:** the focused behavior test, 1,821-check CampaignCue
+  source verifier, complete CampaignCue aggregate with Firestore/Storage
+  emulators, Auth/Security Failure Matrix and all children, focused ESLint,
+  exact TypeScript and diff hygiene pass. Configuration/Admin app logic changed,
+  but no Firebase rules/indexes/Storage rules or Cloud Function source changed;
+  no Firebase infrastructure deploy applies. The normal Next.js release remains
+  external and no Vercel deployment was run.
+
+Both findings reset `consecutiveCleanFullPasses` to zero. Documentation now
+pins production dedicated mode and exact service-account/public/server project
+identity. The new regression file brings the regenerated scope to 8,383 files
+plus 310 exclusions: 1,770 reviewed, 1,838 in-progress and 4,775
+inventory-only. The reverse catalog remains 282 collection families.
+
+## Restart 1070 addendum — Image-provider logging privacy
+
+Restart 1070 switched to observability/privacy-first review of the previously
+inventory-only image-operation logging helper and all three active image
+generation/editing consumers. One P2 active logging defect and one P3 dormant
+logging contract were confirmed and closed locally.
+
+### AUDIT-IMAGE-PROVIDER-USAGE-METADATA-LEAK-001
+
+- **Severity/status/flow:** P2 / Closed locally /
+  `FLOW-AI-IMAGE-PROVIDER-LOGGING`; authenticated image generation/editing →
+  Gemini response → local operational/AI accounting summaries.
+- **Observed/root cause/privacy/reliability impact:** the response helper
+  returned the provider's complete unknown `usageMetadata` object. Current
+  token-count fields were expected, but any present or future provider detail,
+  nested arrays or private metadata was persisted to logs without an allowlist.
+  It also asserted the external response shape and traversed every candidate
+  and part, so hostile accessors or unexpectedly large responses could break or
+  amplify failure logging.
+- **Fix:** unknown properties are read through contained `Reflect` access;
+  candidate/part inspection is capped at 100 by 100; only counts and five
+  non-negative safe-integer usage totals are returned:
+  `cachedContentTokenCount`, `candidatesTokenCount`, `promptTokenCount`,
+  `thoughtsTokenCount` and `totalTokenCount`. Image bytes, text, prompt-token
+  detail arrays and all other provider fields are excluded. Active callers keep
+  the same summary envelope.
+- **Regression:** the pure suite proves valid counts, private/detail exclusion,
+  malformed/proxy containment, no conversion hooks and the inspection cap.
+  The AI Accounting source aggregate now requires the allowlist and forbids the
+  raw metadata projection.
+
+### AUDIT-DORMANT-RAW-IMAGE-CONFIG-LOGGER-001
+
+- **Severity/status/file:** P3 / Closed locally /
+  `src/lib/ai/imageOperationLogging.ts`.
+- **Observed/root cause/impact:** two exported helpers had no runtime consumer
+  but advertised a “sanitized” generation-config logger that spread every
+  non-image field, including raw prompts and future arbitrary owner/provider
+  values, while retaining uploaded image names and IDs. Existing verifiers
+  explicitly forbid using that helper in accounting and route logs. The
+  dormant unsafe API and its image projector were removed, preventing later
+  accidental reactivation.
+
+Validation passed the new behavioral suite, the full 3,000-plus-assertion AI
+Accounting source verifier, focused ESLint, exact root TypeScript and diff
+hygiene. The AI Image Generation spec now records the exact logging allowlist
+and inspection cap. No Firebase/Storage rule, index or Function source changed,
+so no infrastructure deployment applies. New findings keep
+`consecutiveCleanFullPasses` at zero. The new regression file brings the
+regenerated scope to 8,382 files plus 310 exclusions: 1,767 reviewed, 1,838
+in-progress and 4,777 inventory-only. The reverse catalog remains 282
+collection families.
+
+## Restart 1069 addendum — Platform alert recipient and diagnostic boundaries
+
+Restart 1069 switched type-first to the previously inventory-only owner email
+and WhatsApp channels, then traced both app and Functions platform-alert
+producers into their provider calls. Both channel adapters were completely
+reviewed without a new defect. The upstream platform delivery mirrors exposed
+one P2 recipient-boundary defect and one P3 diagnostic-boundary defect, both
+closed locally.
+
+### AUDIT-PLATFORM-ALERT-EMAIL-RECIPIENT-LIST-001
+
+- **Severity/status/flow:** P2 / Closed locally /
+  `FLOW-OPS-PLATFORM-ALERT-DELIVERY`; internal alert classification → configured
+  platform recipient → app or Functions SMTP provider → founder operations
+  mailbox.
+- **Files/producer/consumer:** `src/lib/ops/platformNotificationDelivery.ts`
+  and `functions/src/monitoring/platformNotificationDelivery.ts` consume
+  `PLATFORM_ALERT_EMAIL_TO` with `INTERNAL_NOTIFICATION_EMAIL` fallback and
+  feed the existing generic SMTP adapters. The new byte-identical app/Functions
+  contract lives in `src/data/shared/platformNotificationRecipient.ts` and
+  `functions/src/sharedData/platformNotificationRecipient.ts`.
+- **Observed/root cause/security impact:** the declared configuration contract
+  describes one platform mailbox, but the raw environment string was passed to
+  Nodemailer. Comma/semicolon recipient lists and provider display-name syntax
+  were therefore not rejected at the platform boundary. A configuration error
+  could fan tenant/store operational alerts to additional mailboxes, creating a
+  confidentiality and alert-routing failure.
+- **Fix/backward compatibility:** the first configured environment value is
+  admitted only when it is one primitive, control-free, delimiter-free,
+  syntactically valid mailbox of at most 254 characters. Invalid override
+  values fail closed rather than silently falling through to another mailbox.
+  Valid existing single addresses are unchanged. The generic owner-notification
+  email channel remains reusable for already validated owner recipients.
+- **Tests/docs:** the pure parity suite proves valid trimming and rejects
+  lists, semicolon lists, display names, header injection, malformed,
+  oversized and non-string input without executing conversion hooks. It also
+  proves both runtime contracts are byte-identical. Ops delivery and deployment
+  docs now state the one-mailbox rule.
+
+### AUDIT-PLATFORM-DELIVERY-DIAGNOSTIC-COERCION-001
+
+- **Severity/status/file:** P3 / Closed locally /
+  `functions/src/monitoring/platformNotificationDelivery.ts`; alert/provider
+  result → bounded failure diagnostics.
+- **Observed/root cause/impact:** the helper accepted `unknown` but called
+  `String(value)`. A malformed runtime value with a conversion hook could throw
+  while the code was already reporting a provider failure, hiding the original
+  delivery outcome. The helper now admits strings, finite numbers and booleans
+  only and otherwise records an absent value.
+
+Validation passed the pure recipient test, the Owner Notifications aggregate,
+the MenuList API Tenant Safety aggregate and its three runtime children,
+Functions TypeScript build, focused ESLint, exact root TypeScript and diff
+hygiene. This restart changes MenuList Functions source. The affected scoped QA
+deployment attempt for `verifyMenuPublish`, `gcpBudgetAlertWebhook`,
+`computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`,
+`triggerStoreNightlyScheduler`, `menulistMaintenanceScheduler`,
+`messagingOnboarding` and `msgExtractionWatcher` exited 1 before upload with
+`Failed to authenticate, have you run firebase login?`. Local source/runtime
+closure is complete, but the corrected Functions delivery boundary is not
+deployed or remotely verified from this workspace. New findings keep
+`consecutiveCleanFullPasses` at zero. The three new first-party files bring the
+regenerated scope to 8,381 files plus 310 exclusions: 1,765 reviewed, 1,837
+in-progress and 4,779 inventory-only. The reverse catalog remains 282
+collection families.
+
+## Restart 1068 addendum — Founder growth attribution authority
+
+Restart 1068 began datastore-first from the previously inventory-only compact
+Founder Growth writer and acquisition contract. It reverse-traced
+`publicMenuDrafts.growthAcquisition` into the idempotency marker,
+`platformSummary/founderMonitorGrowth`, the protected Founder Monitor response
+and the public create/claim producers. Two P2 data-contract defects were
+confirmed and closed locally.
+
+### AUDIT-FOUNDER-GROWTH-PERSISTED-ATTRIBUTION-001
+
+- **Severity/status/flow:** P2 / Closed locally /
+  `FLOW-FOUNDER-GROWTH-ATTRIBUTION`; public create-menu attribution → persisted
+  draft → draft/claim lifecycle call → source/stage Founder Growth counters →
+  protected Founder Monitor.
+- **Producer/consumer/structure:** the public create and claim routes produce
+  `publicMenuDrafts.growthAcquisition`; `recordFounderGrowthEvent` writes the
+  draft marker and `platformSummary/founderMonitorGrowth`; the platform-only
+  Founder Monitor consumes the bounded counters. No tenant/store/customer
+  identity is stored in the aggregate.
+- **Observed/root cause/data impact:** the transaction verified only that the
+  draft existed and then selected `bySource` from caller-supplied attribution.
+  A stale or mismatched internal caller could therefore mark a real draft as
+  recorded and permanently increment the wrong source bucket, preventing a
+  corrected retry because the idempotency marker was already set.
+- **Fix/backward compatibility:** caller attribution and the persisted draft
+  map are independently normalized and must match in source, medium and
+  campaign before any marker or counter changes. Missing, malformed or
+  mismatched persisted truth fails closed. Current drafts already persist the
+  map before this helper runs; no document migration, collection, rule, index,
+  cache or public DTO change is required.
+- **Security/error/cost/idempotency:** the operation remains Admin-only and
+  best-effort so telemetry cannot block onboarding. The existing one draft read,
+  one draft update and one merged summary write remain in the same transaction;
+  no extra read/write or retained event document was added. Bounded diagnostics
+  still exclude attribution and owner identifiers.
+- **Regression:** the real Firestore emulator seeds a partner-attributed draft,
+  supplies a conflicting public-surface attribution and proves both
+  `recorded:false` and absence of a marker. Existing six-way concurrency tests
+  still prove exactly one marker/counter effect for matching draft and claim
+  events.
+
+### AUDIT-GROWTH-ATTRIBUTION-UNKNOWN-COERCION-001
+
+- **Severity/status/file:** P2 / Closed locally /
+  `src/lib/growth/acquisitionAttribution.ts`;
+  query/form/persisted attribution → fixed acquisition combination.
+- **Observed/root cause/impact:** `String(unknown)` normalized the three fields.
+  Malformed boundary or legacy values could execute conversion hooks or be
+  admitted through an object string representation before the allowlist.
+  Depending on the caller, a thrown hook could turn optional telemetry or a
+  public create/claim request into a generic failure.
+- **Fix/regression:** primary and legacy `utm_*` fields now admit primitive
+  strings only, with primary-string precedence and the same exact combination
+  allowlist. The emulator invokes normalization with a source object whose
+  `toString` would set a sentinel; the result is null and the hook is never
+  executed. Valid URL/search/path behavior remains unchanged.
+
+Validation passed `npm run verify:growth-intelligence-boundary`, the full real
+Firestore `npm run test:growth-intelligence:emulator`, focused ESLint, exact
+root TypeScript and `git diff --check`. The Firebase guide now records exact
+persisted attribution authority and scalar-only admission. This restart changes
+no Firestore/Storage rules, indexes or Cloud Function source, so no new
+infrastructure deployment applies. New findings keep
+`consecutiveCleanFullPasses` at zero. Coverage regeneration found 8,378
+in-scope files and 310 exclusions: 1,760 reviewed, 1,837 in-progress and 4,781
+inventory-only. The reverse catalog remains 282 Firestore collection families;
+the broad `platformSummary` family and `publicMenuDrafts` remain conservatively
+in-progress until every current shared producer/rule/index fingerprint is
+completely reviewed.
+
+## Restart 1067 addendum — Public analytics delivery idempotency
+
+Restart 1067 switched to failure/concurrency-first review of the browser
+analytics queue, public tracking route and Admin daily-analytics writer. It
+followed a queued snapshot through persistence, cross-tab recovery, HTTP retry,
+route validation, transactional increment, client rules and retention. One P1
+owner/public-truth defect was confirmed and closed locally.
+
+### AUDIT-PUBLIC-ANALYTICS-DELIVERY-IDEMPOTENCY-001
+
+- **Severity/status/flow:** P1 / Closed locally / `FLOW-ANALYTICS-PUBLIC-TRACK`;
+  browser menu event → tenant/store/project/date-scoped local queue → public
+  analytics route → Admin daily aggregate → owner analytics and operational
+  consumers.
+- **Files/functions:** `src/lib/analytics/queueBoundary.ts`
+  (`normalizeAnalyticsQueueEntry`), `src/database/analytics/index.ts`
+  (`queueEvents`, `flushQueue`),
+  `src/app/api/public/analytics/track/route.ts` (`analyticsPayloadSchema`,
+  `POST`) and `src/lib/analytics/serverWrite.ts`
+  (`writeValidatedDailyAnalytics`).
+- **Affected structure/producers/consumers:** persisted browser queue snapshots
+  and daily `analytics` documents produced by public-menu clients; consumed by
+  analytics aggregation, owner dashboards, settlement and decision-support
+  paths. A new Admin-only `analyticsDeliveryReceipts` receipt structure is
+  keyed by an opaque hash of canonical scope plus a 32-character delivery ID.
+- **Trigger/observed behavior:** after Firestore committed a daily increment,
+  any lost HTTP acknowledgement, browser retry, page restoration or
+  cross-tab recovery resent the same snapshot. The prior Admin writer used an
+  atomic increment but had no delivery receipt, so every retry incremented the
+  same event counts again.
+- **Expected/root cause:** an exact queued delivery must have at-most-once
+  aggregate effect even though transport remains at-least-once. The queue had
+  retry metadata but no stable delivery identity, and the server had no
+  transactional replay guard.
+- **Security/tenant/data/public/cache impact:** the public route still derives
+  and validates tenant/store/project ownership independently; the delivery ID
+  is not accepted as scope. The defect did not expose another tenant, but it
+  could overstate menu views, searches, item views and downstream owner truth.
+  No cache stores the mutation response. Replays could distort settlement and
+  decision inputs until later correction.
+- **Fix/backward compatibility:** each new snapshot receives a random lowercase
+  alphanumeric 32-character ID; retries preserve it, successful acknowledgement
+  rotates it for events merged while a send is in flight, legacy stored
+  snapshots receive a deterministic compatible ID, and malformed present IDs
+  fail closed. The Admin transaction reads the exact receipt, returns
+  `duplicate` without touching the daily document on replay, or atomically
+  increments and creates the receipt. Receipts expire after 72 hours through a
+  native TTL field override. Firestore rules explicitly deny every client read
+  and write. Existing daily documents require no migration.
+- **Side effects/error/idempotency/observability:** the daily increment and
+  receipt creation share one Firestore transaction, so neither can commit
+  alone. Retryable HTTP failures retain the same snapshot identity; nonretryable
+  input remains rejected. Receipt payloads contain canonical IDs and expiry,
+  not request content or user identity. The existing bounded route/logger error
+  behavior remains unchanged.
+- **Regression/validation:** the browser suite proves identity persistence,
+  legacy normalization, malformed-ID rejection and post-ack rotation. The real
+  Admin Firestore emulator proves two distinct concurrent deliveries aggregate
+  and an exact delivery replay returns `duplicate` without a second increment.
+  The rules emulator proves public, assigned-store and platform clients cannot
+  read or write receipts. `npm run verify:analytics-write-boundary`,
+  `npm run verify:menulist-api-tenant-safety`, `npm run
+  verify:doc-npm-scripts`, exact root TypeScript and `git diff --check` pass.
+- **Deployment evidence:** this restart changes `firestore.rules` and
+  `firestore.indexes.json`. The smallest required QA deployment,
+  `firebase deploy --only firestore:rules,firestore:indexes --project
+  menulist-qa --config firebase.json`, exited 1 with `Failed to authenticate,
+  have you run firebase login?`. Source, emulator and index-JSON proof is
+  complete, but rules and TTL are not remotely deployed or verified from this
+  workspace.
+- **Closure:** locally closed in re-audit pass 1067. The new finding resets
+  `consecutiveCleanFullPasses` to zero.
+
+Coverage regeneration found 8,378 in-scope files and 310 explicit exclusions:
+1,757 are reviewed, 1,836 are in-progress and 4,785 remain inventory-only.
+The reverse catalog now resolves 282 Firestore collection families, including
+the new receipt family. The shared 4,000-line ruleset, index registry, package
+manifest, aggregate verifier and long Firebase documentation retain
+conservative partial-review status; focused changes do not constitute complete
+current-file review.
+
+## Restart 1066 addendum — Analytics business-day settlement truth
+
+Restart 1066 switched to type-first review of the app/Functions business-day
+mirrors and followed configured close time through analytics keys, scheduler
+cycles, owner dashboard fallback and nightly settlement. One P1 owner-truth
+defect and one P2 input-contract defect were confirmed and closed.
+
+### AUDIT-ANALYTICS-WRAPPED-SETTLEMENT-DATE-001
+
+- **Severity/status/files/flow:** P1 / Closed locally /
+  `src/lib/analytics/businessDay.ts` and
+  `functions/src/utils/businessDay.ts`; store close time + timezone →
+  settlement cutoff → latest settled business date → dashboard reads,
+  correction/aggregation and owner action baselines.
+- **Observed/root cause/public/data impact:** when close time plus the governed
+  150-minute buffer crossed midnight (for example, 23:00 → 01:30), the cycle
+  helper already represented the correct settlement date, but the latest-date
+  helper subtracted two dates instead of one. Before cutoff it could report
+  three calendar dates back; after cutoff it remained one date behind. Late
+  closing businesses therefore read stale settled truth and could attach owner
+  actions to the wrong baseline.
+- **Fix/regression:** latest settled truth is always the business date
+  immediately preceding the settlement cycle key; midnight wrap is already
+  encoded by the cycle calculation. A shared app/Functions regression pins
+  23:00 close at 01:29/01:30 and the normal 03:00 close at 05:29/05:30.
+
+### AUDIT-BUSINESS-DAY-TIME-COERCION-001
+
+- **Severity/status/files/flow:** P2 / Closed locally / the same app/Functions
+  mirrors; persisted/onboarding close-time/category input → normalized
+  analytics policy.
+- **Observed/root cause/data impact:** `String(value)` broadly coerced unknown
+  time/business-type values, and an invalid caller-provided fallback could be
+  emitted unchanged into persistence/scheduling. The boundary now admits
+  primitive strings only, never runs conversion hooks, validates both primary
+  and fallback values and returns the governed 03:00 default if both are
+  invalid.
+
+Validation passed the new app/Functions parity test, Functions TypeScript
+build, Analytics Write aggregate and both of its real Firestore emulators, the
+complete Analytics Settlement emulator, focused ESLint, exact root TypeScript,
+dependency freeze, documentation script references and diff hygiene.
+
+This restart changes MenuList Functions logic. `firebase login:list` reported
+no authorized accounts. The smallest affected QA deployment attempt—
+`firebase deploy --only
+functions:triggerCustomerAnalyticsManually,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:backfillStoresSummary
+--project menulist-qa --config firebase.json`—exited 1 with `Failed to
+authenticate, have you run firebase login?`. Local source/emulator closure is
+complete, but the corrected scheduler/manual functions are not remotely
+verified or deployed from this workspace. New findings keep
+`consecutiveCleanFullPasses` at zero. The regenerated snapshot is 8,378
+in-scope files and 310 exclusions: 1,754 reviewed, 1,839 in-progress and 4,785
+inventory-only. The new pure regression and completed app helper were offset
+by two independently changed Next.js entrypoints reopening under exact
+fingerprint enforcement; no stale reviewed status was retained.
+
+## Restart 1065 addendum — Transaction replay and external DNS projection
+
+Restart 1065 began datastore-first from unreviewed compact writers and response
+projectors. It traced owner action acknowledgements through the Analytics
+transaction and public/provider DNS guidance through the Vercel response
+normalizer. Two P2 source defects and one P3 verifier-parity defect were
+confirmed and closed.
+
+### AUDIT-OWNER-ACTION-RECEIPT-REPLAY-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/analytics/ownerActionReceiptTransaction.ts`; authenticated owner
+  action → deterministic receipt ID → Analytics dashboard transaction →
+  desktop/mobile acknowledgement and later outcome tracking.
+- **Observed/root cause/data impact:** the deterministic receipt ID prevented a
+  second map slot but did not provide idempotent replay. A duplicate request
+  rebuilt and rewrote `markedDoneAt`, actor, baseline and `modifiedOn`; after
+  the source action rolled out of the current plan, the same already-committed
+  request returned 409 rather than its receipt. This made acknowledgement-loss
+  retries produce a second write or a false failure.
+- **Fix/regression:** inside the transaction, an existing exact receipt now
+  replays before current-action validation and performs no write; an
+  identity-conflicting persisted receipt fails closed. The real Firestore
+  emulator removes the action after the initial commit, replays the same
+  request, verifies byte-equivalent receipt truth and proves `modifiedOn`
+  remains unchanged. Concurrent new receipts still serialize at the 20-row cap.
+
+### AUDIT-VERCEL-DNS-RANK-COERCION-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/domains/vercelDnsRecords.ts`; bounded Vercel provider JSON → ranked
+  DNS recommendations → desktop/mobile custom-domain setup instructions.
+- **Observed/root cause/public impact:** broad `any` plus `Number(rank)` treated
+  malformed empty-string/null-like ranks as zero and could execute an unknown
+  conversion hook. A malformed provider row could therefore outrank valid
+  guidance and display the wrong A record to an owner.
+- **Fix/regression:** provider objects are admitted from `unknown`; rank accepts
+  only a finite non-negative number or canonical non-negative integer string.
+  Invalid rows cannot outrank valid guidance or execute conversion hooks.
+  Apex/subdomain selection, verification records and deduplication remain
+  unchanged.
+
+### AUDIT-VERCEL-DNS-RANK-VERIFIER-PARITY-001
+
+- **Severity/status/file:** P3 / Closed locally /
+  `scripts/verification/verify-custom-domain-boundary.js`.
+- **Observed/fix:** the aggregate asserted the retired optional-chain tokens
+  and failed after the provider boundary became type-safe. Its focused block
+  now requires the admitted provider records and non-coercive rank comparison.
+  The unrelated large aggregate sections remain conservatively in-progress.
+
+The Answerlattice widget-config Admin transaction and guest-feedback public
+response/Google-review URL projector were completely re-read without a new
+defect. Validation passed the Owner Action Firestore emulator, Owner Dashboard
+Today boundary, MenuList API tenant-safety aggregate, Vercel provider runtime
+test, Custom Domain aggregate, Answerlattice widget-key/config Firestore
+emulator, Guest Feedback aggregate, focused ESLint, exact root TypeScript and
+diff hygiene. The regenerated manifest remains 8,377 in-scope files and 310
+exclusions: 1,754 reviewed, 1,837 in-progress and 4,786 inventory-only. No
+Firebase rule/index, Storage rule or Function source changed, so no
+infrastructure deployment applies. New findings keep
+`consecutiveCleanFullPasses` at zero.
+
+## Restart 1064 addendum — Shared request admission and dormant security contracts
+
+Restart 1064 traced declared and streamed request sizes through the shared
+bounded-body reader and its MenuList, Answerlattice, SignalDesk, CampaignCue,
+billing, screen and public route consumers. It also completed the compact App
+Check module and repository-wide consumer traces for two dormant security/rate
+contracts. One P2 and three P3 defects were confirmed and closed.
+
+### AUDIT-BOUNDED-REQUEST-CONTENT-LENGTH-GRAMMAR-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/security/boundedRequestBody.ts`; untrusted HTTP headers and body
+  stream → shared JSON/text/form-data admission → protected/public route
+  validation and side effects.
+- **Observed/root cause/impact:** `Number(content-length)` admitted exponent,
+  signed and fractional syntax even though HTTP content length is a decimal
+  digit sequence; it also admitted integers beyond JavaScript's exact range.
+  The actual stream remained byte-bounded, so this was not a size-limit bypass,
+  but declared-size preflight and its before-rate-limit ordering could behave
+  inconsistently for malformed requests. Invalid configured limits were also
+  not rejected explicitly.
+- **Fix/regression:** the boundary requires digit-only syntax and an exactly
+  representable non-negative safe integer, rejects malformed declarations with
+  400, retains 413 for valid oversized declarations and throws immediately for
+  invalid `maxBytes` configuration. The focused test pins exponent, sign,
+  fraction, duplicate-style, unsafe-integer, leading-zero, exact-limit and
+  oversized behavior.
+
+### AUDIT-DORMANT-RAW-SECURITY-CONTEXT-001
+
+- **Severity/status/file/flow:** P3 / Closed locally /
+  removed `src/lib/security/securityContext.ts`; session/request metadata →
+  security diagnostics.
+- **Observed/root cause/impact:** the orphaned exported helper assembled raw
+  email, user, tenant, store, forwarded-IP, user-agent, error and attempted
+  payload data, directly contradicting the active bounded-diagnostics contract.
+  Repository-wide import tracing found no runtime consumer, so removal closes
+  the latent PII-log path without changing active logging behavior.
+
+### AUDIT-DORMANT-GENERIC-RATE-TIERS-001
+
+- **Severity/status/file/flow:** P3 / Closed locally /
+  removed `src/lib/rateLimit/tiers.ts`; generic subscription label → request
+  limit, upgrade suggestion and display price.
+- **Observed/root cause/impact:** this unused alternate contract embedded
+  ungoverned generic plan prices and entitlement limits outside the
+  authoritative billing/rate-limit systems. No first-party runtime or verifier
+  imported it. Removing it prevents a future consumer from silently selecting
+  fabricated billing semantics.
+
+### AUDIT-APP-CHECK-DEBUG-WINDOW-ANY-001
+
+- **Severity/status/file/flow:** P3 / Closed locally /
+  `src/lib/firebase/appCheck.ts`; development App Check environment value →
+  Firebase SDK debug-token bootstrap.
+- **Observed/fix:** a broad `window as any` assertion erased the only supported
+  debug-token value contract. A narrow `Window` intersection now admits only
+  the Firebase SDK's boolean-or-string debug token while preserving the
+  development-only and explicit-environment gates.
+
+Validation passed `npm run test:request-body-composition-boundary`, `npm run
+verify:async-data-flow-boundaries`, `npm run
+verify:menulist-api-tenant-safety`, `npm run
+verify:billing-entitlement-boundary`, `npm run
+verify:digital-screens-boundary` including its real Firestore rules emulator,
+`npm run verify:system-strengthening` including the Todos rules emulator, `npm
+run verify:auth-security-failure-matrix`, `npm run
+verify:dependency-freeze`, focused ESLint, exact root TypeScript and diff
+hygiene. An initial `npm --silent run
+verify:system-strengthening-boundary` attempt used a nonexistent script key and
+exited 1; package inspection identified the maintained command `npm run
+verify:system-strengthening`, which then exited 0. Two later audit-artifact
+attempts likewise used nonexistent keys (`npm --silent run
+audit:data-flow:collections` and `npm --silent run
+verify:documentation-script-references`) and exited 1; the authoritative `npm
+run audit:data-flow:catalog` and `npm run verify:doc-npm-scripts` commands were
+then selected from `package.json` and passed. The regenerated manifest now has
+8,377 in-scope files and 310 exclusions: 1,748 reviewed, 1,838 in-progress and
+4,791 inventory-only. No Firebase rule/index, Storage rule or Function source
+changed, so no infrastructure deployment applies. Because new defects were
+found, `consecutiveCleanFullPasses` remains zero.
+
+## Restart 1063 addendum — Persisted localization and public render safety
+
+Restart 1063 traced store/project language data into public language routing
+and owner quality signals. Three P2 defects were confirmed and closed.
+
+### AUDIT-STORE-RENDER-LANGUAGE-COERCION-001
+
+- **File/flow:** `src/lib/localization/storeContent.ts`; persisted store policy
+  → owner/public render language.
+- **Observed/fix:** after safely normalizing the store policy, the helper
+  discarded that result and broadly coerced the raw `defaultLanguage` again.
+  A corrupt object could execute its conversion hook or abort rendering. The
+  helper now returns the already-authoritative normalized policy default.
+  Regression proves the hook never executes and English remains the safe
+  fallback.
+
+### AUDIT-PUBLIC-LANGUAGE-CODE-COERCION-001
+
+- **File/flow:** `src/lib/localization/publicRenderLanguage.ts`; URL/search
+  parameter → public menu/OBP locale, links and alternates.
+- **Observed/fix:** the public parameter boundary used `String(raw)` and direct
+  first-array access, permitting conversion hooks or a hostile array Proxy to
+  run before language admission. It now accepts primitive strings only and
+  contains array inspection. Both hostile forms return `null`; valid region
+  aliases still normalize to their base language.
+
+### AUDIT-PROJECT-PUBLIC-CONTENT-ACCESS-001
+
+- **File/flow:** `src/lib/localization/projectContent.ts`; persisted
+  project/store names, descriptions, special-menu labels/notes and languages →
+  translation-gap quality signals and owner repair actions.
+- **Observed/root cause/impact:** direct optional/indexed reads could execute
+  getters, inherited prototype values or Proxy traps while calculating missing
+  public translations, breaking owner quality surfaces on malformed legacy
+  data.
+- **Fix/regression:** project/store fields and localized language slots now use
+  a contained own data-property reader; accessors are never invoked and
+  inherited fields are ignored. Public-content readers and exact/base-language
+  draft checks share that boundary. Tests pin a throwing localized getter and a
+  throwing descriptor Proxy.
+
+All three are closed locally. Translation output, global/public localization,
+Menu Correctness/Quality, focused lint, exact TypeScript and diff hygiene pass.
+The plain render-language selection/capacity/filter helper was completely
+reviewed without a new defect. Audit tooling and documentation-script
+references pass. The regenerated snapshot remains 8,379 in-scope files and 310
+exclusions: 1,745 reviewed, 1,839 in-progress and 4,795 inventory-only. No
+Firebase infrastructure source changed.
+
+## Restart 1062 addendum — Atomic persisted price normalization
+
+Restart 1062 traced price fields from extracted intake and owner mutations into
+persisted project truth. One P2 source defect and one P3 verifier-parity defect
+were confirmed and closed.
+
+### AUDIT-PROJECT-PRICE-PARTIAL-NORMALIZATION-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/pricing/projectPriceTruth.ts`; extracted menu/project mutation →
+  item, option and outlet override validation → persisted/public price truth.
+- **Observed/root cause/data impact:** prices were normalized in place while the
+  function was still discovering later values. If a later item, option or
+  override was invalid, the function threw after earlier fields had already
+  changed, violating the all-or-fail mutation contract and leaving callers with
+  a partially transformed project object.
+- **Fix/regression:** traversal now validates and collects every normalized
+  assignment first, including files and both override buckets, and applies
+  assignments only after the complete graph succeeds. Runtime field access is
+  explicit and contained under the canonical invalid-price failure. Tests prove
+  an invalid second extracted item and an invalid late override leave all
+  earlier price strings byte-for-byte unchanged.
+- **Validation:** the menu-price suite, Pricing Integrity aggregate, Public
+  Menu Entry runtime/source gate, focused lint, exact TypeScript and diff
+  hygiene pass.
+
+### AUDIT-PUBLIC-MENU-ENTRY-PRICE-VERIFIER-PARITY-001
+
+- **Severity/status/file:** P3 / Closed locally /
+  `scripts/verification/verify-public-menu-entry-boundary.js`.
+- **Observed/fix:** the source gate asserted the retired eager attribute-loop
+  token and failed after the atomic correction. It now asserts the exact safe
+  attribute read, array admission and deferred assignment contract, so future
+  regressions cannot restore eager partial mutation merely to satisfy a stale
+  string check.
+
+The public navigation tracker, OBP/default-menu URL helper, AI Menu Manager
+local export URL helper and category-icon repair projector were completely
+reviewed without a new defect. Audit tooling, documentation-script references
+and diff hygiene pass. The regenerated snapshot remains 8,379 in-scope files
+and 310 exclusions: 1,741 reviewed, 1,839 in-progress and 4,799 inventory-only.
+No Firebase infrastructure source changed in this restart.
+
+## Restart 1061 addendum — Unattended screen reload recovery
+
+Restart 1061 followed browser-persisted timing state into the unattended
+digital-screen reload path. One P2 defect was confirmed and closed.
+
+### AUDIT-SCREEN-RELOAD-FUTURE-TIMESTAMP-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/screen/utils.ts`; local reload timestamp plus content/offline/timer
+  trigger → guarded customer screen reload.
+- **Observed/root cause/reliability impact:** the guard parsed arbitrary storage
+  text with `parseInt` and suppressed reload whenever `now - stored < 30s`.
+  A corrupt or manually future-dated value therefore produced a negative
+  duration and could suppress recovery until that future time; prefix strings
+  such as a valid timestamp plus junk were also admitted.
+- **Fix/regression:** a pure boundary now admits only a canonical positive
+  integer timestamp no later than the current safe integer time. Only a real
+  reload within the 30-second window suppresses another reload. Future,
+  negative and suffix-mutated values fail open to recovery and are replaced
+  with the current timestamp. Lifecycle tests pin all cases.
+- **Validation:** the full Digital Screens source gate, timestamp and
+  seen-scope suites, Firestore rules emulator, focused lint, exact TypeScript
+  and diff hygiene pass.
+
+No Firebase infrastructure source changed in this restart; the rules emulator
+was validation only. Audit tooling and documentation-script references pass.
+The regenerated snapshot remains 8,379 in-scope files and 310 exclusions:
+1,735 reviewed, 1,839 in-progress and 4,805 inventory-only.
+
+## Restart 1060 addendum — Tenant-partitioned owner selection and deletion boundaries
+
+Restart 1060 traced tenant-switch-sensitive browser state from storage keys
+back through the shared desktop/mobile project selector. Two P1 defects were
+confirmed and closed.
+
+### AUDIT-OWNER-PROJECT-SELECTION-SCOPE-CANONICALIZATION-001
+
+- **Severity/status/file/flow:** P1 / Closed locally /
+  `src/lib/projects/projectSelection.ts`; session tenant/store identity →
+  persisted owner project selection → desktop/mobile selected project.
+- **Observed/root cause/tenant impact:** tenant and store scopes were converted
+  with broad `String()` and concatenated with `:`. Noncanonical string scopes
+  could therefore contain the delimiter and make two different pairs share one
+  browser key (for example tenant `1`, store `2:3` versus tenant `1:2`, store
+  `3`). Whitespace-mutated aliases also created separate stale partitions.
+- **Fix/regression:** both identity dimensions now reuse the canonical positive
+  numeric Firestore document-ID boundary; invalid, ambiguous, zero, whitespace
+  and delimiter-bearing scopes fail closed and cannot read or write scoped
+  browser state. Regression tests prove the collision key is never created.
+
+### AUDIT-DELETED-PROJECT-RESELECTION-001
+
+- **Severity/status/file/flow:** P1 / Closed locally / same selector; persisted
+  preferred project ID plus current project list → owner active project.
+- **Observed/root cause/public-truth impact:** after failing to find a preferred
+  ID among nondeleted projects, the selector searched the original list and
+  could reselect a deleted project. If every project was deleted, its fallback
+  also selected one of those deleted records.
+- **Fix/regression:** deletion is now an absolute admission boundary. Preferred
+  IDs are resolved only within nondeleted projects, and an all-deleted list
+  returns `null`. Tests cover both a stale deleted preference beside an active
+  project and an all-deleted list.
+
+The complete linked-outlet save projector and recently-viewed count formatter
+were re-read without a new defect. Owner selection, special-menu lifecycle,
+store-switch, multi-location, focused lint, exact TypeScript and diff hygiene
+pass. Audit tooling and documentation-script references pass. The regenerated
+snapshot remains 8,379 in-scope files and 310 exclusions: 1,733 reviewed,
+1,840 in-progress and 4,806 inventory-only. No Firebase infrastructure source
+changed in this restart.
+
+## Restart 1059 addendum — AI capacity recognition and export/public-report contracts
+
+Restart 1059 reversed from outbound/export and provider-failure structures into
+their UI consumers. One P2 defect was confirmed and closed.
+
+### AUDIT-AI-CAPACITY-ERROR-SHAPE-ACCESS-001
+
+- **Severity/status/files/flow:** P2 / Closed locally /
+  `src/services/ai/capacityError.ts` and
+  `src/components/common/AICapacityGate.tsx`; bounded 402 provider response or
+  cross-boundary serialized error → desktop/mobile enhancement CTA.
+- **Observed/root cause/impact:** the UI gate recognized serialized capacity
+  errors with the `in` operator, an `any` cast and direct `.name` access.
+  Hostile getters or Proxy traps could execute or throw while handling an
+  already-failed AI request, bypassing both the calm capacity state and the
+  caller's ordinary fallback.
+- **Fix/compatibility/regression:** recognition now lives beside the canonical
+  error type, accepts the real class or an own data-property name, and contains
+  descriptor failures without executing accessors. Standard instances and
+  plain serialized errors remain compatible; inherited, getter-backed and
+  Proxy-backed names fail closed. The description boundary pins each shape.
+- **Validation:** the complete AI accounting aggregate, all of its output,
+  accounting, cache and image regressions, focused ESLint, exact TypeScript and
+  diff hygiene pass.
+
+The menu-card export settings/history contract, normalized print source,
+feedback sanitization helper and QR health no-fetch report contract were
+completely reviewed without a new defect. Their Menu Card Export, QR/public
+truth and complete Answerlattice runtime/emulator aggregates pass. Audit
+tooling, documentation-script references and diff hygiene pass. The regenerated
+snapshot remains 8,379 in-scope files and 310 exclusions: 1,729 reviewed,
+1,843 in-progress and 4,807 inventory-only. No Firebase infrastructure source
+changed in this restart.
+
+## Restart 1058 addendum — Owner-visible error projection and compact consumer reverse trace
+
+Restart 1058 selected compact inventory-only runtime contracts first and then
+traced outward to their public, owner, desktop and mobile consumers. One P2
+defect was confirmed and closed; three neighboring modules were completely
+reviewed without a new defect.
+
+### AUDIT-UI-ERROR-MESSAGE-ACCESS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/errors/uiErrorMessages.ts`; unknown DAL/upload/editor error →
+  Redux owner toast or inline owner-visible validation message.
+- **Observed/root cause/impact:** error extraction used `instanceof Error`,
+  direct `.message` access and the `in` operator on unknown objects. A hostile
+  accessor or Proxy could therefore execute or throw before the established
+  technical-detail filter and generic fallback ran, turning an error path into
+  another client failure.
+- **Fix/regression:** only an own string `message` is read, and both descriptor
+  inspection and value access are exception-contained. Standard `Error`
+  messages remain compatible; inherited, throwing and Proxy-backed messages
+  fail closed. The compact runtime suite pins all four cases.
+- **Affected consumers/validation:** drag-and-drop, both client API composers
+  and menu-editor publication validation continue to use the same safe helper.
+  The auth/security failure matrix and full menu-project-editor aggregate pass,
+  together with focused ESLint, exact TypeScript and diff hygiene.
+
+The complete multi-outlet project-ID boundary, client dual-auth sign-out
+ordering and shared campaign action/meal projection were also reviewed without
+a confirmed defect. Audit tooling, documentation-script references and diff
+hygiene pass. The regenerated snapshot remains 8,379 in-scope files and 310
+exclusions: 1,722 reviewed, 1,844 in-progress and 4,813 inventory-only. No
+Firebase infrastructure source changed in this restart.
+
+## Restart 1057 addendum — Localized customer rendering and persisted language policy
+
+Restart 1057 continued from localized public output consumers back into their
+persisted store-language inputs. Two P2 defects were confirmed and closed, so
+the clean-pass counter remains zero.
+
+### AUDIT-PUBLIC-SPICE-PROTOTYPE-COLLISION-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/localization/publicCustomerMessages.ts`; persisted menu spice level
+  → localized public menu label.
+- **Observed/root cause/impact:** the key lookup indexed a normal object without
+  an own-property check. A value such as `toString` therefore resolved an
+  inherited function instead of remaining an unknown spice value, violating
+  the public text contract and potentially passing an executable value into a
+  customer rendering path.
+- **Fix/regression:** spice keys now resolve only exact own registry entries.
+  The localization runtime suite proves prototype names remain plain fallback
+  text while valid spice levels still localize.
+
+### AUDIT-LANGUAGE-POLICY-UNKNOWN-COERCION-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/localization/languagePolicy.ts`; persisted store language settings
+  → owner/public language selection and localized routes.
+- **Observed/root cause/impact:** unknown values were normalized with
+  `String(value)` and input arrays were iterated directly. Corrupt persisted
+  objects could execute coercion hooks, and a hostile array Proxy could throw
+  before the canonical default language was established.
+- **Fix/compatibility/regression:** only primitive strings are admitted as
+  language codes; list inputs are first snapshotted under exception
+  containment; store policy fields use contained own-property reads. Valid
+  legacy language strings and the mandatory English fallback remain
+  compatible. Tests prove non-string values are ignored, coercion hooks never
+  execute and a hostile array fails closed to the canonical English policy.
+
+Focused global localization validation, ESLint, exact root TypeScript, audit
+tooling, documentation-script references and diff hygiene pass. The regenerated
+snapshot remains 8,379 in-scope files and 310 exclusions: 1,718 reviewed,
+1,844 in-progress and 4,817 inventory-only. No Firebase infrastructure source
+changed in this restart.
+
+## Restart 1056 addendum — Public URL address classes and verifier inventory parity
+
+Restart 1056 began the public URL/tenant-summary/slug reverse-flow slice and
+closed one P2 source defect plus one P3 verifier defect.
+
+### AUDIT-PUBLIC-URL-RESERVED-IPV4-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/public-truth-tools/publicUrlValidation.ts`; owner/customer URL input
+  → Public Truth, QR health, Business Facts and Print & Share reports.
+- **Observed/root cause/impact:** the helper claimed to admit public HTTPS
+  hosts but its IPv4 filter rejected only common private/link-local blocks.
+  Carrier-grade NAT, protocol-assignment, documentation, benchmark, multicast
+  and reserved/broadcast addresses were classified as public customer links,
+  producing incorrect readiness/health truth.
+- **Fix/regression:** the existing IPv4 boundary now also denies
+  `100.64/10`, `192.0.0/24`, `198.18/15`, documentation networks and
+  `224/4` plus higher reserved space. Runtime tests pin representative
+  addresses, while normal public HTTPS and implicit-protocol behavior remain.
+
+### AUDIT-PUBLIC-TRUTH-MONITOR-VERIFIER-INVENTORY-001
+
+- **Severity/status/file/flow:** P3 / Closed locally /
+  `scripts/verification/verify-public-truth-tools.js`; active module inventory
+  → Public Truth aggregate source gate.
+- **Observed/fix:** the untracked-but-active, separately governed
+  `publicTruthMonitorApiResponse.ts` module is imported by both monitor routes
+  and covered by its dedicated verifier, but the aggregate module allowlist
+  omitted it and failed every replay. The inventory now includes the exact
+  module; no concurrent route/helper content was overwritten.
+- **Validation:** Public Truth runtime, the 16-truth/5-asset aggregate,
+  monitor add-on/client contracts, Print & Share, QR Link Health, focused
+  ESLint, exact TypeScript and diff hygiene pass. The very large aggregate
+  verifier retains honest `in-progress` status because only its inventory
+  family was directly re-reviewed.
+
+The regenerated snapshot remains 8,379 in-scope files and 310 exclusions:
+1,716 reviewed, 1,844 in-progress and 4,819 inventory-only. Restart 1056 found
+new defects and is not a clean pass. No Firebase infrastructure source changed
+and no deployment applies.
+
+## Restart 1055 addendum — Date-range termination, translation bounds and multilingual normalization
+
+Restart 1055 switched to public text, analytics range and shared runtime
+utility contracts. Two P1, three P2 and one P3 defects were confirmed and
+closed; the discovery of defects resets convergence and
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-ANALYTICS-DATE-RANGE-VALIDATION-001
+
+- **Severity/status/file/flow:** P1 / Closed locally /
+  `src/lib/analytics/dateKey.ts`; analytics calendar inputs → dashboard query
+  ranges, settlement keys, receipts and public event admission.
+- **Observed/root cause/impact:** date keys were split and passed to `Date`
+  without syntax/calendar validation. Invalid keys could normalize to another
+  day; worse, `getAnalyticsDateRange()` could repeatedly transform a malformed
+  key into `NaN-NaN-NaN` while its lexical loop condition remained true,
+  creating a non-terminating server/client loop.
+- **Fix/regression:** exact `YYYY-MM-DD` keys must round-trip to a real UTC
+  calendar date; offsets must be bounded safe integers; ranges are calculated
+  arithmetically, return empty when reversed and reject more than 3,660 days.
+  Small runtime tests cover leap-boundary traversal, impossible/malformed
+  dates, reversed and oversized ranges and non-finite offsets.
+
+### AUDIT-AL-TRANSLATION-SOURCE-BOUNDARY-001
+
+- **Severity/status/file/flow:** P1 / Closed locally /
+  `src/lib/answerlattice/articleTranslationServer.ts`; persisted editor JSON →
+  source fingerprint/provider translation input/draft.
+- **Observed/root cause/impact:** recursive editor traversal had no cycle, node
+  or output bound and read unknown nodes directly. Cyclic or deeply/oversized
+  persisted content could overflow the stack or create unbounded provider
+  input before the already strict provider-response validator ran.
+- **Fix/regression:** source traversal now contains every read/array
+  iteration, tracks visited objects, caps nodes at 10,000 and source text at
+  12,000 characters, while preserving stable paragraph separation and hashes.
+  Multi-language contracts cover cyclic content, a hostile node Proxy,
+  oversized text and a hostile article record.
+
+### AUDIT-PUBLIC-HOURS-PROTOTYPE-COLLISION-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/localization/publicHoursText.ts`; persisted hours text → localized
+  customer menu/OBP status.
+- **Observed/fix:** exact-label lookup used `exactLabels[value]`; a legitimate
+  unknown string such as `toString` resolved an inherited object method rather
+  than remaining text. Lookup now requires an own label key, and the regression
+  proves prototype names remain ordinary public text.
+
+### AUDIT-EXTRACTION-NAME-RUNTIME-ACCESS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/extraction/normalize.ts`; extracted/legacy localized names → menu
+  comparison and matching.
+- **Observed/fix:** compile-time `Record<string,string>` assumptions allowed a
+  non-string primary/fallback value or hostile localized container to reach
+  string methods/enumeration. The boundary now accepts `unknown`, admits only
+  strings, caps fallback inspection at 64 keys and contains every access.
+
+### AUDIT-EXTRACTION-NAME-UNICODE-LOSS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally / same extraction flow.
+- **Observed/fix:** the documented multilingual normalizer preserved Latin
+  ranges only, so valid Hindi and other scripts lost letters/combining marks
+  and could collapse distinct menu names to empty/equal keys. Unicode letters,
+  marks and numbers from every supported script are now preserved while
+  punctuation/symbol removal remains.
+- **Regression:** a mixed invalid-English/valid-Hindi localized value resolves
+  and normalizes to the intact Hindi name.
+
+### AUDIT-RUNTIME-RANDOM-ID-LENGTH-001
+
+- **Severity/status/file/flow:** P3 / Closed locally /
+  `src/lib/runtime/randomId.ts`; caller length → browser/server operational ID
+  allocation.
+- **Observed/fix:** non-finite lengths had a fallback but arbitrarily large
+  finite lengths could allocate an equally large random byte array on runtimes
+  without `randomUUID()`. Segment length is now capped at 128; every current
+  caller uses 24 or fewer characters and remains byte-for-byte compatible.
+
+Focused small-runtime, Answerlattice multi-language, ESLint and exact root
+TypeScript gates pass. The adjacent guided-resolution, MCP, tenant-summary,
+image-batch, outlet-response, slug-ownership, public-URL, public customer
+message and store-language compact files were inspected for routing into the
+next reverse-flow pass but are not falsely marked reviewed where this restart
+did not complete every executable branch. No Firebase infrastructure source
+changed, so no deployment applies.
+
+Broader validation passed analytics normalizer/comparison and the
+catalog-analytics Functions build, the Answerlattice runtime source gate,
+global/public-customer localization, the full menu-project-editor aggregate,
+the auth/security failure matrix, full `src` ESLint and diff hygiene. The
+regenerated snapshot contains 8,379 in-scope files and 310 exclusions: 1,715
+reviewed, 1,844 in-progress and 4,820 inventory-only. Restart 1055 found six
+new defects and therefore is not a clean full pass.
+
+## Restart 1054 addendum — Mutation clocks and malformed public/provider projections
+
+Restart 1054 began from the regenerated inventory and traced compact shared
+boundaries used by project concurrency, Temporary Status, scheduler recovery,
+Answerlattice governance, public price/SEO output, analytics, PWA attribution,
+POS signatures, public contact, uploads, localization, owner grounding and
+multi-outlet permissions. Six P2 defects were confirmed and closed;
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-PROJECT-MUTATION-VERSION-UNKNOWN-COERCION-001
+
+- **Severity/status/file/flow:** P2 / Closed locally in restart 1054 /
+  `src/lib/menu/projectMutationVersion.ts`; persisted project timestamp →
+  AI Menu Manager and project/outlet optimistic-concurrency precondition.
+- **Observed/root cause/impact:** timestamp hooks and fields were called/read
+  directly and their unknown results were passed to `Number()`. Throwing
+  getters, methods, Date Proxies or executable coercion objects could abort a
+  mutation check; coercive values could also participate in version equality.
+  This affected reliability and stale-write protection but did not establish
+  a cross-tenant path.
+- **Fix/compatibility/test:** Date, Firestore Timestamp methods, numeric
+  seconds/nanoseconds and project fields are now read/called inside contained
+  boundaries, only finite numeric results are admitted, and current/legacy
+  timestamp shapes remain supported. The AI Menu Manager project-integrity
+  suite pins throwing getter/method/Proxy and coercion cases.
+
+### AUDIT-TEMP-STATUS-PERSISTED-ACCESS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/tempStatus/statusBoundary.ts`; persisted store Temporary Status →
+  owner banner, public menu/OBP and structured output.
+- **Observed/fix:** direct `type`, `expiresAt` and `message` access let a
+  malformed document accessor abort public projection. Own-field reads are now
+  contained; invalid identity/expiry fails closed and a broken optional
+  message uses the governed status fallback.
+- **Regression:** the complete Temporary Status verifier and behavioral suite
+  cover hostile object/message access while retaining live-expiry, schema,
+  cache and desktop/mobile behavior.
+
+### AUDIT-SCHEDULER-RECOVERY-RESPONSE-ACCESS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/ops/schedulerRecoveryResponse.ts`; callable recovery result →
+  internal Ops success/partial/failure acknowledgement.
+- **Observed/fix:** a structurally unknown provider response was read directly,
+  so a Proxy or throwing count getter could abort acknowledgement handling.
+  Every required field is now snapshotted through contained own-field reads
+  before exact status/count correlation.
+- **Regression:** internal Ops runtime tests cover whole-response and
+  individual-field failures in addition to invalid status, scope and counts.
+
+### AUDIT-AL-GOVERNANCE-ENTITY-LIST-ACCESS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/answerlattice/governanceIdBoundary.ts`; request/generated/persisted
+  entity references → governance, FAQ, intake, signal and merge consumers.
+- **Observed/fix:** array iteration trusted unknown traversal and accepted an
+  invalid `maxItems`, allowing malformed input to throw or produce surprising
+  slicing. The boundary now requires a positive safe-integer limit, snapshots
+  arrays inside a contained operation and otherwise returns no entity IDs.
+- **Regression:** governance contracts pin deduplication, limits and a hostile
+  array Proxy; the runtime-truth aggregate remains the broader consumer gate.
+
+### AUDIT-PUBLIC-PRICE-PROJECTION-ACCESS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/pricing/publicItemPricePresentation.ts`; persisted item/options →
+  customer menu, Digital Screens and list-price labels.
+- **Observed/fix:** public item/attribute fields and array iteration were
+  accessed directly, so one malformed getter or array Proxy could abort the
+  menu. Contained reads and fail-closed traversal now retain valid active
+  numeric/text prices while excluding malformed attributes.
+- **Regression:** the complete menu-design presentation gate pins hostile
+  item and option access alongside existing active/range/non-finite cases.
+
+### AUDIT-PUBLIC-METADATA-ACCESS-001
+
+- **Severity/status/file/flow:** P2 / Closed locally /
+  `src/lib/seo/publicMetadata.ts`; business/menu metadata → share previews and
+  SEO prompt input.
+- **Observed/fix:** `Object.values` and broad string coercion trusted unknown
+  localized metadata/keyword containers. Getters/Proxies could abort rendering
+  and keyword objects could execute conversion hooks. Metadata inspection is
+  now capped at 64 keys with per-field containment; keyword arrays admit
+  strings only and fail closed on broken traversal.
+- **Regression:** small runtime contracts cover a broken localized getter,
+  hostile enumeration, non-string keyword exclusion and array Proxy failure.
+
+The remaining completely reviewed compact files in this slice produced no new
+confirmed defect: owner public-link allowlists, price text/range formatting,
+device parsing, extracted-name normalization, public hours/phone destinations,
+strict feedback contracts, governed SAFE_MODE fail-open behavior, PWA install
+and surface detection, analytics source attribution, owner fact grounding, POS
+HMAC identity, bounded public-contact responses, file signatures, bounded
+response bodies, WhatsApp links and outlet policy projection. Focused
+regression suites and ESLint pass. No Firestore rule/index, Storage rule or
+Firebase Function source changed, so no infrastructure deployment applies.
+
+Broader validation then passed AI Menu Manager, Scheduler Monitor plus its
+Firestore lease emulator, Official Business Page, the complete Answerlattice
+runtime-truth aggregate (including dedicated/shared Firestore and Storage
+rules), exact root TypeScript, full `src` ESLint and diff hygiene. Three stale
+source-gate expectations were corrected during replay so the verifiers now pin
+contained Temporary Status, public-price and scheduler-response reads instead
+of the removed unsafe tokens. The regenerated manifest remains 8,379 in-scope
+files and 310 exclusions: 1,712 reviewed, 1,844 in-progress and 4,823
+inventory-only. Because six new defects were found and most files still lack
+complete content-bound evidence, restart 1054 is not a clean full pass and the
+next restart must begin from the remaining inventory.
+
+## Restart 1053 addendum — Project scope, block state and malformed public/Answerlattice data
+
+Restart 1053 restarted from the current manifest and reviewed the next compact
+owner/public/security slice. It traced the shared project-document scope guard
+across project reads and mutations, platform entity blocking across auth and
+public eligibility, public business labels/category icons/alt text,
+Answerlattice retained search history/chat media/owner navigation, plus compact
+proposal-impact, ontology, PWA detection, referral types, print preflight,
+Firebase Admin initialization, AI Menu Manager prompts, CampaignCue cue schema,
+clipboard, assistant suggestions, POS secret response, analytics preferences
+and print instructions/hash helpers. Two P1 and seven P2 defects were closed;
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-PROJECT-DOCUMENT-EMBEDDED-SCOPE-FAIL-OPEN-001 — Malformed present scope fields were treated as absent
+
+- **Finding/severity/status:** `AUDIT-PROJECT-DOCUMENT-EMBEDDED-SCOPE-FAIL-OPEN-001` / P1 / Closed locally in restart 1053.
+- **File/flow:** `src/lib/menu/projectDocumentScope.ts`; session/path tenant-store-project identity + persisted project document → project DAL and project/outlet mutation authorization.
+- **Observed/root cause/security impact:** the helper normalized embedded aliases and filtered invalid results before comparison. A present `tId`, `tenantId`, `sId`, `storeId` or `projectId` containing a slash, whitespace, leading zero, null or other invalid value disappeared from the candidate list and the document passed as if it contained no embedded identity. Path reads remained session-scoped, so no direct cross-tenant disclosure was observed, but a security guard explicitly intended to reject contradictory persisted authority failed open and could let corrupted scope metadata continue into downstream project operations.
+- **Fix/compatibility:** tenant/store scope accepts only canonical positive safe-integer IDs; project IDs remain trimmed slash-free strings correlated to both scope ends. Every own embedded alias, when present, must normalize and exactly match. Absent legacy fields remain supported; inherited properties are not Firestore document fields; enumeration/getter failures reject.
+- **Regression/validation:** focused tests cover valid current/legacy aliases, wrong IDs, invalid/slashed/null/leading-zero values, inherited pollution, throwing accessors and invalid path scope. The complete menu-project-editor boundary and its mutation/upload/time-slot children pass.
+
+### AUDIT-PLATFORM-BLOCK-STATE-INSPECTION-001 — Critical block checks could throw instead of failing closed
+
+- **Finding/severity/status:** `AUDIT-PLATFORM-BLOCK-STATE-INSPECTION-001` / P1 / Closed locally in restart 1053.
+- **File/flow:** `src/lib/platform/entityBlock.ts`; persisted user/tenant/store block fields → auth, session, billing, staff, public truth, multi-outlet and mutation eligibility.
+- **Observed/root cause/security impact:** broad `any` and direct optional-chain access meant a throwing/malformed object could abort block evaluation across a widely shared authorization primitive. Most server paths would deny through an exception, but public filters could fail as availability errors and the helper had no explicit fail-closed contract.
+- **Fix/regression:** top-level `blocked`, `tenantBlocked`, `blockDetails` and nested `blocked` are inspected through contained reads. Any access failure now returns blocked; valid explicit true/false behavior is unchanged. The focused runtime test proves malformed input fails closed, and the platform entity-block verifier was updated to require this safer implementation rather than its former optional-chain tokens.
+
+### AUDIT-AL-SEARCH-HISTORY-TIMESTAMP-COERCION-001 — Retained interaction admission executed unknown values
+
+- **Finding/severity/status:** `AUDIT-AL-SEARCH-HISTORY-TIMESTAMP-COERCION-001` / P2 / Closed locally in restart 1053.
+- **File/flow:** Answerlattice search-history interaction helper; persisted expiry/creation/retention → widget feedback, guidance outcome and escalation eligibility.
+- **Observed/fix:** timestamp conversion used direct Date methods and `Number()` on unknown `toMillis`, seconds and retention values; history fields were also read directly. Malformed persisted values or conversion hooks could execute or abort the terminal interaction route. Safe field reads and Date/Timestamp calls now admit finite numeric outputs only, reject Date Proxies/non-finite `now`, and accept only bounded integer retention numbers; invalid legacy retention still uses the governed default.
+- **Regression:** guided-resolution tests cover current/expired/legacy rows, throwing converters, coercive retention, history Proxy and Date Proxy inputs.
+
+### AUDIT-BUSINESS-IDENTITY-NAME-ACCESS-001 and AUDIT-BUSINESS-IDENTITY-FALLBACK-001
+
+- **Finding/severity/status:** both P2 / Closed locally in restart 1053.
+- **File/flow:** `src/lib/businessIdentity/names.ts`; store/tenant names → public menu, OBP, PWA, manifests, QR/export, billing/referral, discovery and owner selectors.
+- **Observed/root cause:** direct property reads could abort public output on malformed data. Separately, `getStoreContextName` deliberately called child helpers with an empty fallback, but those helpers forcibly substituted `Business` and `Store`, manufacturing `Business - Store` and preventing the caller's localized fallback from ever being used.
+- **Fix/regression:** store fields use contained reads. Default parameters still provide `Business`/`Store` to direct callers, while an explicitly empty fallback stays empty so the context helper can use its supplied final fallback. Tests prove hostile input returns the caller fallback; the full public-business-truth gate passes.
+
+### AUDIT-CATEGORY-ICON-ACCESS-001 and AUDIT-PUBLIC-ALT-TEXT-ACCESS-001
+
+- **Finding/severity/status:** both P2 / Closed locally in restart 1053.
+- **Files/flow:** category icon legacy adapter and public media alt-text helper; owner/persisted localized values → desktop/mobile menu editing and customer image accessibility.
+- **Observed/fix:** both helpers directly inspected unknown objects; alt text additionally enumerated every field. Throwing accessors/Proxies could abort owner forms or public rendering. Icon candidates now use contained reads. Alt text rejects arrays, caps enumeration at 64 keys, contains each read independently and preserves preferred-language then first-text order.
+- **Regression:** focused tests retain a valid later localized label after a broken getter and fall back safely on hostile enumeration.
+
+### AUDIT-AL-CHAT-MEDIA-REFERENCE-INSPECTION-001 — Media cleanup traversal was not total
+
+- **Finding/severity/status:** `AUDIT-AL-CHAT-MEDIA-REFERENCE-INSPECTION-001` / P2 / Closed locally in restart 1053.
+- **File/flow:** `src/lib/answerlattice/chatMediaReferences.ts`; normalized chat messages and removed candidates → retained-reference subtraction and Answerlattice Storage cleanup.
+- **Observed/fix:** direct nested property reads and array iteration could throw during post-transaction media reference calculation. Nested reads and both collection iterations are now exception-contained; valid URL deduplication, data-URL exclusion and exact `chatSessions/chatimages/{tId}/{sId}` path correlation remain unchanged.
+- **Regression:** the chat-session contract covers shared URL retention plus throwing image getter, message-array Proxy and candidate-array Proxy behavior.
+
+### AUDIT-AL-OWNER-CONTEXT-DUPLICATE-QUERY-001 — Navigation appended stale duplicate context
+
+- **Finding/severity/status:** `AUDIT-AL-OWNER-CONTEXT-DUPLICATE-QUERY-001` / P2 / Closed locally in restart 1053.
+- **File/flow:** Answerlattice owner decision navigation; selected answer/entity/release → governance/Answer Tests route.
+- **Observed/fix:** adding context to a route that already contained the same key appended a duplicate. Consumers using the first value could keep the stale selection. The helper now parses the relative query, replaces the same key, preserves other parameters/hash and retains the established `%20` encoding.
+- **Regression:** owner-support contracts prove normal answer/entity/release URLs, invalid ID omission and stale same-key replacement with other query/hash state intact.
+
+The remaining directly reviewed compact files produced no new confirmed
+defect. Their current behavior preserves bounded/schema-correlated
+proposal-impact and ontology calls, SSR-safe PWA detection, exact referral
+types, deterministic print preflight/instructions/hash output, singleton Admin
+credential selection, AI card prompt fallback, strict CampaignCue cue bounds,
+clipboard cleanup, bounded assistant suggestions, private POS secret response
+validation and analytics toggle inheritance.
+
+Restart 1053 focused validation passed project scope, Answerlattice guided
+resolution, chat-session and owner-support contract suites, small runtime
+contracts, the full menu-project-editor boundary, the corrected platform
+entity-block boundary, full public-business-truth, focused ESLint, exact root
+TypeScript and diff hygiene. The first owner-navigation replay exposed `+`
+versus frozen `%20` query encoding and the first block verifier replay exposed
+its stale unsafe source tokens; both validation artifacts were corrected to
+pin current safe behavior and then passed. No Firebase rule/index, Storage
+rule or Function source changed, so no infrastructure deployment applies.
+
+The subsequent broad replay also passed the complete
+`verify:answerlattice-runtime-truth` aggregate, the auth/security failure
+matrix, Menu Card Export, AI Menu Manager, POS sync, audit-regression
+aggregate, full `src` ESLint and diff hygiene. The regenerated content-bound
+manifest contains 8,379 in-scope first-party files and 310 explicit
+exclusions: 1,685 are reviewed, 1,847 are in-progress and 4,847 remain
+inventory-only. This materially increases direct current-file coverage but
+does not satisfy a complete pass; restart 1054 therefore begins from the
+4,847-file inventory rather than incrementing the clean-pass counter.
+
+## Restart 1052 addendum — Compact owner analytics and support-boundary review
+
+Restart 1052 restarted from the regenerated manifest and traced the next
+compact runtime slice through Owner Business Assistant analytics-period
+selection, AI Menu Manager provider-result policy, image-batch Storage URL
+scope, Menu Card Export pagination/packet assembly, current platform access,
+public business type, master-job response parsing, SignalDesk audit cursors,
+tenant robots output, provenance exports and a dormant style utility. One P2
+owner-truth defect and one P3 dormant utility defect were closed, so
+`consecutiveCleanFullPasses` remains `0`.
+
+### AUDIT-OBA-ANALYTICS-PERIOD-PRECEDENCE-001 — Generic phrases overrode explicit analytics periods
+
+- **Finding/severity/status:** `AUDIT-OBA-ANALYTICS-PERIOD-PRECEDENCE-001` / P2 / Closed locally in restart 1052.
+- **File/flow:** `src/lib/ownerBusinessAssistant/server/analyticsPeriodResolver.ts`; owner question → compact analytics period → assistant facts/answer.
+- **Producer/consumer/trigger/observed:** `today` matched the generic phrase `so far` before specific entries, so “this month so far” returned today's data. Synonyms were also checked before unsupported custom-date detection, so a question containing both “last month” and “from June 1 to June 5” silently returned all of last month instead of refusing the unsupported range.
+- **Expected/root cause/impact:** explicit custom dates must fail closed, explicit named periods must beat generic language, and “so far” alone may retain the established today fallback. The resolver now checks custom dates first, resolves named periods next, then treats a remaining `so far` as today. This changes no analytics documents, cache identity, tenant scope or provider behavior.
+- **Regression/validation:** the existing hardening verifier now pins named-period-over-generic and custom-date-over-synonym cases in addition to its normal last-month and custom-range coverage. The full Owner Business Assistant aggregate, exact TypeScript, lint and diff hygiene pass.
+
+### AUDIT-DORMANT-STYLE-UTILITY-COERCION-001 — Exported CSS helpers used broad executable coercion
+
+- **Finding/severity/status:** `AUDIT-DORMANT-STYLE-UTILITY-COERCION-001` / P3 / Closed locally in restart 1052.
+- **File/flow:** `src/utils/getColorsValue.ts`; legacy exported gradient/dimension helpers. Repository-wide search found no active first-party runtime consumer.
+- **Observed/root cause/impact:** broad `any` values were interpolated, mapped and passed to `.includes`/`.split`; a finite numeric style value threw and arbitrary objects could execute conversion hooks. This was a dormant concrete failure path, not a current owner/public surface regression.
+- **Fix/regression:** gradient configuration and return values are exact types; only nonblank string colors/type/direction are serialized. CSS dimensions accept finite numbers or an exact numeric `%`/`px` string and otherwise return the established zero-pixel fallback without coercion. Focused tests cover normal gradient, number, percentage and a throwing conversion object.
+
+The other directly reviewed files in this slice had no new confirmed defect:
+current implementations preserve host-derived tenant robots identity, private
+bounded platform-access acknowledgement, exact SignalDesk cursor pairs,
+master-job active/inactive DTO consistency, tenant/store/path Storage
+correlation, allowlisted AI planner outcomes/copy, deterministic print packet
+and pagination output, canonical/legacy business-type behavior and pure
+provenance exports.
+
+Restart 1052 coverage regeneration discovered 8,689 files: 8,379 in scope
+and 310 explicitly excluded. Exact-fingerprint status is 1,658 reviewed,
+1,850 in-progress and 4,871 inventory-only. Twelve compact runtime/support
+files moved to reviewed; this remains far short of a full repository pass, so
+the clean counter remains zero.
+
+Restart 1052 validation passed `npm run verify:owner-business-assistant`, `npm
+run test:small-runtime-contracts`, focused ESLint, exact root `npx tsc
+--noEmit --incremental false`, `npm run verify:ai-menu-manager`, image-batch
+client/server boundary tests, `npm run verify:menu-card-export`, `npm run
+verify:menulist-api-tenant-safety`, the real SignalDesk audit Firestore
+emulator, `npm run test:discovery-index-boundary` and `git diff --check`.
+Expected negative-path logs in the passing SignalDesk test remained bounded.
+No Firebase rule/index, Storage rule or Function source changed in this
+restart, so no infrastructure deployment applies.

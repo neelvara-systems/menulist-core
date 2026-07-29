@@ -91,8 +91,7 @@ function withOBPEntrySource(url: string): string {
         return withAnalyticsSource(url, 'obp');
     } catch (error) {
         logOBPMenuCTAEntrySourceFallbackFailure(error, url);
-        const separator = url.includes('?') ? '&' : '?';
-        return `${url}${separator}entry_source=${encodeURIComponent('obp')}`;
+        return url;
     }
 }
 

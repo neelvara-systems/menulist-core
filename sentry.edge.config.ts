@@ -19,5 +19,8 @@ if (isSentryMonitoringEnabled && monitoringDsn.server) {
         beforeSend(event, hint) {
             return shouldSendMonitoringEvent(hint) ? sanitizeMonitoringEvent(event) : null;
         },
+        beforeSendTransaction(event) {
+            return sanitizeMonitoringEvent(event);
+        },
     });
 }

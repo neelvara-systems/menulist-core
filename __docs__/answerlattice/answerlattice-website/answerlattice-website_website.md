@@ -1,7 +1,7 @@
 # AnswerLattice Website Content Contract
 
 > **Status:** Implemented
-> **Last audited:** July 19, 2026
+> **Last audited:** July 29, 2026
 
 ## Public Source Of Truth
 
@@ -17,12 +17,23 @@ Public pages must not duplicate plan amounts, private dashboard routes, or provi
 ## Buyer Journey
 
 1. Homepage states the founder support problem and product boundary.
-2. Demo shows a disclosed seeded governance event without Firebase or AI calls.
-3. Product, install, security, trust, resources, and comparisons support evaluation.
-4. Pricing renders the three monthly plans from the plan source.
-5. Get Started validates plan, currency, company, optional product details, selected product pages, and legal links.
-6. The authenticated onboarding route creates a workspace and pending provider checkout.
-7. Billing and Activation own post-creation payment and launch proof.
+2. The owner decision section connects Daily Brief, Knowledge Map, Product Friction Evidence, Release Impact Guard, Answer Tests, and public article topic maps without turning the homepage into a dashboard.
+3. Demo shows a disclosed seeded governance event without Firebase or AI calls.
+4. Product, support-control, knowledge-governance, install, security, trust, resources, and comparisons support evaluation.
+5. Pricing renders the three monthly plans from the plan source.
+6. Get Started validates plan, currency, company, optional product details, selected product pages, and legal links.
+7. The authenticated onboarding route creates a workspace and pending provider checkout.
+8. Billing and Activation own post-creation payment and launch proof.
+
+## Owner Decision Content
+
+The homepage presents one connected path rather than six unrelated feature cards:
+
+`qualified Daily Brief -> selected product area -> Product Friction Evidence -> private Knowledge Map context -> Answer Tests and release impact -> explicit owner decision`
+
+The section may link to implemented product-detail routes. It must not fetch tenant data, render private metrics, start real-time listeners, generate a map, or invoke an AI provider.
+
+The private Knowledge Map may include governed product structure and owner-only review signals. The public knowledge-base map is a separate sanitized article-heading navigation surface. Public pages must not imply that private entities, drafts, tickets, signals, or raw graph relationships are exposed to readers.
 
 ## Discovery
 

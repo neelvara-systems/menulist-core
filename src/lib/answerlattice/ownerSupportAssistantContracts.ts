@@ -5,7 +5,10 @@ import {
 } from '@constant/answerlattice/permissions';
 import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/routes';
 import { PRODUCT_IDS } from '@constant/product';
-import type { AnswerlatticeSupportBoardSummary } from '@type/answerlattice';
+import type {
+    AnswerlatticeFrictionLevel,
+    AnswerlatticeSupportBoardSummary,
+} from '@type/answerlattice';
 
 export const ANSWERLATTICE_OWNER_ASSISTANT_SOURCE_KEYS = [
     'coverage',
@@ -123,6 +126,7 @@ export type AnswerlatticeLaunchVerification = {
 
 export type AnswerlatticeOwnerAssistantMetrics = {
     coverageRate: number | null;
+    canonicalMisses: number;
     noEscalationRate: number | null;
     confirmedResolutionRate: number | null;
     recontactEligible: number;
@@ -131,9 +135,11 @@ export type AnswerlatticeOwnerAssistantMetrics = {
     uncoveredEntities: number;
     openBoardCards: number;
     needsAnswerCards: number;
+    highPriorityCards: number;
     reviewItems: number;
     signals7d: number;
     escalations7d: number;
+    frictionLevel: AnswerlatticeFrictionLevel | null;
 };
 
 export type AnswerlatticeOwnerAssistantAnswer = {
@@ -313,7 +319,7 @@ export const parseAnswerlatticeOwnerAssistantSupportBoardSummary = (
         || !isCount(value.totalRecentCards)
         || value.openCards > value.totalRecentCards
         || value.needsAnswerCards > value.openCards
-        || value.highPriorityCards > value.totalRecentCards
+        || value.highPriorityCards > value.openCards
         || !toTimestampIso(value.lastUpdated)
         || (value.breakdownFresh !== undefined && typeof value.breakdownFresh !== 'boolean')
         || (value.sourceWindowsSaturated !== undefined && typeof value.sourceWindowsSaturated !== 'boolean')
@@ -325,18 +331,36 @@ export const getAnswerlatticeOwnerAssistantStatus = (
     metrics: AnswerlatticeOwnerAssistantMetrics,
     summaryHealth: AnswerlatticeOwnerAssistantSummaryHealth,
 ): AnswerlatticeOwnerAssistantStatus => {
-    if (
-        metrics.uncoveredEntities > 0
-        || metrics.driftedAnswers > 2
-        || (metrics.coverageRate !== null && metrics.coverageRate < 50)
-    ) {
+    const recontactRate = metrics.recontactEligible > 0
+        ? Math.round((metrics.recontactedSameSession / metrics.recontactEligible) * 100)
+        : 0;
+    const hasFailedOutcomeEvidence = (
+        (metrics.confirmedResolutionRate !== null && metrics.confirmedResolutionRate < 70)
+        || (metrics.recontactEligible >= 3 && recontactRate >= 30)
+    );
+    const hasCoverageRepairEvidence = (
+        metrics.coverageRate !== null
+        && metrics.coverageRate < 50
+        && (
+            metrics.canonicalMisses > 0
+            || metrics.uncoveredEntities > 0
+            || metrics.highPriorityCards > 0
+            || metrics.needsAnswerCards > 0
+            || metrics.driftedAnswers > 0
+        )
+    );
+
+    if (metrics.driftedAnswers > 2) {
         return 'at_risk';
     }
     if (
-        metrics.needsAnswerCards > 0
-        || metrics.reviewItems > 0
-        || metrics.driftedAnswers > 0
+        metrics.driftedAnswers > 0
+        || metrics.highPriorityCards > 0
+        || metrics.needsAnswerCards > 0
+        || hasFailedOutcomeEvidence
+        || metrics.frictionLevel === 'HIGH'
         || metrics.escalations7d > 0
+        || hasCoverageRepairEvidence
     ) {
         return 'needs_review';
     }
@@ -413,6 +437,7 @@ const isSummaryHealth = (value: unknown): value is AnswerlatticeOwnerAssistantSu
 const isMetrics = (value: unknown): value is AnswerlatticeOwnerAssistantMetrics => (
     isRecord(value)
     && isPercentageOrNull(value.coverageRate)
+    && isCount(value.canonicalMisses)
     && isPercentageOrNull(value.noEscalationRate)
     && isPercentageOrNull(value.confirmedResolutionRate)
     && [
@@ -422,12 +447,20 @@ const isMetrics = (value: unknown): value is AnswerlatticeOwnerAssistantMetrics 
         value.uncoveredEntities,
         value.openBoardCards,
         value.needsAnswerCards,
+        value.highPriorityCards,
         value.reviewItems,
         value.signals7d,
         value.escalations7d,
     ].every(entry => isCount(entry))
+    && (
+        value.frictionLevel === null
+        || value.frictionLevel === 'LOW'
+        || value.frictionLevel === 'MODERATE'
+        || value.frictionLevel === 'HIGH'
+    )
     && Number(value.recontactedSameSession) <= Number(value.recontactEligible)
     && Number(value.needsAnswerCards) <= Number(value.openBoardCards)
+    && Number(value.highPriorityCards) <= Number(value.openBoardCards)
 );
 
 const isReadModel = (value: unknown): boolean => (
@@ -532,7 +565,13 @@ export const isAnswerlatticeOwnerAssistantBrief = (
     && value.promptChips.length <= 12
     && value.promptChips.every(entry => isBoundedString(entry, 120))
     && isLaunchVerification(value.launchVerification)
-    && (value.dailyBrief === undefined || isDailyBrief(value.dailyBrief))
+    && (
+        value.dailyBrief === undefined
+        || (
+            isDailyBrief(value.dailyBrief)
+            && value.attentionCount === value.dailyBrief.actions.length
+        )
+    )
     && isSummaryHealth(value.summaryHealth)
     && isCapabilities(value.capabilities)
     && isNullableIso(value.updatedAt)

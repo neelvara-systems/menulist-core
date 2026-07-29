@@ -11,6 +11,7 @@
 import { APP_THEME_COLOR } from '@constant/common';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getPublicStoreById } from '@lib/firestore/clientStoreLookup';
+import { normalizePublicAccentColor } from '@lib/obp/accentColor';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -85,7 +86,7 @@ export async function GET(
 
         const displayName: string = getStoreContextName(store, 'Menu');
         const iconSource = resolveCustomerAppIconSource(store);
-        const themeColor = store?.publicPresence?.accentColor || APP_THEME_COLOR;
+        const themeColor = normalizePublicAccentColor(store?.publicPresence?.accentColor) || APP_THEME_COLOR;
 
         return new ImageResponse(renderCustomerAppSplash({
             displayName,

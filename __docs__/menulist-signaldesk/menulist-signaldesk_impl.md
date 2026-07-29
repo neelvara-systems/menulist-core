@@ -449,7 +449,7 @@ AI may not:
 - assisted WhatsApp: channel-window and contact-authority plumbing exists, but current draft/approval creation is email-only; an email approval cannot be reused and no WhatsApp handoff/send is enabled
 - Instagram/Messenger routing: signed inbound webhook plumbing exists; Instagram contact/window plumbing is gated until an exact same-channel draft/approval exists, Messenger outbound remains unsupported, and cold DM automation is blocked
 - live source-provider import: implemented for Google Places Text Search, FHRS/FHIS UK establishment seed, and Apify Source Broker with provider source policy, max-result cap, provider budget, manual redirect handling, bounded provider JSON parsing, parse-failure diagnostics, and no raw provider payload storage
-- real AI provider assist: implemented through the shared Gemini retry gateway with a SignalDesk-only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*` pool; no MenuList/Answerlattice credential fallback
+- real AI provider assist: implemented through the shared Gemini retry gateway with a SignalDesk-only `SIGNALDESK_GEMINI_AI_KEY*` pool; no MenuList/Answerlattice credential fallback
 - trust partner rail: Feature 17 locally source-complete with feature-gated route/read/action admission, least-privilege parallel reads, founder-only activation/spend, actor-bound retry transactions, pause enforcement, attributable live metrics, outcome-derived renewal, and exact cost accounting; real outreach/spend remains manual
 - Meta paid intent: skipped in this session
 - Firebase deploy: skipped in this session
@@ -484,7 +484,7 @@ Implemented behavior:
 2. first-route workspace for dashboard, targets, imports, approvals, templates, inbox, attribution, policies, control-room, and audit;
 3. summary-first overview API;
 4. global outbound kill-switch API with role checks, rate limiting, Zod validation, and one transactional switch/audit/idempotency settlement that leaves provider-derived channel health untouched;
-5. dedicated SignalDesk Firebase client/admin configuration using full `MENULIST_SIGNALDESK_*` env names;
+5. dedicated SignalDesk Firebase client/admin configuration using full `SIGNALDESK_*` env names;
 6. dedicated Firestore/Storage rules with default deny and server/admin-only writes;
 7. dedicated `functions-signaldesk` package with a health-check skeleton and disabled provider/AI/scheduler flags;
 8. source policy seed/create flow;
@@ -502,7 +502,7 @@ Implemented behavior:
 
 The second implementation slice adds the remaining non-paid, non-deploy runtime surfaces:
 
-1. provider integration env names under `MENULIST_SIGNALDESK_*`;
+1. provider integration env names under `SIGNALDESK_*`;
 2. internal `/signaldesk/sources`, `/signaldesk/ai`, and `/signaldesk/channels` pages;
 3. source-provider action using Google Places Text Search, FHRS/FHIS UK official establishment seed, or Apify Source Broker with a required provider source policy, max-result cap, provider account, budget cap, manual redirect handling, bounded provider JSON response parsing, and `signaldesk_source_provider_response_parse_failed` diagnostics for malformed successful provider JSON;
 4. FHRS/FHIS normalization for UK food-business establishment rows with no contact-permission inference;
@@ -648,5 +648,5 @@ Before real-project usage, provider send, and external integrations:
 - confirm sender identity and physical address policy;
 - confirm unsubscribe, bounce, complaint, DNC, and suppression handling;
 - keep `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND` false until the send/export gate passes.
-- provision `MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET` and implement a separately reviewed MenuList-owned signed event emitter before using the bridge outside local tests;
+- provision `SIGNALDESK_OUTCOME_BRIDGE_SECRET` and implement a separately reviewed MenuList-owned signed event emitter before using the bridge outside local tests;
 - paid campaign automation remains skipped by founder instruction.

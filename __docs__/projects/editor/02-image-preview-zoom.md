@@ -219,18 +219,23 @@ Shows a helpful hint on first use:
 const ZOOM_HINT_SHOWN_KEY = "zoomableImage_hintShown";
 
 useEffect(() => {
-  const hintShown = localStorage.getItem(ZOOM_HINT_SHOWN_KEY);
-  if (!hintShown) {
+  const hintShown = readBoundedZoomHintMarker();
+  if (!hintShown && hasImage) {
     setShowZoomHint(true);
     // Auto-hide after 5 seconds
     const timer = setTimeout(() => {
       setShowZoomHint(false);
-      localStorage.setItem(ZOOM_HINT_SHOWN_KEY, "true");
+      persistZoomHintShown(); // exact v1 marker; failure-contained
     }, 5000);
     return () => clearTimeout(timer);
   }
-}, []);
+}, [hasImage]);
 ```
+
+The legacy `true` marker remains read-compatible. Invalid markers are removed,
+and unavailable browser storage never interrupts image editing. The image
+element is held by an explicit ref, and drag bounds use untransformed offset
+dimensions so the current zoom is applied exactly once.
 
 **Hint Message:**
 

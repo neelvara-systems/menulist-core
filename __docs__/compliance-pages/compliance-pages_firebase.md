@@ -23,9 +23,9 @@
 | Operation | Reads | Writes | Trigger |
 |-----------|-------|--------|---------|
 | Resolve store (subdomain/custom domain) | 0 | 0 | Uses shared cached public store lookup |
-| Read compliancePages doc | 0 or 1 | 0 | server/Admin read only on tenant/store-keyed tagged cache fill |
+| direct compliancePages doc read | 0 or 1 | 0 | server/Admin read only on tenant/store-keyed tagged cache fill |
 | Generate from template (if system) | 0 | 0 | Pure function — no Firestore |
-| **Total per view** | **1** | **0** | |
+| **Total per view** | **0 or 1** | **0** | depends on the tenant/store-keyed tagged-cache state |
 
 **Current cache contract:** the server/Admin `compliancePages` read is behind a tagged 60-second cache keyed by tenant and store. A successful override/reset invalidates `compliance-store-{sId}`; an invalidation failure returns `refreshPending: true` and remains bounded by the 60-second TTL. Direct browser Firestore reads and writes are denied.
 

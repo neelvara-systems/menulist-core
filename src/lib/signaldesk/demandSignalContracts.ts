@@ -6,11 +6,28 @@ const sourceSurfaceSchema = z.enum(["menu", "qr", "website", "manual", "other"])
 const canonicalId = (max: number) => z.string().trim().min(3).max(max);
 const nullableTargetId = canonicalId(160).nullable();
 const nullableTargetName = z.string().trim().min(2).max(180).nullable();
-const timestampSchema = z.unknown().refine((value) => (
-    Boolean(value)
-    && typeof (value as { toMillis?: unknown }).toMillis === "function"
-    && Number.isFinite((value as { toMillis: () => number }).toMillis())
-), "Invalid Firestore timestamp");
+
+type FirestoreTimestampLike = {
+    toMillis: () => number;
+};
+
+const readTimestampMillis = (value: unknown): number | null => {
+    if ((typeof value !== "object" && typeof value !== "function") || value === null) return null;
+    try {
+        const toMillis = Reflect.get(value, "toMillis");
+        if (typeof toMillis !== "function") return null;
+        const millis = Reflect.apply(toMillis, value, []);
+        if (typeof millis !== "number" || !Number.isFinite(millis)) return null;
+        return Number.isFinite(new Date(millis).getTime()) ? millis : null;
+    } catch {
+        return null;
+    }
+};
+
+const timestampSchema = z.custom<FirestoreTimestampLike>(
+    (value) => readTimestampMillis(value) !== null,
+    "Invalid Firestore timestamp",
+);
 
 const demandSignalEventSchema = z.object({
     createdAt: timestampSchema,
@@ -57,9 +74,22 @@ export type SignalDeskDemandSignalSummaryAuthority = z.infer<typeof demandSignal
 export type SignalDeskDemandSignalClaimAuthority = z.infer<typeof demandSignalClaimSchema>;
 
 const parseStrict = <T>(schema: z.ZodType<T>, raw: unknown, errorCode: string): T => {
-    const parsed = schema.safeParse(raw);
+    let parsed: z.SafeParseReturnType<unknown, T>;
+    try {
+        parsed = schema.safeParse(raw);
+    } catch {
+        throw new Error(errorCode);
+    }
     if (!parsed.success) throw new Error(errorCode);
     return parsed.data;
+};
+
+export const getSignalDeskDemandSignalEventDay = (
+    event: SignalDeskDemandSignalEventAuthority,
+): string => {
+    const millis = readTimestampMillis(event.createdAt);
+    if (millis === null) throw new Error("DEMAND_SIGNAL_EVENT_INVALID");
+    return new Date(millis).toISOString().slice(0, 10);
 };
 
 export const parseSignalDeskDemandSignalEventDocument = (
@@ -90,7 +120,7 @@ export const assertSignalDeskDemandSignalSummaryMatchesEvent = (
     summary: SignalDeskDemandSignalSummaryAuthority,
     event: SignalDeskDemandSignalEventAuthority,
 ): void => {
-    const eventDay = new Date((event.createdAt as { toMillis: () => number }).toMillis()).toISOString().slice(0, 10);
+    const eventDay = getSignalDeskDemandSignalEventDay(event);
     if (
         summary.day !== eventDay
         || summary.signalType !== event.signalType

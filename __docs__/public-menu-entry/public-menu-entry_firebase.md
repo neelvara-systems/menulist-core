@@ -33,6 +33,8 @@ No new collection, rule, or Storage rule was added. The obsolete `claimed + expi
 
 Public create-menu claim target document-ID boundary hardening is Firebase-cost neutral. The slug, explicit project identity, price validation, phone validation, canonical business type, and in-transaction Menu Correctness stamp are CPU/transaction-shaping boundaries and add no new read or write.
 
+The browser last-claim handoff is session-only and adds no Firebase operation. Its strict versioned DTO contains exact tenant/store/project identity, canonical subdomain and a 24-hour timestamp. The success page compares tenant/store against the current session before the existing `recordStarterActivationSignal` call; that DAL still independently rechecks the active session store before its one acknowledged store update. Invalid or cross-session state creates no write.
+
 ## Scale decisions
 
 - Cheap burst admission prevents 10MB parsing, Firestore dedupe queries, Storage, acquisition, and provider work during abuse or limiter outage.

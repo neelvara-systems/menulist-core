@@ -1,4 +1,7 @@
-import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import {
+    getLocalizedText,
+    getPrimaryLocalizedLanguage,
+} from '@lib/localization/text';
 
 const LEGACY_SPECIAL_NOTE_HELPERS = new Set([
     'shown on the official business page. use for service charges, today-only notes, or important customer information.',
@@ -15,9 +18,9 @@ const getLocalizedNote = (
     primaryLanguage: string,
 ): string => {
     const localized = getLocalizedText(
-        value as any,
+        value,
         language,
-        getPrimaryLocalizedLanguage(value as any, primaryLanguage),
+        getPrimaryLocalizedLanguage(value, primaryLanguage),
         '',
     );
 
@@ -26,11 +29,25 @@ const getLocalizedNote = (
 };
 
 interface PublicMenuSpecialNoteInput {
-    projectData?: any;
-    storeDetails?: any;
+    projectData?: unknown;
+    storeDetails?: unknown;
     language: string;
     primaryLanguage: string;
 }
+
+const safeRead = (value: unknown, key: string): unknown => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+
+    try {
+        return Reflect.get(value, key);
+    } catch {
+        return undefined;
+    }
+};
+
+const safeReadPath = (value: unknown, path: readonly string[]): unknown => (
+    path.reduce<unknown>((current, key) => safeRead(current, key), value)
+);
 
 /**
  * Resolves the note that belongs on the public menu footer.
@@ -48,12 +65,12 @@ export function getPublicMenuSpecialNote({
     primaryLanguage,
 }: PublicMenuSpecialNoteInput): string {
     const noteSources = [
-        projectData?.menuSettings?.specialNote,
-        projectData?.specialNote,
-        projectData?.metadata?.specialNote,
-        projectData?.pricingNote,
-        projectData?.serviceChargeNote,
-        storeDetails?.publicPresence?.specialNote,
+        safeReadPath(projectData, ['menuSettings', 'specialNote']),
+        safeRead(projectData, 'specialNote'),
+        safeReadPath(projectData, ['metadata', 'specialNote']),
+        safeRead(projectData, 'pricingNote'),
+        safeRead(projectData, 'serviceChargeNote'),
+        safeReadPath(storeDetails, ['publicPresence', 'specialNote']),
     ];
 
     for (const source of noteSources) {

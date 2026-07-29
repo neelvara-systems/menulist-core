@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
     ANSWERLATTICE_DARK_THEME_COLOR,
     ANSWERLATTICE_LIGHT_THEME_COLOR,
@@ -18,6 +19,31 @@ interface AnswerlatticeThemeContextValue {
 }
 
 const AnswerlatticeThemeContext = createContext<AnswerlatticeThemeContextValue | null>(null);
+const reportedAnswerlatticeThemeStorageFailures = new Set<'read' | 'remove' | 'write'>();
+
+function logAnswerlatticeThemeStorageFailure(operation: 'read' | 'remove' | 'write', error: unknown) {
+    if (reportedAnswerlatticeThemeStorageFailures.has(operation)) return;
+    reportedAnswerlatticeThemeStorageFailures.add(operation);
+    logRuntimeFailure(`answerlattice_theme_storage_${operation}_failed`, error, {
+        fallbackPolicy: operation === 'write' ? 'memory_only' : 'system_theme',
+    });
+}
+
+function readStoredTheme(): AnswerlatticeThemeChoice {
+    try {
+        const storedTheme = window.localStorage.getItem(ANSWERLATTICE_THEME_STORAGE_KEY);
+        if (storedTheme === null) return 'system';
+        if (isThemeChoice(storedTheme)) return storedTheme;
+        try {
+            window.localStorage.removeItem(ANSWERLATTICE_THEME_STORAGE_KEY);
+        } catch (error) {
+            logAnswerlatticeThemeStorageFailure('remove', error);
+        }
+    } catch (error) {
+        logAnswerlatticeThemeStorageFailure('read', error);
+    }
+    return 'system';
+}
 
 function isThemeChoice(value: string | null): value is AnswerlatticeThemeChoice {
     return value !== null && ANSWERLATTICE_THEME_CHOICES.includes(value as AnswerlatticeThemeChoice);
@@ -45,8 +71,7 @@ export function AnswerlatticeThemeProvider({ children }: { children: ReactNode }
     const [resolvedTheme, setResolvedTheme] = useState<AnswerlatticeResolvedTheme>('dark');
 
     useEffect(() => {
-        const storedTheme = window.localStorage.getItem(ANSWERLATTICE_THEME_STORAGE_KEY);
-        const initialTheme = isThemeChoice(storedTheme) ? storedTheme : 'system';
+        const initialTheme = readStoredTheme();
         const initialResolvedTheme = initialTheme === 'system' ? resolveSystemTheme() : initialTheme;
 
         setThemeState(initialTheme);
@@ -78,7 +103,11 @@ export function AnswerlatticeThemeProvider({ children }: { children: ReactNode }
         resolvedTheme,
         setTheme: (nextTheme) => {
             setThemeState(nextTheme);
-            window.localStorage.setItem(ANSWERLATTICE_THEME_STORAGE_KEY, nextTheme);
+            try {
+                window.localStorage.setItem(ANSWERLATTICE_THEME_STORAGE_KEY, nextTheme);
+            } catch (error) {
+                logAnswerlatticeThemeStorageFailure('write', error);
+            }
             const nextResolvedTheme = nextTheme === 'system' ? resolveSystemTheme() : nextTheme;
             setResolvedTheme(nextResolvedTheme);
             applyDocumentTheme(nextResolvedTheme);

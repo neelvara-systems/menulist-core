@@ -283,6 +283,10 @@ function ProjectsPage() {
         sessionTenantId,
         sessionStoreId,
     );
+    const menuProcessingDismissalScope = useMemo(() => ({
+        tenantId: sessionTenantId,
+        storeId: sessionStoreId,
+    }), [sessionStoreId, sessionTenantId]);
     const { hasMounted } = useDeviceType();
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
     const [fileProcessingId, setFileProcessingId] = useState(null)
@@ -366,8 +370,8 @@ function ProjectsPage() {
     useEffect(() => {
         setActiveProcessingJobIdState(null);
         if (typeof window !== 'undefined' && activeProcessingJobStorageKey) {
-            clearExpiredMenuProcessingJobDismissals();
-            const dismissedJobIds = new Set(getDismissedMenuProcessingJobIds());
+            clearExpiredMenuProcessingJobDismissals(menuProcessingDismissalScope);
+            const dismissedJobIds = new Set(getDismissedMenuProcessingJobIds(menuProcessingDismissalScope));
             const storedJobId = sessionStorage.getItem(activeProcessingJobStorageKey);
             sessionStorage.removeItem('activeProcessingJobId');
 
@@ -378,7 +382,7 @@ function ProjectsPage() {
 
             setActiveProcessingJobIdState(storedJobId || null);
         }
-    }, [activeProcessingJobStorageKey]);
+    }, [activeProcessingJobStorageKey, menuProcessingDismissalScope]);
     const setActiveProcessingJobId = useCallback((id: string | null) => {
         setActiveProcessingJobIdState(id);
         if (typeof window !== 'undefined' && activeProcessingJobStorageKey) {
@@ -388,9 +392,9 @@ function ProjectsPage() {
                 sessionStorage.removeItem(activeProcessingJobStorageKey);
             }
 
-            clearExpiredMenuProcessingJobDismissals();
+            clearExpiredMenuProcessingJobDismissals(menuProcessingDismissalScope);
         }
-    }, [activeProcessingJobStorageKey]);
+    }, [activeProcessingJobStorageKey, menuProcessingDismissalScope]);
 
     // Duplicate modal state
     const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
@@ -625,7 +629,7 @@ function ProjectsPage() {
             try {
                 const { checkExistingActiveJob } = await import('@lib/firebase/menuProcessing');
 
-                const ignoredJobIds = getDismissedMenuProcessingJobIds();
+                const ignoredJobIds = getDismissedMenuProcessingJobIds(menuProcessingDismissalScope);
                 const activeJobId = await checkExistingActiveJob(activeProject.projectId, ignoredJobIds);
                 if (activeJobId) {
                     setActiveProcessingJobId(activeJobId);
@@ -639,7 +643,7 @@ function ProjectsPage() {
         };
 
         checkExistingJob();
-    }, [activeProject?.projectId, activeProcessingJobId]);
+    }, [activeProject?.projectId, activeProcessingJobId, menuProcessingDismissalScope, setActiveProcessingJobId]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // JOB QUEUE: Listen to active processing job status
@@ -1029,7 +1033,7 @@ function ProjectsPage() {
 
     const handleReviewDiscard = useCallback(() => {
         if (activeProcessingJobId) {
-            markMenuProcessingJobAsDismissed(activeProcessingJobId);
+            markMenuProcessingJobAsDismissed(menuProcessingDismissalScope, activeProcessingJobId);
         }
         setShowReviewScreen(false);
         setComparisonResult(null);
@@ -1037,7 +1041,7 @@ function ProjectsPage() {
         setFileProcessingId(null);
         setExtractionStats(null);
         message.info('Changes discarded');
-    }, [activeProcessingJobId, setActiveProcessingJobId]);
+    }, [activeProcessingJobId, menuProcessingDismissalScope, setActiveProcessingJobId]);
 
     // Success modal handler - navigate to editor
     const handleSuccessModalClose = useCallback(() => {
@@ -3345,6 +3349,8 @@ function ProjectsPage() {
                         open={showReviewScreen}
                         projectId={activeJobProjectId}
                         jobId={activeProcessingJobId}
+                        tenantId={sessionTenantId}
+                        storeId={sessionStoreId}
                         comparisonResult={comparisonResult}
                         primaryLang={getCanonicalProjectSourceLanguage(activeProject?.languages)}
                         onSaveComplete={handleReviewSaveComplete}

@@ -35,7 +35,7 @@
 
 Core URL routing infrastructure for MenuList's public pages:
 
-- **Product-domain separation** (`menulist.ai` = MenuList, `neelvara.com` = Neelvara, `answerlattice.com` = Answerlattice, `campaigncue.ai` = CampaignCue, `menulist.digital` = MyCodex)
+- **Product-domain separation** (`menulist.ai` = MenuList, `neelvara.com` = Neelvara, `answerlattice.com` = Answerlattice, `campaigncue.ai` = CampaignCue; MyCodex has no active public domain)
 - **Product site vs product app separation** (`src/app/sites/[productId]` is public website only; owner/product dashboards live in product route groups such as `src/app/(answerlattice)/answerlattice` or `src/app/(campaigncue)/campaigncue`)
 - **Brand-level subdomain ownership** (subdomain = brand, not individual location)
 - **Multi-store location routing** (`brand.menulist.ai/pune/menu`)
@@ -125,12 +125,11 @@ Requests are classified before tenant routing:
 | `neelvara.com` / `www.neelvara.com` | Product | Public site: `/sites/neelvara` |
 | `answerlattice.com` / `www.answerlattice.com` | Product | Public site: `/sites/answerlattice`; app routes: `/answerlattice/*` |
 | `campaigncue.ai` / `www.campaigncue.ai` | Product | Public site: `/sites/campaigncue`; owner app: `/campaigncue/app` |
-| `menulist.digital` / `www.menulist.digital` | Product | `/sites/mycodex` |
-| `signaldesk.menulist.ai` / `signaldesk.menulist.online` | Private app host | `/signaldesk` |
+| `signaldesk.menulist.online` | Private app host | `/signaldesk` |
 | `brand.menulist.ai` | Tenant | `/client` |
 | Verified restaurant custom domain | Tenant | `/client` |
 
-`menulist.digital` is reserved for the internal MyCodex documentation reader. It must stay in the product-domain registry so it is not mistaken for a restaurant custom domain.
+MyCodex currently has no active public domain. Do not add a MyCodex custom domain unless the private-host decision is reopened and `src/constants/deploymentTargets.ts` is updated first.
 
 MyCodex Vercel access uses a first-party login page backed by server-side credentials:
 
@@ -141,15 +140,15 @@ The browser receives only a signed `HttpOnly` `mycodex_session` cookie after log
 
 MyCodex also stays out of public discovery: MyCodex responses send `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate`, its layout metadata is no-index/no-follow, and its product-scoped `robots.txt` disallows all crawlers. These restrictions are applied only to MyCodex routes/domains and must not be reused for MenuList tenant menus or Answerlattice public surfaces.
 
-MyCodex PWA install identity is also product-scoped. `src/app/sites/mycodex/layout.tsx` links `/mycodex.webmanifest`, MyCodex-specific icons, and MyCodex Apple launch images. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when the resolved product host is `mycodex`; the worker caches only the offline fallback and MyCodex static logo assets, never repository documentation content.
+MyCodex PWA install identity remains product-scoped if a private host is approved later. `src/app/sites/mycodex/layout.tsx` links `/mycodex.webmanifest`, MyCodex-specific icons, and MyCodex Apple launch images. `src/components/ServiceWorkerRegister.tsx` registers `/mycodex-sw.js` only when the resolved product host is `mycodex`; the worker caches only the offline fallback and MyCodex static logo assets, never repository documentation content.
 
 Because MyCodex reads markdown from `__docs__` at runtime, `next.config.js` must include `./__docs__/**/*` in `experimental.outputFileTracingIncludes` for `/sites/mycodex` routes. This keeps Vercel serverless packaging aligned with local filesystem behavior without exposing docs through MenuList or Answerlattice routing.
 
 Localhost `/__mycodex` remains open for development.
 
-Internal portfolio aliases `/nv`, `/ml`, `/al`, and `/cc` are only enabled on the MyCodex product host or an already-resolved MyCodex request. They are convenience path aliases for private portfolio navigation, not public canonical product URLs, tenant paths, Firebase targets, or product-code aliases. `/nv` maps to the Neelvara public site route group.
+Internal portfolio aliases `/nv`, `/ml`, `/al`, and `/cc` are not active on a public host because MyCodex has no active domain. They may be restored only with a future private MyCodex host decision.
 
-SignalDesk uses the app-only MyCodex-host alias `/sd`. `https://menulist.digital/sd` rewrites to the private `/signaldesk` app, and SignalDesk navigation preserves `/sd/*` while serving through that host. `/sd/app` is accepted as a compatibility alias for people expecting the CampaignCue-style app suffix, but it still rewrites to the same private SignalDesk app and normalizes navigation to `/sd/*`. `/sd/signin` rewrites to the shared sign-in page so the callback can return to `/sd`.
+SignalDesk uses the dedicated private host `signaldesk.menulist.online`. The old MyCodex-host `/sd` dependency is removed from public routing.
 
 #### Product Site Vs Product App Routes
 
@@ -282,7 +281,7 @@ Owner-side browser update paths use `src/lib/cache/publicClientCache.ts` to requ
 | No CDN cache headers                      | `s-maxage=60, stale-while-revalidate=300` on all client pages    | ADR-8         |
 | No subdomain→custom domain redirect       | Page-level 301 redirect when store has verified custom domain    | ADR-5         |
 | No trailing slash/lowercase normalization | Edge middleware 301 redirect                                     | ADR-6         |
-| Internal docs host could be mistaken for tenant/custom domain | `menulist.digital` registered as MyCodex product domain | ADR-12 |
+| Discarded internal docs host could be mistaken for tenant/custom domain | MyCodex has no active public domain and must not be reintroduced without an explicit deployment-target change | ADR-12 |
 | MyCodex docs could be indexed or crawled | MyCodex-only robot metadata, `X-Robots-Tag`, and disallow-all `robots.txt` | ADR-12 |
 
 ---

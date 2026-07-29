@@ -76,14 +76,27 @@ async function run(): Promise<void> {
     assert.ok(concurrentReceipts[incomingB], 'second concurrent receipt must survive');
     assert.equal(concurrentReceipts[receiptId(1)], undefined, 'oldest receipt must be pruned first');
 
+    const receiptBeforeReplay = concurrentReceipts[incomingA];
     const siblingBeforeRemark = concurrentReceipts[incomingB];
+    await dashboardRef.update({
+        'ownerActionPlan.actions': [actions[1]],
+        modifiedOn: 'unchanged-by-replay',
+    });
     const remark = await mark('action-a', incomingA);
     assert.equal(remark.ok, true);
+    if (remark.ok) {
+        assert.deepEqual(
+            remark.receipt,
+            receiptBeforeReplay,
+            'a duplicate receipt must replay even after the source action leaves the current plan',
+        );
+    }
     const afterRemark = (await dashboardRef.get()).data() || {};
     const remarkReceipts = afterRemark.ownerActionReceipts || {};
     assert.equal(Object.keys(remarkReceipts).length, 20, 're-marking must not consume another receipt slot');
-    assert.ok(remarkReceipts[incomingA], 're-marked receipt must remain present');
+    assert.deepEqual(remarkReceipts[incomingA], receiptBeforeReplay, 'replay must not rewrite receipt truth');
     assert.deepEqual(remarkReceipts[incomingB], siblingBeforeRemark, 're-marking must not alter a sibling receipt');
+    assert.equal(afterRemark.modifiedOn, 'unchanged-by-replay', 'replay must not perform another write');
 
     const staleAction = await mark('removed-action', receiptId(102));
     assert.deepEqual(staleAction, { ok: false, error: 'Action is no longer available', status: 409 });

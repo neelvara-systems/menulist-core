@@ -1,24 +1,35 @@
-function normalizeTrustSignalDate(value: any): Date | null {
+function normalizeTrustSignalDate(value: unknown): Date | null {
     if (!value) return null;
 
-    let date: Date;
-    if (typeof value?.toDate === 'function') {
-        date = value.toDate();
-    } else if (typeof value?.seconds === 'number' && Number.isFinite(value.seconds)) {
-        date = new Date(value.seconds * 1000);
-    } else if (typeof value === 'string') {
-        date = new Date(value);
-    } else if (value instanceof Date) {
-        date = value;
-    } else {
+    try {
+        let date: Date;
+        if (value instanceof Date) {
+            date = value;
+        } else if (typeof value === 'string') {
+            date = new Date(value);
+        } else if (typeof value === 'object') {
+            const toDate = Reflect.get(value, 'toDate');
+            if (typeof toDate === 'function') {
+                const projected = Reflect.apply(toDate, value, []);
+                if (!(projected instanceof Date)) return null;
+                date = projected;
+            } else {
+                const seconds = Reflect.get(value, 'seconds');
+                if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return null;
+                date = new Date(seconds * 1000);
+            }
+        } else {
+            return null;
+        }
+
+        return Number.isFinite(date.getTime()) ? date : null;
+    } catch {
         return null;
     }
-
-    return Number.isFinite(date.getTime()) ? date : null;
 }
 
 export function getTrustSignalFreshnessText(
-    lastPublishedAt: any,
+    lastPublishedAt: unknown,
     now: Date = new Date(),
     options?: {
         locale?: string;

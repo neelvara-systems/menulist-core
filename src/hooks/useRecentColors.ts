@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBoundedHookStringContext, logHookFailure } from '@hook/hookDiagnostics';
 
 const RECENT_COLORS_KEY = 'app_recent_colors';
@@ -28,83 +28,93 @@ export const normalizeStoredColorList = (value: unknown, maxItems: number): stri
   return colors;
 };
 
+export const parseStoredColorList = (
+  value: string | null,
+  maxItems: number,
+): string[] | null => {
+  if (value === null) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? normalizeStoredColorList(parsed, maxItems) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const useRecentColors = () => {
   const [recentColors, setRecentColors] = useState<string[]>([]);
   const [favoriteColors, setFavoriteColors] = useState<string[]>([]);
+  const recentColorsRef = useRef<string[]>([]);
+  const favoriteColorsRef = useRef<string[]>([]);
 
   // Load from localStorage on mount
   useEffect(() => {
-    try {
-      const savedRecent = localStorage.getItem(RECENT_COLORS_KEY);
-      const savedFavorites = localStorage.getItem(FAVORITE_COLORS_KEY);
+    const loadColors = (
+      storageKey: string,
+      maxItems: number,
+      setColors: (colors: string[]) => void,
+      colorsRef: { current: string[] },
+    ): void => {
+      try {
+        const stored = localStorage.getItem(storageKey);
+        const colors = parseStoredColorList(stored, maxItems);
+        if (colors === null) {
+          localStorage.removeItem(storageKey);
+          return;
+        }
+        colorsRef.current = colors;
+        setColors(colors);
+      } catch (error) {
+        logHookFailure('recent_colors_load_failed', error, {
+          ...getBoundedHookStringContext('storageKey', storageKey),
+        });
+      }
+    };
 
-      if (savedRecent) {
-        setRecentColors(normalizeStoredColorList(JSON.parse(savedRecent), MAX_RECENT_COLORS));
-      }
-      if (savedFavorites) {
-        setFavoriteColors(normalizeStoredColorList(JSON.parse(savedFavorites), MAX_FAVORITE_COLORS));
-      }
-    } catch (error) {
-      logHookFailure('recent_colors_load_failed', error, {
-        storageKeyCount: 2,
-      });
-    }
+    loadColors(RECENT_COLORS_KEY, MAX_RECENT_COLORS, setRecentColors, recentColorsRef);
+    loadColors(FAVORITE_COLORS_KEY, MAX_FAVORITE_COLORS, setFavoriteColors, favoriteColorsRef);
   }, []);
 
   // Add color to recent history
   const addRecentColor = useCallback((color: string) => {
     const normalizedColor = normalizeStoredColorList([color], 1)[0];
     if (!normalizedColor) return;
-    setRecentColors((prev) => {
-      // Remove if already exists
-      const filtered = prev.filter((c) => c.toLowerCase() !== normalizedColor);
-      // Add to beginning
-      const updated = [normalizedColor, ...filtered].slice(0, MAX_RECENT_COLORS);
-      
-      // Save to localStorage
-      try {
-        localStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(updated));
-      } catch (error) {
-        logHookFailure('recent_colors_save_failed', error, {
-          recentColorCount: updated.length,
-          ...getBoundedHookStringContext('color', normalizedColor),
-        });
-      }
-      
-      return updated;
-    });
+    const filtered = recentColorsRef.current.filter((c) => c.toLowerCase() !== normalizedColor);
+    const updated = [normalizedColor, ...filtered].slice(0, MAX_RECENT_COLORS);
+    recentColorsRef.current = updated;
+    setRecentColors(updated);
+    try {
+      localStorage.setItem(RECENT_COLORS_KEY, JSON.stringify(updated));
+    } catch (error) {
+      logHookFailure('recent_colors_save_failed', error, {
+        recentColorCount: updated.length,
+        ...getBoundedHookStringContext('color', normalizedColor),
+      });
+    }
   }, []);
 
   // Toggle favorite color
   const toggleFavorite = useCallback((color: string) => {
     const normalizedColor = normalizeStoredColorList([color], 1)[0];
     if (!normalizedColor) return;
-    setFavoriteColors((prev) => {
-      let updated: string[];
-      
-      if (prev.some((c) => c.toLowerCase() === normalizedColor)) {
-        // Remove from favorites
-        updated = prev.filter((c) => c.toLowerCase() !== normalizedColor);
-      } else {
-        // Add to favorites (if under limit)
-        if (prev.length >= MAX_FAVORITE_COLORS) {
-          return prev; // Don't add if at max
-        }
-        updated = [...prev, normalizedColor];
-      }
-      
-      // Save to localStorage
-      try {
-        localStorage.setItem(FAVORITE_COLORS_KEY, JSON.stringify(updated));
-      } catch (error) {
-        logHookFailure('favorite_colors_save_failed', error, {
-          favoriteColorCount: updated.length,
-          ...getBoundedHookStringContext('color', normalizedColor),
-        });
-      }
-      
-      return updated;
-    });
+    const previous = favoriteColorsRef.current;
+    let updated: string[];
+    if (previous.some((c) => c.toLowerCase() === normalizedColor)) {
+      updated = previous.filter((c) => c.toLowerCase() !== normalizedColor);
+    } else {
+      if (previous.length >= MAX_FAVORITE_COLORS) return;
+      updated = [...previous, normalizedColor];
+    }
+    favoriteColorsRef.current = updated;
+    setFavoriteColors(updated);
+    try {
+      localStorage.setItem(FAVORITE_COLORS_KEY, JSON.stringify(updated));
+    } catch (error) {
+      logHookFailure('favorite_colors_save_failed', error, {
+        favoriteColorCount: updated.length,
+        ...getBoundedHookStringContext('color', normalizedColor),
+      });
+    }
   }, []);
 
   // Check if color is favorited
@@ -115,6 +125,7 @@ export const useRecentColors = () => {
 
   // Clear recent colors
   const clearRecent = useCallback(() => {
+    recentColorsRef.current = [];
     setRecentColors([]);
     try {
       localStorage.removeItem(RECENT_COLORS_KEY);

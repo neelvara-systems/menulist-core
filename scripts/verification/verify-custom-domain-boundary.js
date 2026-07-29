@@ -221,9 +221,12 @@ requires(vercelDomains, [
 ], 'Vercel custom-domain project/conflict boundary');
 requires(vercelDnsRecords, [
   'export function normalizeVercelDomainDnsRecords(',
-  'config?.recommendedIPv4',
-  'config?.recommendedCNAME',
-  'projectDomain?.apexName',
+  'const configRecord = isRecord(config) ? config : {}',
+  'const projectDomainRecord = isRecord(projectDomain) ? projectDomain : {}',
+  'normalizeRank(record.rank) === preferredRank',
+  'configRecord.recommendedIPv4',
+  'configRecord.recommendedCNAME',
+  'projectDomainRecord.apexName',
   "addRecord('A', normalizedDomain, value)",
   "addRecord('CNAME', normalizedDomain, record.value)",
 ], 'Vercel provider-recommended DNS record boundary');

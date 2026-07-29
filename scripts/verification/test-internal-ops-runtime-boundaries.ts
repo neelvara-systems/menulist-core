@@ -44,6 +44,19 @@ assert.equal(normalizeSchedulerRecoveryResponse({ ...validRecovery, totalStores:
 assert.equal(normalizeSchedulerRecoveryResponse({ ...validRecovery, failedCount: '1' }), null);
 assert.equal(normalizeSchedulerRecoveryResponse({ ...validRecovery, runLogId: '../private' }), null);
 assert.equal(normalizeSchedulerRecoveryResponse({ ...validRecovery, status: 'finished' }), null);
+assert.equal(normalizeSchedulerRecoveryResponse(new Proxy({}, {
+  get() {
+    throw new Error('scheduler response proxy must remain contained');
+  },
+})), null);
+const schedulerResponseWithThrowingCount = { ...validRecovery };
+Object.defineProperty(schedulerResponseWithThrowingCount, 'failedCount', {
+  enumerable: true,
+  get() {
+    throw new Error('scheduler count getter must remain contained');
+  },
+});
+assert.equal(normalizeSchedulerRecoveryResponse(schedulerResponseWithThrowingCount), null);
 assert.equal(normalizeSchedulerRecoveryRunLogId(' valid '), null);
 assert.equal(normalizeSchedulerRecoveryRunLogId('manual_store_1_2_123'), 'manual_store_1_2_123');
 

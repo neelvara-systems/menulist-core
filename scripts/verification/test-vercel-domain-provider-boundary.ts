@@ -21,6 +21,36 @@ async function run(): Promise<void> {
         { apexName: 'example.com', name: 'www.example.com' },
         'www.example.com',
     ), [{ name: 'www.example.com', type: 'CNAME', value: 'project.vercel-dns-017.com' }], 'subdomains must use the project-specific Vercel recommended CNAME');
+    assert.deepEqual(normalizeVercelDomainDnsRecords(
+        {
+            recommendedIPv4: [
+                { rank: '', value: ['192.0.2.1'] },
+                { rank: 1, value: ['76.76.21.21'] },
+            ],
+        },
+        { apexName: 'example.com', name: 'example.com' },
+        'example.com',
+    ), [{ name: 'example.com', type: 'A', value: '76.76.21.21' }], 'malformed ranks must not outrank valid provider guidance');
+    let rankCoercionCalled = false;
+    assert.deepEqual(normalizeVercelDomainDnsRecords(
+        {
+            recommendedIPv4: [
+                {
+                    rank: {
+                        valueOf: () => {
+                            rankCoercionCalled = true;
+                            return 0;
+                        },
+                    },
+                    value: ['192.0.2.1'],
+                },
+                { rank: '1', value: ['76.76.21.21'] },
+            ],
+        },
+        { apexName: 'example.com', name: 'example.com' },
+        'example.com',
+    ), [{ name: 'example.com', type: 'A', value: '76.76.21.21' }], 'rank admission must not execute provider-controlled conversion hooks');
+    assert.equal(rankCoercionCalled, false);
     assert.deepEqual(normalizeVercelDomainDnsRecords({}, null, 'example.com'), [], 'missing provider guidance must not invent a DNS record');
 
     process.env.VERCEL_PROJECT_ID = 'test-project';

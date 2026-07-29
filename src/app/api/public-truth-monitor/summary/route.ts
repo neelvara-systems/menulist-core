@@ -14,6 +14,10 @@ import {
     getPublicTruthMonitorSecurityLogContext,
     logPublicTruthMonitorApiFailure,
 } from "@lib/public-truth-tools/publicTruthMonitorDiagnostics";
+import {
+    publicTruthMonitorJson,
+    withPublicTruthMonitorPrivateHeaders,
+} from "@lib/public-truth-tools/publicTruthMonitorApiResponse";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkAIRateLimit } from "@lib/rateLimit/helpers";
 import { NextRequest, NextResponse } from "next/server";
@@ -24,21 +28,21 @@ const ENDPOINT = "/api/public-truth-monitor/summary";
 export const GET = withAuth(async (request: NextRequest, session) => {
     try {
         if (!isPublicTruthMonitorEnabled()) {
-            return NextResponse.json({ error: "Feature disabled" }, { status: 404 });
+            return publicTruthMonitorJson({ error: "Feature disabled" }, { status: 404 });
         }
 
         const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read", {
-            failClosedOnProviderError: process.env.NODE_ENV === "production",
+            failClosedOnProviderError: true,
         });
-        if (rateLimitResponse) return rateLimitResponse;
+        if (rateLimitResponse) return withPublicTruthMonitorPrivateHeaders(rateLimitResponse);
 
         const sessionScope = getPublicTruthMonitorSessionScope(session);
         if (!sessionScope) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return publicTruthMonitorJson({ error: "Forbidden" }, { status: 403 });
         }
 
         if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return publicTruthMonitorJson({ error: "Forbidden" }, { status: 403 });
         }
 
         let permissionError: NextResponse | null = null;
@@ -62,7 +66,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             });
         } catch (error) {
             if (error instanceof PublicTruthMonitorScopeChangedError) {
-                return permissionError || NextResponse.json({ error: "Forbidden" }, { status: 403 });
+                return permissionError
+                    ? withPublicTruthMonitorPrivateHeaders(permissionError)
+                    : publicTruthMonitorJson({ error: "Forbidden" }, { status: 403 });
             }
             throw error;
         }
@@ -75,7 +81,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ? authorized.summary
             : null;
 
-        return NextResponse.json({
+        return publicTruthMonitorJson({
             data: {
                 entitlement,
                 summary,
@@ -88,6 +94,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             error,
             getPublicTruthMonitorSecurityLogContext(session, request, ENDPOINT),
         );
-        return NextResponse.json({ error: "Public truth history could not load" }, { status: 500 });
+        return publicTruthMonitorJson({ error: "Public truth history could not load" }, { status: 500 });
     }
 });

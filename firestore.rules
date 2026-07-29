@@ -261,6 +261,7 @@ service cloud.firestore {
       // Answerlattice tenant users can read/write only the known Answerlattice summary docs
       // that carry matching tId/sId fields. All other writes remain server-only.
       allow read: if isAuthenticated()
+                  && !isPrivateScreenControlDoc(document)
                   && (
                     (isPlatformAdmin() && !document.matches('^integrationConfig_.*$'))
                     || (
@@ -279,10 +280,10 @@ service cloud.firestore {
                     && !document.matches('^knowledgeIntakeSummary_.*$')
                     && !document.matches('^ontologyCounters_.*$')
                     && !document.matches('^integrationConfig_.*$')
+                    && !isPrivateScreenControlDoc(document)
                     && (
                       isPlatformAdmin()
                       || canWriteCurrentStoreSummaryDoc(document)
-                      || canWriteCurrentStorePublicScreenDoc(document)
                       || (
                         isAnswerlatticePlatformSummaryDoc(document)
                         && hasAnswerlatticePlatformSummaryWritePermission(document)
@@ -293,10 +294,10 @@ service cloud.firestore {
                     && !document.matches('^knowledgeIntakeSummary_.*$')
                     && !document.matches('^ontologyCounters_.*$')
                     && !document.matches('^integrationConfig_.*$')
+                    && !isPrivateScreenControlDoc(document)
                     && (
                       isPlatformAdmin()
                       || canWriteCurrentStoreSummaryDoc(document)
-                      || canWriteCurrentStorePublicScreenDoc(document)
                       || canWriteStoresSummaryDoc(document)
                       || (
                         isAnswerlatticePlatformSummaryDoc(document)
@@ -315,6 +316,10 @@ service cloud.firestore {
       return document.matches('^(projects|campaigns)_[^_]+$');
     }
 
+    function isPrivateScreenControlDoc(document) {
+      return document.matches('^screenControl_[^_]+$');
+    }
+
     function summaryDocStoreId(document) {
       return document.split('_')[1];
     }
@@ -328,7 +333,20 @@ service cloud.firestore {
     function canWriteCurrentStoreSummaryDoc(document) {
       return request.auth != null
         && isClientWritableStoreScopedSummaryDoc(document)
-        && isTenantAdmin(string(request.auth.token.tenantId), summaryDocStoreId(document));
+        && isTenantAdmin(string(request.auth.token.tenantId), summaryDocStoreId(document))
+        && preservesServerManagedScreenState(document);
+    }
+
+    function preservesServerManagedScreenState(document) {
+      return !document.matches('^campaigns_[^_]+$')
+        || (
+          !exists(/databases/$(database)/documents/platformSummary/$(document))
+          && !request.resource.data.keys().hasAny(['screen'])
+        )
+        || (
+          exists(/databases/$(database)/documents/platformSummary/$(document))
+          && request.resource.data.get('screen', null) == resource.data.get('screen', null)
+        );
     }
 
     function canWriteStoresSummaryDoc(document) {
@@ -373,12 +391,6 @@ service cloud.firestore {
         && data.contentVersion >= 1
         && data.lastContentChangeAt is timestamp
         && data.updatedAt is timestamp;
-    }
-
-    function canWriteCurrentStorePublicScreenDoc(document) {
-      return request.auth != null
-        && isValidPublicScreenState(request.resource.data, document)
-        && isTenantAdmin(string(request.auth.token.tenantId), summaryDocStoreId(document));
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -780,6 +792,12 @@ service cloud.firestore {
             || isTenantStoreDoc(resource.data)
             || docIdMatchesCurrentTenantStore(docId));
       allow create, update, delete: if false;
+    }
+
+    // Public analytics retry receipts are written only by the Admin-backed
+    // tracking route and expire through the native TTL policy.
+    match /analyticsDeliveryReceipts/{receiptId} {
+      allow read, write: if false;
     }
     
     // Chat Analytics — Aggregated daily chat stats

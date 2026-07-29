@@ -1526,6 +1526,7 @@ const swrLocalStorageProvider = read('src/lib/cache/swrLocalStorageProvider.ts')
 const apiCallComposerClient = read('src/lib/apiHelper/apiCallComposerClient.ts');
 const apiCallComposerClientWithoutLoader = read('src/lib/apiHelper/apiCallComposerClientWithoutLoader.ts');
 const apiCallComposerServer = read('src/lib/apiHelper/apiCallComposerServer.ts');
+const dalDiagnostics = read('src/lib/apiHelper/dalDiagnostics.ts');
 const contactRoute = read('src/app/api/answerlattice/public/contact/route.ts');
 const feedbackRoute = read('src/app/api/public/feedback/submit/route.ts');
 const contactForm = read('src/app/sites/answerlattice/contact/ContactForm.tsx');
@@ -1664,6 +1665,16 @@ assert(!sentryShared.includes('FALLBACK_PROD_DSN'), 'Root app Sentry must not ke
 assertIncludes(instrumentationClient, 'sanitizeMonitoringEvent(event)', 'Client Sentry beforeSend must sanitize outbound event metadata.');
 assertIncludes(sentryServerConfig, 'sanitizeMonitoringEvent(event)', 'Server Sentry beforeSend must sanitize outbound event metadata.');
 assertIncludes(sentryEdgeConfig, 'sanitizeMonitoringEvent(event)', 'Edge Sentry beforeSend must sanitize outbound event metadata.');
+for (const [label, content] of [
+    ['client', instrumentationClient],
+    ['server', sentryServerConfig],
+    ['edge', sentryEdgeConfig],
+]) {
+    assertIncludes(content, 'beforeSendTransaction(event)', `${label} Sentry tracing must use a separate transaction sanitizer.`);
+}
+assertIncludes(instrumentationClient, 'networkCaptureBodies: false', 'Client Replay must explicitly deny network body capture.');
+assertIncludes(instrumentationClient, 'networkDetailAllowUrls: []', 'Client Replay must keep network detail deny-by-default.');
+assertIncludes(instrumentationClient, 'beforeAddRecordingEvent: () => null', 'Client Replay must drop custom URL-bearing frames.');
 assertIncludes(loggerSource, 'getSanitizedMonitoringMessage', 'Monitoring logger must sanitize Sentry breadcrumb and event messages.');
 assertIncludes(loggerSource, 'const safeMessage = getSanitizedMonitoringMessage(message);', 'Monitoring logger must sanitize generic Sentry messages.');
 assertIncludes(loggerSource, 'message: safeMessage', 'Monitoring logger breadcrumbs must use sanitized message text.');
@@ -2260,6 +2271,8 @@ assertIncludes(errorPageTheme, "getBoundedRuntimeStringContext('persistedState'"
 assertIncludes(errorPageTheme, "getBoundedRuntimeStringContext('clientThemeConfig'", 'Error page persisted theme diagnostics must bound client theme metadata.');
 assertIncludes(errorPageTheme, 'themeSource: source', 'Error page persisted theme diagnostics must identify the stable caller source.');
 assertIncludes(errorPageTheme, 'readPhase', 'Error page persisted theme diagnostics must identify the stable read phase.');
+assertIncludes(errorPageTheme, 'THEME_COLOR_PATTERN', 'Error page persisted theme must admit exact hex colors only.');
+assertIncludes(errorPageTheme, 'THEME_COLOR_PATTERN.test(value)', 'Error page persisted theme must project color values through its exact boundary.');
 assert(!errorPageTheme.includes('persistedState,'), 'Error page persisted theme diagnostics must not log raw persisted Redux state.');
 assert(!errorPageTheme.includes('clientThemeConfig,'), 'Error page persisted theme diagnostics must not log raw client theme config.');
 assertIncludes(globalError, "readPersistedErrorPageTheme('global-error-boundary')", 'Global error boundary must use the shared persisted theme reader.');
@@ -2502,13 +2515,18 @@ assertOrder(
     );
 });
 assertIncludes(aiPackStatusRoute, '[PERMISSIONS.ACCESS_BILLING]', 'AI pack status route must require billing access before capacity reads.');
+assertIncludes(aiPackStatusRoute, 'failClosedOnProviderError: true', 'AI pack status read admission must fail closed.');
+assertIncludes(aiPackStatusRoute, 'resolveCurrentSessionUserDocumentId(session)', 'AI pack status limiter must use exact actor identity.');
+assertIncludes(aiPackStatusRoute, 'withAiPackStatusPrivateHeaders(permissionError)', 'AI pack status permission failures must retain private response headers.');
+assertIncludes(aiPackStatusRoute, '"Cache-Control": "private, no-store, max-age=0"', 'AI pack status responses must be private and non-storable.');
 assertOrder(
     aiPackStatusRoute,
     [
         'const scope = resolveStorePermissionSessionScope(session);',
         'if (!scope) {',
+        'const rateLimit = await checkRateLimit({',
         'const permissionError = await requireAnyStorePermission(',
-        'if (permissionError) return permissionError;',
+        'if (permissionError) return withAiPackStatusPrivateHeaders(permissionError);',
         'const capacityCheck = await checkAICapacity(',
     ],
     'AI pack status route must check billing permission before capacity reads',
@@ -3076,6 +3094,17 @@ assert(useContentViewTracking.includes('resolveAnswerlatticeSessionScope(session
     assertIncludes(source, failureCode, `${label} must include bounded failure code ${failureCode}.`);
     assertNoDirectConsole(source, `${label} must not direct-console browser or Redux failures.`);
 });
+[
+    'getTenantStoreStorageKey',
+    'getImageGenPreferencesStorageKey',
+    'MAX_PREFERENCE_ARRAY_LENGTH',
+    'IMAGE_ASPECT_RATIOS',
+    'isCanonicalPastIsoTimestamp',
+    'parseImageGenPreferences(data)',
+    'localStorage.removeItem(storageKey)',
+].forEach((token) => {
+    assertIncludes(imageGenPreferences, token, `Image generation preference boundary must include ${token}.`);
+});
 assertIncludes(useAppDispatch, 'useDispatch.withTypes<AppDispatch>()', 'App dispatch hook must expose the exact store dispatch type.');
 assert(!useAppDispatch.includes('noopDispatch'), 'App dispatch hook must not silently drop actions outside a Redux Provider.');
 assert(!useAppDispatch.includes('catch'), 'App dispatch hook must leave a missing Redux Provider visible as a configuration error.');
@@ -3453,6 +3482,11 @@ assertIncludes(setClaimsRoute, 'const sessionUserId = resolveCurrentSessionUserD
 assertIncludes(setClaimsRoute, 'if (!sessionUserId)', 'Set-claims route must reject missing or conflicting actor aliases.');
 assertIncludes(setClaimsRoute, 'const setClaimsUserRateLimitHash = hashPublicRateLimitValue(sessionUserId);', 'Set-claims route must hash exact actor limiter material.');
 assertIncludes(setClaimsRoute, 'key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${setClaimsUserRateLimitHash}`', 'Set-claims route must build limiter keys from hashed material.');
+assertIncludes(setClaimsRoute, 'failClosedOnProviderError: true', 'Set-claims route must fail closed when limiter state is unavailable.');
+assertIncludes(setClaimsRoute, "rateLimit.reason === 'provider_unavailable'", 'Set-claims route must distinguish limiter-provider outages.');
+assertIncludes(setClaimsRoute, 'AUTH_CREDENTIAL_RESPONSE_HEADERS', 'Set-claims custom-token responses must use a protected private no-store policy.');
+assertIncludes(setClaimsRoute, "'Pragma': 'no-cache'", 'Set-claims custom-token responses must retain legacy no-cache protection.');
+assertIncludes(setClaimsRoute, 'return withCredentialResponseHeaders(bodyResult.response);', 'Set-claims bounded-body failures must retain the protected response policy.');
 assertIncludes(setClaimsRoute, "logger.security('Rate Limit Exceeded - Set Claims'", 'Set-claims route must security-log rate-limit rejections.');
 assertOrder(
     setClaimsRoute,
@@ -3567,6 +3601,7 @@ assert(!internalUserApi.includes('NEXT_PUBLIC_UPDATE_ADDRESS'), 'Internal user A
     'mobile_account_profile_update_rejected',
     'mobile_account_password_change_failed',
     'mobile_account_password_change_rejected',
+    'mobile_account_password_change_signout_failed',
 ].forEach((failureCode) => {
     assertIncludes(mobileMoreScreen, failureCode, `Mobile More auth flow must include ${failureCode}.`);
 });
@@ -3574,6 +3609,8 @@ assertIncludes(mobileMoreScreen, 'logAuthFailure', 'Mobile More auth flows must 
 assertIncludes(mobileMoreScreen, 'getBoundedAuthStringContext', 'Mobile More auth flows must use bounded auth context.');
 assertIncludes(mobileMoreScreen, 'AUTH_ACCOUNT_REQUEST_POLICY', 'Mobile More store switching must use the shared auth account request policy.');
 assertIncludes(mobileMoreScreen, "readAuthAccountResponse(res, 'switch_store')", 'Mobile More store switching must validate the switch-store response envelope.');
+assertIncludes(mobileMoreScreen, "readAuthAccountResponse(res, 'password_change')", 'Mobile More password change must validate the reauthentication response envelope.');
+assertIncludes(mobileMoreScreen, 'await signOutSession();', 'Mobile More password change must immediately end the revoked current session.');
 assert(!mobileMoreScreen.includes('throw new Error(data.error'), 'Mobile More auth flows must not throw raw API response text.');
 assert(!mobileMoreScreen.includes('error?.message'), 'Mobile More auth flows must not show raw exception text.');
 assert(!mobileMoreScreen.includes('Toast.show({ content: error'), 'Mobile More auth flows must not toast raw exception values.');
@@ -3599,6 +3636,7 @@ assert(!storeSwitcher.includes('import { logger }'), 'Header StoreSwitcher must 
     'desktop_account_profile_update_rejected',
     'desktop_account_password_change_failed',
     'desktop_account_password_change_rejected',
+    'desktop_account_password_change_signout_failed',
 ].forEach((failureCode) => {
     assertIncludes(userProfileModal, failureCode, `Desktop profile modal must include ${failureCode}.`);
 });
@@ -3606,6 +3644,8 @@ assertIncludes(userProfileModal, 'logAuthFailure', 'Desktop profile modal must u
 assertIncludes(userProfileModal, 'getBoundedAuthStringContext', 'Desktop profile modal must use bounded auth context.');
 assertIncludes(userProfileModal, 'hasCurrentPassword: Boolean(values?.currentPassword)', 'Desktop profile modal must log password presence only.');
 assertIncludes(userProfileModal, 'hasNewPassword: Boolean(values?.newPassword)', 'Desktop profile modal must log password presence only.');
+assertIncludes(userProfileModal, "readAuthAccountResponse(res, 'password_change')", 'Desktop password change must validate the reauthentication response envelope.');
+assertIncludes(userProfileModal, 'await signOutSession();', 'Desktop password change must immediately end the revoked current session.');
 assert(!userProfileModal.includes('dispatch(showErrorToast(data.error'), 'Desktop profile modal must not show raw API response text.');
 assert(!userProfileModal.includes('error?.message'), 'Desktop profile modal must not show raw exception text.');
 assert(!userProfileModal.includes('passwordLength'), 'Desktop profile modal must not log password length.');
@@ -3675,6 +3715,25 @@ assertIncludes(
     "if (process.env.NODE_ENV === 'production')",
     'SWR localStorage cache provider diagnostics must be development-only.',
 );
+[
+    'CACHE_DATE_PATTERN',
+    'function isCanonicalCacheDate(value: unknown): value is string',
+    'function projectCacheEntry<T>(value: unknown, now = Date.now()): CacheEntry<T> | null',
+    "!Object.prototype.hasOwnProperty.call(value, 'data')",
+    '!Number.isSafeInteger(value.timestamp)',
+    '(value.timestamp as number) > now',
+    '!isCanonicalCacheDate(value.date)',
+    'const entry = projectCacheEntry<T>(JSON.parse(raw));',
+    'if (!entry || !isCacheValid(entry, maxAgeMs, dayKey))',
+    "if (!normalizedDayKey || typeof data === 'undefined') return;",
+    'const entry = projectCacheEntry<unknown>(JSON.parse(raw));',
+].forEach((token) => assertIncludes(
+    swrLocalStorageProvider,
+    token,
+    'SWR localStorage cache provider exact persisted-envelope boundary.',
+));
+assert(!swrLocalStorageProvider.includes('const entry: CacheEntry<T> = JSON.parse(raw);'), 'SWR localStorage reads must not cast unvalidated persisted JSON.');
+assert(!swrLocalStorageProvider.includes('const entry: CacheEntry<unknown> = JSON.parse(raw);'), 'SWR localStorage metadata reads must not cast unvalidated persisted JSON.');
 assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(swrLocalStorageProvider), 'SWR localStorage cache provider must not direct-console cache failures.');
 [
     ['client DAL composer', apiCallComposerClient],
@@ -3687,13 +3746,17 @@ assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(swrLocalStorageProvider), 'SWR
     assertIncludes(source, "throw new Error('dal_client_session_required')", `${label} must reject missing-session calls.`);
     assertIncludes(source, 'throw error;', `${label} must propagate failed DAL operations.`);
     assert(!source.includes('return [];'), `${label} must not disguise failures as empty query results.`);
-    assertIncludes(source, "if (typeof arg === 'string') return { type: 'string', length: arg.length };", `${label} must log string argument length instead of raw values.`);
+    assertIncludes(source, 'summarizeDalArgs', `${label} must use the shared safe argument projector.`);
     assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(source), `${label} must not direct-console DAL calls.`);
 });
 assertIncludes(apiCallComposerClient, 'getSafeUiErrorMessage(error, fallbackMessage)', 'Client DAL composer with loader must show safe owner errors.');
 assertIncludes(apiCallComposerClientWithoutLoader, 'getSafeUiErrorMessage(error, fallbackMessage)', 'Client DAL composer without loader must show safe owner errors.');
 assert(!apiCallComposerClient.includes('allowTrustedPlainText'), 'Client DAL composer with loader must not opt into trusted plain exception text.');
 assert(!apiCallComposerClientWithoutLoader.includes('allowTrustedPlainText'), 'Client DAL composer without loader must not opt into trusted plain exception text.');
+assertIncludes(apiCallComposerClient, 'createDalLoaderRequestId()', 'Client DAL composer loader identity must not interpolate caller data.');
+assertIncludes(dalDiagnostics, 'return { type: "uninspectable" };', 'DAL diagnostics must contain hostile argument inspection.');
+assertIncludes(dalDiagnostics, 'candidate.slice(0, DAL_FUNCTION_NAME_MAX_LENGTH)', 'DAL function labels must be bounded.');
+assert(!apiCallComposerClient.includes('`${args[0]}_${Date.now()}`'), 'Client DAL loader identity must not retain caller data.');
 assertIncludes(uiErrorMessages, 'const MAX_SAFE_UI_ERROR_LENGTH = 160;', 'UI error helper must cap owner-visible exception messages.');
 assertIncludes(uiErrorMessages, 'TECHNICAL_ERROR_SHAPE_PATTERN', 'UI error helper must reject technical-looking message shapes.');
 assertIncludes(uiErrorMessages, 'rawMessage.length > MAX_SAFE_UI_ERROR_LENGTH', 'UI error helper must reject long exception messages.');
@@ -3734,7 +3797,7 @@ assertIncludes(apiCallComposerServer, "throw new Error('dal_server_session_requi
 assertIncludes(apiCallComposerServer, 'throw error;', 'Server DAL composer must propagate failed DAL operations.');
 assert(!apiCallComposerServer.includes('ignoredFunctionsList'), 'Server DAL composer must not exempt authorization by a caller-selected function name.');
 assert(!apiCallComposerServer.includes('return [];'), 'Server DAL composer must not disguise failures as empty query results.');
-assertIncludes(apiCallComposerServer, "if (typeof arg === 'string') return { type: 'string', length: arg.length };", 'Server DAL composer must log string argument length instead of raw values.');
+assertIncludes(apiCallComposerServer, 'summarizeDalArgs', 'Server DAL composer must use the shared safe argument projector.');
 assert(!/\bconsole\.(?:error|warn|log)\s*\(/.test(apiCallComposerServer), 'Server DAL composer must not direct-console DAL calls.');
 assertIncludes(
     publicApi,
@@ -4147,6 +4210,8 @@ assertIncludes(
 );
 assert((claimAccount.match(/runClaimAccountTransaction\(\{/g) || []).length >= 3, 'All claim-account modes must use the final claim transaction guard.');
 assert((claimAccount.match(/reserveClaimAccountOperation\(\{/g) || []).length >= 3, 'All claim-account modes must reserve the token before side effects.');
+assertIncludes(claimAccount, 'CLAIM_ACCOUNT_RESPONSE_HEADERS', 'Claim-account one-time-token responses must be non-storable.');
+assertIncludes(claimAccount, 'if (bodyResult.ok === false) return withClaimResponseHeaders(bodyResult.response);', 'Claim-account bounded-body failures must retain the non-storage policy.');
 assertIncludes(claimAccountConcurrency, 'const hasActiveClaimOperation = (', 'Claim account must reject an active competing reservation.');
 assertIncludes(claimAccountConcurrency, 'claimOperation: {', 'Claim account must persist the reservation before Auth work.');
 assertIncludes(claimAccountConcurrency, '.limit(MAX_CLAIMED_SUBSCRIPTIONS + 1)', 'Claim account subscription relinking must be bounded.');
@@ -4390,8 +4455,8 @@ assertIncludes(
 );
 assertIncludes(
     changePassword,
-    'const userId = normalizeChangePasswordUserDocumentId(rawUserId);',
-    'Change-password route must normalize session user IDs before rate-limit and Firestore work.',
+    'resolveCurrentSessionUserDocumentId(session)',
+    'Change-password route must correlate all supplied session actor aliases before rate-limit and Firestore work.',
 );
 assertIncludes(
     changePassword,
@@ -4484,8 +4549,8 @@ assertOrder(
     changePassword,
     [
         'function normalizeChangePasswordUserDocumentId(value: unknown): string | null',
-        'const rawUserId = session?.uId || session?.user?.id;',
-        'const userId = normalizeChangePasswordUserDocumentId(rawUserId);',
+        'const userId = normalizeChangePasswordUserDocumentId(',
+        'resolveCurrentSessionUserDocumentId(session),',
         '"change_password_invalid_session_user_id"',
         'const userRateLimitHash = hashPublicRateLimitValue(userId);',
         'readBoundedJsonBody(request, CHANGE_PASSWORD_MAX_BODY_BYTES',
@@ -4494,6 +4559,13 @@ assertOrder(
     ],
     'Change password must validate session user ID before rate-limit, body, provider, and user doc write work',
 );
+assertIncludes(changePassword, 'authTokensRevokedAt: now,', 'Change-password must record Firebase token revocation authority.');
+assertIncludes(changePassword, 'sessionRevokedAt: now,', 'Change-password must revoke existing MenuList server sessions.');
+assertIncludes(changePassword, 'reauthenticationRequired: true,', 'Change-password success must require a fresh login.');
+assertIncludes(changePassword, 'withAuthPrivateHeaders(bodyResult.response)', 'Change-password bounded-body failures must use protected response headers.');
+assert(!changePassword.includes('NextResponse.json('), 'Change-password must not bypass the shared private response helper.');
+assertIncludes(validateClaim, 'authPrivateJson(', 'Validate-claim must use the shared private response helper.');
+assert(!validateClaim.includes('NextResponse.json('), 'Validate-claim must not return storable token-preview responses.');
 assert(!changePassword.includes('const userId = String(session?.uId || session?.user?.id || "");'), 'Change-password route must not coerce raw session user IDs before document-ID validation.');
 assert(!changePassword.includes('logger.error("[change-password] Current password verification failed"'), 'Change-password must not raw-log verification exceptions.');
 assert(!changePassword.includes('logger.error("[change-password] Error"'), 'Change-password must not raw-log unexpected exceptions.');

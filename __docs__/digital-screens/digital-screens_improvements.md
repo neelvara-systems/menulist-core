@@ -3,12 +3,31 @@
 **Created:** February 8, 2026  
 **Source:** End-to-end codebase analysis (every file, every import)  
 **Goal:** Reduce Firebase cost without losing scale or performance  
-**Status:** 🔒 **ALL FINDINGS RESOLVED** — Finding 3 is now implemented with shared rate limiting; Finding 4 remains an intentional reliability cost | Feature LOCKED
-**Last Updated:** July 16, 2026
+**Status:** 🔒 **CURRENT MATERIAL FINDINGS RESOLVED IN SOURCE** — Runtime/deploy certification remains external | Feature LOCKED
+**Last Updated:** July 29, 2026
 
 ## Source Gate
 
 Treat the code paths and `npm run verify:digital-screens-boundary` as authority. This file records resolved findings; it is not permission to reintroduce screen management, token-bearing public documents, per-screen analytics, or decorative scope.
+
+---
+
+## July 29, 2026 — Truth, Security, TV Output, And Owner Dry Run
+
+Restaurant-owner dry runs exposed four trust failures: a generated link was presented as `Running`/`Connected`; old local content could override an intentional empty/current response; 720p boards could clip rows and take too long to rotate; and custom posters could be cropped or covered by output chrome.
+
+Resolved:
+
+- moved the bearer token from tenant-readable campaign state into a server-only private control and made owner mutations permission-checked, rate-limited, validated, and atomic;
+- denied direct client writes to canonical screen state and the public listener mirror;
+- replaced global screen state cache invalidation with hashed-token tags and retained store-scoped menu tags;
+- admitted browser-local content only offline and only for the same content version;
+- added compact 720p CSS, one/two/three-column packing, 12-second pages, a 500-item fallback ceiling, locale-aware prices, safe-area/QR preview, non-cropping owner artwork, non-overlapping watermarks, and expiry-time reload;
+- replaced status overclaims with `Link ready`, `Seen recently`, and `Check TV`;
+- removed the duplicate desktop custom-slide list, fixed the Output Center setup deep link, and removed stale store token fallbacks from desktop/mobile AI Menu Manager;
+- added guarded dry-run/write private-control migration, Firestore emulator coverage, lifecycle behavior tests, and the dedicated source gate.
+
+The private control and Functions changes require the ordered QA migration/deploy runbook. Vercel/browser/physical-TV certification remains required because source verification cannot prove actual TV overscan, browser fullscreen behavior, or deployed cache propagation.
 
 ---
 
@@ -387,7 +406,7 @@ const checkHealth = async () => {
 - `ScreenLink.tsx` now detects blocked Menu Board / Highlights browser opens and logs bounded link metadata only.
 - `DigitalScreenSettings/index.tsx` passes `screenLastSeenAt`, renames the override to "Only custom slides", and makes clear that Menu Board is unaffected.
 - `DigitalScreenSettings/index.tsx` now logs settings load and owner-only override failures through bounded diagnostics; shared owner-control tracking is quiet on success and bounded on failure.
-- `CurrentSlides.tsx` now describes custom slide content accurately instead of implying the generated slide stack is fully listed.
+- Historical July 2026 state: `CurrentSlides.tsx` described custom slide content accurately. The duplicate component was removed on July 29; `OwnerUploads.tsx` is now the single custom-slide list.
 - `MobileDigitalScreensScreen.tsx` now mirrors desktop setup with TV status, compact screen cards, custom slide controls, owner-only toggle copy, and bounded blocked-open diagnostics for screen-link previews.
 
 **TV output:**
@@ -402,7 +421,7 @@ const checkHealth = async () => {
 - `getMenuItemsForScreenServer()` populates order metadata from extracted menu data; the rules-incompatible browser duplicate has been removed.
 - `generateScreenSlides()` now enforces owner-only custom slide mode.
 - `touchDigitalScreenContentVersion()` links public client cache invalidation to screen content version for initialized screens only.
-- `/api/revalidate/menu` includes `screen-data` when invalidating a store.
+- Historical July 2026 state: `/api/revalidate/menu` included global `screen-data`. July 29 replaced this with exact hashed-token state invalidation plus `menu-store-{storeId}`.
 
 **Firebase cost impact:** For stores with initialized screens, public menu/cache invalidation adds one guarded `platformSummary` read and one `screen.contentVersion` write. No new collection, Storage path, Cloud Function, scheduler, rule, or index.
 

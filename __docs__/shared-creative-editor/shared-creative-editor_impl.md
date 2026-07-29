@@ -93,11 +93,11 @@ Conversation/comment assistants such as CampaignCue Design Cue remain product-ad
 
 The QA harness uses stable `data-creative-editor-*` selectors exposed by `CreativeEditor.tsx`. Those selectors are intentionally structural and must remain product-neutral. Shortcut and preview dialogs use focus restoration plus a local Tab focus trap so keyboard traversal stays inside open dialogs and returns to the triggering button when closed. The static verifier `npm run verify:creative-editor-smoke` protects the smoke route, stress variant, focus restoration, selectors, and documentation contract.
 
-## Temporary Deployed Preview
+## Temporary Local Preview
 
-`/sites/mycodex/creative-editor-test` is the internal target for the deployed preview route. On the MyCodex host it is reached as `https://www.menulist.digital/creative-editor-test`; locally it is reached through the MyCodex dev prefix as `http://localhost:3000/__mycodex/creative-editor-test`.
+`/sites/mycodex/creative-editor-test` is the internal target for the temporary preview route. Reach it locally through the MyCodex dev prefix as `http://localhost:3000/__mycodex/creative-editor-test`.
 
-This route must remain temporary and feature-flag gated. In deployed environments it returns 404 unless `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE` is enabled. It also inherits the MyCodex middleware login/session gate on `menulist.digital`, is marked noindex/nocache, uses the same in-memory CampaignCue editor test fixture as `/__campaigncue/app/editor-test`, and does not persist design data, write Firebase, upload Storage files, call provider APIs, or enable social publishing.
+This route must remain temporary and feature-flag gated. In deployed environments it returns 404 unless a future private MyCodex host is explicitly approved and `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE` is enabled. It is marked noindex/nocache, uses the same in-memory CampaignCue editor test fixture as `/__campaigncue/app/editor-test`, and does not persist design data, write Firebase, upload Storage files, call provider APIs, or enable social publishing.
 
 ## CampaignCue Adapter
 
@@ -145,7 +145,7 @@ Base editor actions are browser-local and cost zero Firebase reads/writes. Campa
 - Campaign goal starters compose existing local actions: background update, data-backed text-template insertion, and optional QR insertion. They are not remote templates and they do not bypass normal document history.
 - The pre-download readiness check is browser-local and advisory. It blocks the first download attempt for the same actionable issue signature, lets the owner inspect or fix the issue, and allows a repeat export attempt when the owner intentionally continues.
 - Export bundle downloads are client-side PNG resizes of the active workspace image into common handoff sizes. The first implementation downloads multiple PNG files directly instead of creating a ZIP dependency.
-- Local autosave uses browser `localStorage` only, keyed by product context and document id. Product adapters remain the persistence authority; autosave recovery only applies when the owner accepts a newer local draft.
+- Local autosave uses browser `localStorage` only. Its version-2 key encodes product, workspace, source surface label, and document ID as collision-safe segments. A recovered payload must pass `creativeEditorDocumentSchema` and exactly match the current product, workspace, and document before it can be offered. Invalid/corrupt/cross-scope drafts are removed, storage failures are logged without interrupting export or product-owned save, and recovery applies only when the owner accepts a newer local draft. Product adapters remain the persistence authority.
 - Review mode is a UI state for inspection/download readiness. It opens the readiness panel, fits the output frame, collapses low-frequency drawer space on narrow screens, and does not change the document schema.
 - Owner-readable history labels are kept in editor runtime state alongside the undo stack. They are used for Undo/Redo notices and layer panel context, and are not serialized as product data.
 - Use `qrcode`, already present in the repo, for QR element rendering.

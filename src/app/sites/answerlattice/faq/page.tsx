@@ -9,11 +9,11 @@ import { ANSWERLATTICE_SITE_URL } from '../siteConfig';
 
 export const metadata: Metadata = {
     title: 'FAQ',
-    description: 'Answers to common questions founders ask about AnswerLattice setup, knowledge intake, team access, in-app help, hosted help, approved answers, feedback review, Support Board, pricing, tickets, and data handling.',
+    description: 'Answers about AnswerLattice setup, Daily Brief, Knowledge Map, article topic maps, Answer Tests, release impact, approved answers, pricing, tickets, and data handling.',
     alternates: { canonical: '/faq' },
     openGraph: {
         title: 'FAQ | AnswerLattice',
-        description: 'Answers to common questions about AnswerLattice setup, knowledge intake, team access, in-app help, hosted help, approved answers, feedback review, Support Board, owner answers, screenshots, pricing, tickets, and data handling.',
+        description: 'Answers about AnswerLattice setup, Daily Brief, Knowledge Map, article topic maps, Answer Tests, release impact, approved answers, pricing, tickets, and data handling.',
         url: `${ANSWERLATTICE_SITE_URL}/faq`,
     },
 };
@@ -164,7 +164,7 @@ const FAQS = [
     },
     {
         question: 'What happens when a product release changes an answer?',
-        answer: 'Changelogs can be tied to product surfaces and affected answers. Stale-answer and release-impact checks then show which support content needs review.',
+        answer: 'Versioned changelogs can be tied to changed product areas. Before activation, release impact shows directly linked approved answers and current linked Answer Tests for owner review. If those inputs change, the stale preview must be refreshed.',
     },
     {
         question: 'What should I import first?',
@@ -196,7 +196,15 @@ const FAQS = [
     },
     {
         question: 'What does Daily Brief change?',
-        answer: 'Nothing in your support data directly. Daily Brief is the read-only opening view inside Support Assistant. It summarizes coverage, drift, friction, Support Board attention, and Knowledge Intake review counts, then links the owner to the correct governed screen.',
+        answer: 'Nothing in your support data directly. Daily Brief is the read-only opening view inside Support Assistant. It shows up to four qualified current decisions from governed summaries, or a clear quiet state when complete evidence needs no action, then links the owner to the correct review screen.',
+    },
+    {
+        question: 'What is Knowledge Map?',
+        answer: 'Knowledge Map is the owner view of governed product relationships, approved-answer coverage, drift, and review state. It uses the existing bounded graph summary and does not expose a raw graph or become a diagram editor.',
+    },
+    {
+        question: 'Does an article topic map expose private product data?',
+        answer: 'No. Public article topic maps are built from sanitized headings and existing published navigation. Private ontology, source, canonical-answer, ticket, and governance records do not enter the public payload.',
     },
     {
         question: 'Can I export my approved support knowledge?',
@@ -253,7 +261,7 @@ export default async function AnswerlatticeFaqPage() {
                         <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">FAQ</p>
                         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">Questions founders ask before adding AnswerLattice.</h1>
                         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                            Plain answers about setup, knowledge intake, team access, in-app help, hosted help, approved answers, Support Board, owner answers, screenshots, pricing, data handling, and fallback tickets.
+                            Plain answers about setup, Daily Brief, Knowledge Map, article topic maps, Answer Tests, release impact, approved answers, pricing, data handling, and fallback tickets.
                         </p>
                         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                             <AnswerlatticeLink

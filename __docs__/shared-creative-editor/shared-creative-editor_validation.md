@@ -98,18 +98,17 @@ Expanded the development-only smoke QA after a full editor walkthrough request s
 
 No Firebase reads, writes, Storage writes, Cloud Functions, provider calls, remote stock search, remote template search, direct downloads, or realtime listeners are added. This remains development-only browser QA and shared editor selector coverage.
 
-## June 15, 2026 - MyCodex Deployed Editor Preview
+## June 15, 2026 - MyCodex Editor Preview
 
 ### Scope
 
-Added a temporary deployed preview entry for owner/manual QA on the private MyCodex domain without changing the production-blocked `/creative-editor-smoke` contract. The route is mounted internally at `/sites/mycodex/creative-editor-test`, appears externally as `https://www.menulist.digital/creative-editor-test`, and reuses the CampaignCue editor test fixture with deterministic local AI Tools and Design Cue handlers.
+Added a temporary preview entry for owner/manual QA without changing the production-blocked `/creative-editor-smoke` contract. The route is mounted internally at `/sites/mycodex/creative-editor-test`, is reached locally as `http://localhost:3000/__mycodex/creative-editor-test`, and reuses the CampaignCue editor test fixture with deterministic local AI Tools and Design Cue handlers.
 
 ### Expected Runtime Behavior
 
 - Local route: `http://localhost:3000/__mycodex/creative-editor-test`.
-- Deployed route: `https://www.menulist.digital/creative-editor-test`.
-- In deployed environments, the route returns 404 unless `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE` is enabled.
-- On `menulist.digital`, the route is still behind the existing MyCodex login/session middleware.
+- No deployed MyCodex domain is currently configured.
+- In deployed environments, the route returns 404 unless a future private MyCodex host is explicitly approved and `FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_EDITOR_TEST_ROUTE` is enabled.
 - The route is noindex/nocache and uses only in-memory document state plus browser-local export/download behavior.
 
 ### Cost Impact

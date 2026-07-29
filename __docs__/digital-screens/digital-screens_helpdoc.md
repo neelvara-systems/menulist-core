@@ -1,10 +1,12 @@
 # Digital Screens — Help Documentation
 
-**Last Updated:** July 16, 2026
+**Last Updated:** July 29, 2026
 
 ## Source Gate
 
 Help copy must tell owners that saved MenuList changes refresh screens through public cache invalidation and the screen content-version listener. Do not promise instant or absolute freshness. Guard with `npm run verify:digital-screens-boundary`.
+
+The TV link is a private bearer link stored in MenuList's server-only private control. Only roles with permission to manage Digital Screens can reveal or change it. Do not post the link publicly.
 
 ## Quick Summary
 
@@ -35,7 +37,7 @@ Both use your current MenuList menu source. Saved menu changes refresh connected
 5. Bookmark it so it opens automatically when the TV turns on
 6. Your full menu with prices appears immediately. Done.
 
-After the TV sends its daily signal, the Digital Screen page shows when the screen was last seen.
+Before the first TV signal, status says **Link ready**. A recent daily signal says **Seen recently**. A signal older than the supported window says **Check TV**. These are operational hints, not a live heartbeat.
 
 ### How to Set Up Two TVs (Menu Board + Highlights)
 
@@ -65,6 +67,7 @@ The Menu Board displays your **full menu** from the current MenuList source:
 - **Prices** — valid prices from your menu data. If a price is missing or unclear, the board shows `Ask` rather than inventing a value.
 - **Availability** — sold-out items disappear automatically
 - **Pages** — if your menu is large, pages rotate automatically
+- **TV fit** — page density adapts for 720p, 1080p, wide, and portrait screens; check the full rotation before opening service
 
 **You don't choose what appears on the Menu Board.** It follows the saved menu source after the screen update path refreshes.
 
@@ -78,6 +81,8 @@ The Highlights screen shows rotating promotional slides:
 - **QR code** — so customers can scan and see your full digital menu
 
 **You don't choose the rotation order.** The system handles it. Labels stay simple and factual, such as `Today`, `Popular`, `Featured`, a category name, or `On menu`.
+
+Custom artwork is shown without center-cropping. The adjust step marks the safe area and the corners reserved for the customer QR and quiet attribution. Keep prices, dates, and offer terms inside that safe area.
 
 ### How to update what's on screen
 

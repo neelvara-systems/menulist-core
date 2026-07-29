@@ -29,6 +29,11 @@ import {
 } from '../../src/lib/localization/publicCustomerMessages';
 import { localizePublicHoursText } from '../../src/lib/localization/publicHoursText';
 import {
+    buildCanonicalLanguageList,
+    normalizeStoreLanguagePolicy,
+} from '../../src/lib/localization/languagePolicy';
+import { getStoreRenderLanguage } from '../../src/lib/localization/storeContent';
+import {
     appendPublicLanguageParam,
     getNextIntlLocaleForPublicLanguage,
     normalizePublicLanguageCode,
@@ -73,6 +78,30 @@ assert.equal(timeAgo(new Date('2026-07-16T12:00:00.000Z'), 'en-US', Date.parse('
 assert.equal(normalizePublicLanguageCode(' AR-sa '), 'ar');
 assert.equal(normalizePublicLanguageCode(['ks-IN', 'en-US']), 'ks');
 assert.equal(normalizePublicLanguageCode(''), null);
+let publicLanguageCoercionAttempted = false;
+assert.equal(normalizePublicLanguageCode({
+    toString() {
+        publicLanguageCoercionAttempted = true;
+        throw new Error('public language coercion must not execute');
+    },
+} as unknown as string), null);
+assert.equal(publicLanguageCoercionAttempted, false);
+assert.equal(normalizePublicLanguageCode(new Proxy([], {
+    get() {
+        throw new Error('public language array access must remain contained');
+    },
+}) as string[]), null);
+let storeDefaultLanguageCoercionAttempted = false;
+assert.equal(getStoreRenderLanguage({
+    activeLanguages: ['en', 'hi'],
+    defaultLanguage: {
+        toString() {
+            storeDefaultLanguageCoercionAttempted = true;
+            throw new Error('store default language coercion must not execute');
+        },
+    },
+}), 'en');
+assert.equal(storeDefaultLanguageCoercionAttempted, false);
 assert.equal(getNextIntlLocaleForPublicLanguage('ks'), 'ks-IN');
 assert.equal(getNextIntlLocaleForPublicLanguage('sat'), 'sat-IN');
 assert.equal(getNextIntlLocaleForPublicLanguage('brx'), 'brx-IN');
@@ -83,6 +112,16 @@ assert.equal(getPublicCustomerLocale('unsupported'), 'en-US');
 assert.equal(getPublicCustomerLanguageDirection('ar'), 'rtl');
 assert.equal(getPublicCustomerLanguageDirection('ks'), 'rtl');
 assert.equal(getPublicCustomerLanguageDirection('hi'), 'ltr');
+assert.deepEqual(buildCanonicalLanguageList(['hi', 42, 'ar']), ['en', 'hi', 'ar']);
+assert.deepEqual(buildCanonicalLanguageList(new Proxy([], {
+    get() {
+        throw new Error('language list proxy must remain contained');
+    },
+})), ['en']);
+assert.deepEqual(normalizeStoreLanguagePolicy({
+    activeLanguages: [{ toString() { throw new Error('language coercion must not execute'); } }, 'hi'],
+    defaultLanguage: 'hi',
+}).activeLanguages, ['en', 'hi']);
 
 const publicStorePolicy = {
     activeLanguages: ['hi', 'ar'],
@@ -108,6 +147,7 @@ assert.equal(
     hindiPublicT('menu.spiceVeryHot'),
 );
 assert.equal(getPublicSpiceLevelLabel('chef_special', hindiPublicT), 'chef special');
+assert.equal(getPublicSpiceLevelLabel('toString', hindiPublicT), 'toString');
 
 assert.equal(
     appendPublicLanguageParam('/client/example?source=qr#menu', 'ar-SA'),

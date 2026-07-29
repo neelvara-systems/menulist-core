@@ -9,25 +9,37 @@ import {
     readGrowthOSSummaryServer,
     recordGrowthOSExportServer,
 } from "@database/growthos/server";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
+import { applyGrowthOSWriteRateLimit } from "@lib/growthos/apiGuards";
+import { growthOSPrivateJson, withGrowthOSPrivateHeaders } from "@lib/growthos/apiResponse";
 import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
 import { isGrowthOSKitExpired } from "@lib/growthos/readiness";
 import { evaluateGrowthOSServerEntitlement } from "@lib/growthos/serverEntitlements";
 import { loadGrowthOSSourceSnapshot } from "@lib/growthos/serverContext";
 import { logger } from "@lib/monitoring/logger";
-import { checkDataWriteLimit } from "@lib/rateLimit/helpers";
+import { resolveStorePermissionSessionScope } from "@lib/permissions/scopeDocumentId";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { GrowthOSExportRequestSchema, parseGrowthOSJsonBody } from "@lib/validation/growthosSchemas";
-import { NextResponse } from "next/server";
 import { verifyTenantAccess, withAuth } from "../../../../../middleware/auth";
 
 export const POST = withAuth(async (request, session) => {
     try {
         if (!isGrowthOSMasterEnabled()) {
-            return NextResponse.json({ error: "Feature disabled" }, { status: 404 });
+            return growthOSPrivateJson({ error: "Feature disabled" }, { status: 404 });
         }
 
-        const rateLimitResponse = await checkDataWriteLimit();
+        const scope = resolveStorePermissionSessionScope(session);
+        const actorId = resolveCurrentSessionUserDocumentId(session);
+        if (!scope || !actorId) {
+            return growthOSPrivateJson({ error: "Forbidden" }, { status: 403 });
+        }
+        const rateLimitResponse = await applyGrowthOSWriteRateLimit({
+            actorId,
+            routeKey: "export",
+            storeId: scope.storeScope.documentId,
+            tenantId: scope.tenantScope.documentId,
+        });
         if (rateLimitResponse) return rateLimitResponse;
 
         const jsonBody = await parseGrowthOSJsonBody(request);
@@ -36,7 +48,8 @@ export const POST = withAuth(async (request, session) => {
                 ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/kits/export"),
             }, "medium");
             return ("response" in jsonBody && jsonBody.response)
-                || NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+                ? withGrowthOSPrivateHeaders(jsonBody.response)
+                : growthOSPrivateJson({ error: "Invalid JSON" }, { status: 400 });
         }
 
         const validation = validateAPIInput(GrowthOSExportRequestSchema, jsonBody.data);
@@ -47,23 +60,23 @@ export const POST = withAuth(async (request, session) => {
                     ...getGrowthOSBoundedStringContext("validationError", errorMsg),
                 }),
             }, "medium");
-            return NextResponse.json({ error: "Invalid input", details: errorMsg }, { status: 400 });
+            return growthOSPrivateJson({ error: "Invalid input", details: errorMsg }, { status: 400 });
         }
         const kitId = String(validation.data.kitId);
 
-        if (!verifyTenantAccess(session, session.tId, session.sId, request)) {
+        if (!verifyTenantAccess(session, scope.tenantScope.numericId, scope.storeScope.numericId, request)) {
             logger.security("Tenant Access Violation - GrowthOS Export API", {
                 ...getGrowthOSSecurityLogContext(session, request, "/api/growthos/kits/export", {
                     ...getGrowthOSBoundedStringContext("attemptedKitId", kitId),
                 }),
             }, "critical");
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+            return growthOSPrivateJson({ error: "Forbidden" }, { status: 403 });
         }
 
-        const storeData = await readGrowthOSStoreDataServer(session.sId);
+        const storeData = await readGrowthOSStoreDataServer(scope.storeScope.documentId);
         const entitlement = await evaluateGrowthOSServerEntitlement({ session, storeData });
         if (!entitlement.allowed) {
-            return NextResponse.json({
+            return growthOSPrivateJson({
                 error: "Growth Kits unavailable",
                 message: entitlement.message,
                 reason: entitlement.reason,
@@ -71,24 +84,26 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const replay = await readGrowthOSExportReplayServer({
+            actorId,
             destination: validation.data.destination,
             kitId,
             method: validation.data.method,
             operationId: validation.data.operationId,
             outputId: validation.data.outputId,
-            session,
+            sId: scope.storeScope.documentId,
+            tId: scope.tenantScope.documentId,
         });
         if (replay) {
-            return NextResponse.json({ data: replay }, { status: 200 });
+            return growthOSPrivateJson({ data: replay }, { status: 200 });
         }
 
         const kit = await readGrowthOSKitServer({
             kitId,
-            tId: session.tId,
-            sId: session.sId,
+            tId: scope.tenantScope.documentId,
+            sId: scope.storeScope.documentId,
         });
         if (!kit) {
-            return NextResponse.json({ error: "Growth Kit not found" }, { status: 404 });
+            return growthOSPrivateJson({ error: "Growth Kit not found" }, { status: 404 });
         }
 
         const output = findGrowthOSKitOutput({
@@ -97,18 +112,18 @@ export const POST = withAuth(async (request, session) => {
             outputId: validation.data.outputId,
         });
         if (!output) {
-            return NextResponse.json({ error: "Growth Kit output not found" }, { status: 404 });
+            return growthOSPrivateJson({ error: "Growth Kit output not found" }, { status: 404 });
         }
         if (output.preflight?.status === "blocked" && !["mark_used", "stale"].includes(validation.data.method)) {
-            return NextResponse.json({
+            return growthOSPrivateJson({
                 error: "Growth Kit output blocked",
                 message: "This output needs review before it can be used.",
             }, { status: 409 });
         }
 
         const summary = await readGrowthOSSummaryServer({
-            storeId: session.sId,
-            tenantId: session.tId,
+            storeId: scope.storeScope.documentId,
+            tenantId: scope.tenantScope.documentId,
         });
         let currentSourceFactsHash = summary?.sourceFactsHash;
         let sourceFactsUnavailable = false;
@@ -125,36 +140,36 @@ export const POST = withAuth(async (request, session) => {
             || Boolean(currentSourceFactsHash && currentSourceFactsHash !== kit.sourceFactsHash)
             || isGrowthOSKitExpired(kit.expiresAt);
         if (isStale && !["mark_used", "stale"].includes(validation.data.method)) {
-            return NextResponse.json({
+            return growthOSPrivateJson({
                 error: "Growth Kit is stale",
                 message: "This kit may use old menu details. Create it again before using.",
             }, { status: 409 });
         }
 
         const result = await recordGrowthOSExportServer({
+            actorId,
             destination: validation.data.destination,
             isStale,
             kit,
             method: validation.data.method,
             operationId: validation.data.operationId,
             outputId: validation.data.outputId,
-            session,
         });
 
-        return NextResponse.json({
+        return growthOSPrivateJson({
             data: result,
         }, { status: 200 });
     } catch (error) {
         if (error instanceof Error && error.message === GROWTHOS_KIT_BECAME_STALE) {
-            return NextResponse.json({
+            return growthOSPrivateJson({
                 error: "Growth Kit is stale",
                 message: "This kit may use old menu details. Create it again before using.",
             }, { status: 409 });
         }
         logGrowthOSApiFailure("GrowthOS Export API error", "growthos_export_api_failed", error, {
             endpoint: "/api/growthos/kits/export",
-            ...getGrowthOSBoundedStringContext("userId", session?.uId || session?.user?.id),
+            ...getGrowthOSBoundedStringContext("userId", resolveCurrentSessionUserDocumentId(session)),
         });
-        return NextResponse.json({ error: "Growth Kit export failed" }, { status: 500 });
+        return growthOSPrivateJson({ error: "Growth Kit export failed" }, { status: 500 });
     }
 });

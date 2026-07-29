@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { createPrivateKey, sign } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
     generateAnswerlatticeVerifiedContextKey,
     normalizeAnswerlatticeEvidenceHosts,
@@ -13,6 +15,7 @@ import {
     AnswerlatticeAnswerTestRunRequestSchema,
     createEmptyAnswerlatticeAnswerTestSummary,
     getAnswerlatticeAnswerTestSummaryId,
+    hasDisallowedAnswerlatticeCriticalRagCaseMutation,
     isAnswerlatticeAnswerTestRunCurrent,
     parseAnswerlatticeAnswerTestSummaryIdentity,
     prepareAnswerlatticeAnswerTestCasesForWrite,
@@ -424,16 +427,61 @@ const criticalEvidenceCase: AnswerlatticeAnswerTestCase = AnswerlatticeAnswerTes
     },
 });
 
-const passingEvidenceResult = evaluateAnswerTestCase(criticalEvidenceCase, {
+assert.equal(
+    AnswerlatticeAnswerTestCaseSchema.safeParse(criticalEvidenceCase).success,
+    true,
+    'legacy critical-RAG cases must remain readable',
+);
+assert.equal(
+    hasDisallowedAnswerlatticeCriticalRagCaseMutation([criticalEvidenceCase], [criticalEvidenceCase]),
+    false,
+    'an unchanged legacy critical-RAG case must not corrupt unrelated suite saves',
+);
+assert.equal(
+    hasDisallowedAnswerlatticeCriticalRagCaseMutation(
+        [criticalEvidenceCase],
+        [{ ...criticalEvidenceCase, title: 'Edited critical fallback test' }],
+    ),
+    true,
+    'an edited active critical-RAG case must be rejected',
+);
+assert.equal(
+    hasDisallowedAnswerlatticeCriticalRagCaseMutation(
+        [criticalEvidenceCase],
+        [{ ...criticalEvidenceCase, active: false }],
+    ),
+    false,
+    'an owner must be able to deactivate a legacy critical-RAG case safely',
+);
+assert.equal(
+    hasDisallowedAnswerlatticeCriticalRagCaseMutation([], [criticalEvidenceCase]),
+    true,
+    'a new critical-RAG case must be rejected',
+);
+
+const criticalRagResult = evaluateAnswerTestCase(criticalEvidenceCase, {
     source: 'rag',
     answer: 'The invoice can be retried after the payment method is updated.',
     referenceIds: ['article_one'],
     confidence: 'high',
     aiProviderUsed: true,
 }, 12.9);
-assert.equal(passingEvidenceResult.passed, true, 'matching claims and evidence must pass');
+assert.equal(criticalRagResult.passed, false, 'provider-backed RAG must never certify critical proof');
+assert.match(criticalRagResult.failures.join(' '), /Knowledge fallback cannot certify a critical answer/);
+assert.equal(getAnswerTestProofSummary([criticalRagResult]).proofStatus, 'blocked');
+assert.equal(criticalRagResult.citationPassed, true, 'matching evidence remains visible even when authority blocks proof');
+assert.equal(criticalRagResult.durationMs, 12, 'duration evidence must be normalized to a non-negative integer');
+
+const standardEvidenceCase = { ...criticalEvidenceCase, riskLevel: 'standard' as const };
+const passingEvidenceResult = evaluateAnswerTestCase(standardEvidenceCase, {
+    source: 'rag',
+    answer: 'The invoice can be retried after the payment method is updated.',
+    referenceIds: ['article_one'],
+    confidence: 'high',
+    aiProviderUsed: true,
+}, 12.9);
+assert.equal(passingEvidenceResult.passed, true, 'governed assertions may still verify a standard fallback case');
 assert.equal(passingEvidenceResult.citationPassed, true, 'matching evidence must be recorded explicitly');
-assert.equal(passingEvidenceResult.durationMs, 12, 'duration evidence must be normalized to a non-negative integer');
 
 const failingEvidenceResult = evaluateAnswerTestCase(criticalEvidenceCase, {
     source: 'rag',
@@ -1079,5 +1127,14 @@ assert.equal(
     false,
     'The browser boundary must reject contradictory launch proof counts',
 );
+
+const answerTestsUi = readFileSync(
+    path.join(process.cwd(), 'src/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests.tsx'),
+    'utf8',
+);
+assert.match(answerTestsUi, /normalizeAnswerlatticeOwnerReleaseContext\(searchParams\.get\('release'\)\)/);
+assert.match(answerTestsUi, /openReleaseCheck\(requestedReleaseId\)/);
+assert.match(answerTestsUi, /Review approved answer/);
+assert.match(answerTestsUi, /getAnswerlatticeAnswerContextRoute\(/);
 
 console.log('Answerlattice founder support controls contract tests passed');

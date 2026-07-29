@@ -41,6 +41,11 @@ const permissionServer = fs.readFileSync(path.join(ROOT, 'src/lib/permissions/se
 assert.ok(route.includes('const scope = resolveStorePermissionSessionScope(session);'));
 assert.ok(route.includes('scope.tenantScope.numericId'));
 assert.ok(route.includes('scope.storeScope.numericId'));
+assert.ok(route.includes('failClosedOnProviderError: true'));
+assert.ok(route.includes('resolveCurrentSessionUserDocumentId(session)'));
+assert.ok(route.includes('withAiPackStatusPrivateHeaders(permissionError)'));
+assert.ok(route.includes('"Cache-Control": "private, no-store, max-age=0"'));
+assert.equal((route.match(/NextResponse\.json/g) || []).length, 1);
 assert.ok(!route.includes('const tenantId = session?.user?.tenantId || session?.tId'));
 assert.ok(!route.includes('const storeId = session?.user?.storeId || session?.sId'));
 assert.ok(!route.includes('Number(tenantId)'));

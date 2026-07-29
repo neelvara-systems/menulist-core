@@ -43,8 +43,14 @@ function withSuppressedConsoleError(fn) {
 function verifyPackageScript() {
   const pkg = JSON.parse(read('package.json'));
   assert(
-    pkg.scripts['verify:official-business-page-boundary'] === 'node scripts/verification/verify-official-business-page-boundary.js',
-    'package.json must expose verify:official-business-page-boundary',
+    pkg.scripts['verify:official-business-page-boundary']
+      === 'node scripts/verification/verify-official-business-page-boundary.js && npm run test:obp-i18n-boundary',
+    'package.json must expose the OBP source and i18n behavior gates',
+  );
+  assert(
+    pkg.scripts['test:obp-i18n-boundary']
+      === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-obp-i18n-boundary.ts',
+    'package.json must expose test:obp-i18n-boundary',
   );
 }
 
@@ -442,7 +448,16 @@ function verifyFreshnessBoundary() {
   }
 
   assertIncludes(publicClientCache, "fetch('/api/revalidate/menu'", 'OBP browser public cache revalidation endpoint');
-  assertIncludes(storeDal, 'await revalidatePublicClientCache(data.storeId, "updateStore")', 'OBP store update public cache revalidation');
+  assertIncludes(
+    storeDal,
+    'await revalidatePublicClientCache(data.storeId, "updateStore", {',
+    'OBP store update public cache revalidation',
+  );
+  assertIncludes(
+    storeDal,
+    'touchScreen: hasDigitalScreenStoreOutputFieldChanges(data)',
+    'OBP store update digital-screen attribution',
+  );
   assertIncludes(clientStoreLookup, "Tag `client-stores`", 'OBP lookup shared cache tag documentation');
   assertIncludes(clientStoreLookup, "{ revalidate: 60, tags: ['client-stores'] }", 'OBP lookup 60s public cache window');
   assertIncludes(obpContent, "{ revalidate: 60, tags: ['client-stores'] }", 'OBP content 60s public cache window');

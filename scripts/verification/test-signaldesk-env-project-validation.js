@@ -49,31 +49,31 @@ const withoutKeys = (value, keys) => Object.fromEntries(
 );
 
 const exactLocalEnvironment = {
-  MENULIST_SIGNALDESK_FIREBASE_CLIENT_EMAIL: "signaldesk-test@example.invalid",
-  MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  MENULIST_SIGNALDESK_FIREBASE_PRIVATE_KEY: "test-private-key",
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
-  MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "(default)",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_API_KEY: "signaldesk-test-api-key",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_APP_ID: "signaldesk-test-app-id",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "menulist-signaldesk-qa.firebaseapp.com",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "separate",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "(default)",
+  SIGNALDESK_FIREBASE_CLIENT_EMAIL: "signaldesk-test@example.invalid",
+  SIGNALDESK_FIREBASE_MODE: "separate",
+  SIGNALDESK_FIREBASE_PRIVATE_KEY: "test-private-key",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
+  SIGNALDESK_FIRESTORE_DATABASE_ID: "(default)",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_API_KEY: "signaldesk-test-api-key",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_APP_ID: "signaldesk-test-app-id",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "menulist-signaldesk-qa.firebaseapp.com",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "separate",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.firebasestorage.app",
+  NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID: "(default)",
   NODE_ENV: "development",
 };
 
 const exactProductionEnvironment = {
   ...exactLocalEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk.firebasestorage.app",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk.firebasestorage.app",
   NEXT_PUBLIC_ENV: "production",
   NEXT_PUBLIC_VERCEL_ENV: "production",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "menulist-signaldesk.firebaseapp.com",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk.firebasestorage.app",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN: "menulist-signaldesk.firebaseapp.com",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk.firebasestorage.app",
   NODE_ENV: "production",
   VERCEL: "1",
   VERCEL_ENV: "production",
@@ -89,8 +89,8 @@ assert.deepEqual(exactLocal, {
 
 const normalizedLocal = runCase({
   ...exactLocalEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: " gs://menulist-signaldesk-qa.firebasestorage.app/ ",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: " gs://menulist-signaldesk-qa.firebasestorage.app/ ",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: " gs://menulist-signaldesk-qa.firebasestorage.app/ ",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: " gs://menulist-signaldesk-qa.firebasestorage.app/ ",
 });
 assert.deepEqual(normalizedLocal, {
   deploymentMissing: [],
@@ -109,8 +109,8 @@ assert.ok(missingLocal.warnings.some((message) => message.includes("complete Adm
 
 const wrongLocal = runCase({
   ...exactLocalEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-qa",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-qa",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-qa",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-qa",
 });
 assert.equal(wrongLocal.missing.length, 0);
 assert.equal(wrongLocal.warnings.length, 2);
@@ -138,8 +138,8 @@ assert.ok(missingProduction.missing.some((message) => message.includes("private 
 
 const wrongProduction = runCase({
   ...exactProductionEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
+  SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID: "menulist-signaldesk-qa",
 });
 assert.equal(wrongProduction.warnings.length, 0);
 assert.equal(wrongProduction.missing.length, 2);
@@ -147,61 +147,61 @@ assert.ok(wrongProduction.missing.every((message) => message.includes("(currentl
 
 const modeConflict = runCase({
   ...exactLocalEnvironment,
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE: "shared",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE: "shared",
 });
 assert.ok(modeConflict.warnings.some((message) => message.includes("must agree and equal separate")));
 
 const databaseConflict = runCase({
   ...exactLocalEnvironment,
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-db",
+  NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-db",
 });
 assert.ok(databaseConflict.warnings.some((message) => message.includes("database IDs must agree")));
 
 const nonDefaultDatabase = runCase({
   ...exactLocalEnvironment,
-  MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-db",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-db",
+  SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-db",
+  NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID: "signaldesk-db",
 });
 assert.ok(nonDefaultDatabase.warnings.some((message) => message.includes("must be the default database")));
 
 const missingBucket = runCase(withoutKeys(exactLocalEnvironment, [
-  "MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET",
+  "SIGNALDESK_FIREBASE_STORAGE_BUCKET",
 ]));
 assert.ok(missingBucket.warnings.some((message) => message.includes("both required")));
 
 const invalidBucket = runCase({
   ...exactLocalEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "https://storage.example/bucket",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "https://storage.example/bucket",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "https://storage.example/bucket",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "https://storage.example/bucket",
 });
 assert.ok(invalidBucket.warnings.some((message) => message.includes("valid Firebase bucket names")));
 
 const bucketConflict = runCase({
   ...exactLocalEnvironment,
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.appspot.com",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-signaldesk-qa.appspot.com",
 });
 assert.ok(bucketConflict.warnings.some((message) => message.includes("Storage buckets must agree")));
 
 const foreignBucket = runCase({
   ...exactLocalEnvironment,
-  MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
-  NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
+  SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
+  NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET: "menulist-qa.firebasestorage.app",
 });
 assert.ok(foreignBucket.warnings.some((message) => message.includes("project-owned default bucket")));
 
 const missingClientEssential = runCase(withoutKeys(exactLocalEnvironment, [
-  "NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN",
+  "NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN",
 ]));
 assert.ok(missingClientEssential.warnings.some((message) => message.includes("AUTH_DOMAIN is required")));
 
 const missingAdminCredential = runCase(withoutKeys(exactLocalEnvironment, [
-  "MENULIST_SIGNALDESK_FIREBASE_PRIVATE_KEY",
+  "SIGNALDESK_FIREBASE_PRIVATE_KEY",
 ]));
 assert.ok(missingAdminCredential.warnings.some((message) => message.includes("complete Admin credential tuple")));
 
 const partialAdminCredentialWithFile = runCase({
-  ...withoutKeys(exactLocalEnvironment, ["MENULIST_SIGNALDESK_FIREBASE_PRIVATE_KEY"]),
-  MENULIST_SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS: "/tmp/signaldesk-service-account.json",
+  ...withoutKeys(exactLocalEnvironment, ["SIGNALDESK_FIREBASE_PRIVATE_KEY"]),
+  SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS: "/tmp/signaldesk-service-account.json",
 });
 assert.ok(partialAdminCredentialWithFile.warnings.some((message) => message.includes("partial Admin credential tuples")));
 

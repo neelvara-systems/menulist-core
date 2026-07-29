@@ -1,13 +1,29 @@
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/sessionUserDocumentId';
+
 type OwnerBusinessAssistantSessionScope = {
     sId?: unknown;
     tId?: unknown;
+    uId?: unknown;
+    user?: {
+        id?: unknown;
+    } | null;
 };
 
 export type OwnerBusinessAssistantClientScope = {
+    actorId: string;
     cacheScope: string;
     storeId: string;
     tenantId: string;
 };
+
+export const buildOwnerBusinessAssistantThreadStorageKey = (
+    projectId: string | undefined,
+    scope: OwnerBusinessAssistantClientScope,
+): string => (
+    `ownerBusinessAssistant-thread:${scope.cacheScope}:${encodeURIComponent(scope.actorId)}:${
+        projectId ? `project:${encodeURIComponent(projectId)}` : 'all'
+    }`
+);
 
 const normalizeScopeId = (value: unknown): string | null => {
     if (typeof value === 'number') {
@@ -33,7 +49,8 @@ export const resolveOwnerBusinessAssistantClientScope = (
         && session.sId > 0
         ? String(session.sId)
         : null;
-    if (!tenantId || !storeId) return null;
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!tenantId || !storeId || !actorId) return null;
 
     if (requestedStoreId !== undefined && requestedStoreId !== null && requestedStoreId !== '') {
         const requested = normalizeScopeId(requestedStoreId);
@@ -45,6 +62,7 @@ export const resolveOwnerBusinessAssistantClientScope = (
     }
 
     return {
+        actorId,
         cacheScope: `${tenantId}:${storeId}`,
         storeId,
         tenantId,

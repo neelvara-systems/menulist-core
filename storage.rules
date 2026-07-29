@@ -435,7 +435,7 @@ service firebase.storage {
      *
      * Generated icons remain route-backed. Owner overrides use the scoped
      * `stores/pwa-icons/{tId}/{sId}/{fileId}` rule above with unique immutable
-     * object names. Legacy project paths remain read-only.
+     * object names. Legacy project paths remain denied to direct clients.
      *
      * @see __docs__/customer-app/customer-app_firebase.md §Storage
      */

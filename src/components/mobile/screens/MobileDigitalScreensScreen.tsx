@@ -20,9 +20,9 @@ import {
 } from '@lib/screen/screenDiagnostics';
 import {
     screenTimestampToMillis,
-    screenTimestampToDate,
     type DigitalScreenSeenTimestamp,
 } from '@lib/screen/screenTimestamp';
+import { getDigitalScreenHealth } from '@lib/screen/screenHealth';
 import { buildScreenUrl } from '@lib/screen/utils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { ScreenSlide } from '@type/campaigns';
@@ -69,21 +69,6 @@ function getDaysRemaining(validUntil: ScreenSlide["validUntil"]): number {
     if (expiryMs === null) return 0;
     const daysMs = expiryMs - Date.now();
     return Math.max(0, Math.ceil(daysMs / (1000 * 60 * 60 * 24)));
-}
-
-function formatLastSeen(value?: DigitalScreenSeenTimestamp): string {
-    const date = screenTimestampToDate(value);
-    if (!date) return 'Waiting for first TV connection';
-
-    const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
-    if (minutes < 1) return 'Seen just now';
-    if (minutes < 60) return `Seen ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `Seen ${hours} hour${hours === 1 ? '' : 's'} ago`;
-
-    const days = Math.floor(hours / 24);
-    return `Seen ${days} day${days === 1 ? '' : 's'} ago`;
 }
 
 function compactScreenUrl(url: string): string {
@@ -196,8 +181,8 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const highlightsUrl = screenUrl ? `${screenUrl}?mode=highlights` : '';
     const compactMenuUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
     const compactHighlightsUrl = useMemo(() => compactScreenUrl(highlightsUrl), [highlightsUrl]);
-    const lastSeenLabel = useMemo(() => formatLastSeen(screenLastSeenAt), [screenLastSeenAt]);
-    const hasSeenSignal = Boolean(screenTimestampToDate(screenLastSeenAt));
+    const screenHealth = useMemo(() => getDigitalScreenHealth(screenLastSeenAt), [screenLastSeenAt]);
+    const hasSeenSignal = screenHealth.state !== 'link_ready';
     const canUpload = pinnedSlides.length < MAX_UPLOADS;
     const buildMobileDigitalScreenLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
         surface: 'mobile_digital_screens',
@@ -470,11 +455,11 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                             </span>
                             <Flex gap={2} style={{ minWidth: 0 }} vertical>
                                 <Text strong>TV status</Text>
-                                <Text type="secondary">{lastSeenLabel}</Text>
+                                <Text type="secondary">{screenHealth.detail}</Text>
                             </Flex>
                         </Flex>
-                        <Tag color={hasSeenSignal ? 'success' : 'default'}>
-                            {hasSeenSignal ? 'Connected' : 'Not connected'}
+                        <Tag color={screenHealth.state === 'recent' ? 'success' : screenHealth.state === 'stale' ? 'warning' : 'default'}>
+                            {screenHealth.summary}
                         </Tag>
                     </Flex>
                 </Card>

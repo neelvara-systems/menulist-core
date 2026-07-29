@@ -20,7 +20,7 @@ type SignalDeskClientBootstrapState = {
 };
 
 type SignalDeskClientBootstrapGlobal = typeof globalThis & {
-    __MENULIST_SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__?: SignalDeskClientBootstrapState;
+    __SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__?: SignalDeskClientBootstrapState;
 };
 
 const signaldeskClientBootstrapGlobal = globalThis as SignalDeskClientBootstrapGlobal;
@@ -56,7 +56,7 @@ const getSignalDeskClientApp = (): FirebaseApp | null => {
 
     const existing = getApps().find((app) => app.name === SIGNALDESK_CLIENT_FIREBASE_APP_NAME);
     if (existing) {
-        const bootstrapState = signaldeskClientBootstrapGlobal.__MENULIST_SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__;
+        const bootstrapState = signaldeskClientBootstrapGlobal.__SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__;
         if (
             bootstrapState?.app === existing
             && bootstrapState.fingerprint === fingerprint
@@ -77,7 +77,7 @@ const getSignalDeskClientApp = (): FirebaseApp | null => {
     try {
         const app = initializeApp(signaldeskFirebaseConfig, SIGNALDESK_CLIENT_FIREBASE_APP_NAME);
         if (!signaldeskClientAppOptionsMatch(app)) return null;
-        signaldeskClientBootstrapGlobal.__MENULIST_SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__ = {
+        signaldeskClientBootstrapGlobal.__SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__ = {
             app,
             fingerprint,
         };

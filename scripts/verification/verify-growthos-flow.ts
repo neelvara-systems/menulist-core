@@ -373,6 +373,9 @@ const unsafeReply = guardGrowthOSReviewReply({
 const growthOSSchemas = fs.readFileSync(path.resolve("src/lib/validation/growthosSchemas.ts"), "utf8");
 const growthOSServerDal = fs.readFileSync(path.resolve("src/database/growthos/server.ts"), "utf8");
 const growthOSServerEntitlements = fs.readFileSync(path.resolve("src/lib/growthos/serverEntitlements.ts"), "utf8");
+const growthOSServerContext = fs.readFileSync(path.resolve("src/lib/growthos/serverContext.ts"), "utf8");
+const growthOSApiGuards = fs.readFileSync(path.resolve("src/lib/growthos/apiGuards.ts"), "utf8");
+const growthOSApiResponse = fs.readFileSync(path.resolve("src/lib/growthos/apiResponse.ts"), "utf8");
 const firestoreRules = fs.readFileSync(path.resolve("firestore.rules"), "utf8");
 const growthOSProjectReadBlock = growthOSServerDal.slice(
     growthOSServerDal.indexOf("export async function readGrowthOSProjectDataServer"),
@@ -508,6 +511,9 @@ const growthOSApiDiagnosticFailures = scanGrowthOSApiDiagnostics();
 const growthOSPage = fs.readFileSync(path.resolve("src/components/templates/main-app/growthos/index.tsx"), "utf8");
 const growthOSMobileCard = fs.readFileSync(path.resolve("src/components/mobile/components/GrowthKitsMobileCard.tsx"), "utf8");
 const growthOSClientDal = fs.readFileSync(path.resolve("src/database/growthos/index.ts"), "utf8");
+const growthOSRefreshRoute = fs.readFileSync(path.resolve("src/app/api/growthos/actions/refresh/route.ts"), "utf8");
+const growthOSGenerateRoute = fs.readFileSync(path.resolve("src/app/api/growthos/kits/generate/route.ts"), "utf8");
+const growthOSExportRoute = fs.readFileSync(path.resolve("src/app/api/growthos/kits/export/route.ts"), "utf8");
 const growthOSReviewSuggestRoute = fs.readFileSync(path.resolve("src/app/api/growthos/reviews/suggest/route.ts"), "utf8");
 const growthOSHook = fs.readFileSync(path.resolve("src/hooks/useGrowthOS.ts"), "utf8");
 const growthOSClientContracts = fs.readFileSync(path.resolve("src/lib/growthos/clientContracts.ts"), "utf8");
@@ -521,17 +527,30 @@ assertCheck(normalizeStoreSwitchStoreId(null) === null, "GrowthOS server entitle
 assertCheck(normalizeStoreSwitchStoreId(0) === null, "GrowthOS server entitlement scope rejects zero IDs");
 assertCheck(normalizeStoreSwitchStoreId("1e3") === null, "GrowthOS server entitlement scope rejects exponent-like IDs");
 assertCheck(
-    growthOSServerEntitlements.includes("const tenantId = normalizeStoreSwitchStoreId(params.session?.tId);"),
-    "GrowthOS server entitlement tenant scope uses the exact positive ID normalizer",
+    growthOSServerEntitlements.includes("const scope = resolveStorePermissionSessionScope(params.session);"),
+    "GrowthOS server entitlement resolves all current session scope aliases",
 );
 assertCheck(
-    growthOSServerEntitlements.includes("const storeId = normalizeStoreSwitchStoreId(params.session?.sId);"),
-    "GrowthOS server entitlement store scope uses the exact positive ID normalizer",
+    growthOSServerEntitlements.includes("const tenantId = scope?.tenantScope.numericId ?? null;")
+        && growthOSServerEntitlements.includes("const storeId = scope?.storeScope.numericId ?? null;"),
+    "GrowthOS server entitlement uses exact resolved tenant and store scope",
 );
 assertCheck(
     !growthOSServerEntitlements.includes("Number(params.session?.tId)")
-        && !growthOSServerEntitlements.includes("Number(params.session?.sId)"),
-    "GrowthOS server entitlement scope does not coerce null or malformed IDs",
+        && !growthOSServerEntitlements.includes("Number(params.session?.sId)")
+        && !growthOSServerEntitlements.includes("normalizeStoreSwitchStoreId(params.session?."),
+    "GrowthOS server entitlement scope does not select or coerce one raw alias",
+);
+assertCheck(
+    growthOSServerContext.includes("const scope = resolveStorePermissionSessionScope(session);")
+        && growthOSServerContext.includes("scope.tenantScope.documentId")
+        && growthOSServerContext.includes("scope.storeScope.documentId"),
+    "GrowthOS shared server context derives every read and summary from one exact workspace",
+);
+assertCheck(
+    !growthOSServerContext.includes("params.session.tId")
+        && !growthOSServerContext.includes("params.session.sId"),
+    "GrowthOS shared server context does not select raw session scope aliases",
 );
 assertCheck(entitlement.allowed === false && entitlement.reason === "not_paid", "enabled GrowthOS denies stores without Pro or Premium");
 withGrowthOSFlags({
@@ -751,6 +770,66 @@ assertCheck(growthOSReviewSuggestRoute.includes("storeRateLimitHash"), "GrowthOS
 assertCheck(growthOSReviewSuggestRoute.includes("failClosedOnProviderError: true"), "GrowthOS review guard fails closed on limiter uncertainty");
 assertCheck(growthOSReviewSuggestRoute.includes("key: `growthos-review:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`"), "GrowthOS review guard stores hashed actor/workspace limiter segments");
 assertCheck(!growthOSReviewSuggestRoute.includes("key: `growthos-review:${session.uId || session.user?.id}:${session.tId}`"), "GrowthOS review guard does not store raw session identifiers in limiter keys");
+assertCheck(growthOSReviewSuggestRoute.includes("const scope = resolveStorePermissionSessionScope(session);"), "GrowthOS review guard resolves exact session workspace");
+assertCheck(growthOSReviewSuggestRoute.includes("const actorId = resolveCurrentSessionUserDocumentId(session);"), "GrowthOS review guard resolves exact current actor");
+assertCheck(!growthOSReviewSuggestRoute.includes('|| "unknown"'), "GrowthOS review guard does not collapse missing identity into a shared limiter partition");
+assertCheck(growthOSReviewSuggestRoute.includes("scope.tenantScope.numericId"), "GrowthOS review guard verifies the normalized tenant scope");
+assertCheck(growthOSReviewSuggestRoute.includes("scope.storeScope.numericId"), "GrowthOS review guard verifies the normalized store scope");
+assertCheck(growthOSApiResponse.includes('"Cache-Control": "private, no-store, max-age=0"'), "GrowthOS shared private response policy");
+assertCheck(growthOSApiResponse.includes('"X-Content-Type-Options": "nosniff"'), "GrowthOS shared response sniffing protection");
+assertCheck(growthOSApiResponse.includes("const headers = new Headers(init.headers);"), "GrowthOS shared protected header precedence");
+assertCheck(growthOSApiGuards.includes("failClosedOnProviderError: true"), "GrowthOS write guard fails closed on limiter uncertainty");
+assertCheck(growthOSApiGuards.includes("hashPublicRateLimitValue(input.actorId)"), "GrowthOS write guard hashes the exact actor partition");
+assertCheck(growthOSApiGuards.includes("hashPublicRateLimitValue(input.tenantId)"), "GrowthOS write guard hashes the exact tenant partition");
+assertCheck(growthOSApiGuards.includes("hashPublicRateLimitValue(input.storeId)"), "GrowthOS write guard hashes the exact store partition");
+for (const [routeName, routeText] of [
+    ["refresh", growthOSRefreshRoute],
+    ["generate", growthOSGenerateRoute],
+    ["export", growthOSExportRoute],
+] as const) {
+    assertCheck(routeText.includes("const scope = resolveStorePermissionSessionScope(session);"), `GrowthOS ${routeName} resolves one exact workspace`);
+    assertCheck(routeText.includes("const actorId = resolveCurrentSessionUserDocumentId(session);"), `GrowthOS ${routeName} resolves one exact actor`);
+    assertCheck(routeText.includes("applyGrowthOSWriteRateLimit({"), `GrowthOS ${routeName} uses shared write admission`);
+    assertCheck(routeText.includes("storeId: scope.storeScope.documentId"), `GrowthOS ${routeName} partitions admission and persistence by exact store`);
+    assertCheck(routeText.includes("tenantId: scope.tenantScope.documentId"), `GrowthOS ${routeName} partitions admission and persistence by exact tenant`);
+    assertCheck(routeText.includes("scope.tenantScope.numericId"), `GrowthOS ${routeName} verifies normalized tenant access`);
+    assertCheck(routeText.includes("scope.storeScope.numericId"), `GrowthOS ${routeName} verifies normalized store access`);
+    assertCheck(routeText.includes("growthOSPrivateJson"), `GrowthOS ${routeName} uses the shared private JSON boundary`);
+    assertCheck(routeText.includes("withGrowthOSPrivateHeaders"), `GrowthOS ${routeName} stamps bounded helper responses`);
+    assertCheck(!routeText.includes("NextResponse.json("), `GrowthOS ${routeName} has no direct JSON response bypass`);
+    assertCheck(!routeText.includes("checkDataWriteLimit"), `GrowthOS ${routeName} has no generic unpartitioned write limiter`);
+    assertCheck(!routeText.includes("session.tId") && !routeText.includes("session.sId"), `GrowthOS ${routeName} does not select raw workspace aliases`);
+    assertCheck(
+        !routeText.includes("session?.uId || session?.user?.id"),
+        `GrowthOS ${routeName} does not select a first-match actor alias`,
+    );
+}
+assertCheck(
+    growthOSServerDal.includes("export async function recordGrowthOSExportServer(params: {")
+        && growthOSServerDal.includes("actorId: string;")
+        && growthOSServerDal.includes('const actorId = requireGrowthOSDocumentId(params.actorId, "actor");'),
+    "GrowthOS durable export attribution requires an exact actor argument",
+);
+assertCheck(
+    growthOSServerDal.includes("export async function readGrowthOSExportReplayServer(params: {")
+        && growthOSServerDal.includes("sId: string | number;")
+        && growthOSServerDal.includes("tId: string | number;"),
+    "GrowthOS export replay requires explicit canonical workspace arguments",
+);
+assertCheck(
+    !growthOSServerDal.includes("params.session?.uId || params.session?.user?.id")
+        && !growthOSServerDal.includes("params.session?.tId")
+        && !growthOSServerDal.includes("params.session?.sId"),
+    "GrowthOS export persistence does not derive actor or workspace from ambiguous session aliases",
+);
+assertCheck(
+    growthOSExportRoute.includes("recordGrowthOSExportServer({\n            actorId,")
+        && growthOSExportRoute.includes("readGrowthOSExportReplayServer({\n            actorId,"),
+    "GrowthOS export route passes the exact actor to replay and durable settlement",
+);
+assertCheck(growthOSReviewSuggestRoute.includes("growthOSPrivateJson"), "GrowthOS review guard shared private JSON boundary");
+assertCheck(growthOSReviewSuggestRoute.includes("withGrowthOSPrivateHeaders"), "GrowthOS review guard helper-response policy");
+assertCheck(!growthOSReviewSuggestRoute.includes("NextResponse.json("), "GrowthOS review guard has no direct JSON response bypass");
 assertCheck(growthOSHook.includes("getGrowthOSSummaryCacheKey(scope)"), "GrowthOS SWR cache key includes exact tenant/store scope");
 assertCheck(!growthOSHook.includes('? "growthos-summary" : null'), "GrowthOS SWR must not use one global summary key");
 assertCheck(

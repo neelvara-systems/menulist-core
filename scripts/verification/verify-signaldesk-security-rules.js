@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || "demo-signaldesk";
+const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.SIGNALDESK_FIREBASE_PROJECT_ID || "demo-signaldesk";
 
 const firestoreRules = fs.readFileSync(path.join(ROOT, "firestore-signaldesk.rules"), "utf8");
 const storageRules = fs.readFileSync(path.join(ROOT, "storage-signaldesk.rules"), "utf8");

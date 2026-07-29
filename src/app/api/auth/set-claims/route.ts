@@ -54,6 +54,26 @@ import { withAuth } from '../../../../middleware/auth';
 
 const SET_CLAIMS_MAX_BODY_BYTES = 2 * 1024;
 const SET_CLAIMS_RATE_LIMIT_KEY = 'auth-set-claims';
+const AUTH_CREDENTIAL_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'Pragma': 'no-cache',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+
+const authJson = (body: unknown, init: ResponseInit = {}) => {
+    const headers = new Headers(init.headers);
+    Object.entries(AUTH_CREDENTIAL_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return (NextResponse.json)(body, { ...init, headers });
+};
+
+const withCredentialResponseHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(AUTH_CREDENTIAL_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
 
 const getSetClaimsEmailLogContext = (email: unknown) => getBoundedAuthStringContext('email', email);
 const getSetClaimsUidLogContext = (uid: unknown) => getBoundedAuthStringContext('uid', uid);
@@ -280,7 +300,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     // ✅ Auth failures automatically logged to Sentry
     try {
         if (!session?.user?.email) {
-            return NextResponse.json(
+            return authJson(
                 { error: 'Missing email in session' },
                 { status: 400 }
             );
@@ -288,15 +308,17 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const sessionUserId = resolveCurrentSessionUserDocumentId(session);
         if (!sessionUserId) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return authJson({ error: 'Forbidden' }, { status: 403 });
         }
         const rateLimitConfig = getRateLimitForFeature('AUTH_CLAIM_SYNC');
         const setClaimsUserRateLimitHash = hashPublicRateLimitValue(sessionUserId);
         const rateLimit = await checkRateLimit({
             key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${setClaimsUserRateLimitHash}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
             logger.security('Rate Limit Exceeded - Set Claims', {
                 ...getBoundedSecurityRouteContext(session, request),
@@ -307,10 +329,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 window: rateLimitConfig.window,
             }, 'medium');
 
-            return NextResponse.json(
-                { error: 'Too many attempts. Please wait before trying again.', retryAfter: waitSeconds },
+            return authJson(
                 {
-                    status: 429,
+                    error: providerUnavailable
+                        ? 'Authentication service is temporarily unavailable. Please try again.'
+                        : 'Too many attempts. Please wait before trying again.',
+                    retryAfter: waitSeconds,
+                },
+                {
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         'Retry-After': String(waitSeconds),
                         'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -329,7 +356,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         if (bodyResult.ok === false) {
             logAuthDiagnostic('set_claims_invalid_or_oversized_body', getSetClaimsEmailLogContext(session.user.email));
-            return bodyResult.response;
+            return withCredentialResponseHeaders(bodyResult.response);
         }
         const body = bodyResult.data;
 
@@ -342,7 +369,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 validationErrorPresent: errorMsg.length > 0,
                 validationErrorLength: errorMsg.length,
             });
-            return NextResponse.json(
+            return authJson(
                 { error: 'Invalid input' },
                 { status: 400 }
             );
@@ -377,7 +404,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...getSetClaimsEmailLogContext(session.user.email),
                 ...getSetClaimsUserLogContext(answerlatticeDbUser.id),
             });
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return authJson({ error: 'Forbidden' }, { status: 403 });
         }
         const answerlatticeUserMatchesRequestedStore = answerlatticeDbUser && (
             !effectiveTargetStoreId
@@ -414,7 +441,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         if (!dbUser) {
-            return NextResponse.json(
+            return authJson(
                 { error: 'User not found' },
                 { status: 404 }
             );
@@ -424,7 +451,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ? readActiveAnswerlatticeStaffClaimState(dbUser)
             : null;
         if (shouldUseAnswerlatticeUserContext && !answerlatticeClaimState) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return authJson({ error: 'Forbidden' }, { status: 403 });
         }
         const resolvedTargetStoreId = effectiveTargetStoreId
             || answerlatticeClaimState?.primaryMembership?.storeId;
@@ -439,7 +466,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...getSetClaimsStoreLogContext(resolvedTargetStoreId),
                 ...getSetClaimsUserLogContext(dbUser.id),
             });
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return authJson({ error: 'Forbidden' }, { status: 403 });
         }
         const claimStoreScope = resolvedTargetStoreId && (hasDefaultPlatformAccess || canAccessTargetStore)
             ? normalizeStorePermissionScopeDocumentId(resolvedTargetStoreId)
@@ -451,7 +478,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...getSetClaimsStoreLogContext(claimStoreScope?.documentId ?? dbUser.storeId),
                 ...getSetClaimsUserLogContext(dbUser.id),
             });
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return authJson({ error: 'Forbidden' }, { status: 403 });
         }
         const claimsDb = shouldUseAnswerlatticeUserContext
             ? answerlatticeFirestoreAdmin
@@ -461,7 +488,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...getSetClaimsEmailLogContext(session.user.email),
                 ...getBoundedAuthStringContext('productId', requestedProductId),
             });
-            return NextResponse.json({ error: 'Authentication service is not available' }, { status: 503 });
+            return authJson({ error: 'Authentication service is not available' }, { status: 503 });
         }
         const canonicalStoreSnapshot = await claimsDb
             .collection(DB_COLLECTIONS.STORES)
@@ -482,7 +509,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...getSetClaimsStoreLogContext(claimStoreScope.documentId),
                 ...getSetClaimsUserLogContext(dbUser.id),
             });
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return authJson({ error: 'Forbidden' }, { status: 403 });
         }
         const claimTenantScope = canonicalWorkspace.tenantScope;
 
@@ -505,7 +532,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...getSetClaimsStoreLogContext(claimStoreScope.documentId),
                 ...getSetClaimsUserLogContext(dbUser.id),
             });
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return authJson({ error: 'Forbidden' }, { status: 403 });
         }
         const productId = shouldUseAnswerlatticeUserContext
             ? PRODUCT_IDS.ANSWERLATTICE
@@ -551,7 +578,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     ...getSetClaimsEmailLogContext(session.user.email),
                     ...getSetClaimsUidLogContext(uid),
                 });
-                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+                return authJson({ error: 'Forbidden' }, { status: 403 });
             }
         }
 
@@ -574,7 +601,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         userId: customClaims.uId,
                     }),
                 });
-                return NextResponse.json(
+                return authJson(
                     { error: 'Answerlattice Firebase Auth is not available' },
                     { status: 503 }
                 );
@@ -588,7 +615,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     ...getSetClaimsEmailLogContext(session.user.email),
                     ...getSetClaimsUidLogContext(uid),
                 });
-                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+                return authJson({ error: 'Forbidden' }, { status: 403 });
             }
             await authAdmin.setCustomUserClaims(uid, customClaims);
             const customToken = await authAdmin.createCustomToken(uid, customClaims);
@@ -606,7 +633,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 }),
             });
 
-            return NextResponse.json({
+            return authJson({
                 success: true,
                 customToken,
                 claims: customClaims,
@@ -661,7 +688,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }),
         });
 
-        return NextResponse.json({
+        return authJson({
             success: true,
             customToken,  // Client can use this to sign in
             answerlatticeCustomToken,
@@ -670,7 +697,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     } catch (error) {
         logAuthFailure('set_claims_failed', error, getSetClaimsEmailLogContext(session?.user?.email));
-        return NextResponse.json(
+        return authJson(
             { error: 'Failed to set custom claims' },
             { status: 500 }
         );

@@ -19,28 +19,34 @@ const LEGACY_FOOD_BUSINESS_KEYWORDS = [
   'sushi',
 ];
 
-export function parseBusinessDayEndMinutes(value?: string): number | null {
-  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(value || '').trim());
+export function parseBusinessDayEndMinutes(value?: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
   if (!match) return null;
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
 export function normalizeBusinessDayEndTime(
-  value?: string,
-  fallback: string = DEFAULT_FOOD_BUSINESS_DAY_END_TIME,
+  value?: unknown,
+  fallback: unknown = DEFAULT_FOOD_BUSINESS_DAY_END_TIME,
 ): string {
-  return parseBusinessDayEndMinutes(value) === null ? fallback : String(value).trim();
+  if (parseBusinessDayEndMinutes(value) !== null) return (value as string).trim();
+  return parseBusinessDayEndMinutes(fallback) !== null
+    ? (fallback as string).trim()
+    : DEFAULT_FOOD_BUSINESS_DAY_END_TIME;
 }
 
-export function resolveDefaultBusinessDayEndTime(businessType?: string, businessCategory?: string): string {
-  const category = resolveBusinessCategory(businessType, businessCategory);
+export function resolveDefaultBusinessDayEndTime(businessType?: unknown, businessCategory?: unknown): string {
+  const normalizedBusinessType = typeof businessType === 'string' ? businessType : undefined;
+  const normalizedBusinessCategory = typeof businessCategory === 'string' ? businessCategory : undefined;
+  const category = resolveBusinessCategory(normalizedBusinessType, normalizedBusinessCategory);
   if (category) {
     return category === 'food'
       ? DEFAULT_FOOD_BUSINESS_DAY_END_TIME
       : DEFAULT_CALENDAR_BUSINESS_DAY_END_TIME;
   }
 
-  const normalizedType = String(businessType || '').trim().toLowerCase();
+  const normalizedType = normalizedBusinessType?.trim().toLowerCase() || '';
   if (!normalizedType) return DEFAULT_FOOD_BUSINESS_DAY_END_TIME;
 
   return LEGACY_FOOD_BUSINESS_KEYWORDS.some((keyword) => normalizedType.includes(keyword))
@@ -48,7 +54,7 @@ export function resolveDefaultBusinessDayEndTime(businessType?: string, business
     : DEFAULT_CALENDAR_BUSINESS_DAY_END_TIME;
 }
 
-export function resolveBusinessDayEndTime(businessType?: string, value?: string, businessCategory?: string): string {
+export function resolveBusinessDayEndTime(businessType?: unknown, value?: unknown, businessCategory?: unknown): string {
   return normalizeBusinessDayEndTime(value, resolveDefaultBusinessDayEndTime(businessType, businessCategory));
 }
 
@@ -126,8 +132,6 @@ export function getLatestSettledBusinessDateKey(
   timeZone?: string,
   businessDayEndTime?: string,
 ): string {
-  const endMinutes = parseBusinessDayEndMinutes(businessDayEndTime) ?? parseBusinessDayEndMinutes(DEFAULT_FOOD_BUSINESS_DAY_END_TIME)!;
-  const settlementWrapsToNextDate = endMinutes + ANALYTICS_SETTLEMENT_BUFFER_MINUTES >= 24 * 60;
   const cycleDateKey = getAnalyticsSettlementCycleDateKey(date, timeZone, businessDayEndTime);
-  return shiftDateKey(cycleDateKey, settlementWrapsToNextDate ? -2 : -1);
+  return shiftDateKey(cycleDateKey, -1);
 }

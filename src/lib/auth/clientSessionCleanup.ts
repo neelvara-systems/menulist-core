@@ -21,7 +21,39 @@ export const AUTHENTICATED_LOCAL_STORAGE_KEYS = [
     'session_expired_shown',
 ] as const;
 
-type StorageLike = Pick<Storage, 'removeItem'>;
+export const AUTHENTICATED_SESSION_STORAGE_PREFIXES = [
+    'dismissedMenuProcessingJobs:',
+    'menulist:activeProcessingJobId:',
+    'menulist:mobileMenuActiveProcessingJob:',
+    'menulist:pendingQualityAction:',
+] as const;
+
+type StorageLike = Pick<Storage, 'removeItem'> & Partial<Pick<Storage, 'key' | 'length'>>;
+
+function removeStoragePrefixes(
+    storage: StorageLike | null | undefined,
+    prefixes: readonly string[],
+): void {
+    if (!storage || typeof storage.key !== 'function' || typeof storage.length !== 'number') return;
+    const matchingKeys: string[] = [];
+    try {
+        for (let index = 0; index < storage.length; index += 1) {
+            const key = storage.key(index);
+            if (key && prefixes.some((prefix) => key.startsWith(prefix))) {
+                matchingKeys.push(key);
+            }
+        }
+    } catch {
+        return;
+    }
+    for (const key of matchingKeys) {
+        try {
+            storage.removeItem(key);
+        } catch {
+            // Continue clearing other authenticated browser state.
+        }
+    }
+}
 
 export function removeAuthenticatedStorageKeys(
     sessionStorage: StorageLike | null | undefined,
@@ -34,6 +66,7 @@ export function removeAuthenticatedStorageKeys(
             // Browser storage can be unavailable in private or embedded contexts.
         }
     }
+    removeStoragePrefixes(sessionStorage, AUTHENTICATED_SESSION_STORAGE_PREFIXES);
 
     for (const key of AUTHENTICATED_LOCAL_STORAGE_KEYS) {
         try {

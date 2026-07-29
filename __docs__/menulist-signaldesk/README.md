@@ -19,7 +19,7 @@ It is not a public product, not a MenuList owner/customer feature, not a generic
 
 ## AI Credential Boundary
 
-SignalDesk AI assist uses only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*` through a product-scoped key manager. It reuses the maintained Gemini retry gateway implementation, but it does not consume MenuList `GEMINI_AI_KEY*` or Answerlattice credentials. The separate `ai-worker` kill switch, model-route approval, provider budget, and action rate limit remain the runtime controls.
+SignalDesk AI assist uses only `SIGNALDESK_GEMINI_AI_KEY*` through a product-scoped key manager. It reuses the maintained Gemini retry gateway implementation, but it does not consume MenuList `GEMINI_AI_KEY*` or Answerlattice credentials. The separate `ai-worker` kill switch, model-route approval, provider budget, and action rate limit remain the runtime controls.
 
 ## Source Inputs
 
@@ -204,7 +204,7 @@ Approved sources
 | Runtime location | Product-isolated module inside this monorepo first; extraction-ready boundaries |
 | Reserved repo/package shorthand | `menulist-signaldesk` |
 | Public name | None. Internal only. |
-| Environment variable prefix | `MENULIST_SIGNALDESK_*`, not shorthand. |
+| Environment variable prefix | `SIGNALDESK_*`, not shorthand. |
 
 ## Version History
 

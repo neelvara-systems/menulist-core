@@ -3,7 +3,7 @@
 > Scope: MenuList, Answerlattice, and SignalDesk Firebase Functions
 > Current MenuList primary AI secret: `GEMINI_AI_KEY`
 > Current Answerlattice primary AI secret: `ANSWERLATTICE_GEMINI_AI_KEY`
-> Current SignalDesk app AI env: `MENULIST_SIGNALDESK_GEMINI_AI_KEY`
+> Current SignalDesk app AI env: `SIGNALDESK_GEMINI_AI_KEY`
 
 This file documents the Firebase Functions secrets that are actually declared by
 the current code. Do not print, commit, or paste secret values in logs or docs.
@@ -170,7 +170,7 @@ does not declare Firebase Secret Manager secrets.
 
 Do not set undeclared SignalDesk Function secrets just to mirror Vercel env.
 SignalDesk app/provider/runtime env belongs in Vercel through
-`MENULIST_SIGNALDESK_*` variables unless a future Cloud Function explicitly
+`SIGNALDESK_*` variables unless a future Cloud Function explicitly
 adds a `defineSecret` declaration.
 
 SignalDesk deploy commands after project access, billing, rules, indexes, and
@@ -245,10 +245,10 @@ Answerlattice uses `ANSWERLATTICE_GEMINI_AI_KEY` plus
 `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and
 `ANSWERLATTICE_GEMINI_AI_KEY_4`.
 
-SignalDesk app/runtime uses `MENULIST_SIGNALDESK_GEMINI_AI_KEY` plus
-`MENULIST_SIGNALDESK_GEMINI_AI_KEY_2`,
-`MENULIST_SIGNALDESK_GEMINI_AI_KEY_3`, and
-`MENULIST_SIGNALDESK_GEMINI_AI_KEY_4`. These are Vercel env values today, not
+SignalDesk app/runtime uses `SIGNALDESK_GEMINI_AI_KEY` plus
+`SIGNALDESK_GEMINI_AI_KEY_2`,
+`SIGNALDESK_GEMINI_AI_KEY_3`, and
+`SIGNALDESK_GEMINI_AI_KEY_4`. These are Vercel env values today, not
 Firebase Functions Secret Manager values.
 
 `GEMINI_API_KEY` is a legacy app env alias only. Do not set it as the primary

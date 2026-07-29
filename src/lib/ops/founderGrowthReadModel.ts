@@ -9,9 +9,26 @@ export type FounderGrowthEventStage = 'draft_created' | 'business_claimed';
 
 const SUMMARY_DOC_ID = 'founderMonitorGrowth';
 
-function normalizeDraftId(value: string): string | null {
-    const draftId = String(value || '').trim();
+function normalizeDraftId(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const draftId = value.trim();
     return draftId === value && isValidFirestoreDocumentId(draftId) ? draftId : null;
+}
+
+function isSameAttribution(
+    left: GrowthAcquisitionAttribution,
+    right: GrowthAcquisitionAttribution,
+): boolean {
+    return left.source === right.source
+        && left.medium === right.medium
+        && left.campaign === right.campaign;
+}
+
+function normalizeOccurredAt(value: Date | undefined): Date | null {
+    const occurredAt = value === undefined ? new Date() : value;
+    return occurredAt instanceof Date && Number.isFinite(occurredAt.getTime())
+        ? new Date(occurredAt.getTime())
+        : null;
 }
 
 export async function recordFounderGrowthEvent(params: {
@@ -22,9 +39,16 @@ export async function recordFounderGrowthEvent(params: {
 }): Promise<{ recorded: boolean }> {
     const attribution = normalizeGrowthAcquisitionAttribution(params.attribution);
     const draftId = normalizeDraftId(params.draftId);
-    if (!attribution || !draftId) return { recorded: false };
+    const occurredAt = normalizeOccurredAt(params.occurredAt);
+    if (
+        !attribution
+        || !draftId
+        || !occurredAt
+        || (params.stage !== 'draft_created' && params.stage !== 'business_claimed')
+    ) {
+        return { recorded: false };
+    }
 
-    const occurredAt = params.occurredAt || new Date();
     const FieldValue = admin.firestore.FieldValue;
     const draftRef = firestoreAdmin.collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS).doc(draftId);
     const summaryRef = firestoreAdmin.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(SUMMARY_DOC_ID);
@@ -33,6 +57,12 @@ export async function recordFounderGrowthEvent(params: {
         const recorded = await firestoreAdmin.runTransaction(async (transaction) => {
             const draftSnapshot = await transaction.get(draftRef);
             if (!draftSnapshot.exists) return false;
+            const persistedAttribution = normalizeGrowthAcquisitionAttribution(
+                draftSnapshot.data()?.growthAcquisition,
+            );
+            if (!persistedAttribution || !isSameAttribution(persistedAttribution, attribution)) {
+                return false;
+            }
 
             const markerField = params.stage === 'draft_created'
                 ? 'growthTelemetry.draftCreatedRecordedAt'

@@ -37,7 +37,7 @@ Sources:
 | --- | --- |
 | Provider ID | `apify` |
 | Feature flag | `ENABLE_MENULIST_SIGNALDESK_APIFY_SOURCE_BROKER` |
-| Env keys | `MENULIST_SIGNALDESK_APIFY_API_TOKEN`, `MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID`, `MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET` |
+| Env keys | `SIGNALDESK_APIFY_API_TOKEN`, `SIGNALDESK_APIFY_SOURCE_ACTOR_ID`, `SIGNALDESK_APIFY_WEBHOOK_SECRET` |
 | Source action | Existing `run-source-provider` action with provider `apify` |
 | Connector setting | `apify` connector kind in `/signaldesk/settings` |
 | Provider account | `signaldeskProviderAccounts` row for provider `apify`, use `discovery` |
@@ -45,12 +45,12 @@ Sources:
 | Webhook | `/api/signaldesk/webhooks/apify`, normalized event/status only |
 | Dataset storage | No raw Apify payload stored in Firestore |
 
-The configured source Actor must accept the compact local-business input shape SignalDesk sends: `searchStringsArray`, `locationQuery`, and `maxCrawledPlacesPerSearch`. Use either an Apify Actor ID or the `owner~actor-name` API form in `MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID`; if an operator copies an Apify store-style `owner/actor-name` value, the server normalizes it to `owner~actor-name` before calling Apify. If a different Actor schema is chosen, add a server-side adapter before using it; do not expose arbitrary Actor input fields in the browser.
+The configured source Actor must accept the compact local-business input shape SignalDesk sends: `searchStringsArray`, `locationQuery`, and `maxCrawledPlacesPerSearch`. Use either an Apify Actor ID or the `owner~actor-name` API form in `SIGNALDESK_APIFY_SOURCE_ACTOR_ID`; if an operator copies an Apify store-style `owner/actor-name` value, the server normalizes it to `owner~actor-name` before calling Apify. If a different Actor schema is chosen, add a server-side adapter before using it; do not expose arbitrary Actor input fields in the browser.
 
 ## Guardrails
 
 1. The browser cannot provide an arbitrary Actor ID.
-2. The Actor ID must come from `MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID`.
+2. The Actor ID must come from `SIGNALDESK_APIFY_SOURCE_ACTOR_ID`.
 3. Runs require an active provider source policy.
 4. Runs require evidence use to be allowed by that policy.
 5. Contact fields returned by Apify are stripped unless the source policy explicitly allows contact use.

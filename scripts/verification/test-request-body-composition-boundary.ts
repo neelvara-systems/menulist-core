@@ -7,6 +7,7 @@ import {
 } from '../../src/lib/apiHelper/requestBodyComposition';
 import { normalizeAnswerlatticeSourceContext } from '../../src/lib/answerlattice/documentComposer';
 import { sanitizeForFirestore } from '../../src/lib/firestore/sanitizeForFirestore';
+import { rejectInvalidOrOversizedDeclaredBody } from '../../src/lib/security/boundedRequestBody';
 import { sanitizeForFirestore as sanitizeSharedFunctionValue } from '../../functions/src/lib/sanitizeForFirestore';
 import { sanitizeForFirestore as sanitizeDedicatedFunctionValue } from '../../functions-answerlattice/src/lib/sanitizeForFirestore';
 
@@ -256,4 +257,34 @@ for (const invalidScope of [null, false, '', ' ', '01', '1e3', '1.0']) {
     assert.equal(normalized?.sId, undefined);
 }
 
-console.log('request body composition boundary tests passed');
+const declaredLengthRequest = (contentLength: string): Request => new Request('https://example.test/api', {
+    headers: { 'content-length': contentLength },
+    method: 'POST',
+});
+
+for (const invalidContentLength of ['-1', '+1', '1.5', '1e3', '1, 1', '9007199254740992']) {
+    const response = rejectInvalidOrOversizedDeclaredBody(
+        declaredLengthRequest(invalidContentLength),
+        1_024,
+    );
+    assert.equal(response?.status, 400, `content-length ${invalidContentLength} must fail closed`);
+}
+
+assert.equal(
+    rejectInvalidOrOversizedDeclaredBody(declaredLengthRequest('0010'), 10),
+    null,
+);
+assert.equal(
+    rejectInvalidOrOversizedDeclaredBody(declaredLengthRequest('11'), 10)?.status,
+    413,
+);
+assert.throws(
+    () => rejectInvalidOrOversizedDeclaredBody(declaredLengthRequest('0'), Number.NaN),
+    /maxBytes must be a non-negative safe integer/,
+);
+assert.throws(
+    () => rejectInvalidOrOversizedDeclaredBody(declaredLengthRequest('0'), -1),
+    /maxBytes must be a non-negative safe integer/,
+);
+
+console.log('request body composition and bounded-body boundary tests passed');

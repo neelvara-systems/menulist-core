@@ -9,11 +9,13 @@ Mobile requirements:
 - keep the ranked table horizontally scrollable when necessary;
 - preserve load failure, stale, no-evidence, and entity-mapping-needed states;
 - keep the AI-assisted summary visibly advisory;
+- render validated advisory actions as 44px **Review evidence** links;
+- provide a 44px **Open in Knowledge Map** action for each ranked card;
+- preserve a Daily Brief entity focus without a mobile-only data path;
 - do not add mobile-only raw signal queries, listeners, or notification claims.
 
-The admitted later code pass should replace the horizontally dependent evidence
-table with a stacked top-area list at narrow widths when the component
-breakdown is shown. The list must preserve:
+The owner view uses a stacked top-area list at narrow widths when the component
+breakdown is shown. The list preserves:
 
 - entity name and type;
 - exact evidence total;

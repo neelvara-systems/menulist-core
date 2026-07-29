@@ -30,8 +30,10 @@ export function readLocalPdfDownloadAt(
 ): number | null {
     if (typeof window === 'undefined' || !storageScope || !projectId) return null;
     try {
-        const value = Number(localStorage.getItem(localPdfKey('download', storageScope, projectId)));
-        return Number.isFinite(value) && value > 0 ? value : null;
+        const raw = localStorage.getItem(localPdfKey('download', storageScope, projectId));
+        if (!raw || !/^[1-9]\d*$/.test(raw)) return null;
+        const value = Number(raw);
+        return Number.isSafeInteger(value) && value <= Date.now() ? value : null;
     } catch {
         return null;
     }

@@ -1,15 +1,25 @@
 import GlobalLanguagesList from '@data/languages';
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
-import { LocalizedStringList, LocalizedText, normalizeStringList, toLocalizedStringList, toLocalizedText } from '@lib/localization/text';
+import {
+    isLocalizedStringList,
+    isLocalizedText,
+    LocalizedStringList,
+    LocalizedText,
+    normalizeStringList,
+    toLocalizedStringList,
+    toLocalizedText,
+} from '@lib/localization/text';
 import { normalizeBatchTranslationMaps, normalizeTranslationCoverageSummary } from '@lib/ai/translationOutput';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
 import { AICapacityError, checkCapacityResponse } from '@services/ai/capacityError';
 import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, readAiServiceResponseJson } from '@services/ai/aiServiceDiagnostics';
+import { getUnknownObjectValueAtPath } from '@lib/monitoring/boundedLogContext';
 import { getBoundedTranslationStringContext, getTranslationScopeLogContext, logTranslationFailure } from '@template/main-app/projects/utils/translationDiagnostics';
 import { LanguageType } from '../../../components/templates/main-app/projects/types/common.types';
 import { BusinessCopyGenerationResult } from './generateBusinessCopyViaAPI';
 import { BUSINESS_COPY_FIELD_LIMITS, BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
+import type { StoreDataType } from '@type/platform/store';
 
 export type LocalizedBusinessCopyFields = {
     descriptor?: LocalizedText;
@@ -26,15 +36,6 @@ export type LocalizedBusinessCopyFields = {
 export const FIELD_LIMITS = BUSINESS_COPY_FIELD_LIMITS;
 const BUSINESS_COPY_TRANSLATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
-type BusinessCopyTranslationApiResponse = {
-    data?: {
-        translationsByLanguage?: unknown;
-    } | null;
-    remainingBalance?: unknown;
-    translationCoverage?: unknown;
-    transaction?: unknown;
-};
-
 const LANGUAGE_INDEX = new Map(
     GlobalLanguagesList.map((language) => [language.code.toLowerCase(), language]),
 );
@@ -47,7 +48,9 @@ export const resolveLanguage = (code?: string | null): LanguageType | null => {
     return LANGUAGE_INDEX.get(normalized) || null;
 };
 
-export const clampValue = (value: unknown, maxLength: number) => String(value || '').trim().slice(0, maxLength);
+export const clampValue = (value: unknown, maxLength: number) => (
+    typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
+);
 
 export function getBoundedBatchTranslationTargets(
     targetLanguages: LanguageType[],
@@ -126,7 +129,7 @@ export async function getBatchTranslations({
             throw requestError;
         }
 
-        const responseJson = await readAiServiceResponseJson<BusinessCopyTranslationApiResponse>(response, {
+        const responseJson = await readAiServiceResponseJson(response, {
             context: {
                 ...getTranslationScopeLogContext(projectId, fileId),
                 ...getBoundedTranslationStringContext('sourceLanguageCode', sourceLang?.code),
@@ -165,7 +168,7 @@ export async function getBatchTranslations({
             return null;
         }
         const translationsByLanguage = normalizeBatchTranslationMaps(
-            responseJson.data?.translationsByLanguage,
+            getUnknownObjectValueAtPath(responseJson.data, ['translationsByLanguage']),
             targetLanguageCodes,
             requestedKeys,
         );
@@ -190,7 +193,12 @@ export async function getBatchTranslations({
     }
 }
 
-function getEnabledLanguageCodes(storeDetails?: any): string[] {
+type BusinessCopyStoreLanguageContext = Pick<
+    StoreDataType,
+    'activeLanguages' | 'defaultLanguage' | 'language' | 'storeId'
+>;
+
+function getEnabledLanguageCodes(storeDetails?: BusinessCopyStoreLanguageContext): string[] {
     const base = [
         CANONICAL_SOURCE_LANGUAGE,
         ...(Array.isArray(storeDetails?.activeLanguages) ? storeDetails.activeLanguages : []),
@@ -205,7 +213,11 @@ export function mergeLocalizedField(
     existingValue: unknown,
     nextValue?: LocalizedText,
 ): LocalizedText | undefined {
-    const existing = toLocalizedText(existingValue as any, 'en') || {};
+    const existing = (
+        typeof existingValue === 'string' || isLocalizedText(existingValue)
+            ? toLocalizedText(existingValue, 'en')
+            : undefined
+    ) || {};
     const next = nextValue || {};
     const merged = {
         ...existing,
@@ -228,7 +240,7 @@ export default async function localizeBusinessCopyResult({
 }: {
     generated: BusinessCopyGenerationResult;
     projectId?: string;
-    storeDetails?: any;
+    storeDetails?: BusinessCopyStoreLanguageContext;
 }): Promise<LocalizedBusinessCopyFields> {
     const enabledLanguageCodes = getEnabledLanguageCodes(storeDetails);
     const sourceLanguage = CANONICAL_SOURCE_LANGUAGE;
@@ -298,7 +310,11 @@ export function mergeLocalizedKeywordField(
     existingValue: unknown,
     nextValue?: LocalizedStringList,
 ): LocalizedStringList | undefined {
-    const existing = toLocalizedStringList(existingValue as any, 'en') || {};
+    const existing = (
+        Array.isArray(existingValue) || isLocalizedStringList(existingValue)
+            ? toLocalizedStringList(existingValue, 'en')
+            : undefined
+    ) || {};
     const next = nextValue || {};
     const merged = {
         ...existing,
@@ -315,7 +331,7 @@ export function mergeLocalizedKeywordField(
 }
 
 function parseKeywordString(value: unknown): string[] {
-    return String(value || '')
+    return (typeof value === 'string' ? value : '')
         .split(/[,\u060C\uFF0C;\u061B]/)
         .map((item) => item.trim())
         .filter(Boolean)

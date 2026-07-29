@@ -13,7 +13,8 @@
  *                              verified custom domains)
  *      Registers `/sw-customer.js` (hand-rolled, minimal, no caching).
  *
- *   3. MyCodex PWA           → menulist.digital
+ *   3. MyCodex PWA           → private MyCodex product host if one is
+ *                              explicitly configured later.
  *      Registers `/mycodex-sw.js` (private docs offline shell only).
  *
  * Registration is conditional on the current origin's tenant type, which

@@ -9,8 +9,23 @@ This document is the setup checklist for fresh company, domain, staging/local,
 and production infrastructure. It is written from the current codebase contract,
 not from a future deployment shape.
 
+For first execution, do not start with this combined file. Start with the
+dedicated MenuList QA guide:
+[MenuList Staging QA Setup Guide](./menulist-staging-qa-setup.md).
+
 Start with the owner-facing setup sequence before filling env values:
 [Initial Account, Domain, Firebase, And Vercel Setup Guide](./initial-account-domain-firebase-setup-guide.md).
+
+July 29, 2026 owner corrections:
+
+- `menulist.digital` is no longer a setup dependency. Treat that domain as
+  discarded for new infrastructure setup.
+- SignalDesk should use the `menulist.online` domain family unless a later
+  contract explicitly changes it.
+- MenuList product env names should move to `MENULIST_*`; public browser keys
+  use `NEXT_PUBLIC_MENULIST_*` because Next.js requires `NEXT_PUBLIC_`.
+- SignalDesk env names should move from `SIGNALDESK_*` to
+  `SIGNALDESK_*`.
 
 Use this as the blind-follow setup guide, with one caveat: domain availability
 must be verified in the registrar checkout at purchase time because availability
@@ -130,8 +145,8 @@ Complete these in order. Do not skip to production until QA passes.
 3. [ ] Create dedicated Gemini staging and production keys. Restrict each key to the Gemini API. Do not reuse local/staging keys in production.
 4. [ ] Store staging Gemini values in Vercel staging and Firebase Secret Manager for `menulist-qa`.
 5. [ ] Store production Gemini values in Vercel production and Firebase Secret Manager for `menulist`.
-6. [ ] Store Answerlattice Gemini values in `ANSWERLATTICE_GEMINI_AI_KEY` and SignalDesk Gemini values in `MENULIST_SIGNALDESK_GEMINI_AI_KEY` for the matching Vercel environment.
-7. [ ] Add `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, `ANSWERLATTICE_GEMINI_AI_KEY_2`, and `MENULIST_SIGNALDESK_GEMINI_AI_KEY_2` style rotation keys only when real rotation/failover keys exist. Do not treat them as quota scaling when they belong to the same Google project.
+6. [ ] Store Answerlattice Gemini values in `ANSWERLATTICE_GEMINI_AI_KEY` and SignalDesk Gemini values in `SIGNALDESK_GEMINI_AI_KEY` for the matching Vercel environment.
+7. [ ] Add `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, `ANSWERLATTICE_GEMINI_AI_KEY_2`, and `SIGNALDESK_GEMINI_AI_KEY_2` style rotation keys only when real rotation/failover keys exist. Do not treat them as quota scaling when they belong to the same Google project.
 8. [ ] Configure budget alerts, spend monitoring, and model/project quota checks for the Google Cloud project that owns each Gemini key.
 9. [ ] Deploy MenuList QA Functions after secrets exist:
    ```bash
@@ -173,7 +188,7 @@ Complete these in order. Do not skip to production until QA passes.
   - SignalDesk: `SD`
 - CampaignCue uses `CC` as its internal product code and `campaigncue` as its runtime product slug.
 - MyCodex uses `MC` as its reserved internal product code and `mycodex` as its runtime product slug.
-- SignalDesk uses `SD` as its internal product code and `signaldesk` as its runtime product slug. Its env prefix is `MENULIST_SIGNALDESK_*`.
+- SignalDesk uses `SD` as its internal product code and `signaldesk` as its runtime product slug. Its env prefix is `SIGNALDESK_*`.
 - Neelvara is a deployment target and parent site, not a database-backed product code. Public parent-site env values use `NEXT_PUBLIC_NEELVARA_*`.
 - Do not use or recreate `ecomsai`. MenuList staging/local is `menulist-qa`.
 - Real secrets must never be committed. Store them in Vercel env vars, Firebase
@@ -187,8 +202,8 @@ Complete these in order. Do not skip to production until QA passes.
 | Neelvara | none | `http://localhost:3000/__neelvara/` | `https://neelvara.menulist.online` | none | `https://neelvara.com` | none |
 | Answerlattice | `AL` | `http://localhost:3000/__answerlattice/` | `https://answerlattice.menulist.online` | `answerlattice-qa` | `https://answerlattice.com` | `answerlattice` |
 | CampaignCue | `CC` | `http://localhost:3000/__campaigncue/` | `https://campaigncue.menulist.online` | `campaigncue-qa` | `https://campaigncue.ai` | `campaigncue` |
-| SignalDesk | `SD` | `http://localhost:3000/signaldesk` | `https://signaldesk.menulist.online` | `menulist-signaldesk-qa` | `https://signaldesk.menulist.ai` | `menulist-signaldesk` |
-| MyCodex | `MC` | `http://localhost:3000/__mycodex/` | `https://menulist.digital` | none | `https://menulist.digital` | none |
+| SignalDesk | `SD` | `http://localhost:3000/signaldesk` | `https://signaldesk.menulist.online` | `menulist-signaldesk-qa` | `https://signaldesk.menulist.online` | `menulist-signaldesk` |
+| MyCodex | `MC` | `http://localhost:3000/__mycodex/` | no active domain | none | no active domain | none |
 
 Code references:
 
@@ -200,9 +215,9 @@ Code references:
 
 Current live DNS/HTTP spot check from July 27, 2026:
 
-- `menulist.ai`, `answerlattice.com`, `menulist.online`, product staging
-  subdomains under `menulist.online`, and `menulist.digital` resolve/respond.
-- `neelvara.com`, `campaigncue.ai`, and `signaldesk.menulist.ai` do not resolve
+- `menulist.ai`, `answerlattice.com`, `menulist.online`, and product staging
+  subdomains under `menulist.online` resolve/respond.
+- `neelvara.com` and `campaigncue.ai` do not resolve
   from this environment yet. Verify purchase/ownership and Vercel DNS before
   treating those production hosts as live.
 
@@ -371,7 +386,6 @@ domains across personal accounts.
 | `neelvara.com` | Neelvara Systems parent/entity trust website | Purchase or confirm ownership now; live DNS check on July 27, 2026 returned `ENOTFOUND` |
 | `menulist.ai` | MenuList production website/app/customer hosts | Already resolves; retain and connect/verify in Vercel |
 | `menulist.online` | QA/staging host for shared app and product subdomains | Already resolves; retain |
-| `menulist.digital` | MyCodex and internal alias surface | Already resolves; retain |
 | `answerlattice.com` | Answerlattice production website/app | Already resolves; retain and connect/verify in Vercel |
 | `campaigncue.ai` | CampaignCue production website/app | Purchase or confirm ownership now; live DNS check on July 27, 2026 returned `ENOTFOUND` |
 | `canonica.app` | Legacy Answerlattice name if already owned | Retain only as redirect to `answerlattice.com`; do not create Canonica accounts |
@@ -444,7 +458,6 @@ Open the registrar or DNS provider for each domain:
 - `menulist.ai`
 - `answerlattice.com`
 - `campaigncue.ai`
-- `menulist.digital`
 
 Expected hostnames:
 
@@ -468,9 +481,7 @@ Expected hostnames:
 | `www.answerlattice.com` | production | Answerlattice |
 | `campaigncue.ai` | production | CampaignCue |
 | `www.campaigncue.ai` | production | CampaignCue |
-| `signaldesk.menulist.ai` | production/private | SignalDesk |
-| `menulist.digital` | static/private | MyCodex |
-| `www.menulist.digital` | static/private | MyCodex |
+| `signaldesk.menulist.online` | private | SignalDesk |
 
 Do not guess DNS records. Add each domain in Vercel first, then copy the exact
 DNS records Vercel shows into the registrar/DNS provider.
@@ -490,11 +501,9 @@ Checklist:
 - [ ] In staging, keep `NEXT_PUBLIC_ENV=preview` because the current code
       resolves staging through the `preview` deployment stage.
 
-Important MyCodex note: the current matrix maps MyCodex preview and production
-to `menulist.digital`. A custom domain normally points to one Vercel target at a
-time. If staging needs a separate MyCodex domain later, change
-`src/constants/deploymentTargets.ts` and this document before adding one in
-Vercel.
+Important MyCodex note: MyCodex currently has no active public domain. Do not
+add a MyCodex custom domain in Vercel unless the static-reader architecture and
+domain decision are reopened first.
 
 ## Phase 2: Create Firebase And Google Cloud Projects
 
@@ -611,8 +620,8 @@ Storage bucket env variables:
   `ANSWERLATTICE_FIREBASE_STORAGE_BUCKET`
 - CampaignCue: `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`,
   `CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`
-- SignalDesk: `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET`,
-  `MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET`
+- SignalDesk: `NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET`,
+  `SIGNALDESK_FIREBASE_STORAGE_BUCKET`
 
 ### 5. Create Firebase web apps
 
@@ -665,20 +674,25 @@ CampaignCue staging uses:
 CampaignCue production uses the same key names with
 `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_PROJECT_ID=campaigncue`.
 
+CampaignCue production/preview cannot opt into shared Firebase mode. Both
+public and Admin project identifiers, including a service-account file's
+`project_id`, must exactly match the stage target. A mismatch is a setup error,
+not permission to fall back to MenuList Firebase.
+
 SignalDesk staging uses:
 
-- `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MODE=separate`
-- `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID=menulist-signaldesk-qa`
-- `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET=menulist-signaldesk-qa.firebasestorage.app`
-- `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_APP_ID`
-- `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID`
+- `NEXT_PUBLIC_SIGNALDESK_FIREBASE_MODE=separate`
+- `NEXT_PUBLIC_SIGNALDESK_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_SIGNALDESK_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID=menulist-signaldesk-qa`
+- `NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET=menulist-signaldesk-qa.firebasestorage.app`
+- `NEXT_PUBLIC_SIGNALDESK_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_SIGNALDESK_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID`
 
 SignalDesk production uses the same key names with
-`NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID=menulist-signaldesk` and
-`NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET=menulist-signaldesk.firebasestorage.app`.
+`NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID=menulist-signaldesk` and
+`NEXT_PUBLIC_SIGNALDESK_FIREBASE_STORAGE_BUCKET=menulist-signaldesk.firebasestorage.app`.
 
 Neelvara has no Firebase web app and no Firebase env variables.
 MyCodex has no Firebase web app and no Firebase env variables.
@@ -703,7 +717,7 @@ Authorized domains:
 | `campaigncue-qa` | `localhost`, `campaigncue.menulist.online` |
 | `campaigncue` | `campaigncue.ai`, `www.campaigncue.ai` |
 | `menulist-signaldesk-qa` | `localhost`, `signaldesk.menulist.online` |
-| `menulist-signaldesk` | `signaldesk.menulist.ai` |
+| `menulist-signaldesk` | `signaldesk.menulist.online` |
 
 ### 7. Create Admin SDK service account keys
 
@@ -744,13 +758,13 @@ CampaignCue env:
 
 SignalDesk env:
 
-- `MENULIST_SIGNALDESK_FIREBASE_MODE=separate`
-- `MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID`
-- `MENULIST_SIGNALDESK_FIREBASE_STORAGE_BUCKET`
-- `MENULIST_SIGNALDESK_FIREBASE_CLIENT_EMAIL`
-- `MENULIST_SIGNALDESK_FIREBASE_PRIVATE_KEY`
-- `MENULIST_SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS`
-- `MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID`
+- `SIGNALDESK_FIREBASE_MODE=separate`
+- `SIGNALDESK_FIREBASE_PROJECT_ID`
+- `SIGNALDESK_FIREBASE_STORAGE_BUCKET`
+- `SIGNALDESK_FIREBASE_CLIENT_EMAIL`
+- `SIGNALDESK_FIREBASE_PRIVATE_KEY`
+- `SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS`
+- `SIGNALDESK_FIRESTORE_DATABASE_ID`
 
 In Vercel, private keys must use escaped newlines:
 
@@ -783,7 +797,7 @@ Production JavaScript origins:
 - `https://www.answerlattice.com`
 - `https://campaigncue.ai`
 - `https://www.campaigncue.ai`
-- `https://signaldesk.menulist.ai`
+- `https://signaldesk.menulist.online`
 
 Redirect URI pattern:
 
@@ -806,7 +820,7 @@ Add these redirect URIs:
 - `https://www.answerlattice.com/api/auth/callback/google`
 - `https://campaigncue.ai/api/auth/callback/google`
 - `https://www.campaigncue.ai/api/auth/callback/google`
-- `https://signaldesk.menulist.ai/api/auth/callback/google`
+- `https://signaldesk.menulist.online/api/auth/callback/google`
 
 Vercel env:
 
@@ -896,10 +910,10 @@ from.
 | CampaignCue Firebase client | `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_*`, `NEXT_PUBLIC_CAMPAIGNCUE_FIRESTORE_DATABASE_ID` | CampaignCue Firebase Web App config |
 | CampaignCue Firebase Admin | `CAMPAIGNCUE_FIREBASE_*`, `CAMPAIGNCUE_GOOGLE_APPLICATION_CREDENTIALS`, `CAMPAIGNCUE_FIRESTORE_DATABASE_ID` | CampaignCue Firebase service account |
 | CampaignCue CueLayers | `CAMPAIGNCUE_CUE_LAYERS_LOW_COST_IMAGE_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_ENABLE_PREMIUM_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_PREMIUM_IMAGE_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_PREMIUM_ROLLOUT_PERCENT`, `CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_ROLLOUT_PERCENT`, `CAMPAIGNCUE_TEMPLATE_SEED_ACTOR` | explicit premium boolean, real segmentation model ID or blank, and bounded 0-100 rollout |
-| SignalDesk Firebase client | `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_*`, `NEXT_PUBLIC_MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID` | SignalDesk Firebase Web App config |
-| SignalDesk Firebase Admin | `MENULIST_SIGNALDESK_FIREBASE_*`, `MENULIST_SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS`, `MENULIST_SIGNALDESK_FIRESTORE_DATABASE_ID` | SignalDesk Firebase service account |
-| SignalDesk AI and bridge | `MENULIST_SIGNALDESK_GEMINI_AI_KEY`, `MENULIST_SIGNALDESK_GEMINI_AI_KEY_2`, `MENULIST_SIGNALDESK_GEMINI_AI_KEY_3`, `MENULIST_SIGNALDESK_GEMINI_AI_KEY_4`, `MENULIST_SIGNALDESK_AI_MODEL`, `MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET` | Google AI Studio plus generated HMAC secret |
-| SignalDesk optional providers | `MENULIST_SIGNALDESK_APIFY_*`, `MENULIST_SIGNALDESK_GOOGLE_PLACES_API_KEY`, `MENULIST_SIGNALDESK_META_*`, `MENULIST_SIGNALDESK_MESSENGER_PAGE_ID`, `MENULIST_SIGNALDESK_INSTAGRAM_PAGE_ID`, `MENULIST_SIGNALDESK_WHATSAPP_PHONE_NUMBER_ID`, `MENULIST_SIGNALDESK_EMAIL_*`, `MENULIST_SIGNALDESK_SMTP_*`, `MENULIST_SIGNALDESK_UNSUBSCRIBE_URL`, `MENULIST_SIGNALDESK_PHYSICAL_ADDRESS`, `MENULIST_SIGNALDESK_SMARTLEAD_*` | leave blank until provider account, legal approval, budget cap, and provider-send gate are approved |
+| SignalDesk Firebase client | `NEXT_PUBLIC_SIGNALDESK_FIREBASE_*`, `NEXT_PUBLIC_SIGNALDESK_FIRESTORE_DATABASE_ID` | SignalDesk Firebase Web App config |
+| SignalDesk Firebase Admin | `SIGNALDESK_FIREBASE_*`, `SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS`, `SIGNALDESK_FIRESTORE_DATABASE_ID` | SignalDesk Firebase service account |
+| SignalDesk AI and bridge | `SIGNALDESK_GEMINI_AI_KEY`, `SIGNALDESK_GEMINI_AI_KEY_2`, `SIGNALDESK_GEMINI_AI_KEY_3`, `SIGNALDESK_GEMINI_AI_KEY_4`, `SIGNALDESK_AI_MODEL`, `SIGNALDESK_OUTCOME_BRIDGE_SECRET` | Google AI Studio plus generated HMAC secret |
+| SignalDesk optional providers | `SIGNALDESK_APIFY_*`, `SIGNALDESK_GOOGLE_PLACES_API_KEY`, `SIGNALDESK_META_*`, `SIGNALDESK_MESSENGER_PAGE_ID`, `SIGNALDESK_INSTAGRAM_PAGE_ID`, `SIGNALDESK_WHATSAPP_PHONE_NUMBER_ID`, `SIGNALDESK_EMAIL_*`, `SIGNALDESK_SMTP_*`, `SIGNALDESK_UNSUBSCRIBE_URL`, `SIGNALDESK_PHYSICAL_ADDRESS`, `SIGNALDESK_SMARTLEAD_*` | leave blank until provider account, legal approval, budget cap, and provider-send gate are approved |
 | Neelvara static contact | `NEXT_PUBLIC_NEELVARA_CONTACT_EMAIL`, `NEXT_PUBLIC_NEELVARA_LEGAL_EMAIL`, `NEXT_PUBLIC_NEELVARA_PRIVACY_EMAIL` | Workspace aliases |
 | MyCodex static auth | `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, `MYCODEX_SESSION_SECRET` | generated credentials/password manager |
 | AI | `GEMINI_AI_KEY`, `GEMINI_API_KEY`, `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, `OPENAI_API_KEY` | Google AI Studio and optional OpenAI |
@@ -920,8 +934,8 @@ Firebase Admin credential and local ADC diagnostics use `src/lib/firebase/fireba
 
 SignalDesk is intentionally stricter than the local ADC fallback used by
 Answerlattice and CampaignCue: its app-server Admin runtime accepts only the
-product-scoped `MENULIST_SIGNALDESK_FIREBASE_*` credential values, the
-product-scoped `MENULIST_SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS` file, or
+product-scoped `SIGNALDESK_FIREBASE_*` credential values, the
+product-scoped `SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS` file, or
 emulator identity. It must not fall back to generic host ADC because that
 credential may belong to another Firebase product or deployment stage.
 
@@ -1081,7 +1095,7 @@ CampaignCue server/Admin SDK values in Vercel env.
 
 SignalDesk has its own Firebase Functions codebase, but current
 `functions-signaldesk/src` does not declare Secret Manager secrets. Configure
-SignalDesk app/runtime values in Vercel env through `MENULIST_SIGNALDESK_*`.
+SignalDesk app/runtime values in Vercel env through `SIGNALDESK_*`.
 If a future SignalDesk Function adds a declared secret, update this section
 before deploying that function.
 
@@ -1123,13 +1137,13 @@ Checklist:
       `menulist`.
 - [ ] Create/store Answerlattice keys in `ANSWERLATTICE_GEMINI_AI_KEY` and
       matching Answerlattice Firebase Secret Manager.
-- [ ] Create/store SignalDesk keys in `MENULIST_SIGNALDESK_GEMINI_AI_KEY`.
+- [ ] Create/store SignalDesk keys in `SIGNALDESK_GEMINI_AI_KEY`.
 - [ ] Add rotation keys only when they exist: `GEMINI_AI_KEY_2`,
       `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`,
       `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`,
-      `ANSWERLATTICE_GEMINI_AI_KEY_4`, `MENULIST_SIGNALDESK_GEMINI_AI_KEY_2`,
-      `MENULIST_SIGNALDESK_GEMINI_AI_KEY_3`, and
-      `MENULIST_SIGNALDESK_GEMINI_AI_KEY_4`.
+      `ANSWERLATTICE_GEMINI_AI_KEY_4`, `SIGNALDESK_GEMINI_AI_KEY_2`,
+      `SIGNALDESK_GEMINI_AI_KEY_3`, and
+      `SIGNALDESK_GEMINI_AI_KEY_4`.
 - [ ] Leave `GEMINI_API_KEY` blank unless a legacy path explicitly requires it.
 - [ ] Confirm Google Cloud billing is enabled for the key's project.
 - [ ] Configure budget and usage alerts for the key's Google Cloud project.
@@ -1140,18 +1154,23 @@ Checklist:
 
 Use only the Gemini env names already present in code and templates:
 
-- MenuList app/Functions and CampaignCue app paths: `GEMINI_AI_KEY` plus
+- MenuList Vercel/setup records: `MENULIST_GEMINI_AI_KEY` plus
+  `MENULIST_GEMINI_AI_KEY_2`, `MENULIST_GEMINI_AI_KEY_3`, and
+  `MENULIST_GEMINI_AI_KEY_4`.
+- Current MenuList app/Functions compatibility aliases: `GEMINI_AI_KEY` plus
   `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, and `GEMINI_AI_KEY_4`.
 - Answerlattice app/Functions: `ANSWERLATTICE_GEMINI_AI_KEY` plus
   `ANSWERLATTICE_GEMINI_AI_KEY_2`, `ANSWERLATTICE_GEMINI_AI_KEY_3`, and
   `ANSWERLATTICE_GEMINI_AI_KEY_4`.
-- SignalDesk app/runtime: `MENULIST_SIGNALDESK_GEMINI_AI_KEY` plus
-  `MENULIST_SIGNALDESK_GEMINI_AI_KEY_2`,
-  `MENULIST_SIGNALDESK_GEMINI_AI_KEY_3`, and
-  `MENULIST_SIGNALDESK_GEMINI_AI_KEY_4`.
+- SignalDesk app/runtime: `SIGNALDESK_GEMINI_AI_KEY` plus
+  `SIGNALDESK_GEMINI_AI_KEY_2`,
+  `SIGNALDESK_GEMINI_AI_KEY_3`, and
+  `SIGNALDESK_GEMINI_AI_KEY_4`.
 
-Do not invent `MENULIST_GEMINI_AI_KEY`, `CAMPAIGNCUE_GEMINI_AI_KEY`,
-`AL_GEMINI_AI_KEY`, `CC_GEMINI_AI_KEY`, or `SD_GEMINI_AI_KEY`.
+Do not invent shorthand env keys such as `ML_GEMINI_AI_KEY`,
+`AL_GEMINI_AI_KEY`, `CC_GEMINI_AI_KEY`, or `SD_GEMINI_AI_KEY`. Do not invent
+`CAMPAIGNCUE_GEMINI_AI_KEY` until CampaignCue provider-call activation is
+approved in code and docs.
 
 The rotation aliases are for leak response and transient failover. If the keys
 belong to the same Google project, they share that project's Gemini quota.
@@ -1303,7 +1322,7 @@ Production App Check domains:
 - `www.answerlattice.com`
 - `campaigncue.ai`
 - `www.campaigncue.ai`
-- `signaldesk.menulist.ai`
+- `signaldesk.menulist.online`
 
 Neelvara is static/no Firebase and does not need Firebase App Check.
 MyCodex does not need Firebase App Check.
@@ -1359,7 +1378,8 @@ Checklist:
 - [ ] Set MenuList Functions secrets:
       `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`.
 - [ ] Set `INTERNAL_NOTIFICATION_EMAIL`, `PLATFORM_ALERT_EMAIL_TO`, and
-      `INTERNAL_BILLING_EMAIL`.
+      `INTERNAL_BILLING_EMAIL`. Each value is one plain mailbox address; do not
+      use a comma/semicolon recipient list or display-name syntax.
 
 ### 11. Telegram alerts
 
@@ -1488,8 +1508,7 @@ Checklist:
 - [ ] Add monitor for `https://neelvara.com`.
 - [ ] Add monitor for `https://answerlattice.com`.
 - [ ] Add monitor for `https://campaigncue.ai`.
-- [ ] Add monitor for `https://signaldesk.menulist.ai`.
-- [ ] Add monitor for `https://menulist.digital`.
+- [ ] Add monitor for `https://signaldesk.menulist.online`.
 - [ ] Add monitors for `/api/version` if endpoint health checks are desired.
 
 No env variables are required for UptimeRobot.
@@ -1640,7 +1659,7 @@ SignalDesk:
 - [ ] Confirm SignalDesk writes only to `menulist-signaldesk-qa` in staging and
       `menulist-signaldesk` in production.
 - [ ] Confirm provider accounts are disabled or held unless explicitly approved.
-- [ ] Confirm `MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET` is at least 32
+- [ ] Confirm `SIGNALDESK_OUTCOME_BRIDGE_SECRET` is at least 32
       characters before enabling the outcome bridge.
 
 Neelvara:
@@ -1741,8 +1760,8 @@ SignalDesk staging:
 
 SignalDesk production:
 
-- [ ] Open `https://signaldesk.menulist.ai`.
-- [ ] Open `https://signaldesk.menulist.ai/api/version`.
+- [ ] Open `https://signaldesk.menulist.online`.
+- [ ] Open `https://signaldesk.menulist.online/api/version`.
 - [ ] Confirm production private access works.
 - [ ] Confirm data writes to `menulist-signaldesk`.
 - [ ] Confirm provider-send remains disabled unless explicitly approved.
@@ -1761,8 +1780,9 @@ Neelvara production:
 
 MyCodex:
 
-- [ ] Open `https://menulist.digital`.
-- [ ] Confirm Basic Auth/session login is required.
+- [ ] Confirm no public domain is configured.
+- [ ] Confirm local `/__mycodex/` works when the private reader is enabled.
+- [ ] Confirm Basic Auth/session login is required if a private host is added later.
 - [ ] Confirm no Firebase requests are needed for MyCodex.
 - [ ] Confirm static docs render.
 
@@ -1791,7 +1811,7 @@ Use this table while setting up. Do not paste secret values into this document.
 | Admin SDK env | [ ] | [ ] | private keys escaped in Vercel |
 | Firebase Secret Manager | [ ] | [ ] | Functions secrets only |
 | Gemini | [ ] | [ ] | restricted, separate per environment |
-| SignalDesk env | [ ] | [ ] | namespaced `MENULIST_SIGNALDESK_*` only |
+| SignalDesk env | [ ] | [ ] | namespaced `SIGNALDESK_*` only |
 | Neelvara static contact | [ ] | [ ] | Workspace aliases only |
 | Upstash | [ ] | [ ] | separate DBs |
 | Razorpay | [ ] | [ ] | test vs live |

@@ -92,7 +92,7 @@
 | `menulist.ai` requests `/api/signaldesk/overview` | Returns noindexed `404` before SignalDesk auth/API handling. |
 | Dedicated SignalDesk host requests `/` or `/signaldesk` | Rewrites/renders the protected SignalDesk shell. |
 | Localhost requests `/signaldesk` | Retains the path-based development flow. |
-| `menulist.digital` requests approved `/sd` alias | Retains the SignalDesk alias rewrite and product headers. |
+| Former `/sd` public-host alias | Not active; use local `/signaldesk` and `signaldesk.menulist.online`. |
 
 ## Firebase Project Isolation Tests
 

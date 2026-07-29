@@ -1,8 +1,8 @@
 # AnswerLattice Website (answerlattice.com)
 
 > **Feature:** Public marketing website for AnswerLattice product
-> **Status:** ✅ LOCAL SOURCE COMPLETE — approved-answers-first positioning, deterministic governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, accessible public navigation/forms, agent-readable discovery, and consent-gated website analytics
-> **Date:** 2026-07-19
+> **Status:** ✅ LOCAL SOURCE COMPLETE — approved-answers-first positioning, connected owner-decision proof, deterministic governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, accessible public navigation/forms, agent-readable discovery, and consent-gated website analytics
+> **Date:** 2026-07-29
 > **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -32,6 +32,13 @@ The deterministic demo has no network/provider path. Get Started uses native for
 
 `npm run verify:answerlattice-public-website` owns this cross-surface contract and is part of the aggregate AnswerLattice runtime gate. Hosted-domain, analytics, search-index, real Google/Razorpay/Turnstile, counsel, and real-buyer evidence remain external.
 
+## July 29, 2026 Owner-Decision Website Alignment
+
+- The compressed homepage now adds one owner-decision section after the trusted-answer support loop. It connects Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps without restoring the three deferred inventory sections.
+- Product, Support Control, Knowledge Governance, Knowledge Base, Changelog, FAQ, Updates, metadata, and system-coverage copy now explain the same path from qualified evidence to mapped review and bounded proof.
+- Public copy distinguishes the private governed Knowledge Map from public article topic maps, keeps weighted friction as prioritization evidence rather than root cause, and states that tests and release previews do not mutate support truth.
+- The update is static website source. It adds no Firestore read, write, listener, scheduled task, model call, dependency, public data contract, or Firebase deployment requirement.
+
 ## Related Strategy
 
 - `../self-sellable-product-strategy.md` — AnswerLattice's non-enterprise ICP, AI-built SaaS founder positioning, pricing direction, website message bank, and sellable-launch task list. Use this before changing public AnswerLattice website copy.
@@ -44,12 +51,12 @@ The deterministic demo has no network/provider path. Get Started uses native for
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/` | Homepage | Product-user support hero with approved-answers-first proof, inline sample workspace preview, support-suite flow with compact category-switch proof, support-suite cards, scroll-led support-surface story, priority-bento product overview cards, support improvement loop, install-surface quickstarts, merged founder-fit/category-boundary section, pricing checkpoint, objections, and CTA |
-| `/product` | Product | Self-serve product overview for SaaS and digital products with hero CTAs, conversion proof strip, connected support-suite framing, visual workflow proof for setup, team access, in-product widget, hosted help, custom owner Q&A, safe ticket context, approved answers, releases, support gaps, and category comparison |
+| `/` | Homepage | Compressed product-user support path: approved-answers-first hero, first trusted answers, known-answer/fallback/review loop, owner-decision system, install confidence, founder-fit/category boundary, pricing, objections, and CTA. Three longer inventory mounts remain commented for intentional reactivation. |
+| `/product` | Product | Self-serve product overview with the connected support layer plus Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, known-issue, trusted-context, and export boundaries. |
 | `/product/launch-setup` | Product Area | Landing-style page for setting up support: workspace setup, team access, starter knowledge, product pages, widget key, first-client launch proof, and setup/demo/source-prep CTAs |
 | `/product/page-aware-widget` | Product Area | Landing-style page for in-app widget runtime, safe context, allowed origins, blocked routes, canonical answers, owner FAQ answers, and widget proof strip |
-| `/product/support-control` | Product Area | Landing-style page for hosted help, docs, FAQ, custom owner Q&A, changelog, ticket fallback, feedback review, Support Board, conversations, weekly support review, and connected-runtime proof |
-| `/product/knowledge-governance` | Product Area | Landing-style page for reviewing approved answers, stale support, repeated-question signals, coverage, trust metrics, and human-review proof |
+| `/product/support-control` | Product Area | Landing-style page for hosted help, article topic maps, docs, FAQ, custom owner Q&A, ticket fallback, feedback review, Support Board, qualified Daily Brief, and evidence-preserving governance handoff. |
+| `/product/knowledge-governance` | Product Area | Landing-style page connecting Knowledge Map, Product Friction Evidence, approved answers, stale review, Answer Tests, release impact, rollback proposals, and human approval. |
 | `/product/team-access` | Product Feature | Standalone feature page for workspace members, AnswerLattice roles, owner-passcode sharing, owner reset, force sign-out, and workspace-scoped access |
 | `/product/knowledge-base` | Product Feature | Standalone feature page for reviewed articles, imports, product-surface assignment, FAQ generation, and hosted help publishing |
 | `/product/faq-management` | Product Feature | Standalone feature page for owner-written Q&A, article-backed FAQs, owner review, surface-aware display, and source-linked refresh |
@@ -302,6 +309,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-07-29 | Connected Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and article topic maps across the compressed homepage and deeper product routes without adding website Firebase cost |
 | 2026-07-19 | Aligned public support-credit copy with operation-level accounting, moved the category to governed support layer, sourced retention wording from shared constants, added AI-provider data-use non-claims, expanded the product terms summary without inventing legal clauses, and moved root mail delivery to the compatible Nodemailer 9 runtime alias |
 | 2026-07-13 | Hardened AnswerLattice Product and Resources dropdowns with hover-bridge, Escape close, and viewport scroll containment; upgraded the phone drawer to full-width mobile presentation with higher overlay stacking, internal scroll isolation, and safe-area CTA behavior |
 | 2026-07-11 | Replaced the static demo switcher with a deterministic governance event, exposed INR/USD plan selection through Pricing and Get Started, added factual Trust and Data Handling disclosures, and updated privacy-provider/retention wording without claiming certification or contractual terms |

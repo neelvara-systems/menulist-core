@@ -42,7 +42,6 @@ import {
     EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION,
     normalizeExternalLocationIdentityBinding,
 } from "@lib/public-truth-tools/externalLocationIdentity";
-import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import {
     isStoreNestedDelete,
@@ -803,10 +802,9 @@ export const updateStore = async (data: StoreMutationData) => {
             // Revalidate after summary propagation so the next SSR/read cannot
             // refill from stale store summary data.
             if (data.storeId) {
-                await revalidatePublicClientCache(data.storeId, "updateStore");
-                if (hasDigitalScreenStoreOutputFieldChanges(data)) {
-                    await touchDigitalScreenContentVersion(data.storeId, "updateStore");
-                }
+                await revalidatePublicClientCache(data.storeId, "updateStore", {
+                    touchScreen: hasDigitalScreenStoreOutputFieldChanges(data),
+                });
             }
 
             return data;

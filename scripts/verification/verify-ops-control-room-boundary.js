@@ -358,6 +358,10 @@ function verifyOpsControlRoomBoundary() {
     "const operatorId = resolveCurrentSessionUserDocumentId(session) || 'invalid-platform-session';",
     'const currentPlatformUser = await getCurrentPlatformUser(session);',
     "accessModel: 'current_persisted_platform_user'",
+    "const PLATFORM_ACCESS_PRIVATE_RESPONSE_HEADERS = {",
+    "'Cache-Control': 'private, no-store, max-age=0'",
+    "'X-Content-Type-Options': 'nosniff'",
+    "const headers = new Headers(init.headers);",
   ].forEach((token) => assertIncludes(files.currentAccessRoute, token, 'Platform current-access route'));
   [
     "fetch('/api/platform/current-access'",

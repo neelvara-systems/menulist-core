@@ -12,7 +12,7 @@
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { signIn, useSession } from 'next-auth/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
@@ -25,6 +25,7 @@ import {
     buildCreateMenuPath,
     type GrowthAcquisitionAttribution,
 } from '@lib/growth/acquisitionAttribution';
+import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 
 type UploadState = 'idle' | 'optimizing' | 'uploading' | 'processing' | 'success' | 'error';
 type InputMode = 'photo' | 'link';
@@ -37,10 +38,6 @@ const CREATE_MENU_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 type CreateMenuDraftResponse = {
     draftId?: unknown;
 };
-
-const isNonEmptyString = (value: unknown): value is string => (
-    typeof value === 'string' && value.trim().length > 0
-);
 
 const getCreateMenuResponseLogContext = (
     source: CreateMenuResponseSource,
@@ -88,6 +85,7 @@ export default function CreateMenuClient({
     const [inputMode, setInputMode] = useState<InputMode>('photo');
     const [menuLink, setMenuLink] = useState('');
     const [permissionConfirmed, setPermissionConfirmed] = useState(false);
+    const submissionInFlightRef = useRef(false);
     const isAuthenticated = sessionStatus === 'authenticated';
     const isSessionLoading = sessionStatus === 'loading';
     const createMenuPath = useWebsitePath(buildCreateMenuPath(growthAcquisition));
@@ -128,6 +126,8 @@ export default function CreateMenuClient({
             setError(t('CreateMenu.fileTooLarge'));
             return;
         }
+        if (submissionInFlightRef.current) return;
+        submissionInFlightRef.current = true;
 
         // Show preview
         const objectUrl = URL.createObjectURL(file);
@@ -175,14 +175,15 @@ export default function CreateMenuClient({
                 return;
             }
 
-            if (parseFailed || !isNonEmptyString(payload?.draftId)) {
+            const draftId = normalizePublicMenuDraftId(payload?.draftId);
+            if (parseFailed || !draftId) {
                 if (!parseFailed) {
                     logRuntimeFailure('public_create_menu_response_invalid', new Error('public_create_menu_response_invalid'), {
                         ...getCreateMenuResponseLogContext('upload'),
                         responseOk: response.ok,
                         responseStatus: response.status,
                         maxBytes: CREATE_MENU_RESPONSE_JSON_MAX_BYTES,
-                        hasDraftId: isNonEmptyString(payload?.draftId),
+                        hasDraftId: Boolean(draftId),
                     });
                 }
                 setError(t('CreateMenu.uploadFailed'));
@@ -192,11 +193,18 @@ export default function CreateMenuClient({
 
             // Step 3: Redirect to preview page
             setState('success');
-            router.push(`${createMenuPreviewPath}/${payload.draftId}`);
+            router.push(`${createMenuPreviewPath}/${draftId}`);
 
         } catch (err) {
+            logRuntimeFailure('public_create_menu_request_failed', err, {
+                source: 'upload',
+                fileSize: file.size,
+                ...getBoundedRuntimeStringContext('fileType', file.type),
+            });
             setError(t('CreateMenu.genericError'));
             setState('error');
+        } finally {
+            submissionInFlightRef.current = false;
         }
     }, [createMenuPreviewPath, growthAcquisition, isAuthenticated, redirectToSignIn, router, t]);
 
@@ -237,6 +245,8 @@ export default function CreateMenuClient({
             setState('error');
             return;
         }
+        if (submissionInFlightRef.current) return;
+        submissionInFlightRef.current = true;
 
         try {
             setError(null);
@@ -274,14 +284,15 @@ export default function CreateMenuClient({
                 return;
             }
 
-            if (parseFailed || !isNonEmptyString(payload?.draftId)) {
+            const draftId = normalizePublicMenuDraftId(payload?.draftId);
+            if (parseFailed || !draftId) {
                 if (!parseFailed) {
                     logRuntimeFailure('public_create_menu_response_invalid', new Error('public_create_menu_response_invalid'), {
                         ...getCreateMenuResponseLogContext('link', trimmedLink),
                         responseOk: response.ok,
                         responseStatus: response.status,
                         maxBytes: CREATE_MENU_RESPONSE_JSON_MAX_BYTES,
-                        hasDraftId: isNonEmptyString(payload?.draftId),
+                        hasDraftId: Boolean(draftId),
                     });
                 }
                 setError(t('CreateMenu.linkFailed'));
@@ -290,10 +301,15 @@ export default function CreateMenuClient({
             }
 
             setState('success');
-            router.push(`${createMenuPreviewPath}/${payload.draftId}`);
-        } catch {
+            router.push(`${createMenuPreviewPath}/${draftId}`);
+        } catch (err) {
+            logRuntimeFailure('public_create_menu_request_failed', err, {
+                ...getCreateMenuResponseLogContext('link', trimmedLink),
+            });
             setError(t('CreateMenu.genericError'));
             setState('error');
+        } finally {
+            submissionInFlightRef.current = false;
         }
     }, [createMenuPreviewPath, growthAcquisition, isAuthenticated, menuLink, permissionConfirmed, redirectToSignIn, router, t]);
 

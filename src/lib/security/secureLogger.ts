@@ -10,12 +10,48 @@
  * OWASP A09: Security Logging (proper logging)
  */
 
-type LogData = Record<string, any>;
+type LogData = Record<string, unknown>;
 
 const MAX_ERROR_FIELD_LENGTH = 80;
 const MAX_LOG_ARRAY_ITEMS = 50;
 const MAX_LOG_OBJECT_KEYS = 50;
 const MAX_LOG_STRING_LENGTH = 500;
+
+function getOwnDataEntries(
+    value: object,
+    limit: number = MAX_LOG_OBJECT_KEYS,
+): Array<[string, unknown]> | null {
+    try {
+        const entries: Array<[string, unknown]> = [];
+        for (const key of Reflect.ownKeys(value)) {
+            if (entries.length >= limit) break;
+            if (typeof key !== 'string') continue;
+            const descriptor = Reflect.getOwnPropertyDescriptor(value, key);
+            if (!descriptor?.enumerable || !('value' in descriptor)) continue;
+            entries.push([key, descriptor.value]);
+        }
+        return entries;
+    } catch {
+        return null;
+    }
+}
+
+function getOwnDataValue(value: object, key: string): unknown {
+    try {
+        const descriptor = Reflect.getOwnPropertyDescriptor(value, key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function hasOwnPropertyDescriptor(value: object, key: string): boolean {
+    try {
+        return Boolean(Reflect.getOwnPropertyDescriptor(value, key));
+    } catch {
+        return false;
+    }
+}
 
 /**
  * Fields that should NEVER be logged
@@ -49,14 +85,17 @@ const MASKED_FIELDS = new Set([
  * Sanitize log data to prevent sensitive info leakage
  */
 export function sanitizeLogData(data: LogData, seen: WeakSet<object> = new WeakSet()): LogData {
+    if (!data || typeof data !== 'object') return {};
     if (seen.has(data)) {
         return { circular: true };
     }
 
     seen.add(data);
     const sanitized: LogData = {};
-    
-    for (const [key, value] of Object.entries(data).slice(0, MAX_LOG_OBJECT_KEYS)) {
+    const entries = getOwnDataEntries(data);
+    if (!entries) return { inspectionFailed: true };
+
+    for (const [key, value] of entries) {
         // Block completely
         const normalizedKey = normalizeLogFieldKey(key);
 
@@ -81,7 +120,13 @@ export function sanitizeLogData(data: LogData, seen: WeakSet<object> = new WeakS
 
         // Sanitize arrays
         if (Array.isArray(value)) {
-            sanitized[key] = value.slice(0, MAX_LOG_ARRAY_ITEMS).map(item => sanitizeArrayLogItem(item, seen));
+            const items = getOwnDataEntries(value, MAX_LOG_ARRAY_ITEMS);
+            sanitized[key] = items
+                ? items
+                    .filter(([itemKey]) => /^(?:0|[1-9]\d*)$/.test(itemKey))
+                    .sort(([left], [right]) => Number(left) - Number(right))
+                    .map(([, item]) => sanitizeArrayLogItem(item, seen))
+                : '[Inspection failed]';
             continue;
         }
 
@@ -90,8 +135,16 @@ export function sanitizeLogData(data: LogData, seen: WeakSet<object> = new WeakS
             continue;
         }
 
-        // Safe to log
-        sanitized[key] = value;
+        if (
+            value === null
+            || typeof value === 'number'
+            || typeof value === 'boolean'
+        ) {
+            sanitized[key] = value;
+            continue;
+        }
+
+        sanitized[key] = `[${typeof value}]`;
     }
     
     return sanitized;
@@ -151,27 +204,30 @@ function getBoundedErrorStatus(value: unknown): number | undefined {
 }
 
 export function sanitizeErrorForLog(error: Error): LogData {
-    const { name, message, stack } = error;
-    const errorRecord = error as Error & Record<string, unknown>;
+    const name = getOwnDataValue(error, 'name');
+    const message = getOwnDataValue(error, 'message');
+    const stack = getOwnDataValue(error, 'stack');
+    const errorName = typeof name === 'string' ? name : 'Error';
     const safeError: LogData = {
-        name: getBoundedErrorString(name) || 'Error',
+        name: getBoundedErrorString(errorName) || 'Error',
         messagePresent: typeof message === 'string' && message.length > 0,
         messageLength: typeof message === 'string' ? message.length : 0,
-        stackPresent: typeof stack === 'string' && stack.length > 0,
+        stackPresent: (typeof stack === 'string' && stack.length > 0)
+            || hasOwnPropertyDescriptor(error, 'stack'),
         stackLength: typeof stack === 'string' ? stack.length : 0
     };
 
-    const code = getBoundedErrorString(errorRecord.code);
+    const code = getBoundedErrorString(getOwnDataValue(error, 'code'));
     if (code) {
         safeError.code = code;
     }
 
-    const status = getBoundedErrorStatus(errorRecord.status);
+    const status = getBoundedErrorStatus(getOwnDataValue(error, 'status'));
     if (typeof status === 'number') {
         safeError.status = status;
     }
 
-    const statusCode = getBoundedErrorStatus(errorRecord.statusCode);
+    const statusCode = getBoundedErrorStatus(getOwnDataValue(error, 'statusCode'));
     if (typeof statusCode === 'number') {
         safeError.statusCode = statusCode;
     }
@@ -206,24 +262,31 @@ export function secureError(message: string, error: Error, context?: LogData): v
 /**
  * Check if request contains sensitive data
  */
-export function containsSensitiveData(data: any, seen: WeakSet<object> = new WeakSet()): boolean {
+export function containsSensitiveData(data: unknown, seen: WeakSet<object> = new WeakSet()): boolean {
     if (typeof data !== 'object') return false;
     if (data === null) return false;
     if (seen.has(data)) return false;
     seen.add(data);
     
-    for (const key of Object.keys(data)) {
-        if (BLOCKED_FIELDS.has(normalizeLogFieldKey(key))) {
-            return true;
-        }
-        
-        if (typeof data[key] === 'object') {
-            if (containsSensitiveData(data[key], seen)) {
-                return true;
+    try {
+        for (const key of Reflect.ownKeys(data)) {
+            if (typeof key !== 'string') continue;
+            if (BLOCKED_FIELDS.has(normalizeLogFieldKey(key))) return true;
+
+            const descriptor = Reflect.getOwnPropertyDescriptor(data, key);
+            if (
+                descriptor
+                && 'value' in descriptor
+                && descriptor.value !== null
+                && typeof descriptor.value === 'object'
+            ) {
+                if (containsSensitiveData(descriptor.value, seen)) return true;
             }
         }
+    } catch {
+        return true;
     }
-    
+
     return false;
 }
 

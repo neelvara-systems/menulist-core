@@ -334,8 +334,9 @@ function verifySchedulerMonitorBoundary() {
   [
     'normalizeSchedulerRecoveryResponse',
     'normalizeSchedulerRecoveryRunLogId',
-    "value.success !== (status !== 'failed')",
-    'value.totalStores !== 1',
+    "success !== (status !== 'failed')",
+    'totalStores !== 1',
+    "readOwnValue(value, 'failedCount')",
     'isValidFirestoreDocumentId(value)',
   ].forEach((token) => assertIncludes(files.recoveryResponse, token, 'Scheduler recovery response boundary'));
 

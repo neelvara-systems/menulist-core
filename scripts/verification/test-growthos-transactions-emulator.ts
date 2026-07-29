@@ -192,17 +192,13 @@ async function run(): Promise<void> {
     const output = generated.kit.outputs[0];
     assert.ok(output, "fixture must produce an exportable output");
     const exportParams = {
+        actorId,
         destination: output.destination,
         isStale: false,
         kit: generated.kit,
         method: "copy" as const,
         operationId: exportOperationId,
         outputId: output.id,
-        session: {
-            sId: storeId,
-            tId: tenantId,
-            uId: actorId,
-        },
     };
     const exportAttempts = await Promise.all([
         recordGrowthOSExportServer(exportParams),

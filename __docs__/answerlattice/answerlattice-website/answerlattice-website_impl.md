@@ -1,10 +1,18 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.3.6
-> **Last Updated:** 2026-07-28
+> **Version:** 1.3.7
+> **Last Updated:** 2026-07-29
 > **Audience:** Developers
 
 ---
+
+## July 29, 2026 Owner-Decision Website Alignment
+
+- `page.tsx` mounts one `FounderReviewSection` after the trusted-answer support loop. The section links Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps while preserving the three deferred homepage mounts in their explicit comment block.
+- `/product` reframes founder controls as one owner decision system. Daily Brief is qualified and can be quiet; friction stays advisory; Knowledge Map stays governed; release impact remains owner-confirmed; Answer Tests remain bounded proof rather than a correctness guarantee.
+- `/product/support-control` explains qualified Daily Brief output and public article topic maps. `/product/knowledge-governance` owns the connected evidence-to-answer workflow. `/product/changelog` explains directly linked answer/test review and stale-preview rejection.
+- FAQ, Updates, route metadata, product-area navigation, system coverage, and feature website docs use the same names and boundaries.
+- The public page remains static. This pass adds no Firestore operation, listener, scheduled work, provider call, dependency, route, or public data payload.
 
 ## July 28, 2026 Buyer-Path Compression
 
@@ -88,7 +96,7 @@ Concept illustrations use `AnswerlatticeConceptIllustration.tsx`, a zero-depende
 
 Prism-glass card hover uses `AnswerlatticeSpotlightCards.tsx` as a route-level pointer tracker for fine-pointer devices. The client island delegates `pointerover` and `pointermove`, writes `--al-card-pointer-x` / `--al-card-pointer-y` on matching AnswerLattice cards, and leaves touch/mobile cards on the centered CSS fallback. The hover glow must follow the pointer like the Neelvara cards without adding per-card state, changing section layouts, or altering AnswerLattice color tokens.
 
-AnswerLattice public pages support Light/System/Dark mode through `AnswerlatticeThemeProvider.tsx` and `AnswerlatticeThemeSwitcher.tsx`. The provider stores the site-scoped preference in `answerlattice-theme`, resolves System through `prefers-color-scheme`, marks the wrapper with `data-al-theme`, mirrors the resolved mode onto `html[data-answerlattice-theme]`, and updates browser `theme-color` metadata. The route layout includes a pre-hydration bootstrap script so a saved preference applies before React mounts.
+AnswerLattice public pages support Light/System/Dark mode through `AnswerlatticeThemeProvider.tsx` and `AnswerlatticeThemeSwitcher.tsx`. The provider stores the site-scoped preference in `answerlattice-theme`, resolves System through `prefers-color-scheme`, marks the wrapper with `data-al-theme`, mirrors the resolved mode onto `html[data-answerlattice-theme]`, and updates browser `theme-color` metadata. Only the exact Light/System/Dark scalar is admitted; invalid values are evicted, and denied read/remove/write operations emit bounded diagnostics while the site falls back to System or keeps the current in-memory choice. The route layout includes a pre-hydration bootstrap script so a saved preference applies before React mounts.
 
 ---
 
@@ -496,8 +504,9 @@ Use-cases, install, resources, updates, and the homepage product/widget preview 
 Conversion analytics is client-side only:
 
 - `AnswerlatticeAnalytics.tsx` shows the shared public cookie banner first. It loads Plausible only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` exists. It loads Google Analytics only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists and matches the GA4 `G-...` measurement-id shape.
+- Every custom event rechecks the current product-specific consent choice through the shared Plausible/Google helper. Changing from accepted to declined updates the in-memory gate immediately, clears known cookies, and prevents later conversion, onboarding, or resource event pings even if a vendor function remains loaded.
 - Answerlattice website analytics URL minimization boundary: `answerlatticeAnalyticsUtils.ts` strips query strings and hash fragments from GA4 page-location, click-link, resource target, referrer, and entry-page URL fields before emission while bounding analytics text fields.
-- CTA/demo/pricing/onboarding events are emitted to Plausible as property-free custom events and to `window.gtag` when GA4 is configured.
+- CTA/demo/pricing/onboarding events are emitted to Plausible as property-free custom events and to GA4 only through the shared consent and payload boundary when GA4 is configured.
 - Resource page/referrer events keep page, entry-page, referrer, UTM, slug, and target URL context for GA4 compatibility, but do not send raw full URLs or a custom repo-generated `session_id` parameter to third-party website analytics.
 - Public get-started completion analytics do not send API key material or token prefixes.
 - No event is written to Firestore, no API route is called, and no AnswerLattice Firebase cost is introduced by normal tracking.
@@ -524,6 +533,7 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-29 | 1.3.7 | Connected the five owner decision features and public article topic maps across the compressed homepage and deeper product routes, synchronized public docs/metadata, and extended the source verifier without adding Firebase cost. |
 | 2026-07-28 | 1.3.5 | Retained the three deferred homepage section mounts as an explicit commented block and guarded them against silent deletion. |
 | 2026-07-28 | 1.3.4 | Compressed the homepage buyer path, moved workspace activation before supporting content, added the primary support-resolution demo, bounded Guided Resolution copy, and extended website source gates without adding public routes or Firebase cost. |
 | 2026-07-19 | 1.3.3 | Aligned public credit, retention, AI-provider, operating-trade-name, cancellation, deletion, and category claims with runtime sources; strengthened the public verifier; and moved root mail delivery to the compatible Nodemailer 9 runtime alias. |

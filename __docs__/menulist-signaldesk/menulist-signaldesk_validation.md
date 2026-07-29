@@ -72,7 +72,7 @@ The implemented flow covers the existing access, source, target, evidence, draft
 | Area | Verified result |
 | --- | --- |
 | Product identity | SignalDesk retains product code `SD`, full-name environment variables, product-local app/API/constants/DAL/Functions paths, and dedicated QA/production Firebase project IDs. |
-| Host admission | Canonical `/signaldesk` and `/api/signaldesk` paths now return `404` with `noindex` on non-SignalDesk production hosts. The dedicated SignalDesk host, localhost path, and approved `menulist.digital/sd` alias retain their existing behavior. |
+| Host admission | Canonical `/signaldesk` and `/api/signaldesk` paths now return `404` with `noindex` on non-SignalDesk production hosts. The dedicated SignalDesk host and localhost path retain their existing behavior; the former MyCodex-host `/sd` dependency is no longer active. |
 | App-server Firebase | Client and Admin bootstraps continue to fail closed when mode, credentials, bucket, or project identity is missing, conflicting, or points at MenuList or another product. |
 | Functions Firebase | `functions-signaldesk` now resolves the runtime project before Admin initialization, permits only `menulist-signaldesk-qa`, `menulist-signaldesk`, or the isolated `demo-signaldesk*` emulator namespace, and rejects conflicting or foreign project declarations. An already-initialized default app must match the resolved project. |
 | Public and sister-product isolation | SignalDesk remains absent from public navigation, sitemap, MenuList owner/customer surfaces, and sister-product hosts. No new public route or data projection was added. |
@@ -605,7 +605,7 @@ SignalDesk now includes Apify as a gated source/evidence broker. It does not run
 | Area | Implementation Evidence |
 | --- | --- |
 | Feature gate | `src/config/features.ts` adds `ENABLE_MENULIST_SIGNALDESK_APIFY_SOURCE_BROKER` beside the broader source-provider flag. |
-| Env constants | `src/constants/signaldesk/integrations.ts` adds `MENULIST_SIGNALDESK_APIFY_API_TOKEN`, `MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID`, `MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET`, and the Apify API base URL. |
+| Env constants | `src/constants/signaldesk/integrations.ts` adds `SIGNALDESK_APIFY_API_TOKEN`, `SIGNALDESK_APIFY_SOURCE_ACTOR_ID`, `SIGNALDESK_APIFY_WEBHOOK_SECRET`, and the Apify API base URL. |
 | Types | `src/types/signaldesk/index.ts` adds `apify` to source provider, provider, and connector kind unions, with connector channel `source`. |
 | Source adapter | `src/lib/signaldesk/sourceProviders.ts` runs the env-controlled Actor through Apify's synchronous dataset-items endpoint, normalizes `owner/actor` slugs to Apify's `owner~actor` API form, applies both returned-row and charge caps, and normalizes rows into target import fields. |
 | Workflow guard | `src/lib/signaldesk/workflowServer.ts` blocks Apify when the broker flag is off, requires source-provider policy/evidence use, checks provider account and budget, writes provider spend, and imports through the existing target import path. |
@@ -776,14 +776,14 @@ The non-paid, non-deploy investment-control slice is implemented. It adds intern
 
 ### SignalDesk AI Credential Isolation - July 11, 2026
 
-SignalDesk AI assist now creates a product-scoped key manager from `MENULIST_SIGNALDESK_GEMINI_AI_KEY`, `_2`, `_3`, and `_4` while reusing the shared app Gemini retry gateway. It no longer reads MenuList `GEMINI_AI_KEY*` or the legacy `GEMINI_API_KEY`, and it does not use Answerlattice credentials. Staging/production env templates now include the separate SignalDesk Firebase and AI variables. This is source-side credential isolation only; real key setup, provider smoke, SignalDesk Firebase deployment, Vercel deployment, and production-host evidence remain pending.
+SignalDesk AI assist now creates a product-scoped key manager from `SIGNALDESK_GEMINI_AI_KEY`, `_2`, `_3`, and `_4` while reusing the shared app Gemini retry gateway. It no longer reads MenuList `GEMINI_AI_KEY*` or the legacy `GEMINI_API_KEY`, and it does not use Answerlattice credentials. Staging/production env templates now include the separate SignalDesk Firebase and AI variables. This is source-side credential isolation only; real key setup, provider smoke, SignalDesk Firebase deployment, Vercel deployment, and production-host evidence remain pending.
 
 The second implementation pass completed the remaining non-paid, non-deploy runtime work:
 
 | Area | Implementation Evidence |
 | --- | --- |
 | Runtime flags | `src/config/features.ts:31` through `src/config/features.ts:45` keep SignalDesk private, enable source providers, AI provider calls, provider webhooks, and assisted channels, and keep provider send disabled. |
-| Integration constants | `src/constants/signaldesk/integrations.ts:1` through `src/constants/signaldesk/integrations.ts:32` define full `MENULIST_SIGNALDESK_*` env names, Google Places Text Search endpoint/field mask, Gemini model default, and Meta Graph version. |
+| Integration constants | `src/constants/signaldesk/integrations.ts:1` through `src/constants/signaldesk/integrations.ts:32` define full `SIGNALDESK_*` env names, Google Places Text Search endpoint/field mask, Gemini model default, and Meta Graph version. |
 | Source providers | `src/lib/signaldesk/sourceProviders.ts:44` through `src/lib/signaldesk/sourceProviders.ts:68` call Google Places Text Search with a narrow field mask and capped results; `src/lib/signaldesk/sourceProviders.ts:71` through `src/lib/signaldesk/sourceProviders.ts:74` blocks Foursquare until source approval. |
 | Source-provider action | `src/lib/signaldesk/workflowServer.ts:1715` through `src/lib/signaldesk/workflowServer.ts:1781` gates provider runs by feature flag, active provider source policy, evidence approval, provider budget, import reuse, vendor ledger, timeline, audit, and cost tracking. |
 | AI assist | `src/lib/signaldesk/aiProvider.ts:31` through `src/lib/signaldesk/aiProvider.ts:36` limits the assistant to supplied facts; `src/lib/signaldesk/aiProvider.ts:58` through `src/lib/signaldesk/aiProvider.ts:92` calls the Gemini gateway and returns JSON-only output. |
@@ -856,7 +856,7 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | Product code | `src/constants/product.ts:13` defines the product ID map and `src/constants/product.ts:18` adds `SIGNALDESK: 'SD'`. |
 | Deployment target | `src/constants/deploymentTargets.ts:12` includes `signaldesk`; local/preview/production Firebase targets are set at `src/constants/deploymentTargets.ts:59`, `src/constants/deploymentTargets.ts:103`, and `src/constants/deploymentTargets.ts:147`. |
 | Feature flags | `src/config/features.ts:24` records the private/internal boundary and `src/config/features.ts:31` through `src/config/features.ts:45` add the SignalDesk runtime flags with provider send disabled. |
-| Full env names | `src/constants/signaldesk/firebase.ts:10` through `src/constants/signaldesk/firebase.ts:26` use only `MENULIST_SIGNALDESK_*` and `NEXT_PUBLIC_MENULIST_SIGNALDESK_*` names. |
+| Full env names | `src/constants/signaldesk/firebase.ts:10` through `src/constants/signaldesk/firebase.ts:26` use only `SIGNALDESK_*` and `NEXT_PUBLIC_SIGNALDESK_*` names. |
 | Env validation | `src/lib/env/validateEnv.ts:25` imports SignalDesk env keys, `src/lib/env/validateEnv.ts:82` through `src/lib/env/validateEnv.ts:95` add SignalDesk to the product env matrix, and `src/lib/env/validateEnv.ts:104` through `src/lib/env/validateEnv.ts:110` adds the display name. |
 | Routes | `src/constants/signaldesk/routes.ts:1` through `src/constants/signaldesk/routes.ts:20` define internal app and API paths under `/signaldesk` and `/api/signaldesk`. |
 | Collections | `src/constants/signaldesk/database.ts:1` through `src/constants/signaldesk/database.ts:56` define product-local SignalDesk collections and summary doc IDs. |
@@ -893,7 +893,7 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | `npm run test:signaldesk:e2e:local` after revenue authority cross-check | Passed under Node 20; concurrent idempotency, founder/non-founder pod review, founder-only envelope approval, research/recommendation hold, unreviewed-active envelope rejection, published-only open lifecycle, terminal activation beyond 30 newer summaries, interested-reply qualification, automatic activation projection, exact legacy-seed migration, currencies, immutable IDs/versions, source/pod/budget/sender gates, expiry/approval history, exact summary deltas, bounded provider mocks, and no MenuList truth writes are covered. |
 | `npm run test:signaldesk:rules` after Revenue Operating Layer implementation | Passed under Node 20; all revenue collections are internal-read/server-write only and public/MenuList-owner/client writes remain denied. |
 | `npm run verify:menulist-activation-concierge` after Revenue Operating Layer cross-check | Passed all 11 checks; SignalDesk still does not mutate MenuList activation truth. |
-| Local `next dev` revenue route/API/alias smoke on the active port 3020 | Passed; `/signaldesk/revenue` returned 200/noindex, unauthenticated `workspace?section=revenue` returned 401, and `Host: menulist.digital` `/sd/revenue` rewrote to `/signaldesk/revenue` with SignalDesk product headers. A separate port-3013 smoke process was stopped after concurrent repo-local Next dev processes briefly raced on the shared `.next` directory; no user-owned dev process was stopped. |
+| Local `next dev` revenue route/API smoke on the active port 3020 | Passed; `/signaldesk/revenue` returned 200/noindex and unauthenticated `workspace?section=revenue` returned 401. The old MyCodex-host alias evidence is no longer part of the active contract. A separate port-3013 smoke process was stopped after concurrent repo-local Next dev processes briefly raced on the shared `.next` directory; no user-owned dev process was stopped. |
 | `git diff --check` after Revenue Operating Layer cross-check | Passed for the current worktree. |
 | `firebase deploy --only firestore:rules,firestore:indexes --project menulist-signaldesk-qa --config firebase-signaldesk.json --non-interactive` | Blocked; Firebase Rules API returned HTTP 403 `The caller does not have permission`. No QA resources were deployed. |
 | `npx tsc --noEmit --incremental false --pretty false` | Passed. |
@@ -927,11 +927,10 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | Local route smoke on `npx next dev -p 3006` after Apify Source Broker implementation | Passed; all 14 SignalDesk pages compiled and returned HTTP 200 locally. |
 | Local route smoke on `npx next dev -p 3007` after final Apify Source Broker cross-check | Passed; all 14 SignalDesk pages compiled and returned HTTP 200 locally. |
 | Local route smoke on `npx next dev -p 3008` after from-scratch docs/code parity cross-check | Passed; all 14 SignalDesk pages compiled and returned HTTP 200 locally. |
-| Local route/routing smoke on `npx next dev -p 3000` after URL routing alignment | Passed; `/signaldesk/settings` returned HTTP 200 with `X-Robots-Tag: noindex, nofollow`; `Host: signaldesk.menulist.ai` plus `/targets` returned HTTP 200 with `x-middleware-rewrite: /signaldesk/targets` and SignalDesk product headers. |
-| Local MyCodex-host alias smoke on `npx next dev -p 3000` after `/sd` routing | Passed; `Host: menulist.digital` plus `/sd`, `/sd/targets`, and `/sd/settings` returned HTTP 200 with `x-product-base-path: /sd`, SignalDesk product headers, noindex, and rewrites to `/signaldesk*`; `/sd/signin?callbackUrl=/sd` rewrote to `/signin`; `Host: menulist.ai` plus `/sd` returned HTTP 404. |
+| Local route/routing smoke on `npx next dev -p 3000` after URL routing alignment | Passed at the time; the active host contract now uses `signaldesk.menulist.online` plus the local `/signaldesk` path. |
+| Former MyCodex-host alias smoke on `npx next dev -p 3000` after `/sd` routing | Historical evidence only; the old `/sd` alias host is no longer part of active setup. |
 | `curl -I -sS http://localhost:3000/signaldesk/mission` on existing local dev server | Passed; `/signaldesk/mission` returned HTTP 200 with `X-Robots-Tag: noindex, nofollow`. |
-| `curl -I -sS -H 'Host: menulist.digital' http://localhost:3000/sd/mission` on existing local dev server | Passed; `/sd/mission` returned HTTP 200 with `x-product-base-path: /sd`, SignalDesk product headers, noindex, and `x-middleware-rewrite: /signaldesk/mission`. |
-| Browser alias sign-in smoke with Chrome host resolver for `menulist.digital -> 127.0.0.1` | Passed; unauthenticated `http://menulist.digital:3000/sd` landed at `/sd/signin?callbackUrl=%2Fsd`, preserving the SignalDesk testing alias. |
+| Former `/sd` host-alias smoke | Historical evidence only; use local `/signaldesk` and `signaldesk.menulist.online` for current setup. |
 | Local unauthenticated API smoke on `npx next dev -p 3003` | Passed; overview, workspace, actions, and kill-switch APIs returned HTTP 401 with security logging. |
 | Local unauthenticated API smoke on `npx next dev -p 3004` after owned email sequencer implementation | Passed; overview, channels workspace, `send-owned-sequence-step`, and kill-switch APIs returned HTTP 401 with security logging. |
 | Local unauthenticated API smoke on `npx next dev -p 3005` after connector settings implementation | Passed; overview, settings workspace, `upsert-connector-setting`, and kill-switch APIs returned HTTP 401 with security logging. |
@@ -986,7 +985,7 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 - No external provider account was configured; internal provider registry records and held defaults were implemented.
 - No raw connector secrets are stored in Firestore; connector settings store metadata and env-derived secret states only.
 - No raw Apify dataset payload is stored in Firestore; Apify source rows normalize into target imports and webhook events store payload hashes only.
-- No arbitrary browser-supplied Apify Actor ID is accepted; Apify source execution uses `MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID`.
+- No arbitrary browser-supplied Apify Actor ID is accepted; Apify source execution uses `SIGNALDESK_APIFY_SOURCE_ACTOR_ID`.
 - No real source import ran during local verification.
 - No real Apify run was executed during local verification.
 - No persistent or real target/contact/message/suppression data was created; deterministic E2E fixtures existed only inside the local Firestore emulator and were discarded at shutdown.
@@ -1003,7 +1002,7 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | Blocker | Why it matters |
 | --- | --- |
 | Firebase project creation/access | Required before deploying `firebase-signaldesk.json`, rules, indexes, storage rules, or functions to `menulist-signaldesk-qa` / `menulist-signaldesk`. |
-| Local SignalDesk Firebase mode/env | Legacy local `.env` values can still point the default MenuList Firebase project at `ecomsai`; do not use those files as setup truth. Current tracked templates and deployment constants keep MenuList local/preview on `menulist-qa`, while SignalDesk still needs its own `MENULIST_SIGNALDESK_FIREBASE_MODE` / project override before cloud smoke. Local emulator data-flow smoke now runs through `scripts/verification/smoke-signaldesk-workflow.js` with `FIRESTORE_EMULATOR_HOST`; browser-auth and role-negative coverage still require a seeded SignalDesk session/Auth emulator. |
+| Local SignalDesk Firebase mode/env | Legacy local `.env` values can still point the default MenuList Firebase project at `ecomsai`; do not use those files as setup truth. Current tracked templates and deployment constants keep MenuList local/preview on `menulist-qa`, while SignalDesk still needs its own `SIGNALDESK_FIREBASE_MODE` / project override before cloud smoke. Local emulator data-flow smoke now runs through `scripts/verification/smoke-signaldesk-workflow.js` with `FIRESTORE_EMULATOR_HOST`; browser-auth and role-negative coverage still require a seeded SignalDesk session/Auth emulator. |
 | First market pod | Required before using the import/scoring workflow with real prospects. Recommended default pending founder approval: Bengaluru, Indiranagar + Koramangala, cafes/dessert shops/QSR/cloud-kitchen-facing storefronts, founder email/manual export first. |
 | First approved source list | Required before using import, evidence, scoring, and draft workflow with real prospects. |
 | Sender identity and physical address policy | Required before email/export readiness. |
@@ -1052,7 +1051,7 @@ Local emulator coverage now proves:
 - complaint classification creates suppression, an incident, an email pause, and top mission priority;
 - no SignalDesk write to MenuList `stores`, `menus`, `projects`, or `billing`.
 
-The receiver is safe for local testing only until `MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET` is provisioned and a separately reviewed MenuList-owned emitter exists. No Firebase or Vercel deploy and no real send occurred.
+The receiver is safe for local testing only until `SIGNALDESK_OUTCOME_BRIDGE_SECRET` is provisioned and a separately reviewed MenuList-owned emitter exists. No Firebase or Vercel deploy and no real send occurred.
 
 ## Full Activation-Control Cross-Check Corrections - July 11, 2026
 

@@ -335,7 +335,11 @@ Behavior:
 
 ### Persistence
 
-Force desktop mode is NOT persistent. Cleared on next visit. Mobile is always the default for mobile devices.
+Force desktop mode persists only for the exact selected route tree and is
+cleared by the visible "Return to Mobile" action. It does not apply globally or
+to sibling routes. Browser values must be a bounded same-app absolute path;
+malformed, external-style, control-character, or unreadable state fails back to
+the mobile shell.
 
 ---
 

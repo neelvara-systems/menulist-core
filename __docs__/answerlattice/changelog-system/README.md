@@ -1,6 +1,6 @@
 # Answerlattice Releases and Changelog
 
-**Status:** Feature 11 source-hardened on 2026-07-18. Authenticated QA deployment and hosted browser evidence remain external.
+**Status:** Feature 11 source-hardened on 2026-07-18; bounded Release Impact Guard implemented on 2026-07-29. Authenticated QA deployment and hosted browser evidence remain external.
 
 This feature turns a versioned release note into a governed dependency event. A public versioned changelog entry is not merely text with a version label: it must point to an active Answerlattice release whose version, release time, workspace, and changed entities match exactly.
 
@@ -11,6 +11,8 @@ separate release-management product or data model.
 ## Owned outcome
 
 - Register releases in increasing version order.
+- Preview directly affected approved answers and linked Answer Tests before activation.
+- Require explicit owner confirmation against a transaction-current impact fingerprint.
 - Evaluate affected approved answers for version drift during activation.
 - Keep a versioned note private until release activation succeeds.
 - Publish only an exact release-linked entry.
@@ -22,8 +24,8 @@ separate release-management product or data model.
 
 - Keep the immutable release registry, changelog separation, canonical drift
   evaluation, Answer Tests release checks, and governed rollback proposals.
-- Add a later bounded **pre-activation support-impact preview** to the existing
-  versioned publishing flow.
+- Keep the implemented bounded **pre-activation support-impact preview** inside
+  the existing versioned publishing flow.
 - Preview only directly entity-linked active canonical answers and explicitly
   linked active Answer Tests.
 - Require the activation request to match the current preview inputs; changed
@@ -38,7 +40,7 @@ separate release-management product or data model.
 
 ## Primary flow
 
-`draft -> release activation -> linked publication -> surface/public propagation`
+`draft -> pending release -> impact preview -> owner confirmation -> release activation -> linked publication -> surface/public propagation`
 
 Non-versioned announcements may publish without a release. Versioned public entries may not.
 
@@ -63,6 +65,11 @@ Non-versioned announcements may publish without a release. Versioned public entr
 - Release and changelog document IDs are server-owned or validated Firestore IDs.
 - A release label and its normalized integer must agree.
 - Activation is leased, retryable, audited, and fail-closed.
+- Preview is private/no-store, bounded to 200 directly linked active answers,
+  performs no write/provider call, and reads Answer Tests proof only when
+  requested and permitted.
+- Activation recomputes the fingerprint during lease claim and final
+  transaction; stale previews leave the release pending and the note private.
 - Public projection requires exact `AL`, tenant, and store ownership.
 - Public page reads scan past draft-only physical pages within a bounded 25-page window.
 - Browser reads re-enter runtime DTO validation.

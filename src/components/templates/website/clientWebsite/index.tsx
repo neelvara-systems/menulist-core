@@ -12,6 +12,11 @@ import { createPublicCustomerTranslator } from "@lib/localization/publicCustomer
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import {
+    getPublicMenuSessionStateKey,
+    parsePublicMenuScrollY,
+} from "@lib/localization/publicMenuSessionState";
+import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import {
     DeviceTypes,
     PageType,
 } from "@template/main-app/projects/b2cView/types";
@@ -50,25 +55,35 @@ interface ClientMenuRendererProps {
     menuResolutionLayer?: 'layer1' | 'layer2';
 }
 
-const PAGE_KEY = "activePage";
-const LANGUAGE_KEY = "activeLanguage";
-const SCROLL_KEY = "scrollY";
-
-function getCustomerMenuStateKey(
-    storeId: string | number | undefined,
-    projectStorageId: string | number | undefined,
-    suffix: string,
-): string | null {
-    if (!storeId || !projectStorageId) return null;
-    return `menulist_customerMenu_${storeId}_${projectStorageId}_${suffix}`;
-}
+type PublicMenuSessionStorageOperation = "read" | "remove" | "write";
+const reportedPublicMenuSessionStorageFailures = new Set<PublicMenuSessionStorageOperation>();
 
 function readSessionValue(key: string | null): string | null {
     if (!key || typeof window === "undefined") return null;
     try {
         return window.sessionStorage.getItem(key);
-    } catch {
+    } catch (error) {
+        if (!reportedPublicMenuSessionStorageFailures.has("read")) {
+            reportedPublicMenuSessionStorageFailures.add("read");
+            logRuntimeFailure("public_menu_session_state_read_failed", error, {
+                keyLength: key.length,
+            });
+        }
         return null;
+    }
+}
+
+function removeSessionValue(key: string | null): void {
+    if (!key || typeof window === "undefined") return;
+    try {
+        window.sessionStorage.removeItem(key);
+    } catch (error) {
+        if (!reportedPublicMenuSessionStorageFailures.has("remove")) {
+            reportedPublicMenuSessionStorageFailures.add("remove");
+            logRuntimeFailure("public_menu_session_state_remove_failed", error, {
+                keyLength: key.length,
+            });
+        }
     }
 }
 
@@ -76,8 +91,14 @@ function writeSessionValue(key: string | null, value: string): void {
     if (!key || typeof window === "undefined") return;
     try {
         window.sessionStorage.setItem(key, value);
-    } catch {
-        // Ignore storage failures — state still lives in React.
+    } catch (error) {
+        if (!reportedPublicMenuSessionStorageFailures.has("write")) {
+            reportedPublicMenuSessionStorageFailures.add("write");
+            logRuntimeFailure("public_menu_session_state_write_failed", error, {
+                keyLength: key.length,
+                valueLength: value.length,
+            });
+        }
     }
 }
 
@@ -91,6 +112,7 @@ function ClientMenuRenderer({
 }: ClientMenuRendererProps) {
     const router = useRouter();
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
+    const tenantId = storeDetails?.tenantId;
     const storeId = storeDetails?.storeId;
     const brandAccentColor = projectData?.config?.design?.brand?.accentColor || APP_THEME_COLOR;
     const publicBusinessType = resolvePublicBusinessType(
@@ -102,10 +124,10 @@ function ClientMenuRenderer({
         ? resolveProjectPublicLanguage(projectData, storeDetails, requestedInitialLanguage)
         : getProjectDefaultLanguage(projectData, storeDetails);
     const shouldTrackLanguageUsage = Array.isArray(projectData?.languages) && projectData.languages.length > 1;
-    const projectStorageId = projectId || projectData?.projectId || projectData?.id || projectData?.slug || "default";
-    const pageStorageKey = getCustomerMenuStateKey(storeId, projectStorageId, PAGE_KEY);
-    const languageStorageKey = getCustomerMenuStateKey(storeId, projectStorageId, LANGUAGE_KEY);
-    const scrollStorageKey = getCustomerMenuStateKey(storeId, projectStorageId, SCROLL_KEY);
+    const projectStorageId = projectId || projectData?.projectId;
+    const pageStorageKey = getPublicMenuSessionStateKey(tenantId, storeId, projectStorageId, "activePage");
+    const languageStorageKey = getPublicMenuSessionStateKey(tenantId, storeId, projectStorageId, "activeLanguage");
+    const scrollStorageKey = getPublicMenuSessionStateKey(tenantId, storeId, projectStorageId, "scrollY");
 
     // G-02 (§11 PUBLIC-ROUTING-DOCTRINE): public path opens directly to the menu.
     // The old intro screen is retired from the public surface per D-01.
@@ -119,6 +141,7 @@ function ClientMenuRenderer({
             ? resolveProjectPublicLanguage(projectData, storeDetails, storedLanguage)
             : defaultLanguage;
     });
+    const [restoredLanguageStorageKey, setRestoredLanguageStorageKey] = useState(languageStorageKey);
     const customerT = createPublicCustomerTranslator(activeLanguage);
     const storeDisplayName = getStoreContextName(storeDetails, customerT('menu.menuOffering'));
     const handleActiveLanguageChange = useCallback((language: string) => {
@@ -149,6 +172,25 @@ function ClientMenuRenderer({
     // Persist top-level client state so a router.refresh() remount does not
     // drop the current page/language or bounce the user back to the top.
     useEffect(() => {
+        if (restoredLanguageStorageKey === languageStorageKey) return;
+
+        const storedLanguage = requestedInitialLanguage
+            ? null
+            : readSessionValue(languageStorageKey);
+        setActiveLanguage(storedLanguage
+            ? resolveProjectPublicLanguage(projectData, storeDetails, storedLanguage)
+            : defaultLanguage);
+        setRestoredLanguageStorageKey(languageStorageKey);
+    }, [
+        defaultLanguage,
+        languageStorageKey,
+        projectData,
+        requestedInitialLanguage,
+        restoredLanguageStorageKey,
+        storeDetails,
+    ]);
+
+    useEffect(() => {
         if (requestedInitialLanguage) {
             setActiveLanguage(defaultLanguage);
         }
@@ -159,8 +201,9 @@ function ClientMenuRenderer({
     }, [pageStorageKey, activePage]);
 
     useEffect(() => {
+        if (restoredLanguageStorageKey !== languageStorageKey) return;
         writeSessionValue(languageStorageKey, activeLanguage);
-    }, [languageStorageKey, activeLanguage]);
+    }, [activeLanguage, languageStorageKey, restoredLanguageStorageKey]);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -172,8 +215,11 @@ function ClientMenuRenderer({
         const restoreScrollPosition = () => {
             const raw = readSessionValue(scrollStorageKey);
             if (!raw) return;
-            const scrollY = parseInt(raw, 10);
-            if (!Number.isFinite(scrollY) || scrollY < 0) return;
+            const scrollY = parsePublicMenuScrollY(raw);
+            if (scrollY === null) {
+                removeSessionValue(scrollStorageKey);
+                return;
+            }
             window.requestAnimationFrame(() => {
                 window.scrollTo({ top: scrollY, behavior: "auto" });
             });

@@ -1,16 +1,18 @@
-'use client'
+'use client';
+
 import AntdClient from "@lib/antd/antdClient";
 import Loader from "@organisms/loader";
 import Toast from "@organisms/toast";
+import type { PropsWithChildren } from "react";
 
-const AntdThemeProvider = (props: any) => {
+const AntdThemeProvider = ({ children }: PropsWithChildren) => {
     return (
         <AntdClient>
             <Toast />
             <Loader />
-            {props.children}
+            {children}
         </AntdClient>
-    )
-}
+    );
+};
 
 export default AntdThemeProvider;

@@ -1,4 +1,3 @@
-import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
 import { invalidateOwnerBusinessAssistantBrowserCache } from "@lib/ownerBusinessAssistant/cacheInvalidation";
 import { secureError } from "@lib/security/secureLogger";
 import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
@@ -8,8 +7,14 @@ const PUBLIC_CACHE_CONTEXT_MAX_LENGTH = 64;
 
 type PendingPublicCacheRevalidation = {
     context: string;
+    options: PublicCacheRevalidationOptions;
     promise: Promise<void>;
     rerunRequested: boolean;
+};
+
+type PublicCacheRevalidationOptions = {
+    projectId?: string | number | null;
+    touchScreen?: boolean;
 };
 
 const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();
@@ -30,10 +35,6 @@ const logPublicClientCacheFailure = (
     failureType: 'bad_status' | 'request_failed',
     metadata: Record<string, unknown> = {},
 ): void => {
-    if (process.env.NODE_ENV === 'production') {
-        return;
-    }
-
     secureError(
         '[public-cache] Failed to revalidate public client cache',
         new Error(`public_cache_revalidation_${failureType}`),
@@ -49,6 +50,7 @@ const logPublicClientCacheFailure = (
 const executePublicClientCacheRevalidation = async (
     normalizedStoreId: string,
     context: string,
+    options: PublicCacheRevalidationOptions,
 ): Promise<void> => {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
@@ -65,20 +67,22 @@ const executePublicClientCacheRevalidation = async (
             cache: 'no-store',
             redirect: 'manual',
             signal: controller.signal,
-            body: JSON.stringify({ storeId: normalizedStoreId }),
+            body: JSON.stringify({
+                storeId: normalizedStoreId,
+                ...(options.projectId !== undefined ? { projectId: options.projectId } : {}),
+                touchScreen: options.touchScreen === true,
+            }),
         });
 
-        if (!response.ok && process.env.NODE_ENV !== 'production') {
+        if (!response.ok) {
             logPublicClientCacheFailure(context, normalizedStoreId, 'bad_status', {
                 responseStatus: response.status,
             });
         }
     } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-            logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
-                errorName: getBoundedErrorName(error) || typeof error,
-            });
-        }
+        logPublicClientCacheFailure(context, normalizedStoreId, 'request_failed', {
+            errorName: getBoundedErrorName(error) || typeof error,
+        });
     } finally {
         window.clearTimeout(timeout);
     }
@@ -99,6 +103,7 @@ export const getStoreIdFromProjectId = (
 export const revalidatePublicClientCache = async (
     storeId?: string | number | null,
     context = 'publicClientCache',
+    options: PublicCacheRevalidationOptions = {},
 ): Promise<void> => {
     const normalizedStoreId = String(storeId ?? '').trim();
     if (!normalizedStoreId || typeof window === 'undefined') {
@@ -111,11 +116,13 @@ export const revalidatePublicClientCache = async (
     if (pending) {
         pending.rerunRequested = true;
         pending.context = context;
+        pending.options = options;
         return pending.promise;
     }
 
     const entry: PendingPublicCacheRevalidation = {
         context,
+        options,
         promise: Promise.resolve(),
         rerunRequested: false,
     };
@@ -124,8 +131,13 @@ export const revalidatePublicClientCache = async (
         try {
             do {
                 const iterationContext = entry.context;
+                const iterationOptions = entry.options;
                 entry.rerunRequested = false;
-                await executePublicClientCacheRevalidation(normalizedStoreId, iterationContext);
+                await executePublicClientCacheRevalidation(
+                    normalizedStoreId,
+                    iterationContext,
+                    iterationOptions,
+                );
             } while (entry.rerunRequested);
         } finally {
             if (pendingRevalidations.get(normalizedStoreId) === entry) {
@@ -144,6 +156,8 @@ export const revalidatePublicClientCacheForProject = async (
 ): Promise<void> => {
     const storeId = getStoreIdFromProjectId(projectId);
     invalidateOwnerBusinessAssistantBrowserCache({ storeId, projectId });
-    await revalidatePublicClientCache(storeId, context);
-    await touchDigitalScreenContentVersion(storeId, context, { projectId });
+    await revalidatePublicClientCache(storeId, context, {
+        projectId,
+        touchScreen: true,
+    });
 };

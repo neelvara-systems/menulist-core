@@ -43,13 +43,23 @@ import {
 
 const PERF_LOG = LOG_FILES.KB_SEARCH_PERFORMANCE;
 const HELP_CENTER_SEARCH_MAX_BODY_BYTES = 64 * 1024;
-const searchJsonResponse = (body: unknown, init: ResponseInit = {}) => NextResponse.json(body, {
-    ...init,
-    headers: {
-        'Cache-Control': 'private, no-store',
-        ...(init.headers || {}),
-    },
-});
+const HELP_CENTER_PRIVATE_RESPONSE_HEADERS = {
+    'Cache-Control': 'private, no-store, max-age=0',
+    'X-Content-Type-Options': 'nosniff',
+} as const;
+const searchJsonResponse = (body: unknown, init: ResponseInit = {}) => {
+    const headers = new Headers(init.headers);
+    Object.entries(HELP_CENTER_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return NextResponse.json(body, { ...init, headers });
+};
+const withSearchResponseHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(HELP_CENTER_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
 
 const getHelpCenterSearchErrorName = (error: unknown): string | undefined => {
     return getBoundedErrorName(error);
@@ -95,11 +105,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         // 🔒 RATE LIMITING: Prevent API abuse
         const rateLimitResponse = await checkAIOperationLimit();
-        if (rateLimitResponse) return rateLimitResponse;
+        if (rateLimitResponse) return withSearchResponseHeaders(rateLimitResponse);
 
         // 🔒 VALIDATE INPUT: Prevent injection attacks and invalid data
         const bodyResult = await readBoundedJsonBody(request, HELP_CENTER_SEARCH_MAX_BODY_BYTES);
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) return withSearchResponseHeaders(bodyResult.response);
 
         let validatedInput;
         try {

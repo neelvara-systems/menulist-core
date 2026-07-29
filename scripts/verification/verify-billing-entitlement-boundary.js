@@ -83,6 +83,10 @@ function verifyBillingEntitlementBoundary() {
   const verifyTopup = read('src/app/api/razorpay/verify-topup/route.ts');
   const webhook = read('src/app/api/razorpay/webhook/route.ts');
   const paymentCheckoutBoundary = read('src/lib/billing/paymentCheckoutBoundary.ts');
+  const subscriptionProviderSync = read('src/lib/billing/subscriptionProviderSync.ts');
+  const subscriptionStateMachine = read('src/lib/billing/subscriptionStateMachine.ts');
+  const webhookValidator = read('src/lib/razorpay/webhook-validator.ts');
+  const paymentCheckoutBoundaryTest = read('scripts/verification/test-payment-checkout-boundary.ts');
   const checkoutUrlBoundary = read('src/lib/razorpay/checkoutUrl.ts');
   const productBillingServer = read('src/lib/billing/productBillingServer.ts');
   const productSubscriptionScopeBoundary = read('src/lib/billing/productSubscriptionScopeBoundary.ts');
@@ -192,6 +196,50 @@ function verifyBillingEntitlementBoundary() {
     "hasOnlyKeys(value.subscription, ['id'])",
     "hasOnlyKeys(value, ['order'])",
   ].forEach((token) => assertIncludes(paymentCheckoutBoundary, token, 'Razorpay checkout response projection boundary'));
+  [
+    'Readonly<Record<string, readonly PaymentStatus[]>>',
+    'return [...(VALID_TRANSITIONS[from] || [])];',
+  ].forEach((token) => assertIncludes(subscriptionStateMachine, token, 'Subscription transition immutable projection boundary'));
+  assertNotIncludes(
+    subscriptionStateMachine,
+    'return VALID_TRANSITIONS[from] || [];',
+    'Subscription transition helper must not expose the mutable state-machine table',
+  );
+  [
+    'MAX_SUBSCRIPTION_QUANTITY',
+    'normalizeRazorpayManagedSubscriptionId',
+    'typeof value === "string"',
+    '!Number.isSafeInteger(quantity)',
+    'quantity > MAX_SUBSCRIPTION_QUANTITY',
+    'razorpay_subscription_quantity_update_input_invalid',
+    'razorpay_subscription_fetch_input_invalid',
+    'catch {',
+    'return false;',
+  ].forEach((token) => assertIncludes(subscriptionProviderSync, token, 'Razorpay subscription provider-call boundary'));
+  assertNotIncludes(
+    subscriptionProviderSync,
+    'String(subscription?.providerSubscriptionId || "").trim()',
+    'Razorpay provider subscription IDs must not use scalar/object coercion',
+  );
+  assertNotIncludes(
+    subscriptionProviderSync,
+    '(error as any)?.error',
+    'Razorpay provider error classification must not rely on unsafe property access',
+  );
+  [
+    "RAZORPAY_WEBHOOK_SIGNATURE_PATTERN = /^[a-f0-9]{64}$/",
+    'RAZORPAY_WEBHOOK_SIGNATURE_PATTERN.test(signature)',
+    'razorpay_webhook_validator_invalid_signature_shape',
+    'timingSafeEqual(generatedBuffer, receivedBuffer)',
+  ].forEach((token) => assertIncludes(webhookValidator, token, 'Razorpay webhook signature input boundary'));
+  [
+    "(activeTransitions as string[]).length = 0;",
+    "validateTransition('active', 'paused', 'test:immutable-transition-copy')",
+    "updateRazorpaySubscriptionQuantity('not-a-subscription', 2)",
+    "new Proxy({},",
+    "createHmac('sha256', secret).update(body).digest('hex')",
+    "signature.toUpperCase()",
+  ].forEach((token) => assertIncludes(paymentCheckoutBoundaryTest, token, 'Razorpay provider boundary regression test'));
   [
     'projectRazorpaySubscriptionCheckoutResponse(',
     'projectRazorpayTopupCheckoutResponse(',

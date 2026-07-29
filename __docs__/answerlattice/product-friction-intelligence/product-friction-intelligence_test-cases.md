@@ -36,6 +36,12 @@
    product health, severity, or defect probability.
 9. The evidence-breakdown revision adds no Firestore query, page read, listener,
    provider call, or document family.
+10. Invalid entity URL context is ignored; valid context can only reorder an
+    entity already present in the exact-scope top-ten summary.
+11. Strict advisory suggested actions render only for entity IDs admitted in
+    the loaded snapshot.
+12. Ranked rows and advisory actions open the read-only Knowledge Map with the
+    validated entity and create no friction mutation or navigation write.
 
 ## Rejected-Scope Regression
 

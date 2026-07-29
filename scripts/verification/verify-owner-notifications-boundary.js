@@ -51,6 +51,20 @@ function verifyRegistryMirror(appRegistry, functionsRegistry) {
   ].forEach((token) => assertIncludes(appRegistry, token, 'Owner notification registry'));
 }
 
+function verifyPlatformRecipientMirror(appRecipient, functionsRecipient) {
+  assert(
+    normalizeLineEndings(appRecipient) === normalizeLineEndings(functionsRecipient),
+    'Platform notification recipient contract must be copied byte-for-byte to functions/src/sharedData',
+  );
+  [
+    'normalizePlatformNotificationEmail',
+    "typeof value !== 'string'",
+    'MAX_PLATFORM_NOTIFICATION_EMAIL_LENGTH',
+    'PLATFORM_NOTIFICATION_EMAIL_PATTERN',
+    '/[\\u0000-\\u001f\\u007f]/',
+  ].forEach((token) => assertIncludes(appRecipient, token, 'Platform notification recipient contract'));
+}
+
 function verifyDeliveryBoundaryMirror(appBoundary, functionsBoundary) {
   assert(
     normalizeLineEndings(appBoundary) === normalizeLineEndings(functionsBoundary),
@@ -811,8 +825,9 @@ function verifyDocsAndPackage(
   lifecycleFirebaseDoc,
 ) {
   [
-    '"verify:owner-notifications-boundary": "node scripts/verification/verify-owner-notifications-boundary.js"',
+    '"verify:owner-notifications-boundary": "node scripts/verification/verify-owner-notifications-boundary.js && npm run test:platform-notification-recipient"',
     '"test:owner-notification-delivery-boundaries":',
+    '"test:platform-notification-recipient":',
   ].forEach((token) => assertIncludes(packageJson, token, 'package.json owner notification verifier'));
 
   [
@@ -999,6 +1014,8 @@ function verifyOwnerNotificationsBoundary() {
     functionsRegistry: read('functions/src/sharedData/ownerNotificationRegistry.ts'),
     appDeliveryBoundary: read('src/data/shared/ownerNotificationDeliveryBoundary.ts'),
     functionsDeliveryBoundary: read('functions/src/sharedData/ownerNotificationDeliveryBoundary.ts'),
+    appPlatformRecipient: read('src/data/shared/platformNotificationRecipient.ts'),
+    functionsPlatformRecipient: read('functions/src/sharedData/platformNotificationRecipient.ts'),
     firestoreIndexes: read('firestore.indexes.json'),
     answerlatticeFirestoreIndexes: read('firestore-answerlattice.indexes.json'),
     firestoreDocumentId: read('src/lib/firebase/firestoreDocumentId.ts'),
@@ -1034,6 +1051,7 @@ function verifyOwnerNotificationsBoundary() {
 
   verifyRegistryMirror(files.appRegistry, files.functionsRegistry);
   verifyDeliveryBoundaryMirror(files.appDeliveryBoundary, files.functionsDeliveryBoundary);
+  verifyPlatformRecipientMirror(files.appPlatformRecipient, files.functionsPlatformRecipient);
   verifyLifecycleSubscriptionIndexes(files.firestoreIndexes, files.answerlatticeFirestoreIndexes);
   verifyFirestoreDocumentIdHelper(files.firestoreDocumentId);
   verifyOpsRoute(files.route);

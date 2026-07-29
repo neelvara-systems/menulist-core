@@ -11,35 +11,27 @@ import {
     logAnswerlatticeKnowledgeIntakeFailure,
 } from '@lib/answerlattice/knowledgeIntakeDiagnostics';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
+    withAnswerlatticeKnowledgeIntakePrivateHeaders,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { serializeIntakeValue } from '@lib/answerlattice/knowledgeIntake';
 import { normalizeAnswerlatticeKnowledgeIntakeJobId } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { secureLog } from '@lib/security/secureLogger';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { withAuth } from '@/middleware/auth';
 
 const PRODUCT_STARTER_PACK_MAX_BODY_BYTES = 2 * 1024;
-const PRIVATE_NO_STORE_HEADERS = {
-    'Cache-Control': 'private, no-store',
-    'X-Content-Type-Options': 'nosniff',
-};
-
-const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
-    response.headers.set('Cache-Control', PRIVATE_NO_STORE_HEADERS['Cache-Control']);
-    response.headers.set('X-Content-Type-Options', PRIVATE_NO_STORE_HEADERS['X-Content-Type-Options']);
-    return response;
-};
 
 export const POST = withAuth(async (request: NextRequest, session, params: { jobId: string }) => {
     const jobId = normalizeAnswerlatticeKnowledgeIntakeJobId(params.jobId);
     if (!jobId) {
-        return NextResponse.json(
+        return answerlatticeKnowledgeIntakeJson(
             { error: 'Invalid knowledge intake job.' },
-            { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+            { status: 400 },
         );
     }
 
@@ -49,22 +41,24 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
         rateWindow: 60,
         requireActiveLicense: true,
     });
-    if (access.response) return withPrivateHeaders(access.response);
+    if (access.response) return withAnswerlatticeKnowledgeIntakePrivateHeaders(access.response);
 
     const governancePermission = await requireAnswerlatticePermission(
         request,
         session,
         ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE,
     );
-    if (governancePermission.response) return withPrivateHeaders(governancePermission.response);
+    if (governancePermission.response) {
+        return withAnswerlatticeKnowledgeIntakePrivateHeaders(governancePermission.response);
+    }
     if (
         !governancePermission.access
         || governancePermission.access.scope.tenantId !== access.context.scope.tId
         || governancePermission.access.scope.storeId !== access.context.scope.sId
     ) {
-        return NextResponse.json(
+        return answerlatticeKnowledgeIntakeJson(
             { error: 'Answerlattice workspace is not available.' },
-            { status: 403, headers: PRIVATE_NO_STORE_HEADERS },
+            { status: 403 },
         );
     }
 
@@ -73,17 +67,21 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             invalidJsonMessage: 'Invalid product starter pack request.',
             tooLargeMessage: 'Product starter pack request is too large.',
         });
-        if (bodyResult.ok === false) return withPrivateHeaders(bodyResult.response);
+        if (bodyResult.ok === false) {
+            return withAnswerlatticeKnowledgeIntakePrivateHeaders(bodyResult.response);
+        }
         const parsed = AnswerlatticeProductStarterPackRequestSchema.safeParse(bodyResult.data);
         if (!parsed.success) {
-            return NextResponse.json(
+            return answerlatticeKnowledgeIntakeJson(
                 { error: 'Invalid product starter pack request.' },
-                { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+                { status: 400 },
             );
         }
         const { checkSafeMode } = await import('@lib/ops/safeMode');
         const safeModeResponse = await checkSafeMode();
-        if (safeModeResponse) return withPrivateHeaders(safeModeResponse);
+        if (safeModeResponse) {
+            return withAnswerlatticeKnowledgeIntakePrivateHeaders(safeModeResponse);
+        }
 
         const pack = await generateAnswerlatticeProductStarterPack(
             access.context.scope,
@@ -96,9 +94,7 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
             jobId,
             scope: access.context.scope,
         }));
-        return NextResponse.json({ pack: serializeIntakeValue(pack) }, {
-            headers: PRIVATE_NO_STORE_HEADERS,
-        });
+        return answerlatticeKnowledgeIntakeJson({ pack: serializeIntakeValue(pack) });
     } catch (error) {
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -109,8 +105,8 @@ export const POST = withAuth(async (request: NextRequest, session, params: { job
                 { jobId, scope: access.context.scope },
             );
         }
-        return NextResponse.json({
+        return answerlatticeKnowledgeIntakeJson({
             error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Could not generate the product-specific starter pack.'),
-        }, { status, headers: PRIVATE_NO_STORE_HEADERS });
+        }, { status });
     }
 });

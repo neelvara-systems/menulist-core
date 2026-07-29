@@ -2,21 +2,11 @@ import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedA
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { GenerateImageViaApiPayloadType, ImageGenerationConfigType, ItemForDropdown } from "@template/main-app/projects/types";
+import { normalizeAiImageResponseItems, type AiImageResponseItem } from './imageResponse';
 
 const IMAGE_GENERATION_RESPONSE_JSON_MAX_BYTES = 24 * 1024 * 1024;
 
-type GeneratedImageResponseItem = {
-    base64: string;
-    mimeType: string;
-};
-
-type ImageGenerationApiResponse = {
-    data?: GeneratedImageResponseItem[] | null;
-    remainingBalance?: unknown;
-    transaction?: unknown;
-};
-
-async function generateImageViaApi({ itemDetails, generationConfig, projectId, fileId, businessType }: { itemDetails: ItemForDropdown, generationConfig: ImageGenerationConfigType, projectId: string, fileId: string, businessType: string }) {
+async function generateImageViaApi({ itemDetails, generationConfig, projectId, fileId, businessType }: { itemDetails: ItemForDropdown, generationConfig: ImageGenerationConfigType, projectId: string, fileId: string, businessType: string }): Promise<AiImageResponseItem[]> {
     try {
         const { prompt, referanceImage, stylesCategory, styles, aspectRatio, environments, lighting, colors, moods, compositions, backgroundColor, transparentBg, negativePrompt, foregroundColor, selectedImageTypes, isMultiMode } = generationConfig;
         const { itemName, descriptionLine, attributesList, categoryName } = itemDetails;
@@ -63,7 +53,7 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
         if (!response.ok) {
             throw createAiServiceHttpError('ai_image_generation_request_failed', response);
         }
-        const responseJson = await readAiServiceResponseJson<ImageGenerationApiResponse>(response, {
+        const responseJson = await readAiServiceResponseJson(response, {
             context: {
                 ...getBoundedAiServiceStringContext('projectId', projectId),
                 ...getBoundedAiServiceStringContext('fileId', fileId),
@@ -74,8 +64,8 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
             parseFailureCode: 'ai_image_generation_response_parse_failed',
         });
         syncBalanceFromResponse(responseJson);
-        const { data } = responseJson;
-        if (data !== undefined && data !== null && !Array.isArray(data)) {
+        const data = normalizeAiImageResponseItems(responseJson.data);
+        if (!data) {
             logAiServiceFailure('ai_image_generation_response_invalid', new Error('ai_image_generation_data_invalid'), {
                 ...getBoundedAiServiceStringContext('projectId', projectId),
                 ...getBoundedAiServiceStringContext('fileId', fileId),
@@ -85,15 +75,7 @@ async function generateImageViaApi({ itemDetails, generationConfig, projectId, f
             });
             return [];
         }
-        if (data?.length > 0) {
-            data.map((item: { base64: string; mimeType: string }) => {
-                if (!item.base64.startsWith('data:')) {
-                    item.base64 = `data:${item.mimeType};base64,${item.base64}`;
-                }
-            })
-            return data;
-        }
-        return data || [];
+        return data;
 
     } catch (error) {
         if (error instanceof AICapacityError) throw error;

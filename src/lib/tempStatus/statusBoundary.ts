@@ -27,6 +27,16 @@ const DEFAULT_TEMP_STATUS_MESSAGES: Record<TempStatusType, string> = {
     custom: 'Temporary notice',
 };
 
+function readOwnValue(record: object, key: PropertyKey): unknown {
+    try {
+        return Object.prototype.hasOwnProperty.call(record, key)
+            ? Reflect.get(record, key)
+            : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 export function normalizeTempStatusType(value: unknown): TempStatusType | null {
     return typeof value === 'string' && TEMP_STATUS_TYPE_SET.has(value)
         ? value as TempStatusType
@@ -49,16 +59,16 @@ export function getActiveTempStatus(
     nowMs: number = Date.now(),
 ): ActiveTempStatus | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    const status = value as Record<string, unknown>;
-    const type = normalizeTempStatusType(status.type);
-    if (!type || typeof status.expiresAt !== 'string') return null;
+    const type = normalizeTempStatusType(readOwnValue(value, 'type'));
+    const expiresAt = readOwnValue(value, 'expiresAt');
+    if (!type || typeof expiresAt !== 'string') return null;
 
-    const expiresAtMs = Date.parse(status.expiresAt);
+    const expiresAtMs = Date.parse(expiresAt);
     if (!Number.isFinite(nowMs) || !Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) return null;
 
     return {
-        expiresAt: status.expiresAt,
-        message: normalizeTempStatusMessage(type, status.message),
+        expiresAt,
+        message: normalizeTempStatusMessage(type, readOwnValue(value, 'message')),
         type,
     };
 }

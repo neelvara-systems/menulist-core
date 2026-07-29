@@ -1412,7 +1412,13 @@ function MobileAccountAccessScreen({
             await readAuthAccountResponse(res, 'password_change');
             resetForm();
             Toast.show({ content: 'Password changed.', duration: 1500 });
-            onBack();
+            try {
+                await signOutSession();
+            } catch (signOutError) {
+                logAuthFailure('mobile_account_password_change_signout_failed', signOutError, buildAccountAccessLogContext('password_change_signout'));
+                Toast.show({ content: 'Password changed. Sign in again.', duration: 2200 });
+                onBack();
+            }
         } catch (error) {
             logAuthFailure('mobile_account_password_change_failed', error, buildAccountAccessLogContext('change_password'));
             Toast.show({ content: 'Could not change password.', duration: 2200 });

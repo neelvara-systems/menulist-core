@@ -1,7 +1,7 @@
 # AnswerLattice Public Website Help
 
 > **Audience:** Prospective buyer or new founder account
-> **Last audited:** July 19, 2026
+> **Last audited:** July 29, 2026
 
 ## Evaluate Before Signup
 
@@ -11,6 +11,19 @@
 4. Open **Trust and Data Handling**, **Security**, **Privacy**, and **Terms** before sending support material or starting checkout.
 
 The demo is a deterministic sample. It does not use your product data, Firebase, or an AI provider and does not prove a customer outcome.
+
+## Understand The Owner Decision Flow
+
+The homepage owner section shows how implemented owner surfaces connect:
+
+1. **Daily Brief** presents up to four qualified current decisions, or a quiet state.
+2. **Product Friction Evidence** shows the bounded support evidence behind a selected area without claiming product root cause.
+3. **Knowledge Map** provides private governed product context and a direct review handoff.
+4. **Answer Tests** verify required facts and critical proof before a change is trusted.
+5. **Release impact** previews directly linked answer and test effects before activation; a stale preview must be refreshed.
+6. **Article topic maps** let public readers scan sanitized article headings without exposing the private Knowledge Map.
+
+These views do not publish, release, or mutate support truth automatically. The owner remains responsible for the final governed decision.
 
 ## Create A Workspace
 

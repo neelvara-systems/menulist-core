@@ -8,7 +8,7 @@
 
 ## Source Gate
 
-Marketing copy must describe Digital Screens as a saved MenuList source display that refreshes through the screen update path, not as instant, absolute, or independently fresh. The active runtime uses a 60-second `screen-data` cache, cache-first clients, public cache invalidation, and the screen content-version listener. Guard with `npm run verify:digital-screens-boundary`.
+Marketing copy must describe Digital Screens as a saved MenuList source display that refreshes through the screen update path, not as instant, absolute, or independently fresh. The active runtime uses a private control for the bearer link, a token-hashed 60-second state cache, a store-scoped menu cache, offline-only version-matched browser fallback, and the screen content-version listener. Guard with `npm run verify:digital-screens-boundary`.
 
 ---
 

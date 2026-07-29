@@ -9,7 +9,10 @@ import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUs
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import {
     ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT,
@@ -21,7 +24,7 @@ import { normalizeAnswerlatticeResolvedEntityIds } from '@lib/answerlattice/gove
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
-    normalizeConsistentAnswerlatticeScopeDocumentIds,
+    isExactAnswerlatticePersistedAuthority,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -63,6 +66,21 @@ class FaqGenerationProviderOutputError extends Error {
         this.name = 'FaqGenerationProviderOutputError';
     }
 }
+
+const privateJson = (body: unknown, init: ResponseInit = {}) => {
+    const headers = new Headers(init.headers);
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return (NextResponse.json)(body, { ...init, headers });
+};
+
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
 
 const normalizeQuestionKey = (value: unknown): string => (
     typeof value === 'string'
@@ -167,24 +185,24 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     try {
         if (!userIdForLog) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return privateJson({ error: 'Forbidden' }, { status: 403 });
         }
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT) {
-            return NextResponse.json({ error: 'FAQ management is not enabled.' }, { status: 404 });
+            return privateJson({ error: 'FAQ management is not enabled.' }, { status: 404 });
         }
 
         const sessionScope = resolveAnswerlatticeSessionScope(session);
         tenantIdForLog = sessionScope?.tenantId;
         storeIdForLog = sessionScope?.storeId;
         if (!sessionScope) {
-            return NextResponse.json({ error: 'Answerlattice workspace is not available.' }, { status: 400 });
+            return privateJson({ error: 'Answerlattice workspace is not available.' }, { status: 400 });
         }
         const tenantId = sessionScope.tenantId;
         const storeId = sessionScope.storeId;
 
         const { checkSafeMode } = await import('@lib/ops/safeMode');
         const safeModeResponse = await checkSafeMode();
-        if (safeModeResponse) return safeModeResponse;
+        if (safeModeResponse) return withPrivateHeaders(safeModeResponse);
 
         const rateLimitResult = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey('answerlattice-faq-generation', tenantId, storeId, userIdForLog),
@@ -194,7 +212,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         if (!rateLimitResult.allowed) {
             const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
-            return NextResponse.json(
+            return privateJson(
                 {
                     error: providerUnavailable
                         ? 'FAQ generation is temporarily unavailable. Try again later.'
@@ -205,14 +223,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateHeaders(permission.response);
 
         const bodyResult = await readBoundedJsonBody(request, GENERATE_FAQ_FROM_ARTICLE_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid FAQ generation request.',
             tooLargeMessage: 'Request body too large.',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return privateJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large.' : 'Invalid FAQ generation request.' },
                 { status: bodyResult.response.status },
             );
@@ -220,45 +238,31 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const validation = GenerateFaqRequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
-            return NextResponse.json({ error: 'Invalid FAQ generation request.' }, { status: 400 });
+            return privateJson({ error: 'Invalid FAQ generation request.' }, { status: 400 });
         }
         articleIdForLog = validation.data.articleId;
 
         const db = answerlatticeFirestoreAdmin;
         if (!db || typeof (db as any).collection !== 'function') {
-            return NextResponse.json({ error: 'Answerlattice database is not configured.' }, { status: 500 });
+            return privateJson({ error: 'Answerlattice database is not configured.' }, { status: 500 });
         }
 
         const { articleId } = validation.data;
         const articleRef = db.collection(DB_COLLECTIONS.KB_ARTICLES).doc(articleId);
         const articleSnap = await articleRef.get();
         if (!articleSnap.exists) {
-            return NextResponse.json({ error: 'Article not found.' }, { status: 404 });
+            return privateJson({ error: 'Article not found.' }, { status: 404 });
         }
 
         const article = { ...articleSnap.data(), id: articleSnap.id } as KnowledgeBaseArticleType;
         const articleRecord = article as unknown as Record<string, unknown>;
-        const articleTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-            articleRecord.tId,
-            articleRecord.tenantId,
-        ]);
-        const articleStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-            articleRecord.sId,
-            articleRecord.storeId,
-        ]);
-        if (
-            articleRecord.pId !== PRODUCT_IDS.ANSWERLATTICE
-            || !articleTenantId ||
-            !articleStoreId ||
-            articleTenantId !== tenantId ||
-            articleStoreId !== storeId
-        ) {
-            return NextResponse.json({ error: 'Article not found.' }, { status: 404 });
+        if (!isExactAnswerlatticePersistedAuthority(articleRecord, { tenantId, storeId })) {
+            return privateJson({ error: 'Article not found.' }, { status: 404 });
         }
 
         const articleText = extractPlainTextFromEditorContent(article.content || '');
         if (!article.title || articleText.trim().length < 80) {
-            return NextResponse.json({ error: 'Add more article content before generating FAQ suggestions.' }, { status: 400 });
+            return privateJson({ error: 'Add more article content before generating FAQ suggestions.' }, { status: 400 });
         }
         const sourceFingerprint = getArticleFaqSourceFingerprint(article);
 
@@ -273,7 +277,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             .get();
 
         if (existingSnapshot.size >= ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT) {
-            return NextResponse.json({
+            return privateJson({
                 articleId,
                 createdCount: 0,
                 skippedDuplicateCount: existingSnapshot.size,
@@ -323,18 +327,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 id: currentArticleSnapshot.id,
             } as KnowledgeBaseArticleType;
             const currentArticleRecord = currentArticle as unknown as Record<string, unknown>;
-            const currentTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-                currentArticleRecord.tId,
-                currentArticleRecord.tenantId,
-            ]);
-            const currentStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-                currentArticleRecord.sId,
-                currentArticleRecord.storeId,
-            ]);
             if (
-                currentArticleRecord.pId !== PRODUCT_IDS.ANSWERLATTICE
-                || currentTenantId !== tenantId
-                || currentStoreId !== storeId
+                !isExactAnswerlatticePersistedAuthority(currentArticleRecord, { tenantId, storeId })
                 || getArticleFaqSourceFingerprint(currentArticle) !== sourceFingerprint
             ) {
                 throw new FaqGenerationConflictError('The article changed while FAQ suggestions were being generated. Review the article and try again.');
@@ -439,7 +433,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             skippedDuplicateCount: normalizedFaqs.length - createdFaqs.length,
         });
 
-        return NextResponse.json({
+        return privateJson({
             articleId,
             createdCount: createdFaqs.length,
             skippedDuplicateCount: Math.max(0, normalizedFaqs.length - createdFaqs.length),
@@ -453,20 +447,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
     } catch (error) {
         if (error instanceof ZodError) {
-            return NextResponse.json({ error: 'Invalid FAQ generation request.' }, { status: 400 });
+            return privateJson({ error: 'Invalid FAQ generation request.' }, { status: 400 });
         }
         if (error instanceof FaqGenerationConflictError) {
-            return NextResponse.json({ error: error.publicMessage }, { status: 409 });
+            return privateJson({ error: error.publicMessage }, { status: 409 });
         }
         if (error instanceof FaqGenerationProviderOutputError) {
-            return NextResponse.json(
+            return privateJson(
                 { error: 'The FAQ provider returned an invalid response. No suggestions were saved.' },
                 { status: 502 },
             );
         }
         if (isAIProviderRateLimitError(error)) {
             const retryAfter = getAIProviderRetryAfter(error) || 60;
-            return NextResponse.json(
+            return privateJson(
                 {
                     error: `FAQ generation is temporarily busy. Please wait ${retryAfter} seconds before trying again.`,
                     retryAfter,
@@ -483,6 +477,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('userId', userIdForLog),
             ...getBoundedRuntimeStringContext('articleId', articleIdForLog),
         });
-        return NextResponse.json({ error: 'Failed to refresh FAQ suggestions.' }, { status: 500 });
+        return privateJson({ error: 'Failed to refresh FAQ suggestions.' }, { status: 500 });
     }
 });

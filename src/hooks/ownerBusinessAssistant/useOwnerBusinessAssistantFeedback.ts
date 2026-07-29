@@ -11,7 +11,7 @@ export function useOwnerBusinessAssistantFeedback(storeScopeKey?: string | numbe
   const session = useClientAuthSession();
   const clientScope = useMemo(
     () => resolveOwnerBusinessAssistantClientScope(session, storeScopeKey),
-    [session?.sId, session?.tId, storeScopeKey],
+    [session?.sId, session?.tId, session?.uId, session?.user?.id, storeScopeKey],
   );
   const [isLoading, setIsLoading] = useState(false);
 

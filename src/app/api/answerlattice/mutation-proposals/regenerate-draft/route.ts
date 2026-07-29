@@ -7,12 +7,15 @@ import { getUnitCost } from '@constant/AI/unitCosts';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import { DRAFT_PROMPT_VERSION, DRAFT_SYSTEM_PROMPT, buildDraftUserPrompt, parseDraftResponse } from '@lib/answerlattice/draftPrompt';
 import { normalizeAnswerlatticeMutationProposalId, normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { isExactAnswerlatticePersistedAuthority, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -32,6 +35,21 @@ const RequestSchema = z.object({
 }).strict();
 const DRAFT_REGENERATE_MAX_BODY_BYTES = 4 * 1024;
 const DRAFT_REGENERATE_LEASE_MS = 15 * 60 * 1000;
+
+const privateJson = (body: unknown, init: ResponseInit = {}) => {
+    const headers = new Headers(init.headers);
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        headers.set(name, value);
+    });
+    return (NextResponse.json)(body, { ...init, headers });
+};
+
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
 
 const timestampToMillis = (value: unknown): number => {
     if (!value || typeof value !== 'object') return 0;
@@ -157,18 +175,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     try {
         if (!userIdForLog) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return privateJson({ error: 'Forbidden' }, { status: 403 });
         }
         const scope = resolveAnswerlatticeSessionScope(session);
         tenantIdForLog = scope?.tenantId;
         storeIdForLog = scope?.storeId;
         if (!scope) {
-            return NextResponse.json({ error: 'Answerlattice account scope is missing' }, { status: 400 });
+            return privateJson({ error: 'Answerlattice account scope is missing' }, { status: 400 });
         }
 
         const { checkSafeMode } = await import('@lib/ops/safeMode');
         const safeModeResponse = await checkSafeMode();
-        if (safeModeResponse) return safeModeResponse;
+        if (safeModeResponse) return withPrivateHeaders(safeModeResponse);
 
         const rateLimitConfig = getRateLimitForFeature('AI_OPERATION');
         const userId = userIdForLog;
@@ -191,7 +209,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 window: rateLimitConfig.window,
             }, 'medium');
 
-            return NextResponse.json(
+            return privateJson(
                 {
                     error: providerUnavailable
                         ? 'Draft generation is temporarily unavailable. Please try again later.'
@@ -212,14 +230,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateHeaders(permission.response);
 
         const bodyResult = await readBoundedJsonBody(request, DRAFT_REGENERATE_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid draft regeneration request',
             tooLargeMessage: 'Request body too large',
         });
         if (bodyResult.ok === false) {
-            return NextResponse.json(
+            return privateJson(
                 { error: bodyResult.response.status === 413 ? 'Request body too large' : 'Invalid draft regeneration request' },
                 { status: bodyResult.response.status },
             );
@@ -227,7 +245,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         const validation = RequestSchema.safeParse(bodyResult.data);
         if (!validation.success) {
-            return NextResponse.json(
+            return privateJson(
                 { error: 'Invalid draft regeneration request', details: getSafeZodValidationDetails(validation.error) },
                 { status: 400 },
             );
@@ -246,27 +264,23 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const proposalSnap = await proposalRef.get();
 
         if (!proposalSnap.exists) {
-            return NextResponse.json({ error: 'Proposal not found' }, { status: 404 });
+            return privateJson({ error: 'Proposal not found' }, { status: 404 });
         }
 
         const proposal = proposalSnap.data() || {};
-        if (
-            proposal.pId !== PRODUCT_IDS.ANSWERLATTICE
-            || normalizeAnswerlatticeScopeDocumentId(proposal.tId) !== tenantId
-            || normalizeAnswerlatticeScopeDocumentId(proposal.sId) !== storeId
-        ) {
-            return NextResponse.json({ error: 'Proposal is outside the current Answerlattice workspace' }, { status: 403 });
+        if (!isExactAnswerlatticePersistedAuthority(proposal, { tenantId, storeId })) {
+            return privateJson({ error: 'Proposal is outside the current Answerlattice workspace' }, { status: 403 });
         }
         if (proposal.status !== 'pending_review') {
-            return NextResponse.json({ error: 'Only pending proposals can generate a draft' }, { status: 409 });
+            return privateJson({ error: 'Only pending proposals can generate a draft' }, { status: 409 });
         }
         if (proposal.mutationType !== 'new_answer_required' && proposal.mutationType !== 'content_refinement') {
-            return NextResponse.json({ error: 'This proposal type does not support draft generation' }, { status: 422 });
+            return privateJson({ error: 'This proposal type does not support draft generation' }, { status: 422 });
         }
 
         const entityId = Array.isArray(proposal.relatedEntityIds) ? normalizeAnswerlatticeResolvedEntityId(proposal.relatedEntityIds[0]) : null;
         if (!entityId) {
-            return NextResponse.json({ error: 'No related entity is attached to this proposal' }, { status: 422 });
+            return privateJson({ error: 'No related entity is attached to this proposal' }, { status: 422 });
         }
 
         const entitySnap = await answerlatticeFirestoreAdmin
@@ -274,17 +288,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             .doc(entityId)
             .get();
         if (!entitySnap.exists) {
-            return NextResponse.json({ error: 'Related entity not found' }, { status: 404 });
+            return privateJson({ error: 'Related entity not found' }, { status: 404 });
         }
 
         const entity = entitySnap.data() || {};
         if (
-            entity.pId !== PRODUCT_IDS.ANSWERLATTICE
-            || normalizeAnswerlatticeScopeDocumentId(entity.tId) !== tenantId
-            || normalizeAnswerlatticeScopeDocumentId(entity.sId) !== storeId
+            !isExactAnswerlatticePersistedAuthority(entity, { tenantId, storeId })
             || entity.status === 'deprecated'
         ) {
-            return NextResponse.json({ error: 'Related entity is outside the current Answerlattice workspace' }, { status: 403 });
+            return privateJson({ error: 'Related entity is outside the current Answerlattice workspace' }, { status: 403 });
         }
 
         const claimResult = await answerlatticeFirestoreAdmin.runTransaction(async transaction => {
@@ -292,9 +304,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const current = currentSnap.data() || {};
             if (
                 !currentSnap.exists
-                || current.pId !== PRODUCT_IDS.ANSWERLATTICE
-                || normalizeAnswerlatticeScopeDocumentId(current.tId) !== tenantId
-                || normalizeAnswerlatticeScopeDocumentId(current.sId) !== storeId
+                || !isExactAnswerlatticePersistedAuthority(current, { tenantId, storeId })
                 || current.status !== 'pending_review'
             ) return 'changed' as const;
             if (
@@ -320,13 +330,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             return 'claimed' as const;
         });
         if (claimResult === 'replayed') {
-            return NextResponse.json({ ok: true, success: true, replayed: true });
+            return privateJson({ ok: true, success: true, replayed: true });
         }
         if (claimResult === 'busy') {
-            return NextResponse.json({ error: 'Draft generation is already in progress' }, { status: 409 });
+            return privateJson({ error: 'Draft generation is already in progress' }, { status: 409 });
         }
         if (claimResult !== 'claimed') {
-            return NextResponse.json({ error: 'Proposal changed before draft generation started' }, { status: 409 });
+            return privateJson({ error: 'Proposal changed before draft generation started' }, { status: 409 });
         }
         claimedProposalRef = proposalRef;
 
@@ -368,6 +378,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             id: userId,
             email: session.user?.email,
             name: session.user?.name,
+        }).catch((logError) => {
+            logRuntimeFailure('answerlattice_draft_regeneration_operation_log_failed', logError, {
+                ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                ...getBoundedRuntimeStringContext('proposalId', proposalId),
+                ...getBoundedRuntimeStringContext('requestId', requestId),
+            });
         });
 
         const parsed = parseDraftResponse(geminiResult.text);
@@ -390,7 +407,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     modifiedOn: FieldValue.serverTimestamp(),
                 }, { merge: true });
             });
-            return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 422 });
+            return privateJson({ error: 'Failed to parse AI response' }, { status: 422 });
         }
 
         const auditRef = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS).doc();
@@ -399,9 +416,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const current = currentSnap.data() || {};
             if (
                 !currentSnap.exists
-                || current.pId !== PRODUCT_IDS.ANSWERLATTICE
-                || normalizeAnswerlatticeScopeDocumentId(current.tId) !== tenantId
-                || normalizeAnswerlatticeScopeDocumentId(current.sId) !== storeId
+                || !isExactAnswerlatticePersistedAuthority(current, { tenantId, storeId })
                 || current.status !== 'pending_review'
                 || current.suggestedChange?.draftProcessingRun?.id !== requestId
             ) return false;
@@ -461,11 +476,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
 
         if (!committed) {
-            return NextResponse.json({ error: 'Proposal changed while the draft was being generated' }, { status: 409 });
+            return privateJson({ error: 'Proposal changed while the draft was being generated' }, { status: 409 });
         }
         claimedProposalRef = null;
 
-        return NextResponse.json({ ok: true, success: true });
+        return privateJson({ ok: true, success: true });
     } catch (error) {
         if (claimedProposalRef && requestIdForLog) {
             try {
@@ -486,6 +501,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext('proposalId', proposalIdForLog),
             ...getBoundedRuntimeStringContext('requestId', requestIdForLog),
         });
-        return NextResponse.json({ error: 'Could not generate draft' }, { status: 500 });
+        return privateJson({ error: 'Could not generate draft' }, { status: 500 });
     }
 });

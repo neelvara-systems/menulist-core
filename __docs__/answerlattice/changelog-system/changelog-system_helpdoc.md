@@ -13,12 +13,15 @@
 2. Select every changed product area.
 3. Choose Published and save.
 4. Answerlattice first saves the note privately.
-5. After the later preventive-review hardening is deployed, Answerlattice will
-   register the pending release and show directly affected approved answers and
-   linked Answer Test proof before activation.
-6. Until that hardening is deployed, the current flow registers and activates
-   the release, checks affected approved answers, and then publishes the linked
-   note.
+5. Answerlattice registers the pending release and shows directly affected
+   approved answers plus current linked Answer Tests proof.
+6. Use **Review answer** to inspect one affected canonical answer. When linked
+   tests exist, use **Review linked Answer Tests** to open that release in the
+   existing test workflow.
+7. Choose **Keep as draft** to stop safely, or **Activate and publish** to
+   confirm the current impact.
+8. If the affected answer evidence changes before activation, Answerlattice
+   keeps the entry private and asks you to review the updated impact.
 
 The note is visible to customers only after the release check succeeds.
 

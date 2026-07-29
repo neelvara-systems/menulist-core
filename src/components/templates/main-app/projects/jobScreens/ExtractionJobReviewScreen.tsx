@@ -49,6 +49,8 @@ const { Title, Text, Paragraph } = Typography;
 interface ExtractionJobReviewScreenProps {
     projectId: string;
     jobId: string;
+    tenantId: unknown;
+    storeId: unknown;
     comparisonResult: ComparisonEngineOutput;
     primaryLang: string;
     onSaveComplete: () => void;
@@ -243,12 +245,15 @@ function ReviewSection({
 export function ExtractionJobReviewScreen({
     projectId,
     jobId,
+    tenantId,
+    storeId,
     comparisonResult,
     primaryLang,
     onSaveComplete,
     onDiscard,
 }: ExtractionJobReviewScreenProps) {
     const { token } = theme.useToken();
+    const dismissalScope = useMemo(() => ({ tenantId, storeId }), [storeId, tenantId]);
     const reviewIdentity = getReviewPreviewIdentity(projectId, jobId);
     const activeReviewIdentityRef = useRef(reviewIdentity);
     activeReviewIdentityRef.current = reviewIdentity;
@@ -390,7 +395,7 @@ export function ExtractionJobReviewScreen({
     // Discard handler
     const handleDiscard = useCallback(async () => {
         const submittedReviewIdentity = reviewIdentity;
-        markMenuProcessingJobAsDismissed(jobId);
+        markMenuProcessingJobAsDismissed(dismissalScope, jobId);
         setIsDiscarding(true);
         setActionError(null);
         try {
@@ -401,7 +406,7 @@ export function ExtractionJobReviewScreen({
             message.info('Changes discarded');
             onDiscard();
         } catch (error: unknown) {
-            clearMenuProcessingJobDismissal(jobId);
+            clearMenuProcessingJobDismissal(dismissalScope, jobId);
             if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
                 return;
             }
@@ -416,7 +421,7 @@ export function ExtractionJobReviewScreen({
                 setIsDiscarding(false);
             }
         }
-    }, [jobId, onDiscard, reviewIdentity]);
+    }, [dismissalScope, jobId, onDiscard, reviewIdentity]);
 
     // Check if there are any changes to show
     const hasAnyChanges = hasAnyPreviewChanges(preview);

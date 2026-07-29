@@ -19,7 +19,9 @@ import type {
 } from '@data/shared/menuExtractionJob';
 import type { ExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { normalizeMenuExtractionJobId } from '@lib/menu-extraction/jobIdBoundary';
 import { MENU_PROCESSING_JOB_START_REJECTED_CODE } from '@lib/menu-extraction/jobStartFailure';
+import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Timestamp, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -222,10 +224,6 @@ export interface MenuProcessingJobStatus {
 // MAIN FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-const isNonEmptyString = (value: unknown): value is string => (
-    typeof value === 'string' && value.trim().length > 0
-);
-
 const createMenuProcessingJobStartError = (code: string, status: number) => {
     const error = new Error('Could not start menu extraction.') as Error & { code?: string; status?: number };
     error.code = code;
@@ -301,6 +299,10 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         forceReview,
         identityOverrideConfirmed,
     } = params;
+    const normalizedProjectId = normalizeMenuExtractionProjectId(projectId);
+    if (!normalizedProjectId) {
+        throw createMenuProcessingJobStartError('menu_processing_project_id_invalid', 400);
+    }
 
     // Get session for tenant context
     const session = await getActiveSession();
@@ -314,7 +316,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         forceReview,
         identityOverrideConfirmed,
         jobMode,
-        projectId,
+        projectId: normalizedProjectId,
         retriedFromJobId,
         retryCount,
         targetLanguagesCount: targetLanguages.length,
@@ -325,7 +327,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            projectId,
+            projectId: normalizedProjectId,
             files: files.map(f => ({
                 uid: f.uid,
                 name: f.name,
@@ -360,7 +362,8 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         throw createMenuProcessingJobStartError('menu_processing_job_start_response_parse_failed', response.status);
     }
 
-    if (payload?.success !== true || !isNonEmptyString(payload.jobId)) {
+    const normalizedJobId = normalizeMenuExtractionJobId(payload?.jobId);
+    if (payload?.success !== true || !normalizedJobId) {
         const invalid = createMenuProcessingJobStartError('menu_processing_job_start_response_invalid', response.status);
         logMenuProcessingFailure('menu_processing_job_start_response_invalid', invalid, {
             ...jobStartLogContext,
@@ -368,12 +371,12 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
             responseStatus: response.status,
             maxBytes: MENU_PROCESSING_JOB_START_RESPONSE_JSON_MAX_BYTES,
             success: payload?.success === true,
-            hasJobId: isNonEmptyString(payload?.jobId),
+            hasJobId: Boolean(normalizedJobId),
         });
         throw invalid;
     }
 
-    const jobId = payload.jobId;
+    const jobId = normalizedJobId;
     if (payload?.reusedExistingJob === true || payload?.reusedCompletedJob === true) {
         return jobId;
     }
@@ -417,7 +420,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         } catch (error) {
             logMenuProcessingFailure('menu_processing_dev_trigger_failed', error, {
                 ...getMenuProcessingJobLogContext(jobId),
-                ...getMenuProcessingProjectLogContext(projectId),
+                ...getMenuProcessingProjectLogContext(normalizedProjectId),
                 filesCount: files.length,
                 targetLanguagesCount: targetLanguages.length,
                 jobMode,
@@ -442,12 +445,16 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
  * @param jobId - The job ID to cancel
  */
 export async function cancelMenuProcessingJob(jobId: string): Promise<void> {
-    const jobRef = doc(firebaseClient, COLLECTION, jobId);
+    const normalizedJobId = normalizeMenuExtractionJobId(jobId);
+    if (!normalizedJobId) {
+        throw new Error('Menu extraction job not found.');
+    }
+    const jobRef = doc(firebaseClient, COLLECTION, normalizedJobId);
 
     // Check current status
     const jobDoc = await getDoc(jobRef);
     if (!jobDoc.exists()) {
-        logMenuProcessingFailure('menu_processing_cancel_job_missing', undefined, getMenuProcessingJobLogContext(jobId));
+        logMenuProcessingFailure('menu_processing_cancel_job_missing', undefined, getMenuProcessingJobLogContext(normalizedJobId));
         throw new Error('Menu extraction job not found.');
     }
 
@@ -473,7 +480,7 @@ export async function cancelMenuProcessingJob(jobId: string): Promise<void> {
     }
 
     logMenuProcessingFailure('menu_processing_cancel_invalid_status', undefined, {
-        ...getMenuProcessingJobLogContext(jobId),
+        ...getMenuProcessingJobLogContext(normalizedJobId),
         ...getBoundedMenuProcessingStringContext('status', currentStatus),
     });
     throw new Error('Menu extraction job cannot be cancelled.');
@@ -489,16 +496,18 @@ export async function cancelMenuProcessingJob(jobId: string): Promise<void> {
  * @returns The active job ID if found, null otherwise
  */
 export async function checkExistingActiveJob(projectId: string, ignoreJobIds: string[] = []): Promise<string | null> {
+    const normalizedProjectId = normalizeMenuExtractionProjectId(projectId);
+    if (!normalizedProjectId) return null;
     const session = await getActiveSession();
     if (!session) return null;
 
-    const ignoreSet = new Set(ignoreJobIds.filter(Boolean));
+    const ignoreSet = new Set(ignoreJobIds.map(normalizeMenuExtractionJobId).filter((value): value is string => Boolean(value)));
 
     const q = query(
         collection(firebaseClient, COLLECTION),
         where('tId', '==', String(session.tId ?? '')),
         where('sId', '==', String(session.sId ?? '')),
-        where('projectId', '==', projectId),
+        where('projectId', '==', normalizedProjectId),
         where('uId', '==', session.uId),
         where('status', 'in', ['pending', 'processing', 'preview_ready'])
     );
@@ -510,11 +519,15 @@ export async function checkExistingActiveJob(projectId: string, ignoreJobIds: st
     }
 
     const activeDocs = snapshot.docs
-        .map((docSnap) => ({
-            id: docSnap.id,
-            createdAt: docSnap.data()?.createdAt,
-            status: docSnap.data()?.status,
-        }))
+        .map((docSnap) => {
+            const id = normalizeMenuExtractionJobId(docSnap.id);
+            return id ? {
+                id,
+                createdAt: docSnap.data()?.createdAt,
+                status: docSnap.data()?.status,
+            } : null;
+        })
+        .filter((docData): docData is NonNullable<typeof docData> => Boolean(docData))
         .filter((docData) => !ignoreSet.has(docData.id))
         .sort((left, right) => {
             const leftTime = typeof left.createdAt?.toMillis === 'function' ? left.createdAt.toMillis() : 0;
@@ -524,7 +537,7 @@ export async function checkExistingActiveJob(projectId: string, ignoreJobIds: st
 
     if (activeDocs.length > 1) {
         logMenuProcessingFailure('menu_processing_multiple_active_jobs', undefined, {
-            ...getMenuProcessingProjectLogContext(projectId),
+            ...getMenuProcessingProjectLogContext(normalizedProjectId),
             activeJobsCount: activeDocs.length,
             ignoredJobIdsCount: ignoreSet.size,
         });

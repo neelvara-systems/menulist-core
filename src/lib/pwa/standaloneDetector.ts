@@ -16,6 +16,8 @@ import { fireInstalledEventOnce, PROMPT_SHOWN_AT_KEY_PREFIX } from './installTra
 import { detectPlatform } from './platformDetection';
 import { detectInstallSurface } from './surfaceDetection';
 import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
+import { parseCanonicalPwaTimestamp } from './storageValue';
 
 const OPENED_FIRED_SESSION_KEY_PREFIX = 'menulist_customerApp_openedFired_';
 const STANDALONE_SESSION_STORAGE_TEST_KEY = '__menulist_customer_app_open_test__';
@@ -27,6 +29,7 @@ const reportedCustomerAppOpenStorageFailures = new Set<CustomerAppOpenStorageOpe
 // a confirmed install. 48h comfortably covers "saw prompt, decided later"
 // without capturing unrelated re-opens weeks later.
 const IOS_INSTALL_INFERENCE_WINDOW_MS = 48 * 60 * 60 * 1000;
+const appOpenTrackingInFlight = new Set<string>();
 
 function logCustomerAppOpenStorageFailure(
   operation: CustomerAppOpenStorageOperation,
@@ -96,21 +99,40 @@ export async function detectAndTrackAppOpen(
 
   const { tenantId, storeTimeZone, businessDayEndTime, includeLocation = false } = options;
 
-  // One fire per session per store — prevents SPA route changes from inflating opens
+  const scopedOpenKey = getTenantStoreStorageKey(
+    OPENED_FIRED_SESSION_KEY_PREFIX,
+    tenantId,
+    storeId,
+  );
+  if (!scopedOpenKey) {
+    logPwaTrackingFailure('customer_app_open_scope_invalid', new Error('Invalid app-open scope'), {
+      ...getBoundedPwaStringContext('storeId', storeId),
+      ...getBoundedPwaStringContext('tenantId', tenantId),
+    });
+    return false;
+  }
+  const inFlightKey = scopedOpenKey;
+
+  // One confirmed fire per session per tenant/store. In-flight memory prevents
+  // concurrent renders without marking a failed analytics attempt as complete.
   if (isSessionStorageAvailable(storeId, tenantId)) {
-    const key = `${OPENED_FIRED_SESSION_KEY_PREFIX}${storeId}`;
     try {
-      if (window.sessionStorage.getItem(key)) return false;
-      window.sessionStorage.setItem(key, String(Date.now()));
+      const rawCompletion = window.sessionStorage.getItem(scopedOpenKey);
+      if (rawCompletion) {
+        if (parseCanonicalPwaTimestamp(rawCompletion) !== null) return false;
+        window.sessionStorage.removeItem(scopedOpenKey);
+      }
     } catch (error) {
       logCustomerAppOpenStorageFailure(
         'session_guard',
         'customer_app_open_session_guard_failed',
         error,
-        getCustomerAppOpenStorageContext(storeId, tenantId, key),
+        getCustomerAppOpenStorageContext(storeId, tenantId, scopedOpenKey),
       );
     }
   }
+  if (appOpenTrackingInFlight.has(inFlightKey)) return false;
+  appOpenTrackingInFlight.add(inFlightKey);
 
   const { platform } = detectPlatform();
   // Entry/source context only. Store-level Customer App identity stays the
@@ -128,6 +150,16 @@ export async function detectAndTrackAppOpen(
       pwaPlatform: platform,
       pwaInstallSurface: launchSurface,
     });
+    try {
+      window.sessionStorage.setItem(scopedOpenKey, String(Date.now()));
+    } catch (error) {
+      logCustomerAppOpenStorageFailure(
+        'session_guard',
+        'customer_app_open_session_guard_failed',
+        error,
+        getCustomerAppOpenStorageContext(storeId, tenantId, scopedOpenKey),
+      );
+    }
 
     // iOS install inference — closes the "iOS never fires appinstalled" gap.
     // Any first standalone launch on iOS is the best available install proxy:
@@ -136,16 +168,20 @@ export async function detectAndTrackAppOpen(
     // `ios-inferred`; otherwise keep it explicit as `ios-standalone` so the
     // dashboard can separate prompted installs from manual/share-link installs.
     if (platform === 'ios') {
-      const promptStorageKey = `${PROMPT_SHOWN_AT_KEY_PREFIX}${storeId}`;
+      const promptStorageKey = getTenantStoreStorageKey(
+        PROMPT_SHOWN_AT_KEY_PREFIX,
+        tenantId,
+        storeId,
+      );
       try {
-        const promptShownRaw = window.localStorage.getItem(
-          promptStorageKey,
-        );
-        const promptShownAt = promptShownRaw ? parseInt(promptShownRaw, 10) : 0;
+        const promptShownRaw = promptStorageKey
+          ? window.localStorage.getItem(promptStorageKey)
+          : null;
+        const now = Date.now();
+        const promptShownAt = parseCanonicalPwaTimestamp(promptShownRaw, now);
         const source =
-          Number.isFinite(promptShownAt) &&
-            promptShownAt > 0 &&
-            Date.now() - promptShownAt < IOS_INSTALL_INFERENCE_WINDOW_MS
+          promptShownAt !== null &&
+            now - promptShownAt < IOS_INSTALL_INFERENCE_WINDOW_MS
             ? 'ios-inferred'
             : 'ios-standalone';
 
@@ -162,7 +198,11 @@ export async function detectAndTrackAppOpen(
           'ios_install_inference',
           'customer_app_ios_install_inference_storage_failed',
           error,
-          getCustomerAppOpenStorageContext(storeId, tenantId, promptStorageKey),
+          getCustomerAppOpenStorageContext(
+            storeId,
+            tenantId,
+            promptStorageKey || PROMPT_SHOWN_AT_KEY_PREFIX,
+          ),
         );
       }
     }
@@ -179,5 +219,7 @@ export async function detectAndTrackAppOpen(
       includeLocation,
     });
     return false;
+  } finally {
+    appOpenTrackingInFlight.delete(inFlightKey);
   }
 }

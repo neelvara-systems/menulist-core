@@ -1,5 +1,7 @@
 'use client';
 
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
+
 /**
  * Client-side session persistence for dismissed menu-processing jobs.
  *
@@ -10,6 +12,8 @@
 
 export const MENU_PROCESSING_DISMISS_STORAGE_KEY = 'dismissedMenuProcessingJobs';
 export const MENU_PROCESSING_DISMISS_TTL_MS = 10 * 60 * 1000;
+const MENU_PROCESSING_DISMISS_MAX_TTL_MS = 60 * 60 * 1000;
+const MENU_PROCESSING_DISMISS_MAX_RECORDS = 100;
 
 type DismissalRecord = {
     dismissedAt: number;
@@ -26,20 +30,40 @@ function isObject(value: unknown): value is Record<string, unknown> {
     return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
-function readDismissals(nowMs = Date.now()): DismissalMap {
-    if (!isBrowser()) {
-        return {};
-    }
+export type MenuProcessingDismissalScope = {
+    tenantId: unknown;
+    storeId: unknown;
+};
 
-    const raw = window.sessionStorage.getItem(MENU_PROCESSING_DISMISS_STORAGE_KEY);
-    if (!raw) {
+export function getMenuProcessingDismissalStorageKey(
+    scope: MenuProcessingDismissalScope,
+): string | null {
+    return getTenantStoreStorageKey(
+        MENU_PROCESSING_DISMISS_STORAGE_KEY,
+        scope.tenantId,
+        scope.storeId,
+    );
+}
+
+function isValidJobId(value: unknown): value is string {
+    return typeof value === 'string'
+        && value.length > 0
+        && value.length <= 160
+        && value.trim() === value
+        && !/[\/\u0000-\u001f\u007f]/.test(value);
+}
+
+function readDismissals(storageKey: string | null, nowMs = Date.now()): DismissalMap {
+    if (!isBrowser() || !storageKey || !Number.isSafeInteger(nowMs) || nowMs < 0) {
         return {};
     }
 
     try {
+        const raw = window.sessionStorage.getItem(storageKey);
+        if (!raw) return {};
         const parsed = JSON.parse(raw);
-        if (!isObject(parsed)) {
-            window.sessionStorage.removeItem(MENU_PROCESSING_DISMISS_STORAGE_KEY);
+        if (!isObject(parsed) || Object.keys(parsed).length > MENU_PROCESSING_DISMISS_MAX_RECORDS) {
+            window.sessionStorage.removeItem(storageKey);
             return {};
         }
 
@@ -47,7 +71,7 @@ function readDismissals(nowMs = Date.now()): DismissalMap {
         let mutated = false;
 
         for (const [jobId, value] of Object.entries(parsed)) {
-            if (typeof jobId !== 'string' || !jobId) {
+            if (!isValidJobId(jobId)) {
                 mutated = true;
                 continue;
             }
@@ -57,10 +81,20 @@ function readDismissals(nowMs = Date.now()): DismissalMap {
                 continue;
             }
 
-            const dismissedAt = Number(value.dismissedAt);
-            const expiresAt = Number(value.expiresAt);
+            const dismissedAt = value.dismissedAt;
+            const expiresAt = value.expiresAt;
 
-            if (!Number.isFinite(dismissedAt) || !Number.isFinite(expiresAt) || expiresAt <= nowMs) {
+            if (
+                typeof dismissedAt !== 'number'
+                || typeof expiresAt !== 'number'
+                || !Number.isSafeInteger(dismissedAt)
+                || !Number.isSafeInteger(expiresAt)
+                || dismissedAt < 0
+                || dismissedAt > nowMs
+                || expiresAt <= nowMs
+                || expiresAt <= dismissedAt
+                || expiresAt - dismissedAt > MENU_PROCESSING_DISMISS_MAX_TTL_MS
+            ) {
                 mutated = true;
                 continue;
             }
@@ -73,58 +107,88 @@ function readDismissals(nowMs = Date.now()): DismissalMap {
 
         if (mutated) {
             if (Object.keys(next).length === 0) {
-                window.sessionStorage.removeItem(MENU_PROCESSING_DISMISS_STORAGE_KEY);
+                window.sessionStorage.removeItem(storageKey);
             } else {
-                window.sessionStorage.setItem(MENU_PROCESSING_DISMISS_STORAGE_KEY, JSON.stringify(next));
+                window.sessionStorage.setItem(storageKey, JSON.stringify(next));
             }
         }
 
         return next;
     } catch {
-        window.sessionStorage.removeItem(MENU_PROCESSING_DISMISS_STORAGE_KEY);
+        try {
+            window.sessionStorage.removeItem(storageKey);
+        } catch {
+            // Browser storage can be unavailable in private or embedded contexts.
+        }
         return {};
     }
 }
 
-function writeDismissals(map: DismissalMap) {
-    if (!isBrowser()) return;
+function writeDismissals(storageKey: string | null, map: DismissalMap) {
+    if (!isBrowser() || !storageKey) return;
 
-    if (Object.keys(map).length === 0) {
-        window.sessionStorage.removeItem(MENU_PROCESSING_DISMISS_STORAGE_KEY);
-        return;
+    try {
+        if (Object.keys(map).length === 0) {
+            window.sessionStorage.removeItem(storageKey);
+            return;
+        }
+
+        window.sessionStorage.setItem(storageKey, JSON.stringify(map));
+    } catch {
+        // Dismissal is a best-effort UI preference and must not break review actions.
     }
-
-    window.sessionStorage.setItem(MENU_PROCESSING_DISMISS_STORAGE_KEY, JSON.stringify(map));
 }
 
-export function getDismissedMenuProcessingJobIds(nowMs = Date.now()): string[] {
-    return Object.keys(readDismissals(nowMs));
+export function getDismissedMenuProcessingJobIds(
+    scope: MenuProcessingDismissalScope,
+    nowMs = Date.now(),
+): string[] {
+    return Object.keys(readDismissals(getMenuProcessingDismissalStorageKey(scope), nowMs));
 }
 
-export function markMenuProcessingJobAsDismissed(jobId: string, ttlMs = MENU_PROCESSING_DISMISS_TTL_MS): void {
-    if (!isBrowser() || !jobId) return;
+export function markMenuProcessingJobAsDismissed(
+    scope: MenuProcessingDismissalScope,
+    jobId: string,
+    ttlMs = MENU_PROCESSING_DISMISS_TTL_MS,
+): void {
+    const storageKey = getMenuProcessingDismissalStorageKey(scope);
+    if (
+        !isBrowser()
+        || !storageKey
+        || !isValidJobId(jobId)
+        || !Number.isSafeInteger(ttlMs)
+        || ttlMs <= 0
+        || ttlMs > MENU_PROCESSING_DISMISS_MAX_TTL_MS
+    ) return;
 
     const now = Date.now();
-    const map = readDismissals(now);
+    const map = readDismissals(storageKey, now);
     map[jobId] = {
         dismissedAt: now,
         expiresAt: now + ttlMs,
     };
-    writeDismissals(map);
+    writeDismissals(storageKey, map);
 }
 
-export function clearMenuProcessingJobDismissal(jobId: string): void {
-    if (!isBrowser() || !jobId) return;
+export function clearMenuProcessingJobDismissal(
+    scope: MenuProcessingDismissalScope,
+    jobId: string,
+): void {
+    const storageKey = getMenuProcessingDismissalStorageKey(scope);
+    if (!isBrowser() || !storageKey || !isValidJobId(jobId)) return;
 
-    const map = readDismissals();
+    const map = readDismissals(storageKey);
     if (!(jobId in map)) return;
 
     delete map[jobId];
-    writeDismissals(map);
+    writeDismissals(storageKey, map);
 }
 
-export function clearExpiredMenuProcessingJobDismissals(): void {
-    if (!isBrowser()) return;
-    const map = readDismissals();
-    writeDismissals(map);
+export function clearExpiredMenuProcessingJobDismissals(
+    scope: MenuProcessingDismissalScope,
+): void {
+    const storageKey = getMenuProcessingDismissalStorageKey(scope);
+    if (!isBrowser() || !storageKey) return;
+    const map = readDismissals(storageKey);
+    writeDismissals(storageKey, map);
 }

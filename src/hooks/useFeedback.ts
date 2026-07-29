@@ -95,24 +95,55 @@ export const useFeedback = (
     const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const mutationInFlightRef = useRef(false);
+    const mutationTokenRef = useRef(0);
+    const operationScopeKey = JSON.stringify([
+        contentType,
+        contentId,
+        pageId ?? null,
+        user?.id ?? null,
+        storageScope?.tId ?? null,
+        storageScope?.sId ?? null,
+    ]);
+    const activeOperationScopeKeyRef = useRef(operationScopeKey);
+    activeOperationScopeKeyRef.current = operationScopeKey;
 
-    const beginMutation = () => {
-        if (mutationInFlightRef.current) return false;
+    const beginMutation = (scopeKey: string): number | null => {
+        if (mutationInFlightRef.current) return null;
         mutationInFlightRef.current = true;
+        mutationTokenRef.current += 1;
         setIsSubmitting(true);
-        return true;
+        return mutationTokenRef.current;
     };
 
-    const endMutation = () => {
+    const isCurrentMutation = (token: number, scopeKey: string) => (
+        mutationTokenRef.current === token
+        && activeOperationScopeKeyRef.current === scopeKey
+    );
+
+    const endMutation = (token: number, scopeKey: string) => {
+        if (!isCurrentMutation(token, scopeKey)) return;
         mutationInFlightRef.current = false;
         setIsSubmitting(false);
     };
 
     useEffect(() => {
+        mutationTokenRef.current += 1;
+        mutationInFlightRef.current = false;
+        setIsSubmitting(false);
+        setIsFeedbackModalVisible(false);
         setLikes(normalizeFeedbackCount(initialLikes));
         setDislikes(normalizeFeedbackCount(initialDislikes));
         setFeedbackGiven(null);
-    }, [contentId, initialDislikes, initialLikes, storageScope?.tId, storageScope?.sId]);
+    }, [
+        contentId,
+        contentType,
+        initialDislikes,
+        initialLikes,
+        pageId,
+        storageScope?.sId,
+        storageScope?.tId,
+        user?.id,
+    ]);
 
     // Load feedback status after content/workspace state is reset.
     useEffect(() => {
@@ -146,7 +177,9 @@ export const useFeedback = (
 
         // Allow undo if clicking the same button
         if (feedbackGiven === type) {
-            if (!beginMutation()) return;
+            const mutationScopeKey = operationScopeKey;
+            const mutationToken = beginMutation(mutationScopeKey);
+            if (mutationToken === null) return;
             const previousLikes = likes;
             const previousDislikes = dislikes;
             // Undo feedback
@@ -161,8 +194,10 @@ export const useFeedback = (
             try {
                 // Decrement the count in database
                 const result = await updateFeedback(contentId, type, false, pageId, '', 'removed');
-                applyAuthoritativeFeedbackCounts(result);
-                message.success('Feedback removed.');
+                if (isCurrentMutation(mutationToken, mutationScopeKey)) {
+                    applyAuthoritativeFeedbackCounts(result);
+                    message.success('Feedback removed.');
+                }
             } catch (error) {
                 logHookFailure('answerlattice_feedback_remove_failed', error, {
                     contentType,
@@ -170,14 +205,16 @@ export const useFeedback = (
                     ...getBoundedHookStringContext('contentId', contentId),
                     ...getBoundedHookStringContext('pageId', pageId),
                 });
-                message.error('Failed to remove feedback. Please try again.');
-                // Rollback UI
-                setLikes(previousLikes);
-                setDislikes(previousDislikes);
-                setFeedbackGiven(type);
                 storeFeedback(storageScope, user.id, contentId, type);
+                if (isCurrentMutation(mutationToken, mutationScopeKey)) {
+                    message.error('Failed to remove feedback. Please try again.');
+                    // Rollback UI
+                    setLikes(previousLikes);
+                    setDislikes(previousDislikes);
+                    setFeedbackGiven(type);
+                }
             } finally {
-                endMutation();
+                endMutation(mutationToken, mutationScopeKey);
             }
             return;
         }
@@ -192,7 +229,9 @@ export const useFeedback = (
         if (type === 'dislike') {
             setIsFeedbackModalVisible(true);
         } else {
-            if (!beginMutation()) return;
+            const mutationScopeKey = operationScopeKey;
+            const mutationToken = beginMutation(mutationScopeKey);
+            if (mutationToken === null) return;
             const previousLikes = likes;
             // Handle like
             setLikes(previousLikes + 1);
@@ -201,7 +240,9 @@ export const useFeedback = (
 
             try {
                 const result = await updateFeedback(contentId, type, true, pageId, '', 'added');
-                applyAuthoritativeFeedbackCounts(result);
+                if (isCurrentMutation(mutationToken, mutationScopeKey)) {
+                    applyAuthoritativeFeedbackCounts(result);
+                }
             } catch (error) {
                 logHookFailure('answerlattice_feedback_submit_failed', error, {
                     contentType,
@@ -209,12 +250,14 @@ export const useFeedback = (
                     ...getBoundedHookStringContext('contentId', contentId),
                     ...getBoundedHookStringContext('pageId', pageId),
                 });
-                message.error('Failed to submit feedback. Please try again.');
-                setLikes(previousLikes);
-                setFeedbackGiven(null);
                 removeStoredFeedback(storageScope, user.id, contentId);
+                if (isCurrentMutation(mutationToken, mutationScopeKey)) {
+                    message.error('Failed to submit feedback. Please try again.');
+                    setLikes(previousLikes);
+                    setFeedbackGiven(null);
+                }
             } finally {
-                endMutation();
+                endMutation(mutationToken, mutationScopeKey);
             }
         }
     };
@@ -224,7 +267,9 @@ export const useFeedback = (
             message.warning('Please log in to provide feedback.');
             return false;
         }
-        if (!beginMutation()) return false;
+        const mutationScopeKey = operationScopeKey;
+        const mutationToken = beginMutation(mutationScopeKey);
+        if (mutationToken === null) return false;
 
         const previousDislikes = dislikes;
         setDislikes(previousDislikes + 1);
@@ -233,6 +278,7 @@ export const useFeedback = (
 
         try {
             const result = await updateFeedback(contentId, 'dislike', true, pageId, comment, 'added');
+            if (!isCurrentMutation(mutationToken, mutationScopeKey)) return false;
             applyAuthoritativeFeedbackCounts(result);
             setIsFeedbackModalVisible(false);
             message.success('Thank you for your feedback!');
@@ -245,13 +291,15 @@ export const useFeedback = (
                 ...getBoundedHookStringContext('contentId', contentId),
                 ...getBoundedHookStringContext('pageId', pageId),
             });
-            message.error('Failed to submit feedback. Please try again.');
-            setDislikes(previousDislikes);
-            setFeedbackGiven(null);
             removeStoredFeedback(storageScope, user.id, contentId);
+            if (isCurrentMutation(mutationToken, mutationScopeKey)) {
+                message.error('Failed to submit feedback. Please try again.');
+                setDislikes(previousDislikes);
+                setFeedbackGiven(null);
+            }
             return false;
         } finally {
-            endMutation();
+            endMutation(mutationToken, mutationScopeKey);
         }
     };
 

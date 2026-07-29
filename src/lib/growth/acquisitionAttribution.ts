@@ -63,9 +63,13 @@ export const PUBLIC_SURFACE_GROWTH_ATTRIBUTION: GrowthAcquisitionAttribution = {
 export function normalizeGrowthAcquisitionAttribution(value: unknown): GrowthAcquisitionAttribution | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const candidate = value as Record<string, unknown>;
-    const source = String(candidate.source || candidate.utm_source || '').trim();
-    const medium = String(candidate.medium || candidate.utm_medium || '').trim();
-    const campaign = String(candidate.campaign || candidate.utm_campaign || '').trim();
+    const firstString = (primary: unknown, fallback: unknown): string => {
+        if (typeof primary === 'string') return primary.trim();
+        return typeof fallback === 'string' ? fallback.trim() : '';
+    };
+    const source = firstString(candidate.source, candidate.utm_source);
+    const medium = firstString(candidate.medium, candidate.utm_medium);
+    const campaign = firstString(candidate.campaign, candidate.utm_campaign);
     return ALLOWED_ATTRIBUTION_COMBINATIONS.get(`${source}|${medium}|${campaign}`) || null;
 }
 

@@ -15,23 +15,35 @@
 
 import { useFrictionInsights } from '@hook/answerlattice/useFrictionInsights';
 import {
+    ANSWERLATTICE_GOVERNANCE_TABS,
+    getAnswerlatticeGovernanceRoute,
+} from '@constant/answerlattice/navigations';
+import { normalizeAnswerlatticeEntityId } from '@lib/answerlattice/governanceIdBoundary';
+import { getAnswerlatticeEntityContextRoute } from '@lib/answerlattice/ownerDecisionNavigation';
+import {
     AnswerlatticeFrictionEmergingTopic,
     AnswerlatticeFrictionEntitySummary,
+    AnswerlatticeFrictionInsight,
     AnswerlatticeFrictionLevel,
     AnswerlatticeFrictionTrendDirection,
 } from '@type/answerlattice';
-import { Badge, Button, Card, Empty, Skeleton, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
+import { Alert, Badge, Button, Card, Empty, Flex, Grid, Skeleton, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useMemo } from 'react';
 import {
     LuAlertTriangle,
     LuArrowDown,
     LuArrowRight,
     LuArrowUp,
+    LuGitBranch,
     LuRefreshCw,
     LuSparkles,
     LuTrendingUp,
 } from 'react-icons/lu';
 
 const { Text, Paragraph, Title } = Typography;
+const KNOWLEDGE_MAP_ROUTE = getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.MAP);
 
 interface FrictionTabProps {
     tId: number;
@@ -54,7 +66,7 @@ function FrictionLevelBadge({ level }: { level: AnswerlatticeFrictionLevel }) {
     return (
         <Badge
             status={status}
-            text={<Text strong style={{ fontSize: 16 }}>Friction Level: {level}</Text>}
+            text={<Text strong style={{ fontSize: 16 }}>Support evidence level: {level}</Text>}
         />
     );
 }
@@ -98,7 +110,84 @@ function EntityTypeTag({ type }: { type: string }) {
 // TOP FRICTION TABLE
 // ═══════════════════════════════════════════════════════════════
 
+function EvidenceMix({ entity }: { entity: AnswerlatticeFrictionEntitySummary }) {
+    const evidence = entity.last7d;
+    const hasBreakdown = (
+        Number.isSafeInteger(evidence.ticketCount)
+        && Number.isSafeInteger(evidence.chatNegativeCount)
+        && Number.isSafeInteger(evidence.canonicalMissCount)
+    );
+    if (!hasBreakdown) {
+        return <Text type="secondary">Breakdown available after the next nightly refresh.</Text>;
+    }
+
+    const explainedCount = (
+        Number(evidence.ticketCount)
+        + Number(evidence.chatNegativeCount)
+        + evidence.escalationCount
+        + Number(evidence.canonicalMissCount)
+    );
+    const otherCount = Math.max(0, evidence.queryCount - explainedCount);
+
+    return (
+        <Space size={[4, 4]} wrap>
+            <Tag>Tickets {evidence.ticketCount}</Tag>
+            <Tag>Negative feedback {evidence.chatNegativeCount}</Tag>
+            <Tag>Escalations {evidence.escalationCount}</Tag>
+            <Tag>Canonical misses {evidence.canonicalMissCount}</Tag>
+            {otherCount > 0 ? <Tag>Other evidence {otherCount}</Tag> : null}
+        </Space>
+    );
+}
+
 function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntitySummary[] }) {
+    const screens = Grid.useBreakpoint();
+    const { token } = theme.useToken();
+    const isMobile = screens.md !== true;
+
+    if (isMobile) {
+        return (
+            <Flex vertical gap={10}>
+                {entities.map(entity => (
+                    <div
+                        key={entity.entityId}
+                        style={{
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: 8,
+                            padding: 12,
+                            background: token.colorBgContainer,
+                        }}
+                    >
+                        <Flex vertical gap={10}>
+                            <Flex justify="space-between" align="start" gap={8}>
+                                <Flex vertical gap={3} style={{ minWidth: 0 }}>
+                                    <Text strong>{entity.entityName}</Text>
+                                    <EntityTypeTag type={entity.entityType} />
+                                </Flex>
+                                <TrendArrow direction={entity.trendDirection} />
+                            </Flex>
+                            <Flex justify="space-between" gap={12} wrap>
+                                <Text>{entity.last7d.queryCount} evidence events</Text>
+                                <Tooltip title="Evidence events plus escalation and canonical-miss weighting. This is not an answer-quality or product-health score.">
+                                    <Text strong>Support evidence load {Math.round(entity.last7d.frictionScore)}</Text>
+                                </Tooltip>
+                            </Flex>
+                            <EvidenceMix entity={entity} />
+                            <Text type="secondary">
+                                Previous 7 days: {entity.previous7d.queryCount} evidence events · load {Math.round(entity.previous7d.frictionScore)}
+                            </Text>
+                            <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, entity.entityId)}>
+                                <Button block icon={<LuGitBranch />} style={{ minHeight: 44 }}>
+                                    Open in Knowledge Map
+                                </Button>
+                            </Link>
+                        </Flex>
+                    </div>
+                ))}
+            </Flex>
+        );
+    }
+
     const columns = [
         {
             title: 'Entity',
@@ -116,7 +205,12 @@ function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntityS
             key: 'signals',
             width: 110,
             render: (_: unknown, record: AnswerlatticeFrictionEntitySummary) => (
-                <Text>{record.last7d.queryCount}</Text>
+                <Flex vertical gap={1}>
+                    <Text>{record.last7d.queryCount}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Previous {record.previous7d.queryCount}
+                    </Text>
+                </Flex>
             ),
             sorter: (a: AnswerlatticeFrictionEntitySummary, b: AnswerlatticeFrictionEntitySummary) =>
                 a.last7d.queryCount - b.last7d.queryCount,
@@ -133,9 +227,17 @@ function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntityS
             },
         },
         {
+            title: 'Evidence mix',
+            key: 'evidenceMix',
+            width: 320,
+            render: (_: unknown, record: AnswerlatticeFrictionEntitySummary) => (
+                <EvidenceMix entity={record} />
+            ),
+        },
+        {
             title: (
-                <Tooltip title="Evidence count weighted by escalation and canonical-fallback rates. It is not an answer-quality score.">
-                    Weighted load
+                <Tooltip title="Evidence events plus escalation and canonical-miss weighting. This is not an answer-quality or product-health score.">
+                    Support evidence load
                 </Tooltip>
             ),
             key: 'score',
@@ -152,6 +254,23 @@ function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntityS
             width: 110,
             render: (_: unknown, record: AnswerlatticeFrictionEntitySummary) => (
                 <TrendArrow direction={record.trendDirection} />
+            ),
+        },
+        {
+            title: '',
+            key: 'actions',
+            width: 56,
+            render: (_: unknown, record: AnswerlatticeFrictionEntitySummary) => (
+                <Tooltip title={`Open ${record.entityName} in Knowledge Map`}>
+                    <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, record.entityId)}>
+                        <Button
+                            aria-label={`Open ${record.entityName} in Knowledge Map`}
+                            icon={<LuGitBranch />}
+                            style={{ minHeight: 44, minWidth: 44 }}
+                            type="text"
+                        />
+                    </Link>
+                </Tooltip>
             ),
         },
     ];
@@ -195,7 +314,7 @@ function EmergingTopicsCard({ topics }: { topics: AnswerlatticeFrictionEmergingT
                         <Text strong>{topic.entityName}</Text>
                         <EntityTypeTag type={topic.entityType} />
                         <Text type="secondary">
-                            {topic.queryCount} questions · {Math.round(topic.escalationRate * 100)}% escalation
+                            {topic.queryCount} support-evidence events · {Math.round(topic.escalationRate * 100)}% escalation
                         </Text>
                     </Space>
                 </div>
@@ -208,8 +327,26 @@ function EmergingTopicsCard({ topics }: { topics: AnswerlatticeFrictionEmergingT
 // WEEKLY SUMMARY CARD
 // ═══════════════════════════════════════════════════════════════
 
-function WeeklySummaryCard({ summary, weekStart, weekEnd }: { summary: string; weekStart: string; weekEnd: string }) {
+function WeeklySummaryCard({
+    summary,
+    weekStart,
+    weekEnd,
+    suggestedActions,
+    entityNames,
+}: {
+    summary: string;
+    weekStart: string;
+    weekEnd: string;
+    suggestedActions: AnswerlatticeFrictionInsight['suggestedActions'];
+    entityNames: Map<string, string>;
+}) {
     if (!summary) return null;
+    const admittedActions = suggestedActions.flatMap((suggestion) => {
+        const entityId = normalizeAnswerlatticeEntityId(suggestion.entityId);
+        return entityId && entityNames.has(entityId)
+            ? [{ ...suggestion, entityId }]
+            : [];
+    });
 
     return (
         <Card
@@ -224,6 +361,28 @@ function WeeklySummaryCard({ summary, weekStart, weekEnd }: { summary: string; w
             style={{ marginTop: 16 }}
         >
             <Paragraph style={{ whiteSpace: 'pre-wrap', marginBottom: 0 }}>{summary}</Paragraph>
+            {admittedActions.length > 0 ? (
+                <Flex vertical gap={8} style={{ marginTop: 12 }}>
+                    {admittedActions.map(suggestion => (
+                        <Flex
+                            align="center"
+                            gap={12}
+                            justify="space-between"
+                            key={`${suggestion.entityId}:${suggestion.action}`}
+                            wrap
+                        >
+                            <Text>
+                                <Text strong>{entityNames.get(suggestion.entityId)}:</Text> {suggestion.action}
+                            </Text>
+                            <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, suggestion.entityId)}>
+                                <Button icon={<LuGitBranch />} style={{ minHeight: 44 }}>
+                                    Review evidence
+                                </Button>
+                            </Link>
+                        </Flex>
+                    ))}
+                </Flex>
+            ) : null}
             <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
                 Advisory only. Review the linked evidence before changing product behavior or approved answers.
             </Text>
@@ -237,6 +396,22 @@ function WeeklySummaryCard({ summary, weekStart, weekEnd }: { summary: string; w
 
 export default function FrictionTab({ tId, sId }: FrictionTabProps) {
     const { snapshot, insight, loading, error, refresh } = useFrictionInsights(tId, sId);
+    const searchParams = useSearchParams();
+    const focusedEntityId = normalizeAnswerlatticeEntityId(searchParams.get('entity')) || '';
+    const rankedEntities = useMemo(() => {
+        const entities = snapshot?.topFrictionEntities || [];
+        if (!focusedEntityId) return entities;
+        return [...entities].sort((left, right) => (
+            Number(right.entityId === focusedEntityId) - Number(left.entityId === focusedEntityId)
+        ));
+    }, [focusedEntityId, snapshot?.topFrictionEntities]);
+    const focusedEntity = rankedEntities.find(entity => entity.entityId === focusedEntityId);
+    const entityNames = useMemo(() => {
+        const names = new Map<string, string>();
+        for (const entity of snapshot?.topFrictionEntities || []) names.set(entity.entityId, entity.entityName);
+        for (const topic of snapshot?.emergingTopics || []) names.set(topic.entityId, topic.entityName);
+        return names;
+    }, [snapshot?.emergingTopics, snapshot?.topFrictionEntities]);
 
     if (loading) {
         return <Skeleton active paragraph={{ rows: 6 }} />;
@@ -265,8 +440,8 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Space size="large">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                <Space size="large" wrap>
                     <FrictionLevelBadge level={snapshot.frictionLevel} />
                     <Text type="secondary">
                         {snapshot.totalSignals7d} support-evidence events · {snapshot.totalEscalations7d} escalations ({snapshot.window.currentStartDate} to {snapshot.window.currentEndDate})
@@ -277,8 +452,18 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
                 </Tooltip>
             </div>
 
-            <Title level={5} style={{ marginBottom: 12 }}>Top Friction Areas</Title>
-            <TopFrictionTable entities={snapshot.topFrictionEntities || []} />
+            {focusedEntity ? (
+                <Alert
+                    message={`Focused on ${focusedEntity.entityName}`}
+                    description="Daily Brief linked directly to this current evidence area. The remaining ranked areas stay visible below it."
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    type="info"
+                />
+            ) : null}
+
+            <Title level={5} style={{ marginBottom: 12 }}>Top Support-Evidence Areas</Title>
+            <TopFrictionTable entities={rankedEntities} />
 
             <EmergingTopicsCard topics={snapshot.emergingTopics || []} />
 
@@ -287,6 +472,8 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
                     summary={insight.summary}
                     weekStart={insight.weekStart}
                     weekEnd={insight.weekEnd}
+                    suggestedActions={insight.suggestedActions}
+                    entityNames={entityNames}
                 />
             )}
 

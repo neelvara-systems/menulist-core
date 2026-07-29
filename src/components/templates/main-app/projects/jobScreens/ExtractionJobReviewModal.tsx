@@ -9,6 +9,8 @@ interface ExtractionJobReviewModalProps {
     open: boolean;
     projectId: string;
     jobId: string;
+    tenantId: unknown;
+    storeId: unknown;
     comparisonResult: ComparisonEngineOutput;
     primaryLang: string;
     onSaveComplete: () => void;
@@ -32,6 +34,8 @@ export default function ExtractionJobReviewModal({
     open,
     projectId,
     jobId,
+    tenantId,
+    storeId,
     comparisonResult,
     primaryLang,
     onSaveComplete,
@@ -59,6 +63,8 @@ export default function ExtractionJobReviewModal({
                 key={getReviewPreviewIdentity(projectId, jobId)}
                 projectId={projectId}
                 jobId={jobId}
+                tenantId={tenantId}
+                storeId={storeId}
                 comparisonResult={comparisonResult}
                 primaryLang={primaryLang}
                 onSaveComplete={onSaveComplete}

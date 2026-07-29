@@ -12,13 +12,6 @@ import {
 
 const MENU_TRANSLATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 
-type MenuTranslationApiResponse = {
-    data?: unknown;
-    remainingBalance?: unknown;
-    translationCoverage?: unknown;
-    transaction?: unknown;
-};
-
 async function getTranslations({ inputJson, targetLang, sourceLang, action, projectId, fileId }: TranslationAPIParams): Promise<Record<string, string> | null> {
     const normalizedAction = action;
     const translationKeyCount = inputJson && typeof inputJson === 'object' ? Object.keys(inputJson).length : 0;
@@ -48,7 +41,7 @@ async function getTranslations({ inputJson, targetLang, sourceLang, action, proj
             throw new Error('translation_request_failed');
         }
 
-        const responseJson = await readAiServiceResponseJson<MenuTranslationApiResponse>(response, {
+        const responseJson = await readAiServiceResponseJson(response, {
             context: {
                 ...getTranslationScopeLogContext(projectId, fileId),
                 ...getTranslationLanguageLogContext(targetLang?.code, sourceLang?.code),

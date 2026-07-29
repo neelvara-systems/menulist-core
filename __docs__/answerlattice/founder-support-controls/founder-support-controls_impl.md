@@ -37,13 +37,13 @@ The version-4 proof contract includes standard/critical risk, deterministic clai
 
 The external Critical Answer Test Suite proposal describes a second scenario/evaluation platform, but the shipped Answer Tests runtime already owns bounded authoring, production-equivalent retrieval, side-effect-free test traffic, release checks, in-memory proposal previews, freshness, retained proof, evidence, critical blocking, and founder-facing results. No parallel route, collection, scheduler, artifact store, semantic judge, or scenario engine is admitted.
 
-One code-level gap is verified: `ANSWERLATTICE_ANSWER_TEST_SOURCES` currently includes `rag` for every risk level, and `evaluateAnswerTestCase()` can pass a critical case when expected and actual source are both `rag`. The later implementation pass should stay inside the existing contracts:
+The verified authority gap is closed inside the existing contracts:
 
-1. Add a deterministic evaluator failure whenever `riskLevel === 'critical'` and the resolved source is `rag`.
-2. Prevent new or edited critical cases from selecting `rag` in the owner form and return a specific validation message.
-3. Continue parsing existing critical-RAG cases so the scoped summary does not become corrupt; their next run must fail and produce `blocked` proof.
-4. Reuse the same evaluator for normal runs, release checks, First 10 proof, and proposal previews so the rule cannot diverge by surface.
-5. Add focused contract tests and truthful owner copy. Do not add a Firestore migration, schema family, provider call, or summary read.
+1. The shared evaluator adds a deterministic failure whenever `riskLevel === 'critical'` and the resolved source is `rag`.
+2. The owner form and save transaction reject new or edited active critical-RAG cases with a specific validation message.
+3. Existing critical-RAG cases still parse, unchanged legacy suites remain save-compatible, and owners may deactivate a legacy case safely; an actual RAG run fails and produces `blocked` proof.
+4. Normal runs, release checks, First 10 proof, and proposal previews reuse the same evaluator so the rule cannot diverge by surface.
+5. Focused contract tests cover new, edited, unchanged, deactivated, critical-runtime, and standard-runtime behavior. No Firestore migration, schema family, provider call, or summary read was added.
 
 `faq` remains an admitted critical route because it resolves through published owner-controlled FAQ truth; `escalation` and `no_answer` remain valid safe outcomes when explicitly configured. This hardening does not make those sources factually correct by itself. Existing phrase, identity, context, reference, and freshness assertions still determine whether the configured contract passes.
 
@@ -52,6 +52,14 @@ Activation reads the current compact source-version summary independently of the
 Case `createdAt` and `updatedAt` are server-owned on every save. The transaction preserves both timestamps only when the normalized case definition is unchanged, preserves the original creation time when an existing definition changes, and stamps the current server time for changed or new definitions. Browser-supplied future or stale timestamps therefore cannot preserve an old launch proof.
 
 The First 10 launch client opts into current proof with the exact `includeLaunchProof=1` query. Its GET response reads the summary and compact source versions in parallel; its save response performs the existing summary transaction and then derives the same bounded projection. Requests without that exact opt-in return the summary without the extra source-version read. The UI labels retained evidence **Stale** when its suite revision differs, displays **Current First 10 proof** separately, and describes deterministic checks as regression evidence rather than an independent correctness guarantee. The result action is named **Adopt current route and evidence**: it updates source/IDs/confidence/evidence while preserving required and blocked phrase checks for explicit owner review.
+
+The suite route also admits two bounded owner-navigation contexts. A validated
+`release` query opens the existing release-check modal and selects that release
+only when it appears in the exact-scope DAL result. A failed result with an
+admitted `answerId` can open Canonical Answers with that exact answer focused.
+The destination revalidates the answer ID, and closing a query-opened modal or
+drawer removes its one-time context. No test or answer mutation occurs from
+navigation.
 
 Proposal Impact Preview is an owner-triggered read-only branch of this proof runtime. The route requires both the Answer Tests and Signal Mutation flags, requires `MANAGE_GOVERNANCE`, derives workspace scope from the authenticated access record, rate-limits before the Firestore-backed permission read, fails closed when the limiter provider is unavailable, parses a bounded strict payload, and never accepts client tenant/store scope. Governance prepares the candidate with the same builder used by approval and a concrete in-memory validation timestamp. Linked-test selection preserves the complete bounded union of proposal, current-answer, and candidate entities, up to 25 from each source, so removed or newly added scope cannot be hidden by list ordering. The runtime loads the compact answer-test summary, selects at most 10 active tests linked to the target answer or any affected old/new entity, and stops before retrieval when none are linked. For linked tests it reuses the normal deterministic canonical/FAQ path, clones the request-local active-answer cache, overlays the candidate only in memory, and compares current and projected results. The browser bounds the complete request-and-response wait to 30 seconds. The flow performs no full-runtime search, support-credit debit, AI operation, retained run, reservation, signal, analytics, cache-version mutation, or proposal mutation. Final approval remains the only path that validates live entity bindings and active scope/version overlap and commits canonical truth, audit history, and invalidation state.
 
@@ -126,7 +134,7 @@ Frontend and `functions-answerlattice` flags must match where scheduler/runtime 
 - All new document IDs are derived from validated numeric scope.
 - Error responses are generic; diagnostics log only bounded context.
 - Test mode never persists production search artifacts.
-- After the Feature 5 hardening is implemented, provider-backed RAG can never count as passing critical proof; legacy critical-RAG cases remain readable and fail explicitly.
+- Provider-backed RAG can never count as passing critical proof; legacy critical-RAG cases remain readable, unchanged-save compatible, safely deactivatable, and fail explicitly when run.
 - Proposal impact preview never persists a run or evaluates unapproved truth through the fallback model.
 - Invalid signed context is ignored, signed-only identity claims are discarded, and generic page-aware support continues; no private fallback is attempted.
 - Known-issue delivery failure never blocks normal widget answers.

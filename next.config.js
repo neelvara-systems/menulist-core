@@ -276,7 +276,7 @@ const nextConfig = {
 //      Server-side freshness is guaranteed by unstable_cache +
 //      revalidateTag('menu-store-{id}') on every owner save.
 //
-//   3. MyCodex PWA           → menulist.digital
+//   3. MyCodex PWA           → private host if one is approved later
 //      Uses hand-rolled `mycodex-sw.js` — private docs offline shell only.
 //      NO document content caching.
 //

@@ -18,6 +18,13 @@ export const ANSWERLATTICE_SUPPORT_METRIC_SOURCE_LIMITS = {
 export type AnswerlatticeFrictionTrendDirection = 'rising' | 'stable' | 'improving' | 'new';
 export type AnswerlatticeFrictionLevel = 'HIGH' | 'MODERATE' | 'LOW';
 
+export interface AnswerlatticeFrictionEvidenceComponents {
+    ticketCount: number;
+    chatNegativeCount: number;
+    escalationCount: number;
+    canonicalMissCount: number;
+}
+
 export interface AnswerlatticeUtcFrictionWindows {
     today: string;
     dayStartMs: number;

@@ -1,8 +1,8 @@
 process.env.NODE_ENV = process.env.NODE_ENV || "test";
-process.env.MENULIST_SIGNALDESK_FIREBASE_MODE = process.env.MENULIST_SIGNALDESK_FIREBASE_MODE || "separate";
-process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "demo-signaldesk-outcome-route";
-process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID;
-process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET = process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET || "local-signaldesk-outcome-route-emulator-secret-v1";
+process.env.SIGNALDESK_FIREBASE_MODE = process.env.SIGNALDESK_FIREBASE_MODE || "separate";
+process.env.SIGNALDESK_FIREBASE_PROJECT_ID = process.env.SIGNALDESK_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "demo-signaldesk-outcome-route";
+process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.SIGNALDESK_FIREBASE_PROJECT_ID;
+process.env.SIGNALDESK_OUTCOME_BRIDGE_SECRET = process.env.SIGNALDESK_OUTCOME_BRIDGE_SECRET || "local-signaldesk-outcome-route-emulator-secret-v1";
 delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
@@ -63,7 +63,7 @@ const access = {
 
 const signedHeaders = (rawBody) => {
   const timestamp = String(Math.floor(Date.now() / 1000));
-  const signature = crypto.createHmac("sha256", process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET)
+  const signature = crypto.createHmac("sha256", process.env.SIGNALDESK_OUTCOME_BRIDGE_SECRET)
     .update(`${timestamp}.${rawBody}`)
     .digest("hex");
   return new Headers({

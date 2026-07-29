@@ -11,6 +11,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { markAnswerlatticeCompiledContextSourceChangedAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
@@ -123,11 +124,15 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
     if (!scope) {
         return widgetConfigJsonResponse({ error: 'Not onboarded' }, { status: 400 });
     }
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) {
+        return widgetConfigJsonResponse({ error: 'Forbidden' }, { status: 403 });
+    }
     try {
         const rateLimitResult = await checkRateLimit({
             key: buildAnswerlatticeRateLimitKey(
                 'answerlattice-widget-config',
-                session.uId,
+                actorId,
                 scope.tenantId,
                 scope.storeId,
             ),

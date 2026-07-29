@@ -56,8 +56,12 @@ ENABLE_EDITOR_ONBOARDING: true;
 
 | Key                             | Purpose                  |
 | ------------------------------- | ------------------------ |
-| `editor_welcome_dismissed`      | Welcome banner dismissal |
-| `editor_outlet_onboarding_seen` | Outlet banner dismissal  |
+| `editor_welcome_dismissed:{tenantId}:{storeId}`      | Store-scoped welcome banner dismissal |
+| `editor_outlet_onboarding_seen:{tenantId}:{storeId}` | Store-scoped outlet banner dismissal  |
+
+Both keys use the exact `v1` marker. Invalid markers are removed, storage
+failures are contained and reported, and switching tenant/store recomputes both
+banner states instead of retaining the previous store's state.
 
 ---
 

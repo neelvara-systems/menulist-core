@@ -1,8 +1,14 @@
 import { createHash } from 'node:crypto';
+import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { buildAnswerlatticeVersionDriftReason } from '@data/shared/answerlatticeDrift';
 import type { AnswerlatticeAccessContext } from '@lib/answerlattice/accessControl';
+import {
+    isAnswerlatticeAnswerTestRunCurrent,
+    type AnswerlatticeAnswerTestSummary,
+} from '@lib/answerlattice/answerTestContracts';
+import { loadAnswerlatticeAnswerTestSummary } from '@lib/answerlattice/answerTestServer';
 import {
     ANSWERLATTICE_CACHE_SOURCES,
 } from '@lib/answerlattice/cacheVersionManifest';
@@ -70,6 +76,7 @@ export class AnswerlatticeReleaseError extends Error {
     constructor(
         public readonly status: number,
         public readonly publicMessage: string,
+        public readonly code = 'release_action_failed',
         message = publicMessage,
     ) {
         super(message);
@@ -103,6 +110,128 @@ const readStoredRelease = (
     }
     return parsed.data;
 };
+
+type StoredRelease = ReturnType<typeof readStoredRelease>;
+
+type AffectedAnswerProjection = {
+    answerId: string;
+    title: string | null;
+    lastValidatedInVersion: number;
+    currentDriftFlag: boolean;
+    currentReviewRequired: boolean;
+    willRequireReview: boolean;
+    matchReason: 'direct_entity_binding';
+    matchedEntityCount: number;
+};
+
+type InternalAffectedAnswerProjection = {
+    client: AffectedAnswerProjection;
+    entityIds: string[];
+    modifiedOnMillis: number;
+    releaseReason: string | null;
+};
+
+const getAffectedAnswersQuery = (
+    access: AnswerlatticeAccessContext,
+    release: StoredRelease,
+) => getDb().collection(ANSWERS)
+    .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+    .where('tId', '==', access.scope.tenantId)
+    .where('sId', '==', access.scope.storeId)
+    .where('scope.entityIds', 'array-contains-any', release.entityChanges)
+    .where('status', '==', 'active')
+    .limit(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS + 1);
+
+const projectAffectedAnswer = (
+    answerId: string,
+    raw: FirebaseFirestore.DocumentData,
+    release: StoredRelease,
+    access: AnswerlatticeAccessContext,
+): InternalAffectedAnswerProjection => {
+    const rawEntityIds: unknown = raw.scope?.entityIds;
+    const entityIds: string[] | null = Array.isArray(rawEntityIds)
+        && rawEntityIds.every((entityId: unknown) => typeof entityId === 'string' && entityId.trim())
+        ? Array.from(new Set((rawEntityIds as string[]).map(entityId => entityId.trim()))).sort()
+        : null;
+    const lastValidated = raw.productBinding?.lastValidatedInVersion;
+    if (raw.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || raw.tId !== access.scope.tenantId
+        || raw.sId !== access.scope.storeId
+        || !entityIds
+        || !Number.isSafeInteger(lastValidated)
+        || lastValidated < 0
+        || !raw.governance
+        || typeof raw.governance !== 'object') {
+        throw new AnswerlatticeReleaseError(409, 'An affected approved answer has an invalid stored shape.');
+    }
+    const changed = new Set(release.entityChanges);
+    const matchedEntityCount = entityIds.filter(entityId => changed.has(entityId)).length;
+    if (matchedEntityCount < 1) {
+        throw new AnswerlatticeReleaseError(409, 'An affected approved answer has an invalid release binding.');
+    }
+    const releaseReason = buildAnswerlatticeVersionDriftReason(
+        {
+            entityIds,
+            lastValidatedInVersion: lastValidated,
+        },
+        {
+            versionLabel: release.versionLabel,
+            versionNormalized: release.versionNormalized,
+            changedEntityIds: release.entityChanges,
+        },
+    );
+    const title = typeof raw.title === 'string' && raw.title.trim()
+        ? raw.title.trim().slice(0, 180)
+        : null;
+    return {
+        client: {
+            answerId,
+            title,
+            lastValidatedInVersion: lastValidated,
+            currentDriftFlag: Boolean(raw.governance.driftFlag),
+            currentReviewRequired: Boolean(raw.governance.reviewRequired),
+            willRequireReview: Boolean(releaseReason),
+            matchReason: 'direct_entity_binding',
+            matchedEntityCount,
+        },
+        entityIds,
+        modifiedOnMillis: getAnswerlatticeTimestampMillis(raw.modifiedOn),
+        releaseReason,
+    };
+};
+
+const projectAffectedAnswers = (
+    snapshot: FirebaseFirestore.QuerySnapshot,
+    release: StoredRelease,
+    access: AnswerlatticeAccessContext,
+): InternalAffectedAnswerProjection[] => {
+    if (snapshot.size > ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS) {
+        throw new AnswerlatticeReleaseError(409, 'This release affects more answers than one safe activation can process.');
+    }
+    return snapshot.docs
+        .map(document => projectAffectedAnswer(document.id, document.data(), release, access))
+        .sort((left, right) => left.client.answerId.localeCompare(right.client.answerId));
+};
+
+const buildReleaseImpactFingerprint = (
+    releaseId: string,
+    release: StoredRelease,
+    answers: InternalAffectedAnswerProjection[],
+) => sha256(stableJson({
+    affectedAnswers: answers.map(answer => ({
+        answerId: answer.client.answerId,
+        currentDriftFlag: answer.client.currentDriftFlag,
+        currentReviewRequired: answer.client.currentReviewRequired,
+        entityIds: answer.entityIds,
+        lastValidatedInVersion: answer.client.lastValidatedInVersion,
+        modifiedOnMillis: answer.modifiedOnMillis,
+    })),
+    entityChanges: [...release.entityChanges].sort(),
+    releaseId,
+    releasedAtMillis: getAnswerlatticeTimestampMillis(release.releasedAt),
+    versionLabel: release.versionLabel,
+    versionNormalized: release.versionNormalized,
+}));
 
 const buildAudit = (
     access: AnswerlatticeAccessContext,
@@ -217,9 +346,119 @@ async function createRelease(
     return { success: true, action: 'create', releaseId, status: replayStatus, replayed };
 }
 
+const getReleaseAnswerTestProof = async (
+    releaseId: string,
+    release: StoredRelease,
+    action: Extract<AnswerlatticeReleaseAction, { action: 'preview_impact' }>,
+    access: AnswerlatticeAccessContext,
+) => {
+    const empty = {
+        linkedCaseCount: 0,
+        criticalCaseCount: 0,
+        failedCaseCount: 0,
+        criticalFailureCount: 0,
+        lastRunAt: null,
+    };
+    if (!action.includeAnswerTestProof) {
+        return { state: 'not_requested' as const, ...empty };
+    }
+    if (access.permissions[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE] !== true) {
+        return { state: 'permission_required' as const, ...empty };
+    }
+
+    const summary: AnswerlatticeAnswerTestSummary = await loadAnswerlatticeAnswerTestSummary({
+        tId: access.scope.tenantId,
+        sId: access.scope.storeId,
+    });
+    const changedEntities = new Set(release.entityChanges);
+    const linkedCases = summary.cases
+        .filter(testCase => (
+            testCase.active
+            && testCase.relatedEntityIds.some(entityId => changedEntities.has(entityId))
+        ))
+        .sort((left, right) => left.id.localeCompare(right.id));
+    const criticalCaseCount = linkedCases.filter(testCase => testCase.riskLevel === 'critical').length;
+    const base = {
+        linkedCaseCount: linkedCases.length,
+        criticalCaseCount,
+        failedCaseCount: 0,
+        criticalFailureCount: 0,
+        lastRunAt: null,
+    };
+    if (linkedCases.length === 0) {
+        return { state: 'no_linked_tests' as const, ...base };
+    }
+
+    const latestRun = summary.runs
+        .filter(run => run.releaseId === releaseId)
+        .sort((left, right) => Date.parse(right.completedAt) - Date.parse(left.completedAt))[0];
+    if (!latestRun) {
+        return { state: 'missing' as const, ...base };
+    }
+
+    const selectedCaseIds = linkedCases.map(testCase => testCase.id);
+    const resultCaseIds = latestRun.results.map(result => result.caseId).sort();
+    const coversCurrentCases = selectedCaseIds.length === resultCaseIds.length
+        && selectedCaseIds.every((caseId, index) => caseId === resultCaseIds[index]);
+    const lastRunAt = Number.isFinite(Date.parse(latestRun.completedAt))
+        ? new Date(latestRun.completedAt).toISOString()
+        : null;
+    const runBase = {
+        linkedCaseCount: linkedCases.length,
+        criticalCaseCount,
+        failedCaseCount: latestRun.failedCount,
+        criticalFailureCount: latestRun.criticalFailureCount,
+        lastRunAt,
+    };
+    if (!isAnswerlatticeAnswerTestRunCurrent(latestRun, summary)
+        || latestRun.releaseVersion !== release.versionLabel
+        || !coversCurrentCases) {
+        return { state: 'stale' as const, ...runBase };
+    }
+    if (latestRun.criticalFailureCount > 0) {
+        return { state: 'blocked' as const, ...runBase };
+    }
+    if (latestRun.failedCount > 0) {
+        return { state: 'review' as const, ...runBase };
+    }
+    return { state: 'ready' as const, ...runBase };
+};
+
+async function previewReleaseImpact(
+    action: Extract<AnswerlatticeReleaseAction, { action: 'preview_impact' }>,
+    access: AnswerlatticeAccessContext,
+): Promise<AnswerlatticeReleaseActionResult> {
+    const db = getDb();
+    const releaseSnapshot = await db.collection(RELEASES).doc(action.releaseId).get();
+    const release = readStoredRelease(releaseSnapshot, access);
+    if (release.status !== 'pending') {
+        throw new AnswerlatticeReleaseError(
+            409,
+            'Only a pending release can be reviewed before activation.',
+            'release_impact_preview_unavailable',
+        );
+    }
+
+    const answersSnapshot = await getAffectedAnswersQuery(access, release).get();
+    const affectedAnswers = projectAffectedAnswers(answersSnapshot, release, access);
+    const answerTestProof = await getReleaseAnswerTestProof(action.releaseId, release, action, access);
+    return {
+        success: true,
+        action: 'preview_impact',
+        releaseId: action.releaseId,
+        status: 'pending',
+        impactFingerprint: buildReleaseImpactFingerprint(action.releaseId, release, affectedAnswers),
+        affectedAnswerCount: affectedAnswers.length,
+        reviewRequiredCount: affectedAnswers.filter(answer => answer.client.willRequireReview).length,
+        affectedAnswers: affectedAnswers.map(answer => answer.client),
+        answerTestProof,
+    };
+}
+
 const claimReleaseActivation = async (
     releaseId: string,
     requestId: string,
+    impactFingerprint: string,
     access: AnswerlatticeAccessContext,
 ) => {
     const db = getDb();
@@ -231,6 +470,13 @@ const claimReleaseActivation = async (
         const snapshot = await transaction.get(releaseRef);
         const release = readStoredRelease(snapshot, access);
         if (release.status === 'active') {
+            if (release.impactFingerprint !== impactFingerprint) {
+                throw new AnswerlatticeReleaseError(
+                    409,
+                    'This release was activated from a different impact review.',
+                    'release_impact_preview_stale',
+                );
+            }
             alreadyActive = {
                 evaluatedAnswers: release.driftEvaluation?.evaluatedAnswers || 0,
                 driftedAnswers: release.driftEvaluation?.driftedAnswers || 0,
@@ -246,11 +492,23 @@ const claimReleaseActivation = async (
             throw new AnswerlatticeReleaseError(409, 'This release is already being activated.');
         }
 
+        const answersSnapshot = await transaction.get(getAffectedAnswersQuery(access, release));
+        const affectedAnswers = projectAffectedAnswers(answersSnapshot, release, access);
+        const currentFingerprint = buildReleaseImpactFingerprint(releaseId, release, affectedAnswers);
+        if (currentFingerprint !== impactFingerprint) {
+            throw new AnswerlatticeReleaseError(
+                409,
+                'The release impact changed. Review the latest impact before activating.',
+                'release_impact_preview_stale',
+            );
+        }
+
         const now = Timestamp.now();
         transaction.update(releaseRef, {
             status: 'processing',
             activation: {
                 requestId,
+                impactFingerprint,
                 startedAt: now,
                 leaseExpiresAt: Timestamp.fromMillis(now.toMillis() + ANSWERLATTICE_RELEASE_ACTIVATION_LEASE_MS),
             },
@@ -265,6 +523,7 @@ const claimReleaseActivation = async (
 async function finishReleaseActivation(
     releaseId: string,
     requestId: string,
+    impactFingerprint: string,
     access: AnswerlatticeAccessContext,
 ) {
     const db = getDb();
@@ -281,53 +540,35 @@ async function finishReleaseActivation(
             driftedAnswers = release.driftEvaluation?.driftedAnswers || 0;
             return;
         }
-        if (release.status !== 'processing' || release.activation?.requestId !== requestId) {
+        if (release.status !== 'processing'
+            || release.activation?.requestId !== requestId
+            || release.activation.impactFingerprint !== impactFingerprint) {
             throw new AnswerlatticeReleaseError(409, 'Release activation ownership changed. Try again.');
         }
 
-        const answersQuery = db.collection(ANSWERS)
-            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
-            .where('tId', '==', access.scope.tenantId)
-            .where('sId', '==', access.scope.storeId)
-            .where('scope.entityIds', 'array-contains-any', release.entityChanges)
-            .where('status', '==', 'active')
-            .limit(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS + 1);
-        const answersSnapshot = await transaction.get(answersQuery);
-        if (answersSnapshot.size > ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS) {
-            throw new AnswerlatticeReleaseError(409, 'This release affects more answers than one safe activation can process.');
+        const answersSnapshot = await transaction.get(getAffectedAnswersQuery(access, release));
+        const affectedAnswers = projectAffectedAnswers(answersSnapshot, release, access);
+        const currentFingerprint = buildReleaseImpactFingerprint(releaseId, release, affectedAnswers);
+        if (currentFingerprint !== impactFingerprint) {
+            throw new AnswerlatticeReleaseError(
+                409,
+                'The release impact changed. Review the latest impact before activating.',
+                'release_impact_preview_stale',
+            );
         }
+        const affectedAnswersById = new Map(
+            affectedAnswers.map(answer => [answer.client.answerId, answer]),
+        );
         const invalidationOwnership = await readReleaseInvalidationOwnership(transaction, access);
 
         evaluatedAnswers = answersSnapshot.size;
         for (const answerSnapshot of answersSnapshot.docs) {
             const answer = answerSnapshot.data() as Record<string, any>;
-            const entityIds = Array.isArray(answer.scope?.entityIds)
-                && answer.scope.entityIds.every((entityId: unknown) => typeof entityId === 'string')
-                ? answer.scope.entityIds as string[]
-                : null;
-            const lastValidated = answer.productBinding?.lastValidatedInVersion;
-            if (answer.pId !== PRODUCT_IDS.ANSWERLATTICE
-                || answer.tId !== access.scope.tenantId
-                || answer.sId !== access.scope.storeId
-                || !entityIds
-                || !Number.isSafeInteger(lastValidated)
-                || lastValidated < 0
-                || !answer.governance
-                || typeof answer.governance !== 'object') {
-                throw new AnswerlatticeReleaseError(409, 'An affected approved answer has an invalid stored shape.');
+            const affected = affectedAnswersById.get(answerSnapshot.id);
+            if (!affected) {
+                throw new AnswerlatticeReleaseError(409, 'The affected-answer projection changed during activation.');
             }
-            if (lastValidated >= release.versionNormalized) continue;
-            const releaseReason = buildAnswerlatticeVersionDriftReason(
-                {
-                    entityIds,
-                    lastValidatedInVersion: lastValidated,
-                },
-                {
-                    versionLabel: release.versionLabel,
-                    versionNormalized: release.versionNormalized,
-                    changedEntityIds: release.entityChanges,
-                },
-            );
+            const releaseReason = affected.releaseReason;
             if (!releaseReason) continue;
             const previousReason = typeof answer.governance.driftReason === 'string'
                 ? answer.governance.driftReason.trim()
@@ -368,6 +609,7 @@ async function finishReleaseActivation(
         transaction.update(releaseRef, {
             status: 'active',
             activation: FieldValue.delete(),
+            impactFingerprint,
             activatedAt: now,
             driftEvaluation: {
                 status: 'completed',
@@ -384,6 +626,7 @@ async function finishReleaseActivation(
                 status: 'active',
                 evaluatedAnswers,
                 driftedAnswers,
+                impactFingerprint,
             }),
         );
         transaction.set(
@@ -450,6 +693,7 @@ const releaseActivationFailure = async (
     releaseId: string,
     requestId: string,
     access: AnswerlatticeAccessContext,
+    failureCode = 'release_drift_evaluation_failed',
 ) => {
     const db = getDb();
     const actor = getActor(access);
@@ -486,7 +730,7 @@ const releaseActivationFailure = async (
                 evaluatedAnswers: 0,
                 driftedAnswers: 0,
                 failedAt: now,
-                failureCode: 'release_drift_evaluation_failed',
+                failureCode,
             },
             modifiedOn: now,
             modifiedBy: actor.label,
@@ -496,7 +740,7 @@ const releaseActivationFailure = async (
                 failureAuditRef,
                 buildAudit(access, actor.id, 'release_activation_failed', releaseId, { status: 'processing' }, {
                     status: 'pending',
-                    failureCode: 'release_drift_evaluation_failed',
+                    failureCode,
                 }),
             );
         }
@@ -514,7 +758,12 @@ async function activateRelease(
     action: Extract<AnswerlatticeReleaseAction, { action: 'activate' }>,
     access: AnswerlatticeAccessContext,
 ): Promise<AnswerlatticeReleaseActionResult> {
-    const alreadyActive = await claimReleaseActivation(action.releaseId, action.requestId, access);
+    const alreadyActive = await claimReleaseActivation(
+        action.releaseId,
+        action.requestId,
+        action.impactFingerprint,
+        access,
+    );
     if (alreadyActive) {
         return {
             success: true,
@@ -527,7 +776,12 @@ async function activateRelease(
     }
 
     try {
-        const result = await finishReleaseActivation(action.releaseId, action.requestId, access);
+        const result = await finishReleaseActivation(
+            action.releaseId,
+            action.requestId,
+            action.impactFingerprint,
+            access,
+        );
         return {
             success: true,
             action: 'activate',
@@ -538,7 +792,15 @@ async function activateRelease(
         };
     } catch (error) {
         try {
-            await releaseActivationFailure(action.releaseId, action.requestId, access);
+            await releaseActivationFailure(
+                action.releaseId,
+                action.requestId,
+                access,
+                error instanceof AnswerlatticeReleaseError
+                    && error.code === 'release_impact_preview_stale'
+                    ? 'release_impact_preview_stale'
+                    : 'release_drift_evaluation_failed',
+            );
         } catch (recoveryError) {
             logRuntimeFailure('answerlattice_release_activation_failure_marker_failed', recoveryError, {
                 ...getBoundedRuntimeStringContext('releaseId', action.releaseId),
@@ -563,7 +825,9 @@ export const executeAnswerlatticeReleaseAction = async (
     }
     const result = action.action === 'create'
         ? await createRelease(action, access)
-        : await activateRelease(action, access);
+        : action.action === 'preview_impact'
+            ? await previewReleaseImpact(action, access)
+            : await activateRelease(action, access);
     return {
         ...result,
         scope: {

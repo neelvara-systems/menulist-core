@@ -5,9 +5,9 @@
 **Author:** Lead Architect (Cascade)  
 **Source:** ChatGPT Brainstorm + Codebase Analysis + Architecture Alignment + Market Research (Feb 2026)  
 **Applies:** 3-Year Architecture Freeze Rule  
-**Last Audit:** July 16, 2026 (token-free get-only listener mirror, kill-switch coverage, permission parity, seen retry, expired-slide recovery, cache preservation, migration guard, and source-gate hardening)
+**Last Audit:** July 29, 2026 (private bearer-token control, server-authoritative owner mutations, scoped cache invalidation, offline-cache truth guard, 720p pagination, artwork safe area, health semantics, and expiry refresh)
 
-## Current Release Boundary (July 16, 2026)
+## Current Release Boundary (July 29, 2026)
 
 This spec preserves the locked Digital Screens product boundary and source-backed implementation evidence. It is not a current launch certificate.
 
@@ -24,7 +24,7 @@ Current Digital Screens release approval routes through:
 
 The dedicated local source gate does not replace browser TV smoke, physical-device QA, Firebase deploy evidence, Vercel deploy evidence, or production-host runtime verification.
 
-The token-free listener rule has a rollout dependency: deploy the safe app and Functions writers, run `backfill:digital-screen-public-mirrors` for the target project, verify no legacy token-bearing mirror remains, and only then deploy the tightened Firestore rule. This prevents existing connected screens from losing their listener during migration.
+The private control rule has an ordered rollout dependency: deploy dual-read app/Functions code, run `backfill:digital-screen-public-mirrors`, run `backfill:digital-screen-private-controls`, verify no token remains in `campaigns_{storeId}.screen`, and only then deploy the tightened Firestore rule. The owner API and public resolver accept legacy summary tokens only during this migration window.
 
 ---
 
@@ -74,7 +74,7 @@ Not a side feature. Infrastructure expansion.
 
 ### Source Gate
 
-Digital Screens freshness claims must match the active source path: `/screen/[token]` reads through a 60-second `screen-data` server cache, public display clients render cache-first from localStorage, and connected screens refresh after acknowledged public-output writes bump `screen.contentVersion` and the public-safe `platformSummary/screen_{storeId}` listener mirror. Manual browser refresh remains the owner-facing fallback when a TV does not receive the listener reload. Guard with `npm run verify:digital-screens-boundary`.
+Digital Screens freshness claims must match the active source path: private control token lookup, canonical screen state, a 60-second token-hashed state cache, a store-scoped menu cache, and the public-safe `platformSummary/screen_{storeId}` content-version listener. Local content is used only offline and only for the same `contentVersion`. Manual browser refresh remains the fallback when a TV does not receive the listener reload. Guard with `npm run verify:digital-screens-boundary`.
 
 ### The Defining Principle
 
@@ -537,7 +537,7 @@ When a campaign targets `digital_screen` surface:
 ┌───────────────────────────────────────────┐
 │  Digital Screen                              │
 │                                              │
-│  Status: Running ✓                           │
+│  Status: Link ready                          │
 │                                              │
 │  Screen links:                               │
 │  Menu Board: xyz.menulist.com/screen/abc123  │
@@ -746,7 +746,7 @@ ChatGPT suggested: "TV shows pairing code → owner scans from phone → screen 
 | Broken image fallback on MenuBoard thumbnails               | ✅ SHIPPED |
 | MenuBoard listener offline state + 30min retry              | ✅ SHIPPED |
 | Sold-out state messaging improvement                        | ✅ SHIPPED |
-| Menu size guardrail (MAX_TOTAL_ITEMS=200)                   | ✅ SHIPPED |
+| Menu size guardrail (500-item fallback ceiling; height/width-aware pages) | ✅ SHIPPED |
 | Auto-fullscreen recovery on both modes                      | ✅ SHIPPED |
 | Screen activity status in Settings UI                       | ✅ SHIPPED |
 | "Main TV" / "Second TV" labels in Settings                  | ✅ SHIPPED |

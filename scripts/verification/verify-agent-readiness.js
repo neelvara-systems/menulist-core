@@ -660,7 +660,8 @@ function verifyEnvironmentTargets() {
   assert(DEPLOYMENT_TARGETS.preview.neelvara.domains.includes('neelvara.menulist.online'), 'Preview Neelvara domain must include neelvara.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.answerlattice.domains.includes('answerlattice.menulist.online'), 'Preview Answerlattice domain must include answerlattice.menulist.online');
   assert(DEPLOYMENT_TARGETS.preview.campaigncue.domains.includes('campaigncue.menulist.online'), 'Preview CampaignCue domain must include campaigncue.menulist.online');
-  assert(DEPLOYMENT_TARGETS.preview.mycodex.domains.includes('menulist.digital'), 'Preview MyCodex domain must include menulist.digital');
+  assert(DEPLOYMENT_TARGETS.preview.signaldesk.domains.includes('signaldesk.menulist.online'), 'Preview SignalDesk domain must include signaldesk.menulist.online');
+  assert(DEPLOYMENT_TARGETS.preview.mycodex.domains.length === 0, 'Preview MyCodex must not require a public domain');
   assert(getExpectedFirebaseProjectId('menulist', 'preview') === 'menulist-qa', 'Preview MenuList Firebase project must be menulist-qa');
   assert(getExpectedFirebaseProjectId('neelvara', 'preview') === '', 'Preview Neelvara must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'preview') === 'answerlattice-qa', 'Preview Answerlattice Firebase project must be answerlattice-qa');
@@ -671,7 +672,8 @@ function verifyEnvironmentTargets() {
   assert(DEPLOYMENT_TARGETS.production.neelvara.domains.includes('neelvara.com'), 'Production Neelvara domain must include neelvara.com');
   assert(DEPLOYMENT_TARGETS.production.answerlattice.domains.includes('answerlattice.com'), 'Production Answerlattice domain must include answerlattice.com');
   assert(DEPLOYMENT_TARGETS.production.campaigncue.domains.includes('campaigncue.ai'), 'Production CampaignCue domain must include campaigncue.ai');
-  assert(DEPLOYMENT_TARGETS.production.mycodex.domains.includes('menulist.digital'), 'Production MyCodex domain must include menulist.digital');
+  assert(DEPLOYMENT_TARGETS.production.signaldesk.domains.includes('signaldesk.menulist.online'), 'Production SignalDesk domain must use signaldesk.menulist.online');
+  assert(DEPLOYMENT_TARGETS.production.mycodex.domains.length === 0, 'Production MyCodex must not require a public domain');
   assert(getExpectedFirebaseProjectId('menulist', 'production') === 'menulist', 'Production MenuList Firebase project must be menulist');
   assert(getExpectedFirebaseProjectId('neelvara', 'production') === '', 'Production Neelvara must not require a Firebase project');
   assert(getExpectedFirebaseProjectId('answerlattice', 'production') === 'answerlattice', 'Production Answerlattice Firebase project must be answerlattice');
@@ -734,8 +736,14 @@ function verifyEnvironmentTargets() {
     ['Staging env template', envStagingExample],
     ['Production env template', envProductionExample],
   ]) {
+    assertIncludes(content, 'MENULIST_FIREBASE_PROJECT_ID', `${label} canonical MenuList Firebase env naming`);
+    assertIncludes(content, 'NEXT_PUBLIC_MENULIST_FIREBASE_PROJECT_ID', `${label} canonical public MenuList Firebase env naming`);
+    assertIncludes(content, 'MENULIST_GEMINI_AI_KEY', `${label} canonical MenuList Gemini env naming`);
+    assertIncludes(content, 'MENULIST_RAZORPAY_KEY_ID', `${label} canonical MenuList Razorpay env naming`);
+    assertIncludes(content, 'MENULIST_UPSTASH_REDIS_REST_URL', `${label} canonical MenuList Upstash env naming`);
     assertIncludes(content, 'ANSWERLATTICE_FIREBASE_PROJECT_ID', `${label} product env-key naming`);
     assertIncludes(content, 'CAMPAIGNCUE_FIREBASE_PROJECT_ID', `${label} product env-key naming`);
+    assertIncludes(content, 'SIGNALDESK_FIREBASE_PROJECT_ID', `${label} SignalDesk env-key naming`);
     assertIncludes(content, 'MYCODEX_BASIC_AUTH_USER', `${label} MyCodex static auth env`);
     assertIncludes(content, 'MYCODEX_BASIC_AUTH_PASSWORD', `${label} MyCodex static auth env`);
     assertIncludes(content, 'MYCODEX_SESSION_SECRET', `${label} MyCodex static auth env`);
@@ -748,6 +756,8 @@ function verifyEnvironmentTargets() {
     assertIncludes(content, 'BATCH_IMAGE_GENERATION_WORKER_SECRET', `${label} Cloud Tasks worker secret prerequisite`);
     assertIncludes(content, 'ENABLE_MESSAGING_ONBOARDING=false', `${label} messaging onboarding provider processing must fail closed`);
     assertNotIncludes(content, 'WHATSAPP_API_TOKEN', `${label} must not use stale WhatsApp API token env naming`);
+    assertNotIncludes(content, 'MENULIST_SIGNALDESK_', `${label} must not use stale MenuList-prefixed SignalDesk env keys`);
+    assertNotIncludes(content, 'NEXT_PUBLIC_MENULIST_SIGNALDESK_', `${label} must not use stale public MenuList-prefixed SignalDesk env keys`);
     assertNotIncludes(content, 'NEXT_PUBLIC_AL_', `${label} must not use shorthand Answerlattice env keys`);
     assertNotIncludes(content, 'AL_FIREBASE_PROJECT_ID', `${label} must not use shorthand Answerlattice env keys`);
     assertNotIncludes(content, 'NEXT_PUBLIC_CC_', `${label} must not use shorthand CampaignCue env keys`);
@@ -2130,7 +2140,7 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(continuousMenuIntelligenceLogicVerification, 'CMI logic verification complete. All 6 flows verified. Zero critical issues.', 'CMI logic verification stale zero-issues certification');
   assertIncludes(projectsDatabase, 'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");', 'Pricing current project save public cache invalidation');
   assertNotIncludes(projectsDatabase, 'runPricingIntegrity', 'Pricing dormant engine must not be wired into updateProject');
-  assertIncludes(publicClientCache, 'await touchDigitalScreenContentVersion(storeId, context, { projectId });', 'Pricing current screen content-version touch path');
+  assertIncludes(publicClientCache, 'touchScreen: true,', 'Pricing current screen content-version touch path');
   assertIncludes(pricingIntegrityEngine, 'export async function runPricingIntegrity', 'Pricing dormant engine source scaffold');
   assertIncludes(pricingPdfQueue, 'const ENABLE_BACKGROUND_PDF_REGEN = false;', 'Pricing background PDF queue disabled source');
   assertIncludes(projectShareModal, "const { generateMenuPdf, downloadPdf } = await import('@lib/export/menuPdfGenerator');", 'Pricing current on-demand PDF share path');

@@ -8,9 +8,11 @@
  */
 
 import { getSessionId } from '@lib/analytics/session';
+import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { trackEvent, TrackingEvent } from '@lib/analytics/unified';
 import { detectInstalled } from './installDetection';
 import { getBoundedPwaStringContext, logPwaTrackingFailure } from './pwaDiagnostics';
+import { parseCanonicalPwaTimestamp } from './storageValue';
 
 export type ShortcutSource =
   | 'menu'
@@ -33,6 +35,8 @@ const SHORTCUT_EVENT_MAP: Record<ShortcutSource, TrackingEvent> = {
 };
 
 let reportedShortcutSourceParseFailure = false;
+const shortcutTrackingInFlight = new Set<string>();
+const SHORTCUT_FIRED_SESSION_KEY_PREFIX = 'menulist_customerApp_shortcutFired';
 
 function logShortcutSourceParseFailure(error: unknown, search: string): void {
   if (reportedShortcutSourceParseFailure) return;
@@ -89,6 +93,34 @@ export async function detectAndTrackShortcutLaunch(
 
   const source = parseShortcutSource(window.location.search);
   if (!source) return null;
+  const shortcutScopeKey = getTenantStoreStorageKey(
+    `${SHORTCUT_FIRED_SESSION_KEY_PREFIX}_${source}`,
+    tenantId,
+    storeId,
+  );
+  if (!shortcutScopeKey) {
+    logPwaTrackingFailure('customer_app_shortcut_scope_invalid', new Error('Invalid shortcut scope'), {
+      ...getBoundedPwaStringContext('storeId', storeId),
+      ...getBoundedPwaStringContext('tenantId', tenantId),
+      ...getBoundedPwaStringContext('shortcutSource', source),
+    });
+    return null;
+  }
+  try {
+    const rawCompletion = window.sessionStorage.getItem(shortcutScopeKey);
+    if (rawCompletion) {
+      if (parseCanonicalPwaTimestamp(rawCompletion) !== null) return null;
+      window.sessionStorage.removeItem(shortcutScopeKey);
+    }
+  } catch (error) {
+    logPwaTrackingFailure('customer_app_shortcut_session_guard_failed', error, {
+      ...getBoundedPwaStringContext('storeId', storeId),
+      ...getBoundedPwaStringContext('tenantId', tenantId),
+      ...getBoundedPwaStringContext('shortcutSource', source),
+    });
+  }
+  if (shortcutTrackingInFlight.has(shortcutScopeKey)) return null;
+  shortcutTrackingInFlight.add(shortcutScopeKey);
 
   try {
     await trackEvent(SHORTCUT_EVENT_MAP[source], {
@@ -99,6 +131,15 @@ export async function detectAndTrackShortcutLaunch(
       businessDayEndTime,
       includeLocation,
     });
+    try {
+      window.sessionStorage.setItem(shortcutScopeKey, String(Date.now()));
+    } catch (error) {
+      logPwaTrackingFailure('customer_app_shortcut_session_guard_failed', error, {
+        ...getBoundedPwaStringContext('storeId', storeId),
+        ...getBoundedPwaStringContext('tenantId', tenantId),
+        ...getBoundedPwaStringContext('shortcutSource', source),
+      });
+    }
     return source;
   } catch (err) {
     logPwaTrackingFailure('customer_app_shortcut_tracking_failed', err, {
@@ -110,5 +151,7 @@ export async function detectAndTrackShortcutLaunch(
       includeLocation,
     });
     return null;
+  } finally {
+    shortcutTrackingInFlight.delete(shortcutScopeKey);
   }
 }

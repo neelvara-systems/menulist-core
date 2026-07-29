@@ -10,6 +10,13 @@ export const RESELLER_PRIVATE_RESPONSE_HEADERS = {
     'X-Content-Type-Options': 'nosniff',
 } as const;
 
+export const withResellerPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(RESELLER_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
+
 export const resellerPrivateJson = (
     body: unknown,
     init: ResponseInit = {},
@@ -38,6 +45,7 @@ export async function applyResellerReadRateLimit(session: Session, routeKey: str
     const rateLimit = await checkRateLimit({
         key: `reseller-read:${routeKey}:${userRateLimitHash}:${resellerProfileRateLimitHash}`,
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
 
     if (rateLimit.allowed) return null;
@@ -45,7 +53,9 @@ export async function applyResellerReadRateLimit(session: Session, routeKey: str
     const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
     return resellerPrivateJson(
         {
-            error: 'Too many requests. Please try again later.',
+            error: rateLimit.reason === 'provider_unavailable'
+                ? 'Service temporarily unavailable. Please try again later.'
+                : 'Too many requests. Please try again later.',
             retryAfter: waitSeconds,
             resetAt: rateLimit.resetAt,
         },
@@ -56,7 +66,7 @@ export async function applyResellerReadRateLimit(session: Session, routeKey: str
                 'X-RateLimit-Remaining': String(rateLimit.remaining),
                 'X-RateLimit-Reset': String(rateLimit.resetAt),
             },
-            status: 429,
+            status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
         },
     );
 }

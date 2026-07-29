@@ -55,7 +55,11 @@ const normalizeStorageId = (value: unknown): string | null => {
 const normalizeTimestamp = (value: unknown): string | null => {
     if (typeof value !== 'string' || value.length > 40) return null;
     const timestamp = new Date(value);
-    return Number.isFinite(timestamp.getTime()) && timestamp.toISOString() === value ? value : null;
+    return Number.isFinite(timestamp.getTime())
+        && timestamp.getTime() <= Date.now()
+        && timestamp.toISOString() === value
+        ? value
+        : null;
 };
 
 const getStorageKey = (

@@ -12,7 +12,7 @@ import {
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Flex, Modal, Typography, message, theme } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LuCheck, LuMaximize2, LuRefreshCcw, LuRotateCcw, LuRotateCw, LuX } from 'react-icons/lu';
+import { LuCheck, LuMaximize2, LuQrCode, LuRefreshCcw, LuRotateCcw, LuRotateCw, LuX } from 'react-icons/lu';
 
 interface MediaImageAdjustModalProps {
     fileName?: string;
@@ -89,6 +89,7 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
     const aspectRatio = useMemo(() => getSafeMediaAspectRatio(imageType, undefined), [imageType]);
     const numericAspectRatio = useMemo(() => parseMediaAspectRatio(aspectRatio), [aspectRatio]);
     const previewMaxWidth = numericAspectRatio < 1 ? (isMobile ? 260 : 320) : undefined;
+    const showDigitalScreenSafeArea = imageType === 'digitalScreenSlide';
 
     const getPreviewFrame = useCallback(() => {
         const canvas = canvasRef.current;
@@ -285,25 +286,80 @@ const MediaImageAdjustModal: React.FC<MediaImageAdjustModalProps> = ({
 
     const preview = (
         <Flex gap={14} vertical>
-            <canvas
-                aria-label="Image adjustment preview"
-                onPointerCancel={handlePointerEnd}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerEnd}
-                ref={canvasRef}
+            <div
                 style={{
                     alignSelf: previewMaxWidth ? 'center' : undefined,
                     aspectRatio: numericAspectRatio,
-                    background: token.colorFillAlter,
-                    border: `1px solid ${token.colorBorderSecondary}`,
-                    borderRadius: 8,
-                    cursor: 'grab',
-                    touchAction: 'none',
                     maxWidth: previewMaxWidth,
+                    position: 'relative',
                     width: '100%',
                 }}
-            />
+            >
+                <canvas
+                    aria-label="Image adjustment preview"
+                    onPointerCancel={handlePointerEnd}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerEnd}
+                    ref={canvasRef}
+                    style={{
+                        aspectRatio: numericAspectRatio,
+                        background: token.colorFillAlter,
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                        borderRadius: 8,
+                        cursor: 'grab',
+                        display: 'block',
+                        height: '100%',
+                        touchAction: 'none',
+                        width: '100%',
+                    }}
+                />
+                {showDigitalScreenSafeArea && (
+                    <div
+                        aria-hidden="true"
+                        style={{
+                            border: '1px dashed rgba(255, 255, 255, 0.72)',
+                            borderRadius: 4,
+                            boxShadow: '0 0 0 999px rgba(0, 0, 0, 0.16)',
+                            inset: '5%',
+                            pointerEvents: 'none',
+                            position: 'absolute',
+                        }}
+                    >
+                        <div
+                            style={{
+                                alignItems: 'center',
+                                background: 'rgba(0, 0, 0, 0.52)',
+                                border: '1px solid rgba(255, 255, 255, 0.68)',
+                                borderRadius: 4,
+                                color: '#fff',
+                                display: 'flex',
+                                height: '18%',
+                                justifyContent: 'center',
+                                minHeight: 30,
+                                minWidth: 30,
+                                position: 'absolute',
+                                right: '1.5%',
+                                top: '1.5%',
+                                width: '10%',
+                            }}
+                        >
+                            <LuQrCode size={isMobile ? 16 : 20} />
+                        </div>
+                        <div
+                            style={{
+                                border: '1px solid rgba(255, 255, 255, 0.58)',
+                                borderRadius: 3,
+                                bottom: '1.5%',
+                                height: 10,
+                                position: 'absolute',
+                                right: '1.5%',
+                                width: '20%',
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
             {loadError ? (
                 <Typography.Text type="danger">{loadError}</Typography.Text>
             ) : (

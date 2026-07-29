@@ -17,14 +17,17 @@ import { logger } from "@lib/monitoring/logger";
 import { projectResellerManagementProfile } from "@lib/reseller/resellerManagementProfile";
 import { getEmailValidationError, validateEmail } from "@lib/validation/emailDomainValidator";
 import { LOGIN_USERNAME_PATTERN } from "@lib/auth/loginIdentifiers";
-import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { z } from "zod";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
-import { applyResellerReadRateLimit, resellerPrivateJson } from "../readRateLimit";
+import {
+    applyResellerReadRateLimit,
+    resellerPrivateJson,
+    withResellerPrivateHeaders,
+} from "../readRateLimit";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 /**
@@ -119,19 +122,21 @@ const getFirebaseErrorCode = (error: unknown): string | null => {
     return typeof code === "string" ? code : null;
 };
 
-const getProfileAdmissionResponse = (error: unknown): NextResponse | null => {
+const getProfileAdmissionResponse = (
+    error: unknown,
+): ReturnType<typeof resellerPrivateJson> | null => {
     const conflict = getResellerProfileAdmissionConflict(error);
     if (conflict === "email") {
-        return NextResponse.json({ error: "A reseller profile already uses this email." }, { status: 409 });
+        return resellerPrivateJson({ error: "A reseller profile already uses this email." }, { status: 409 });
     }
     if (conflict === "username") {
-        return NextResponse.json({ error: "A reseller profile already uses this username." }, { status: 409 });
+        return resellerPrivateJson({ error: "A reseller profile already uses this username." }, { status: 409 });
     }
     if (conflict === "profile") {
-        return NextResponse.json({ error: "Reseller profile changed while this request was running." }, { status: 409 });
+        return resellerPrivateJson({ error: "Reseller profile changed while this request was running." }, { status: 409 });
     }
     if (conflict === "total-cap") {
-        return NextResponse.json({
+        return resellerPrivateJson({
             error: `Maximum reseller accounts reached (${RESELLER_CAPS.MAX_TOTAL_RESELLERS}).`,
         }, { status: 409 });
     }
@@ -334,7 +339,7 @@ const getResellerUserWrite = (params: {
 export const POST = withAuth(async (request, session) => {
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            return NextResponse.json({ error: "Feature not available." }, { status: 404 });
+            return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
         }
 
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
@@ -342,18 +347,21 @@ export const POST = withAuth(async (request, session) => {
         const rateLimitResult = await checkRateLimit({
             key: `reseller-manage:${userRateLimitHash}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({
-                error: "Too many requests. Please try again later.",
+            return resellerPrivateJson({
+                error: rateLimitResult.reason === 'provider_unavailable'
+                    ? "Service temporarily unavailable. Please try again later."
+                    : "Too many requests. Please try again later.",
                 resetAt: rateLimitResult.resetAt,
-            }, { status: 429 });
+            }, { status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429 });
         }
 
         const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid input',
         });
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);
         const body = bodyResult.data;
         const isUpdate = (
             typeof body === "object"
@@ -368,7 +376,7 @@ export const POST = withAuth(async (request, session) => {
             const validation = validateAPIInput(UpdateResellerSchema, body);
             if (!validation.success) {
                 const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-                return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
+                return resellerPrivateJson({ error: 'Invalid input', details: errorMsg }, { status: 400 });
             }
 
             const { profileId, ...updates } = validation.data;
@@ -376,13 +384,13 @@ export const POST = withAuth(async (request, session) => {
             // Verify profile exists
             const existing = await getResellerProfileById(profileId);
             if (!existing) {
-                return NextResponse.json({ error: "Reseller profile not found." }, { status: 404 });
+                return resellerPrivateJson({ error: "Reseller profile not found." }, { status: 404 });
             }
 
             const nextEmail = normalizeEmail(updates.email || existing.email);
             const emailValidation = validateEmail(nextEmail);
             if (!emailValidation.valid) {
-                return NextResponse.json({ error: getEmailValidationError(nextEmail) }, { status: 400 });
+                return resellerPrivateJson({ error: getEmailValidationError(nextEmail) }, { status: 400 });
             }
 
             const nextUsername = (updates.username || existing.username || '').trim();
@@ -395,11 +403,11 @@ export const POST = withAuth(async (request, session) => {
                 [existingAuthUser?.uid, existing.authUserId].filter(Boolean) as string[],
             );
             if (duplicateError) {
-                return NextResponse.json({ error: duplicateError }, { status: 409 });
+                return resellerPrivateJson({ error: duplicateError }, { status: 409 });
             }
 
             if (!existingAuthUser && !updates.password) {
-                return NextResponse.json({
+                return resellerPrivateJson({
                     error: "Set a password to create this reseller's login account.",
                 }, { status: 409 });
             }
@@ -471,26 +479,26 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
             });
 
-            return NextResponse.json({ success: true, profileId, action: 'updated' });
+            return resellerPrivateJson({ success: true, profileId, action: 'updated' });
         } else {
             // CREATE new profile
             const validation = validateAPIInput(CreateResellerSchema, body);
             if (!validation.success) {
                 const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-                return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
+                return resellerPrivateJson({ error: 'Invalid input', details: errorMsg }, { status: 400 });
             }
 
             const data = validation.data;
             const email = normalizeEmail(data.email);
             const emailValidation = validateEmail(email);
             if (!emailValidation.valid) {
-                return NextResponse.json({ error: getEmailValidationError(email) }, { status: 400 });
+                return resellerPrivateJson({ error: getEmailValidationError(email) }, { status: 400 });
             }
 
             const username = data.username.trim();
             const duplicateError = await assertResellerUniqueness(db, email, username);
             if (duplicateError) {
-                return NextResponse.json({ error: duplicateError }, { status: 409 });
+                return resellerPrivateJson({ error: duplicateError }, { status: 409 });
             }
 
             const syncedAccount = await syncResellerLoginAccount({
@@ -561,12 +569,12 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
             });
 
-            return NextResponse.json({ success: true, profileId: syncedAccount.uid, action: 'created' });
+            return resellerPrivateJson({ success: true, profileId: syncedAccount.uid, action: 'created' });
         }
     } catch (error) {
         logResellerApiFailure('reseller_manage_post_route_failed', error, {
             ...getBoundedResellerApiStringContext('userId', session.uId || session.user?.id),
         });
-        return NextResponse.json({ error: 'Failed to manage reseller profile.' }, { status: 500 });
+        return resellerPrivateJson({ error: 'Failed to manage reseller profile.' }, { status: 500 });
     }
 }, { requiredPlatformRole: 'PLATFORM' });

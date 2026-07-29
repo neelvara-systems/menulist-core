@@ -9,7 +9,8 @@
  * - `menu-store-${storeId}` → project data, decision blocks
  * - `store-${storeId}` → store details
  * - `client-stores` → public lookup and OBP summary helpers
- * - `screen-data` → digital screen SSR reads
+ * Digital screen state is invalidated by the exact token tag returned by the
+ * store-scoped content-version touch.
  *
  * 3-Year Freeze: Without explicit invalidation, price changes
  * could show stale data until the 60s cache window expires.

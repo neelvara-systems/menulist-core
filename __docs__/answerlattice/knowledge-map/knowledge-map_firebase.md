@@ -17,6 +17,8 @@ add owner writes without evidence that the current map is insufficient.
 | Open governance Knowledge Map | 2 point reads: existing graph summary + existing source-version control document |
 | Change selected entity/filter | 0 |
 | Expand or focus a connected entity | 0 |
+| Open with validated entity URL focus | 0 incremental reads |
+| Open Canonical Answers for selected entity | 0 until navigation; destination keeps its existing bounded load |
 | Manual refresh | 2 point reads |
 | Open public article topic map | 0 incremental reads |
 | Expand public heading | 0 |
@@ -49,6 +51,8 @@ The public article and category reads already occur for the article page. The ma
 - Graph summary is written only when source data changes.
 - A governance mutation does not add a map-specific write. Existing source-version invalidation makes the next map load report stale until the nightly rebuild.
 - Public map structure is not persisted.
+- Entity URL focus and canonical-answer handoff are browser navigation only;
+  no map interaction document or listener is created.
 
 ## Cost Stop Rule
 

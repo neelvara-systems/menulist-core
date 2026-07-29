@@ -3,14 +3,28 @@
 import PasteUpload, { PastedFile } from '@atoms/PasteUpload';
 import TiptapEditor from '@atoms/TiptapEditor';
 import { FEATURE_FLAGS } from '@config/features';
+import {
+    ANSWERLATTICE_GOVERNANCE_TABS,
+    ANSWERLATTICE_ROUTES,
+    getAnswerlatticeGovernanceRoute,
+} from '@constant/answerlattice/navigations';
 import { CHANGELOG_TAG_CONFIG, CHANGELOG_TAG_OPTIONS } from '@constant/changelog';
 import { getEntities } from '@database/answerlattice/entities';
-import { activateRelease, addRelease } from '@database/answerlattice/releases';
+import {
+    activateRelease,
+    addRelease,
+    AnswerlatticeReleaseClientError,
+    previewReleaseImpact,
+} from '@database/answerlattice/releases';
 import { getProductSurfacesForSession, rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/answerlattice/productSurfaces';
 import { addChangelogEntry, updateChangelogEntry } from '@database/changelog';
 import { useAnswerlatticePublicContentRequestScope } from '@hook/answerlattice/useAnswerlatticeCacheScope';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
+import {
+    getAnswerlatticeAnswerContextRoute,
+    getAnswerlatticeReleaseContextRoute,
+} from '@lib/answerlattice/ownerDecisionNavigation';
 import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -18,14 +32,53 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { ChangelogEntry } from '@type/changelog';
 import { getClockTimeInputFormat } from '@util/dateTime';
 import { getBase64, getYouTubeID } from '@util/utils';
-import { Button, DatePicker, Drawer, Flex, Form, Input, Select, Switch, TimePicker, Typography, Upload, message } from 'antd';
+import {
+    Alert,
+    Button,
+    DatePicker,
+    Drawer,
+    Flex,
+    Form,
+    Input,
+    Modal,
+    Select,
+    Switch,
+    TimePicker,
+    Typography,
+    Upload,
+    message,
+} from 'antd';
 import { RcFile } from 'antd/es/upload';
 import dayjs from 'dayjs';
 import { Timestamp } from 'firebase/firestore';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { LuExternalLink } from 'react-icons/lu';
 import KbTreeSelect from './KbTreeSelect';
 
 const { Title } = Typography;
+
+type ReleaseImpactPreview = Awaited<ReturnType<typeof previewReleaseImpact>>;
+
+const getAnswerTestProofCopy = (proof: ReleaseImpactPreview['answerTestProof']): string => {
+    switch (proof.state) {
+        case 'ready':
+            return `${proof.linkedCaseCount} linked Answer Tests have current passing proof.`;
+        case 'review':
+            return `${proof.failedCaseCount} linked Answer Tests need review before this release.`;
+        case 'blocked':
+            return `${proof.criticalFailureCount} critical Answer Tests are failing.`;
+        case 'stale':
+            return 'The latest linked Answer Tests proof is stale for the current suite or release.';
+        case 'missing':
+            return `${proof.linkedCaseCount} linked Answer Tests have not been run for this release.`;
+        case 'no_linked_tests':
+            return 'No active Answer Tests are linked directly to the changed product areas.';
+        case 'permission_required':
+            return 'Answer Tests proof is hidden because this role cannot manage governance.';
+        default:
+            return 'Answer Tests proof was not requested.';
+    }
+};
 
 interface AddEditChangelogProps {
     open: boolean;
@@ -46,6 +99,7 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
     const [attachments, setAttachments] = useState<any[]>([]);
     const isFormActive = useRef(false);
     const saveRequestSeedRef = useRef('');
+    const impactModalRef = useRef<ReturnType<typeof Modal.confirm> | null>(null);
     const { cachedKBCategories } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
 
     const kbLookup = useMemo(() => {
@@ -83,8 +137,10 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
         saveRequestSeedRef.current = open ? createRuntimeId('changelog_editor') : '';
         return () => {
             isFormActive.current = false;
+            impactModalRef.current?.destroy();
+            impactModalRef.current = null;
         };
-    }, [initialData?.id, open]);
+    }, [initialData?.id, open, requestScopeKey]);
 
     useEffect(() => {
         if (!open) return;
@@ -192,6 +248,106 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
         }
     }, [initialData, form, open]);
 
+    const confirmReleaseImpact = (impact: ReleaseImpactPreview): Promise<boolean> => (
+        new Promise((resolve) => {
+            let settled = false;
+            const settle = (confirmed: boolean) => {
+                if (settled) return;
+                settled = true;
+                impactModalRef.current = null;
+                resolve(confirmed);
+            };
+            const proofIsBlocked = impact.answerTestProof.state === 'blocked';
+            const previewRows = impact.affectedAnswers.slice(0, 6);
+            impactModalRef.current = Modal.confirm({
+                title: 'Review release support impact',
+                width: 640,
+                okText: proofIsBlocked ? 'Acknowledge and activate' : 'Activate and publish',
+                cancelText: 'Keep as draft',
+                okButtonProps: { danger: proofIsBlocked, style: { minHeight: 44 } },
+                cancelButtonProps: { style: { minHeight: 44 } },
+                content: (
+                    <Flex vertical gap={12} style={{ marginTop: 16 }}>
+                        <Typography.Text>
+                            {impact.affectedAnswerCount === 0
+                                ? 'No active approved answers are directly linked to the changed product areas.'
+                                : `${impact.affectedAnswerCount} active approved ${impact.affectedAnswerCount === 1 ? 'answer is' : 'answers are'} directly linked. ${impact.reviewRequiredCount} will be marked for review.`}
+                        </Typography.Text>
+                        <Alert
+                            type={proofIsBlocked ? 'error' : impact.answerTestProof.state === 'ready' ? 'success' : 'warning'}
+                            showIcon
+                            message={getAnswerTestProofCopy(impact.answerTestProof)}
+                        />
+                        {previewRows.length > 0 && (
+                            <Flex vertical gap={8}>
+                                {previewRows.map(answer => (
+                                    <Flex
+                                        key={answer.answerId}
+                                        justify="space-between"
+                                        align="flex-start"
+                                        gap={12}
+                                        wrap
+                                        style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: 8 }}
+                                    >
+                                        <Flex vertical gap={2}>
+                                            <Typography.Text strong>
+                                                {answer.title || answer.answerId}
+                                            </Typography.Text>
+                                            <Button
+                                                href={getAnswerlatticeAnswerContextRoute(
+                                                    getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
+                                                    answer.answerId,
+                                                )}
+                                                icon={<LuExternalLink />}
+                                                rel="noopener noreferrer"
+                                                style={{ alignSelf: 'flex-start', minHeight: 44, paddingInline: 0 }}
+                                                target="_blank"
+                                                type="link"
+                                            >
+                                                Review answer
+                                            </Button>
+                                        </Flex>
+                                        <Typography.Text type={answer.willRequireReview ? 'warning' : 'secondary'}>
+                                            {answer.willRequireReview
+                                                ? 'Will require review'
+                                                : 'Already valid for this version'}
+                                        </Typography.Text>
+                                    </Flex>
+                                ))}
+                                {impact.affectedAnswers.length > previewRows.length && (
+                                    <Typography.Text type="secondary">
+                                        {impact.affectedAnswers.length - previewRows.length} more directly linked answers
+                                    </Typography.Text>
+                                )}
+                            </Flex>
+                        )}
+                        {impact.answerTestProof.linkedCaseCount > 0
+                            && impact.answerTestProof.state !== 'permission_required' ? (
+                                <Button
+                                    href={getAnswerlatticeReleaseContextRoute(
+                                        ANSWERLATTICE_ROUTES.ANSWER_TESTS,
+                                        impact.releaseId,
+                                    )}
+                                    icon={<LuExternalLink />}
+                                    rel="noopener noreferrer"
+                                    style={{ alignSelf: 'flex-start', minHeight: 44 }}
+                                    target="_blank"
+                                >
+                                    Review linked Answer Tests
+                                </Button>
+                            ) : null}
+                        <Typography.Text type="secondary">
+                            Activation marks outdated linked answers for review. It does not approve or rewrite support knowledge.
+                        </Typography.Text>
+                    </Flex>
+                ),
+                onOk: () => settle(true),
+                onCancel: () => settle(false),
+                afterClose: () => settle(false),
+            });
+        })
+    );
+
     const handleSave = async (values: any) => {
         const operationScope = requestScope;
         const operationScopeKey = requestScopeKey;
@@ -271,7 +427,35 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 }, operationScope);
                 if (release?.action !== 'create') throw new Error('Release registration failed');
                 if (release.status !== 'active') {
-                    await activateRelease(release.releaseId, `${releaseRequestId}:activate`, operationScope);
+                    const impact = await previewReleaseImpact(release.releaseId, operationScope);
+                    if (currentScopeKeyRef.current !== operationScopeKey || !isFormActive.current) return;
+                    const confirmed = await confirmReleaseImpact(impact);
+                    if (currentScopeKeyRef.current !== operationScopeKey || !isFormActive.current) return;
+                    if (!confirmed) {
+                        if (initialData) {
+                            onSave({
+                                ...initialData,
+                                ...stagedEntryPayload,
+                                id: savedEntryId,
+                                releasedOn: Timestamp.fromDate(stagedEntryPayload.releasedOn.toDate()),
+                            });
+                        } else {
+                            onSave(null);
+                        }
+                        message.info('Draft saved. The release remains pending until you review and activate it.');
+                        form.resetFields();
+                        setAttachments([]);
+                        setKbSources([]);
+                        setYoutubeLinks([]);
+                        onClose();
+                        return;
+                    }
+                    await activateRelease(
+                        release.releaseId,
+                        `${releaseRequestId}:activate`,
+                        impact.impactFingerprint,
+                        operationScope,
+                    );
                 }
                 persistedPayload = { ...entryPayload, releaseId: release.releaseId };
                 await updateChangelogEntry(savedEntryId, { ...persistedPayload, requestId: `${requestSeed}:publish` }, operationScope);
@@ -320,6 +504,8 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
             setYoutubeLinks([]);
             onClose();
         } catch (error) {
+            const impactPreviewIsStale = error instanceof AnswerlatticeReleaseClientError
+                && error.code === 'release_impact_preview_stale';
             logAnswerlatticeFailure('answerlattice_changelog_save_failed', error, {
                 ...getBoundedAnswerlatticeStringContext('changelogEntryId', stagedEntryId || initialData?.id),
                 ...getBoundedAnswerlatticeStringContext('changelogVersion', normalizedVersion?.label),
@@ -346,7 +532,11 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                 } else {
                     onSave(null);
                 }
-                message.warning('The entry was saved as a draft because release propagation did not finish. Reopen it to retry publication.');
+                message.warning(
+                    impactPreviewIsStale
+                        ? 'The release impact changed before activation. The entry remains a draft; reopen it to review the current impact.'
+                        : 'The entry was saved as a draft because release propagation did not finish. Reopen it to retry publication.',
+                );
                 form.resetFields();
                 setAttachments([]);
                 setKbSources([]);

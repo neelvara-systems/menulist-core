@@ -23,6 +23,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { formatScreenPrice, getScreenDietType, hasScreenPrice, normalizeScreenCategoryName, truncateScreenText } from "@lib/screen/screenContent";
 import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
 import { getPublicScreenStateDocId } from "@lib/screen/publicScreenState";
+import { getMenuBoardLayout, shouldUseDigitalScreenOfflineCache } from "@lib/screen/screenRuntime";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
 import { MenuItemForSlide, ScreenStoreInfo } from "@type/campaigns";
 import { QRCode } from "antd";
@@ -32,7 +33,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ScreenAttribution from "./ScreenAttribution";
 
 // Auto-pagination timing (per spec: 15-20 seconds per page)
-const PAGE_DURATION_MS = 18000; // 18 seconds
+const PAGE_DURATION_MS = 12000;
 const SCREEN_SEEN_REQUEST_POLICY = {
     cache: 'no-store' as RequestCache,
     credentials: 'same-origin' as RequestCredentials,
@@ -40,7 +41,7 @@ const SCREEN_SEEN_REQUEST_POLICY = {
 };
 
 // Per ChatGPT review v3: Cap total rendered items to prevent layout overflow on TVs
-const MAX_TOTAL_ITEMS = 200;
+const MAX_TOTAL_ITEMS = 500;
 
 interface MenuBoardProps {
     initialData: {
@@ -89,72 +90,66 @@ function groupByCategory(items: MenuItemForSlide[]): CategoryGroup[] {
 }
 
 /**
- * Calculate how many items fit per page based on screen height
- * Conservative estimate: ~12 items per page for readability on TV
- */
-const ITEMS_PER_PAGE = 8;
-
-/**
  * Paginate category groups into pages that fit on screen
  */
-function paginateCategories(categories: CategoryGroup[]): CategoryGroup[][] {
-    if (categories.length === 0) return [[]];
+function paginateCategories(
+    categories: CategoryGroup[],
+    itemsPerColumn: number,
+    columnCount: number,
+): CategoryGroup[][][] {
+    if (categories.length === 0) return [[[]]];
 
-    const pages: CategoryGroup[][] = [];
-    let currentPage: CategoryGroup[] = [];
-    let currentCount = 0;
-
-    for (const category of categories) {
-        // Each category header takes ~1 item slot
-        const categorySlots = category.items.length + 1;
-
-        if (currentCount + categorySlots > ITEMS_PER_PAGE && currentPage.length > 0) {
-            // Start new page
-            pages.push(currentPage);
-            currentPage = [];
-            currentCount = 0;
+    const categoryChunks = categories.flatMap((category) => {
+        const chunks: CategoryGroup[] = [];
+        const itemCapacity = Math.max(1, itemsPerColumn - 1);
+        for (let index = 0; index < category.items.length; index += itemCapacity) {
+            chunks.push({
+                ...category,
+                items: category.items.slice(index, index + itemCapacity),
+            });
         }
+        return chunks;
+    });
 
-        if (categorySlots > ITEMS_PER_PAGE) {
-            // Category too large for one page — split it
-            if (currentPage.length > 0) {
-                pages.push(currentPage);
-                currentPage = [];
-                currentCount = 0;
-            }
+    const pages: CategoryGroup[][][] = [];
+    let columns = Array.from({ length: columnCount }, () => [] as CategoryGroup[]);
+    let usedSlots = Array.from({ length: columnCount }, () => 0);
 
-            let remaining = [...category.items];
-            while (remaining.length > 0) {
-                const chunk = remaining.slice(0, ITEMS_PER_PAGE - 1); // -1 for header
-                pages.push([{ name: category.name, items: chunk, orderIndex: category.orderIndex }]);
-                remaining = remaining.slice(ITEMS_PER_PAGE - 1);
-            }
-        } else {
-            currentPage.push(category);
-            currentCount += categorySlots;
+    for (const category of categoryChunks) {
+        const requiredSlots = category.items.length + 1;
+        let columnIndex = usedSlots.findIndex((slots) => slots + requiredSlots <= itemsPerColumn);
+        if (columnIndex < 0) {
+            pages.push(columns);
+            columns = Array.from({ length: columnCount }, () => [] as CategoryGroup[]);
+            usedSlots = Array.from({ length: columnCount }, () => 0);
+            columnIndex = 0;
         }
+        columns[columnIndex].push(category);
+        usedSlots[columnIndex] += requiredSlots;
     }
 
-    if (currentPage.length > 0) {
-        pages.push(currentPage);
-    }
-
-    return pages.length > 0 ? pages : [[]];
+    if (columns.some((column) => column.length > 0)) pages.push(columns);
+    return pages.length > 0 ? pages : [[[]]];
 }
 
 export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     const { menuItems: initialItems, storeInfo, contentVersion: initialVersion, token, storeId } = initialData;
     const cacheKey = `menulist-menuboard-data-${token}`;
 
-    // HARDENING: Cache-first initialization (matching ScreenDisplay pattern)
-    // Survives bad deploys — shows cached menu if server returns empty
+    // Server data is authoritative online. A matching local snapshot is used
+    // only during an offline boot so a withdrawn menu cannot reappear.
     const [menuItems, setMenuItems] = useState<MenuItemForSlide[]>(() => {
         if (typeof window !== 'undefined' && initialItems.length === 0) {
             try {
                 const cached = localStorage.getItem(cacheKey);
                 if (cached) {
                     const parsed = JSON.parse(cached);
-                    if (parsed.menuItems?.length > 0) {
+                    if (shouldUseDigitalScreenOfflineCache({
+                        cachedContentVersion: parsed.contentVersion,
+                        cachedEntryCount: parsed.menuItems?.length,
+                        initialContentVersion: initialVersion,
+                        online: navigator.onLine,
+                    })) {
                         return parsed.menuItems;
                     }
                 }
@@ -170,12 +165,33 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
     const [currentPage, setCurrentPage] = useState(0);
     const [isOffline, setIsOffline] = useState(false);
     const [qrReady, setQrReady] = useState(false);
+    const [viewport, setViewport] = useState({ height: 1080, width: 1920 });
     const contentVersionRef = useRef(initialVersion);
 
     // Group and paginate
     const categories = useMemo(() => groupByCategory(menuItems), [menuItems]);
-    const pages = useMemo(() => paginateCategories(categories), [categories]);
+    const layout = useMemo(
+        () => getMenuBoardLayout(viewport.width, viewport.height),
+        [viewport],
+    );
+    const pages = useMemo(
+        () => paginateCategories(categories, layout.itemsPerColumn, layout.columnCount),
+        [categories, layout],
+    );
     const totalPages = pages.length;
+
+    useEffect(() => {
+        const updateViewport = () => {
+            setViewport({ height: window.innerHeight, width: window.innerWidth });
+        };
+        updateViewport();
+        window.addEventListener("resize", updateViewport);
+        return () => window.removeEventListener("resize", updateViewport);
+    }, []);
+
+    useEffect(() => {
+        setCurrentPage((page) => Math.min(page, Math.max(0, totalPages - 1)));
+    }, [totalPages]);
 
     // Lazy QR loading (same pattern as ScreenDisplay — cold boot optimization)
     useEffect(() => {
@@ -335,7 +351,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
 	        setShowFullscreenHint(false);
 	    };
 
-	    const currentCategories = pages[currentPage] || [];
+	    const currentColumns = pages[currentPage] || [[]];
 
     // Category accent colors — restrained high-contrast palette for TV readability
     const ACCENT_COLORS = [
@@ -396,7 +412,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                     exit={{ opacity: 0, scale: 1.02 }}
                     transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 >
-                    {currentCategories.length === 0 ? (
+                    {currentColumns.every((column) => column.length === 0) ? (
                         <div className="empty-state">
                             <p>{menuItems.length > 0 && menuItems.every(i => !i.available)
                                 ? 'All items currently unavailable'
@@ -404,11 +420,13 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                         </div>
                     ) : (
                         <div className="categories-layout">
-                            {currentCategories.map((category, catIdx) => {
-                                const accent = ACCENT_COLORS[catIdx % ACCENT_COLORS.length];
-                                return (
+                            {currentColumns.map((column, columnIndex) => (
+                                <div className="menu-column" key={`column-${columnIndex}`}>
+                                {column.map((category, catIdx) => {
+                                    const accent = ACCENT_COLORS[(columnIndex + catIdx) % ACCENT_COLORS.length];
+                                    return (
                                     <motion.section
-                                        key={category.name}
+                                        key={`${category.name}-${category.items[0]?.id || catIdx}`}
                                         className="category-card"
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -469,15 +487,21 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
 
                                                     <div className="item-price-area">
                                                         <span className={`item-price ${hasScreenPrice(item.price) ? "" : "muted"}`}>
-                                                            {formatScreenPrice(item.price, storeInfo.currencySymbol)}
+                                                            {formatScreenPrice(
+                                                                item.price,
+                                                                storeInfo.currencySymbol,
+                                                                storeInfo.locale,
+                                                            )}
                                                         </span>
                                                     </div>
                                                 </motion.div>
                                             ))}
                                         </div>
                                     </motion.section>
-                                );
-                            })}
+                                    );
+                                })}
+                                </div>
+                            ))}
                         </div>
                     )}
                 </motion.main>
@@ -635,10 +659,16 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
 
                 .categories-layout {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+                    grid-template-columns: repeat(${layout.columnCount}, minmax(0, 1fr));
                     gap: 28px;
                     height: 100%;
                     align-content: start;
+                }
+                .menu-column {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                    min-width: 0;
                 }
                 .category-card {
                     border-radius: 8px;
@@ -875,6 +905,70 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                     .board-footer {
                         padding-left: 32px;
                         padding-right: 32px;
+                    }
+                }
+                @media (max-height: 800px) and (orientation: landscape) {
+                    .board-header {
+                        padding: 14px 36px 10px;
+                    }
+                    .logo-glow,
+                    .store-logo {
+                        width: 46px;
+                        height: 46px;
+                    }
+                    .store-name {
+                        font-size: 32px;
+                    }
+                    .qr-card {
+                        padding: 5px;
+                    }
+                    .qr-card :global(canvas),
+                    .qr-card :global(svg) {
+                        width: 58px !important;
+                        height: 58px !important;
+                    }
+                    .qr-label,
+                    .item-desc {
+                        display: none;
+                    }
+                    .board-content {
+                        padding: 16px 36px 8px;
+                    }
+                    .categories-layout {
+                        gap: 20px;
+                    }
+                    .menu-column {
+                        gap: 12px;
+                    }
+                    .category-card {
+                        gap: 7px;
+                        padding: 12px 16px;
+                    }
+                    .category-header {
+                        padding-bottom: 7px;
+                    }
+                    .category-accent-bar {
+                        height: 26px;
+                    }
+                    .category-name {
+                        font-size: 23px;
+                    }
+                    .menu-item-row {
+                        min-height: 42px;
+                        padding: 6px 0;
+                    }
+                    .item-name {
+                        font-size: 23px;
+                    }
+                    .item-price {
+                        font-size: 24px;
+                    }
+                    .item-price-area {
+                        min-width: 90px;
+                    }
+                    .board-footer {
+                        min-height: 22px;
+                        padding: 4px 36px 12px;
                     }
                 }
             `}</style>

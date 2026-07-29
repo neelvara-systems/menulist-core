@@ -16,7 +16,9 @@ import '@/styles/website.css';
 import AnimateOnScroll from '@/components/website/shared/AnimateOnScroll';
 import { FEATURE_FLAGS } from '@config/features';
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { normalizePublicMenuDraftId } from '@lib/public-menu-entry/publicDraftId';
 import PreviewClient from '../../PreviewClient';
 
 export const metadata: Metadata = {
@@ -44,6 +46,8 @@ interface PreviewPageProps {
 export default function PreviewPage(props: PreviewPageProps) {
     const params = use(props.params);
     const t = useTranslations('Website');
+    const draftId = normalizePublicMenuDraftId(params.draftId);
+    if (!draftId) notFound();
 
     if (!FEATURE_FLAGS.ENABLE_PUBLIC_MENU_ENTRY) {
         return (
@@ -79,7 +83,7 @@ export default function PreviewPage(props: PreviewPageProps) {
     return (
         <div className="ws-page">
             <Header />
-            <PreviewClient draftId={params.draftId} />
+            <PreviewClient draftId={draftId} />
             <Footer />
         </div>
     );

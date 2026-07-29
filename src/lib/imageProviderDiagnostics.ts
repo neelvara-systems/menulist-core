@@ -36,7 +36,14 @@ export const getImageProviderRequestLogContext = (payload: {
     provider: string;
     query?: unknown;
 }): ImageProviderLogContext => {
-    const page = Number(payload.page);
+    const page = typeof payload.page === 'number'
+        ? payload.page
+        : (
+            typeof payload.page === 'string'
+            && /^-?\d+(?:\.\d+)?$/.test(payload.page)
+        )
+            ? Number(payload.page)
+            : Number.NaN;
 
     return {
         provider: payload.provider,

@@ -25,14 +25,20 @@ logging as a sent report.
 `clientConsoleBuffer.ts` and `localLogsTracker.ts` cap retained entries and
 string sizes. Both redact structured and bare emails, secret assignments, and
 bearer credentials. Global browser errors and unhandled rejections retain only
-event type, reason type/presence, and sanitized error metadata.
+event type, reason type/presence, and sanitized error metadata. The shared
+logger and both diagnostic buffers inspect own data properties only; accessors and
+conversion hooks are never invoked, while malformed Proxy failures are
+contained and cannot break the original console call.
 
 ## Monitoring
 
 `instrumentation-client.ts`, `sentry.server.config.ts`, and
 `sentry.edge.config.ts` use `sanitizeMonitoringEvent()`. Default PII is
-disabled. Client replay masks all text and inputs and blocks media. Monitoring
-is inactive without the matching configured DSN.
+disabled. Error events and tracing transactions use the same contained,
+bounded sanitizer. Client replay masks all text and inputs, blocks media,
+disables network body/detail capture, and drops SDK custom frames that can
+carry navigation, resource or request URLs; masked DOM replay remains.
+Monitoring is inactive without the matching configured DSN.
 
 ## Last-known truth
 

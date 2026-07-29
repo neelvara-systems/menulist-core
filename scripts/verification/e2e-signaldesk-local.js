@@ -1,11 +1,11 @@
 process.env.NODE_ENV = process.env.NODE_ENV || "test";
-process.env.MENULIST_SIGNALDESK_FIREBASE_MODE = process.env.MENULIST_SIGNALDESK_FIREBASE_MODE || "separate";
-process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "demo-signaldesk";
-process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID;
-process.env.MENULIST_SIGNALDESK_EMAIL_WEBHOOK_SECRET = process.env.MENULIST_SIGNALDESK_EMAIL_WEBHOOK_SECRET || "local-signaldesk-webhook-secret";
-process.env.MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET = process.env.MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET || "local-signaldesk-apify-webhook-secret";
-process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET = process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET || "local-signaldesk-outcome-bridge-secret";
-process.env.MENULIST_SIGNALDESK_META_APP_SECRET = process.env.MENULIST_SIGNALDESK_META_APP_SECRET || "local-signaldesk-meta-app-secret";
+process.env.SIGNALDESK_FIREBASE_MODE = process.env.SIGNALDESK_FIREBASE_MODE || "separate";
+process.env.SIGNALDESK_FIREBASE_PROJECT_ID = process.env.SIGNALDESK_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "demo-signaldesk";
+process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.SIGNALDESK_FIREBASE_PROJECT_ID;
+process.env.SIGNALDESK_EMAIL_WEBHOOK_SECRET = process.env.SIGNALDESK_EMAIL_WEBHOOK_SECRET || "local-signaldesk-webhook-secret";
+process.env.SIGNALDESK_APIFY_WEBHOOK_SECRET = process.env.SIGNALDESK_APIFY_WEBHOOK_SECRET || "local-signaldesk-apify-webhook-secret";
+process.env.SIGNALDESK_OUTCOME_BRIDGE_SECRET = process.env.SIGNALDESK_OUTCOME_BRIDGE_SECRET || "local-signaldesk-outcome-bridge-secret";
+process.env.SIGNALDESK_META_APP_SECRET = process.env.SIGNALDESK_META_APP_SECRET || "local-signaldesk-meta-app-secret";
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   console.error("SignalDesk local E2E requires FIRESTORE_EMULATOR_HOST. Run it through firebase emulators:exec.");
@@ -166,10 +166,10 @@ const contentFixtureCtaFingerprintHash = hashValue(JSON.stringify({
   status: "active",
 }));
 const metaWebhookHeaders = (rawBody) => new Headers({
-  "x-hub-signature-256": `sha256=${crypto.createHmac("sha256", process.env.MENULIST_SIGNALDESK_META_APP_SECRET).update(rawBody).digest("hex")}`,
+  "x-hub-signature-256": `sha256=${crypto.createHmac("sha256", process.env.SIGNALDESK_META_APP_SECRET).update(rawBody).digest("hex")}`,
 });
 const signedOutcomeHeaders = (rawBody, timestamp = String(Math.floor(Date.now() / 1000))) => new Headers({
-  "x-signaldesk-outcome-signature": `sha256=${crypto.createHmac("sha256", process.env.MENULIST_SIGNALDESK_OUTCOME_BRIDGE_SECRET).update(`${timestamp}.${rawBody}`).digest("hex")}`,
+  "x-signaldesk-outcome-signature": `sha256=${crypto.createHmac("sha256", process.env.SIGNALDESK_OUTCOME_BRIDGE_SECRET).update(`${timestamp}.${rawBody}`).digest("hex")}`,
   "x-signaldesk-outcome-timestamp": timestamp,
 });
 const futureIso = (days = 30) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
@@ -1349,10 +1349,10 @@ async function assertSourcePolicyAndImportContracts() {
   }, researchRowId), "RESEARCH_ROW_SHAPE_INVALID");
 
   const originalFetch = global.fetch;
-  const originalApifyToken = process.env.MENULIST_SIGNALDESK_APIFY_API_TOKEN;
-  const originalApifyActor = process.env.MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID;
-  process.env.MENULIST_SIGNALDESK_APIFY_API_TOKEN = "local-source-contract-token";
-  process.env.MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID = "local/source-contract";
+  const originalApifyToken = process.env.SIGNALDESK_APIFY_API_TOKEN;
+  const originalApifyActor = process.env.SIGNALDESK_APIFY_SOURCE_ACTOR_ID;
+  process.env.SIGNALDESK_APIFY_API_TOKEN = "local-source-contract-token";
+  process.env.SIGNALDESK_APIFY_SOURCE_ACTOR_ID = "local/source-contract";
   try {
     global.fetch = async (_url, init) => {
       assert(init?.signal, "Source-provider adapter omitted its AbortSignal timeout");
@@ -1392,10 +1392,10 @@ async function assertSourcePolicyAndImportContracts() {
     assert(malformedOptionalRow.instagram === "valid_handle", "Instagram URL did not normalize to one canonical handle");
   } finally {
     global.fetch = originalFetch;
-    if (originalApifyToken === undefined) delete process.env.MENULIST_SIGNALDESK_APIFY_API_TOKEN;
-    else process.env.MENULIST_SIGNALDESK_APIFY_API_TOKEN = originalApifyToken;
-    if (originalApifyActor === undefined) delete process.env.MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID;
-    else process.env.MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID = originalApifyActor;
+    if (originalApifyToken === undefined) delete process.env.SIGNALDESK_APIFY_API_TOKEN;
+    else process.env.SIGNALDESK_APIFY_API_TOKEN = originalApifyToken;
+    if (originalApifyActor === undefined) delete process.env.SIGNALDESK_APIFY_SOURCE_ACTOR_ID;
+    else process.env.SIGNALDESK_APIFY_SOURCE_ACTOR_ID = originalApifyActor;
   }
 
   const reviewedAt = new Date().toISOString();
@@ -4609,8 +4609,8 @@ async function assertProviderBudgetReservation() {
     dailyBudgetUsd: 0.05, monthlyBudgetUsd: 1, perRunBudgetUsd: 0.05, provider: "apify",
     scope: "provider", spentMonthUsd: 0, spentTodayUsd: 0, status: "active",
   }, { merge: true });
-  process.env.MENULIST_SIGNALDESK_APIFY_API_TOKEN = "apify-test-token";
-  process.env.MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID = "owner/test-actor";
+  process.env.SIGNALDESK_APIFY_API_TOKEN = "apify-test-token";
+  process.env.SIGNALDESK_APIFY_SOURCE_ACTOR_ID = "owner/test-actor";
   const originalFetch = global.fetch;
   let providerRequestCount = 0;
   global.fetch = async () => {
@@ -6755,7 +6755,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     message: "stop",
     messageId: "provider_message_duplicate_fixture",
   };
-  const headers = new Headers({ "x-signaldesk-webhook-secret": process.env.MENULIST_SIGNALDESK_EMAIL_WEBHOOK_SECRET });
+  const headers = new Headers({ "x-signaldesk-webhook-secret": process.env.SIGNALDESK_EMAIL_WEBHOOK_SECRET });
   const messageCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, () => true);
   const suppressionCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER, () => true);
   const first = await processSignalDeskProviderWebhook({
@@ -7225,7 +7225,7 @@ async function assertWebhookAndDncFixtures(targetId) {
   const apifyShared = await processSignalDeskProviderWebhook({
     provider: "apify",
     rawBody: JSON.stringify({ eventType: "ACTOR.RUN.SUCCEEDED", runId: "shared_provider_event", runStatus: "SUCCEEDED" }),
-    requestHeaders: new Headers({ "x-signaldesk-webhook-secret": process.env.MENULIST_SIGNALDESK_APIFY_WEBHOOK_SECRET }),
+    requestHeaders: new Headers({ "x-signaldesk-webhook-secret": process.env.SIGNALDESK_APIFY_WEBHOOK_SECRET }),
   });
   assert(emailShared.status === "received" && apifyShared.status === "received", "Provider-scoped webhook IDs collided");
   const providerEventCountAfter = await expectCollectionCount(SIGNALDESK_COLLECTIONS.WEBHOOK_EVENTS, () => true);
@@ -9238,17 +9238,17 @@ async function assertProviderSendClaimAndRecovery() {
     ownedEmailBudgetRef.get(),
   ]);
   const envKeys = [
-    "MENULIST_SIGNALDESK_SMTP_HOST",
-    "MENULIST_SIGNALDESK_SMTP_USER",
-    "MENULIST_SIGNALDESK_SMTP_PASS",
-    "MENULIST_SIGNALDESK_SMTP_PORT",
-    "MENULIST_SIGNALDESK_SMTP_SECURE",
-    "MENULIST_SIGNALDESK_EMAIL_FROM",
-    "MENULIST_SIGNALDESK_EMAIL_REPLY_TO",
-    "MENULIST_SIGNALDESK_PHYSICAL_ADDRESS",
-    "MENULIST_SIGNALDESK_UNSUBSCRIBE_URL",
-    "MENULIST_SIGNALDESK_META_ACCESS_TOKEN",
-    "MENULIST_SIGNALDESK_WHATSAPP_PHONE_NUMBER_ID",
+    "SIGNALDESK_SMTP_HOST",
+    "SIGNALDESK_SMTP_USER",
+    "SIGNALDESK_SMTP_PASS",
+    "SIGNALDESK_SMTP_PORT",
+    "SIGNALDESK_SMTP_SECURE",
+    "SIGNALDESK_EMAIL_FROM",
+    "SIGNALDESK_EMAIL_REPLY_TO",
+    "SIGNALDESK_PHYSICAL_ADDRESS",
+    "SIGNALDESK_UNSUBSCRIBE_URL",
+    "SIGNALDESK_META_ACCESS_TOKEN",
+    "SIGNALDESK_WHATSAPP_PHONE_NUMBER_ID",
   ];
   const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
   try {
@@ -9279,17 +9279,17 @@ async function assertProviderSendClaimAndRecovery() {
       status: "active",
       updatedAt: timestampNow(),
     }, { merge: true });
-    for (const key of envKeys) process.env[key] = key === "MENULIST_SIGNALDESK_UNSUBSCRIBE_URL"
+    for (const key of envKeys) process.env[key] = key === "SIGNALDESK_UNSUBSCRIBE_URL"
       ? "https://example.invalid/unsubscribe"
-      : key === "MENULIST_SIGNALDESK_EMAIL_FROM"
+      : key === "SIGNALDESK_EMAIL_FROM"
         ? "MenuList <sender@example.invalid>"
-        : key === "MENULIST_SIGNALDESK_SMTP_PORT"
+        : key === "SIGNALDESK_SMTP_PORT"
           ? "587"
-        : key === "MENULIST_SIGNALDESK_SMTP_SECURE"
+        : key === "SIGNALDESK_SMTP_SECURE"
           ? "false"
-        : key === "MENULIST_SIGNALDESK_EMAIL_REPLY_TO"
+        : key === "SIGNALDESK_EMAIL_REPLY_TO"
           ? ""
-        : key === "MENULIST_SIGNALDESK_PHYSICAL_ADDRESS"
+        : key === "SIGNALDESK_PHYSICAL_ADDRESS"
           ? "Local E2E address"
           : "local-e2e-value";
 
@@ -9306,7 +9306,7 @@ async function assertProviderSendClaimAndRecovery() {
       senderDomain: "menulist.test",
       subject: "Authority check",
     }), "EMAIL_SENDER_DOMAIN_AUTHORITY_MISMATCH");
-    process.env.MENULIST_SIGNALDESK_EMAIL_FROM = "not-a-mailbox";
+    process.env.SIGNALDESK_EMAIL_FROM = "not-a-mailbox";
     await expectRejects("SMTP malformed From mailbox", () => originalProviderSend({
       body: "Authority check only.",
       channel: "email",
@@ -9315,8 +9315,8 @@ async function assertProviderSendClaimAndRecovery() {
       subject: "Authority check",
     }), "EMAIL_SENDER_FROM_INVALID");
 
-    process.env.MENULIST_SIGNALDESK_EMAIL_FROM = "MenuList <sender@menulist.test>";
-    process.env.MENULIST_SIGNALDESK_EMAIL_REPLY_TO = "not-a-mailbox";
+    process.env.SIGNALDESK_EMAIL_FROM = "MenuList <sender@menulist.test>";
+    process.env.SIGNALDESK_EMAIL_REPLY_TO = "not-a-mailbox";
     await expectRejects("SMTP malformed Reply-To mailbox", () => originalProviderSend({
       body: "Authority check only.",
       channel: "email",
@@ -9324,8 +9324,8 @@ async function assertProviderSendClaimAndRecovery() {
       senderDomain: "menulist.test",
       subject: "Authority check",
     }), "EMAIL_REPLY_TO_INVALID");
-    process.env.MENULIST_SIGNALDESK_EMAIL_REPLY_TO = "reply@menulist.test";
-    process.env.MENULIST_SIGNALDESK_SMTP_SECURE = "definitely";
+    process.env.SIGNALDESK_EMAIL_REPLY_TO = "reply@menulist.test";
+    process.env.SIGNALDESK_SMTP_SECURE = "definitely";
     await expectRejects("SMTP malformed TLS mode", () => originalProviderSend({
       body: "Authority check only.",
       channel: "email",
@@ -9333,7 +9333,7 @@ async function assertProviderSendClaimAndRecovery() {
       senderDomain: "menulist.test",
       subject: "Authority check",
     }), "EMAIL_SMTP_SECURE_INVALID");
-    process.env.MENULIST_SIGNALDESK_SMTP_SECURE = "false";
+    process.env.SIGNALDESK_SMTP_SECURE = "false";
     let smtpTransportOptions = null;
     let smtpMailOptions = null;
     nodemailer.createTransport = (options) => {
@@ -9443,7 +9443,7 @@ async function assertProviderSendClaimAndRecovery() {
       channel: "whatsapp",
     }), "DIRECT_PROVIDER_SEND_EMAIL_ONLY");
     assert(providerCallCount === 0, "Direct Meta denial reached the provider adapter");
-    process.env.MENULIST_SIGNALDESK_SMTP_PORT = "70000";
+    process.env.SIGNALDESK_SMTP_PORT = "70000";
     await expectRejects("Provider deterministic preflight before claim", () => sendSignalDeskApprovedMessageServer(access, {
       approvalId: ready.approvalId,
       channel: "email",
@@ -9454,7 +9454,7 @@ async function assertProviderSendClaimAndRecovery() {
       data.action === "provider_send_started" && data.entityId === providerExportId
     ));
     assert(providerPreflightAuditCount === 0, "Deterministic provider preflight failure wrote a send-start audit");
-    process.env.MENULIST_SIGNALDESK_SMTP_PORT = "587";
+    process.env.SIGNALDESK_SMTP_PORT = "587";
     const malformedGlobalPauseRef = db.collection(SIGNALDESK_COLLECTIONS.KILL_SWITCHES).doc("scope_global-outbound");
     await malformedGlobalPauseRef.set({
       killSwitchId: malformedGlobalPauseRef.id,
@@ -9809,7 +9809,7 @@ async function assertProviderSendClaimAndRecovery() {
     };
     const sequenceOperationHash = hashValue(`${sequenceHandoff.sequencerHandoffId}|owned-sequence-send-v1`).slice(0, 32);
     const sequenceClaimRef = db.collection(SIGNALDESK_COLLECTIONS.IDEMPOTENCY_KEYS).doc(`owned_sequence_send_${sequenceOperationHash}`);
-    process.env.MENULIST_SIGNALDESK_PHYSICAL_ADDRESS = "x".repeat(501);
+    process.env.SIGNALDESK_PHYSICAL_ADDRESS = "x".repeat(501);
     await expectRejects("Owned sequence deterministic preflight before claim", () => sendSignalDeskOwnedSequenceStepServer(access, {
       sequencerHandoffId: sequenceHandoff.sequencerHandoffId,
     }), "EMAIL_PHYSICAL_ADDRESS_INVALID");
@@ -9819,7 +9819,7 @@ async function assertProviderSendClaimAndRecovery() {
       data.action === "owned_sequence_send_started" && data.entityId === sequenceHandoff.sequencerHandoffId
     ));
     assert(sequencePreflightAuditCount === 0, "Deterministic owned-sequence preflight failure wrote a send-start audit");
-    process.env.MENULIST_SIGNALDESK_PHYSICAL_ADDRESS = "Local E2E address";
+    process.env.SIGNALDESK_PHYSICAL_ADDRESS = "Local E2E address";
     const sequenceApprovalRef = db.collection(SIGNALDESK_COLLECTIONS.APPROVAL_QUEUE).doc(sequenceReady.approvalId);
     const sequenceApprovalTruth = (await sequenceApprovalRef.get()).data();
     assert(sequenceApprovalTruth, "Owned-sequence approval fixture did not create approval authority");

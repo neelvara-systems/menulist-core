@@ -5,12 +5,13 @@ import {
     searchAnswerlatticeEntityLookupOptions,
 } from '@lib/answerlattice/entityLookup';
 import {
+    answerlatticeKnowledgeIntakeJson,
     getAnswerlatticeKnowledgeIntakeClientErrorMessage,
     getAnswerlatticeKnowledgeIntakeErrorStatus,
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
@@ -22,12 +23,12 @@ const EntityLookupSchema = z.object({
 export const GET = withAuth(async (request: NextRequest, session) => {
     const normalizedQuery = normalizeAnswerlatticeEntityLookupQuery(new URL(request.url).searchParams.get('q') || '');
     if (normalizedQuery.length < 3) {
-        return NextResponse.json({ entities: [] }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ entities: [] });
     }
 
     const parsed = EntityLookupSchema.safeParse({ q: normalizedQuery });
     if (!parsed.success) {
-        return NextResponse.json({ error: 'Enter a valid entity search query.' }, { status: 400 });
+        return answerlatticeKnowledgeIntakeJson({ error: 'Enter a valid entity search query.' }, { status: 400 });
     }
 
     const rateLimitResponse = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'knowledge-intake-entities');
@@ -38,7 +39,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
     try {
         const entities = await searchAnswerlatticeEntityLookupOptions(access.context.scope, parsed.data.q);
-        return NextResponse.json({ entities }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return answerlatticeKnowledgeIntakeJson({ entities });
     } catch (error) {
         const status = getAnswerlatticeKnowledgeIntakeErrorStatus(error);
         if (status >= 500) {
@@ -48,6 +49,6 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 queryLength: parsed.data.q.length,
             });
         }
-        return NextResponse.json({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to search product entities.') }, { status });
+        return answerlatticeKnowledgeIntakeJson({ error: getAnswerlatticeKnowledgeIntakeClientErrorMessage(error, 'Failed to search product entities.') }, { status });
     }
 });

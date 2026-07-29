@@ -18,6 +18,7 @@ import {
     getPublicCustomerLanguageDirection,
 } from '@lib/localization/publicCustomerMessages';
 import { normalizePublicLanguageCode } from '@lib/localization/publicRenderLanguage';
+import { normalizePublicAccentColor } from '@lib/obp/accentColor';
 import { deriveCustomerAppShortName, getCustomerAppIconUrl } from './customerAppAssets';
 import { buildStoreManifestId } from './manifestIdentity';
 import { buildShortcuts, type ShortcutStoreInfo } from './shortcutsBuilder';
@@ -110,8 +111,8 @@ export function buildManifest(input: ManifestStoreInput): WebAppManifest {
     const activeLanguage = normalizePublicLanguageCode(input.language) || 'en';
     const t = createPublicCustomerTranslator(activeLanguage);
     const shortName = deriveCustomerAppShortName(input.displayName, input.shortName);
-    const themeColor = input.themeColor || APP_THEME_COLOR;
-    const backgroundColor = input.backgroundColor || '#ffffff';
+    const themeColor = normalizePublicAccentColor(input.themeColor) || APP_THEME_COLOR;
+    const backgroundColor = normalizePublicAccentColor(input.backgroundColor) || '#ffffff';
 
     // Customer App identity is store-level: installing from OBP, `/menu`, or
     // a project URL must resolve to the same restaurant app. Source path stays

@@ -40,12 +40,20 @@ export function rejectInvalidOrOversizedDeclaredBody(
     maxBytes: number,
     options?: BoundedBodyOptions,
 ): NextResponse | null {
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
+        throw new RangeError('maxBytes must be a non-negative safe integer.');
+    }
+
     const messages = getOptions(options);
     const contentLengthHeader = request.headers.get('content-length');
     if (!contentLengthHeader) return null;
 
+    if (!/^\d+$/.test(contentLengthHeader)) {
+        return NextResponse.json({ error: messages.invalidRequestMessage }, { status: 400 });
+    }
+
     const contentLength = Number(contentLengthHeader);
-    if (!Number.isFinite(contentLength) || contentLength < 0) {
+    if (!Number.isSafeInteger(contentLength)) {
         return NextResponse.json({ error: messages.invalidRequestMessage }, { status: 400 });
     }
 

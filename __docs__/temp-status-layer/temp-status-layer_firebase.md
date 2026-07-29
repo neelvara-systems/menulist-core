@@ -44,7 +44,7 @@ The shared owner response parser is capped at 8KB and has no Firebase cost.
 
 ## Post-Commit Effects
 
-The one committed store write is followed by existing non-authoritative refresh effects: `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, `screen-data`, the Digital Screens content version, and the Owner Business Assistant packet cache. The helper runs these effects concurrently and reports partial failure as `effectsPending`.
+The one committed store write is followed by existing non-authoritative refresh effects: `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, the affected Digital Screens content version and hashed token cache tag, and the Owner Business Assistant packet cache. The helper runs these effects concurrently and reports partial failure as `effectsPending`.
 
 No retry collection or second write was added. This keeps write amplification fixed while avoiding a false mutation failure after Firestore has committed.
 

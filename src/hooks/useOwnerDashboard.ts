@@ -24,9 +24,14 @@ import {
     getOwnerDashboardSettled,
     getOwnerDashboardToday,
     getOwnerDashboardWeekly,
+    normalizeOwnerDashboardDailyCacheValue,
+    normalizeOwnerDashboardMonthlyCacheValue,
+    normalizeOwnerDashboardSettledCacheValue,
+    normalizeOwnerDashboardWeeklyCacheValue,
 } from '@database/ownerDashboard';
 import {
     getCachedData,
+    removeCachedData,
     setCachedData,
     shouldRevalidate,
 } from '@lib/cache/swrLocalStorageProvider';
@@ -98,13 +103,16 @@ function createCacheKey(type: string, tId: string, sId: string, projectId: strin
 async function cachedFetcher<T>(
     cacheKey: string,
     fetcher: () => Promise<T | null>,
+    normalize: (value: unknown) => T | null,
     dayKey?: string,
 ): Promise<T | null> {
     // Check if we have valid cached data (same day)
     if (!shouldRevalidate(cacheKey, dayKey)) {
-        const cached = getCachedData<T>(cacheKey, undefined, dayKey);
+        const cached = getCachedData<unknown>(cacheKey, undefined, dayKey);
         if (cached !== undefined) {
-            return cached;
+            const normalized = normalize(cached);
+            if (normalized) return normalized;
+            removeCachedData(cacheKey);
         }
     }
 
@@ -122,12 +130,15 @@ async function cachedFetcher<T>(
 async function cachedFetcherWithTTL<T>(
     cacheKey: string,
     fetcher: () => Promise<T | null>,
+    normalize: (value: unknown) => T | null,
     maxAgeMs: number,
     dayKey?: string,
 ): Promise<T | null> {
-    const cached = getCachedData<T>(cacheKey, maxAgeMs, dayKey);
+    const cached = getCachedData<unknown>(cacheKey, maxAgeMs, dayKey);
     if (cached !== undefined) {
-        return cached;
+        const normalized = normalize(cached);
+        if (normalized) return normalized;
+        removeCachedData(cacheKey);
     }
 
     const data = await fetcher();
@@ -139,12 +150,21 @@ async function cachedFetcherWithTTL<T>(
     return data;
 }
 
-function getInitialCachedValue<T>(cacheKey: string | null, maxAgeMs?: number, dayKey?: string): T | undefined {
+function getInitialCachedValue<T>(
+    cacheKey: string | null,
+    normalize: (value: unknown) => T | null,
+    maxAgeMs?: number,
+    dayKey?: string,
+): T | undefined {
     if (typeof window === 'undefined' || !cacheKey) {
         return undefined;
     }
 
-    return getCachedData<T>(cacheKey, maxAgeMs, dayKey);
+    const cached = getCachedData<unknown>(cacheKey, maxAgeMs, dayKey);
+    if (cached === undefined) return undefined;
+    const normalized = normalize(cached);
+    if (!normalized) removeCachedData(cacheKey);
+    return normalized || undefined;
 }
 
 export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerDashboardReturn {
@@ -176,11 +196,11 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
     const weeklyCacheKey = canFetch ? createCacheKey('weekly', tId!, sId!, projectId!) : null;
     const monthlyCacheKey = canFetch ? createCacheKey('monthly', tId!, sId!, projectId!) : null;
 
-    const settledFallbackData = useMemo(() => getInitialCachedValue<OwnerDashboardData>(settledCacheKey, undefined, schedulerCacheKey), [schedulerCacheKey, settledCacheKey]);
-    const todayFallbackData = useMemo(() => getInitialCachedValue<DailyViewData>(todayCacheKey, 600000, analyticsDayKey), [analyticsDayKey, todayCacheKey]);
-    const dailyFallbackData = useMemo(() => getInitialCachedValue<DailyViewData>(dailyCacheKey, undefined, schedulerCacheKey), [schedulerCacheKey, dailyCacheKey]);
-    const weeklyFallbackData = useMemo(() => getInitialCachedValue<WeeklyViewData>(weeklyCacheKey, undefined, schedulerCacheKey), [schedulerCacheKey, weeklyCacheKey]);
-    const monthlyFallbackData = useMemo(() => getInitialCachedValue<MonthlyViewData>(monthlyCacheKey, undefined, schedulerCacheKey), [schedulerCacheKey, monthlyCacheKey]);
+    const settledFallbackData = useMemo(() => getInitialCachedValue<OwnerDashboardData>(settledCacheKey, (value) => normalizeOwnerDashboardSettledCacheValue(value, projectId!), undefined, schedulerCacheKey), [projectId, schedulerCacheKey, settledCacheKey]);
+    const todayFallbackData = useMemo(() => getInitialCachedValue<DailyViewData>(todayCacheKey, normalizeOwnerDashboardDailyCacheValue, 600000, analyticsDayKey), [analyticsDayKey, todayCacheKey]);
+    const dailyFallbackData = useMemo(() => getInitialCachedValue<DailyViewData>(dailyCacheKey, normalizeOwnerDashboardDailyCacheValue, undefined, schedulerCacheKey), [schedulerCacheKey, dailyCacheKey]);
+    const weeklyFallbackData = useMemo(() => getInitialCachedValue<WeeklyViewData>(weeklyCacheKey, normalizeOwnerDashboardWeeklyCacheValue, undefined, schedulerCacheKey), [schedulerCacheKey, weeklyCacheKey]);
+    const monthlyFallbackData = useMemo(() => getInitialCachedValue<MonthlyViewData>(monthlyCacheKey, normalizeOwnerDashboardMonthlyCacheValue, undefined, schedulerCacheKey), [schedulerCacheKey, monthlyCacheKey]);
 
     const {
         data: settledData,
@@ -195,6 +215,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 const response = await getOwnerDashboardSettled(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
                 return response;
             },
+            (value) => normalizeOwnerDashboardSettledCacheValue(value, projectId!),
             schedulerCacheKey,
         ),
         {
@@ -217,6 +238,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 const response = await getOwnerDashboardToday(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
                 return response;
             },
+            normalizeOwnerDashboardDailyCacheValue,
             600000,
             analyticsDayKey,
         ),
@@ -242,6 +264,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 const response = await getOwnerDashboardDaily(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
                 return response;
             },
+            normalizeOwnerDashboardDailyCacheValue,
             schedulerCacheKey,
         ),
         {
@@ -265,6 +288,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 const response = await getOwnerDashboardWeekly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
                 return response;
             },
+            normalizeOwnerDashboardWeeklyCacheValue,
             schedulerCacheKey,
         ),
         {
@@ -288,6 +312,7 @@ export function useOwnerDashboard(options?: UseOwnerDashboardOptions): UseOwnerD
                 const response = await getOwnerDashboardMonthly(tId!, sId!, projectId!, storeDetails?.timeZone, storeDetails?.businessDayEndTime);
                 return response;
             },
+            normalizeOwnerDashboardMonthlyCacheValue,
             schedulerCacheKey,
         ),
         {

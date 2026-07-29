@@ -3,18 +3,24 @@ import Image from 'next/image';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { LuInfo, LuMinus, LuPlus, LuRotateCcw } from 'react-icons/lu';
 import { TbLanguageHiragana } from 'react-icons/tb';
+import {
+    getBoundedMenuEditorStringContext,
+    logMenuEditorFailure,
+} from '../utils/editorDiagnostics';
 
 const { Text } = Typography;
 
 // Local storage key for first-time hint
 const ZOOM_HINT_SHOWN_KEY = 'zoomableImage_hintShown';
+const ZOOM_HINT_SHOWN_MARKER = 'v1';
+let reportedZoomHintStorageFailure = false;
 
 interface ZoomableImageProps {
     isLoading: boolean;
     src?: string | null;
     alt: string;
-    retryTranslations: any
-    retryDescription: any
+    retryTranslations: () => void;
+    retryDescription: () => void;
 }
 
 export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDescription }: ZoomableImageProps) {
@@ -24,23 +30,34 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
     const [showZoomHint, setShowZoomHint] = useState(false);
     const hasImage = typeof src === 'string' && src.trim().length > 0;
 
-    useEffect(() => {
-        // next/image renders an img tag, we can target it within the container
-        const imgElement = containerRef.current?.querySelector('img') as HTMLImageElement;
-        if (imgElement) {
-            imageRef.current = imgElement;
-        }
-    }, []);
-
     // Show first-time zoom hint
     useEffect(() => {
-        const hintShown = localStorage.getItem(ZOOM_HINT_SHOWN_KEY);
-        if (hasImage && !hintShown) {
+        if (!hasImage) {
+            setShowZoomHint(false);
+            return;
+        }
+
+        let hintShown = false;
+        try {
+            const marker = localStorage.getItem(ZOOM_HINT_SHOWN_KEY);
+            hintShown = marker === ZOOM_HINT_SHOWN_MARKER || marker === 'true';
+            if (
+                marker !== null
+                && marker !== ZOOM_HINT_SHOWN_MARKER
+                && marker !== 'true'
+            ) {
+                localStorage.removeItem(ZOOM_HINT_SHOWN_KEY);
+            }
+        } catch (error) {
+            logZoomHintStorageFailure('read', error);
+        }
+
+        if (!hintShown) {
             setShowZoomHint(true);
             // Auto-hide after 5 seconds
             const timer = setTimeout(() => {
                 setShowZoomHint(false);
-                localStorage.setItem(ZOOM_HINT_SHOWN_KEY, 'true');
+                persistZoomHintShown();
             }, 5000);
             return () => clearTimeout(timer);
         }
@@ -73,7 +90,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
         // Dismiss hint on first interaction
         if (showZoomHint) {
             setShowZoomHint(false);
-            localStorage.setItem(ZOOM_HINT_SHOWN_KEY, 'true');
+            persistZoomHintShown();
         }
     }, [showZoomHint]);
 
@@ -115,11 +132,10 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
         if (!containerRef.current || !imageRef.current) return { x, y };
 
         const container = containerRef.current.getBoundingClientRect();
-        const image = imageRef.current.getBoundingClientRect();
-
-        // Calculate the scaled dimensions
-        const scaledWidth = image.width * zoom;
-        const scaledHeight = image.height * zoom;
+        // offset dimensions exclude the ancestor transform. Using the bounding
+        // rectangle here would apply the current zoom a second time.
+        const scaledWidth = imageRef.current.offsetWidth * zoom;
+        const scaledHeight = imageRef.current.offsetHeight * zoom;
 
         // Calculate the maximum allowed movement in each direction
         const maxX = Math.max(0, (scaledWidth - container.width) / 2);
@@ -240,7 +256,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                         }}
                         onClick={() => {
                             setShowZoomHint(false);
-                            localStorage.setItem(ZOOM_HINT_SHOWN_KEY, 'true');
+                            persistZoomHintShown();
                         }}
                     >
                         <Text style={{ color: '#fff', fontSize: 13 }}>
@@ -278,6 +294,7 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
                             pointerEvents: 'none'
                         }}>
                             <Image
+                                ref={imageRef}
                                 src={src.trim()}
                                 alt={alt}
                                 fill
@@ -400,3 +417,20 @@ export function ZoomableImage({ isLoading, src, alt, retryTranslations, retryDes
 }
 
 export default ZoomableImage;
+
+function persistZoomHintShown(): void {
+    try {
+        localStorage.setItem(ZOOM_HINT_SHOWN_KEY, ZOOM_HINT_SHOWN_MARKER);
+    } catch (error) {
+        logZoomHintStorageFailure('write', error);
+    }
+}
+
+function logZoomHintStorageFailure(operation: 'read' | 'write', error: unknown): void {
+    if (reportedZoomHintStorageFailure) return;
+    reportedZoomHintStorageFailure = true;
+    logMenuEditorFailure('menu_editor_zoom_hint_storage_failed', error, {
+        operation,
+        ...getBoundedMenuEditorStringContext('storageKey', ZOOM_HINT_SHOWN_KEY),
+    });
+}

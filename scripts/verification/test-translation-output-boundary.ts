@@ -17,7 +17,12 @@ import { getMissingProjectPublicContentGaps } from '../../src/lib/localization/p
 import { getLocalizedText } from '../../src/lib/localization/text';
 import { TranslationRequestSchema } from '../../src/lib/validation/apiSchemas';
 import { getExactLocalizedValue } from '../../src/services/ai/projectPublicContent/translateProjectPublicContent';
-import { getBoundedBatchTranslationTargets } from '../../src/services/ai/businessCopy/localizeBusinessCopyResult';
+import {
+    clampValue,
+    getBoundedBatchTranslationTargets,
+    mergeLocalizedField,
+    mergeLocalizedKeywordField,
+} from '../../src/services/ai/businessCopy/localizeBusinessCopyResult';
 
 assert.equal(resolveTranslationBillingAction(
     AI_ACTIONS_TYPES.ITEM_TRANSLATION,
@@ -144,6 +149,22 @@ assert.deepEqual(getMissingProjectPublicContentGaps({
     languages: ['en', 'fr'],
     name: { en: 'Tea' },
 }), [{ fieldKey: 'name', languageCode: 'fr' }]);
+let projectContentGetterExecuted = false;
+assert.deepEqual(getMissingProjectPublicContentGaps({
+    languages: ['en', 'fr'],
+    name: {
+        get en() {
+            projectContentGetterExecuted = true;
+            throw new Error('project content getter must not execute');
+        },
+    },
+}), []);
+assert.equal(projectContentGetterExecuted, false);
+assert.deepEqual(getMissingProjectPublicContentGaps(new Proxy({}, {
+    getOwnPropertyDescriptor() {
+        throw new Error('project content descriptor lookup must remain contained');
+    },
+}), ['en', 'fr']), []);
 assert.deepEqual(getBoundedBatchTranslationTargets([
     { code: 'en', name: 'English' },
     { code: 'fr', name: 'French' },
@@ -154,6 +175,20 @@ assert.deepEqual(getBoundedBatchTranslationTargets([
     { code: 'pt', name: 'Portuguese' },
     { code: 'ru', name: 'Russian' },
 ], 'en').map((language) => language.code), ['fr', 'es', 'de', 'it', 'pt']);
+assert.equal(clampValue('  neighbourhood cafe  ', 12), 'neighbourhoo');
+assert.equal(clampValue({ toString: () => { throw new Error('must not coerce copy'); } }, 50), '');
+assert.deepEqual(mergeLocalizedField({ en: 'Tea', fr: 'Thé' }, { en: 'Coffee' }), {
+    en: 'Coffee',
+    fr: 'Thé',
+});
+assert.deepEqual(mergeLocalizedField({ en: 42 }, { en: 'Coffee' }), { en: 'Coffee' });
+assert.deepEqual(mergeLocalizedKeywordField({ en: ['tea'] }, { fr: ['thé'] }), {
+    en: ['tea'],
+    fr: ['thé'],
+});
+assert.deepEqual(mergeLocalizedKeywordField({ en: 'tea' }, { fr: ['thé'] }), {
+    fr: ['thé'],
+});
 
 const baseRequest = {
     action: 'item_translation' as const,

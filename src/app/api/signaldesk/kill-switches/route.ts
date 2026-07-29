@@ -10,6 +10,7 @@ import {
     parseSignalDeskJsonBody,
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
+    signalDeskPrivateJson,
 } from "@lib/signaldesk/apiGuards";
 import {
     recordSignalDeskMobileActionBlockedServer,
@@ -20,7 +21,6 @@ import { validateAPIInput } from "@lib/security/inputValidation";
 import type { SignalDeskPermission } from "@type/signaldesk";
 import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const KillSwitchSchema = z.object({
@@ -45,7 +45,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             request,
             session,
         });
-        return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+        return signalDeskPrivateJson({ error: "Invalid input" }, { status: 400 });
     }
     const validatedInput = validation.data;
 
@@ -76,7 +76,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             action: "kill-switch",
             actionClass: validatedInput.status === "active" ? "emergency_pause" : "configure",
         });
-        return NextResponse.json({ error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
+        return signalDeskPrivateJson({ error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
     }
 
     try {
@@ -87,7 +87,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             scope: validatedInput.scope,
             status: validatedInput.status,
         });
-        return NextResponse.json({ data: killSwitch });
+        return signalDeskPrivateJson({ data: killSwitch });
     } catch (error) {
         logSignalDeskFailure(
             "signaldesk_kill_switch_update_failed",
@@ -101,8 +101,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             },
         );
         if (error instanceof Error && error.message === "KILL_SWITCH_IDEMPOTENCY_CONFLICT") {
-            return NextResponse.json({ error: "SignalDesk pause request conflicts with an earlier request" }, { status: 409 });
+            return signalDeskPrivateJson({ error: "SignalDesk pause request conflicts with an earlier request" }, { status: 409 });
         }
-        return NextResponse.json({ error: "Failed to update SignalDesk pause" }, { status: 500 });
+        return signalDeskPrivateJson({ error: "Failed to update SignalDesk pause" }, { status: 500 });
     }
 });

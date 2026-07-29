@@ -138,7 +138,7 @@ Before implementation, the founder asked to revise Firebase optimization and pro
 3. Use proposed product code `SD` by adding `PRODUCT_IDS.SIGNALDESK = "SD"` in the first runtime PR.
 4. Do not reuse `GR`; GrowthOS/Growth Kits is a separate boundary.
 5. Use dedicated Firebase projects: `menulist-signaldesk-qa` and `menulist-signaldesk`.
-6. Use full env prefix `MENULIST_SIGNALDESK_*`; do not introduce `SD_*` shorthand keys.
+6. Use full env prefix `SIGNALDESK_*`; do not introduce `SD_*` shorthand keys.
 7. Keep SignalDesk data out of MenuList Firestore collections except through a narrow, documented outcome bridge.
 8. Make every default screen summary-first; raw events/messages/import rows are detail/admin drill-down only.
 9. Add AI operation ledgers, idempotency keys, source-run summaries, conversation summaries, and cost daily summaries before provider send automation.
@@ -167,7 +167,7 @@ The founder asked to start implementing SignalDesk end to end. The first safe im
 ### Decisions
 
 1. Implement the foundation inside this monorepo using product-scoped code folders and dedicated Firebase config.
-2. Add `PRODUCT_IDS.SIGNALDESK = "SD"` and full-name `MENULIST_SIGNALDESK_*` runtime/env constants.
+2. Add `PRODUCT_IDS.SIGNALDESK = "SD"` and full-name `SIGNALDESK_*` runtime/env constants.
 3. Add `/signaldesk` protected internal routes but no public website, no owner/customer navigation, and no sitemap entry.
 4. Add summary-first overview reads and a kill-switch write path before any target/import/provider send work.
 5. Keep provider send disabled through `ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND = false`.

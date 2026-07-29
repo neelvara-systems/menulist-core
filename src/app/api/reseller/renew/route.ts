@@ -33,9 +33,9 @@ import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostic
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { ResellerRenewSchema } from "@lib/validation/resellerSchemas";
 import { Timestamp } from "firebase/firestore";
-import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
+import { resellerPrivateJson, withResellerPrivateHeaders } from "../readRateLimit";
 
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
 
@@ -54,7 +54,7 @@ export const POST = withAuth(async (request, session) => {
 
     try {
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            return NextResponse.json({ error: "Feature not available." }, { status: 404 });
+            return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
         }
 
         const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
@@ -62,22 +62,25 @@ export const POST = withAuth(async (request, session) => {
         const rateLimitResult = await checkRateLimit({
             key: `reseller-renew:${resellerRateLimitHash}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({
-                error: "Too many requests. Please try again later.",
+            return resellerPrivateJson({
+                error: rateLimitResult.reason === 'provider_unavailable'
+                    ? "Service temporarily unavailable. Please try again later."
+                    : "Too many requests. Please try again later.",
                 resetAt: rateLimitResult.resetAt,
-            }, { status: 429 });
+            }, { status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429 });
         }
 
         const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid input',
         });
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);
         const validation = validateAPIInput(ResellerRenewSchema, bodyResult.data);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
-            return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
+            return resellerPrivateJson({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
         const { storeId, tenantId, pricingTier, durationMonths, paymentMode, operationId } = validation.data;
@@ -92,7 +95,7 @@ export const POST = withAuth(async (request, session) => {
             );
         if (isPlatformUser) {
             if (!await getCurrentPlatformUser(session)) {
-                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
             }
         } else if (!isActiveResellerProfileForSession({
             actorId: resellerId,
@@ -100,24 +103,24 @@ export const POST = withAuth(async (request, session) => {
             sessionEmail: session.user.email,
             sessionProfileId: session.user.resellerProfileId,
         })) {
-            return NextResponse.json({ error: "Reseller profile not found or inactive." }, { status: 403 });
+            return resellerPrivateJson({ error: "Reseller profile not found or inactive." }, { status: 403 });
         }
 
         // Validate tier
         const tier = getResellerTierById(pricingTier);
         if (!tier) {
-            return NextResponse.json({ error: "Selected pricing tier is not available." }, { status: 400 });
+            return resellerPrivateJson({ error: "Selected pricing tier is not available." }, { status: 400 });
         }
 
         // Only offline renewals go through this route; online auto-renews via Razorpay
         if (paymentMode !== 'offline') {
-            return NextResponse.json({
+            return resellerPrivateJson({
                 error: "Online subscriptions auto-renew via Razorpay. Manual renewal is only for offline subscriptions.",
             }, { status: 400 });
         }
 
         if (!RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE) {
-            return NextResponse.json({ error: "Offline payment mode is no longer available." }, { status: 400 });
+            return resellerPrivateJson({ error: "Offline payment mode is no longer available." }, { status: 400 });
         }
 
         // Find existing subscription for this store using Admin SDK.
@@ -134,14 +137,14 @@ export const POST = withAuth(async (request, session) => {
             .get();
 
         if (subsSnapshot.empty) {
-            return NextResponse.json({ error: "No manual subscription found for this store." }, { status: 404 });
+            return resellerPrivateJson({ error: "No manual subscription found for this store." }, { status: 404 });
         }
 
         const existingSub = subsSnapshot.docs[0];
         const existingSubData = existingSub.data();
         const existingScope = getMenuListSubscriptionEntitlementScope(existingSubData);
         if (!existingScope || existingScope.tenantId !== tenantId || existingScope.storeId !== storeId) {
-            return NextResponse.json({ error: "No manual subscription found for this store." }, { status: 404 });
+            return resellerPrivateJson({ error: "No manual subscription found for this store." }, { status: 404 });
         }
 
         // Verify this reseller owns this subscription
@@ -154,13 +157,13 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedResellerApiStringContext('subscriptionId', existingSub.id),
                 ...getBoundedResellerApiStringContext('actualResellerId', existingSubData.resellerId),
             }, 'high');
-            return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
         }
         if (!['active', 'expired'].includes(String(existingSubData.status || ''))) {
-            return NextResponse.json({ error: "Only an active or expired manual subscription can be renewed." }, { status: 409 });
+            return resellerPrivateJson({ error: "Only an active or expired manual subscription can be renewed." }, { status: 409 });
         }
         if (existingSubData.resellerPricingTier && existingSubData.resellerPricingTier !== pricingTier) {
-            return NextResponse.json({ error: "Renew this client on its existing reseller tier." }, { status: 409 });
+            return resellerPrivateJson({ error: "Renew this client on its existing reseller tier." }, { status: 409 });
         }
 
         const requestNow = new Date();
@@ -339,7 +342,7 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        return NextResponse.json({
+        return resellerPrivateJson({
             success: true,
             storeId,
             subscriptionId: existingSub.id,
@@ -354,14 +357,14 @@ export const POST = withAuth(async (request, session) => {
     } catch (error) {
         const exceededOfflineCap = getResellerOfflineCapFromError(error);
         if (exceededOfflineCap) {
-            return NextResponse.json({
+            return resellerPrivateJson({
                 error: `Maximum offline activations reached (${exceededOfflineCap}). Wait for another prepaid client to expire before renewing this client.`,
             }, { status: 409 });
         }
         logResellerApiFailure('reseller_renew_route_failed', error, {
             ...getBoundedResellerApiStringContext('resellerId', resellerId),
         });
-        return NextResponse.json(
+        return resellerPrivateJson(
             { error: 'Failed to renew license. Please try again.' },
             { status: 500 }
         );

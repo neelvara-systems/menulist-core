@@ -11,6 +11,7 @@ import {
     normalizeAnswerlatticeTimeZone,
 } from '@lib/answerlattice/schedulerSettings';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { normalizeAnswerlatticeOperationsMetric } from '@lib/answerlattice/activationDashboardResponseClient';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
@@ -98,11 +99,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
     const scope = resolveSessionScope(session);
     if (!scope) return NextResponse.json({ error: 'Not onboarded' }, { status: 400 });
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const rateLimit = await checkRateLimit({
         key: buildAnswerlatticeRateLimitKey(
             'answerlattice-operations-status',
-            session.uId,
+            actorId,
             scope.tenantId,
             scope.storeId,
         ),

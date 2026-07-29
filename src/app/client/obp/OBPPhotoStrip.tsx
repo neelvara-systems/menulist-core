@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import PublicImageViewer from '@/components/shared/media/PublicImageViewer';
+import { normalizeOBPPublicPhotoUrls } from '@lib/obp/publicPhotos';
 import styles from './obp.module.scss';
 
 interface OBPPhotoStripProps {
@@ -30,7 +31,7 @@ export default function OBPPhotoStrip({
     storeName,
 }: OBPPhotoStripProps) {
     const [previewIndex, setPreviewIndex] = useState<number | null>(null);
-    const galleryPhotos = photos.filter(Boolean);
+    const galleryPhotos = normalizeOBPPublicPhotoUrls(photos);
     const visiblePhotos = galleryPhotos.slice(0, 3);
     const formatPhotoLabel = (index: number) => photoLabelTemplate.replace('{index}', String(index));
     const viewerImages = useMemo(() => galleryPhotos.map((url, index) => ({

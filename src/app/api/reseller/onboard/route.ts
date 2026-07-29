@@ -58,9 +58,9 @@ import { ResellerOnboardSchema } from "@lib/validation/resellerSchemas";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
 import { writeLogEntry } from "logs/utils";
-import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
+import { resellerPrivateJson, withResellerPrivateHeaders } from "../readRateLimit";
 
 const LOG_FILE = "reseller-onboarding.log";
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
@@ -224,7 +224,7 @@ export const POST = withAuth(async (request, session) => {
     try {
         // 0. Feature flag check
         if (!FEATURE_FLAGS.ENABLE_RESELLER_DASHBOARD) {
-            return NextResponse.json({ error: "Feature not available." }, { status: 404 });
+            return resellerPrivateJson({ error: "Feature not available." }, { status: 404 });
         }
 
         // 1. Rate limiting
@@ -233,19 +233,22 @@ export const POST = withAuth(async (request, session) => {
         const rateLimitResult = await checkRateLimit({
             key: `reseller-onboard:${resellerRateLimitHash}`,
             ...rateLimitConfig,
+            failClosedOnProviderError: true,
         });
         if (!rateLimitResult.allowed) {
-            return NextResponse.json({
-                error: "Too many requests. Please try again later.",
+            return resellerPrivateJson({
+                error: rateLimitResult.reason === 'provider_unavailable'
+                    ? "Service temporarily unavailable. Please try again later."
+                    : "Too many requests. Please try again later.",
                 resetAt: rateLimitResult.resetAt,
-            }, { status: 429 });
+            }, { status: rateLimitResult.reason === 'provider_unavailable' ? 503 : 429 });
         }
 
         // 2. Validate input
         const bodyResult = await readBoundedJsonBody(request, RESELLER_ACTION_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Invalid input',
         });
-        if (bodyResult.ok === false) return bodyResult.response;
+        if (bodyResult.ok === false) return withResellerPrivateHeaders(bodyResult.response);
         const validation = validateAPIInput(ResellerOnboardSchema, bodyResult.data);
         if (!validation.success) {
             const errorMsg = 'error' in validation ? validation.error : 'Invalid input';
@@ -254,7 +257,7 @@ export const POST = withAuth(async (request, session) => {
                 endpoint: '/api/reseller/onboard',
                 error: errorMsg,
             }, 'medium');
-            return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
+            return resellerPrivateJson({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
         const { operationId, businessName, businessType, ownerCountryCode, ownerDialCode, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode } = validation.data;
@@ -269,7 +272,7 @@ export const POST = withAuth(async (request, session) => {
             );
         if (isPlatformUser) {
             if (!await getCurrentPlatformUser(session)) {
-                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+                return resellerPrivateJson({ error: "Access denied." }, { status: 403 });
             }
         } else if (!isActiveResellerProfileForSession({
             actorId: resellerId,
@@ -281,19 +284,19 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedSecurityRouteContext(session, request),
                 ...getBoundedResellerApiStringContext('resellerId', resellerId),
             }, 'high');
-            return NextResponse.json({ error: "Reseller profile not found or inactive." }, { status: 403 });
+            return resellerPrivateJson({ error: "Reseller profile not found or inactive." }, { status: 403 });
         }
 
         // 4. Validate pricing tier is active (sunset flags)
         const tier = getResellerTierById(pricingTier);
         if (!tier) {
-            return NextResponse.json({ error: "Selected pricing tier is not available." }, { status: 400 });
+            return resellerPrivateJson({ error: "Selected pricing tier is not available." }, { status: 400 });
         }
 
         // 5. If offline: check concurrent cap + system flag
         if (paymentMode === 'offline') {
             if (!RESELLER_SYSTEM_FLAGS.OFFLINE_MODE_ACTIVE) {
-                return NextResponse.json({ error: "Offline payment mode is no longer available." }, { status: 400 });
+                return resellerPrivateJson({ error: "Offline payment mode is no longer available." }, { status: 400 });
             }
             const offlineCapacity = isPlatformUser
                 ? null
@@ -302,12 +305,12 @@ export const POST = withAuth(async (request, session) => {
                     RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER,
                 );
             if (!isPlatformUser && !offlineCapacity) {
-                return NextResponse.json({
+                return resellerPrivateJson({
                     error: "Reseller profile capacity needs support review.",
                 }, { status: 409 });
             }
             if (offlineCapacity && offlineCapacity.current >= offlineCapacity.cap) {
-                return NextResponse.json({
+                return resellerPrivateJson({
                     error: `Maximum offline activations reached (${offlineCapacity.cap}). Use online payment mode or wait for existing stores to expire.`,
                 }, { status: 409 });
             }
@@ -335,12 +338,12 @@ export const POST = withAuth(async (request, session) => {
         });
         const ownerUsername = normalizedOwnerPhone.phoneUsername;
         if (ownerUsername.length < 10 || ownerUsername.length > 15) {
-            return NextResponse.json({ error: "Enter a valid owner phone number." }, { status: 400 });
+            return resellerPrivateJson({ error: "Enter a valid owner phone number." }, { status: 400 });
         }
         const ownerLoginEmail = normalizedOwnerEmail || getGeneratedEmail(ownerUsername);
         const emailValidation = validateEmail(ownerLoginEmail);
         if (!emailValidation.valid) {
-            return NextResponse.json({ error: getEmailValidationError(ownerLoginEmail) }, { status: 400 });
+            return resellerPrivateJson({ error: getEmailValidationError(ownerLoginEmail) }, { status: 400 });
         }
 
         const operationFingerprint = getResellerOnboardingOperationFingerprint({
@@ -366,7 +369,7 @@ export const POST = withAuth(async (request, session) => {
                 resellerId,
             });
             if (!matchingOperation) {
-                return NextResponse.json({ error: "This onboarding retry belongs to another request." }, { status: 409 });
+                return resellerPrivateJson({ error: "This onboarding retry belongs to another request." }, { status: 409 });
             }
 
             const replaySubscriptionId = matchingOperation.subscriptionId;
@@ -377,7 +380,7 @@ export const POST = withAuth(async (request, session) => {
                 db.collection(DB_COLLECTIONS.STORES).doc(String(replayStoreId)).get(),
             ]);
             if (!replaySubscription || !replayStoreSnapshot.exists) {
-                return NextResponse.json({ error: "This onboarding result needs support review." }, { status: 409 });
+                return resellerPrivateJson({ error: "This onboarding result needs support review." }, { status: 409 });
             }
             const replayStore = replayStoreSnapshot.data() || {};
             if (!isMatchingResellerOnboardingReplayResources({
@@ -387,17 +390,17 @@ export const POST = withAuth(async (request, session) => {
                 subscriptionData: replaySubscription,
                 tenantId: replayTenantId,
             })) {
-                return NextResponse.json({ error: "This onboarding result needs support review." }, { status: 409 });
+                return resellerPrivateJson({ error: "This onboarding result needs support review." }, { status: 409 });
             }
             const replaySubdomain = String(replayStore.subdomain || '').trim() || undefined;
             const replayShortUrl = normalizeRazorpaySubscriptionCheckoutUrl(replaySubscription.shortUrl) || undefined;
             if (replaySubscription.billingMode === 'auto' && !replayShortUrl) {
-                return NextResponse.json({ error: "This payment link needs support review." }, { status: 409 });
+                return resellerPrivateJson({ error: "This payment link needs support review." }, { status: 409 });
             }
             if (replaySubscription.billingMode === 'manual' && replaySubscription.status === 'active') {
                 const replayPaidAt = resellerMutationDate(operation.validFrom);
                 if (!replayPaidAt) {
-                    return NextResponse.json({ error: "This onboarding result needs support review." }, { status: 409 });
+                    return resellerPrivateJson({ error: "This onboarding result needs support review." }, { status: 409 });
                 }
                 await safeSyncStorePlanEntitlementFromSubscription(
                     replaySubscription,
@@ -414,7 +417,7 @@ export const POST = withAuth(async (request, session) => {
                 });
             }
 
-            return NextResponse.json({
+            return resellerPrivateJson({
                 dashboardUrl: SIGNIN_URL,
                 locationCount,
                 loginEmail: ownerLoginEmail,
@@ -444,7 +447,7 @@ export const POST = withAuth(async (request, session) => {
         const existingOwnerData = existingOwnerDoc?.data();
 
         if (existingOwnerData?.tenantId || existingOwnerData?.storeId) {
-            return NextResponse.json({
+            return resellerPrivateJson({
                 error: "This owner login is already linked to another business. Use a different email or phone.",
             }, { status: 409 });
         }
@@ -457,7 +460,7 @@ export const POST = withAuth(async (request, session) => {
             username: ownerUsername,
         });
         if (uniquenessError) {
-            return NextResponse.json({ error: uniquenessError }, { status: 409 });
+            return resellerPrivateJson({ error: uniquenessError }, { status: 409 });
         }
 
         const authAccount = await prepareOwnerAuthUser({
@@ -603,7 +606,7 @@ export const POST = withAuth(async (request, session) => {
                 }
             }
             if (error instanceof ResellerOwnerClaimConflictError) {
-                return NextResponse.json({ error: "This owner login was linked by another request." }, { status: 409 });
+                return resellerPrivateJson({ error: "This owner login was linked by another request." }, { status: 409 });
             }
             throw error;
         }
@@ -929,7 +932,7 @@ export const POST = withAuth(async (request, session) => {
                         userId: result.userId,
                     });
                     if (exceededOfflineCap && compensated) {
-                        return NextResponse.json({
+                        return resellerPrivateJson({
                             error: `Maximum offline activations reached (${exceededOfflineCap}). Use online payment mode or wait for existing stores to expire.`,
                         }, { status: 409 });
                     }
@@ -965,7 +968,7 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        return NextResponse.json({
+        return resellerPrivateJson({
             storeId: result.storeId,
             tenantId: result.tenantId,
             subscriptionId,
@@ -992,7 +995,7 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedResellerApiStringContext('resellerId', resellerId),
             }),
         });
-        return NextResponse.json(
+        return resellerPrivateJson(
             { error: 'Failed to onboard client. Please try again.' },
             { status: 500 }
         );

@@ -1,6 +1,6 @@
 # Founder Support Controls - Website Content
 
-> **Publication gate:** Use only after runtime, mobile, and Firebase verification passes.
+> **Publication status:** Source and local contract verification support bounded capability copy. Authenticated hosted-browser and deployed-runtime evidence remain release gates.
 
 ## Product Page Section
 
@@ -17,7 +17,11 @@ These deterministic checks validate the rules you configured. They are regressio
 - Release checks for affected product areas with advisory ready, review, or blocked proof status.
 - Read-only proposal impact previews for explicitly linked priority questions before owner approval.
 
-Do not add a public claim that critical tests reject provider-backed RAG until the focused evaluator/UI hardening and browser verification are complete.
+Source and local contract verification now support the claim that provider-backed RAG cannot pass critical proof. Keep the public wording behind the remaining authenticated browser and deployed-runtime release gates.
+
+The public Product and Knowledge Governance pages may state the narrower
+verified rule: provider-backed fallback can be tested, but it cannot certify
+critical proof. Do not turn this into a general factual-correctness guarantee.
 
 ### Keep temporary problems separate from permanent truth
 
@@ -36,7 +40,7 @@ No. Test runs are excluded from production search history, support signals, fric
 No. They verify configured source, ID, phrase, confidence, abstention, and evidence rules. Representative questions still require human review for factual correctness, completeness, and usefulness.
 
 **Can a provider-generated fallback count as verified critical support?**
-The intended contract is no: critical proof should use approved truth or an explicitly expected safe escalation/no-answer path. This claim must remain unpublished until the focused runtime hardening is implemented and verified.
+No. Critical proof must use approved canonical or FAQ truth, or an explicitly expected safe escalation/no-answer path. Provider-backed fallback can still be tested in standard cases.
 
 **Can Answerlattice roll back an answer automatically?**
 No. It prepares a rollback proposal for owner review through the existing governance flow.

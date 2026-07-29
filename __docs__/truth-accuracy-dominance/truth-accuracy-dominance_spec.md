@@ -30,7 +30,7 @@ This document is source-gated evidence, not release approval. Current approval r
 |------|---------------|
 | Menu source match | Public menu and OBP output match the current approved project/store source after the public cache path settles |
 | Hours source match | Open/Closed badge uses the current store-hours source, timezone, and closure data |
-| Source refresh boundary | Public menu/OBP follow the 60-second public cache window; Digital Screens use the screen-data cache/listener path; downloaded or provider targets require separate evidence |
+| Source refresh boundary | Public menu/OBP follow the 60-second public cache window; Digital Screens use exact token/store cache tags plus the content-version listener; downloaded or provider targets require separate evidence |
 | No blank states | MCE and fallback states prevent broken public output when required menu data is missing |
 | Publish integrity | Only fully validated menus go live |
 
@@ -53,7 +53,7 @@ This document is source-gated evidence, not release approval. Current approval r
 
 ### 3. Public Cache And Surface-Specific Refresh
 - Public menu and OBP routes use cache tags and the 60-second public cache window
-- Digital Screens use their own `screen-data` cache, local cache-first display path, and content-version listener
+- Digital Screens use exact hashed-token state caching, store-scoped menu caching, offline-only version-matched local fallback, and the content-version listener
 - QR links resolve to the public menu URL and inherit that public menu cache path
 - PDF artifacts, POS integrations, Google/third-party surfaces, and other downloaded or provider targets need separate target evidence
 - The cache window is not a universal freshness promise

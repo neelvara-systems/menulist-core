@@ -51,6 +51,7 @@ const desktopToday = read('src/components/templates/main-app/today/index.tsx');
 const campaignActions = read('src/components/templates/main-app/today/hooks/useCampaignActions.ts');
 const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
 const ownerDashboardHook = read('src/hooks/useOwnerDashboard.ts');
+const ownerActionPlanHook = read('src/hooks/useOwnerActionPlan.ts');
 const obpDashboardHook = read('src/hooks/useOBPDashboard.ts');
 const ownerDashboardDb = read('src/database/ownerDashboard/index.ts');
 const ownerDashboardReadBoundary = read('src/lib/analytics/ownerDashboardReadBoundary.ts');
@@ -122,6 +123,20 @@ requireToken(
   'trendSummary: settledData?.trendSummary',
   'await Promise.all(loadHistorical ? [mutateSettled(), mutateToday()] : [mutateToday()]);',
 ].forEach((token) => requireToken(ownerDashboardHook, token, 'owner dashboard hook'));
+[
+  'getCachedData<unknown>',
+  'removeCachedData(cacheKey)',
+  'normalizeOwnerDashboardSettledCacheValue',
+  'normalizeOwnerDashboardDailyCacheValue',
+  'normalizeOwnerDashboardWeeklyCacheValue',
+  'normalizeOwnerDashboardMonthlyCacheValue',
+].forEach((token) => requireToken(ownerDashboardHook, token, 'owner dashboard persisted cache payload boundary'));
+forbidToken(ownerDashboardHook, 'getCachedData<T>', 'owner dashboard unchecked generic persisted cache read');
+[
+  'getCachedData<unknown>',
+  'normalizeOwnerDashboardSettledCacheValue(cached, projectId)',
+  'removeCachedData(cacheKey)',
+].forEach((token) => requireToken(ownerActionPlanHook, token, 'owner action plan persisted cache payload boundary'));
 forbidToken(ownerDashboardHook, "Default view is now 'overview'", 'owner dashboard hook stale default-view comment');
 forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'owner dashboard hook stale initial-load comment');
 
@@ -167,6 +182,13 @@ forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'o
   "summaryDocKind: 'overall_summary'",
   'logOBPDashboardSummaryReadFailure(error, { tId, sId, summaryDocId });',
 ].forEach((token) => requireToken(ownerDashboardDb, token, 'owner dashboard DAL'));
+[
+  'export function normalizeOwnerDashboardSettledCacheValue(',
+  'value.projectId !== projectId',
+  'export function normalizeOwnerDashboardDailyCacheValue(',
+  'export function normalizeOwnerDashboardWeeklyCacheValue(',
+  'export function normalizeOwnerDashboardMonthlyCacheValue(',
+].forEach((token) => requireToken(ownerDashboardDb, token, 'owner dashboard cache read-model projector'));
 forbidToken(ownerDashboardDb, '} catch {\n                // Non-critical\n            }', 'owner dashboard OBP summary read silent catch');
 
 [

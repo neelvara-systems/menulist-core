@@ -20,14 +20,14 @@ import { trackOwnerControlUsage } from "@database/ownerControlUsage";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
 import { hasAnyPermission } from "@lib/permissions/permissionRequirements";
 import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/screen/screenDiagnostics";
+import { getDigitalScreenHealth } from "@lib/screen/screenHealth";
 import type { DigitalScreenSeenTimestamp } from "@lib/screen/screenTimestamp";
 import { buildScreenUrl } from "@lib/screen/utils";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ScreenSlide } from "@type/campaigns";
 import { Card, Divider, Empty, message, Space, Spin, Switch, theme, Typography } from "antd";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { LuCheckCircle } from "react-icons/lu";
-import CurrentSlides from "./CurrentSlides";
+import { LuAlertCircle, LuCheckCircle, LuLink } from "react-icons/lu";
 import OwnerUploads from "./OwnerUploads";
 import ScreenLink from "./ScreenLink";
 
@@ -56,6 +56,10 @@ export default function DigitalScreenSettings() {
     const [settings, setSettings] = useState<ScreenSettingsData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const loadRequestRef = useRef(0);
+    const screenHealth = useMemo(
+        () => getDigitalScreenHealth(settings?.screenLastSeenAt),
+        [settings?.screenLastSeenAt],
+    );
 
     // Fetch settings on mount
     useEffect(() => {
@@ -175,9 +179,13 @@ export default function DigitalScreenSettings() {
             title={
                 <Space>
                     <span>Digital Screen</span>
-                    <LuCheckCircle style={{ color: token.colorSuccess }} />
+                    {screenHealth.state === "recent"
+                        ? <LuCheckCircle style={{ color: token.colorSuccess }} />
+                        : screenHealth.state === "stale"
+                            ? <LuAlertCircle style={{ color: token.colorWarning }} />
+                            : <LuLink style={{ color: token.colorTextSecondary }} />}
                     <Text type="secondary" style={{ fontSize: 14, fontWeight: 'normal' }}>
-                        Running
+                        {screenHealth.summary}
                     </Text>
                 </Space>
             }
@@ -200,15 +208,6 @@ export default function DigitalScreenSettings() {
             <ScreenLink
                 screenUrl={settings.screenUrl}
                 screenLastSeenAt={settings.screenLastSeenAt}
-            />
-
-            <Divider />
-
-            {/* Current Slides Section */}
-            <CurrentSlides
-                ownerOverrideEnabled={settings.ownerOverrideEnabled}
-                pinnedSlides={settings.pinnedSlides}
-                onSlideDeleted={handleSlideDeleted}
             />
 
             <Divider />

@@ -485,7 +485,7 @@ export async function executeMessagingOnboardingPublish(
       ...getBoundedRuntimeStringContext("userId", result.userId),
       failedEffectCount: postCommit.failedEffectCount,
       operation: "post_commit_effects",
-      tagCount: 4,
+      tagCount: 3,
     });
   }
 

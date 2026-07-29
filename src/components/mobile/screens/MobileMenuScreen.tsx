@@ -445,6 +445,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         storeDetails?.tenantId,
         storeDetails?.storeId,
     );
+    const menuProcessingDismissalScope = useMemo(() => ({
+        tenantId: storeDetails?.tenantId,
+        storeId: storeDetails?.storeId,
+    }), [storeDetails?.storeId, storeDetails?.tenantId]);
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'menu'), [storeDetails]);
     const {
         isLoading: loadingProjects,
@@ -504,8 +508,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     useEffect(() => {
         setActiveProcessingStateState(null);
         if (typeof window === 'undefined' || !processingStorageKey) return;
-        clearExpiredMenuProcessingJobDismissals();
-        const dismissedSet = new Set(getDismissedMenuProcessingJobIds());
+        clearExpiredMenuProcessingJobDismissals(menuProcessingDismissalScope);
+        const dismissedSet = new Set(getDismissedMenuProcessingJobIds(menuProcessingDismissalScope));
         const raw = window.sessionStorage.getItem(processingStorageKey);
         window.sessionStorage.removeItem('mobileMenuActiveProcessingJob');
         if (!raw) return;
@@ -523,11 +527,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         } catch {
             window.sessionStorage.removeItem(processingStorageKey);
         }
-    }, [clearExpiredMenuProcessingJobDismissals, processingStorageKey]);
+    }, [menuProcessingDismissalScope, processingStorageKey]);
 
     const refreshActiveProcessingState = useCallback(() => {
-        clearExpiredMenuProcessingJobDismissals();
-        const dismissedJobs = getDismissedMenuProcessingJobIds();
+        clearExpiredMenuProcessingJobDismissals(menuProcessingDismissalScope);
+        const dismissedJobs = getDismissedMenuProcessingJobIds(menuProcessingDismissalScope);
         const dismissedSet = new Set(dismissedJobs);
         setActiveProcessingStateState((current) => {
             if (typeof window === 'undefined') return current;
@@ -556,7 +560,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 return null;
             }
         });
-    }, [clearExpiredMenuProcessingJobDismissals, processingStorageKey]);
+    }, [menuProcessingDismissalScope, processingStorageKey]);
 
     useEffect(() => {
         refreshActiveProcessingState();
@@ -1441,7 +1445,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
         const checkExistingJob = async () => {
             try {
-                const ignoredJobIds = getDismissedMenuProcessingJobIds();
+                const ignoredJobIds = getDismissedMenuProcessingJobIds(menuProcessingDismissalScope);
                 const activeJobId = await checkExistingActiveJob(menuData.projectId, ignoredJobIds);
                 if (activeJobId) {
                     setActiveProcessingState({
@@ -1457,7 +1461,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         };
 
         void checkExistingJob();
-    }, [activeProcessingState, menuData?.projectId, setActiveProcessingState]);
+    }, [activeProcessingState, menuData?.projectId, menuProcessingDismissalScope, setActiveProcessingState]);
 
     useEffect(() => {
         const handlePageHide = () => {
@@ -4851,6 +4855,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     key={getReviewPreviewIdentity(menuData.projectId, activeProcessingJobId)}
                     comparisonResult={comparisonResult}
                     jobId={activeProcessingJobId}
+                    tenantId={storeDetails?.tenantId}
+                    storeId={storeDetails?.storeId}
                     onDiscard={() => {
                         setShowReviewSheet(false);
                         setComparisonResult(null);

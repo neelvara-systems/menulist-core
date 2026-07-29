@@ -24,6 +24,16 @@ function isBoundedCount(value: unknown): value is number {
     && value <= 100_000;
 }
 
+function readOwnValue(record: object, key: PropertyKey): unknown {
+  try {
+    return Object.prototype.hasOwnProperty.call(record, key)
+      ? Reflect.get(record, key)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function normalizeSchedulerRecoveryRunLogId(value: unknown): string | null {
   return typeof value === 'string'
     && value === value.trim()
@@ -35,35 +45,43 @@ export function normalizeSchedulerRecoveryRunLogId(value: unknown): string | nul
 
 export function normalizeSchedulerRecoveryResponse(value: unknown): SchedulerRecoveryResponse | null {
   if (!isRecord(value)) return null;
-  const status = value.status;
-  const runLogId = normalizeSchedulerRecoveryRunLogId(value.runLogId);
+  const status = readOwnValue(value, 'status');
+  const success = readOwnValue(value, 'success');
+  const runLogId = normalizeSchedulerRecoveryRunLogId(readOwnValue(value, 'runLogId'));
+  const totalStores = readOwnValue(value, 'totalStores');
+  const totalProjects = readOwnValue(value, 'totalProjects');
+  const successCount = readOwnValue(value, 'successCount');
+  const failedCount = readOwnValue(value, 'failedCount');
+  const skippedCount = readOwnValue(value, 'skippedCount');
+  const intelligenceSuccess = readOwnValue(value, 'intelligenceSuccess');
+  const intelligenceFailed = readOwnValue(value, 'intelligenceFailed');
   if (
     (status !== 'success' && status !== 'partial' && status !== 'failed')
     || !runLogId
-    || typeof value.success !== 'boolean'
-    || value.success !== (status !== 'failed')
-    || !isBoundedCount(value.totalStores)
-    || value.totalStores !== 1
-    || !isBoundedCount(value.totalProjects)
-    || !isBoundedCount(value.successCount)
-    || !isBoundedCount(value.failedCount)
-    || !isBoundedCount(value.skippedCount)
-    || !isBoundedCount(value.intelligenceSuccess)
-    || !isBoundedCount(value.intelligenceFailed)
+    || typeof success !== 'boolean'
+    || success !== (status !== 'failed')
+    || !isBoundedCount(totalStores)
+    || totalStores !== 1
+    || !isBoundedCount(totalProjects)
+    || !isBoundedCount(successCount)
+    || !isBoundedCount(failedCount)
+    || !isBoundedCount(skippedCount)
+    || !isBoundedCount(intelligenceSuccess)
+    || !isBoundedCount(intelligenceFailed)
   ) {
     return null;
   }
 
   return {
-    success: value.success,
+    success,
     runLogId,
     status,
-    totalStores: value.totalStores,
-    totalProjects: value.totalProjects,
-    successCount: value.successCount,
-    failedCount: value.failedCount,
-    skippedCount: value.skippedCount,
-    intelligenceSuccess: value.intelligenceSuccess,
-    intelligenceFailed: value.intelligenceFailed,
+    totalStores,
+    totalProjects,
+    successCount,
+    failedCount,
+    skippedCount,
+    intelligenceSuccess,
+    intelligenceFailed,
   };
 }

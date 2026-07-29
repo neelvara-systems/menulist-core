@@ -17,6 +17,7 @@ const requestIdSchema = z.string()
     .min(8)
     .max(180)
     .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/);
+const impactFingerprintSchema = z.string().regex(/^[a-f0-9]{64}$/);
 const actionScopeSchema = z.object({
     tId: z.number().int().positive(),
     sId: z.number().int().positive(),
@@ -76,10 +77,20 @@ export const AnswerlatticeActivateReleaseActionSchema = z.object({
     requestId: requestIdSchema,
     scope: actionScopeSchema,
     releaseId: strictDocumentId('Release ID'),
+    impactFingerprint: impactFingerprintSchema,
+}).strict();
+
+export const AnswerlatticePreviewReleaseImpactActionSchema = z.object({
+    action: z.literal('preview_impact'),
+    requestId: requestIdSchema,
+    scope: actionScopeSchema,
+    releaseId: strictDocumentId('Release ID'),
+    includeAnswerTestProof: z.boolean(),
 }).strict();
 
 export const AnswerlatticeReleaseActionSchema = z.discriminatedUnion('action', [
     AnswerlatticeCreateReleaseActionSchema,
+    AnswerlatticePreviewReleaseImpactActionSchema,
     AnswerlatticeActivateReleaseActionSchema,
 ]).superRefine((value, context) => {
     if (value.action === 'create') {
@@ -102,9 +113,21 @@ export type AnswerlatticeActivateReleaseAction = {
     requestId: string;
     scope: z.infer<typeof actionScopeSchema>;
     releaseId: string;
+    impactFingerprint: string;
 };
 
-export type AnswerlatticeReleaseAction = AnswerlatticeCreateReleaseAction | AnswerlatticeActivateReleaseAction;
+export type AnswerlatticePreviewReleaseImpactAction = {
+    action: 'preview_impact';
+    requestId: string;
+    scope: z.infer<typeof actionScopeSchema>;
+    releaseId: string;
+    includeAnswerTestProof: boolean;
+};
+
+export type AnswerlatticeReleaseAction =
+    | AnswerlatticeCreateReleaseAction
+    | AnswerlatticePreviewReleaseImpactAction
+    | AnswerlatticeActivateReleaseAction;
 
 export const parseAnswerlatticeReleaseAction = (value: unknown): AnswerlatticeReleaseAction | null => {
     const parsed = AnswerlatticeReleaseActionSchema.safeParse(value);
@@ -128,8 +151,27 @@ export const parseAnswerlatticeReleaseAction = (value: unknown): AnswerlatticeRe
     }
     if (data.action === 'activate'
         && typeof data.requestId === 'string'
-        && typeof data.releaseId === 'string') {
-        return { action: 'activate', requestId: data.requestId, scope: data.scope, releaseId: data.releaseId };
+        && typeof data.releaseId === 'string'
+        && typeof data.impactFingerprint === 'string') {
+        return {
+            action: 'activate',
+            requestId: data.requestId,
+            scope: data.scope,
+            releaseId: data.releaseId,
+            impactFingerprint: data.impactFingerprint,
+        };
+    }
+    if (data.action === 'preview_impact'
+        && typeof data.requestId === 'string'
+        && typeof data.releaseId === 'string'
+        && typeof data.includeAnswerTestProof === 'boolean') {
+        return {
+            action: 'preview_impact',
+            requestId: data.requestId,
+            scope: data.scope,
+            releaseId: data.releaseId,
+            includeAnswerTestProof: data.includeAnswerTestProof,
+        };
     }
     return null;
 };
@@ -160,9 +202,11 @@ export const AnswerlatticeStoredReleaseSchema = z.object({
     requestFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     activation: z.object({
         requestId: requestIdSchema,
+        impactFingerprint: impactFingerprintSchema,
         startedAt: timestampLikeSchema,
         leaseExpiresAt: timestampLikeSchema,
     }).strict().optional(),
+    impactFingerprint: impactFingerprintSchema.optional(),
     driftEvaluation: z.object({
         status: z.enum(['completed', 'failed']),
         evaluatedAnswers: z.number().int().nonnegative().max(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS),
@@ -188,6 +232,42 @@ const answerlatticeReleasePersistenceResultSchema = z.discriminatedUnion('action
     }).strict(),
     z.object({
         success: z.literal(true),
+        action: z.literal('preview_impact'),
+        releaseId: strictDocumentId('Release ID'),
+        status: z.literal('pending'),
+        impactFingerprint: impactFingerprintSchema,
+        affectedAnswerCount: z.number().int().nonnegative().max(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS),
+        reviewRequiredCount: z.number().int().nonnegative().max(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS),
+        affectedAnswers: z.array(z.object({
+            answerId: strictDocumentId('Answer ID'),
+            title: z.string().trim().min(1).max(180).nullable(),
+            lastValidatedInVersion: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+            currentDriftFlag: z.boolean(),
+            currentReviewRequired: z.boolean(),
+            willRequireReview: z.boolean(),
+            matchReason: z.literal('direct_entity_binding'),
+            matchedEntityCount: z.number().int().positive().max(ANSWERLATTICE_RELEASE_MAX_ENTITY_CHANGES),
+        }).strict()).max(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS),
+        answerTestProof: z.object({
+            state: z.enum([
+                'not_requested',
+                'permission_required',
+                'no_linked_tests',
+                'missing',
+                'stale',
+                'ready',
+                'review',
+                'blocked',
+            ]),
+            linkedCaseCount: z.number().int().nonnegative().max(100),
+            criticalCaseCount: z.number().int().nonnegative().max(100),
+            failedCaseCount: z.number().int().nonnegative().max(100),
+            criticalFailureCount: z.number().int().nonnegative().max(100),
+            lastRunAt: z.string().datetime({ offset: true }).nullable(),
+        }).strict(),
+    }).strict(),
+    z.object({
+        success: z.literal(true),
         action: z.literal('activate'),
         releaseId: strictDocumentId('Release ID'),
         status: z.literal('active'),
@@ -195,7 +275,24 @@ const answerlatticeReleasePersistenceResultSchema = z.discriminatedUnion('action
         driftedAnswers: z.number().int().nonnegative(),
         replayed: z.boolean(),
     }).strict(),
-]);
+]).superRefine((result, context) => {
+    if (result.action !== 'preview_impact') return;
+    if (result.affectedAnswers.length !== result.affectedAnswerCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Affected answer count must match the projected answers.',
+            path: ['affectedAnswerCount'],
+        });
+    }
+    const reviewRequiredCount = result.affectedAnswers.filter(answer => answer.willRequireReview).length;
+    if (reviewRequiredCount !== result.reviewRequiredCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Review-required count must match the projected answers.',
+            path: ['reviewRequiredCount'],
+        });
+    }
+});
 
 export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('action', [
     z.object({
@@ -208,6 +305,43 @@ export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('acti
     }).strict(),
     z.object({
         success: z.literal(true),
+        action: z.literal('preview_impact'),
+        releaseId: strictDocumentId('Release ID'),
+        status: z.literal('pending'),
+        impactFingerprint: impactFingerprintSchema,
+        affectedAnswerCount: z.number().int().nonnegative().max(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS),
+        reviewRequiredCount: z.number().int().nonnegative().max(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS),
+        affectedAnswers: z.array(z.object({
+            answerId: strictDocumentId('Answer ID'),
+            title: z.string().trim().min(1).max(180).nullable(),
+            lastValidatedInVersion: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+            currentDriftFlag: z.boolean(),
+            currentReviewRequired: z.boolean(),
+            willRequireReview: z.boolean(),
+            matchReason: z.literal('direct_entity_binding'),
+            matchedEntityCount: z.number().int().positive().max(ANSWERLATTICE_RELEASE_MAX_ENTITY_CHANGES),
+        }).strict()).max(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS),
+        answerTestProof: z.object({
+            state: z.enum([
+                'not_requested',
+                'permission_required',
+                'no_linked_tests',
+                'missing',
+                'stale',
+                'ready',
+                'review',
+                'blocked',
+            ]),
+            linkedCaseCount: z.number().int().nonnegative().max(100),
+            criticalCaseCount: z.number().int().nonnegative().max(100),
+            failedCaseCount: z.number().int().nonnegative().max(100),
+            criticalFailureCount: z.number().int().nonnegative().max(100),
+            lastRunAt: z.string().datetime({ offset: true }).nullable(),
+        }).strict(),
+        scope: actionScopeSchema,
+    }).strict(),
+    z.object({
+        success: z.literal(true),
         action: z.literal('activate'),
         releaseId: strictDocumentId('Release ID'),
         status: z.literal('active'),
@@ -216,7 +350,24 @@ export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('acti
         replayed: z.boolean(),
         scope: actionScopeSchema,
     }).strict(),
-]);
+]).superRefine((result, context) => {
+    if (result.action !== 'preview_impact') return;
+    if (result.affectedAnswers.length !== result.affectedAnswerCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Affected answer count must match the projected answers.',
+            path: ['affectedAnswerCount'],
+        });
+    }
+    const reviewRequiredCount = result.affectedAnswers.filter(answer => answer.willRequireReview).length;
+    if (reviewRequiredCount !== result.reviewRequiredCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Review-required count must match the projected answers.',
+            path: ['reviewRequiredCount'],
+        });
+    }
+});
 
 export type AnswerlatticeReleaseActionResult = z.infer<typeof answerlatticeReleasePersistenceResultSchema>;
 export type AnswerlatticeReleaseActionResponse = z.infer<typeof AnswerlatticeReleaseActionResultSchema>;

@@ -51,9 +51,16 @@ function verifySearchBoundary() {
   const changelogCache = read('src/hooks/useChangelogCache.ts');
   const platformTickets = read('src/components/templates/platform/supportTickets/index.tsx');
   const faqView = read('src/components/templates/main-app/helpCenter/FaqView.tsx');
+  const articleView = read('src/components/organisms/ArticleView/index.tsx');
+  const articleViewModal = read('src/components/organisms/ArticleViewModal/index.tsx');
 
   assertIncludes(searchRoute, 'withAuth(async (request: NextRequest, session)', 'Help Center search API auth boundary');
   assertIncludes(searchRoute, 'checkAIOperationLimit()', 'Help Center search API AI rate limit');
+  assertIncludes(searchRoute, 'const HELP_CENTER_PRIVATE_RESPONSE_HEADERS = {', 'Help Center search API protected private response policy');
+  assertIncludes(searchRoute, "const headers = new Headers(init.headers);", 'Help Center search API caller-header normalization');
+  assertIncludes(searchRoute, "headers.set(name, value);", 'Help Center search API protected header precedence');
+  assertIncludes(searchRoute, 'if (rateLimitResponse) return withSearchResponseHeaders(rateLimitResponse);', 'Help Center search API rate-limit response private policy');
+  assertIncludes(searchRoute, 'if (bodyResult.ok === false) return withSearchResponseHeaders(bodyResult.response);', 'Help Center search API bounded-body response private policy');
   assertIncludes(searchRoute, 'const HELP_CENTER_SEARCH_MAX_BODY_BYTES = 64 * 1024;', 'Help Center search API request cap');
   assertIncludes(searchRoute, 'readBoundedJsonBody(request, HELP_CENTER_SEARCH_MAX_BODY_BYTES)', 'Help Center search API bounded body parser');
   assertIncludes(searchRoute, 'getSafeZodValidationDetails(error)', 'Help Center search API safe validation details');
@@ -117,7 +124,10 @@ function verifySearchBoundary() {
   assertIncludes(chatInput, 'parseAnswerlatticeHelpChatDraft(storedDraft)', 'Help Chat bounded draft parser');
   assertIncludes(chatInput, 'serializeAnswerlatticeHelpChatDraft(inputValue)', 'Help Chat versioned draft serializer');
   assertIncludes(chatInput, 'localStorage.removeItem(draftKeys.draftKey);', 'Help Chat invalid or empty draft removal');
-  assertIncludes(chatInput, '[selectedImage, draftKeys, draftScope, legacyDraftKeys]', 'Help Chat scope-change draft purge dependency');
+  assertIncludes(chatInput, 'clearDraft(sessionId, draftScope);', 'Help Chat failure-contained draft clearing');
+  assertIncludes(chatInput, "'help_chat_draft_cleanup_failed'", 'Help Chat draft cleanup diagnostics');
+  assertIncludes(chatInput, '[selectedImage, draftKeys, draftScope, legacyDraftKeys, sessionId]', 'Help Chat scope-change draft purge dependency');
+  assertNotIncludes(chatInput, '// Draft cleanup is best-effort only.', 'Help Chat silent draft cleanup failure');
   assertNotIncludes(chatInput, 'const draftKey = `chat-draft-${sessionId', 'Help Chat unscoped draft key');
   assertIncludes(cacheScopeHook, 'resolveAnswerlatticeWorkspaceCacheScopeKey(session)', 'Help Center exact workspace cache scope');
   assertIncludes(categoriesCache, 'new Map<string, Promise<KnowledgeBaseCategoriesType | null>>()', 'Help Center category request coalescing per scope');
@@ -131,6 +141,11 @@ function verifySearchBoundary() {
   assertIncludes(faqView, "if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT)", 'Help Center explicit FAQ flag fallback');
   assertIncludes(faqView, 'if (failed) {', 'Help Center visible managed FAQ failure');
   assertNotIncludes(faqView, 'if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT || failed)', 'Help Center silent static FAQ failure fallback');
+  assertIncludes(articleView, 'editor.commands.setContent(article.content, false);', 'Help Center article editor prop synchronization');
+  assertIncludes(articleViewModal, 'let active = true;', 'Help Center article modal request lifecycle fence');
+  assertIncludes(articleViewModal, 'if (active) setFullArticle(article);', 'Help Center article modal stale-result rejection');
+  assertIncludes(articleViewModal, "logRuntimeFailure('answerlattice_article_modal_load_failed'", 'Help Center article modal fetch failure diagnostics');
+  assertNotIncludes(articleViewModal, 'const loadArticle = async', 'Help Center article modal unfenced detached loader');
 }
 
 function verifyMobileBoundary() {

@@ -11,6 +11,7 @@
 
 | Document | Purpose |
 |----------|---------|
+| [menulist-staging-qa-setup.md](./menulist-staging-qa-setup.md) | First execution guide for MenuList local/staging setup only: `menulist.online`, Firebase `menulist-qa`, Vercel Preview env, QA provider keys, Firebase QA secrets, and smoke checks |
 | [initial-account-domain-firebase-setup-guide.md](./initial-account-domain-firebase-setup-guide.md) | Owner-facing one-time setup guide for domain purchase, Workspace, Google Cloud/Firebase projects, Vercel, DNS, provider accounts, env placement, and staging-before-production order |
 | [three-product-environment-setup.md](./three-product-environment-setup.md) | Technical product/domain/account/env setup checklist for Neelvara, MenuList, Answerlattice, CampaignCue, SignalDesk, and MyCodex |
 | [production-deployment-checklist.md](./production-deployment-checklist.md) | Guarded production handoff checklist; routes external gates through the production-readiness runbook and does not authorize deploys without active approval |

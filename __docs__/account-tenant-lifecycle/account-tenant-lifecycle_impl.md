@@ -25,7 +25,8 @@ independently. When NextAuth ends, `clientSessionCleanup.ts` clears:
 
 - active outlet context;
 - owner SWR local caches;
-- deployment identity and active/dismissed processing-job session state;
+- deployment identity and active/dismissed processing-job session state,
+  including every tenant/store-scoped dynamic key prefix;
 - legacy unscoped project selection and session-expiry acknowledgement;
 - captured owner-session logs and monitoring identity.
 

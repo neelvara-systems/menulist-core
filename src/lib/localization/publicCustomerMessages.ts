@@ -70,7 +70,9 @@ export function getPublicSpiceLevelLabel(
     translate: PublicCustomerTranslator,
 ): string {
     const normalized = value.toLowerCase().trim().replace(/_/g, '-');
-    const messageKey = PUBLIC_SPICE_LEVEL_KEYS[normalized];
+    const messageKey = Object.prototype.hasOwnProperty.call(PUBLIC_SPICE_LEVEL_KEYS, normalized)
+        ? PUBLIC_SPICE_LEVEL_KEYS[normalized]
+        : undefined;
     if (messageKey) return translate(messageKey);
     return value
         .replace(/[-_]+/g, ' ')

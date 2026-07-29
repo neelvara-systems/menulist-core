@@ -30,7 +30,9 @@ The Knowledge Governance hub includes a `Knowledge Map` tab. It:
 9. links gaps to existing ontology, entity-candidate, canonical-answer, and drift workflows;
 10. compares the graph's entity/relation/canonical source-version evidence with the current control document and exposes `Freshness verified`, `Rebuild needed`, or `Freshness pending`;
 11. exposes last rebuild time and a manual refresh control;
-12. collapses relationship groups through one accessible disclosure on narrow screens.
+12. collapses relationship groups through one accessible disclosure on narrow screens;
+13. accepts one optional, validated entity focus from a governed owner surface;
+14. passes the selected entity to Canonical Answers without adding a map-owned repair workflow.
 
 The governance view never changes an entity, relation, answer, or approval.
 
@@ -79,7 +81,7 @@ No internal entity ID, canonical-answer record, source pointer, drift status, pr
 | One permanent display parent for every entity | Reject without customer evidence. It creates a second hierarchy beside governed relations. |
 | Map-only groups and display-placement corrections | Reject. They add presentation truth and audit writes that do not improve canonical answer quality. |
 | Demand or friction overlay | Validate first with a bounded prototype using existing aggregate evidence. Feature ownership remains Product Friction Intelligence. |
-| Action Center badges | Reject as a map dependency. The Daily Brief may deep-link to a selected map node, but the map does not ingest a second action model. |
+| Action Center badges | Reject as a map dependency. Governed owner surfaces may deep-link to a selected map node, but the map does not ingest a second action model. |
 | Dedicated Product Map route | Reject. Keep the map inside Knowledge Governance. |
 | Structure and metrics manifests in Firestore/Storage | Reject while the existing graph summary remains bounded and sufficient. |
 | Overall product-health score | Reject. Show explicit counts and conditions. |

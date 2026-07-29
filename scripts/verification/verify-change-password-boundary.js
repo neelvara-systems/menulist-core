@@ -8,6 +8,7 @@ const root = path.resolve(__dirname, '../..');
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
 const route = read('src/app/api/auth/change-password/route.ts');
+const authApiResponse = read('src/lib/auth/authApiResponse.ts');
 const currentUser = read('src/lib/auth/currentPlatformUser.ts');
 const authReadme = read('__docs__/auth/README.md');
 const authFirebase = read('__docs__/auth/auth_firebase.md');
@@ -20,6 +21,7 @@ const requireText = (source, token, label) => {
 
 requireText(route, 'const currentUser = await getCurrentUser(session);', 'fresh current-user read');
 requireText(route, 'currentUser.documentId !== userId', 'exact current-user identity');
+requireText(route, 'resolveCurrentSessionUserDocumentId(session)', 'exact all-alias session actor');
 requireText(route, 'failClosedOnProviderError: true', 'fail-closed sensitive limiter');
 requireText(route, 'rl.reason === "provider_unavailable"', 'provider failure distinction');
 requireText(route, 'status: providerUnavailable ? 503 : 429', 'provider failure status');
@@ -31,12 +33,20 @@ requireText(route, 'CHANGE_PASSWORD_VERIFICATION_TIMEOUT_MS', 'bounded verificat
 requireText(route, 'signal: verificationController.signal', 'verification abort signal');
 requireText(route, 'clearTimeout(verificationTimeout);', 'timeout cleanup');
 requireText(route, '"change_password_metadata_sync_failed"', 'metadata repair observability');
-requireText(route, 'return NextResponse.json({\n      success: true,', 'success after authoritative Auth update');
+requireText(route, 'authTokensRevokedAt: now,', 'Firebase token revocation metadata');
+requireText(route, 'sessionRevokedAt: now,', 'NextAuth session revocation metadata');
+requireText(route, 'return authPrivateJson({\n      reauthenticationRequired: true,\n      success: true,', 'protected reauthentication response after authoritative Auth update');
+requireText(route, 'withAuthPrivateHeaders(bodyResult.response)', 'protected bounded-body helper response');
+assert.ok(!route.includes('NextResponse.json('), 'password route must not bypass the shared private response policy');
+requireText(authApiResponse, '"Cache-Control": "private, no-store, max-age=0"', 'shared auth private cache policy');
+requireText(authApiResponse, '"Pragma": "no-cache"', 'shared auth legacy cache policy');
+requireText(authApiResponse, '"X-Content-Type-Options": "nosniff"', 'shared auth MIME-sniffing policy');
+requireText(authApiResponse, 'const headers = new Headers(init.headers);', 'shared auth protected header precedence');
 
 const updateUserOffset = route.indexOf('await authAdmin.updateUser');
 const metadataOffset = route.indexOf('await userRef.update');
 const metadataCatchOffset = route.indexOf('"change_password_metadata_sync_failed"');
-const successOffset = route.indexOf('return NextResponse.json({\n      success: true,');
+const successOffset = route.indexOf('return authPrivateJson({\n      reauthenticationRequired: true,\n      success: true,');
 assert.ok(updateUserOffset >= 0 && updateUserOffset < metadataOffset, 'Firebase Auth must update before metadata');
 assert.ok(metadataOffset < metadataCatchOffset && metadataCatchOffset < successOffset, 'metadata failure must be observed before success');
 

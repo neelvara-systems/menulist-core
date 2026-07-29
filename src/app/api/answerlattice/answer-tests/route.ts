@@ -13,6 +13,7 @@ import {
     AnswerlatticeAnswerTestSaveSchema,
     ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
     getAnswerlatticeAnswerTestSummaryId,
+    hasDisallowedAnswerlatticeCriticalRagCaseMutation,
     prepareAnswerlatticeAnswerTestCasesForWrite,
     projectAnswerlatticeAnswerTestSummaryForClient,
 } from '@lib/answerlattice/answerTestContracts';
@@ -206,6 +207,9 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             if (current.revision !== parsed.data.revision) {
                 throw new Error('answer_test_revision_conflict');
             }
+            if (hasDisallowedAnswerlatticeCriticalRagCaseMutation(current.cases, parsed.data.cases)) {
+                throw new Error('answer_test_critical_rag_not_allowed');
+            }
             const cases = prepareAnswerlatticeAnswerTestCasesForWrite(
                 current.cases,
                 parsed.data.cases,
@@ -245,6 +249,14 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             headers: PRIVATE_NO_STORE_HEADERS,
         });
     } catch (error) {
+        if (error instanceof Error && error.message === 'answer_test_critical_rag_not_allowed') {
+            return NextResponse.json(
+                {
+                    error: 'Critical tests must use approved canonical or FAQ truth, ticket escalation, or no approved answer.',
+                },
+                { status: 400, headers: PRIVATE_NO_STORE_HEADERS },
+            );
+        }
         if (error instanceof Error && error.message === 'answer_test_revision_conflict') {
             return NextResponse.json(
                 { error: 'These tests changed in another session. Reload before saving.' },

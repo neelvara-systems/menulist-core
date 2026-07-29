@@ -1,7 +1,7 @@
 process.env.NODE_ENV = process.env.NODE_ENV || "test";
-process.env.MENULIST_SIGNALDESK_FIREBASE_MODE = process.env.MENULIST_SIGNALDESK_FIREBASE_MODE || "separate";
-process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "demo-signaldesk-target-registry";
-process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.MENULIST_SIGNALDESK_FIREBASE_PROJECT_ID;
+process.env.SIGNALDESK_FIREBASE_MODE = process.env.SIGNALDESK_FIREBASE_MODE || "separate";
+process.env.SIGNALDESK_FIREBASE_PROJECT_ID = process.env.SIGNALDESK_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "demo-signaldesk-target-registry";
+process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_SIGNALDESK_FIREBASE_PROJECT_ID || process.env.SIGNALDESK_FIREBASE_PROJECT_ID;
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {
   console.error("SignalDesk Target Registry verification requires FIRESTORE_EMULATOR_HOST. Run it through firebase emulators:exec.");

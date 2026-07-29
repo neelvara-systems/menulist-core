@@ -2,13 +2,13 @@
 
 | ID | Case | Expected |
 | --- | --- | --- |
-| FDB-001 | All summaries missing | Brief shows insufficient data and launch verification actions. |
-| FDB-002 | Drifted answers exist | First actions route to Governance / Answer Tests. |
+| FDB-001 | All summaries missing | Brief shows insufficient data and the source-health retry state; it does not invent a launch action. |
+| FDB-002 | Drifted answers exist | First action routes to Governance drift review. |
 | FDB-003 | Needs-answer board cards exist | Brief includes Support Board action. |
-| FDB-004 | Intake review items exist | Brief includes Knowledge Intake action. |
+| FDB-004 | Intake review items exist without a linked launch or support-truth problem | Brief keeps the generic backlog out of the ranked action list. |
 | FDB-005 | Escalations exist | Brief includes ticket/support reply action. |
-| FDB-006 | Coverage below 50 | Brief includes approved-answer coverage action. |
-| FDB-007 | Stable summaries | Brief shows stable state plus release safety/cost guard reminders. |
+| FDB-006 | Coverage below 50 with canonical misses, uncovered entities, drift, or qualified Support Board work | Brief includes the paired approved-answer coverage action. |
+| FDB-007 | Stable summaries | Brief returns zero actions and shows the owner quiet state; release and cost remain separate controls. |
 | FDB-008 | Feature flag disabled | Support Assistant still loads without `dailyBrief`. |
 | FDB-009 | Cache hit | Read model reports zero reads. |
 | FDB-010 | Mobile width | Action cards stack and 44px buttons remain usable. |
@@ -35,6 +35,8 @@
 | FDB-031 | Owner opens or refreshes Daily Brief | No action, seen, handled, snooze, dismissal, or audit document is written. |
 | FDB-032 | Top failing entity is present in Trust Metrics | It can support bounded card evidence but cannot establish autonomous root cause or sensitive severity. |
 | FDB-033 | Only a generic release reminder or credit reminder is available | Zero action cards are returned; `I shipped a change` and cost guidance remain separate controls. |
+| FDB-034 | A qualified top-friction entity is present | The Friction route carries one validated `entity` context value and the destination revalidates it. |
+| FDB-035 | Coverage is low and paired with repair evidence | The action opens Canonical Answers rather than Answer Tests; no new read occurs until the owner opens the destination. |
 
 ## Regression Checks
 

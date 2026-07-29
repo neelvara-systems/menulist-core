@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import { parseAnswerlatticeReleaseAction } from '@lib/answerlattice/releaseContracts';
 import {
@@ -18,7 +21,7 @@ import { withAuth } from '../../../../middleware/auth';
 
 const RELEASE_REQUEST_MAX_BODY_BYTES = 32 * 1024;
 const RELEASE_RATE_LIMIT = { limit: 30, window: 60 };
-const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store' };
+const NO_STORE_HEADERS = ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS;
 
 export const POST = withAuth(async (request: NextRequest, session) => {
     const scope = resolveAnswerlatticeSessionScope(session);
@@ -75,7 +78,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     } catch (error) {
         if (error instanceof AnswerlatticeReleaseError) {
             return NextResponse.json(
-                { error: error.publicMessage },
+                { error: error.publicMessage, code: error.code },
                 { status: error.status, headers: NO_STORE_HEADERS },
             );
         }

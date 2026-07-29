@@ -21,9 +21,11 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { DB_COLLECTIONS } from '@constant/database';
-import { PRODUCT_IDS } from '@constant/product';
 import { getAIProviderRetryAfter, isAIProviderRateLimitError } from '@lib/ai/providerErrors';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
 import { recordAnswerlatticeAiOperation } from '@lib/answerlattice/aiAccounting';
 import {
     ANSWERLATTICE_TRANSLATION_SOURCE_LOCALE,
@@ -40,7 +42,7 @@ import {
 } from '@lib/answerlattice/kbArticleIdBoundary';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
 import {
-    normalizeConsistentAnswerlatticeScopeDocumentIds,
+    isExactAnswerlatticePersistedAuthority,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -62,11 +64,6 @@ const TranslateRequestSchema = z.object({
 const TRANSLATE_ARTICLE_MAX_BODY_BYTES = 4 * 1024;
 const MAX_TRANSLATION_TEXT_FOR_PROMPT = 8000;
 const TRANSLATION_PROVIDER_RESPONSE_TEXT_MAX_CHARS = 64 * 1024;
-const ANSWERLATTICE_TRANSLATION_NO_STORE_HEADERS = {
-    'Cache-Control': 'private, no-store, max-age=0',
-    'X-Content-Type-Options': 'nosniff',
-} as const;
-
 type BoundedTranslationProviderResponseText = {
     originalLength: number;
     text: string;
@@ -95,10 +92,17 @@ const translationJson = (
 ) => NextResponse.json(body, {
     status,
     headers: {
-        ...ANSWERLATTICE_TRANSLATION_NO_STORE_HEADERS,
         ...headers,
+        ...ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
     },
 });
+
+const withPrivateHeaders = <T extends NextResponse>(response: T): T => {
+    Object.entries(ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS).forEach(([name, value]) => {
+        response.headers.set(name, value);
+    });
+    return response;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -133,7 +137,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     try {
         if (!userIdForLog) {
-            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            return translationJson({ error: 'Forbidden' }, 403);
         }
         if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_MULTI_LANGUAGE) {
             return translationJson({ error: 'Multi-language is not enabled.' }, 403);
@@ -183,7 +187,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const permission = await requireAnswerlatticePermission(request, session, ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE);
-        if (permission.response) return permission.response;
+        if (permission.response) return withPrivateHeaders(permission.response);
 
         const bodyResult = await readBoundedJsonBody(request, TRANSLATE_ARTICLE_MAX_BODY_BYTES, {
             invalidJsonMessage: `Invalid translation request. Supported locales: ${ANSWERLATTICE_SUPPORTED_LOCALES.join(', ')}`,
@@ -220,21 +224,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const article = articleDoc.data() as Record<string, unknown>;
-        const articleTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-            article.tId,
-            article.tenantId,
-        ]);
-        const articleStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-            article.sId,
-            article.storeId,
-        ]);
-        if (
-            article.pId !== PRODUCT_IDS.ANSWERLATTICE ||
-            !articleTenantId ||
-            !articleStoreId ||
-            articleTenantId !== sessionScope.tenantId ||
-            articleStoreId !== sessionScope.storeId
-        ) {
+        if (!isExactAnswerlatticePersistedAuthority(article, sessionScope)) {
             return translationJson({ error: 'Article not found.' }, 404);
         }
         if (getExistingTranslation(article, targetLocale)) {
@@ -331,19 +321,7 @@ Respond in this exact JSON format:
                 }
 
                 const currentArticle = currentSnapshot.data() as Record<string, unknown>;
-                const currentTenantId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-                    currentArticle.tId,
-                    currentArticle.tenantId,
-                ]);
-                const currentStoreId = normalizeConsistentAnswerlatticeScopeDocumentIds([
-                    currentArticle.sId,
-                    currentArticle.storeId,
-                ]);
-                if (
-                    currentArticle.pId !== PRODUCT_IDS.ANSWERLATTICE
-                    || currentTenantId !== sessionScope.tenantId
-                    || currentStoreId !== sessionScope.storeId
-                ) {
+                if (!isExactAnswerlatticePersistedAuthority(currentArticle, sessionScope)) {
                     throw new AnswerlatticeTranslationConflictError('ANSWERLATTICE_TRANSLATION_SOURCE_NOT_FOUND');
                 }
 
