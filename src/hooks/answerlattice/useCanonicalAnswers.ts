@@ -41,7 +41,7 @@ interface UseCanonicalAnswersReturn {
     error: string | null;
     selectedAnswer: AnswerlatticeCanonicalAnswer | null;
     setSelectedAnswer: (answer: AnswerlatticeCanonicalAnswer | null) => void;
-    create: (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>) => Promise<boolean>;
+    create: (data: Omit<AnswerlatticeCanonicalAnswer, 'id' | 'pId'>) => Promise<boolean>;
     update: (data: Partial<AnswerlatticeCanonicalAnswer> & { id: string }) => Promise<boolean>;
     refresh: () => Promise<void>;
     loadAnswer: (answerId: string) => Promise<AnswerlatticeCanonicalAnswer | null>;
@@ -104,7 +104,7 @@ export function useCanonicalAnswers(tId: number, sId: number): UseCanonicalAnswe
         setSelectedState({ scopeKey, answer: scopeKey ? answer : null });
     }, [tId, sId]);
 
-    const create = useCallback(async (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>): Promise<boolean> => {
+    const create = useCallback(async (data: Omit<AnswerlatticeCanonicalAnswer, 'id' | 'pId'>): Promise<boolean> => {
         try {
             await proposeCanonicalAnswerCreate(data);
             message.success('New answer sent to Governance review');

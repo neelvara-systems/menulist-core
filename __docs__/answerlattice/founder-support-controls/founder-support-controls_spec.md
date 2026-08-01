@@ -1,7 +1,7 @@
 # Founder Support Controls - Specification
 
 > **Status:** Implemented in source; deployment and browser certification remain separate release gates
-> **Feature flags:** `ENABLE_ANSWERLATTICE_ANSWER_TESTS`, `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`, `ENABLE_ANSWERLATTICE_KNOWN_ISSUES`, `ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT`, `ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS`, `ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_EXPORT`
+> **Feature flags:** `ENABLE_ANSWERLATTICE_ANSWER_TESTS`, `ENABLE_ANSWERLATTICE_ANSWER_TRACE`, `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`, `ENABLE_ANSWERLATTICE_KNOWN_ISSUES`, `ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT`, `ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS`, `ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_EXPORT`
 
 ## Problem
 
@@ -11,6 +11,7 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 2. Did a release break any important answer or scope?
 3. How do I tell affected users about a temporary problem without changing permanent knowledge?
 4. Can I trust visitor context, keep useful debugging evidence, and take my approved knowledge with me?
+5. Why did Answerlattice serve or escalate this answer, and which governed record should I review?
 
 ## Users
 
@@ -51,6 +52,13 @@ Answerlattice already collects product knowledge, serves approved answers, detec
   Canonical Governance before the owner adopts evidence or prepares rollback.
 - Navigation alone never runs a test, changes a case, or changes an answer.
 - Release checks parse the exact stored release contract and reject wrong-product, wrong-scope, or malformed records.
+- Release impact returns a strict direct-link disclosure for every changed
+  entity: direct active approved-answer links, direct active Answer Test links
+  when governance evidence is available, and changed entity IDs with neither
+  visible link.
+- Direct-link disclosure is evidence about current mappings only. It does not
+  assert complete coverage across articles, FAQs, procedures, product surfaces,
+  inferred relationships, factual correctness, or customer resolution.
 - A release check never scans all historical tests or all support collections.
 - Failed release checks create no knowledge automatically.
 - Critical failures mark the release-check result blocked without changing release, deployment, or product state.
@@ -97,6 +105,31 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 - Links are never fetched, crawled, rendered publicly, or used as retrieval truth.
 - Only authenticated workspace members can open them from owner support surfaces.
 
+### Answer Trace
+
+- Support-authorized users can inspect one exact retained trace from an
+  escalated widget ticket.
+- Trust Metrics loads recent review traces only after an explicit owner action.
+  It scans at most 30 recent exact-scope history rows and returns at most 12
+  traces with fallback, confidence, feedback, escalation, drift, or no-answer
+  evidence.
+- One in-flight request is allowed per owner surface. The browser aborts a
+  trace request after 15 seconds and rejects count/window contradictions or a
+  response larger than 1 MiB.
+- The owner projection includes the bounded question and served answer,
+  answer route/type, approved answer or FAQ ID, matched entity IDs, public
+  citations, fallback reason, confidence, clarification need, governed source
+  versions, explicit feedback, escalation identity, and review-signal labels.
+- The owner projection excludes visitor ID/name/email, origin, request path,
+  user-agent family, raw cache key, debug evidence URLs, source bodies, and
+  arbitrary runtime metadata.
+- Trace access requires `canManageSupport`, uses authenticated session scope,
+  returns private/no-store responses, and applies the existing fail-closed
+  dashboard read limit.
+- A trace links to existing Canonical Answers, Knowledge Map, and Support Board
+  workflows. It never grades correctness, assigns root cause, creates repair
+  work, edits knowledge, or publishes content automatically.
+
 ### Support Truth Export
 
 - Owners with export permission can download a bounded JSON package containing product surfaces, published KB articles, published FAQs, changelog entries, entities, canonical answers, and release records.
@@ -131,6 +164,7 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 | Manage known issues | `canManageGovernance` |
 | Configure verified context | `canManageWidget` |
 | View evidence links | `canManageSupport` |
+| View answer trace | `canManageSupport` |
 | Export support truth | `canExportData` |
 
 ## Non-Goals
@@ -144,6 +178,8 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 - Per-test/per-assertion Firestore documents, immutable Storage artifacts, or a new compact dashboard document.
 - Full status pages, subscriber notifications, or incident response management.
 - Session replay capture or product analytics.
+- A raw search-history browser, visitor-identity viewer, or unbounded event warehouse.
+- Automatic root-cause classification from answer trace.
 - Customer CRM, public roadmap, or issue prioritization by revenue.
 - Automatic answer grading by an LLM.
 - Autonomous deployment approval or release mutation from a proof status.
@@ -162,6 +198,9 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 - An active known issue appears on matching widget surfaces and disappears after resolution/expiry.
 - Signed context is verified server-side and unsigned identity remains non-authoritative.
 - Evidence links remain bounded and private.
+- A support-authorized owner can move from an escalated ticket or recent trust
+  signal to its bounded answer trace and then into an existing governed review
+  surface without any automatic mutation.
 - Export produces a complete, scoped package or fails explicitly.
 - Invalid signed visitor tokens discard signed-only identity claims but do not block generic page-aware support.
 

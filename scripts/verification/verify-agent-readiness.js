@@ -3372,6 +3372,22 @@ function verifyAnswerlatticeInstallContract() {
   assertIncludes(escapedSnippet, '/settings/&lt;security&gt;', 'Answerlattice generated blocked-route angle-bracket escaping');
   assertNotIncludes(escapedSnippet, 'data-unsafe="1"', 'Answerlattice generated widget snippet raw attribute injection');
 
+  assertIncludes(
+    contract.ANSWERLATTICE_FRAMEWORK_SNIPPETS.nextjs,
+    'onLoad={updateContext}',
+    'Answerlattice Next.js initial context waits for widget load',
+  );
+  assertIncludes(
+    contract.ANSWERLATTICE_FRAMEWORK_SNIPPETS.react,
+    "script.addEventListener('load', updateContext, { once: true });",
+    'Answerlattice React initial context waits for widget load',
+  );
+  assertIncludes(
+    contract.ANSWERLATTICE_FRAMEWORK_SNIPPETS.vue,
+    "script.addEventListener('load', updateContext, { once: true });",
+    'Answerlattice Vue initial context waits for widget load',
+  );
+
   const secretKey = 'al_test_raw_secret_value_123456789';
   const kitFiles = contract.buildAnswerlatticeAgentKitFiles({
     widgetKey: secretKey,

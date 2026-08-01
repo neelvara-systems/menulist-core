@@ -73,12 +73,16 @@ assert(
   'const normalizedToday = getCampaignTodayState(data, today);',
   'const storedTodayDate = (',
   'if (storedTodayDate !== today)',
-  'staffPrompt: undefined',
   'staffPrompt: projectStaffPrompt(',
   'physicalSurfaces: projectPhysicalSurfaceEligibility(',
 ].forEach((token) => {
   assertIncludes(campaignsDal, token, `Today DAL preserves summary-read Staff Prompt token ${token}`);
 });
+
+assert(
+  /if \(storedTodayDate !== today\) \{\s*(?:\/\/[^\n]*\s*)*return \{\s*today: normalizedToday,\s*\};\s*\}/.test(campaignsDal),
+  'Today DAL omits Staff Prompt and physical-surface fields from stale summary projections',
+);
 
 assertNotIncludes(
   campaignsDal,

@@ -377,7 +377,7 @@ const buildReviewItems = (
     sourceHash: string,
     candidates: ReturnType<typeof normalizeCandidates>,
     sourcesById: Map<string, AnswerlatticeKnowledgeSource>,
-): AnswerlatticeIntakeReviewItem[] => candidates.map((candidate, index) => {
+): AnswerlatticeIntakeReviewItem[] => candidates.map((candidate, index): AnswerlatticeIntakeReviewItem => {
     const position = index + 1;
     const referencedSources = candidate.sourceIds
         .map(sourceId => sourcesById.get(sourceId))
@@ -430,7 +430,7 @@ const buildReviewItems = (
 const buildCases = (reviewItems: AnswerlatticeIntakeReviewItem[], timestamp: string): AnswerlatticeAnswerTestCase[] => (
     [...reviewItems]
         .sort((a, b) => Number(a.launchPack?.position || 0) - Number(b.launchPack?.position || 0))
-        .map((item, index) => {
+        .map((item, index): AnswerlatticeAnswerTestCase => {
             const launchPack = item.launchPack;
             if (!launchPack) throw new Error('The stored product-specific starter pack is invalid.');
             const applicability = launchPack.applicability;
@@ -755,7 +755,7 @@ ${JSON.stringify(packet)}`;
             candidatesTokenCount: usageMetadata.candidatesTokenCount || 0,
             tokenCountSource: usageMetadata.tokenCountSource || 'none',
             unitsConsumed: getUnitCost(AI_ACTIONS_TYPES.ANSWERLATTICE_PRODUCT_STARTER_PACK),
-        }, actor).catch((operationError) => {
+        }, actor).catch((operationError): null => {
             logAnswerlatticeKnowledgeIntakeFailure(
                 '[Answerlattice Intake] Product starter pack AI operation log failed',
                 'answerlattice_product_starter_pack_ai_operation_log_failed',

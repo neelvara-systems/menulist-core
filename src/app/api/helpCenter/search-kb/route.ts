@@ -98,6 +98,33 @@ const writeHelpCenterSearchLogSafely = async (entry: Parameters<typeof writeLogE
     }
 };
 
+const projectSearchConversationHistory = (
+    value: unknown,
+): Array<{
+    role: 'user' | 'assistant';
+    content?: string;
+    craftedAnswer?: string;
+}> | undefined => {
+    if (!Array.isArray(value)) return undefined;
+
+    return value.map((item) => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+            throw new Error('answerlattice_search_context_invalid');
+        }
+        const record = item as Record<string, unknown>;
+        if (record.role !== 'user' && record.role !== 'assistant') {
+            throw new Error('answerlattice_search_context_role_invalid');
+        }
+        return {
+            role: record.role,
+            ...(typeof record.content === 'string' ? { content: record.content } : {}),
+            ...(typeof record.craftedAnswer === 'string'
+                ? { craftedAnswer: record.craftedAnswer }
+                : {}),
+        };
+    });
+};
+
 export const POST = withAuth(async (request: NextRequest, session) => {
     let supportSearchAccounting: ReturnType<typeof createAnswerlatticeSupportSearchAccounting> | null = null;
     try {
@@ -177,7 +204,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             sId: searchSession.sId,
             uId: searchSession.uId,
             mode,
-            conversationHistory: mode === 'assistant' && context ? context : undefined,
+            conversationHistory: mode === 'assistant'
+                ? projectSearchConversationHistory(context)
+                : undefined,
             imageUrl: imageUrl || undefined,
             productContext,
             beforeAiProviderCall: supportSearchAccounting.beforeAiProviderCall,
@@ -188,7 +217,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         // Help Center expects: craftedAnswer, references (full objects), suggestedQuestions, id
         return searchJsonResponse(projectHelpCenterSearchResponse(result));
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         await supportSearchAccounting?.abort('request_failed').catch((refundError) => {
             logRuntimeFailure('answerlattice_help_center_search_reservation_refund_failed', refundError);
         });

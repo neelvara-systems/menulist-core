@@ -9,7 +9,7 @@ import PageProofStrip from '../components/PageProofStrip';
 
 export const metadata: Metadata = {
     title: 'Use Cases',
-    description: 'AnswerLattice use cases for turning scattered product knowledge into support across billing, onboarding, settings, releases, errors, approved answers, ticket fallback, and support-gap review.',
+    description: 'AnswerLattice use cases for solo founders, small teams, and product groups turning scattered product knowledge into governed support.',
     alternates: { canonical: '/use-cases' },
 };
 
@@ -135,10 +135,10 @@ export default async function AnswerlatticeUseCasesPage() {
                 <section className="px-6 py-24 text-center">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-teal-300">Use Cases</p>
                     <h1 className="mx-auto max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
-                        Support use cases for founder-led SaaS.
+                        Support use cases from one founder to a growing product team.
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-[#a0a0c0]">
-                        Founders already know the answers, but that knowledge is spread across docs, tickets, release notes, support replies, screenshots, and memory. AnswerLattice structures it so billing, onboarding, settings, releases, and error screens get support tied to the real product moment.
+                        Start with one accountable owner and the questions that matter now. Add team coordination and deeper governance only when support ownership, release frequency, or answer risk grows.
                     </p>
                     <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                         <AnswerlatticeLink
@@ -158,7 +158,8 @@ export default async function AnswerlatticeUseCasesPage() {
                         className="mx-auto mt-8 max-w-6xl text-left"
                         items={[
                             { label: 'Best pages', value: 'Billing, onboarding, settings, releases, integrations, errors' },
-                            { label: 'Best teams', value: 'Founders, support teams, product teams, engineering' },
+                            { label: 'Operating path', value: 'Start, Coordinate, Govern' },
+                            { label: 'Best teams', value: 'Founders and bounded product, support, and engineering groups' },
                             { label: 'Best proof', value: 'Generic reply vs reviewed support answer' },
                         ]}
                     />

@@ -13,11 +13,16 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../src/constants/database';
+import { normalizeStorePermissionScopeDocumentId } from '../src/lib/permissions/scopeDocumentId';
+import { normalizeMenuListPublicEntityIdentityAliases } from '../src/lib/publicTruth/entityEligibility';
+import { isCurrentScreenSeenPublicScope } from '../src/lib/screen/screenSeenScope';
+import { isValidScreenToken } from '../src/lib/screen/utils';
 
 const args = process.argv.slice(2);
 const PAGE_SIZE = 200;
 const CAMPAIGN_SUMMARY_ID_PATTERN = /^campaigns_(\d{1,20})$/;
 const SCREEN_TOKEN_PATTERN = /^[A-Za-z0-9]{6,24}$/;
+const ADMIN_APP_NAME = 'menulist-digital-screen-private-control-backfill';
 
 function hasFlag(name: string): boolean {
     return args.includes(name);
@@ -29,11 +34,14 @@ function getArg(name: string): string | null {
 }
 
 function getProjectId(): string {
-    const projectId = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;
-    if (!projectId) {
+    const candidate = getArg('--project-id') || process.env.FIREBASE_PROJECT_ID;
+    if (
+        typeof candidate !== 'string'
+        || !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(candidate)
+    ) {
         throw new Error('Set FIREBASE_PROJECT_ID or pass --project-id before running the Digital Screens private-control backfill.');
     }
-    return projectId;
+    return candidate;
 }
 
 function getBoundedErrorValue(value: unknown): string | number | null {
@@ -43,32 +51,67 @@ function getBoundedErrorValue(value: unknown): string | number | null {
 }
 
 function getErrorSummary(error: unknown) {
-    const source = error as { code?: unknown; message?: unknown; name?: unknown };
+    const readErrorField = (key: string): unknown => {
+        try {
+            if (!error || typeof error !== 'object') return undefined;
+            return Object.prototype.hasOwnProperty.call(error, key)
+                ? (error as Record<string, unknown>)[key]
+                : undefined;
+        } catch {
+            return undefined;
+        }
+    };
     return {
-        code: getBoundedErrorValue(source?.code),
-        errorName: getBoundedErrorValue(source?.name),
-        message: getBoundedErrorValue(source?.message),
+        code: getBoundedErrorValue(readErrorField('code')),
+        errorName: getBoundedErrorValue(readErrorField('name')),
+        message: getBoundedErrorValue(readErrorField('message')),
     };
 }
 
 export function resolvePrivateScreenControlInput(
     storeId: string,
-    screen: Record<string, unknown>,
-    store: Record<string, unknown>,
+    screen: unknown,
+    store: unknown,
 ): { screenToken: string; storeId: string; tenantId: string } | null {
-    const screenToken = typeof screen.screenToken === 'string' ? screen.screenToken.trim() : '';
-    const rawTenantId = store.tenantId ?? store.tId;
-    const tenantId = typeof rawTenantId === 'string' || typeof rawTenantId === 'number'
-        ? String(rawTenantId).trim()
-        : '';
     if (
-        !/^\d{1,20}$/.test(storeId)
-        || !SCREEN_TOKEN_PATTERN.test(screenToken)
-        || !tenantId
+        !screen
+        || typeof screen !== 'object'
+        || Array.isArray(screen)
+        || !store
+        || typeof store !== 'object'
+        || Array.isArray(store)
     ) {
         return null;
     }
-    return { screenToken, storeId, tenantId };
+    const screenRecord = screen as Record<string, unknown>;
+    const storeRecord = store as Record<string, unknown>;
+    const screenToken = typeof screenRecord.screenToken === 'string'
+        ? screenRecord.screenToken.trim()
+        : '';
+    const storeDocumentScope = normalizeStorePermissionScopeDocumentId(storeId);
+    const storedStoreScope = normalizeMenuListPublicEntityIdentityAliases([
+        storeRecord.storeId,
+        storeRecord.sId,
+    ]);
+    const storedTenantScope = normalizeMenuListPublicEntityIdentityAliases([
+        storeRecord.tenantId,
+        storeRecord.tId,
+    ]);
+    if (
+        !storeDocumentScope
+        || !storedStoreScope
+        || !storedTenantScope
+        || storedStoreScope.documentId !== storeDocumentScope.documentId
+        || !SCREEN_TOKEN_PATTERN.test(screenToken)
+        || !isValidScreenToken(screenToken)
+    ) {
+        return null;
+    }
+    return {
+        screenToken,
+        storeId: storeDocumentScope.documentId,
+        tenantId: storedTenantScope.documentId,
+    };
 }
 
 async function loadLegacyScreenSummaries(
@@ -119,8 +162,12 @@ async function main() {
         throw new Error(`Refusing write: pass --confirm-project ${projectId}.`);
     }
 
-    if (!getApps().length) initializeApp({ projectId });
-    const db = getFirestore();
+    const existingApp = getApps().find((app) => app.name === ADMIN_APP_NAME);
+    if (existingApp?.options.projectId && existingApp.options.projectId !== projectId) {
+        throw new Error('Digital Screens private-control backfill Admin app project mismatch.');
+    }
+    const app = existingApp || initializeApp({ projectId }, ADMIN_APP_NAME);
+    const db = getFirestore(app);
     const summaries = await loadLegacyScreenSummaries(db);
     let eligible = 0;
     let skipped = 0;
@@ -134,12 +181,26 @@ async function main() {
         const resolvedStoreId = summary.id.match(CAMPAIGN_SUMMARY_ID_PATTERN)?.[1] || '';
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(resolvedStoreId);
         const storeSnapshot = resolvedStoreId ? await storeRef.get() : null;
-        const input = resolvedStoreId && storeSnapshot?.exists
+        const candidateInput = resolvedStoreId && storeSnapshot?.exists
             ? resolvePrivateScreenControlInput(
                 resolvedStoreId,
-                summary.data()?.screen as Record<string, unknown>,
+                summary.data()?.screen,
                 storeSnapshot.data() || {},
             )
+            : null;
+        const tenantSnapshot = candidateInput
+            ? await db.collection(DB_COLLECTIONS.TENANTS).doc(candidateInput.tenantId).get()
+            : null;
+        const input = candidateInput
+            && storeSnapshot?.exists
+            && tenantSnapshot?.exists
+            && isCurrentScreenSeenPublicScope({
+                storeData: storeSnapshot.data(),
+                storeDocumentId: storeSnapshot.id,
+                tenantData: tenantSnapshot.data(),
+                tenantDocumentId: tenantSnapshot.id,
+            })
+            ? candidateInput
             : null;
         if (!input) {
             skipped += 1;
@@ -151,27 +212,41 @@ async function main() {
         await db.runTransaction(async (transaction) => {
             const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(summary.id);
             const controlRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`screenControl_${resolvedStoreId}`);
-            const [currentSummary, currentControl, currentStore] = await Promise.all([
+            const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(input.tenantId);
+            const [currentSummary, currentControl, currentStore, currentTenant] = await Promise.all([
                 transaction.get(summaryRef),
                 transaction.get(controlRef),
                 transaction.get(storeRef),
+                transaction.get(tenantRef),
             ]);
             const currentInput = currentSummary.exists && currentStore.exists
                 ? resolvePrivateScreenControlInput(
                     resolvedStoreId,
-                    currentSummary.data()?.screen as Record<string, unknown>,
+                    currentSummary.data()?.screen,
                     currentStore.data() || {},
                 )
                 : null;
-            if (!currentInput) throw new Error(`Screen ${resolvedStoreId} changed during migration.`);
+            if (
+                !currentInput
+                || currentInput.tenantId !== input.tenantId
+                || !currentTenant.exists
+                || !isCurrentScreenSeenPublicScope({
+                    storeData: currentStore.data(),
+                    storeDocumentId: currentStore.id,
+                    tenantData: currentTenant.data(),
+                    tenantDocumentId: currentTenant.id,
+                })
+            ) {
+                throw new Error(`Screen ${resolvedStoreId} changed during migration.`);
+            }
 
             const control = currentControl.data();
             if (
                 currentControl.exists
                 && (
                     control?.screenToken !== currentInput.screenToken
-                    || String(control?.storeId || '') !== currentInput.storeId
-                    || String(control?.tenantId || '') !== currentInput.tenantId
+                    || control?.storeId !== currentInput.storeId
+                    || control?.tenantId !== currentInput.tenantId
                 )
             ) {
                 throw new Error(`Screen ${resolvedStoreId} has a conflicting private control.`);

@@ -1,0 +1,539 @@
+{
+  "version": 2,
+  "updatedAt": "2026-07-29",
+  "evidence": [
+    {
+      "id": "repository.security-policy",
+      "kind": "policy",
+      "products": ["repository"],
+      "path": "SECURITY.md",
+      "command": null,
+      "executionMode": "policy-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Repository-wide scope, sensitive-artifact, validation, and disclosure rules."
+    },
+    {
+      "id": "repository.security-os-verifier",
+      "kind": "verifier",
+      "products": ["repository"],
+      "path": "scripts/verification/verify-security-os.js",
+      "command": "npm run verify:security-os",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Validates the SecurityOS boundary, registry wiring, and prohibited integration surface."
+    },
+    {
+      "id": "repository.dependency-freeze",
+      "kind": "verifier",
+      "products": ["repository", "menulist", "answerlattice", "campaigncue", "signaldesk", "mycodex", "neelvara"],
+      "path": "scripts/verification/verify-dependency-freeze.js",
+      "command": "npm run verify:dependency-freeze",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks pinned dependency and lockfile contracts across the repository."
+    },
+    {
+      "id": "menulist.auth-security-failure-matrix",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/verify-auth-security-failure-matrix.js",
+      "command": "npm run verify:auth-security-failure-matrix",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Runs the maintained authentication failure and diagnostic-safety matrix."
+    },
+    {
+      "id": "menulist.api-tenant-safety",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/verify-menulist-api-tenant-safety.js",
+      "command": "npm run verify:menulist-api-tenant-safety",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks MenuList API tenant/store scope and related focused boundaries."
+    },
+    {
+      "id": "menulist.tenant-store-rules",
+      "kind": "emulator-test",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-tenant-store-scoped-rules.ts",
+      "command": "npm run test:tenant-store-scoped-rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises MenuList Firestore tenant/store rules against a demo emulator project."
+    },
+    {
+      "id": "menulist.storage-paths",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/verify-storage-path-hardening.js",
+      "command": "npm run verify:storage-paths",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Runs storage path, replacement, deletion, cleanup, and media-rule evidence."
+    },
+    {
+      "id": "menulist.csp-report-boundary",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-csp-report-boundary.ts",
+      "command": "npm run test:csp-report-boundary",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks CSP report admission, bounding, and sensitive-data handling."
+    },
+    {
+      "id": "answerlattice.security-audit",
+      "kind": "verifier",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/verify-answerlattice-security-audit.js",
+      "command": "npm run verify:answerlattice-security-audit",
+      "executionMode": "local-read-only",
+      "networkPolicy": "package-registry-read-only",
+      "writesProductionData": false,
+      "description": "Runs the existing Answerlattice repository and dependency security assertions."
+    },
+    {
+      "id": "answerlattice.storage-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-storage-rules.ts",
+      "command": "npm run test:answerlattice-storage:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice storage isolation against local emulators."
+    },
+    {
+      "id": "answerlattice.governance-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-governance-rules.ts",
+      "command": "npm run test:answerlattice-governance:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice governance authorization against local emulators."
+    },
+    {
+      "id": "answerlattice.core-doctrine",
+      "kind": "policy",
+      "products": ["answerlattice"],
+      "path": "__docs__/answerlattice/doctrine/01-core-doctrine.md",
+      "command": null,
+      "executionMode": "policy-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Defines canonical authority, tenant isolation, and non-autonomous Answerlattice behavior."
+    },
+    {
+      "id": "campaigncue.firestore-rules",
+      "kind": "emulator-test",
+      "products": ["campaigncue"],
+      "path": "scripts/verification/test-campaigncue-rules.ts",
+      "command": "npm run test:campaigncue:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Registered CampaignCue Firestore-rule evidence for a later product audit."
+    },
+    {
+      "id": "campaigncue.storage-rules",
+      "kind": "emulator-test",
+      "products": ["campaigncue"],
+      "path": "scripts/verification/test-campaigncue-storage-rules.ts",
+      "command": "npm run test:campaigncue:storage-rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Registered CampaignCue Storage-rule evidence for a later product audit."
+    },
+    {
+      "id": "signaldesk.security-rules",
+      "kind": "emulator-test",
+      "products": ["signaldesk"],
+      "path": "scripts/verification/verify-signaldesk-security-rules.js",
+      "command": "npm run test:signaldesk:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Registered SignalDesk rule evidence for a later product audit."
+    },
+    {
+      "id": "mycodex.auth-boundary",
+      "kind": "verifier",
+      "products": ["mycodex"],
+      "path": "scripts/verification/test-mycodex-auth-boundary.ts",
+      "command": "npm run test:mycodex-auth-boundary",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Registered MyCodex private-auth evidence for a later product audit."
+    },
+    {
+      "id": "repository.configuration-safety",
+      "kind": "verifier",
+      "products": ["repository"],
+      "path": "scripts/verification/verify-configuration-safety.js",
+      "command": "npm run verify:configuration-safety",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks repository configuration boundaries and their focused behavioral assertions."
+    },
+    {
+      "id": "repository.env-targets",
+      "kind": "verifier",
+      "products": ["repository"],
+      "path": "scripts/verification/verify-agent-readiness.js",
+      "command": "npm run verify:env-targets",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks registered environment-target naming and product separation without contacting a deployment provider."
+    },
+    {
+      "id": "menulist.account-tenant-lifecycle",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/verify-account-tenant-lifecycle.js",
+      "command": "npm run verify:account-tenant-lifecycle",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks account and tenant lifecycle boundaries through maintained source and behavioral assertions."
+    },
+    {
+      "id": "menulist.tenant-dal-boundary",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-tenant-dal-boundary.ts",
+      "command": "npm run test:tenant-dal-boundary",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks tenant context enforcement at maintained MenuList data-access boundaries."
+    },
+    {
+      "id": "menulist.input-validation-boundary",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-input-validation-boundary.ts",
+      "command": "npm run test:input-validation-boundary",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks shared input-validation constraints through focused local tests."
+    },
+    {
+      "id": "menulist.file-validation-boundary",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-file-validation-boundary.ts",
+      "command": "npm run test:file-validation-boundary",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks file admission, size, and type boundaries through focused local tests."
+    },
+    {
+      "id": "menulist.server-network-target-boundary",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-server-network-target-boundary.ts",
+      "command": "npm run test:server-network-target-boundary",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks server-side network target validation and blocked destination classes without making network calls."
+    },
+    {
+      "id": "menulist.webhook-validation-boundary",
+      "kind": "verifier",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-webhook-validation-boundary.ts",
+      "command": "npm run test:webhook-validation-boundary",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks webhook target and payload admission boundaries through focused local tests."
+    },
+    {
+      "id": "menulist.auth-security-events-emulator",
+      "kind": "emulator-test",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-auth-security-events-emulator.ts",
+      "command": "npm run test:auth-security-events:emulator",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises authentication security-event behavior against a demo Firestore emulator project."
+    },
+    {
+      "id": "menulist.auth-security-events-rules",
+      "kind": "emulator-test",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-auth-security-events-rules.ts",
+      "command": "npm run test:auth-security-events:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises authentication security-event authorization against a demo Firestore emulator project."
+    },
+    {
+      "id": "menulist.pos-sync-secret-rules",
+      "kind": "emulator-test",
+      "products": ["menulist"],
+      "path": "scripts/verification/test-pos-sync-secret-rules.ts",
+      "command": "npm run test:pos-sync-secret:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises POS synchronization secret isolation against a demo Firestore emulator project."
+    },
+    {
+      "id": "answerlattice.public-api-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-public-api-rules.ts",
+      "command": "npm run test:answerlattice-public-api:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice public API authorization against a demo Firestore emulator project."
+    },
+    {
+      "id": "answerlattice.knowledge-intake-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-knowledge-intake-rules.ts",
+      "command": "npm run test:answerlattice-knowledge-intake:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice knowledge-intake authorization against a demo Firestore emulator project."
+    },
+    {
+      "id": "answerlattice.integrations-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-integration-rules.ts",
+      "command": "npm run test:answerlattice-integrations:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice integration authorization against a demo Firestore emulator project."
+    },
+    {
+      "id": "answerlattice.billing-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-billing-rules.ts",
+      "command": "npm run test:answerlattice-billing:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice billing authorization against a demo Firestore emulator project."
+    },
+    {
+      "id": "answerlattice.chat-sessions-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-chat-session-rules.ts",
+      "command": "npm run test:answerlattice-chat-sessions:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice chat-session authorization against a demo Firestore emulator project."
+    },
+    {
+      "id": "answerlattice.release-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-release-rules.ts",
+      "command": "npm run test:answerlattice-release:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice release authorization against a demo Firestore emulator project."
+    },
+    {
+      "id": "answerlattice.ontology-rules",
+      "kind": "emulator-test",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-ontology-rules.ts",
+      "command": "npm run test:answerlattice-ontology:rules",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Exercises Answerlattice ontology authorization against a demo Firestore emulator project."
+    },
+    {
+      "id": "answerlattice.dashboard-read-rate-limit-policy",
+      "kind": "verifier",
+      "products": ["answerlattice"],
+      "path": "scripts/verification/test-answerlattice-dashboard-read-rate-limit-policy.ts",
+      "command": "npm run test:answerlattice-dashboard-read-rate-limit-policy",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks Answerlattice dashboard read-rate limiting through focused local policy tests."
+    },
+    {
+      "id": "campaigncue.runtime-verification",
+      "kind": "verifier",
+      "products": ["campaigncue"],
+      "path": "scripts/verification/verify-campaigncue-runtime.js",
+      "command": "npm run verify:campaigncue",
+      "executionMode": "firebase-emulator",
+      "networkPolicy": "local-emulator-only",
+      "writesProductionData": false,
+      "description": "Registers the existing CampaignCue aggregate verifier, including its local emulator rule checks."
+    },
+    {
+      "id": "campaigncue.workspace-scope",
+      "kind": "verifier",
+      "products": ["campaigncue"],
+      "path": "scripts/verification/test-campaigncue-workspace-scope.ts",
+      "command": "npm run test:campaigncue-workspace-scope",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Checks CampaignCue workspace scope through a focused local boundary test."
+    },
+    {
+      "id": "signaldesk.runtime-verification",
+      "kind": "verifier",
+      "products": ["signaldesk"],
+      "path": "scripts/verification/verify-signaldesk-runtime.js",
+      "command": "npm run verify:signaldesk",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Registers the existing SignalDesk runtime and policy verification group."
+    },
+    {
+      "id": "mycodex.pwa-and-auth-boundary",
+      "kind": "verifier",
+      "products": ["mycodex"],
+      "path": "scripts/verification/verify-mycodex-pwa-assets.js",
+      "command": "npm run verify:mycodex-pwa-assets",
+      "executionMode": "local-read-only",
+      "networkPolicy": "none",
+      "writesProductionData": false,
+      "description": "Registers the existing MyCodex PWA asset and private-auth boundary verification group."
+    }
+  ],
+  "bundles": [
+    {
+      "id": "repository.baseline-and-configuration",
+      "title": "Repository baseline and configuration",
+      "products": ["repository"],
+      "evidenceIds": [
+        "repository.security-policy",
+        "repository.security-os-verifier",
+        "repository.dependency-freeze",
+        "repository.configuration-safety",
+        "repository.env-targets"
+      ],
+      "selectionMode": "manual-selective",
+      "description": "Choose only the baseline or configuration evidence relevant to the review; the bundle is never executed automatically."
+    },
+    {
+      "id": "menulist.identity-and-tenant",
+      "title": "MenuList identity and tenant boundaries",
+      "products": ["menulist"],
+      "evidenceIds": [
+        "menulist.auth-security-failure-matrix",
+        "menulist.api-tenant-safety",
+        "menulist.tenant-store-rules",
+        "menulist.account-tenant-lifecycle",
+        "menulist.tenant-dal-boundary",
+        "menulist.auth-security-events-emulator",
+        "menulist.auth-security-events-rules"
+      ],
+      "selectionMode": "manual-selective",
+      "description": "Groups identity, tenant, and authorization evidence for deliberate manual selection without automatic execution."
+    },
+    {
+      "id": "menulist.data-and-trust-boundaries",
+      "title": "MenuList data and trust boundaries",
+      "products": ["menulist"],
+      "evidenceIds": [
+        "menulist.storage-paths",
+        "menulist.csp-report-boundary",
+        "menulist.input-validation-boundary",
+        "menulist.file-validation-boundary",
+        "menulist.server-network-target-boundary",
+        "menulist.webhook-validation-boundary",
+        "menulist.pos-sync-secret-rules"
+      ],
+      "selectionMode": "manual-selective",
+      "description": "Groups data admission, network target, webhook, storage, and secret evidence for deliberate manual selection."
+    },
+    {
+      "id": "answerlattice.authority-and-ingress",
+      "title": "Answerlattice authority and ingress",
+      "products": ["answerlattice"],
+      "evidenceIds": [
+        "answerlattice.security-audit",
+        "answerlattice.storage-rules",
+        "answerlattice.governance-rules",
+        "answerlattice.core-doctrine",
+        "answerlattice.public-api-rules",
+        "answerlattice.knowledge-intake-rules",
+        "answerlattice.integrations-rules",
+        "answerlattice.billing-rules",
+        "answerlattice.chat-sessions-rules",
+        "answerlattice.release-rules",
+        "answerlattice.ontology-rules",
+        "answerlattice.dashboard-read-rate-limit-policy"
+      ],
+      "selectionMode": "manual-selective",
+      "description": "Groups Answerlattice authority, ingress, isolation, release, and rate-limit evidence for manual selection."
+    },
+    {
+      "id": "campaigncue.registered-security",
+      "title": "CampaignCue registered security evidence",
+      "products": ["campaigncue"],
+      "evidenceIds": [
+        "campaigncue.runtime-verification",
+        "campaigncue.workspace-scope",
+        "campaigncue.firestore-rules",
+        "campaigncue.storage-rules"
+      ],
+      "selectionMode": "manual-selective",
+      "description": "Offers the aggregate CampaignCue verifier or focused evidence without running either automatically or claiming completed coverage."
+    },
+    {
+      "id": "signaldesk.registered-security",
+      "title": "SignalDesk registered security evidence",
+      "products": ["signaldesk"],
+      "evidenceIds": [
+        "signaldesk.runtime-verification",
+        "signaldesk.security-rules"
+      ],
+      "selectionMode": "manual-selective",
+      "description": "Groups registered SignalDesk verification evidence without claiming that the product has been audited."
+    },
+    {
+      "id": "mycodex.registered-security",
+      "title": "MyCodex registered security evidence",
+      "products": ["mycodex"],
+      "evidenceIds": [
+        "mycodex.pwa-and-auth-boundary",
+        "mycodex.auth-boundary"
+      ],
+      "selectionMode": "manual-selective",
+      "description": "Groups MyCodex static PWA and private-auth boundary evidence without claiming completed coverage."
+    }
+  ]
+}

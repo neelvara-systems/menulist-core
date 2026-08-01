@@ -31,7 +31,7 @@ Each run preloads one capped entity-index query, one KB cache-version read, one 
 
 Before execution, the route hashes the run kind, mode, current suite revision, ordered selected case IDs, and optional release ID. A transaction reserves that request fingerprint for 15 minutes, caps concurrent reservations at five, returns a completed run only when its fingerprint matches, and rejects a reused request ID with different inputs. It also rejects a run when the suite revision changed between load and reservation. Failed pre-execution reservation release has a route-specific bounded diagnostic; TTL expiry remains the final recovery boundary. If retained-run persistence fails after execution, the reservation remains until expiry instead of allowing an immediate provider rerun. Retained-run writes remove the reservation but do not increment the suite revision, so concurrent evidence retention does not manufacture a case-edit conflict. Summary writes compact old runs and reject payloads above 480 KiB.
 
-The version-4 proof contract includes standard/critical risk, deterministic claim checks, bounded article-reference IDs, one of three evidence policies, a six-counter governed-source snapshot, request fingerprint, and suite revision on each new run. Case admission rejects duplicate references, duplicate phrases, required/blocked phrase overlap, malformed cases, and duplicate persisted case IDs. RAG and FAQ references are projected to at most eight explicit IDs; unknown reference shapes are ignored. Canonical answers remain provable by the expected canonical-answer ID and do not require a separate article reference. The pure evaluator derives `ready`, `review`, or `blocked` from retained case results. These outcomes prove the configured deterministic contract only; no LLM judge or semantic factual-correctness guarantee is introduced.
+The version-4 proof contract includes standard/critical risk, deterministic claim checks, bounded article-reference IDs, one of three evidence policies, a six-counter governed-source snapshot, request fingerprint, and suite revision on each new run. Case admission rejects duplicate references, duplicate phrases, required/blocked phrase overlap, malformed cases, and duplicate persisted case IDs. RAG and FAQ references are projected to at most eight explicit IDs; unknown reference shapes are ignored. Canonical answers remain provable by the expected canonical-answer ID and do not require a separate article reference. The pure evaluator derives `ready`, `review`, or `blocked` from retained case results. It also bounds result failures to 20 strings of 240 characters and normalizes non-finite or negative duration evidence before the result reaches persistence, keeping every produced row inside the authoritative result schema even when all admitted assertions fail together. These outcomes prove the configured deterministic contract only; no LLM judge or semantic factual-correctness guarantee is introduced.
 
 ### Feature 5 Hardening Boundary
 
@@ -61,7 +61,7 @@ The destination revalidates the answer ID, and closing a query-opened modal or
 drawer removes its one-time context. No test or answer mutation occurs from
 navigation.
 
-Proposal Impact Preview is an owner-triggered read-only branch of this proof runtime. The route requires both the Answer Tests and Signal Mutation flags, requires `MANAGE_GOVERNANCE`, derives workspace scope from the authenticated access record, rate-limits before the Firestore-backed permission read, fails closed when the limiter provider is unavailable, parses a bounded strict payload, and never accepts client tenant/store scope. Governance prepares the candidate with the same builder used by approval and a concrete in-memory validation timestamp. Linked-test selection preserves the complete bounded union of proposal, current-answer, and candidate entities, up to 25 from each source, so removed or newly added scope cannot be hidden by list ordering. The runtime loads the compact answer-test summary, selects at most 10 active tests linked to the target answer or any affected old/new entity, and stops before retrieval when none are linked. For linked tests it reuses the normal deterministic canonical/FAQ path, clones the request-local active-answer cache, overlays the candidate only in memory, and compares current and projected results. The browser bounds the complete request-and-response wait to 30 seconds. The flow performs no full-runtime search, support-credit debit, AI operation, retained run, reservation, signal, analytics, cache-version mutation, or proposal mutation. Final approval remains the only path that validates live entity bindings and active scope/version overlap and commits canonical truth, audit history, and invalidation state.
+Proposal Impact Preview is an owner-triggered read-only branch of this proof runtime. The route requires both the Answer Tests and Signal Mutation flags, requires `MANAGE_GOVERNANCE`, derives workspace scope from the authenticated access record, rate-limits before the Firestore-backed permission read, fails closed when the limiter provider is unavailable, parses a bounded strict payload, and never accepts client tenant/store scope. Governance prepares the candidate with the same builder used by approval and a concrete in-memory validation timestamp. Linked-test selection preserves the complete bounded union of proposal, current-answer, and candidate entities, up to 25 from each source, so removed or newly added scope cannot be hidden by list ordering. The runtime loads the compact answer-test summary, selects at most 10 active tests linked to the target answer or any affected old/new entity, and stops before retrieval when none are linked. For linked tests it reuses the normal deterministic canonical/FAQ path, clones the request-local active-answer cache, overlays the candidate only in memory, and compares current and projected results. The shared response schema independently derives evaluated/classification counts, truncation state, linked/evaluated ordering, and current/proposed proof status from the admitted comparisons, so a contradictory server payload cannot become owner-visible truth. The browser bounds the complete request-and-response wait to 30 seconds. The flow performs no full-runtime search, support-credit debit, AI operation, retained run, reservation, signal, analytics, cache-version mutation, or proposal mutation. Final approval remains the only path that validates live entity bindings and active scope/version overlap and commits canonical truth, audit history, and invalidation state.
 
 ### Governance Navigation
 
@@ -69,7 +69,35 @@ Proposal Impact Preview is an owner-triggered read-only branch of this proof run
 
 ### Release Safety And Rollback
 
-Release checks normalize the request release ID, parse the stored release through the strict Answerlattice release schema, select related test cases from the answer-test summary, and run only those cases. A critical failure marks only the retained proof result blocked; it does not mutate the release or deployment. Rollback reads the selected canonical answer, immutable audit-history payload, deterministic proposal, and paired audit row inside the same transaction. Exact product/tenant/store ownership, audit-to-answer linkage, current entity bindings, restorable snapshot, and strict procedure shape are therefore current at the write decision. If one half of a valid pair is missing, the transaction repairs it; conflicting target, mutation, source-audit, status, or audit identity fails closed. The server and browser both validate one strict rollback acknowledgement. It never modifies the answer.
+Release checks normalize the request release ID, parse the stored release through the strict Answerlattice release schema, select related test cases from the answer-test summary, and run only those cases. The impact preview also builds a strict `direct_entity_links_only` disclosure from the already-loaded affected answers and linked active tests. It returns changed entity IDs, answer-linked IDs, test-linked IDs, and changed IDs with no visible direct link. The response schema verifies the partitions, zero/nonzero record-to-link presence, and count parity with the affected-answer and Answer Test projections. The owner modal labels this as mapping evidence, not completeness, and links unmapped changed entities to the existing Knowledge Map. A critical failure marks only the retained proof result blocked; it does not mutate the release or deployment. Rollback reads the selected canonical answer, immutable audit-history payload, deterministic proposal, and paired audit row inside the same transaction. Exact product/tenant/store ownership, audit-to-answer linkage, current entity bindings, restorable snapshot, and strict procedure shape are therefore current at the write decision. If one half of a valid pair is missing, the transaction repairs it; conflicting target, mutation, source-audit, status, or audit identity fails closed. The server and browser both validate one strict rollback acknowledgement. It never modifies the answer.
+
+### Answer Trace
+
+- Contracts and response admission: `src/lib/answerlattice/answerTraceContracts.ts`
+- Exact/recent scoped projection: `src/lib/answerlattice/answerTraceServer.ts`
+- Bounded browser client: `src/lib/answerlattice/answerTraceClient.ts`
+- Management API: `src/app/api/answerlattice/answer-traces/route.ts`
+- Reusable owner drawer: `src/components/templates/answerlattice/governance/AnswerTraceDrawer.tsx`
+- Existing mounts: `FounderTrustDashboard.tsx` and `TicketDetailView.tsx`
+
+The route is GET-only, authenticated, private/no-store, fail-closed rate
+limited, and requires `MANAGE_SUPPORT`. Exact ticket lookup normalizes the
+search-history document ID, reads it through the same explicit field mask, and
+projects only a same-product, same-tenant, same-workspace, still-retained
+record. The recent owner action uses the
+existing `pId/tId/sId/createdOn` index, scans at most 30 rows, filters review
+signals in memory, and returns at most 12 strict traces. The recent query uses
+an explicit field mask so private visitor/runtime fields are not transferred
+into the server projection path. No automatic page load read occurs. The
+projection deliberately omits visitor identity, request
+origin/path, user-agent family, raw cache key, debug evidence links, source
+bodies, and unrestricted metadata. The drawer escapes answer text through
+normal React text rendering and uses only already-normalized public citation
+URLs. The browser permits one in-flight request per mount, aborts after 15
+seconds, rejects responses larger than 1 MiB, and validates count/window
+consistency. Both UI mounts invalidate in-flight trace requests when the
+workspace or ticket changes, so a late response from the previous context
+cannot populate the newly selected view.
 
 ### Known Issues
 
@@ -119,6 +147,7 @@ After package construction, the server creates one append-only `answerlattice_au
 ## Feature Flags
 
 - `ENABLE_ANSWERLATTICE_ANSWER_TESTS`
+- `ENABLE_ANSWERLATTICE_ANSWER_TRACE`
 - `ENABLE_ANSWERLATTICE_KNOWN_ISSUES`
 - `ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT`
 - `ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS`
@@ -147,11 +176,14 @@ Answer Test Suite and Known Issues use the responsive Answerlattice dashboard sh
 ## Verification
 
 1. Focused unit tests for token verification, test-case evaluation, notice-window evaluation, evidence-link validation, and export projection.
-2. Answerlattice runtime verifier updated with route, flag, and boundary assertions.
-3. Root TypeScript check.
-4. `functions-answerlattice` build.
-5. Firestore rule/index validation if changed.
-6. Browser smoke for desktop/mobile routes and widget known-issue display.
+2. `npm run test:answerlattice-answer-trace:emulator` proves the exact and recent
+   field-masked Firestore reads, scope rejection, expiry rejection, private-field
+   omission, and cached-canonical fallback semantics.
+3. Answerlattice runtime verifier updated with route, flag, and boundary assertions.
+4. Root TypeScript check.
+5. `functions-answerlattice` build.
+6. Firestore rule/index validation if changed.
+7. Browser smoke for desktop/mobile routes and widget known-issue display.
 
 ### July 11, 2026 QA deployment evidence
 

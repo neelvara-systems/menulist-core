@@ -18,7 +18,9 @@ export function createProvenanceEntry(
 ): ProvenanceEntry {
     return {
         source,
-        confidence: Math.max(0, Math.min(1, confidence)),
+        confidence: Number.isFinite(confidence)
+            ? Math.max(0, Math.min(1, confidence))
+            : 0,
         timestamp: Date.now(),
     };
 }
@@ -88,41 +90,83 @@ export function stampOwnerEdit(
  * @param primaryLanguage - Language key for name/description comparison
  */
 export function detectChangedFields(
-    oldItem: Record<string, any>,
-    newItem: Record<string, any>,
+    oldItem: Record<string, unknown>,
+    newItem: Record<string, unknown>,
     primaryLanguage: string = 'en',
 ): ProvenanceField[] {
     const changed: ProvenanceField[] = [];
+    const read = (value: Record<string, unknown>, key: string): unknown => {
+        try {
+            return Object.prototype.hasOwnProperty.call(value, key)
+                ? Reflect.get(value, key)
+                : undefined;
+        } catch {
+            return undefined;
+        }
+    };
+    const readLocalized = (value: unknown): string | undefined => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+        try {
+            const localized = value as Record<string, unknown>;
+            const entry = Object.prototype.hasOwnProperty.call(localized, primaryLanguage)
+                ? Reflect.get(localized, primaryLanguage)
+                : undefined;
+            return typeof entry === 'string' ? entry : undefined;
+        } catch {
+            return undefined;
+        }
+    };
+    const comparablePrice = (value: unknown): string => (
+        typeof value === 'string'
+            ? value
+            : typeof value === 'number' && Number.isFinite(value)
+                ? String(value)
+                : ''
+    );
+    const comparableTags = (value: unknown): string[] | null => {
+        try {
+            if (!Array.isArray(value) || value.length > 256) return null;
+            return value.every((entry) => typeof entry === 'string')
+                ? value.slice()
+                : null;
+        } catch {
+            return null;
+        }
+    };
+    const tagsEqual = (left: unknown, right: unknown): boolean => {
+        const leftTags = comparableTags(left);
+        const rightTags = comparableTags(right);
+        if (!leftTags || !rightTags || leftTags.length !== rightTags.length) return false;
+        return leftTags.every((entry, index) => entry === rightTags[index]);
+    };
 
     // Name change
-    if (oldItem?.name?.[primaryLanguage] !== newItem?.name?.[primaryLanguage]) {
+    if (readLocalized(read(oldItem, 'name')) !== readLocalized(read(newItem, 'name'))) {
         changed.push('name');
     }
 
     // Price change
-    if (String(oldItem?.price || '') !== String(newItem?.price || '')) {
+    if (comparablePrice(read(oldItem, 'price')) !== comparablePrice(read(newItem, 'price'))) {
         changed.push('price');
     }
 
     // Description change
-    if (oldItem?.description?.[primaryLanguage] !== newItem?.description?.[primaryLanguage]) {
+    if (readLocalized(read(oldItem, 'description')) !== readLocalized(read(newItem, 'description'))) {
         changed.push('description');
     }
 
     // Category change
-    if (oldItem?.category !== newItem?.category) {
+    if (read(oldItem, 'category') !== read(newItem, 'category')) {
         changed.push('category');
     }
 
     // Tags change
-    const oldTags = JSON.stringify(oldItem?.tags || []);
-    const newTags = JSON.stringify(newItem?.tags || []);
-    if (oldTags !== newTags) {
+    if (!tagsEqual(read(oldItem, 'tags') ?? [], read(newItem, 'tags') ?? [])) {
         changed.push('tags');
     }
 
     // Availability change
-    if (oldItem?.available !== newItem?.available) {
+    if (read(oldItem, 'available') !== read(newItem, 'available')) {
         changed.push('available');
     }
 

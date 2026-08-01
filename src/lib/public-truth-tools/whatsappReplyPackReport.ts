@@ -267,10 +267,10 @@ export function buildWhatsAppReplyPackReport(input: WhatsAppReplyPackInput): Wha
   const hasDelivery = hasUsefulText(deliveryOrPickup || locationOrServiceArea, 3);
   const hasAction = validActionLink || validCustomerLink || input.preferredAction === 'visit';
   const copyBlocks = buildReplyBlocks({
-    actionLink,
+    actionLink: validActionLink ? actionLink : '',
     businessName,
     cityOrArea,
-    currentCustomerLink,
+    currentCustomerLink: validCustomerLink ? currentCustomerLink : '',
     deliveryOrPickup,
     hours,
     locationOrServiceArea,

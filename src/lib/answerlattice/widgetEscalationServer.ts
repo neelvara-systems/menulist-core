@@ -139,13 +139,6 @@ export const executeAnswerlatticeWidgetEscalation = async (
         const query = cleanText(history.query, 500);
         if (!query) throw new AnswerlatticeWidgetEscalationError('widget_search_record_invalid', 409);
         const matchedEntityIds = normalizeStringList(history.matchedEntityIds, 10, 180);
-        const contextKey = cleanText(history.contextKey, 140);
-        const productContext = {
-            ...(contextKey ? { contextKey } : {}),
-            ...(cleanText(history.surfacePage, 120) ? { page: cleanText(history.surfacePage, 120) as string } : {}),
-            ...(cleanText(history.surfaceFeature, 120) ? { feature: cleanText(history.surfaceFeature, 120) as string } : {}),
-            ...(cleanText(history.surfaceWorkflow, 120) ? { workflow: cleanText(history.surfaceWorkflow, 120) as string } : {}),
-        };
         const references = Array.isArray(history.references)
             ? history.references.slice(0, 5).flatMap((reference: unknown) => {
                 if (!reference || typeof reference !== 'object' || Array.isArray(reference)) return [];
@@ -168,7 +161,6 @@ export const executeAnswerlatticeWidgetEscalation = async (
             triggerTypes: ['explicit_user_request'] as const,
             query,
             ...(cleanText(history.widgetSessionId, 120) ? { conversationId: cleanText(history.widgetSessionId, 120) as string } : {}),
-            ...(Object.keys(productContext).length > 0 ? { productContext } : {}),
             retrievalDebug: {
                 canonicalResult: {
                     found: history.canonical === true,
@@ -196,7 +188,6 @@ export const executeAnswerlatticeWidgetEscalation = async (
             documents: [],
             platformNotes: '',
             platformTags: ['Widget escalation'],
-            ...(contextKey ? { contextKeys: [contextKey] } : {}),
             deleted: false,
             statuses: [{
                 status: SUPPORT_TICKET_STATUS.OPEN,
@@ -285,7 +276,6 @@ export const executeAnswerlatticeWidgetEscalation = async (
             fallbackReason: cleanText(history.fallbackReason, 180),
             triggerTypes: ['explicit_user_request'],
             conversationId: cleanText(history.widgetSessionId, 120),
-            contextKey,
         };
 
         return { created, signalContext };

@@ -88,6 +88,7 @@ export type AnswerlatticeWebClient = {
     off: (eventName: AnswerlatticeWidgetEventName, callback: (payload?: unknown) => void) => void;
     getRuntime: () => AnswerlatticeWidgetRuntime | null;
 };
+export declare function normalizeAnswerlatticeScriptSrc(value: unknown): string | null;
 export declare function validateAnswerlatticePageContext(input: AnswerlatticePageContext): AnswerlatticeValidationResult;
 export declare const validateAnswerlatticeContext: typeof validateAnswerlatticePageContext;
 export declare function createAnswerlatticeWebClient(initialOptions: AnswerlatticeInitOptions): AnswerlatticeWebClient;

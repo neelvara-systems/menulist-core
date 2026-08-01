@@ -25,7 +25,7 @@ function HelpCenter({ initialArticleId, initialChangelogId, initialTab, syncRout
     const t = useTranslations('HelpCenter');
     const router = useRouter();
     const searchParams = useSearchParams();
-    const requestedTab = searchParams.get('tab') || initialTab;
+    const requestedTab = searchParams?.get('tab') || initialTab;
     const requestedTabIsValid = requestedTab === HOME_TAB_KEY || HELP_CENTER_TABS.some(tab => tab.key === requestedTab);
     const [activeKey, setActiveKey] = useState<string>(requestedTab && requestedTabIsValid ? requestedTab : HOME_TAB_KEY);
 

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
     ANSWERLATTICE_CHAT_SESSION_MESSAGE_LIMIT,
+    getAnswerlatticeInternalNotePlainText,
     getAnswerlatticeChatSessionActorScope,
     getAnswerlatticeUserChatSessionsCacheKey,
     normalizeAnswerlatticeChatMessagesForStorage,
@@ -80,6 +81,49 @@ const parsed = parseAnswerlatticeChatSessionDocument({
 });
 assert.equal(parsed?.id, 'session-1');
 assert.equal(parsed?.messages.length, 1);
+assert.deepEqual(parseAnswerlatticeChatSessionDocument({
+    id: 'session-with-note',
+    value: {
+        ...validDocument,
+        internalNotes: [{
+            id: 'note-0',
+            content: {
+                type: 'doc',
+                content: [{
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: 'Follow up privately.' }],
+                }],
+            },
+            createdOn: Timestamp.now(),
+        }],
+    },
+    scope: { tId: 71, sId: 701 },
+})?.internalNotes?.[0]?.content, {
+    type: 'doc',
+    content: [{
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Follow up privately.' }],
+    }],
+}, 'persisted internal notes must pass the bounded TipTap projection');
+assert.equal(parseAnswerlatticeChatSessionDocument({
+    id: 'session-with-malformed-note',
+    value: {
+        ...validDocument,
+        internalNotes: [{ content: { attackerControlled: true } }],
+    },
+    scope: { tId: 71, sId: 701 },
+}), null, 'malformed persisted internal notes must reject the session');
+assert.equal(parseAnswerlatticeChatSessionDocument({
+    id: 'session-with-malformed-note-time',
+    value: {
+        ...validDocument,
+        internalNotes: [{
+            content: 'Legacy note',
+            modifiedOn: { seconds: 1 },
+        }],
+    },
+    scope: { tId: 71, sId: 701 },
+}), null, 'malformed persisted internal-note timestamps must reject the session');
 
 assert.equal(parseAnswerlatticeChatSessionDocument({
     id: 'session-1',
@@ -166,7 +210,21 @@ assert.deepEqual(normalizeAnswerlatticeChatMessagesForStorage([{
 
 assert.deepEqual(normalizeAnswerlatticeInternalNote({ type: 'doc', content: [] }), { type: 'doc', content: [] });
 assert.equal(normalizeAnswerlatticeInternalNote('Legacy plain-text note'), 'Legacy plain-text note');
+assert.equal(getAnswerlatticeInternalNotePlainText({
+    type: 'doc',
+    content: [{
+        type: 'paragraph',
+        content: [
+            { type: 'text', text: 'First' },
+            { type: 'text', text: ' note' },
+        ],
+    }, {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Second line' }],
+    }],
+}), 'First note\nSecond line', 'rich notes must export as their readable text rather than object coercion');
 assert.throws(() => normalizeAnswerlatticeInternalNote('   '), /internal_note_invalid/);
+assert.throws(() => normalizeAnswerlatticeInternalNote({ attackerControlled: true }), /internal_note_invalid/);
 assert.throws(() => normalizeAnswerlatticeInternalNote('x'.repeat(33 * 1024)), /internal_note_invalid/);
 
 const sharedImageUrl = 'https://firebasestorage.googleapis.com/v0/b/example/o/shared.png';

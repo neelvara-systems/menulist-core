@@ -78,7 +78,9 @@ type KnowledgeIntakeResponseOptions<T> = {
 type KnowledgeIntakeJobsResponse = { jobs: AnswerlatticeKnowledgeIntakeJob[] };
 type KnowledgeIntakeJobResponse = { job: AnswerlatticeKnowledgeIntakeJob };
 type KnowledgeIntakeBundleResponse = { bundle: IntakeBundle };
-type KnowledgeIntakeSourceResponse = { source: AnswerlatticeKnowledgeSource };
+type KnowledgeIntakeSourceResponse = {
+    source: AnswerlatticeKnowledgeSource & { duplicate?: boolean };
+};
 type KnowledgeIntakeSourceGovernanceResponse = {
     source: AnswerlatticeKnowledgeSource;
     governanceUpdates: Array<{
@@ -188,7 +190,12 @@ const isKnowledgeIntakeBundleResponse = (value: unknown): value is KnowledgeInta
 );
 
 const isKnowledgeIntakeSourceResponse = (value: unknown): value is KnowledgeIntakeSourceResponse => (
-    isRecord(value) && isKnowledgeSource(value.source)
+    isRecord(value)
+    && isKnowledgeSource(value.source)
+    && (
+        !('duplicate' in value.source)
+        || typeof value.source.duplicate === 'boolean'
+    )
 );
 
 const isKnowledgeIntakeSourceGovernanceResponse = (
@@ -487,7 +494,7 @@ export function useKnowledgeIntake() {
             if (scopeKeyRef.current !== operationScopeKey) return null;
             await refreshBundle(jobId);
             if (scopeKeyRef.current !== operationScopeKey) return null;
-            message.success(data.source?.['duplicate'] ? 'Source already exists in this intake' : 'Source added');
+            message.success(data.source.duplicate ? 'Source already exists in this intake' : 'Source added');
             return data.source;
         } catch {
             if (scopeKeyRef.current !== operationScopeKey) return null;

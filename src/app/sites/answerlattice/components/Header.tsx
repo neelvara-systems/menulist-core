@@ -74,6 +74,7 @@ const PRODUCT_FEATURE_NAV_LABELS: Record<string, string> = {
 };
 
 const RESOURCE_MENU_LINKS = [
+    { label: 'Operating Guide', href: '/resources/answerlattice-operating-guide', icon: LuBookOpen },
     { label: 'Launch Checklist', href: '/resources/launch-support-checklist', icon: LuRocket },
     { label: 'Pre-Onboarding Package', href: '/resources/pre-onboarding-source-package', icon: LuFileInput },
     { label: 'Safe Page Context', href: '/resources/safe-page-context', icon: LuShieldCheck },
@@ -87,6 +88,7 @@ const RESOURCE_MENU_LINKS = [
 ];
 
 const RESOURCE_SETUP_GUIDE_HREFS = [
+    '/resources/answerlattice-operating-guide',
     '/resources/launch-support-checklist',
     '/resources/pre-onboarding-source-package',
     '/resources/widget-install-verification',
@@ -122,6 +124,7 @@ const MOBILE_NAV_ICONS: Record<string, IconType> = {
     '/install': LuDownload,
     '/pricing': LuCreditCard,
     '/resources': LuBookOpen,
+    '/resources/answerlattice-operating-guide': LuBookOpen,
     '/resources/launch-support-checklist': LuRocket,
     '/resources/pre-onboarding-source-package': LuFileInput,
     '/resources/safe-page-context': LuShieldCheck,
@@ -194,7 +197,7 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
     const drawerRef = useRef<HTMLElement | null>(null);
     const closeButtonRef = useRef<HTMLButtonElement | null>(null);
     const { isMobile, hasMounted } = useIsMobile(1280);
-    const shouldShowMobileNavigation = hasMounted && isMobile;
+    const shouldCloseMobileNavigation = hasMounted && !isMobile;
 
     const clearDrawerTimers = useCallback(() => {
         if (openTimerRef.current !== null) {
@@ -208,14 +211,13 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
     }, []);
 
     const openDrawer = useCallback(() => {
-        if (!shouldShowMobileNavigation) return;
         clearDrawerTimers();
         setIsDrawerMounted(true);
         openTimerRef.current = window.setTimeout(() => {
             openTimerRef.current = null;
             setIsDrawerVisible(true);
         }, DRAWER_OPEN_DELAY_MS);
-    }, [clearDrawerTimers, shouldShowMobileNavigation]);
+    }, [clearDrawerTimers]);
 
     const closeDrawer = useCallback(() => {
         if (!isDrawerMounted) return;
@@ -250,9 +252,12 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
     );
 
     useEffect(() => {
-        document.body.style.overflow = isDrawerMounted ? 'hidden' : '';
+        if (!isDrawerMounted) return undefined;
+
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
         return () => {
-            document.body.style.overflow = '';
+            document.body.style.overflow = originalOverflow;
         };
     }, [isDrawerMounted]);
 
@@ -303,10 +308,10 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
     }, [isDrawerVisible]);
 
     useEffect(() => {
-        if (!shouldShowMobileNavigation && isDrawerMounted) {
+        if (shouldCloseMobileNavigation && isDrawerMounted) {
             closeDrawer();
         }
-    }, [shouldShowMobileNavigation, isDrawerMounted, closeDrawer]);
+    }, [shouldCloseMobileNavigation, isDrawerMounted, closeDrawer]);
 
     return (
         <>
@@ -580,23 +585,21 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
                         </L>
                     </div>
 
-                    {shouldShowMobileNavigation ? (
-                        <button
-                            ref={menuButtonRef}
-                            aria-controls="answerlattice-mobile-navigation"
-                            aria-expanded={isDrawerVisible}
-                            aria-label="Open navigation"
-                            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white xl:hidden"
-                            onClick={openDrawer}
-                            type="button"
-                        >
-                            <LuMenu size={22} aria-hidden />
-                        </button>
-                    ) : null}
+                    <button
+                        ref={menuButtonRef}
+                        aria-controls="answerlattice-mobile-navigation"
+                        aria-expanded={isDrawerVisible}
+                        aria-label="Open navigation"
+                        className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-[#a0a0c0] transition-colors hover:text-white xl:hidden"
+                        onClick={openDrawer}
+                        type="button"
+                    >
+                        <LuMenu size={22} aria-hidden />
+                    </button>
                 </div>
             </header>
 
-            {isDrawerMounted && shouldShowMobileNavigation && (
+            {isDrawerMounted && (
                 <>
                     <div
                         aria-hidden="true"

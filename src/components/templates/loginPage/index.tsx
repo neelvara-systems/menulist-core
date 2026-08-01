@@ -433,6 +433,7 @@ function LoginPage() {
     if (!FEATURE_FLAGS.ENABLE_CLAIM_ACCOUNT) return;
     const claimToken = searchParams?.get('claim');
     clearPendingClaimToken(window.localStorage);
+    if (!claimToken) return;
     if (writePendingClaimToken(window.sessionStorage, claimToken)) {
       // Validate the token and get business info
       const validateClaimToken = async () => {

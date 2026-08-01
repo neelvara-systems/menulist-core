@@ -11,11 +11,11 @@ export function getAiMenuManagerActionDefinition(actionType: AiMenuManagerAction
 }
 
 export function listAiMenuManagerActionDefinitions() {
-    return AI_MENU_MANAGER_ACTION_DEFINITIONS;
+    return [...AI_MENU_MANAGER_ACTION_DEFINITIONS];
 }
 
 export function listAiMenuManagerExecutableActions() {
-    return AI_MENU_MANAGER_EXECUTABLE_ACTIONS;
+    return [...AI_MENU_MANAGER_EXECUTABLE_ACTIONS];
 }
 
 export function isAiMenuManagerActionEnabled(action: AiMenuManagerActionDefinition | AiMenuManagerActionType) {

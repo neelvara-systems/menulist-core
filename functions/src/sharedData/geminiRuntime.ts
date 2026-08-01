@@ -38,6 +38,13 @@ export class GeminiRequestCompatibilityError extends Error {
     }
 }
 
+export type CompiledGeminiGenerateContentRequest<T extends Record<string, unknown>> =
+    Omit<T, 'model' | 'config'>
+    & {
+        model: string;
+        config?: unknown;
+    };
+
 interface GeminiModelContract {
     removeDeprecatedSampling: boolean;
     removeCandidateCount: boolean;
@@ -194,7 +201,7 @@ function assertStableModelId(model: string): void {
  */
 export function compileGeminiGenerateContentRequest<T extends Record<string, unknown>>(
     request: T,
-): T {
+): CompiledGeminiGenerateContentRequest<T> {
     const model = typeof request.model === 'string' ? request.model.trim() : '';
     assertStableModelId(model);
 
@@ -242,5 +249,5 @@ export function compileGeminiGenerateContentRequest<T extends Record<string, unk
         validateFunctionResponses(request.contents);
     }
 
-    return compiled as T;
+    return compiled as CompiledGeminiGenerateContentRequest<T>;
 }

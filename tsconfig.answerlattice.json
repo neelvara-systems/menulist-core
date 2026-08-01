@@ -35,7 +35,8 @@
     "src/database/answerlattice/**/*.ts",
     "src/hooks/answerlattice/**/*.ts",
     "src/lib/answerlattice/**/*.ts",
-    "src/types/answerlattice/**/*.ts"
+    "src/types/answerlattice/**/*.ts",
+    "src/types/pdfjs-worker.d.ts"
   ],
   "exclude": [
     "node_modules",

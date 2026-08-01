@@ -76,7 +76,7 @@ const executeReleaseAction = async (
         body: JSON.stringify(body),
     });
     const payload = await readJsonResponseWithLimit<unknown>(response, RELEASE_ACTION_RESPONSE_MAX_BYTES)
-        .catch(() => null);
+        .catch((): null => null);
     if (!response.ok) {
         const errorPayload = payload && typeof payload === 'object' && !Array.isArray(payload)
             ? payload as Record<string, unknown>
@@ -150,7 +150,7 @@ export const getReleaseById = async (releaseId: string) => apiCallComposer(
 );
 
 export const addRelease = async (
-    data: Omit<AnswerlatticeRelease, 'id'>,
+    data: Omit<AnswerlatticeRelease, 'id' | 'pId'>,
     expectedScope: { tId: number; sId: number },
 ) => apiCallComposer(
     async () => {

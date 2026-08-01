@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { resolveExactSessionPlatformRole } from "@lib/auth/sessionPlatformRole";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
@@ -31,6 +32,26 @@ const isPlatformSession = (session: any) => (
     resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE
 );
 
+async function requireCurrentPlatformPermissionAuthority(
+    request: NextRequest,
+    session: any,
+    label: string,
+    storeId?: string | number,
+    tenantId?: string | number,
+): Promise<NextResponse | null> {
+    if (!isPlatformSession(session)) return null;
+    if (await getCurrentPlatformUser(session)) return null;
+
+    logger.security("Authorization Failed - Current Platform Authority Missing", {
+        ...getBoundedSecurityRouteContext(session, request),
+        ...getBoundedSecurityStringContext("endpoint", request.nextUrl.pathname),
+        ...getBoundedSecurityStringContext("label", label),
+        ...getBoundedSecurityStringContext("storeId", storeId),
+        ...getBoundedSecurityStringContext("tenantId", tenantId),
+    }, "critical");
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
+
 const isStorePermissionTargetBlocked = (storeData: any): boolean => (
     storeData?.active === false
     || storeData?.deleted === true
@@ -43,7 +64,9 @@ export async function requireAnyStorePermission(
     permissions: PermissionKey[],
     label: string,
 ) {
-    if (isPlatformSession(session)) return null;
+    if (isPlatformSession(session)) {
+        return requireCurrentPlatformPermissionAuthority(request, session, label);
+    }
 
     const sessionScope = resolveStorePermissionSessionScope(session);
     if (!sessionScope) {
@@ -68,7 +91,7 @@ export async function requireAnyStorePermission(
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return requireAnyStorePermissionForStoreData(
+    return await requireAnyStorePermissionForStoreData(
         request,
         session,
         storeData,
@@ -120,9 +143,17 @@ export async function requireAnyStorePermissionForStore(
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (isPlatformSession(session)) return null;
+    if (isPlatformSession(session)) {
+        return requireCurrentPlatformPermissionAuthority(
+            request,
+            session,
+            label,
+            storeScope.documentId,
+            tenantScope.documentId,
+        );
+    }
 
-    return requireAnyStorePermissionForStoreData(
+    return await requireAnyStorePermissionForStoreData(
         request,
         session,
         storeData,
@@ -133,7 +164,7 @@ export async function requireAnyStorePermissionForStore(
     );
 }
 
-export function requireAnyStorePermissionForStoreData(
+export async function requireAnyStorePermissionForStoreData(
     request: NextRequest,
     session: any,
     storeData: any,
@@ -142,7 +173,15 @@ export function requireAnyStorePermissionForStoreData(
     storeId?: string | number,
     tenantId?: string | number,
 ) {
-    if (isPlatformSession(session)) return null;
+    if (isPlatformSession(session)) {
+        return requireCurrentPlatformPermissionAuthority(
+            request,
+            session,
+            label,
+            storeId,
+            tenantId,
+        );
+    }
 
     const sessionScope = resolveStorePermissionSessionScope(session);
     const storeScope = normalizeStorePermissionScopeDocumentId(

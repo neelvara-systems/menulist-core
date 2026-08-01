@@ -1,7 +1,12 @@
 'use client'
 
 import ArticleViewModal from '@organisms/ArticleViewModal';
-import { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
+import {
+    KnowledgeBaseArticleMeta,
+    KnowledgeBaseCategoriesType,
+    type KnowledgeBaseCategory,
+    type KnowledgeBaseSection,
+} from '@type/knowledgeBase';
 import { Button, Card, Flex, Space, Tooltip, Typography, theme } from 'antd';
 import { useEffect, useState } from 'react';
 import { LuFileText, LuMaximize2, LuSearch, LuSparkles } from 'react-icons/lu';
@@ -21,6 +26,54 @@ interface SearchResult {
     section?: string;
 }
 
+type SearchableArticle = Pick<KnowledgeBaseArticleMeta, 'id' | 'title'>;
+type SearchableSection = Pick<KnowledgeBaseSection, 'description' | 'title'> & {
+    articles: SearchableArticle[];
+};
+type SearchableCategory = Pick<KnowledgeBaseCategory, 'title'> & {
+    articles: SearchableArticle[];
+    sections: SearchableSection[];
+};
+
+function getSearchableArticles(value: unknown): SearchableArticle[] {
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((article) => (
+        article
+        && typeof article === 'object'
+        && typeof article.id === 'string'
+        && typeof article.title === 'string'
+            ? [{ id: article.id, title: article.title }]
+            : []
+    ));
+}
+
+function getSearchableCategory(value: unknown): SearchableCategory | null {
+    if (!value || typeof value !== 'object' || !('title' in value) || typeof value.title !== 'string') {
+        return null;
+    }
+    const articles = 'articles' in value ? getSearchableArticles(value.articles) : [];
+    const sections = 'sections' in value && Array.isArray(value.sections)
+        ? value.sections.flatMap((section): SearchableSection[] => {
+            if (
+                !section
+                || typeof section !== 'object'
+                || !('title' in section)
+                || typeof section.title !== 'string'
+            ) {
+                return [];
+            }
+            return [{
+                articles: 'articles' in section ? getSearchableArticles(section.articles) : [],
+                description: 'description' in section && typeof section.description === 'string'
+                    ? section.description
+                    : '',
+                title: section.title,
+            }];
+        })
+        : [];
+    return { articles, sections, title: value.title };
+}
+
 export default function LocalSearchResults({ query, categoriesData }: LocalSearchResultsProps) {
     const { token } = theme.useToken();
     const [results, setResults] = useState<SearchResult[]>([]);
@@ -36,16 +89,22 @@ export default function LocalSearchResults({ query, categoriesData }: LocalSearc
 
         // Handle both nested and flat category structures
         // If categoriesData.categories has a 'categories' property, use that instead
-        const categoriesMap = categoriesData.categories as any;
-        const actualCategories = categoriesMap.categories 
-            ? categoriesMap.categories 
-            : categoriesData.categories;
+        const categoriesMap: Record<string, unknown> = categoriesData.categories;
+        const nestedCategories = categoriesMap.categories;
+        const actualCategories: Record<string, unknown> = (
+            nestedCategories
+            && typeof nestedCategories === 'object'
+            && !Array.isArray(nestedCategories)
+        )
+            ? nestedCategories as Record<string, unknown>
+            : categoriesMap;
 
         const searchResults: SearchResult[] = [];
 
-        Object.values(actualCategories as Record<string, any>).forEach((category: any) => {
+        Object.values(actualCategories).forEach((categoryValue) => {
+            const category = getSearchableCategory(categoryValue);
             // Skip if category or title is missing
-            if (!category || !category.title) return;
+            if (!category) return;
 
             // Check if category title matches
             const categoryTitleMatches = queryWords.some(word =>
@@ -54,8 +113,7 @@ export default function LocalSearchResults({ query, categoriesData }: LocalSearc
 
             // If category title matches, include ALL articles from category
             if (categoryTitleMatches) {
-                (category.articles || []).forEach(article => {
-                    if (!article || !article.title) return;
+                category.articles.forEach((article) => {
                     searchResults.push({
                         articleId: article.id,
                         title: article.title,
@@ -64,8 +122,7 @@ export default function LocalSearchResults({ query, categoriesData }: LocalSearc
                 });
             } else {
                 // Otherwise, check each category-level article individually
-                (category.articles || []).forEach(article => {
-                    if (!article || !article.title) return;
+                category.articles.forEach((article) => {
                     const matches = queryWords.some(word =>
                         article.title.toLowerCase().includes(word)
                     );
@@ -80,10 +137,7 @@ export default function LocalSearchResults({ query, categoriesData }: LocalSearc
             }
 
             // Search in sections
-            (category.sections || []).forEach(section => {
-                // Skip if section or title is missing
-                if (!section || !section.title) return;
-
+            category.sections.forEach((section) => {
                 const sectionTitleMatches = queryWords.some(word =>
                     section.title.toLowerCase().includes(word)
                 );
@@ -93,8 +147,7 @@ export default function LocalSearchResults({ query, categoriesData }: LocalSearc
 
                 // If section title or description matches, include ALL articles from that section
                 if (sectionTitleMatches || sectionDescriptionMatches) {
-                    (section.articles || []).forEach(article => {
-                        if (!article || !article.title) return;
+                    section.articles.forEach((article) => {
                         searchResults.push({
                             articleId: article.id,
                             title: article.title,
@@ -104,8 +157,7 @@ export default function LocalSearchResults({ query, categoriesData }: LocalSearc
                     });
                 } else {
                     // Otherwise, check each article individually
-                    (section.articles || []).forEach(article => {
-                        if (!article || !article.title) return;
+                    section.articles.forEach((article) => {
                         const matches = queryWords.some(word =>
                             article.title.toLowerCase().includes(word)
                         );

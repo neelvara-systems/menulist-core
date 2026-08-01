@@ -54,6 +54,14 @@ This request policy sits alongside the existing response acknowledgement boundar
 
 Cost impact: `$0.00`. This changes only browser-side request handling for existing compliance editor calls; it adds no Firestore reads/writes beyond valid existing load/override/reset requests, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public page rendering changes.
 
+### Owner response tenant/store authority
+
+`GET /api/compliance` and every successful override/reset response include the tenant and store IDs derived from the authenticated session. `src/lib/compliance/ownerComplianceResponseBoundary.ts` requires those exact identities, a collision-safe tenant/store key, one of the known page sources, and bounded string fields before owner data can enter React state. Missing, malformed, legacy-unscoped, or foreign-scope envelopes fail closed.
+
+The mobile editor keys its shared memory cache, in-flight requests, and listeners by the exact scope and uses attempt-owned request cleanup and settlement. If overlapping forced refreshes occur after separate mutations, only the request that still owns the scope slot may publish; a displaced older response cannot overwrite newer page state. The standalone Official Page and embedded Custom Domain editors receive the current tenant/store explicitly, clear prior state on a scope change, and reject stale request settlement. Mutation acknowledgement requires exact scope, page type, action, and `success: true`; a response from a prior session cannot produce owner success state.
+
+Cost impact: `$0.00` for valid requests. This changes only authenticated owner response envelopes and browser admission. It adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache invalidations, rules, indexes, persisted schema fields, provider calls, public compliance output, or owner settings.
+
 ## July 1, 2026 - Mutation Acknowledgement Shape Hardening
 
 `POST /api/compliance` now returns the requested `type` and API `action` alongside `success: true`. Desktop Official Page compliance, embedded Custom Domain compliance, and mobile compliance editor mutation guards require those fields to match the request before showing save/reset success or refreshing local page state. Invalid successful envelopes log `desktop_compliance_page_response_invalid` or `mobile_compliance_page_response_invalid` with bounded action/type match booleans only.

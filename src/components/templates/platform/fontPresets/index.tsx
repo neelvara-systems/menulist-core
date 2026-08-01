@@ -13,9 +13,17 @@ import FontFaceObserver from 'fontfaceobserver';
 import { Fragment, useEffect, useRef, useState } from "react";
 import { LuArrowUpDown, LuPlusCircle, LuRefreshCcw, LuTrash, LuUpload, LuUploadCloud, LuX } from "react-icons/lu";
 import SortFontModal from "./sortFontModal";
+import type { FontPresetsType } from "@type/assets";
 const { Text } = Typography;
 
-const emptyFontDetails = {
+type FontPresetFormState = FontPresetsType & {
+    fontSize: number;
+    height: number;
+    id: string;
+    width: number;
+};
+
+const emptyFontDetails: FontPresetFormState = {
     name: "",
     code: "",//used to save file with same name
     blackTextUrl: "",
@@ -34,11 +42,11 @@ function FontPresets() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const canvasCtxRef = useRef<CanvasRenderingContext2D | null>(null);
     const { token } = theme.useToken();
-    const fileInputRef = useRef(null);
-    const [fontsList, setFontsList] = useState([]);
-    const [fontDetails, setFontDetails] = useState(emptyFontDetails)
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [fontsList, setFontsList] = useState<FontPresetsType[]>([]);
+    const [fontDetails, setFontDetails] = useState<FontPresetFormState>(emptyFontDetails)
     const dispatch = useAppDispatch();
-    const [showSortModal, setShowSortModal] = useState({ active: false, data: [] })
+    const [showSortModal, setShowSortModal] = useState<{ active: boolean; data: FontPresetsType[] }>({ active: false, data: [] })
 
     useEffect(() => {
         getFontPresets().then((res) => {
@@ -69,7 +77,7 @@ function FontPresets() {
     };
 
     const getURL = () => {
-        return canvasRef.current?.toDataURL('image/png', 1.0);
+        return canvasRef.current?.toDataURL('image/png', 1.0) ?? '';
     }
 
     const drawText = (type: 'white' | 'black') => {
@@ -91,7 +99,7 @@ function FontPresets() {
         ctx.fillText(fontDetails.name, canvas.width / 2, canvas.height / 2);
     }
 
-    const updateText = async (fontDetails) => {
+    const updateText = async (fontDetails: FontPresetFormState) => {
         // Add font face style
         addFontFaceStyle([fontDetails])
         
@@ -179,7 +187,11 @@ function FontPresets() {
                         <Button
                             ghost={fontData.id == fontDetails?.id}
                             type={fontData.id == fontDetails?.id ? "primary" : "dashed"}
-                            onClick={() => setFontDetails({ ...removeObjRef(fontDetails), ...fontData })}>{fontData.name}</Button>
+                            onClick={() => setFontDetails({
+                                ...emptyFontDetails,
+                                ...removeObjRef(fontDetails),
+                                ...fontData,
+                            })}>{fontData.name}</Button>
                     </Fragment>
                 })}
                 <Flex style={{ position: "sticky", bottom: 0, marginTop: 20 }} justify="space-between" gap={10}>

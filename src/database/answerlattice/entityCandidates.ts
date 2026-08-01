@@ -65,7 +65,7 @@ export const getPendingCandidates = async (tId: number, sId: number) => apiCallC
     'getPendingCandidates',
 );
 
-export const addEntityCandidate = async (_data: Omit<AnswerlatticeEntityCandidate, 'id'>): Promise<never> => {
+export const addEntityCandidate = async (_data: Omit<AnswerlatticeEntityCandidate, 'id' | 'pId'>): Promise<never> => {
     throw new Error('Entity candidates must be generated through a scoped Answerlattice server pipeline.');
 };
 

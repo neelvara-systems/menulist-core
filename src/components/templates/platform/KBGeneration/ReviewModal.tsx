@@ -226,7 +226,8 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                 if (!job || !operationScope) return;
                 dispatch(startLoader('Publishing job...'));
                 try {
-                    const finalCategories: IngestionJobCategoriesMap | undefined = categoriesData?.categories || job.categories;
+                    const finalCategories: IngestionJobCategoriesMap | undefined =
+                        categoriesData?.categories ?? job.categories ?? undefined;
                     if (!finalCategories || Object.keys(finalCategories).length === 0) {
                         throw new Error('Knowledge-base review navigation is unavailable.');
                     }
@@ -383,11 +384,12 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
     };
 
 
-    if (!Boolean(categoriesData?.categories)) {
+    const reviewCategories = categoriesData?.categories;
+    if (!reviewCategories) {
         return null
     }
 
-    const categoriesList = Object.values(categoriesData.categories).sort((a, b) => a.index - b.index);
+    const categoriesList = Object.values(reviewCategories).sort((a, b) => a.index - b.index);
 
     return (
         <Modal

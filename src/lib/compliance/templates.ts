@@ -27,8 +27,11 @@ function formatComplianceDate(value: unknown): string | null {
             date = value;
         } else if (value && typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
             date = (value as { toDate: () => Date }).toDate();
-        } else if (value && typeof value === 'object' && Number.isFinite(Number((value as { seconds?: unknown }).seconds))) {
-            date = new Date(Number((value as { seconds: unknown }).seconds) * 1000);
+        } else if (value && typeof value === 'object') {
+            const seconds = Reflect.get(value, 'seconds');
+            if (typeof seconds === 'number' && Number.isFinite(seconds)) {
+                date = new Date(seconds * 1000);
+            }
         } else if (typeof value === 'string' || typeof value === 'number') {
             date = new Date(value);
         }
@@ -277,34 +280,59 @@ This refund policy is provided for general informational purposes and may not co
  * Extract compliance generation inputs from store data.
  * Returns null if minimum required data is missing.
  */
-export function extractComplianceInputs(store: any): ComplianceInputs | null {
+export function extractComplianceInputs(store: unknown): ComplianceInputs | null {
     const businessName = getBrandName(store, '');
     if (!businessName) return null;
 
-    const contactEmail = store?.email || store?.contactEmail || null;
-    const contactPhone = store?.phoneNumber || store?.phone || null;
+    if (!store || typeof store !== 'object' || Array.isArray(store)) return null;
+    const readText = (key: string): string => {
+        try {
+            if (!Object.prototype.hasOwnProperty.call(store, key)) return '';
+            const value = Reflect.get(store, key);
+            return typeof value === 'string' ? value.trim().slice(0, 500) : '';
+        } catch {
+            return '';
+        }
+    };
+    const readUnknown = (key: string): unknown => {
+        try {
+            return Object.prototype.hasOwnProperty.call(store, key)
+                ? Reflect.get(store, key)
+                : undefined;
+        } catch {
+            return undefined;
+        }
+    };
+
+    const contactEmail = readText('email') || readText('contactEmail') || null;
+    const contactPhone = readText('phoneNumber') || readText('phone') || null;
 
     // At least one contact method required
     if (!contactEmail && !contactPhone) return null;
 
     const addressParts = [
-        store?.addressLine,
-        store?.area,
-        store?.city,
-        store?.state,
+        readText('addressLine'),
+        readText('area'),
+        readText('city'),
+        readText('state'),
     ].filter(Boolean);
+
+    const modifiedOn = readUnknown('modifiedOn');
+    const updatedAt = readUnknown('updatedAt');
+    const createdOn = readUnknown('createdOn');
+    const createdAt = readUnknown('createdAt');
 
     return {
         businessName,
         address: addressParts.join(', '),
-        country: store?.country || 'India',
+        country: readText('country') || 'India',
         contactEmail,
         contactPhone,
         lastUpdated: formatComplianceDate(
-            store?.modifiedOn
-            ?? store?.updatedAt
-            ?? store?.createdOn
-            ?? store?.createdAt,
+            modifiedOn
+            ?? updatedAt
+            ?? createdOn
+            ?? createdAt,
         ) || COMPLIANCE_TEMPLATE_EFFECTIVE_DATE,
     };
 }

@@ -89,7 +89,7 @@ function applyAnswerlatticeConsent(choice: PublicCookieConsentChoice) {
     }
 }
 
-function AnswerlatticeConversionTracker() {
+function AnswerlatticeConversionTracker(): null {
     useEffect(() => {
         const handleClick = (event: MouseEvent) => {
             const target = event.target instanceof Element

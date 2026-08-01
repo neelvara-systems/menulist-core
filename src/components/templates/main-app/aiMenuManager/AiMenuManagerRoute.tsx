@@ -575,7 +575,7 @@ export default function AiMenuManagerRoute() {
                 ...getBoundedRuntimeStringContext('storeId', storeId),
                 ...getBoundedRuntimeStringContext('projectId', selectedProjectId),
                 ...getBoundedRuntimeStringContext('sessionId', getSessionIdForProject(selectedProjectId)),
-                hasComposerContext: (commandContext?.selectedEntityIds.length || 0) > 0 || Boolean(commandContext?.target),
+                hasComposerContext: (commandContext?.selectedEntityIds?.length || 0) > 0 || Boolean(commandContext?.target),
                 inputLength: text.length,
             });
             message.error('Menu Manager could not prepare that change.');
@@ -664,7 +664,7 @@ export default function AiMenuManagerRoute() {
                     operations: groupOperations,
                     result: 'failed',
                     sessionSnapshot: currentSession,
-                }).catch((completionError) => {
+                }).catch((completionError): null => {
                     logRuntimeFailure('ai_menu_manager_group_failed_completion_failed', completionError, {
                         ...getBoundedRuntimeStringContext('storeId', storeId),
                         ...getBoundedRuntimeStringContext('projectId', selectedProject.projectId),
@@ -842,7 +842,7 @@ export default function AiMenuManagerRoute() {
                         patchHash: directive.patchHash,
                         result: 'failed',
                         message: 'Project update failed',
-                    }).catch((completionError) => {
+                    }).catch((completionError): null => {
                         logRuntimeFailure('ai_menu_manager_project_update_failed_proposal_completion_failed', completionError, {
                             ...getBoundedRuntimeStringContext('storeId', storeId),
                             ...getBoundedRuntimeStringContext('projectId', operation.projectId),
@@ -858,7 +858,7 @@ export default function AiMenuManagerRoute() {
                         result: 'failed',
                         message: 'Project update failed',
                         sessionSnapshot: currentSession,
-                    }).catch((completionError) => {
+                    }).catch((completionError): null => {
                         logRuntimeFailure('ai_menu_manager_project_update_failed_operation_completion_failed', completionError, {
                             ...getBoundedRuntimeStringContext('storeId', storeId),
                             ...getBoundedRuntimeStringContext('projectId', operation.projectId),

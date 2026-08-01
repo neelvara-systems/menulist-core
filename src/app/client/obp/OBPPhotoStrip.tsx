@@ -31,15 +31,17 @@ export default function OBPPhotoStrip({
     storeName,
 }: OBPPhotoStripProps) {
     const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+    const [failedPhotoUrls, setFailedPhotoUrls] = useState<string[]>([]);
     const galleryPhotos = normalizeOBPPublicPhotoUrls(photos);
-    const visiblePhotos = galleryPhotos.slice(0, 3);
+    const availablePhotos = galleryPhotos.filter((url) => !failedPhotoUrls.includes(url));
+    const visiblePhotos = availablePhotos.slice(0, 3);
     const formatPhotoLabel = (index: number) => photoLabelTemplate.replace('{index}', String(index));
-    const viewerImages = useMemo(() => galleryPhotos.map((url, index) => ({
+    const viewerImages = useMemo(() => availablePhotos.map((url, index) => ({
         alt: `${storeName} ${formatPhotoLabel(index + 1)}`,
         url,
-    })), [galleryPhotos, photoLabelTemplate, storeName]);
+    })), [availablePhotos, photoLabelTemplate, storeName]);
 
-    if (galleryPhotos.length === 0) return null;
+    if (availablePhotos.length === 0) return null;
 
     return (
         <>
@@ -58,6 +60,12 @@ export default function OBPPhotoStrip({
                             src={url}
                             alt={`${storeName} ${formatPhotoLabel(index + 1)}`}
                             loading="lazy"
+                            onError={() => {
+                                setFailedPhotoUrls((current) => (
+                                    current.includes(url) ? current : [...current, url]
+                                ));
+                                setPreviewIndex(null);
+                            }}
                         />
                     </button>
                 ))}

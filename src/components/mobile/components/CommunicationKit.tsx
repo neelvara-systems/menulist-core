@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuMessageCircle, LuShare2 } from 'react-icons/lu';
 import { Button, Card, Flex, Text, Toast } from '../antd';
+import type { StoreSpecialHours } from '@type/platform/store';
 import {
     getBoundedMobileOwnerStringContext,
     logMobileOwnerFailure,
@@ -30,6 +31,7 @@ interface MobileCommunicationKitProps {
     address?: string;
     phone?: string;
     workingHours?: Record<string, string>;
+    specialHours?: StoreSpecialHours;
     timeZone?: string;
     diagnosticContext?: MobileOwnerLogContext;
 }
@@ -100,10 +102,14 @@ export default function MobileCommunicationKit({
     storeName,
     timeZone,
     workingHours,
+    specialHours,
     diagnosticContext,
 }: MobileCommunicationKitProps) {
     const t = useTranslations('MobileCommunicationKit');
-    const todayResult = useMemo(() => getTodayHours(workingHours, timeZone), [workingHours, timeZone]);
+    const todayResult = useMemo(
+        () => getTodayHours(workingHours, timeZone, specialHours),
+        [specialHours, timeZone, workingHours],
+    );
 
     const input: MessageTemplateInput = useMemo(() => ({
         activeProjects,

@@ -1,387 +1,33 @@
 // This file will export the basic utitlity function to use globally.
 import Compressor from 'compressorjs';
-import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Timestamp } from 'firebase/firestore';
 import { v4 as uuid } from 'uuid';
-import { windowRef } from './window';
 
-/**
- * Determine the mobile operating system.
- * This function returns one of 'iOS', 'Android', 'Windows Phone', or 'unknown'.
- *
- * @returns {String}
- */
-export function getMobileOperatingSystem(): "IOS" | "Android" | "Windows Phone" | "unknown" {
-  const browserWindow = windowRef();
-  const userAgent = browserWindow?.navigator.userAgent
-    || browserWindow?.navigator.vendor
-    || "";
-
-  // Windows Phone must come first because its UA also contains "Android"
-  if (/windows phone/i.test(userAgent)) {
-    return "Windows Phone";
-  }
-
-  if (/android/i.test(userAgent)) {
-    return "Android";
-  }
-
-  // iOS detection from: http://stackoverflow.com/a/9039885/177710
-  if (/iPad|iPhone|iPod/.test(userAgent)) {
-    return "IOS";
-  }
-
-  return "unknown";
-}
-
-
-/**
- * This utility function will truncate the long text
- * with the chars provided, for example if chars = 32 then it will
- * truancate the text till 32th character and return the new text.
- * @param {*} desc 
- * @param {*} chars 
- */
-export const TruncateText = (desc, chars) => {
-  if (desc && desc?.length > chars) {
-    return desc.substring(0, chars) + '';
-  } else {
-    return desc
-  }
-}
-
-export function parseJSON(response) {
-  return new Promise(resolve => {
-    response.text().then(body => {
-      resolve({
-        status: response.status,
-        ok: response.ok,
-        json: body !== '' ? JSON.parse(body) : '{}'
-      })
-    })
-  })
-}
-
-function formatFilterString(type, filter) {
-  const filterStringArray = Object.keys(filter)?.map(key => {
-    const value = filter[key]
-    let queryString: any = `${key},${value}`
-
-    if (typeof value === 'object')
-      queryString = Object.keys(value)?.map(
-        attr => `${key}.${attr},${value[attr]}`
-      )
-
-    return `${type}(${queryString})`
-  })
-
-  return filterStringArray.join(':')
-}
-
-function formatQueryString(key, value) {
-  if (key === 'limit' || key === 'offset') {
-    return `page${value}`
-  }
-
-  if (key === 'filter') {
-    const filterValues = Object.keys(value)?.map(filter =>
-      formatFilterString(filter, value[filter])
-    )
-
-    return `${key}=${filterValues.join(':')}`
-  }
-
-  return `${key}=${value}`
-}
-
-function buildQueryParams({ includes, sort, limit, offset, filter }) {
-  const query: any = {}
-
-  if (includes) {
-    query.include = includes
-  }
-
-  if (sort) {
-    query.sort = `${sort}`
-  }
-
-  if (limit) {
-    query.limit = `[limit]=${limit}`
-  }
-
-  if (offset) {
-    query.offset = `[offset]=${offset}`
-  }
-
-  if (filter) {
-    query.filter = filter
-  }
-
-  return Object.keys(query)
-    ?.map(k => formatQueryString(k, query[k]))
-    .join('&')
-}
-
-export function buildURL(endpoint, params) {
-  if (
-    params.includes ||
-    params.sort ||
-    params.limit ||
-    params.offset ||
-    params.filter
-  ) {
-    const paramsString = buildQueryParams(params)
-
-    return `${endpoint}?${paramsString}`
-  }
-
-  return endpoint
-}
-
-export function buildRequestBody(body) {
-  let parsedBody
-  if (body) {
-    if (body.options) {
-      parsedBody = `{
-        "data": ${JSON.stringify(body.data)},
-        "options" : ${JSON.stringify(body.options)}
-      }`
-    } else {
-      parsedBody = `{
-        "data": ${JSON.stringify(body)}
-      }`
-    }
-  }
-
-  return parsedBody
-}
-
-export function buildCartItemData(
-  id,
-  quantity = null,
-  type = 'cart_item',
-  flows,
-  isSku = false
-) {
-  const payload = {
-    type,
-    ...flows
-  }
-
-  if (type === 'cart_item') {
-    if (isSku)
-      Object.assign(payload, {
-        sku: id,
-        quantity: parseInt(quantity, 10)
-      })
-    else
-      Object.assign(payload, {
-        id,
-        quantity: parseInt(quantity, 10)
-      })
-  }
-
-  if (type === 'promotion_item') {
-    Object.assign(payload, {
-      code: id
-    })
-  }
-
-  return payload
-}
-
-export function buildCartCheckoutData(
-  customer,
-  billing_address,
-  shipping_address
-) {
-  let parsedCustomer = customer
-
-  if (typeof customer === 'string') parsedCustomer = { id: customer }
-
-  return {
-    customer: parsedCustomer,
-    billing_address,
-    shipping_address
-  }
-}
-
-export function resetProps(instance) {
-  const inst = instance
-    ;['includes', 'sort', 'limit', 'offset', 'filter'].forEach(
-      e => delete inst[e]
-    )
-}
-
-export function getCredentials(storage) {
-  return JSON.parse(storage.get('moltinCredentials'))
-}
-
-export function tokenInvalid(config) {
-  const credentials = getCredentials(config.storage)
-
-  return (
-    !credentials ||
-    !credentials.access_token ||
-    credentials.client_id !== config.client_id ||
-    Math.floor(Date.now() / 1000) >= credentials.expires
-  )
-}
-
-export function hex2rgb(colour, alpha) {
-  var r, g, b;
-  if (colour.charAt(0) == "#") {
-    colour = colour.substr(1);
-  }
-
-  r = colour.charAt(0) + '' + colour.charAt(1);
-  g = colour.charAt(2) + '' + colour.charAt(3);
-  b = colour.charAt(4) + '' + colour.charAt(5);
-
-  r = parseInt(r, 16);
-  g = parseInt(g, 16);
-  b = parseInt(b, 16);
-  return alpha ? `rgb(${r},${g},${b},${alpha}%)` : `rgb(${r},${g},${b})`;
-}
-
-export function dynamicSort(property: any, order: number) {
-  var sortOrder = order;
-  if (property == 'lastVisitedOn') {
-    return function (a: any, b: any) {
-      var result = (new Date(a[property]).getTime() < new Date(b[property]).getTime()) ? -1 : (new Date(a[property]).getTime() > new Date(b[property]).getTime()) ? 1 : 0;
-      return result * sortOrder;
-    }
-  } else {
-    return function (a: any, b: any) {
-      var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
-      return result * sortOrder;
-    }
-  }
-}
-
-export function updateManifestFile(storeData: any) {
-  const theme_color = document.getElementById("theme-color").getAttribute("content");
-  const manifestConfig = storeData.configData.storeConfig.manifestConfig;
-  const manifestString = JSON.stringify({
-    ...{
-      "name": `${storeData.tenant}, ${storeData.name}` || 'Respark',
-      "short_name": `${storeData.tenant}` || 'Respark',
-      "start_url": storeData.url || '/',
-      "display": "standalone",
-      "background_color": theme_color || "#dee1ec",
-      "theme_color": theme_color || "#dee1ec",
-      "orientation": "standalone",
-      "description": getPublicBusinessDescription(storeData),
-      "id": storeData.tenantId,
-      "icons": [
-        {
-          "src": manifestConfig.icons['180'],
-          "type": "image/png",
-          "sizes": "180x180"
-        },
-        {
-          "src": manifestConfig.icons['192'],
-          "type": "image/png",
-          "sizes": "192x192"
-        },
-        {
-          "src": manifestConfig.icons['384'],
-          "type": "image/png",
-          "sizes": "384x384"
-        },
-        {
-          "src": manifestConfig.icons['512'],
-          "type": "image/png",
-          "sizes": "512x512"
-        },
-        {
-          "src": manifestConfig.icons['1024'],
-          "type": "image/png",
-          "sizes": "1024x1024"
-        }
-      ]
-    },
-  });
-  const manifestElement = document.getElementById("manifest");
-  manifestElement?.setAttribute("href", "data:application/json;charset=utf-8," + encodeURIComponent(manifestString));
-}
-
-
-export function initialThemeHandler() {
-  let isDark = false;
-  if (localStorage.getItem("theme")) {
-    isDark = localStorage.getItem("theme") == 'dark' ? true : false
-  } else {
-    const darkTheme = window.matchMedia("(prefers-color-scheme: dark)");
-    if (darkTheme) {
-      localStorage.setItem("theme", 'dark');
-      isDark = true;
-    } else {
-      localStorage.setItem("theme", 'light');
-      isDark = false;
-    }
-  }
-  return isDark
-}
-
-export function convertRGBtoOBJ(colorString) {
+export function convertRGBtoOBJ(colorString: string): Record<'a' | 'b' | 'g' | 'r', string> {
   const rgbKeys = ['r', 'g', 'b', 'a'];
-  let rgbObj = {};
-  let color = colorString.replace(/^rgba?\(|\s+|\)$/g, '').split(',');
+  const rgbObj: Record<'a' | 'b' | 'g' | 'r', string> = {
+    a: '1',
+    b: '1',
+    g: '1',
+    r: '1',
+  };
+  const color = colorString.replace(/^rgba?\(|\s+|\)$/g, '').split(',');
 
-  for (let i in rgbKeys)
-    rgbObj[rgbKeys[i]] = color[i] || 1;
+  rgbKeys.forEach((key, index) => {
+    rgbObj[key as keyof typeof rgbObj] = color[index] || '1';
+  });
 
   return rgbObj;
 }
 
-export function calculateTextColor(backgroundColor) {
-  // Extract RGB values from the hex code
-  const r = parseInt(backgroundColor.slice(1, 3), 16);
-  const g = parseInt(backgroundColor.slice(3, 5), 16);
-  const b = parseInt(backgroundColor.slice(5, 7), 16);
-
-  // Calculate perceived brightness using a weighted average
-  const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
-
-  // Choose black or white text based on brightness threshold
-  const textColor = brightness > 0.5 ? '#000000' : '#ffffff';
-
-  return textColor;
-}
-
-export function lightenColor(color, amount) {
-  // Validate hex code format (basic check)
-  if (!color.match(/^#[0-9A-F]{3,6}$/i)) {
-    return null;
-  }
-
-  amount = Math.max(0, amount || 0); // Ensure amount is non-negative
-
-  // Convert hex to decimal (RGB)
-  const num = parseInt(color.slice(1), 16);
-  let r = (num >> 16) & 255;
-  let g = (num >> 8) & 255;
-  let b = num & 255;
-
-  // Increase each component by the specified amount
-  r = Math.min(255, r + amount);
-  g = Math.min(255, g + amount);
-  b = Math.min(255, b + amount);
-
-  // Convert back to hex
-  return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).padStart(6, '0');
-}
-
-
-interface RGB {
+export interface RGB {
   r: number;
   g: number;
   b: number;
 }
 
-interface RGBA extends RGB {
+export interface RGBA extends RGB {
   a: number;
 }
 
@@ -433,304 +79,186 @@ export function hexToRgbA(hex: string, alpha: number = 1): string {
     : `rgb(${color.r},${color.g},${color.b})`;
 }
 
-export function convertOBJtoRgb(obj) {
-  return `rgba(${obj.r}, ${obj.g}, ${obj.b}, ${obj.a})`;
+const UNSAFE_CLONE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function cloneObjectValue(value: unknown, seen: WeakMap<object, unknown>): unknown {
+  if (value === null || value === undefined || typeof value !== 'object') return value;
+
+  if (value instanceof Timestamp) return value;
+  if (value instanceof Date) return new Date(value.getTime());
+
+  const seenValue = seen.get(value);
+  if (seenValue !== undefined) return seenValue;
+
+  if (value instanceof Set) {
+    const clonedSet = new Set<unknown>();
+    seen.set(value, clonedSet);
+    value.forEach((entry) => clonedSet.add(cloneObjectValue(entry, seen)));
+    return clonedSet;
+  }
+
+  if (Array.isArray(value)) {
+    const clonedArray: unknown[] = [];
+    seen.set(value, clonedArray);
+    value.forEach((entry) => clonedArray.push(cloneObjectValue(entry, seen)));
+    return clonedArray;
+  }
+
+  const clonedObject: Record<string, unknown> = {};
+  seen.set(value, clonedObject);
+  Object.keys(value).forEach((key) => {
+    if (UNSAFE_CLONE_KEYS.has(key)) return;
+    clonedObject[key] = cloneObjectValue(Reflect.get(value, key), seen);
+  });
+  return clonedObject;
 }
 
-export const uid = () => String(Date.now().toString(32) + Math.random().toString(16)).replace(/\./g, '');
-
-export const isContainerElement = (config) => Boolean(config.sectionId) ? true : false;
-
-export const removeObjRef = (obj) => {
-  if (obj === null || obj === undefined) return {};
-
-  // Handle Firestore Timestamp
-  if (obj instanceof Timestamp) {
-    return obj;
-  }
-
-  // Handle Set objects
-  if (obj instanceof Set) {
-    return new Set(Array.from(obj));
-  }
-
-  // Handle arrays
-  if (Array.isArray(obj)) {
-    return obj.map(item => removeObjRef(item));
-  }
-
-  // Handle objects
-  if (typeof obj === 'object') {
-    const newObj = {};
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        newObj[key] = removeObjRef(obj[key]);
-      }
-    }
-    return newObj;
-  }
-
-  // Return primitive values as is
-  return obj;
+export function removeObjRef<T>(obj: T): T;
+export function removeObjRef(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj;
+  return cloneObjectValue(obj, new WeakMap());
 }
 
-function removeReferencesManually(obj) {
-  if (obj === null || typeof obj !== 'object') {
-    return obj; // Primitive values, return them directly
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(item => removeReferencesManually(item)); // Clone array elements
-  }
-
-  const newObj = {};
-  for (const key in obj) {
-    if (typeof obj[key] === 'object') {
-      obj[key] = null; // Set the reference to null
-    } else {
-      newObj[key] = obj[key]; // Copy primitive values
-    }
-  }
-  return newObj;
-}
-
-function deepClone(obj) {
-  if (obj === null || typeof obj !== 'object') {
-    return obj; // Primitive values, return them directly
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(deepClone); // Clone array elements recursively
-  }
-
-  const newObj = {};
-  for (const key in obj) {
-    newObj[key] = deepClone(obj[key]); // Clone nested objects/arrays
-  }
-  return newObj;
-}
-
-export function updateDeepPathValue(object, path, val) {
+export function updateDeepPathValue<T extends object>(object: T, path: string, val: unknown): T {
   const keys = path.split(".");
+  if (keys.some((key) => !key || UNSAFE_CLONE_KEYS.has(key))) {
+    throw new TypeError('Unsafe or empty object path segment');
+  }
   const lastKey = keys.pop();
-  const lastObj = keys.reduce((obj: any, key: any) => obj[key] = obj[key] || {}, object);
-  lastObj[lastKey] = val;
+  if (!lastKey) throw new TypeError('Object path must contain a destination key');
+
+  let lastObj: object = object;
+  keys.forEach((key) => {
+    const currentValue = Reflect.get(lastObj, key);
+    if (!currentValue || typeof currentValue !== 'object' || Array.isArray(currentValue)) {
+      const nextValue: Record<string, unknown> = {};
+      Reflect.set(lastObj, key, nextValue);
+      lastObj = nextValue;
+      return;
+    }
+    lastObj = currentValue;
+  });
+  Reflect.set(lastObj, lastKey, val);
   return object;
 }
 // updateDeepPath(originalObject, 'data.nested.value', 'modified value');
 
-function cloneObject(source, deep = true) {
-  var o, prop, type;
-
-  if (typeof source != 'object' || source === null) {
-    // What do to with functions, throw an error?
-    o = source;
-    return o;
-  }
-  if (typeof source.constructor !== 'function') {
-    source.constructor = function () { };
-  }
-
-  o = new source.constructor();
-
-  for (prop in source) {
-
-    if (source.hasOwnProperty(prop)) {
-      type = typeof source[prop];
-
-      if (deep && type == 'object' && source[prop] !== null) {
-        o[prop] = cloneObject(source[prop]);
-
-      } else {
-        o[prop] = source[prop];
-      }
-    }
-  }
-  return o;
-}
-
-export function isSameObjects(value, other) {
-  // Get the value type
-  var type = Object.prototype.toString.call(value);
-  // If the two objects are not the same type, return false
-  if (type !== Object.prototype.toString.call(other)) return false;
-  // If items are not an object or array, return false
-  if (['[object Array]', '[object Object]'].indexOf(type) < 0) return false;
-  // Compare the length of the length of the two items
-  var valueLen = type === '[object Array]' ? value.length : Object.keys(value).length;
-  var otherLen = type === '[object Array]' ? other.length : Object.keys(other).length;
-  if (valueLen !== otherLen) return false;
-  // Compare two items
-  var compare = function (item1, item2) {
-    // Get the object type
-    var itemType = Object.prototype.toString.call(item1);
-    // If an object or array, compare recursively
-    if (['[object Array]', '[object Object]'].indexOf(itemType) >= 0) {
-      if (!isSameObjects(item1, item2)) return false;
-    }
-    // Otherwise, do a simple comparison
-    else {
-      // If the two items are not the same type, return false
-      if (itemType !== Object.prototype.toString.call(item2)) return false;
-      // Else if it's a function, convert to a string and compare
-      // Otherwise, just compare
-      if (itemType === '[object Function]') {
-        if (item1.toString() !== item2.toString()) return false;
-      } else {
-        if (item1 !== item2) return false;
-      }
-    }
-  };
-
-  // Compare properties
-  if (type === '[object Array]') {
-    for (var i = 0; i < valueLen; i++) {
-      if (compare(value[i], other[i]) === false) return false;
-    }
+function markComparedPair(
+  left: object,
+  right: object,
+  compared: WeakMap<object, WeakSet<object>>,
+): boolean {
+  const existing = compared.get(left);
+  if (existing?.has(right)) return true;
+  if (existing) {
+    existing.add(right);
   } else {
-    for (var key in value) {
-      if (value.hasOwnProperty(key)) {
-        if (compare(value[key], other[key]) === false) return false;
-      }
-    }
+    compared.set(left, new WeakSet([right]));
   }
-  // If nothing failed, return true
-  return true;
-
-};
-
-export function compareObjects(obj1, obj2) {
-  const deepCompare = (value1, value2) => {
-    if (typeof value1 === 'object' && typeof value2 === 'object') {
-      return compareObjects(value1, value2);
-    }
-    return value1 === value2;
-  };
-  const keys1 = Object.keys(obj1);
-  const keys2 = Object.keys(obj2);
-  const addedKeys = keys2.filter(key => !keys1.includes(key));
-  const removedKeys = keys1.filter(key => !keys2.includes(key));
-  const modifiedValues = keys1.filter(key => !deepCompare(obj1[key], obj2[key])).reduce((result, key) => {
-    result[key] = {
-      old: obj1[key],
-      new: obj2[key],
-    };
-    return result;
-  }, {});
-  const sharedKeys = keys1.filter(key => keys2.includes(key));
-  const nestedDifferences = sharedKeys.reduce((result, key) => {
-    const value1 = obj1[key];
-    const value2 = obj2[key];
-    if (typeof value1 === 'object' && typeof value2 === 'object') {
-      const nestedDiff = compareObjects(value1, value2);
-      if (Object.keys(nestedDiff).length > 0) {
-        result[key] = nestedDiff;
-      }
-    } else if (Array.isArray(value1) && Array.isArray(value2)) {
-      if (!isSameObjects(value1, value2)) {
-        result[key] = {
-          old: value1,
-          new: value2,
-        };
-      }
-    }
-    return result;
-  }, {});
-  return {
-    added: addedKeys,
-    removed: removedKeys,
-    modified: modifiedValues,
-    nested: nestedDifferences,
-  };
-}
-
-export const checkUidIsPresent = (obj, uid) => {
-  // Check if the current object has a uid property and if it matches the desired uid
-  if (obj.hasOwnProperty('uid') && obj.uid === uid) {
-    return true;
-  }
-
-  // If the current object has children, recursively search through them
-  if (obj.hasOwnProperty('children') && Array.isArray(obj.children)) {
-    for (let child of obj.children) {
-      // Recursive call to search in child object
-      if (checkUidIsPresent(child, uid)) {
-        return true;
-      }
-    }
-  }
-  // If the uid is not found in the current object or its children, return false
   return false;
 }
 
-export const isProduction = () => {
-  return process.env.NODE_ENV === "production"
-}
+function areDeepValuesEqual(
+  value: unknown,
+  other: unknown,
+  compared: WeakMap<object, WeakSet<object>>,
+): boolean {
+  if (Object.is(value, other)) return true;
+  if (!value || !other || typeof value !== 'object' || typeof other !== 'object') return false;
+  if (value.constructor !== other.constructor) return false;
+  if (value instanceof Date && other instanceof Date) return value.getTime() === other.getTime();
+  if (value instanceof Timestamp && other instanceof Timestamp) return value.isEqual(other);
+  if (markComparedPair(value, other, compared)) return true;
 
-export const isDevelopment = () => {
-  return process.env.NODE_ENV === "development"
-}
-
-export const clearBrowserCache = async (reloadAfterClear = true): Promise<void> => {
-  if ('caches' in window) {
-    try {
-      const names = await caches.keys();
-      await Promise.allSettled(names.map((name) => caches.delete(name)));
-    } catch {
-      // Recovery reload must remain available when Cache Storage itself is unavailable.
-    }
+  if (Array.isArray(value) || Array.isArray(other)) {
+    if (!Array.isArray(value) || !Array.isArray(other) || value.length !== other.length) return false;
+    return value.every((entry, index) => areDeepValuesEqual(entry, other[index], compared));
   }
 
-  if (reloadAfterClear)
-    window.location.reload()
+  if (value instanceof Set && other instanceof Set) {
+    if (value.size !== other.size) return false;
+    const leftEntries = Array.from(value);
+    const rightEntries = Array.from(other);
+    return leftEntries.every((entry, index) => (
+      areDeepValuesEqual(entry, rightEntries[index], compared)
+    ));
+  }
+
+  const left = value as Record<string, unknown>;
+  const right = other as Record<string, unknown>;
+  const leftKeys = Object.keys(left).filter((key) => !UNSAFE_CLONE_KEYS.has(key));
+  const rightKeys = Object.keys(right).filter((key) => !UNSAFE_CLONE_KEYS.has(key));
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key) => (
+      Object.prototype.hasOwnProperty.call(right, key)
+      && areDeepValuesEqual(left[key], right[key], compared)
+    ));
 }
 
-export const arrayNullCheck = (arrayObj) => {
+export function isSameObjects(value: unknown, other: unknown): boolean {
+  if (!value || !other || typeof value !== 'object' || typeof other !== 'object') return false;
+  return areDeepValuesEqual(value, other, new WeakMap());
+}
+
+export const arrayNullCheck = (arrayObj: readonly unknown[] | null | undefined): boolean => {
   return Boolean(arrayObj?.length);
 }
 
-export const valueNullCheck = (value) => {
-  return Boolean(value);
-}
-
-export const objectNullCheck = (object, key = '') => {
-  return Boolean(object) && Boolean(Object.keys(object)?.length) && (Boolean(key) ? Boolean(object?.[key]) : Boolean(object));
+export const objectNullCheck = (object: unknown, key = ''): boolean => {
+  if (!object || typeof object !== 'object' || Array.isArray(object)) return false;
+  const record = object as Record<string, unknown>;
+  return Object.keys(record).length > 0 && (key ? Boolean(record[key]) : true);
 }
 
 export const getUID = () => {
   return uuid();
 }
 
-export const getRandomPasteleColor = (alpha = 1) => {
-  return "hsl(" + 360 * Math.random() + ',' +
-    (25 + 70 * Math.random()) + '%,' +
-    (85 + 10 * Math.random()) + '%,' + alpha + ")"
-}
-
-export const getBase64 = (file: any): Promise<string> =>
+export const getBase64 = (file: Blob): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error('FileReader returned a non-string data URL'));
+    };
     reader.onerror = (error) => reject(error);
   });
 
-export const blobToBase64 = (blob) => {
-  return new Promise((resolve, _) => {
+export const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error('FileReader returned a non-string data URL'));
+    };
+    reader.onerror = () => reject(reader.error || new Error('FileReader failed to read the blob'));
     reader.readAsDataURL(blob);
   });
 }
 
-export const getCompressedImage = (file, quality = 0.8) => {
-  return new Promise((resolve, _) => {
+export const getCompressedImage = (file: File, quality = 0.8): Promise<string | null> => {
+  return new Promise((resolve) => {
     new Compressor(file, {
       quality,
       // The compression process is asynchronous,
-      async success(compressedBlob: any) {//result == blob
-        const base64 = await blobToBase64(compressedBlob)
-        resolve(base64)
+      async success(compressedBlob: Blob) {
+        try {
+          resolve(await blobToBase64(compressedBlob));
+        } catch (error) {
+          logRuntimeFailure('image_compression_failed', error, {
+            ...getBoundedRuntimeStringContext('fileType', file?.type),
+            fileSizeBytes: Number.isFinite(Number(file?.size)) ? Number(file.size) : undefined,
+            quality,
+          });
+          resolve(null);
+        }
       },
       error(err) {
         logRuntimeFailure('image_compression_failed', err, {
@@ -744,70 +272,87 @@ export const getCompressedImage = (file, quality = 0.8) => {
   });
 }
 
-export const getUniqueValueArray = (value, index, self) => {
-  return self.indexOf(value) === index;
+export const getBase64Length = (dataUrl: unknown): number => {
+  if (typeof dataUrl !== 'string') return 0;
+  const commaIndex = dataUrl.indexOf(',');
+  const metadata = commaIndex >= 0 ? dataUrl.slice(0, commaIndex) : '';
+  const rawPayload = commaIndex >= 0 ? dataUrl.slice(commaIndex + 1) : dataUrl;
+  if (!rawPayload) return 0;
+
+  if (metadata.toLowerCase().includes(';base64') || commaIndex < 0) {
+    const payload = rawPayload.replace(/\s/g, '');
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(payload) || payload.length % 4 === 1) return 0;
+    const padding = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0;
+    return Math.max(0, Math.floor((payload.length * 3) / 4) - padding);
+  }
+
+  try {
+    return new TextEncoder().encode(decodeURIComponent(rawPayload)).byteLength;
+  } catch {
+    return 0;
+  }
 }
 
-export const getBase64Length = (base64Url) => {
-  var stringLength = base64Url.length - 'data:image/png;base64,'.length;
-  var sizeInBytes = 4 * Math.ceil((stringLength / 3)) * 0.5624896334383812;
-  return sizeInBytes;
-}
+type RuntimeFontPreset = {
+  code: string;
+  fileUrl: string;
+};
 
-export const addFontFaceStyle = (presetsList: any[]) => {
+const isAllowedFontSource = (value: string): boolean => {
+  if (value.length > 4_096) return false;
+  if (/^data:(?:font\/(?:otf|ttf|woff2?)|application\/(?:font-(?:sfnt|woff)|x-font-(?:opentype|ttf)));base64,[A-Za-z0-9+/]+={0,2}$/i.test(value)) {
+    return true;
+  }
+  if (/["'(){};\\\r\n]/.test(value)) return false;
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+export const buildFontFaceRule = (value: unknown): string | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const preset = value as Partial<RuntimeFontPreset>;
+  if (
+    typeof preset.code !== 'string'
+    || !/^[A-Za-z0-9_-]{1,128}$/.test(preset.code)
+    || typeof preset.fileUrl !== 'string'
+    || !isAllowedFontSource(preset.fileUrl)
+  ) {
+    return null;
+  }
+  return `/* menulist-font:${preset.code} */\n@font-face { font-family: "${preset.code}"; src: url(${JSON.stringify(preset.fileUrl)}); }`;
+};
+
+export const addFontFaceStyle = (presetsList: readonly unknown[]): void => {
   let styleTag = document.getElementById("ecoms.ai-font-face");
   if (!styleTag) {
     styleTag = document.createElement('style');
-    styleTag.id = "ecoms.ai-font-face"; // Set the id attribute
+    styleTag.id = "ecoms.ai-font-face";
   }
 
-  let fontFaces = "";
-  presetsList.map((preset) => {
-    if (!Boolean(styleTag.innerText.includes(preset.code))) {
-      fontFaces = fontFaces + `
-          @font-face {
-            font-family: ${preset.code};
-            src: url('${preset.fileUrl}');
-          }
-          `;
-    }
-  })
-
+  const admittedMarkers = new Set<string>();
+  const fontFaces = presetsList
+    .map(buildFontFaceRule)
+    .filter((rule): rule is string => Boolean(rule))
+    .filter((rule) => {
+      const marker = rule.slice(0, rule.indexOf('\n'));
+      if (admittedMarkers.has(marker) || styleTag.textContent?.includes(marker)) return false;
+      admittedMarkers.add(marker);
+      return true;
+    })
+    .join('\n');
+  if (!fontFaces) return;
   try {
     styleTag.appendChild(document.createTextNode(fontFaces));
   } catch (error) {
-    // styleTag.styleSheet.cssText = code;
+    logRuntimeFailure('font_face_style_append_failed', error, {
+      admittedRuleCount: fontFaces.split('/* menulist-font:').length - 1,
+    });
+    return;
   }
-  const head = document.getElementsByTagName('head')[0];
-  head.appendChild(styleTag);
-}
-
-export const getEncodedString = (str: string = "") => {
-  if (!str) return "";
-  return btoa(str);
-}
-
-export const getDecodedString = (str: string = "") => {
-  if (!str) return "";
-  return atob(str);
-}
-
-export const onlyUnique = (value, index, self) => {
-  return self.indexOf(value) === index;
-}
-
-export const getNameInitials = (name: string) => {
-  return name
-    .split(' ')
-    .map(part => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-};
-
-export const getFiveCharString = () => {
-  const timestamp = Date.now().toString(36);
-  return `${timestamp}`;
+  document.head?.appendChild(styleTag);
 };
 
 /**
@@ -819,9 +364,14 @@ export const getFiveCharString = () => {
  * @param {string} [key='id'] - The key to find the item in the list. Default is 'id'.
  * @returns {any[]} The updated list with the updated item
  */
-export const updateList = (originalList: any[], item: any, optionalAction: 'first' | 'last' = 'last', key: string = 'id') => {
-  const updatedList = removeObjRef(originalList);
-  const index = updatedList.findIndex((i: any) => i[key] === item[key]);
+export const updateList = <T extends object>(
+  originalList: readonly T[],
+  item: T,
+  optionalAction: 'first' | 'last' = 'last',
+  key = 'id',
+): T[] => {
+  const updatedList = removeObjRef<T[]>(Array.from(originalList));
+  const index = updatedList.findIndex((entry) => Reflect.get(entry, key) === Reflect.get(item, key));
   if (index > -1) {
     // If the item is already in the list, update it
     updatedList[index] = item;
@@ -847,20 +397,25 @@ export const updateList = (originalList: any[], item: any, optionalAction: 'firs
  * @param {string} [key='index'] - The key to sort the list by. Default is 'index'.
  * @returns {number} The next available index.
  */
-export const getNewIndex = (list: any[], key = "index"): number => {
+export const getNewIndex = <T extends object>(
+  list: ReadonlyArray<T> | null | undefined,
+  key = "index",
+): number => {
   if (!list || list.length === 0) {
     return 0;
   }
-  const sortedList = [...list].sort((a, b) => a[key] - b[key]);
-  const lastItem = sortedList[sortedList.length - 1];
-  return lastItem.index + 1;
+  const finiteIndexes = list
+    .map((item): unknown => Reflect.get(item, key))
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  return finiteIndexes.length > 0 ? Math.max(...finiteIndexes) + 1 : 0;
 };
 
 export const getYouTubeID = (url: string): string | null => {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+  const videoId = match?.[2];
+  return videoId?.length === 11 ? videoId : null;
 };
 
 export const generateGradientFromHex = (hexColor: string) => {

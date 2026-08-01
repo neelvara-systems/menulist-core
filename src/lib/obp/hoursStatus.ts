@@ -1,4 +1,5 @@
 import { getStoreStatus } from '@lib/hours/hoursEngine';
+import type { StoreSpecialHours } from '@type/platform/store';
 
 /**
  * OBP adapter for the canonical weekly-hours engine.
@@ -16,8 +17,9 @@ export function getStoreOpenStatus(
     workingHours?: Record<string, string>,
     timeZone?: string,
     now = new Date(),
+    specialHours?: StoreSpecialHours,
 ): StoreOpenStatus {
-    const status = getStoreStatus(workingHours, timeZone || 'Asia/Kolkata', undefined, now);
+    const status = getStoreStatus(workingHours, timeZone, undefined, now, specialHours);
     return {
         isOpen: status.isOpen,
         nextChange: status.nextChange?.replace(' at ', ' '),

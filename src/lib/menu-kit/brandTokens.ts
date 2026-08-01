@@ -26,9 +26,19 @@ export interface MenuKitBrandTokens {
 }
 
 const HEX_COLOR = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const DEFAULT_BRAND_COLOR = '#2d2d2d';
 
-export function normalizeMenuKitBrandColor(value?: string | null, fallback = '#2d2d2d'): string {
-    if (!value || !HEX_COLOR.test(value.trim())) return fallback;
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function normalizeMenuKitBrandColor(value?: unknown, fallback: unknown = DEFAULT_BRAND_COLOR): string {
+    const safeFallback = typeof fallback === 'string' && HEX_COLOR.test(fallback.trim())
+        ? fallback
+        : DEFAULT_BRAND_COLOR;
+    if (typeof value !== 'string' || !HEX_COLOR.test(value.trim())) {
+        return normalizeMenuKitBrandColor(safeFallback, DEFAULT_BRAND_COLOR);
+    }
     const clean = value.trim().replace('#', '');
     const expanded = clean.length === 3
         ? clean.split('').map((char) => `${char}${char}`).join('')
@@ -47,7 +57,7 @@ export function hexToRgb(hex: string): RgbColor {
 }
 
 export function rgbToHex([r, g, b]: RgbColor): string {
-    const toHex = (value: number) => Math.max(0, Math.min(255, Math.round(value)))
+    const toHex = (value: number) => Math.max(0, Math.min(255, Number.isFinite(value) ? Math.round(value) : 0))
         .toString(16)
         .padStart(2, '0');
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
@@ -61,7 +71,9 @@ export function getColorBrightness(hex: string): number {
 export function mixHex(foreground: string, background: string, foregroundWeight: number): string {
     const fg = hexToRgb(foreground);
     const bg = hexToRgb(background);
-    const weight = Math.max(0, Math.min(1, foregroundWeight));
+    const weight = Number.isFinite(foregroundWeight)
+        ? Math.max(0, Math.min(1, foregroundWeight))
+        : 0;
     return rgbToHex([
         fg[0] * weight + bg[0] * (1 - weight),
         fg[1] * weight + bg[1] * (1 - weight),
@@ -110,10 +122,16 @@ export function resolveMenuKitBrandTokens(brandColor?: string | null): MenuKitBr
     };
 }
 
-export function resolveStoreBrandColor(storeData?: Record<string, any> | null): string | undefined {
-    return storeData?.publicPresence?.accentColor
-        || storeData?.primaryColor
-        || storeData?.brandColor
-        || storeData?.themeColor
-        || undefined;
+export function resolveStoreBrandColor(storeData?: unknown): string | undefined {
+    if (!isRecord(storeData)) return undefined;
+    const publicPresence = isRecord(storeData.publicPresence) ? storeData.publicPresence : null;
+    const candidates = [
+        publicPresence?.accentColor,
+        storeData.primaryColor,
+        storeData.brandColor,
+        storeData.themeColor,
+    ];
+    return candidates.find((candidate): candidate is string => (
+        typeof candidate === 'string' && HEX_COLOR.test(candidate.trim())
+    ));
 }

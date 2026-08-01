@@ -1,4 +1,4 @@
-import type { ResellerProfile } from '@type/reseller';
+import type { ResellerProfileRecord } from '@type/reseller';
 
 const normalizeIdentity = (value: unknown): string => (
     typeof value === 'string' ? value.trim() : ''
@@ -15,7 +15,7 @@ const normalizeEmail = (value: unknown): string => (
  */
 export function isActiveResellerProfileForSession(params: {
     actorId: unknown;
-    profile: ResellerProfile | null | undefined;
+    profile: ResellerProfileRecord | null | undefined;
     sessionEmail: unknown;
     sessionProfileId?: unknown;
 }): boolean {

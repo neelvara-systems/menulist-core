@@ -3,38 +3,34 @@
 import type { ReactNode } from 'react';
 import Link from '../shared/WebsiteLink';
 import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
+import {
+    getPublicAnalyticsAttributionToken,
+    getPublicAnalyticsReferrerGroup,
+    getPublicAnalyticsSessionEntryPage,
+    getPublicAnalyticsUrl,
+} from '@lib/website/publicAnalyticsContext';
 
-function getReferrerHost(): string | undefined {
-    if (!document.referrer) return undefined;
-
-    try {
-        return new URL(document.referrer).hostname.replace(/^www\./, '');
-    } catch {
-        return undefined;
-    }
-}
+const trackedReferrers = [
+    { group: 'chatgpt', hosts: ['chatgpt.com', 'chat.openai.com'] },
+    { group: 'claude', hosts: ['claude.ai'] },
+    { group: 'gemini', hosts: ['gemini.google.com'] },
+    { group: 'perplexity', hosts: ['perplexity.ai'] },
+] as const;
 
 function getUtmSource(): string | undefined {
-    return new URLSearchParams(window.location.search).get('utm_source') || undefined;
+    return getPublicAnalyticsAttributionToken(
+        new URLSearchParams(window.location.search).get('utm_source'),
+    );
 }
 
 function getUtmMedium(): string | undefined {
-    return new URLSearchParams(window.location.search).get('utm_medium') || undefined;
+    return getPublicAnalyticsAttributionToken(
+        new URLSearchParams(window.location.search).get('utm_medium'),
+    );
 }
 
 function getEntryPage(): string {
-    const storageKey = 'menulist_resource_entry_page';
-    const entryPage = `${window.location.pathname}${window.location.search}`;
-
-    try {
-        const existing = window.sessionStorage.getItem(storageKey);
-        if (existing) return existing;
-        window.sessionStorage.setItem(storageKey, entryPage);
-    } catch {
-        return entryPage;
-    }
-
-    return entryPage;
+    return getPublicAnalyticsSessionEntryPage('menulist_resource_entry_page');
 }
 
 function shouldTrackPath(href: string, path: string): boolean {
@@ -64,16 +60,15 @@ export default function ResourceTrackedLink({
                 trackPlausibleEvent(eventName);
 
                 const payload = {
+                    ...eventProps,
                     category: eventProps?.cluster,
-                    destination: href,
+                    destination: getPublicAnalyticsUrl(href),
                     entry_page: getEntryPage(),
-                    locale: document.documentElement.lang || undefined,
-                    referrer: document.referrer || undefined,
-                    referrer_host: getReferrerHost(),
-                    target_url: href,
+                    locale: getPublicAnalyticsAttributionToken(document.documentElement.lang),
+                    referrer_group: getPublicAnalyticsReferrerGroup(document.referrer, trackedReferrers),
+                    target_url: getPublicAnalyticsUrl(href),
                     utm_medium: getUtmMedium(),
                     utm_source: getUtmSource(),
-                    ...eventProps,
                 };
 
                 trackGoogleMarketingEvent(eventName, payload);

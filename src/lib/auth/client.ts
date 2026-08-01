@@ -21,7 +21,7 @@ export const signOutSession = async (
     callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN,
 ): Promise<true> => {
     const firebaseResult = await signOutFirebaseAuth()
-        .then(() => null)
+        .then((): null => null)
         .catch((error: unknown) => {
             logAuthFailure('firebase_signout_failed', error, {
                 ...getBoundedAuthStringContext('callbackUrl', callbackUrl),
@@ -33,7 +33,7 @@ export const signOutSession = async (
         redirect: false,
         callbackUrl,
     })
-        .then(() => null)
+        .then((): null => null)
         .catch((error: unknown) => {
             logAuthFailure('nextauth_signout_failed', error, {
                 ...getBoundedAuthStringContext('callbackUrl', callbackUrl),

@@ -42,14 +42,15 @@ function ChangelogTemplate() {
     const dispatch = useAppDispatch();
 
     useEffect(() => {
-        if (searchParams.get('create') !== '1') return;
+        if (searchParams?.get('create') !== '1') return;
 
         setEditingEntry(null);
         setIsModalVisible(true);
-        const nextParams = new URLSearchParams(searchParams.toString());
+        const nextParams = new URLSearchParams(searchParams?.toString() ?? '');
         nextParams.delete('create');
         const nextQuery = nextParams.toString();
-        router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+        const currentPathname = pathname ?? '/platform/changelog';
+        router.replace(nextQuery ? `${currentPathname}?${nextQuery}` : currentPathname, { scroll: false });
     }, [pathname, router, searchParams]);
 
     const sortEntries = (entriesToSort: ChangelogEntry[]) => {

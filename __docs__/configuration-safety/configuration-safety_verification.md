@@ -15,7 +15,9 @@ npx tsc --noEmit --incremental false --pretty false
 The focused boundary checks strict Functions overrides, CampaignCue boolean and
 rollout behavior, stage-conflict handling, maintained templates, product-key
 naming, secret/public separation, startup validation wiring, and documentation
-presence.
+presence. It also behaviorally proves that missing required values stop a
+non-Vercel production server while the documented Vercel build exception
+remains log-only.
 
 ## External evidence still required
 

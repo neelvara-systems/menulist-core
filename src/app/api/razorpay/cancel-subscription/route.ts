@@ -22,6 +22,7 @@ import {
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { getRazorpayManagedSubscriptionId } from "@lib/billing/subscriptionProviderSync";
+import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { logger } from "@lib/monitoring/logger";
 import { recordFounderSubscriptionChurn } from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -129,6 +130,10 @@ export const POST = withAuth(async (request, session) => {
         if (!internalSub || !internalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "No active subscription found to cancel." }, { status: 404 });
         }
+        const internalSubscriptionId = normalizeBillingSubscriptionDocumentId(internalSub.id);
+        if (!internalSubscriptionId) {
+            return NextResponse.json({ error: "Subscription requires billing reconciliation." }, { status: 409 });
+        }
         subscriptionForLog = internalSub;
 
         // 🔒 CRITICAL: Verify subscription belongs to user's tenant/store
@@ -212,7 +217,7 @@ export const POST = withAuth(async (request, session) => {
                             ? 'Subscription was already expired at payment gateway'
                             : `Cancelled by owner, reason code: ${cancellationReasonCode}, consent: ${consent ? "Yes" : "No"}`,
                 },
-                subscriptionId: internalSub.id,
+                subscriptionId: internalSubscriptionId,
                 update: {
                     cancellation: {
                         reasonCode: cancellationReasonCode,

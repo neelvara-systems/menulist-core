@@ -128,7 +128,7 @@ export const emitSuggestionSignal = async (params: {
     type: AnswerlatticeSignalType;
     triggerId: string;
     interactionId: string;
-    entityId: string;
+    entityId?: string;
     tId: number;
     sId: number;
     page: string;

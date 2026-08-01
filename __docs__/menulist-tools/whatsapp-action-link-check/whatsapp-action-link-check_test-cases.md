@@ -28,8 +28,9 @@
 | Invalid WhatsApp link | `https://example.com/whatsapp` | Missing basics or unclear depending on number |
 | Malformed WhatsApp link | Parser cannot construct a URL | Link is treated as invalid and capped `whatsapp_action_link_url_parse_failed` diagnostics do not log raw link, phone, message, customer link, report row, or exception text |
 | Phone contains letters around enough digits | `+91hello9876543210` | Number is not treated as valid and no preview is generated |
-| Custom WhatsApp scheme uses unknown host/action | `whatsapp://evil?phone=...` | Click-to-chat format is not present |
+| Custom WhatsApp scheme uses unknown host/action | `whatsapp://evil?phone=...` | Neither number nor click-to-chat format is present |
 | WhatsApp web host uses non-`/send` path or `wa.me` has extra/nondigit path | Entered link | Link is not treated as a recognized valid click-to-chat destination |
+| Suggested order says pickup today but has no opening/reply timing | Valid number and ordinary message | Hours expectation remains unclear |
 
 ---
 

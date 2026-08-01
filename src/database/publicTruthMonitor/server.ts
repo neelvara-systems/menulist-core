@@ -162,7 +162,7 @@ export async function readPublicTruthMonitorProjectDataServer(params: {
 }
 
 export async function readAuthorizedPublicTruthMonitorSummaryServer(params: {
-    authorizeStore: (storeData: FirebaseFirestore.DocumentData) => boolean;
+    authorizeStore: (storeData: FirebaseFirestore.DocumentData) => boolean | Promise<boolean>;
     storeId: string | number;
     tenantId: string | number;
 }): Promise<{
@@ -192,7 +192,7 @@ export async function readAuthorizedPublicTruthMonitorSummaryServer(params: {
                 tenantData: tenantSnapshot.data(),
                 tenantDocumentId,
             })
-            || !params.authorizeStore(storeData!)
+            || !await params.authorizeStore(storeData!)
         ) {
             throw new PublicTruthMonitorScopeChangedError();
         }
@@ -210,7 +210,7 @@ export async function updatePublicTruthMonitorSummaryServer(params: {
         subscriptionData: FirebaseFirestore.DocumentData,
         storeData: FirebaseFirestore.DocumentData,
     ) => boolean;
-    authorizeStore: (storeData: FirebaseFirestore.DocumentData) => boolean;
+    authorizeStore: (storeData: FirebaseFirestore.DocumentData) => boolean | Promise<boolean>;
     storeId: string | number;
     subscriptionId: string;
     tenantId: string | number;
@@ -247,7 +247,7 @@ export async function updatePublicTruthMonitorSummaryServer(params: {
                 tenantData: tenantSnapshot.data(),
                 tenantDocumentId,
             })
-            || !params.authorizeStore(storeData!)
+            || !await params.authorizeStore(storeData!)
             || !subscriptionData
             || !params.authorizeSubscription(subscriptionData, storeData!)
         ) {

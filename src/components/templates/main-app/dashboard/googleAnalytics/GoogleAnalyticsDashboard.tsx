@@ -24,6 +24,7 @@ const GoogleAnalyticsDashboard = () => {
         startDate: '7daysAgo',
         endDate: 'today'
     });
+    const propertyId = storeDetails?.analytics?.googleAnalyticsId?.trim();
 
     useEffect(() => {
         if (storeDetails?.storeId || storeDetails?.storeId == ECOMSAI_PLATFORM_STORE_ID) {
@@ -40,7 +41,7 @@ const GoogleAnalyticsDashboard = () => {
         );
     }
 
-    if (!hasAnalytics) {
+    if (!hasAnalytics || !propertyId) {
         return (
             <Alert
                 message="Analytics Not Configured"
@@ -67,18 +68,18 @@ const GoogleAnalyticsDashboard = () => {
                 </Space>
             </Card>
 
-            <QuickStats propertyId={storeDetails.analytics?.googleAnalyticsId} dateRange={dateRange} />
+            <QuickStats propertyId={propertyId} dateRange={dateRange} />
 
             <Space direction="horizontal" size="large" style={{ width: '100%' }}>
                 <Card style={{ flex: 2 }}>
-                    <TrendAnalysis propertyId={storeDetails.analytics?.googleAnalyticsId} dateRange={dateRange} />
+                    <TrendAnalysis propertyId={propertyId} dateRange={dateRange} />
                 </Card>
                 <Card style={{ flex: 1 }}>
-                    <LocationInsights propertyId={storeDetails.analytics?.googleAnalyticsId} dateRange={dateRange} />
+                    <LocationInsights propertyId={propertyId} dateRange={dateRange} />
                 </Card>
             </Space>
 
-            <MenuPerformance propertyId={storeDetails.analytics?.googleAnalyticsId} dateRange={dateRange} />
+            <MenuPerformance propertyId={propertyId} dateRange={dateRange} />
         </Space>
     );
 };

@@ -2,6 +2,11 @@ import { ANSWERLATTICE_GOVERNANCE_TABS, ANSWERLATTICE_ROUTES, getAnswerlatticeGo
 import { PRODUCT_IDS } from '@constant/product';
 import { EMPTY_ANSWERLATTICE_ACTIVATION_ANSWER_TEST_SUMMARY } from '@lib/answerlattice/activationAnswerTestSummary';
 import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
+import {
+    getAnswerlatticeSubscriptionTimestampMillis,
+    isAnswerlatticeSubscriptionCurrent,
+    projectAnswerlatticeSubscriptionForRead,
+} from '@lib/answerlattice/subscriptionReadBoundary';
 import { normalizeWidgetAllowedOrigins } from '@lib/answerlattice/widgetConfig';
 import { buildAnswerlatticeWidgetKeySummaries, normalizeAnswerlatticeWidgetApiState } from '@lib/answerlattice/widgetKeyManager';
 import { getWidgetRuntimeStatusFromStoreData } from '@lib/answerlattice/widgetRuntimeStatus';
@@ -134,26 +139,38 @@ const buildLaunchProof = (items: AnswerlatticeLaunchProofItem[]): AnswerlatticeL
 const normalizeSubscription = (
     value: unknown,
     scope: { tId: number; sId: number },
+    nowMillis: number,
 ): AnswerlatticeActivationSubscriptionSummary | null => {
     if (!isAnswerlatticeSubscriptionInScope(value, scope)) return null;
-    const record = value as Record<string, unknown>;
-    const subscriptionEndMillis = getTimestampMillis(record.subscriptionEndDate || record.cycleEndDate);
-    const amount = record.amount;
+    const subscription = projectAnswerlatticeSubscriptionForRead(
+        value,
+        `activation_${scope.tId}_${scope.sId}`,
+        scope.tId,
+        scope.sId,
+    );
+    if (!subscription) return null;
+    const subscriptionEndMillis = [
+        subscription.subscriptionEndDate,
+        subscription.cycleEndDate,
+    ]
+        .map(getAnswerlatticeSubscriptionTimestampMillis)
+        .filter((candidate): candidate is number => candidate !== null)
+        .sort((left, right) => left - right)[0] ?? null;
+    const isCurrent = isAnswerlatticeSubscriptionCurrent(subscription, nowMillis);
 
     return {
-        id: normalizeBoundedString(record.id || record.providerSubscriptionId, 200),
-        planId: normalizeBoundedString(record.planId, 80),
-        planName: normalizeBoundedString(record.planName, 120),
-        status: normalizeBoundedString(record.status, 40),
-        currency: normalizeBoundedString(record.currency, 8),
-        amount: typeof amount === 'number'
-            && Number.isSafeInteger(amount)
-            && amount >= 0
-            && amount <= 1_000_000_000
-            ? amount
-            : null,
+        id: normalizeBoundedString(subscription.providerSubscriptionId || subscription.id, 200),
+        planId: normalizeBoundedString(subscription.planId, 80),
+        planName: normalizeBoundedString(subscription.planName, 120),
+        status: subscription.status === 'active' && !isCurrent
+            ? 'expired'
+            : subscription.status,
+        currency: subscription.currency,
+        amount: subscription.amount <= 1_000_000_000 ? subscription.amount : null,
         isBeta: false,
-        subscriptionEndDate: subscriptionEndMillis > 0 ? new Date(subscriptionEndMillis).toISOString() : null,
+        subscriptionEndDate: subscriptionEndMillis === null
+            ? null
+            : new Date(subscriptionEndMillis).toISOString(),
     };
 };
 
@@ -265,8 +282,16 @@ export function buildAnswerlatticeActivationSummary(params: {
     const nowMillis = typeof params.nowMillis === 'number' && Number.isFinite(params.nowMillis) && params.nowMillis >= 0
         ? params.nowMillis
         : Date.now();
-    const subscription = normalizeSubscription(storeData.answerlatticeSubscription, params)
-        || normalizeSubscription(params.subscription, params);
+    const embeddedSubscription = normalizeSubscription(
+        storeData.answerlatticeSubscription,
+        params,
+        nowMillis,
+    );
+    const fallbackSubscription = normalizeSubscription(params.subscription, params, nowMillis);
+    const subscription = [embeddedSubscription, fallbackSubscription]
+        .find((candidate) => candidate?.status === 'active')
+        || embeddedSubscription
+        || fallbackSubscription;
     const runtimeStatus = normalizeWidgetRuntimeStatusForActivation(storeData);
     const content = params.contextSummary || null;
     const widgetKeyState = normalizeAnswerlatticeWidgetApiState(storeData.answerlatticeWidgetApi);

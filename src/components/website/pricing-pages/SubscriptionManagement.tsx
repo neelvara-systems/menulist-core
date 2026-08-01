@@ -221,7 +221,7 @@ const SubscriptionManagementRenderer: React.FC<SubscriptionManagementRendererPro
 
 
 interface SubscriptionManagementPageProps {
-    activeSubscription: FirestoreSubscriptionDoc | null;
+    activeSubscription: FirestoreSubscriptionDoc;
     refetchActiveSubscription: () => Promise<void>;
 }
 

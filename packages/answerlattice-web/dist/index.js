@@ -5,6 +5,24 @@ const MAX_ENTITY_HINTS = 5;
 const MAX_ENTITY_HINT_LENGTH = 64;
 const MAX_CONTEXT_PAYLOAD_BYTES = 2048;
 const SENSITIVE_CONTEXT_PATTERN = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
+export function normalizeAnswerlatticeScriptSrc(value) {
+    if (typeof value !== 'string')
+        return null;
+    const candidate = value.trim();
+    if (!candidate)
+        return null;
+    if (candidate.startsWith('/') && !candidate.startsWith('//'))
+        return candidate;
+    try {
+        const parsed = new URL(candidate);
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password)
+            return null;
+        return parsed.toString();
+    }
+    catch {
+        return null;
+    }
+}
 function isBrowser() {
     return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
@@ -151,7 +169,10 @@ function findExistingScript(scriptSrc, apiKey) {
 function loadWidgetScript(options) {
     if (!isBrowser())
         return Promise.resolve(null);
-    const scriptSrc = options.scriptSrc || DEFAULT_SCRIPT_SRC;
+    const scriptSrc = normalizeAnswerlatticeScriptSrc(options.scriptSrc || DEFAULT_SCRIPT_SRC);
+    if (!scriptSrc) {
+        return Promise.reject(new Error('Invalid Answerlattice widget script source.'));
+    }
     const existing = findExistingScript(scriptSrc, options.apiKey);
     if (existing && getRuntime())
         return Promise.resolve(getRuntime());

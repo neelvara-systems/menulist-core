@@ -3,7 +3,7 @@
 **Version:** 3.2
 **Status:** ✅ IMPLEMENTED — Active (`ENABLE_MCE: true`)
 **Audience:** Developers
-**Last Updated:** July 16, 2026
+**Last Updated:** July 29, 2026
 
 > **Current runtime boundary:** Standalone update and standalone publish transactions stamp `_mce` in their existing write. The editor gate validates its in-memory project, including resolved linked outlets. The authenticated linked-outlet route enforces schema, policy, scope, and concurrency but does not persist `_mce`; do not interpret older blueprint wording below as a claim that every linked save is stamped.
 
@@ -153,12 +153,18 @@ interface MCEMetadata {
 // src/lib/mce/utils.ts
 
 function sanitizeForClient(projectData: any): any;
-// Strips internal metadata (AI costs, processing flags, inactive items)
-// before data reaches customer-facing surfaces.
-// Same logic as existing function — just extracted to shared location.
+// Projects the public project shell and every category, item, variant,
+// language, time-slot, nutrition, decision-fact and image row through explicit
+// field allowlists before data reaches customer-facing surfaces.
 ```
 
 > **INVARIANT:** Any customer-facing render MUST pass through `sanitizeForClient()`. No surface may read project data and expose it to customers without calling this function. This is a permanent rule — if a new surface is added in the future, it must use this utility.
+
+The nested allowlists are part of that invariant. A newly added owner,
+workflow, extraction, billing or AI field remains server/editor-only until its
+public contract is deliberately admitted. Inactive rows remain excluded;
+decision facts retain only a runtime-valid public value and images retain only
+the public URL/variant projection.
 
 ### 2.4 Publish-Gate Integration
 

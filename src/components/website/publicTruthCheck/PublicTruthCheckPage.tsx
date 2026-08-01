@@ -624,7 +624,7 @@ export default function PublicTruthCheckPage() {
     event.preventDefault();
     setHasChecked(true);
     trackWebsiteMarketingEvent('public_truth_check_completed', {
-      has_public_url: Boolean(form.publicUrl.trim()),
+      has_public_url: Boolean(form.publicUrl?.trim()),
       has_source_text: Boolean(form.menuOrServiceText?.trim()),
       public_truth_status: report.status,
       source_kind: report.sourceKind,

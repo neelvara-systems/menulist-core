@@ -35,6 +35,19 @@ export type StoreTemporaryStatus = {
     sourceProjectId?: string;
 };
 
+export type StoreSpecialHoursEntry = {
+    /** Empty string means closed for the full store-local date. */
+    hours: string;
+    /** Optional owner-facing occasion name, safe for public display. */
+    label?: string;
+};
+
+/**
+ * Date-specific overrides keyed by the store-local Gregorian date.
+ * An entry replaces the regular weekly schedule for that complete local date.
+ */
+export type StoreSpecialHours = Record<string, StoreSpecialHoursEntry>;
+
 export type StorePublicApiCredentialProductId = 'ML' | 'AL';
 export type StorePublicApiCredentialPurpose =
     | 'menulist_public_api'
@@ -67,6 +80,35 @@ export type StoreExternalLocationIdentity = {
     bindings?: Partial<Record<ExternalLocationIdentityProvider, ExternalLocationIdentityBinding>>;
 };
 
+export type StoreDistributionPresenceValue =
+    | boolean
+    | string
+    | null
+    | { linked?: boolean | null };
+
+/**
+ * Legacy/current distribution-presence compatibility shape.
+ *
+ * `menuPresence` is the authoritative timestamp-only owner confirmation model.
+ * `presence` is retained because existing store documents and summary readers
+ * still consume older deployment-signal fields.
+ */
+export type StoreDistributionPresence = {
+    appleBusiness?: StoreDistributionPresenceValue;
+    bingPlaces?: StoreDistributionPresenceValue;
+    googleBusiness?: StoreDistributionPresenceValue;
+    instagramBio?: StoreDistributionPresenceValue;
+    qrCodeInstalled?: StoreDistributionPresenceValue;
+    qrInstalled?: StoreDistributionPresenceValue;
+    websiteLinked?: StoreDistributionPresenceValue;
+    websiteMenuLink?: StoreDistributionPresenceValue;
+    whatsappProfile?: StoreDistributionPresenceValue;
+    instagramLinked?: StoreDistributionPresenceValue;
+    instagramBioLinked?: StoreDistributionPresenceValue;
+    whatsappLinked?: StoreDistributionPresenceValue;
+    whatsappMenuLinked?: StoreDistributionPresenceValue;
+};
+
 export type StoreDataType = {
     storeId: number;
     storeKey: string;
@@ -83,29 +125,51 @@ export type StoreDataType = {
     countryCode?: string;
     dialCode?: string;
     phoneNumber: string;
+    /**
+     * Normalized E.164-compatible phone value retained for legacy documents
+     * and public/export consumers. New owner settings writes keep this field
+     * synchronized with `phoneNumber`, `countryCode`, and `dialCode`.
+     */
+    phone?: string;
     alternatePhoneNumber?: string;
     gstn?: string;
     domain?: string;
     url?: string;
+    /** Request-body persistence metadata. Optional for legacy documents. */
+    pId?: string;
+    sId?: number | string;
+    tId?: number | string;
+    uId?: number | string;
+    role?: string;
     createdBy?: string;
-    createdOn?: string;
+    createdOn?: Timestamp | Date | string;
+    modifiedBy?: string;
+    modifiedOn?: Timestamp | Date | string;
     lastPublishedAt?: Timestamp | Date | string | null;
     logo: string;
     licenceKey?: string;
     licenceExpiryDate?: string;
     addressLine?: string;
+    /** Legacy address-line field read only as a fallback for older stores. */
+    address?: string;
     area?: string;
     district?: string;
     city: string;
     state: string;
     postalCode?: string;
+    /** Legacy postal-code field read only as a fallback for older stores. */
+    pincode?: string;
     country?: string;
     timeZone?: string;
+    /** UTC scheduling fallback when an IANA timezone is unavailable. */
+    schedulerHour?: number;
     /**
      * Store-local business day cutoff in HH:mm.
      * Analytics before this time are counted into the previous business day.
      */
     businessDayEndTime?: string;
+    /** Freshness timestamp for owner-confirmed business hours. */
+    hoursLastUpdatedAt?: Timestamp | Date | string;
     dateFormat?: string;
     timeFormat?: string;
     language?: string;
@@ -157,6 +221,7 @@ export type StoreDataType = {
     // NOTE: rolesPermissionStrategy removed - not needed with single role per store
 
     workingHours?: Record<string, string>;
+    specialHours?: StoreSpecialHours;
     socialMedia?: Record<string, string>;
 
     // SEO Settings (from Business Settings)
@@ -386,7 +451,7 @@ export type StoreDataType = {
     geo?: {
         latitude: number;
         longitude: number;
-    };
+    } | null;
 
     /** Price range indicator for Schema.org priceRange (e.g. "$", "$$", "$$$", "$$$$") */
     priceRange?: '$' | '$$' | '$$$' | '$$$$';
@@ -461,6 +526,9 @@ export type StoreDataType = {
 
         /** Owner-managed Official Business Page cover image. Shown as the first visual on the public page. */
         businessCover?: string;
+
+        /** Owner-approved customer-app icon override stored by the PWA asset flow. */
+        pwaIconOverrideUrl?: string;
 
         /** Owner-managed business photos. OBP previews the first 3; tapping a photo opens the full viewer. */
         photos?: string[];
@@ -785,6 +853,11 @@ export type StoreDataType = {
         instagramBio?: string;     // ISO 8601 timestamp when owner confirmed
         whatsappProfile?: string;  // ISO 8601 timestamp when owner confirmed
     };
+    /** Compatibility projection for legacy distribution-presence signals. */
+    presence?: StoreDistributionPresence;
+    /** Tenant-level blocking state denormalized onto the store. */
+    tenantBlocked?: boolean;
+    tenantBlockedSyncedAt?: Timestamp | Date | string;
     growthAcquisition?: GrowthAcquisitionAttribution;
 };
 

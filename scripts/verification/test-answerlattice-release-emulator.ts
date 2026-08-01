@@ -137,6 +137,16 @@ async function run(): Promise<void> {
     assert.equal(preview.affectedAnswers[0]?.title, 'Billing limits');
     assert.equal(preview.answerTestProof.state, 'missing');
     assert.equal(preview.answerTestProof.criticalCaseCount, 1);
+    assert.deepEqual(preview.directDependencyCoverage, {
+        mappingScope: 'direct_entity_links_only',
+        changedEntityIds: ['billing'],
+        answerLinkedEntityIds: ['billing'],
+        testLinkedEntityIds: ['billing'],
+        entityIdsWithoutVisibleDirectLinks: [],
+        directActiveAnswerCount: 1,
+        activeLinkedTestCount: 1,
+        testLinkEvidence: 'available',
+    });
     const repeatedPreview = await previewRelease(created.releaseId);
     assert.equal(repeatedPreview.impactFingerprint, preview.impactFingerprint);
     assert.equal(

@@ -27,6 +27,15 @@ critical proof. Do not turn this into a general factual-correctness guarantee.
 
 Publish a short, expiring known-issue notice for the affected page while your team investigates. Normal approved answers stay unchanged.
 
+### Inspect the route behind a failed answer
+
+Authenticated owner surfaces can show the retained answer route, governed IDs,
+public citations, fallback reason, confidence, feedback, and escalation
+evidence, then link into existing review workflows. Do not publish this as
+automatic root-cause analysis, a factual-correctness guarantee, session
+replay, or a complete customer-event history. Public website use remains
+behind authenticated browser evidence and first-client usefulness proof.
+
 ### Trusted context when you need it
 
 For plan- or role-sensitive support, your server can sign a short-lived context token. Answerlattice verifies it without accepting tenant scope from the browser.

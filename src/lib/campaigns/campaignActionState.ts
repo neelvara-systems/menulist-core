@@ -68,6 +68,12 @@ const isFiniteUnitNumber = (value: unknown): value is number => (
     typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1
 );
 
+const isCalendarDate = (value: unknown): value is string => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+};
+
 export const isTodayCampaignSummary = (value: unknown): value is TodayCampaignSummary => {
     if (!isRecord(value) || !isRecord(value.subject)) return false;
     return isNonEmptyString(value.campaignId)
@@ -114,7 +120,7 @@ export function getCampaignStatsState(summary: unknown): CampaignStatsState {
     return {
         totalCompleted: normalizeNonNegativeInteger(summary.stats.totalCompleted),
         totalSkipped: normalizeNonNegativeInteger(summary.stats.totalSkipped),
-        ...(isNonEmptyString(summary.stats.lastCampaignDate)
+        ...(isCalendarDate(summary.stats.lastCampaignDate)
             ? { lastCampaignDate: summary.stats.lastCampaignDate }
             : {}),
         typeSkipCounts,

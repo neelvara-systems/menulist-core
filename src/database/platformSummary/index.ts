@@ -12,6 +12,10 @@ import {
     type PlatformEntityCounter,
 } from "@lib/platform/platformCounterAllocator";
 import { doc, getDoc } from "firebase/firestore";
+import type {
+    StoreDistributionPresence,
+    StoreDistributionPresenceValue,
+} from "@type/platform/store";
 
 /**
  * STORES SUMMARY PATTERN
@@ -53,28 +57,12 @@ export interface StoreSummaryData {
     businessDayEndTime?: string; // Store-local HH:mm analytics business-day cutoff
     schedulerHour?: number;    // UTC hour (0-23) — FALLBACK ONLY when timeZone is missing
     activePlanType?: string;    // Denormalized billing plan id for scheduler entitlements, e.g. 'starter' | 'pro' | 'premium'
-    menuPresence?: StoreDistributionPresenceSummary;
-    presence?: StoreDistributionPresenceSummary;
+    menuPresence?: StoreDistributionPresence;
+    presence?: StoreDistributionPresence;
     modifiedOn?: unknown;
 }
 
-type StorePresenceValue = boolean | string | null | { linked?: boolean | null };
-
-export type StoreDistributionPresenceSummary = {
-    appleBusiness?: StorePresenceValue;
-    bingPlaces?: StorePresenceValue;
-    googleBusiness?: StorePresenceValue;
-    instagramBio?: StorePresenceValue;
-    qrCodeInstalled?: StorePresenceValue;
-    qrInstalled?: StorePresenceValue;
-    websiteLinked?: StorePresenceValue;
-    websiteMenuLink?: StorePresenceValue;
-    whatsappProfile?: StorePresenceValue;
-    instagramLinked?: StorePresenceValue;
-    instagramBioLinked?: StorePresenceValue;
-    whatsappLinked?: StorePresenceValue;
-    whatsappMenuLinked?: StorePresenceValue;
-};
+export type StoreDistributionPresenceSummary = StoreDistributionPresence;
 
 export interface StoresSummary {
     lastUpdated: unknown;
@@ -123,7 +111,7 @@ const STORE_DISTRIBUTION_PRESENCE_KEYS: Array<keyof StoreDistributionPresenceSum
     'whatsappMenuLinked',
 ];
 
-const normalizePresenceValue = (value: unknown): StorePresenceValue | undefined => {
+const normalizePresenceValue = (value: unknown): StoreDistributionPresenceValue | undefined => {
     if (value === null) return null;
     if (typeof value === 'boolean') return value;
     if (typeof value === 'string') {

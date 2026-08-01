@@ -11,6 +11,9 @@ Mobile requirements:
 - keep the AI-assisted summary visibly advisory;
 - render validated advisory actions as 44px **Review evidence** links;
 - provide a 44px **Open in Knowledge Map** action for each ranked card;
+- provide a 44px **Prepare evidence brief** action for each ranked card;
+- open the brief in the existing responsive drawer at full viewport width,
+  with a large review-path selector and stacked 44px copy/download actions;
 - preserve a Daily Brief entity focus without a mobile-only data path;
 - do not add mobile-only raw signal queries, listeners, or notification claims.
 
@@ -21,8 +24,11 @@ breakdown is shown. The list preserves:
 - exact evidence total;
 - ticket, negative-feedback, escalation, and canonical-miss components;
 - completed-window comparison;
-- one clear review destination.
+- one clear map destination and one local evidence-handoff action.
 
 Do not render a journey canvas, heatmap, or compressed product tree on mobile.
+Do not add a mobile-only save, share, issue-tracker, or raw-evidence path for
+the brief. Native sharing can be reconsidered only through the same local
+bounded packet and an explicit privacy review.
 
 A future notification should be considered only after real founders demonstrate that a high-confidence emerging issue requires action away from the desktop workflow. The current feature remains a review surface, not an interruptive alert system.

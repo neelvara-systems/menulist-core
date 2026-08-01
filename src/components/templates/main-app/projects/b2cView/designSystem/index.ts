@@ -439,16 +439,16 @@ export const MOOD_LAYOUT_COMPATIBILITY: Record<MenuMood, MenuLayout[]> = {
     [MenuMood.FAST]: [MenuLayout.LIST],
 };
 
-export function isLayoutCompatible(mood: MenuMood, layout: MenuLayout): boolean {
-    return MOOD_LAYOUT_COMPATIBILITY[mood].includes(layout);
+export function isLayoutCompatible(mood: unknown, layout: unknown): boolean {
+    return getCompatibleLayouts(mood).includes(layout as MenuLayout);
 }
 
-export function getCompatibleLayouts(mood: MenuMood): MenuLayout[] {
-    return MOOD_LAYOUT_COMPATIBILITY[mood];
+export function getCompatibleLayouts(mood: unknown): MenuLayout[] {
+    return MOOD_LAYOUT_COMPATIBILITY[normalizeMenuMood(mood)];
 }
 
-export function getDefaultLayout(mood: MenuMood): MenuLayout {
-    return MOOD_LAYOUT_COMPATIBILITY[mood][0];
+export function getDefaultLayout(mood: unknown): MenuLayout {
+    return getCompatibleLayouts(mood)[0];
 }
 
 export function normalizeMenuMood(value: unknown): MenuMood {
@@ -462,7 +462,7 @@ export function normalizeMenuMood(value: unknown): MenuMood {
     return LEGACY_MENU_MOOD_MAP[normalizedValue] || DEFAULTS.menu.mood;
 }
 
-export function normalizeMenuLayout(value: unknown, mood: MenuMood): MenuLayout {
+export function normalizeMenuLayout(value: unknown, mood: unknown): MenuLayout {
     const compatibleLayouts = getCompatibleLayouts(mood);
 
     if (typeof value === 'string') {
@@ -478,7 +478,7 @@ export function normalizeMenuLayout(value: unknown, mood: MenuMood): MenuLayout 
     return getDefaultLayout(mood);
 }
 
-export interface ResolvedMenuDesignConfig extends Record<string, any> {
+export interface ResolvedMenuDesignConfig {
     mood: MenuMood;
     layout: MenuLayout;
     backgroundImage?: string;
@@ -488,24 +488,37 @@ export interface ResolvedMenuDesignConfig extends Record<string, any> {
     showCategoryTabs?: boolean;
 }
 
-export function resolveMenuDesignConfig(menuConfig: Record<string, any> | null | undefined): ResolvedMenuDesignConfig {
-    const rawConfig = menuConfig && typeof menuConfig === 'object' && !Array.isArray(menuConfig)
-        ? menuConfig
-        : {};
-    const mood = normalizeMenuMood(rawConfig.mood);
-    const hasLegacyTabsLayout = typeof rawConfig.layout === 'string'
-        && rawConfig.layout.trim().toLowerCase() === MenuLayout.TABS;
-    const layout = normalizeMenuLayout(rawConfig.layout, mood);
+function readOwnDesignValue(value: unknown, key: string): unknown {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+export function resolveMenuDesignConfig(menuConfig: unknown): ResolvedMenuDesignConfig {
+    const rawMood = readOwnDesignValue(menuConfig, 'mood');
+    const rawLayout = readOwnDesignValue(menuConfig, 'layout');
+    const rawBackgroundImage = readOwnDesignValue(menuConfig, 'backgroundImage');
+    const rawShowItemPrices = readOwnDesignValue(menuConfig, 'showItemPrices');
+    const rawShowImages = readOwnDesignValue(menuConfig, 'showImages');
+    const rawShowCategoryIcons = readOwnDesignValue(menuConfig, 'showCategoryIcons');
+    const rawShowCategoryTabs = readOwnDesignValue(menuConfig, 'showCategoryTabs');
+    const mood = normalizeMenuMood(rawMood);
+    const hasLegacyTabsLayout = typeof rawLayout === 'string'
+        && rawLayout.trim().toLowerCase() === MenuLayout.TABS;
+    const layout = normalizeMenuLayout(rawLayout, mood);
 
     return {
-        ...rawConfig,
-        backgroundImage: typeof rawConfig.backgroundImage === 'string' ? rawConfig.backgroundImage : undefined,
+        backgroundImage: typeof rawBackgroundImage === 'string' ? rawBackgroundImage : undefined,
         mood,
         layout,
-        showItemPrices: typeof rawConfig.showItemPrices === 'boolean' ? rawConfig.showItemPrices : true,
-        showImages: typeof rawConfig.showImages === 'boolean' ? rawConfig.showImages : true,
-        showCategoryIcons: typeof rawConfig.showCategoryIcons === 'boolean' ? rawConfig.showCategoryIcons : true,
-        showCategoryTabs: typeof rawConfig.showCategoryTabs === 'boolean' ? rawConfig.showCategoryTabs : hasLegacyTabsLayout,
+        showItemPrices: typeof rawShowItemPrices === 'boolean' ? rawShowItemPrices : true,
+        showImages: typeof rawShowImages === 'boolean' ? rawShowImages : true,
+        showCategoryIcons: typeof rawShowCategoryIcons === 'boolean' ? rawShowCategoryIcons : true,
+        showCategoryTabs: typeof rawShowCategoryTabs === 'boolean' ? rawShowCategoryTabs : hasLegacyTabsLayout,
     };
 }
 

@@ -52,6 +52,8 @@ async function run(): Promise<void> {
     const duplicateDeliveryId = 'd'.repeat(32);
     const firstDelivery = await write({ totalViews: 4 }, duplicateDeliveryId);
     const duplicateDelivery = await write({ totalViews: 4 }, duplicateDeliveryId);
+    assert.ok(firstDelivery, 'accepted analytics delivery must return an application receipt');
+    assert.ok(duplicateDelivery, 'duplicate analytics delivery must return a duplicate receipt');
     assert.equal(firstDelivery.status, 'applied');
     assert.equal(duplicateDelivery.status, 'duplicate');
     assert.equal((await documentRef.get()).data()?.totalViews, 9, 'duplicate delivery must not increment twice');

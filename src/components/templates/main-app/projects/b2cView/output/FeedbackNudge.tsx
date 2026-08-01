@@ -34,7 +34,7 @@ interface FeedbackNudgeProps {
     /** Menu mood config for consistent styling */
     moodConfig: MenuMoodConfig;
     /** Scroll container ref for scroll depth tracking */
-    scrollContainerRef?: React.RefObject<HTMLElement>;
+    scrollContainerRef?: React.RefObject<HTMLElement | null>;
     /** Owner-enabled language currently selected by the customer */
     activeLanguage?: string;
 }

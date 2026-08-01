@@ -58,6 +58,7 @@ type PreparedAssetMutation = {
     previousPreview: string | null;
     uploadedPreview: string | null;
 };
+type StaticAssetOperationContext = Record<string, boolean | number | string | null | undefined>;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -80,18 +81,6 @@ const normalizeAssetList = (value: unknown, depth: number): AssetsCategoryType[]
     return value
         .map((entry) => normalizeAssetCategory(entry, undefined, depth))
         .filter((entry): entry is AssetsCategoryType => entry !== null);
-};
-
-const readPersistedAssetList = (value: unknown, depth: number): AssetsCategoryType[] => {
-    if (value === undefined || value === null) return [];
-    if (!Array.isArray(value) || value.length > MAX_ASSET_CHILDREN) {
-        throw new Error('static_asset_persisted_list_invalid');
-    }
-    const normalized = normalizeAssetList(value, depth);
-    if (normalized.length !== value.length || normalized.some((entry) => entry.id === undefined)) {
-        throw new Error('static_asset_persisted_child_invalid');
-    }
-    return normalized;
 };
 
 const normalizeAssetCategory = (
@@ -128,11 +117,53 @@ const normalizeAssetCategory = (
     };
 };
 
+const readPersistedAssetList = (value: unknown, depth: number): AssetsCategoryType[] => {
+    if (value === undefined || value === null) return [];
+    if (
+        !Array.isArray(value)
+        || value.length > MAX_ASSET_CHILDREN
+        || (depth > 2 && value.length > 0)
+    ) {
+        throw new Error('static_asset_persisted_list_invalid');
+    }
+    return value.map((entry) => {
+        const normalized = normalizePersistedAssetCategory(entry, undefined, depth);
+        if (!normalized || normalized.id === undefined) {
+            throw new Error('static_asset_persisted_child_invalid');
+        }
+        return normalized;
+    });
+};
+
+const normalizePersistedAssetCategory = (
+    value: unknown,
+    documentId?: string,
+    depth = 0,
+): AssetsCategoryType | null => {
+    if (!isRecord(value)) return null;
+    const normalized = normalizeAssetCategory({
+        ...value,
+        items: [],
+        subCategories: [],
+    }, documentId, depth);
+    if (!normalized) return null;
+    return {
+        ...normalized,
+        subCategories: readPersistedAssetList(value.subCategories, depth + 1),
+        items: readPersistedAssetList(value.items, depth + 1),
+    };
+};
+
 const requireAssetMutation = (
     value: AssetMutationInput,
     options: { requireId?: boolean } = {},
 ): AssetsCategoryType => {
-    const normalized = normalizeAssetCategory(value);
+    let normalized: AssetsCategoryType | null = null;
+    try {
+        normalized = normalizePersistedAssetCategory(value);
+    } catch {
+        throw new Error('static_asset_payload_invalid');
+    }
     if (!normalized || (options.requireId && normalized.id === undefined)) {
         throw new Error('static_asset_payload_invalid');
     }
@@ -201,7 +232,7 @@ const getDocRef = (type: CraftBuilderAssetsTypesType, docId: string | number) =>
 const cleanupStorageReferences = async (
     urls: unknown[],
     failureCode: string,
-    context: Record<string, boolean | number | string | undefined>,
+    context: StaticAssetOperationContext,
 ): Promise<void> => {
     const references = Array.from(new Set(urls.filter(isFirebaseStorageReference)));
     if (!references.length) return;
@@ -220,7 +251,7 @@ const cleanupStorageReferences = async (
 const deferPersistedStorageReferenceCleanup = (
     urls: unknown[],
     operation: 'category_delete' | 'item_delete' | 'preview_replace' | 'subcategory_delete',
-    context: Record<string, boolean | number | string | undefined>,
+    context: StaticAssetOperationContext,
 ): void => {
     const retainedCount = new Set(urls.filter(isFirebaseStorageReference)).size;
     if (retainedCount === 0) return;
@@ -266,7 +297,7 @@ const prepareAssetPreview = async (
 const persistPreparedAsset = async <T>(
     prepared: PreparedAssetMutation,
     persist: (data: AssetMutationInput) => Promise<T>,
-    context: Record<string, boolean | number | string | undefined>,
+    context: StaticAssetOperationContext,
 ): Promise<{ data: AssetMutationInput; result: T }> => {
     try {
         const result = await persist(prepared.data);
@@ -293,7 +324,7 @@ const persistPreparedAsset = async <T>(
 const validatePreparedAsset = async <T>(
     prepared: PreparedAssetMutation,
     validate: (data: AssetMutationInput) => T,
-    context: Record<string, boolean | number | string | undefined>,
+    context: StaticAssetOperationContext,
 ): Promise<T> => {
     try {
         return validate(prepared.data);
@@ -324,7 +355,7 @@ export const addAssetsCategory = async (type: CraftBuilderAssetsTypesType, data:
     return await apiCallComposer(
         async () => {
             const prepared = await prepareAssetPreview(type, data);
-            const normalized = await validatePreparedAsset(
+            const normalized = await validatePreparedAsset<AssetsCategoryType>(
                 prepared,
                 (nextData) => requireAssetMutation(nextData),
                 getStaticAssetEntityLogContext(type),
@@ -350,7 +381,7 @@ export const updateAssetsCategory = async (
     return await apiCallComposer(
         async () => {
             const prepared = await prepareAssetPreview(type, data);
-            const patch = await validatePreparedAsset(
+            const patch = await validatePreparedAsset<AssetMutationInput>(
                 prepared,
                 normalizeAssetCategoryPatch,
                 getStaticAssetEntityLogContext(type, docId),
@@ -380,7 +411,7 @@ export const deleteAssetsCategory = async (
                 const categoryRef = getDocRef(type, categoryDetails.id as string | number);
                 const categorySnap = await transaction.get(categoryRef);
                 if (!categorySnap.exists()) throw new Error('static_asset_category_not_found');
-                const current = normalizeAssetCategory(categorySnap.data(), categorySnap.id);
+                const current = normalizePersistedAssetCategory(categorySnap.data(), categorySnap.id);
                 if (!current) throw new Error('static_asset_persisted_category_invalid');
                 transaction.delete(categoryRef);
                 return current;
@@ -406,7 +437,7 @@ export const addAssetsSubCategory = async (
     return await apiCallComposer(
         async () => {
             const prepared = await prepareAssetPreview(type, data);
-            const subCategory = await validatePreparedAsset(
+            const subCategory = await validatePreparedAsset<AssetsCategoryType>(
                 prepared,
                 (nextData) => requireAssetMutation(nextData, { requireId: true }),
                 getStaticAssetEntityLogContext(type, docId),
@@ -420,6 +451,9 @@ export const addAssetsSubCategory = async (
                     const current = readPersistedAssetList(parentSnap.data().subCategories, 1);
                     if (current.some((entry) => String(entry.id) === String(subCategory.id))) {
                         throw new Error('static_asset_subcategory_id_conflict');
+                    }
+                    if (current.length >= MAX_ASSET_CHILDREN) {
+                        throw new Error('static_asset_child_limit_exceeded');
                     }
                     transaction.update(parentRef, { subCategories: [...current, subCategory] });
                 }),
@@ -443,7 +477,7 @@ export const updateAssetsSubCategory = async (
         async () => {
             if (parentCategory.id === undefined) throw new Error('static_asset_parent_id_missing');
             const prepared = await prepareAssetPreview(type, data);
-            const subCategory = await validatePreparedAsset(
+            const subCategory = await validatePreparedAsset<AssetsCategoryType>(
                 prepared,
                 (nextData) => requireAssetMutation(nextData, { requireId: true }),
                 getStaticAssetEntityLogContext(type, parentCategory.id),
@@ -515,7 +549,7 @@ const mutateAssetItem = async (
 ): Promise<AssetsCategoryType> => {
     if (parentCategory.id === undefined) throw new Error('static_asset_parent_id_missing');
     const prepared = await prepareAssetPreview(type, data);
-    const item = await validatePreparedAsset(
+    const item = await validatePreparedAsset<AssetsCategoryType>(
         prepared,
         (nextData) => requireAssetMutation(nextData, { requireId: true }),
         getStaticAssetEntityLogContext(type, parentCategory.id, subCategory?.id),
@@ -536,7 +570,12 @@ const mutateAssetItem = async (
                 const itemIndex = items.findIndex((entry) => String(entry.id) === String(item.id));
                 if (mode === 'add' && itemIndex >= 0) throw new Error('static_asset_item_id_conflict');
                 if (mode === 'update' && itemIndex < 0) throw new Error('static_asset_item_update_item_missing');
-                if (mode === 'add') items.push(item);
+                if (mode === 'add') {
+                    if (items.length >= MAX_ASSET_CHILDREN) {
+                        throw new Error('static_asset_child_limit_exceeded');
+                    }
+                    items.push(item);
+                }
                 else items[itemIndex] = item;
                 subCategories[subIndex] = { ...subCategories[subIndex], items };
                 transaction.update(parentRef, { subCategories });
@@ -547,7 +586,12 @@ const mutateAssetItem = async (
             const itemIndex = items.findIndex((entry) => String(entry.id) === String(item.id));
             if (mode === 'add' && itemIndex >= 0) throw new Error('static_asset_item_id_conflict');
             if (mode === 'update' && itemIndex < 0) throw new Error('static_asset_item_update_item_missing');
-            if (mode === 'add') items.push(item);
+            if (mode === 'add') {
+                if (items.length >= MAX_ASSET_CHILDREN) {
+                    throw new Error('static_asset_child_limit_exceeded');
+                }
+                items.push(item);
+            }
             else items[itemIndex] = item;
             transaction.update(parentRef, { items });
         }),
@@ -657,7 +701,12 @@ export async function getAllAssetsByType(type: CraftBuilderAssetsTypesType): Pro
                 throw new Error('static_asset_document_limit_exceeded');
             }
             return querySnapshot.docs.flatMap((assetDoc) => {
-                const normalized = normalizeAssetCategory(assetDoc.data(), assetDoc.id);
+                let normalized: AssetsCategoryType | null = null;
+                try {
+                    normalized = normalizePersistedAssetCategory(assetDoc.data(), assetDoc.id);
+                } catch {
+                    normalized = null;
+                }
                 if (normalized) return [normalized];
                 logStaticAssetDiagnostic(
                     'static_asset_document_shape_invalid',

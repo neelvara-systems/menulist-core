@@ -1,7 +1,7 @@
 'use client';
 
 import { Alert, Button, Card, Flex, Image, Modal, Popconfirm, Progress, Typography, theme } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { LuArrowRight, LuFileSearch, LuTrash, LuX } from 'react-icons/lu';
 
 const { Text } = Typography;
@@ -9,30 +9,37 @@ const { Text } = Typography;
 import { ConvertedImageType } from './types';
 
 interface PdfViewerProps {
-    pdfPagesCount: any,
+    pdfPagesCount: number | null,
     pdfFiles: { images: ConvertedImageType[]; action: string } | null;
-    onSave: (images: any[], action: string) => void;
+    onSave: (images: ConvertedImageType[], action: string) => void;
     onCancel: () => void;
-    setPdfFiles: any
+    setPdfFiles: Dispatch<SetStateAction<{ images: ConvertedImageType[]; action: string } | null>>;
 }
 
 export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCancel }: PdfViewerProps) => {
     const { token } = theme.useToken();
     const loadingCardRef = useRef<HTMLDivElement>(null);
     const [previewPage, setPreviewPage] = useState<{ url: string; index: number } | null>(null);
+    const images = pdfFiles?.images ?? [];
+    const totalPages = pdfPagesCount ?? 0;
 
     useEffect(() => {
-        if (pdfPagesCount > pdfFiles?.images?.length && loadingCardRef.current) {
+        if (totalPages > images.length && loadingCardRef.current) {
             loadingCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-    }, [pdfPagesCount, pdfFiles?.images?.length]);
+    }, [images.length, totalPages]);
 
     const onRemove = (pageUrl: string) => {
-        setPdfFiles(prevPages => ({ images: prevPages?.images?.filter(page => page.url !== pageUrl), action: prevPages.action }));
+        setPdfFiles((previous) => previous
+            ? {
+                action: previous.action,
+                images: previous.images.filter((page) => page.url !== pageUrl),
+            }
+            : null);
     }
 
     // Check if still loading pages (more pages expected)
-    const isStillLoading = pdfPagesCount && pdfPagesCount > (pdfFiles?.images?.length || 0);
+    const isStillLoading = totalPages > images.length;
 
     return (
         <Modal
@@ -43,13 +50,13 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                     <Text strong>Review PDF Pages</Text>
                     <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal' }}>
                         {isStillLoading
-                            ? `Converting pages... (${pdfFiles?.images?.length || 0} of ${pdfPagesCount})`
-                            : `${pdfFiles?.images?.length || 0} pages ready to process`
+                            ? `Converting pages... (${images.length} of ${totalPages})`
+                            : `${images.length} pages ready to process`
                         }
                     </Text>
                 </Flex>
             }
-            open={Boolean(pdfFiles?.images?.length)}
+            open={pdfPagesCount !== null || Boolean(pdfFiles?.images?.length)}
             footer={[
                 <Popconfirm
                     key="cancel-confirm"
@@ -70,12 +77,12 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                     type="primary"
                     disabled={isStillLoading}
                     onClick={() => {
-                        if (pdfFiles?.images?.length > 0) {
-                            onSave(pdfFiles?.images, pdfFiles!.action);
+                        if (pdfFiles && images.length > 0) {
+                            onSave(images, pdfFiles.action);
                         }
                     }}
                 >
-                    Process {pdfFiles?.images?.length || 0} Pages
+                    Process {images.length} Pages
                 </Button>
             ]}
             onCancel={onCancel}
@@ -100,7 +107,7 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                     overflowY: 'auto',
                     padding: '8px'
                 }}>
-                    {pdfFiles?.images?.map((pageData, index) => (
+                    {images.map((pageData, index) => (
                         <Card
                             key={index}
                             hoverable
@@ -111,7 +118,7 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                                     src={pageData.url}
                                     style={{ width: '100%', height: '280px', objectFit: 'contain' }}
                                     preview={{
-                                        visible: pageData.url && previewPage?.url === pageData.url,
+                                        visible: Boolean(pageData.url && previewPage?.url === pageData.url),
                                         onVisibleChange: (visible) => {
                                             if (!visible) setPreviewPage(null);
                                         }
@@ -123,6 +130,7 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                             <Flex justify='space-between' align='center' style={{ width: '100%' }}>
                                 <Card.Meta title={`Page ${index + 1}`} />
                                 <Popconfirm
+                                    disabled={Boolean(isStillLoading)}
                                     title="Delete page"
                                     description="Are you sure you want to delete this page?"
                                     onConfirm={() => onRemove(pageData.url)}
@@ -131,13 +139,13 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                                     placement="left"
                                     okType='danger'
                                 >
-                                    <Button shape='circle' icon={<LuTrash />} danger />
+                                    <Button shape='circle' icon={<LuTrash />} danger disabled={Boolean(isStillLoading)} />
                                 </Popconfirm>
                             </Flex>
                         </Card>
                     ))}
 
-                    {Boolean(pdfPagesCount) && <Card ref={loadingCardRef} className='animate__animated animate__fadeInLeft' key={"loading"}>
+                    {Boolean(isStillLoading) && <Card ref={loadingCardRef} className='animate__animated animate__fadeInLeft' key={"loading"}>
                         <Flex vertical justify='center' align='center' gap={16} style={{ width: '100%', height: '280px', objectFit: 'contain' }}>
                             <div className='animate__animated animate__pulse animate__infinite'>
                                 <LuFileSearch size={48} style={{ color: token.colorPrimary }} />
@@ -150,11 +158,11 @@ export const PdfViewer = ({ pdfPagesCount, pdfFiles, setPdfFiles, onSave, onCanc
                                     Converting pages to images
                                 </Text>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                    Page {pdfFiles?.images?.length || 0} of {pdfPagesCount}
+                                    Page {images.length} of {totalPages}
                                 </Text>
                             </Flex>
                             <Progress
-                                percent={Math.round(((pdfFiles?.images?.length || 0) / pdfPagesCount) * 100)}
+                                percent={Math.round((images.length / totalPages) * 100)}
                                 strokeColor={token.colorPrimary}
                                 style={{ width: '80%' }}
                             />

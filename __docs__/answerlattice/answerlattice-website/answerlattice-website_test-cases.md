@@ -1,6 +1,6 @@
 # AnswerLattice Website Test Cases
 
-> **Last audited:** July 29, 2026
+> **Last audited:** July 31, 2026
 
 ## Automated Source Gate
 
@@ -29,6 +29,9 @@ The gate verifies:
 15. Daily Brief copy contains the qualified quiet state; friction is not presented as root cause or product health; Knowledge Map is not presented as a public raw graph; release previews and tests do not claim automatic mutation or factual certainty.
 16. The widget product page keeps Guided Resolution opt-in and explicitly denies clicking controls or changing product data.
 17. The complete website documentation dossier exists.
+18. The four owner-decision proof assets are registered through AssetOS, use stable 1440 x 1200 WebP files within their size budgets, and are mounted only in the matching homepage, Knowledge Governance, and Knowledge Base stories.
+19. The Operating Guide route is registered and discoverable, preserves the solo-founder first-use path, defines Start/Coordinate/Govern as guidance only, and rejects automatic maturity state plus unsupported larger-company claims.
+20. The Operating Guide remains bundled static content and introduces no Firebase import, network request, workspace mode, feature flag, or AI-provider call.
 
 ## Functional Cases
 
@@ -50,6 +53,9 @@ The gate verifies:
 16. The page-aware widget page describes declared targets, verified events, and explicit handoff without implying browser control, arbitrary actions, or automatic publication.
 17. At 390px and 1280px widths, the owner-decision rows wrap without clipping, preserve at least 44px link targets, and keep the governance product image framed beside or below the copy.
 18. Knowledge Base distinguishes public article topic maps from private Knowledge Map data, while Changelog keeps owner confirmation and stale-preview refresh explicit.
+19. At 390px and 1280px widths, each new 6:5 proof asset preserves its frame, intrinsic ratio, readable alt text, and surrounding content flow without horizontal overflow.
+20. At 390px and 1280px widths, the Operating Guide sections, checklists, FAQs, related resources, and CTAs wrap without horizontal overflow and remain keyboard reachable.
+21. Founder Launch Kit reaches the Operating Guide, and the guide explains when a user should remain at Start versus adding Coordinate or Govern controls.
 
 ## External Release Evidence
 

@@ -1,7 +1,9 @@
 import TextElement from '@antdComponent/textElement';
 import { getStoreContextName } from '@lib/businessIdentity/names';
+import type { StaffUserSummary } from '@lib/staffManagement/types';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
-import { UserDataType } from '@type/platform/user';
+import type { StoreDataType } from '@type/platform/store';
+import type { UserStoreMappingType } from '@type/platform/user';
 import { Avatar, Button, Card, Divider, Empty, Flex, Tag, Typography, theme } from 'antd';
 import { useContext } from 'react';
 import type { ReactNode } from 'react';
@@ -9,33 +11,41 @@ import { LuBuilding2, LuKeyRound, LuMail, LuPen, LuPhoneCall, LuShieldCheck, LuS
 
 const { Text } = Typography;
 
-function UserDetails({ canEdit = true, userDetails, onClickEdit }: { canEdit?: boolean, userDetails: UserDataType, onClickEdit?: any }) {
+function UserDetails({
+    canEdit = true,
+    userDetails,
+    onClickEdit,
+}: {
+    canEdit?: boolean;
+    onClickEdit?: (user: StaffUserSummary) => void;
+    userDetails: StaffUserSummary;
+}) {
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const stores = Array.isArray(userDetails?.stores) ? userDetails.stores : [];
-    const staffLoginId = (userDetails as any)?.staffLoginId || (userDetails as any)?.loginUsername || '';
-    const isOwnerPasscodeLogin = (userDetails as any)?.staffAuthMode === 'owner_passcode';
+    const staffLoginId = userDetails.staffLoginId || userDetails.loginUsername || '';
+    const isOwnerPasscodeLogin = userDetails.staffAuthMode === 'owner_passcode';
     const displayEmail = isOwnerPasscodeLogin
         ? ''
-        : (userDetails as any)?.displayEmail || userDetails?.email || '';
+        : userDetails.displayEmail || userDetails.email || '';
     const phoneLabel = userDetails?.phoneNumber ? `${userDetails?.dialCode || ''} ${userDetails.phoneNumber}`.trim() : '';
     const alternatePhoneLabel = userDetails?.alternatePhoneNumber?.phoneNumber
         ? `${userDetails.alternatePhoneNumber.dialCode || ''} ${userDetails.alternatePhoneNumber.phoneNumber}`.trim()
         : '';
 
     const getStoreRecord = (storeId: number) => {
-        const tenantStore = tenantDetails?.storesList?.find((store: any) => Number(store?.storeId) === Number(storeId));
+        const tenantStore = tenantDetails?.storesList.find((store) => store.storeId === storeId);
         return tenantStore?.storeDetails || tenantStore || (Number(storeDetails?.storeId) === Number(storeId) ? storeDetails : null);
     };
 
-    const resolveStoreName = (store: any) => {
-        const storeRecord = getStoreRecord(Number(store?.storeId));
+    const resolveStoreName = (store: UserStoreMappingType) => {
+        const storeRecord = getStoreRecord(store.storeId);
         return getStoreContextName(storeRecord || store, `Store ${store?.storeId ?? ''}`);
     };
 
-    const resolveRoleName = (store: any) => {
-        const storeRecord = getStoreRecord(Number(store?.storeId));
-        return (storeRecord as any)?.roles?.find((role: any) => role.id === store?.role)?.name || store?.role || 'No role set';
+    const resolveRoleName = (store: UserStoreMappingType) => {
+        const storeRecord = getStoreRecord(store.storeId) as StoreDataType | null | undefined;
+        return storeRecord?.roles?.find((role) => role.id === store.role)?.name || store.role || 'No role set';
     };
 
     const renderInfoRow = (icon: ReactNode, label: string, value?: string) => (
@@ -51,13 +61,13 @@ function UserDetails({ canEdit = true, userDetails, onClickEdit }: { canEdit?: b
     const statusTag = userDetails?.active !== false
         ? <Tag color="green" icon={<LuUserCheck />}>Active</Tag>
         : <Tag color="error" icon={<LuUserX />}>Deactivated</Tag>;
-    const authDisabledTag = (userDetails as any)?.authDisabled === true
+    const authDisabledTag = userDetails.authDisabled === true
         ? <Tag color="warning">Login disabled</Tag>
         : null;
 
     return (
         <Card
-            extra={<Button disabled={!canEdit} type="primary" ghost icon={<LuPen />} onClick={() => onClickEdit(userDetails)}>Edit User</Button>}
+            extra={<Button disabled={!canEdit || !onClickEdit} type="primary" ghost icon={<LuPen />} onClick={() => onClickEdit?.(userDetails)}>Edit User</Button>}
             style={{ width: '100%', height: 'max-content' }}
             title="User Profile"
         >
@@ -98,7 +108,7 @@ function UserDetails({ canEdit = true, userDetails, onClickEdit }: { canEdit?: b
                     <TextElement text="Store Access" type="secondary" size="medium" />
                     {stores.length ? (
                         <Flex vertical gap={10}>
-                            {stores.map((store: any) => (
+                            {stores.map((store) => (
                                 <Flex
                                     align="center"
                                     gap={12}

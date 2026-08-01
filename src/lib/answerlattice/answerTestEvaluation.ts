@@ -8,6 +8,8 @@ import type {
 
 const ANSWER_PREVIEW_MAX_LENGTH = 360;
 const ANSWER_TEST_REFERENCE_LIMIT = 8;
+const ANSWER_TEST_FAILURE_LIMIT = 20;
+const ANSWER_TEST_FAILURE_MAX_LENGTH = 240;
 const CONFIDENCE_ORDER = { none: 0, low: 1, medium: 2, high: 3 } as const;
 
 export type AnswerlatticeResolvedTestAnswer = {
@@ -118,6 +120,12 @@ export const evaluateAnswerTestCase = (
             ? 'Answer did not include a supporting reference.'
             : `Answer was missing expected references: ${citationEvaluation.missingReferenceIds.join(', ')}`);
     }
+    const boundedFailures = failures
+        .slice(0, ANSWER_TEST_FAILURE_LIMIT)
+        .map(failure => failure.slice(0, ANSWER_TEST_FAILURE_MAX_LENGTH));
+    const normalizedDurationMs = Number.isFinite(durationMs) && durationMs >= 0
+        ? Math.min(Math.floor(durationMs), Number.MAX_SAFE_INTEGER)
+        : 0;
 
     return {
         caseId: testCase.id,
@@ -134,8 +142,8 @@ export const evaluateAnswerTestCase = (
         missingReferenceIds: citationEvaluation.missingReferenceIds,
         ...(resolved.confidence ? { confidence: resolved.confidence } : {}),
         answerPreview: resolved.answer.replace(/\s+/g, ' ').trim().slice(0, ANSWER_PREVIEW_MAX_LENGTH),
-        failures,
+        failures: boundedFailures,
         aiProviderUsed: resolved.aiProviderUsed,
-        durationMs: Math.max(0, Math.floor(durationMs)),
+        durationMs: normalizedDurationMs,
     };
 };

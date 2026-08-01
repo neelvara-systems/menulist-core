@@ -34,6 +34,7 @@ import {
     type MultiOutletLogContext,
 } from '@lib/multiOutlet/diagnostics';
 import { getOutletSessionScope, normalizeOutletDocumentId } from '@lib/multiOutlet/outletSessionScope';
+import { isMultiOutletTenantStoreListEntryInScope } from '@lib/multiOutlet/projectIdBoundary';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -141,7 +142,7 @@ export const POST = withAuth(async (request, session) => {
         const masterStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`);
         const masterSnap = await masterStoreRef.get();
         const masterStore = masterSnap.data();
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             masterStore,
@@ -208,11 +209,11 @@ export const POST = withAuth(async (request, session) => {
             const freshMaster = freshMasterSnap.exists ? freshMasterSnap.data() || {} : {};
             const freshOutlet = freshOutletSnap.exists ? freshOutletSnap.data() || {} : {};
             const storesList = Array.isArray(tenantDoc.data()?.storesList) ? tenantDoc.data()?.storesList : [];
-            const freshMasterSummary = storesList.find((store: any) => (
-                Number(store?.storeId) === Number(storeId)
+            const freshMasterSummary = storesList.find((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })
             ));
-            const freshOutletSummary = storesList.find((store: any) => (
-                Number(store?.storeId) === Number(outletStoreId)
+            const freshOutletSummary = storesList.find((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(outletStoreId) })
             ));
             if (
                 !freshMasterSnap.exists
@@ -240,7 +241,7 @@ export const POST = withAuth(async (request, session) => {
             ) {
                 throw new OutletRenameConflictError('SCOPE_CHANGED');
             }
-            const freshPermissionError = requireAnyStorePermissionForStoreData(
+            const freshPermissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 freshMaster,
@@ -279,14 +280,14 @@ export const POST = withAuth(async (request, session) => {
             const nextChain = previousSlugs.filter((slug) => slug !== proposed);
             if (freshCurrentSlug) nextChain.push(freshCurrentSlug);
             const cappedChain = Array.from(new Set(nextChain)).slice(-MAX_PREVIOUS_OUTLET_SLUGS);
-            const updatePayload: Record<string, unknown> = {
+            const updatePayload: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
                 outletSlug: proposed,
                 previousOutletSlugs: cappedChain,
                 modifiedOn: now,
                 ...(newOutletName ? { name: newOutletName } : {}),
             };
-            const updatedStoresList = storesList.map((store: any) => (
-                Number(store.storeId) === Number(outletStoreId)
+            const updatedStoresList = storesList.map((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(outletStoreId) })
                     ? {
                         ...store,
                         ...(newOutletName ? { name: newOutletName } : {}),

@@ -408,7 +408,7 @@ export function runEnvValidation(): void {
 
     const result = validateEnvironment();
     const isProd = process.env.NODE_ENV === 'production';
-    const isVercel = process.env.VERCEL === '1';
+    const isVercel = process.env.VERCEL === '1' || Boolean(getEnvValue('VERCEL_ENV'));
     const validationContext = {
         isProduction: isProd,
         isVercel,
@@ -424,6 +424,7 @@ export function runEnvValidation(): void {
         } else if (isProd) {
             // In production locally: hard error
             logEnvValidationFailure('env_required_variables_missing_production', validationContext);
+            throw new Error('Required production environment variables are missing.');
         } else {
             // In development: warn only
             logEnvValidationDiagnostic('env_required_variables_missing_development', validationContext);

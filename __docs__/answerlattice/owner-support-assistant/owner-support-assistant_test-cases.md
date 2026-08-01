@@ -65,6 +65,7 @@
 | Invalid or stale summary doc | Source health identifies the affected summary and the answer is marked partial through limits. |
 | Role cannot open an evidence route | Evidence and next action for that route are removed before the response reaches the browser. |
 | Repeated query within 60 seconds | Reuses the in-process packet and reports zero Firestore reads for the warm request. |
+| Concurrent cold requests for one workspace | Share one six-document packet load; joiners add zero Firestore reads and exact-promise cleanup preserves newer work. |
 
 ---
 

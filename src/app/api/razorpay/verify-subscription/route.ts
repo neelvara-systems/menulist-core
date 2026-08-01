@@ -390,7 +390,7 @@ export const POST = withAuth(async (request, session) => {
                 type: payment.method,
                 brand: payment.card?.network,
                 last4: payment.card?.last4,
-                upiId: payment.vpa,
+                upiId: payment.vpa ?? undefined,
                 upiTransactionId: payment?.acquirer_data?.upi_transaction_id,
             },
         };

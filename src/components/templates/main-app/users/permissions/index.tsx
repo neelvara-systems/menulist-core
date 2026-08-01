@@ -7,18 +7,20 @@ import { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from "@data/rolesPerm
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { deleteRoleDefinition } from "@lib/staffManagement/client";
 import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
+import { mergeStaffRolesForCurrentStore } from "@lib/staffManagement/formMappingBoundary";
 import EditorWrapper from "@organisms/editor/editorWrapper";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
 import { StoreRoleDataType } from "@type/platform/roles";
+import type { StoreDataType } from "@type/platform/store";
 import { arrayNullCheck, objectNullCheck } from "@util/utils";
 import { Alert, Button, Card, Divider, Empty, Flex, Popconfirm, Space, Tag, theme } from "antd";
-import { Fragment, useContext, useState } from "react";
+import { Fragment, useContext, useEffect, useState } from "react";
 import { LuCheck, LuPen, LuPlus, LuShieldCheck, LuTrash2, LuX } from "react-icons/lu";
 import RoleDetailsModal from "./roleDetailsModal";
 const { Meta } = Card
 
-const getDesktopRoleLogContext = (storeDetails: any, role?: StoreRoleDataType) => ({
+const getDesktopRoleLogContext = (storeDetails: StoreDataType | null, role?: StoreRoleDataType) => ({
     ...getBoundedStaffStringContext('storeId', storeDetails?.storeId),
     ...getBoundedStaffStringContext('tenantId', storeDetails?.tenantId),
     ...getBoundedStaffStringContext('roleId', role?.id),
@@ -26,14 +28,31 @@ const getDesktopRoleLogContext = (storeDetails: any, role?: StoreRoleDataType) =
 });
 
 function UserPermissionsPage() {
-    const [activeRole, setActiveRole] = useState<StoreRoleDataType>(null);
+    const [activeRole, setActiveRole] = useState<StoreRoleDataType | null>(null);
+    const [deactivatingRoleId, setDeactivatingRoleId] = useState<string | null>(null);
     const { setStoreDetails, storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
-    const [showDetailsModal, setShowDetailsModal] = useState({ active: false, data: null })
+    const [showDetailsModal, setShowDetailsModal] = useState<{
+        active: boolean;
+        data: StoreRoleDataType | null;
+    }>({ active: false, data: null })
     const { token } = theme.useToken();
     const dispatch = useAppDispatch();
     const canAssignRoles = userPermissions?.canAssignRoles === true;
 
-    const onCloseRoleModal = (storeData) => {
+    useEffect(() => {
+        setActiveRole(null);
+        setShowDetailsModal({ active: false, data: null });
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
+
+    useEffect(() => {
+        setActiveRole((currentRole) => (
+            currentRole
+                ? storeDetails?.roles?.find((role) => role.id === currentRole.id) || null
+                : null
+        ));
+    }, [storeDetails?.roles]);
+
+    const onCloseRoleModal = (storeData: StoreDataType | null) => {
         if (storeData?.roles && activeRole?.id) {
             let ind = storeData.roles.findIndex((u) => u.id == activeRole.id)
             if (ind != -1) setActiveRole(storeData.roles[ind])
@@ -42,22 +61,37 @@ function UserPermissionsPage() {
     }
 
     const onDeactivateRole = async (role: StoreRoleDataType) => {
-        if (!role?.id || role.id === DEFAULT_ROLE_IDS.OWNER || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        if (
+            deactivatingRoleId
+            || !role.id
+            || role.id === DEFAULT_ROLE_IDS.OWNER
+            || !storeDetails?.tenantId
+            || !storeDetails.storeId
+        ) return;
 
+        setDeactivatingRoleId(role.id);
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const sourceRoles = storeDetails.roles;
         try {
             const response = await deleteRoleDefinition({
                 roleId: role.id,
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
             });
-            const nextStoreDetails = { ...storeDetails, roles: response.roles };
-            setStoreDetails(nextStoreDetails);
-            const nextActiveRole = response.roles.find((item) => item.id === role.id) || null;
-            setActiveRole(nextActiveRole);
+            setStoreDetails((currentStore) => mergeStaffRolesForCurrentStore(
+                currentStore,
+                expectedTenantId,
+                expectedStoreId,
+                sourceRoles,
+                response.roles,
+            ));
             dispatch(showSuccessToast("Role deactivated"));
         } catch (err) {
             logStaffClientFailure('desktop_staff_role_delete_failed', err, getDesktopRoleLogContext(storeDetails, role));
             dispatch(showErrorToast("Could not deactivate role"));
+        } finally {
+            setDeactivatingRoleId(null);
         }
     };
 
@@ -126,11 +160,11 @@ function UserPermissionsPage() {
                         </Flex>
                     </Flex>
 
-                    {!objectNullCheck(activeRole) && (
+                    {!activeRole && (
                         <Empty description="Select a role to view permissions" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                     )}
 
-                    {objectNullCheck(activeRole) && (
+                    {activeRole && (
                         <Flex vertical gap={10}>
                             <Card
                                 style={{ width: "100%" }}
@@ -138,7 +172,7 @@ function UserPermissionsPage() {
                                 extra={(
                                     <Flex gap={8} wrap="wrap">
                                         <Button
-                                            disabled={!canAssignRoles || activeRole.id === DEFAULT_ROLE_IDS.OWNER || activeRole.active === false}
+                                            disabled={Boolean(deactivatingRoleId) || !canAssignRoles || activeRole.id === DEFAULT_ROLE_IDS.OWNER || activeRole.active === false}
                                             type="primary"
                                             icon={<LuPen />}
                                             onClick={() => setShowDetailsModal({ active: true, data: activeRole })}
@@ -154,7 +188,8 @@ function UserPermissionsPage() {
                                         >
                                             <Button
                                                 danger
-                                                disabled={!canAssignRoles || activeRole.id === DEFAULT_ROLE_IDS.OWNER || activeRole.active === false}
+                                                disabled={Boolean(deactivatingRoleId) || !canAssignRoles || activeRole.id === DEFAULT_ROLE_IDS.OWNER || activeRole.active === false}
+                                                loading={deactivatingRoleId === activeRole.id}
                                                 icon={<LuTrash2 />}
                                             >
                                                 Deactivate

@@ -33,7 +33,7 @@ interface AdvancedViewProps {
     onImageUpload: (
         selectedItem: ItemForDropdown,
         imagesToUpload: UserUploadedFileType[],
-    ) => void;
+    ) => Promise<void>;
     selectedItemId: string | null;
     setSelectedItemId: (id: string | null) => void;
     // Multi-outlet props
@@ -117,12 +117,12 @@ export const AdvancedView = ({
                                 setUpdatedFileData={(newData: ProjectFileType) => {
                                     setProjectData((prev) => ({
                                         ...prev,
-                                        files: prev.files.map((f) =>
+                                        files: (prev.files ?? []).map((f) =>
                                             f.uid === newData.uid ? newData : f,
                                         ),
                                     }));
                                 }}
-                                selectedLanguages={projectData.languages}
+                                selectedLanguages={projectData.languages ?? []}
                                 projectData={projectData}
                                 onImageUpload={onImageUpload}
                                 searchTerm={searchTerm}

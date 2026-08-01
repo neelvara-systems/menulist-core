@@ -6,11 +6,21 @@ import { getProductScopedClientSession } from '@lib/auth/getActiveSession';
 import type LoginUserType from '@type/loginUser';
 
 const session = {
+    expires: '2026-08-01T00:00:00.000Z',
     pId: 'ML',
+    platformRole: 'OWNER',
+    role: 'OWNER',
     sId: 22,
     tId: 11,
+    uId: 'user-1',
     user: {
+        active: true,
+        email: 'owner@example.com',
+        id: 'user-1',
+        isVerified: true,
+        name: 'Owner',
         pId: 'ML',
+        platformRole: 'OWNER',
         productAccounts: {
             AL: {
                 storeId: 202,
@@ -18,12 +28,13 @@ const session = {
             },
         },
         productId: 'ML',
+        role: 'OWNER',
         storeId: 22,
         storeIds: [22, 33],
         stores: [],
         tenantId: 11,
     },
-} as LoginUserType;
+} satisfies LoginUserType;
 
 const menuListScope = getProductScopedClientSession(session, '/projects', 'app.menulist.ai');
 assert.equal(menuListScope, session, 'MenuList routes must retain the MenuList session scope');
@@ -46,6 +57,7 @@ const menuListAfterAnswerlattice = getProductScopedClientSession(
     '/projects',
     'app.menulist.ai',
 );
+assert.ok(menuListAfterAnswerlattice);
 assert.equal(menuListAfterAnswerlattice.tId, 11);
 assert.equal(menuListAfterAnswerlattice.sId, 22);
 
@@ -66,18 +78,38 @@ assert.ok(
 );
 assert.match(
     activeSessionSource,
-    /clientSessionRequest = getClientSessionFromApi\(\);/,
+    /const request = getClientSessionFromApi\(\);\s+clientSessionRequest = request;/,
     'the shared in-flight request must contain only the raw session fetch',
 );
 assert.match(
     activeSessionSource,
-    /return getCurrentClientSessionScope\(await clientSessionRequest\);/,
-    'every caller joining an in-flight request must project its current route scope',
+    /joinedGeneration !== clientSessionGeneration\s+\|\| clientSessionRequest !== joinedRequest/,
+    'a caller joining an in-flight request must reject logout-invalidated settlement',
+);
+assert.match(
+    activeSessionSource,
+    /requestGeneration !== clientSessionGeneration\s+\|\| clientSessionRequest !== request/,
+    'a request creator must reject logout-invalidated settlement',
+);
+assert.match(
+    activeSessionSource,
+    /if \(clientSessionRequest === request\) \{\s+clientSessionRequest = null;/,
+    'an older request must not clear a newer request slot',
 );
 assert.doesNotMatch(
     activeSessionSource,
     /return clientSessionRequest;/,
     'a joined caller must never receive a scope selected by the request creator',
+);
+
+const sessionCleanupSource = fs.readFileSync(
+    path.resolve(process.cwd(), 'src/lib/auth/clientSessionCleanup.ts'),
+    'utf8',
+);
+assert.match(
+    sessionCleanupSource,
+    /clearClientSessionCache\(\);\s+writeActiveStoreContextId\(null\);/,
+    'authenticated browser cleanup must invalidate raw session memory before other tenant state',
 );
 
 console.log('Active session product-scope boundary tests passed.');

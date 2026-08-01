@@ -30,7 +30,11 @@ export const resolveOwnerAssistantSelectedStoreScope = (
   request: NextRequest,
   session: any,
   requestedStoreId?: string | number | null,
-) => {
+): { error: NextResponse } | {
+  tId: string | number;
+  sId: string | number;
+  userId: string | number;
+} => {
   const { tId, sId, userId } = getOwnerAssistantSessionScope(session);
   if (!tId || !sId || !userId) {
     return {

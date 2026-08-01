@@ -73,7 +73,8 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 }
 ```
 
-**Feature flag:** `ENABLE_STORED_SLUGS` (default: ON)
+**Runtime contract:** Stored slugs are permanently authoritative. There is no
+flag-off path that can silently revert public URLs to name-derived slugs.
 
 ---
 

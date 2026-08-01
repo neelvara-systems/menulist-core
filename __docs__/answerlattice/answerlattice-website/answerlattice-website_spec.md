@@ -1,7 +1,7 @@
 # AnswerLattice Website — Spec
 
-> **Version:** 1.3.7
-> **Last Updated:** 2026-07-29
+> **Version:** 1.3.9
+> **Last Updated:** 2026-07-31
 > **Audience:** CEO / PM / Marketing
 
 ---
@@ -27,20 +27,24 @@ The public acquisition flow is admitted only when all of these remain coherent:
 
 Public-facing marketing website for AnswerLattice at `answerlattice.com`. Serves as the primary discovery, demo, pricing, and onboarding surface for founder-led SaaS and digital-product teams considering AnswerLattice as a governed support layer: launch setup, in-product widget, hosted help, FAQs, changelog, ticket fallback, feedback review, private Support Board follow-up, approved answers, and reviewable support gaps.
 
+The first-use path remains optimized for a solo technical founder. Deeper pages may show how the same product supports a small team or a bounded product/support/engineering group inside a growing company. This progression must be taught as optional operating guidance, not as product modes, maturity scoring, or enterprise-readiness proof.
+
 ---
 
 ## Target Audience (ICP)
 
 | Attribute | Value |
 |-----------|-------|
-| Role | AI-native SaaS founder, solo digital-product founder, technical founder, small product operator, dev studio owner |
+| Role | Primary: AI-native SaaS founder, solo digital-product founder, technical founder. Secondary: selected support, product, and engineering operators sharing the same product truth. |
 | Business stage | Live, beta, or near-launch SaaS app or digital product with starter support truth |
 | Release cadence | Frequent product, plan, onboarding, billing, or settings changes |
-| Team size | Founder-led or small team before a dedicated support team |
+| Team size | One founder by default; small teams and bounded cross-functional product groups when support ownership or answer risk grows |
 | Pain | Support answers drift as the product changes, and users need help on exact product pages |
 | Current tools | Existing docs, FAQs, changelogs, tickets, AI-generated setup notes, or rough starter answers |
 
 Public fit and setup copy must not imply founders need existing support volume before starting. Eligibility language should include live, beta, and near-launch products with a working app, launch path, and starter support truth. Use "expected or recurring questions" when describing launch preparation; reserve "repeated questions" for specific FAQ, support-gap, and review-loop capabilities rather than buyer qualification gates.
+
+Company headcount is not a capability claim. A company of roughly 100 people may be a fit when a bounded group operates AnswerLattice for one product, but the public site must not infer seat capacity or claim unverified SAML, SCIM, contractual service levels, certifications, procurement readiness, workforce management, omnichannel routing, or contact-center replacement.
 
 ## Brand and Domain Requirements
 
@@ -265,6 +269,7 @@ Stability:
 **Sections:**
 - Product-area entry cards for Set Up Support, In-App Help Widget, Help Center and Tickets, and Review Approved Answers
 - Animated resource path from evaluation to rollout
+- Progressive operating guide for Start, Coordinate, and Govern
 - Start guide
 - Widget install guide
 - Support Board guide
@@ -282,6 +287,7 @@ Stability:
 - Article copy must not claim perfect answer behavior, guaranteed ticket reduction, autonomous support, helpdesk replacement, public voting, automatic publishing, SOC/GDPR status, ratings/reviews, or competitor rankings.
 
 Resource article routes:
+- `/resources/answerlattice-operating-guide`
 - `/resources/launch-support-checklist`
 - `/resources/pre-onboarding-source-package`
 - `/resources/safe-page-context`
@@ -454,7 +460,7 @@ Rules:
 
 The website may emit optional Plausible and GA/measurement events after analytics consent. Plausible loads only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` is configured. GA4 loads only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` is configured with the GA4 `G-...` measurement-id shape. Tracking is client-only and does not write to Firestore.
 
-Existing `data-answerlattice-event` CTA names are forwarded to Plausible as property-free custom events and to GA4 with website context when GA4 is configured. Answerlattice website analytics URL minimization boundary: GA4 page-location, click-link, resource target, referrer, and entry-page URL fields must strip query strings and hash fragments before emission. Resource/referrer events may include page, entry-page, referrer, UTM, slug, and target URL context in GA4, but they must not send raw full URLs, a custom repo-generated session identifier, API key material, or token prefixes to third-party website analytics.
+Existing `data-answerlattice-event` CTA names are forwarded to Plausible as property-free custom events and to GA4 with website context when GA4 is configured. Answerlattice website analytics URL minimization boundary: same-site GA4 page-location, click-link, resource target, and entry-page fields must strip query strings and hash fragments; external links retain origin only. Resource/referrer events may include page, entry-page, an allowlisted referrer group, compact UTM tokens, slug, and minimized target URL context in GA4, but they must not send raw external referrer hosts/paths, arbitrary query text, full URLs, a custom repo-generated session identifier, API key material, or token prefixes to third-party website analytics.
 
 ## Agent-Readable Website Context
 
@@ -644,6 +650,7 @@ Get Started → signs in → creates workspace → lands in Activation Command C
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-07-29 | 1.3.7 | Required the connected owner-decision website path across Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and public article topic maps while retaining the compressed homepage and zero-cost static public boundary. |
+| 2026-07-31 | 1.3.9 | Added one static progressive-adoption path for solo founders, small teams, and bounded product groups; preserved the founder-first homepage and prohibited workspace modes, maturity scoring, and unsupported enterprise claims. |
 | 2026-07-19 | 1.3.2 | Required the governed-support category, operation-level support-credit parity, shared retention wording, explicit AI-provider no-training/zero-retention non-claims, and source-bounded operating/legal terms. |
 | 2026-07-11 | 1.3.0 | Required full governance-event demo proof, INR/USD plan-accurate onboarding, and factual trust/provider/retention disclosures with explicit non-claim boundaries |
 | 2026-07-05 | 1.2.96 | Required Answerlattice website analytics URL minimization for GA4 page-location, click-link, resource target, referrer, and entry-page fields while preserving consent-gated client-only analytics |

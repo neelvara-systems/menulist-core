@@ -64,7 +64,7 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
         const responseBody = await readJsonResponseWithLimit<unknown>(
             response,
             OWNER_REFERRAL_CAPTURE_RESPONSE_MAX_BYTES,
-        ).catch(() => null);
+        ).catch((): null => null);
         return response.ok && isSuccessfulCaptureResponse(responseBody);
     };
 

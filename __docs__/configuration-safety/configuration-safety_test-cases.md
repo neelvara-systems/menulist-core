@@ -14,5 +14,7 @@
 | Rollout `25` with bucket `24` | admitted |
 | Rollout `25` with bucket `25` | rejected |
 | Rollout outside 0–100 | startup diagnostic; runtime clamp |
+| Non-Vercel production with a missing required variable | bounded diagnostic and startup exception |
+| Vercel production/build with a missing required variable | bounded diagnostic; deliberate log-only build exception |
 | Shorthand product env prefix in maintained template | verifier failure |
 | Secret-like private field under `NEXT_PUBLIC_*` | verifier failure |

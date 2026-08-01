@@ -98,6 +98,7 @@ service cloud.firestore {
     match /answerlattice_auditLogs/{docId} {
       allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
       allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance')
+        && isValidAnswerlatticeClientAuditLog(request.resource.data)
         && !isAnswerlatticeServerReservedAuditAction(request.resource.data);
       allow update, delete: if false;
     }
@@ -1120,6 +1121,41 @@ service cloud.firestore {
         ].toSet().hasAny([data.action]);
     }
 
+    function isValidAnswerlatticeClientAuditLog(data) {
+      return data.keys().hasAll([
+          'action',
+          'entityType',
+          'entityId',
+          'performedBy',
+          'timestamp',
+          'pId',
+          'tId',
+          'sId',
+          'uId'
+        ])
+        && (
+          string(data.uId) == string(request.auth.uid)
+          || string(data.uId) == string(request.auth.token.get('uId', null))
+        )
+        && data.action is string
+        && data.action.size() > 0
+        && data.action.size() <= 180
+        && data.entityType is string
+        && data.entityType.size() > 0
+        && data.entityType.size() <= 180
+        && data.entityId is string
+        && data.entityId.size() > 0
+        && data.entityId.size() <= 180
+        && data.performedBy is string
+        && data.performedBy == string(data.uId)
+        && data.performedBy.size() > 0
+        && data.performedBy.size() <= 180
+        && data.timestamp is timestamp
+        && data.timestamp == request.time
+        && (!data.keys().hasAny(['previousState']) || data.previousState == null || data.previousState is map)
+        && (!data.keys().hasAny(['newState']) || data.newState == null || data.newState is map);
+    }
+
     function isAnswerlatticeSelfActor(data) {
       return data.keys().hasAll(['uId'])
         && (
@@ -1331,9 +1367,13 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['surfaceAssignedAt', 'modifiedBy', 'modifiedOn'])
         && (request.resource.data.surfaceAssignedAt == null || request.resource.data.surfaceAssignedAt is timestamp)
         && request.resource.data.modifiedBy is string
-        && request.resource.data.modifiedBy.size() > 0
+        && (
+          request.resource.data.modifiedBy == request.auth.uid
+          || request.resource.data.modifiedBy == request.auth.token.get('uId', '')
+        )
         && request.resource.data.modifiedBy.size() <= 200
         && request.resource.data.modifiedOn is timestamp
+        && request.resource.data.modifiedOn == request.time
         && (
           (
             request.resource.data.contextKey == null
@@ -1344,8 +1384,12 @@ service cloud.firestore {
           )
           || (
             request.resource.data.surfaceAssignedBy is string
-            && request.resource.data.surfaceAssignedBy.size() > 0
+            && (
+              request.resource.data.surfaceAssignedBy == request.auth.uid
+              || request.resource.data.surfaceAssignedBy == request.auth.token.get('uId', '')
+            )
             && request.resource.data.surfaceAssignedAt is timestamp
+            && request.resource.data.surfaceAssignedAt == request.time
           )
         );
     }

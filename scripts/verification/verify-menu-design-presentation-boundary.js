@@ -64,7 +64,13 @@ const desktopSettings = read('src/components/templates/main-app/projects/b2cView
 const mobileDesign = read('src/components/mobile/screens/MobileDesignEditorScreen.tsx');
 const publicMenu = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
 const exportedMenuOutput = read('src/components/templates/main-app/projects/b2cView/output/MenuPage.tsx');
+const decisionBlocks = read('src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx');
 const pdpModal = read('src/components/templates/main-app/projects/b2cView/output/PDPModal.tsx');
+const publicMenuRoute = read('src/app/client/[[...slug]]/page.tsx');
+const publicMenuRenderer = read('src/components/templates/website/mainContentRenderer/index.tsx');
+const publicMenuShell = read('src/components/templates/website/clientWebsite/index.tsx');
+const publicCurrency = read('src/lib/pricing/publicCurrency.ts');
+const publicAccent = read('src/lib/obp/accentColor.ts');
 const publicPricePresentation = read('src/lib/pricing/publicItemPricePresentation.ts');
 const publicMenuBackground = read('src/lib/menu/publicMenuBackground.ts');
 const b2cContainer = read('src/components/templates/main-app/projects/b2cView/index.tsx');
@@ -104,18 +110,18 @@ requireToken(
   "[MenuMood.FAST]: [MenuLayout.LIST]",
   "export function normalizeMenuMood(value: unknown): MenuMood",
   "Object.prototype.hasOwnProperty.call(MENU_MOODS, normalizedValue)",
-  "export function normalizeMenuLayout(value: unknown, mood: MenuMood): MenuLayout",
+  "export function normalizeMenuLayout(value: unknown, mood: unknown): MenuLayout",
   "Object.prototype.hasOwnProperty.call(MENU_LAYOUTS, normalizedValue)",
   "return getDefaultLayout(mood);",
-  "const hasLegacyTabsLayout = typeof rawConfig.layout === 'string'",
+  "const hasLegacyTabsLayout = typeof rawLayout === 'string'",
   "const safeAccent = enforceContrast(",
   "const safePriceColor = enforceContrast(",
 ].forEach((token) => requireToken(designSystem, token, 'B2C design system'));
 [
-  "showItemPrices: typeof rawConfig.showItemPrices === 'boolean' ? rawConfig.showItemPrices : true",
-  "showImages: typeof rawConfig.showImages === 'boolean' ? rawConfig.showImages : true",
-  "showCategoryIcons: typeof rawConfig.showCategoryIcons === 'boolean' ? rawConfig.showCategoryIcons : true",
-  "showCategoryTabs: typeof rawConfig.showCategoryTabs === 'boolean' ? rawConfig.showCategoryTabs : hasLegacyTabsLayout",
+  "showItemPrices: typeof rawShowItemPrices === 'boolean' ? rawShowItemPrices : true",
+  "showImages: typeof rawShowImages === 'boolean' ? rawShowImages : true",
+  "showCategoryIcons: typeof rawShowCategoryIcons === 'boolean' ? rawShowCategoryIcons : true",
+  "showCategoryTabs: typeof rawShowCategoryTabs === 'boolean' ? rawShowCategoryTabs : hasLegacyTabsLayout",
 ].forEach((token) => requireToken(designSystem, token, 'B2C design boolean normalization'));
 forbidToken(designSystem, 'showCategoryTabs: rawConfig.showCategoryTabs ?? hasLegacyTabsLayout', 'B2C design loose boolean normalization');
 requireOrder(
@@ -136,7 +142,7 @@ requireOrder(
   "MenuLayout.CARD,",
   "export const getOwnerSelectableMenuLayouts = (mood?: MenuMood): MenuLayout[] =>",
   "return OWNER_SELECTABLE_MENU_LAYOUTS.filter((layout) => compatibleLayouts.includes(layout));",
-  "export const getPreferredMenuLayoutForMood = (mood: MenuMood): MenuLayout =>",
+  "export const getPreferredMenuLayoutForMood = (mood: unknown): MenuLayout =>",
   "export const getMenuDesignPresetPatch = (preset: MenuDesignPreset) => ({",
 ].forEach((token) => requireToken(designPresets, token, 'B2C design preset helpers'));
 forbidToken(designPresets, "MenuLayout.TABS,", 'Owner selectable design preset helpers');
@@ -222,7 +228,20 @@ forbidToken(mobileDesign, 'note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim()', 'Mo
   "formatMenuPrice(attribute.price as string | number, currencySymbol, { fractionDigits: 2 })",
   "parseSingleMenuPrice(item.price) ?? undefined",
   "aria-label={isAvailable ? itemName : `${itemName}, ${unavailableLabel}`}",
+  "const hiddenScheduledCategories = useMemo(",
+  "if (!categoriesById.has(categoryId))",
+  "items={visibleItems}",
+  "const openingMessage = getCategoryOpeningMessage(category)",
+  "60000 - (Date.now() % 60000) + 25",
+  "resolvePublicMenuCurrencyCode(storeDetails?.currencyCode)",
+  "storeDetails?.currencySymbol,\n        storeDetails?.currencyCode,",
+  "fontSize: isCompactGrid ? 13 : isMobile ? 14 : 13",
 ].forEach((token) => requireToken(publicMenu, token, 'Public B2C menu output'));
+requireToken(
+  decisionBlocks,
+  'if (!category) return false;',
+  'Public Decision Blocks missing-category rejection',
+);
 [
   'const activePriceAttributes = getActivePublicItemPriceAttributes(item);',
   'const itemListPriceLabel = getPublicItemListPriceLabel(item, currencySymbol);',
@@ -238,6 +257,50 @@ forbidToken(publicMenu, 'showItemPrices && !item.attributes?.length', 'Public B2
 forbidToken(publicMenu, 'height: items.length * 88', 'Public B2C unstable large-menu placeholder');
 forbidToken(publicMenu, 'visibleCategoryIds', 'Public B2C category deep-link placeholder state');
 forbidToken(publicMenu, 'opacity: 0.88', 'Public B2C price contrast reduction');
+forbidToken(publicMenu, 'document.activeElement.blur()', 'Public B2C item detail focus destruction');
+[
+  'const PDP_FOCUSABLE_SELECTOR = [',
+  'const hasStructuredMetadata = (',
+  'const isOpen = Boolean(item);',
+  'ref={dialogRef}',
+  'ref={closeButtonRef}',
+  'dialogRef.current.querySelectorAll<HTMLElement>(PDP_FOCUSABLE_SELECTOR)',
+  'if (!dialogRef.current.contains(activeElement))',
+  'focusTarget.focus({ preventScroll: true });',
+  '{hasStructuredMetadata && (',
+].forEach((token) => requireToken(pdpModal, token, 'Public B2C item detail accessibility'));
+forbidToken(
+  pdpModal,
+  '(allergens.length || dietaryTags.length || spiceLevel || duration || targetAudience || skillLevel || materials || warranty || nutritionBadges.length)',
+  'Public B2C numeric metadata render condition',
+);
+[
+  "export const DEFAULT_PUBLIC_MENU_CURRENCY_CODE = 'INR';",
+  'export function resolvePublicMenuCurrencyCode',
+  'export function resolvePublicMenuCurrencySymbol',
+].forEach((token) => requireToken(publicCurrency, token, 'Public menu currency truth'));
+requireToken(
+  publicMenuRoute,
+  'const currencyCode = resolvePublicMenuCurrencyCode(storeData?.currencyCode);',
+  'Public menu structured-data currency truth',
+);
+requireToken(
+  publicMenuRoute,
+  'currenciesAccepted: currencyCode,',
+  'Public menu structured-data accepted currency truth',
+);
+requireToken(
+  publicAccent,
+  'export function resolvePublicMenuAccentColor',
+  'Public menu accent precedence',
+);
+[
+  'resolvePublicMenuAccentColor(',
+  'storeDetails?.publicPresence,',
+].forEach((token) => {
+  requireToken(publicMenuRenderer, token, 'Public menu renderer OBP accent fallback');
+  requireToken(publicMenuShell, token, 'Public menu customer-app OBP accent fallback');
+});
 [
   'const activePriceAttributes = useMemo(',
   'getActivePublicItemPriceAttributes(item)',
@@ -309,6 +372,7 @@ function verifyRuntimeDesignBoundary() {
   const {
     MENU_DESIGN_PRESETS,
     getPreferredMenuLayoutForMood,
+    getRecommendedMenuDesignPresets,
   } = require(path.join(root, 'src/lib/menu/menuDesignPresets.ts'));
   const { getContrastRatio } = require(path.join(root, 'src/lib/colorEnforcement.ts'));
   const {
@@ -390,6 +454,28 @@ function verifyRuntimeDesignBoundary() {
   const legacyTabs = resolveMenuDesignConfig({ layout: 'tabs', mood: 'warm' });
   if (legacyTabs.layout !== MenuLayout.LIST || legacyTabs.showCategoryTabs !== true) {
     failures.push('Legacy tabs must preserve navigation intent while normalizing structural layout');
+  }
+  let designAccessorCalls = 0;
+  const accessorConfig = {
+    mood: 'warm',
+    get internalOwnerNote() {
+      designAccessorCalls += 1;
+      throw new Error('unknown persisted design accessors must not execute');
+    },
+  };
+  const projectedAccessorConfig = resolveMenuDesignConfig(accessorConfig);
+  if (designAccessorCalls !== 0 || Object.prototype.hasOwnProperty.call(projectedAccessorConfig, 'internalOwnerNote')) {
+    failures.push('Design config projection must omit unknown fields without executing accessors');
+  }
+  const servicePresets = getRecommendedMenuDesignPresets({
+    businessType: 'storage service',
+    businessCategory: 'service',
+  });
+  if (servicePresets[0]?.key !== 'clean-service') {
+    failures.push('Non-canonical substring business types must not override canonical category presets');
+  }
+  if (getRecommendedMenuDesignPresets({ businessType: { value: 'Restaurant' } })[0]?.key !== 'clean-service') {
+    failures.push('Malformed non-scalar business types must use safe default presets');
   }
 
   const priceItem = {

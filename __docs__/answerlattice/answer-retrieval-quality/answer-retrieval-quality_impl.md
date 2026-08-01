@@ -7,7 +7,7 @@
 | Question admission | Public API, widget, and authenticated Help Center routes enforce their existing auth, rate-limit, origin, body-size, and scope contracts. |
 | Canonical retrieval | `canonicalRetrieval.ts` resolves exact-scoped entities, versions, plan, role, state, governance state, evidence, and confidence. |
 | Fallback control | `searchCore.ts` stops on governed review/scope/unavailable outcomes and uses FAQ/RAG only for ordinary canonical misses. |
-| Public projection | `publicAnswerContracts.ts` strips private evidence and validates citation URLs, fallback reasons, and clarification fields. The dedicated Functions mirror applies the same separated/camel/compact sensitive-query-key policy before immutable public bundle creation. |
+| Public projection | `publicAnswerContracts.ts` strips private evidence and validates citation URLs, fallback reasons, and clarification fields. The app and dedicated Functions boundaries both reject the complete IPv6 link-local (`fe80::/10`) and deprecated site-local (`fec0::/10`) ranges in addition to their existing local/private/reserved host and separated/camel/compact sensitive-query-key policy. |
 | Persistence | Search history and chat sessions retain only public citation projections and bounded clarification metadata. |
 | Fast path | Redis instant cache uses `canon:v5`, hashes normalized query, complete context and raw applicability key segments, validates untrusted payloads, and stores evaluated confidence plus public citations. Graph-aware selection bypasses Redis until graph state has an authoritative version. |
 | Review | Canonical editor and mutation review expose reviewer-controlled public links while showing only private evidence counts. |
@@ -53,7 +53,7 @@ The Redis namespace is `canon:v5`. It supersedes `canon:v4` by adding hashed nor
 | Missing required plan/role/state | Structured clarification plus safe fallback |
 | Scope mismatch | Safe abstention; no generic answer substitution |
 | Drift or review required | Governed fallback and review signal path |
-| Unsafe public citation | Rejected at governance/storage parse or omitted at public projection, including camel-case and compact secret query keys |
+| Unsafe public citation | Rejected at governance/storage parse or omitted at public projection, including full IPv6 link/site-local ranges plus camel-case and compact secret query keys |
 | Cache unavailable or stale | Live retrieval continues with bounded diagnostics |
 | Canonical retrieval unavailable | Explicit safe fallback; no RAG override |
 | No canonical match | Existing FAQ then bounded RAG path may continue |

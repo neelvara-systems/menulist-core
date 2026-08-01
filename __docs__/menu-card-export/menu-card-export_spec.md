@@ -93,7 +93,8 @@ The live code already proves demand and a basic path:
 - `src/components/mobile/components/MobileMenuCommandSheet.tsx:185` exposes Print Menu inside the mobile Menu command sheet.
 - `src/components/mobile/screens/MobileMenuScreen.tsx:2742` starts the mobile Menu route handoff, and `src/components/mobile/screens/MobileMenuScreen.tsx:2749` saves pending mobile menu edits before leaving for Print Menu.
 - `src/components/mobile/screens/MobileMoreScreen.tsx:442` exposes Print Menu inside More > Modules beside Dashboard for discovery.
-- `src/config/features.ts:1666` already gates the predecessor with `ENABLE_PDF_SURFACE`.
+- The predecessor PDF adapter is always available; `ENABLE_MENU_CARD_EXPORT`
+  gates the canonical routed Print Menu workflow.
 - `__docs__/pdf-surface/pdf-surface_spec.md:34` explicitly says "No new UI surface" for the predecessor; this successor feature intentionally changes that with a dedicated route.
 
 ---

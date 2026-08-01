@@ -61,7 +61,7 @@ function hasActionHint(actionText: string, primaryAction: BookingInquiryPrimaryA
 }
 
 function hasResponseTimeHint(value: string): boolean {
-  return /(?:\breply\b|\bresponse\b|\brespond\b|\bwithin\b|\bminutes?\b|\bhours?\b|\btoday\b|\btomorrow\b|\bcall back\b|\bconfirm\b|\bconfirmation\b|\bavailable\b|\bslot\b)/i.test(value);
+  return /(?:\bwe\s+(?:will\s+)?(?:reply|respond|call back|contact|confirm)\b|\brepl(?:y|ies)\s+(?:within|in|by|during)\b|\bresponse\s+(?:within|in|by|time)\b|\bwithin\s+\d+\s*(?:minutes?|hours?|days?)\b|\bsubject to availability\b|\bavailability\s+(?:will be |is )?confirmed\b)/i.test(value);
 }
 
 function hasHoursHint(value: string): boolean {
@@ -69,15 +69,15 @@ function hasHoursHint(value: string): boolean {
 }
 
 function hasFallbackContactHint(value: string): boolean {
-  return /(?:\bcall\b|\bphone\b|\bwhatsapp\b|\bmessage\b|\bemail\b|\bcontact\b|\bhelp\b|\bsupport\b|\+?\d[\d\s().-]{7,}\d)/i.test(value);
+  return /(?:(?:\bif\b|\bwhen\b|\botherwise\b|\balternatively\b|\bor\b).{0,60}\b(?:call|phone|whatsapp|message|email|contact|help|support)\b|\b(?:call|phone|whatsapp|message|email|contact)\b.{0,40}\b(?:instead|for help|if needed|as a fallback)\b)/i.test(value);
 }
 
 function hasConfirmationHint(value: string): boolean {
-  return /(?:\bconfirm\b|\bconfirmation\b|\bconfirmed\b|\bwe will call\b|\bwe will message\b|\bsubject to availability\b|\bslot\b|\bnot final\b|\bwait for\b)/i.test(value);
+  return /(?:\bconfirm\b|\bconfirmation\b|\bconfirmed\b|\bwe will call\b|\bwe will message\b|\bsubject to availability\b|\bnot final\b|\bwait for\b)/i.test(value);
 }
 
 function hasLocationOrServiceAreaHint(value: string): boolean {
-  return /(?:\baddress\b|\blocation\b|\bdirections?\b|\bnear\b|\bservice area\b|\bdelivery area\b|\bvisit\b|\bbranch\b|\bcity\b|\barea\b|\bpin code\b|\bpincode\b|\bzip\b)/i.test(value);
+  return /(?:\baddress\b|\blocation\b|\bdirections?\b|\bnear\b|\bservice area\b|\bdelivery area\b|\bbranch\b|\bpin code\b|\bpincode\b|\bzip\b|\b(?:located|based|serving|available)\s+(?:in|at|near)\b)/i.test(value);
 }
 
 function getBookingInquiryEvidenceText(evidence: BookingInquiryReadinessEvidence): string {

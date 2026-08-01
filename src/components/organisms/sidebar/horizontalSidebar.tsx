@@ -15,7 +15,7 @@ import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useContext, useEffect, useState } from 'react';
+import { type ReactNode, useContext, useEffect, useState } from 'react';
 import { LuArrowBigDown } from 'react-icons/lu';
 import { MdDarkMode, MdLightMode, MdOutlineSettingsSuggest } from 'react-icons/md';
 import { TbPhoneCalling } from 'react-icons/tb';
@@ -30,7 +30,7 @@ const HorizontalSidebarComponent = () => {
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
     const router = useRouter()
-    const [activeNav, setActiveNav] = useState<any[]>([]);
+    const [activeNav, setActiveNav] = useState<string[]>([]);
     const [supportPopoverOpen, setSupportPopoverOpen] = useState(false);
     const isDarkMode = useAppSelector(getDarkModeState);
     const pathname = usePathname()
@@ -56,8 +56,18 @@ const HorizontalSidebarComponent = () => {
     const hasPaidAccess = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasPaidAccess);
 
-    const getMenuItems = () => {
-        const menuCopy = [];
+    type HorizontalMenuItem = {
+        children?: HorizontalMenuItem[] | null;
+        className: string;
+        icon: ReactNode;
+        key: string;
+        label: ReactNode;
+        popupClassName?: string;
+        route: string;
+    };
+
+    const getMenuItems = (): HorizontalMenuItem[] => {
+        const menuCopy: HorizontalMenuItem[] = [];
         const navFeatureAllowed = (nav: NavItemType) => {
             if (nav.route === NAVIGARIONS_ROUTINGS.PLATFORM_ENTITY_BLOCKS) {
                 return FEATURE_FLAGS.ENABLE_PLATFORM_ENTITY_BLOCKS;
@@ -118,13 +128,13 @@ const HorizontalSidebarComponent = () => {
                 return;
             }
 
-            const navItem: any = {
+            const navItem: HorizontalMenuItem = {
                 key: nav.label,
                 label: tNav(nav.label as any),
                 icon: <nav.icon />,
                 route: `${nav.route}`,
                 children: Boolean(visibleSubNav?.length) ?
-                    visibleSubNav.map((subnav: NavItemType, subIndex: number) => {
+                    (visibleSubNav ?? []).map((subnav: NavItemType) => {
                         return {
                             key: `${nav.label}-${subnav.label}`,
                             label: tNav(subnav.label as any),
@@ -142,12 +152,12 @@ const HorizontalSidebarComponent = () => {
     }
 
     useEffect(() => {
-        let currentNav, currentSubNav;
-        getMenuItems().map((nav: any, index: number) => {
+        let currentNav: HorizontalMenuItem | undefined;
+        let currentSubNav: HorizontalMenuItem | undefined;
+        getMenuItems().forEach((nav) => {
             //second level sub nav clicked
             if (Boolean(nav?.children?.length)) {
-                nav.children.map((subnav: NavItemType, subIndex: number) => {
-                    subnav.active = false
+                nav.children?.forEach((subnav) => {
                     if (pathname == `${subnav.route}`) {
                         // nav.showSubNav = true;
                         currentSubNav = subnav;
@@ -165,13 +175,15 @@ const HorizontalSidebarComponent = () => {
             } else {
                 setActiveNav([currentNav.key])
             }
+        } else {
+            setActiveNav([]);
         }
     }, [pathname, platformRole, canManageLocations, hasStarterAccess, userPermissions])
 
-    const onClickNav: MenuProps['onClick'] = (menu: any) => {
-        getMenuItems().map((nav: any) => {
+    const onClickNav: MenuProps['onClick'] = (menu) => {
+        getMenuItems().forEach((nav) => {
             if (Boolean(nav?.children?.length)) {
-                nav.children.map((subnav: NavItemType) => {
+                nav.children?.forEach((subnav) => {
                     if (subnav.key == menu.key) {
                         // activeSubNav = subnav;
                         // activeNav = nav;

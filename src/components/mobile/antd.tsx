@@ -33,12 +33,26 @@ import {
 } from 'antd';
 import type { MessageInstance } from 'antd/es/message/interface';
 import { useLocale } from 'next-intl';
-import type { ComponentProps, CSSProperties, KeyboardEvent as ReactKeyboardEvent, MouseEvent, ReactElement, ReactNode } from 'react';
-import { Children, createContext, Fragment, isValidElement, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+    ComponentProps,
+    CSSProperties,
+    FocusEvent,
+    KeyboardEvent as ReactKeyboardEvent,
+    MouseEvent,
+    ReactElement,
+    ReactNode,
+    TouchEvent,
+} from 'react';
+import { Children, createContext, isValidElement, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LuArrowLeft, LuCheck, LuChevronRight, LuSearch, LuX } from 'react-icons/lu';
 
-type AnyStyle = CSSProperties & Record<string, any>;
+type CustomStyleProperty = `--${string}`;
+type CustomStyle = CSSProperties & Partial<Record<CustomStyleProperty, string | number>>;
+type AnyStyle = CSSProperties | CustomStyle;
+interface NavigatorWithStandalone extends Navigator {
+    standalone?: boolean;
+}
 const { Text: AntText, Title } = Typography;
 type MobileSheetContextValue = {
     fullHeight: boolean;
@@ -67,7 +81,7 @@ function showToastWithApi(
     });
 }
 
-export function MobileAntdAppBridge() {
+export function MobileAntdAppBridge(): null {
     const { message } = AntApp.useApp();
 
     useEffect(() => {
@@ -126,12 +140,22 @@ function unlockMobileBackgroundScroll() {
 
 function sanitizeStyle(style?: AnyStyle) {
     if (!style) return undefined;
-    const next: Record<string, any> = {};
+    const next: Record<string, unknown> = {};
     Object.entries(style).forEach(([key, value]) => {
         if (key.startsWith('--') || value === undefined) return;
         next[key] = value;
     });
     return next as CSSProperties;
+}
+
+function customStyleValue(
+    style: AnyStyle | undefined,
+    property: CustomStyleProperty,
+): string | number | undefined {
+    if (!style) return undefined;
+    const styleObject: object = style;
+    const value: unknown = Reflect.get(styleObject, property);
+    return typeof value === 'string' || typeof value === 'number' ? value : undefined;
 }
 
 function withSafeAreaBottomPadding(value: string | number | undefined, fallback: number) {
@@ -325,7 +349,8 @@ export const Empty = AntEmpty;
 
 export function FloatingBubble({ ariaLabel, children, onClick, style }: { ariaLabel?: string; children?: ReactNode; onClick?: () => void; style?: AnyStyle }) {
     const { token } = theme.useToken();
-    const bubbleStyle = style || {};
+    const requestedBackground = customStyleValue(style, '--background');
+    const background = typeof requestedBackground === 'string' ? requestedBackground : token.colorPrimary;
     return (
         <FloatButton
             aria-label={ariaLabel}
@@ -337,13 +362,13 @@ export function FloatingBubble({ ariaLabel, children, onClick, style }: { ariaLa
             onClick={onClick}
             type="primary"
             style={{
-                backgroundColor: bubbleStyle['--background'] || token.colorPrimary,
-                borderColor: bubbleStyle['--background'] || token.colorPrimary,
-                bottom: bubbleStyle['--initial-position-bottom'] || 76,
+                backgroundColor: background,
+                borderColor: background,
+                bottom: customStyleValue(style, '--initial-position-bottom') || 76,
                 color: token.colorTextLightSolid,
-                height: bubbleStyle['--size'] || 52,
-                insetInlineEnd: bubbleStyle['--initial-position-right'] || 16,
-                width: bubbleStyle['--size'] || 52,
+                height: customStyleValue(style, '--size') || 52,
+                insetInlineEnd: customStyleValue(style, '--initial-position-right') || 16,
+                width: customStyleValue(style, '--size') || 52,
             }}
         />
     );
@@ -482,7 +507,7 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const standaloneMatch = window.matchMedia?.('(display-mode: standalone)')?.matches;
-        const navStandalone = (window.navigator as any)?.standalone === true;
+        const navStandalone = (window.navigator as NavigatorWithStandalone).standalone === true;
         setIsPwa(Boolean(standaloneMatch || navStandalone));
     }, []);
 
@@ -498,12 +523,12 @@ export function Popup({ bodyStyle, children, destroyOnClose, onMaskClick, visibl
     const popupMaxHeight = normalizeViewportHeight(maxHeight ?? '88vh');
     const popupMinHeight = normalizeViewportHeight(minHeight);
     const isFullHeightSheet = typeof popupHeight === 'string' && /100(dvh|svh|vh|%)$/.test(popupHeight.trim());
-    const popupContentStyle = {
+    const popupContentStyle: CSSProperties = {
         height: popupHeight,
         maxHeight: popupMaxHeight,
         minHeight: popupMinHeight,
     };
-    const popupBodyStyle = {
+    const popupBodyStyle: AnyStyle = {
         ...normalizedPadding,
         ...restDrawerStyle,
         height: undefined,
@@ -747,8 +772,87 @@ export function Popover({
     );
 }
 
-export function PullToRefresh({ children }: { children?: ReactNode; onRefresh?: () => Promise<void> | void }) {
-    return <Fragment>{children}</Fragment>;
+const MOBILE_PULL_REFRESH_THRESHOLD = 56;
+const MOBILE_PULL_REFRESH_MAX_DISTANCE = 80;
+
+export function PullToRefresh({ children, onRefresh }: { children?: ReactNode; onRefresh?: () => Promise<void> | void }) {
+    const startYRef = useRef<number | null>(null);
+    const pullDistanceRef = useRef(0);
+    const [pullDistance, setPullDistance] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const updatePullDistance = (nextDistance: number) => {
+        pullDistanceRef.current = nextDistance;
+        setPullDistance(nextDistance);
+    };
+
+    const resetPull = () => {
+        startYRef.current = null;
+        updatePullDistance(0);
+    };
+
+    const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+        if (!onRefresh || refreshing || event.touches.length !== 1) return;
+        const scrollContainer = event.currentTarget.closest<HTMLElement>('[data-mobile-shell-scroll="true"]');
+        const scrollTop = scrollContainer?.scrollTop ?? window.scrollY;
+        if (scrollTop > 0) return;
+        startYRef.current = event.touches[0]?.clientY ?? null;
+    };
+
+    const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
+        const startY = startYRef.current;
+        const currentY = event.touches[0]?.clientY;
+        if (startY === null || currentY === undefined) return;
+        const delta = currentY - startY;
+        if (delta <= 0) {
+            updatePullDistance(0);
+            return;
+        }
+        updatePullDistance(Math.min(MOBILE_PULL_REFRESH_MAX_DISTANCE, delta * 0.45));
+    };
+
+    const handleTouchEnd = () => {
+        const shouldRefresh = pullDistanceRef.current >= MOBILE_PULL_REFRESH_THRESHOLD;
+        resetPull();
+        if (!shouldRefresh || !onRefresh || refreshing) return;
+
+        setRefreshing(true);
+        void Promise.resolve()
+            .then(onRefresh)
+            .catch((error: unknown) => {
+                if (typeof globalThis.reportError === 'function') {
+                    globalThis.reportError(error);
+                }
+            })
+            .finally(() => {
+                setRefreshing(false);
+            });
+    };
+
+    return (
+        <div
+            onTouchCancel={resetPull}
+            onTouchEnd={handleTouchEnd}
+            onTouchMove={handleTouchMove}
+            onTouchStart={handleTouchStart}
+            style={{ minWidth: 0, overscrollBehaviorY: 'contain', width: '100%' }}
+        >
+            <Flex
+                align="center"
+                aria-hidden={!refreshing && pullDistance === 0}
+                justify="center"
+                style={{
+                    height: refreshing ? 36 : pullDistance,
+                    opacity: refreshing || pullDistance >= MOBILE_PULL_REFRESH_THRESHOLD ? 1 : pullDistance / MOBILE_PULL_REFRESH_THRESHOLD,
+                    overflow: 'hidden',
+                    transition: pullDistance === 0 ? 'height 160ms ease, opacity 160ms ease' : undefined,
+                }}
+            >
+                <Spin size="small" spinning={refreshing || pullDistance >= MOBILE_PULL_REFRESH_THRESHOLD} />
+            </Flex>
+            {children}
+        </div>
+    );
 }
 
 export function SearchBar({ onChange, placeholder, style, value }: { onChange?: (value: string) => void; placeholder?: string; style?: AnyStyle; value?: string }) {
@@ -789,23 +893,37 @@ type MultiSelectProps = BaseSelectProps & {
     value?: string[];
 };
 
-export function Select({
-    disabled,
-    maxCount,
-    mode,
-    onChange,
-    options,
-    placeholder,
-    showSearch = true,
-    style,
-    value,
-}: SingleSelectProps | MultiSelectProps) {
+type SelectImplementationProps = BaseSelectProps & {
+    maxCount?: number;
+    mode?: 'multiple';
+    onChange?: unknown;
+    value?: string | string[];
+};
+
+export function Select(props: SingleSelectProps): ReactElement;
+export function Select(props: MultiSelectProps): ReactElement;
+export function Select(props: SelectImplementationProps): ReactElement {
+    const {
+        disabled,
+        maxCount,
+        mode,
+        options,
+        placeholder,
+        showSearch = true,
+        style,
+        value,
+    } = props;
     const handleChange = (nextValue: string | string[]) => {
         if (typeof document !== 'undefined') {
             const activeElement = document.activeElement as HTMLElement | null;
             activeElement?.blur?.();
         }
-        onChange?.(nextValue as any);
+        if (typeof props.onChange !== 'function') return;
+        if (mode === 'multiple') {
+            if (Array.isArray(nextValue)) props.onChange(nextValue);
+        } else if (typeof nextValue === 'string') {
+            props.onChange(nextValue);
+        }
     };
 
     return (
@@ -1162,33 +1280,17 @@ export function Input({
         ...(style || {}),
     });
 
-    const focusTimeInput = (event: any) => {
+    const focusTimeInput = (event: FocusEvent<HTMLInputElement>) => {
         if (!isTemporalInput) return;
-        const target = event?.target as HTMLElement | null;
-        const currentTarget = event?.currentTarget as HTMLElement | null;
-
-        const inputEl =
-            (target instanceof HTMLInputElement ? target : target?.closest?.('input') as HTMLInputElement | null)
-            || (currentTarget?.querySelector?.('input') as HTMLInputElement | null)
-            || null;
-
-        if (!inputEl) return;
-        inputEl.focus();
+        event.currentTarget.focus();
     };
 
-    const openNativeTimePicker = (event: any) => {
+    const openNativeTimePicker = (event: MouseEvent<HTMLInputElement>) => {
         if (!isTemporalInput) return;
-        const target = event?.target as HTMLElement | null;
-        const currentTarget = event?.currentTarget as HTMLElement | null;
-        const inputEl =
-            (target instanceof HTMLInputElement ? target : target?.closest?.('input') as HTMLInputElement | null)
-            || (currentTarget?.querySelector?.('input') as HTMLInputElement | null)
-            || null;
-        if (!inputEl) return;
-
+        const inputEl = event.currentTarget;
         inputEl.focus();
         try {
-            (inputEl as any).showPicker?.();
+            inputEl.showPicker?.();
         } catch {
             // iOS/Safari or non-gesture contexts can reject showPicker; focus is sufficient fallback.
         }
@@ -1211,7 +1313,6 @@ export function Input({
             onBlur={() => void onBlur?.()}
             onClick={openNativeTimePicker}
             onChange={(event) => onChange?.(event.target.value)}
-            onInput={(event) => onChange?.((event.target as HTMLInputElement).value)}
             onFocus={focusTimeInput}
             placeholder={placeholder}
             step={step}
@@ -1266,7 +1367,7 @@ function TabsComponent({ activeKey, centered, children, onChange, style }: { act
     return <AntTabs activeKey={activeKey} centered={centered} items={items} onChange={(key) => onChange?.(normalizeTabKey(key, key))} style={sanitizeStyle(style)} />;
 }
 
-function TabPane(_: TabPaneProps) {
+function TabPane(_: TabPaneProps): null {
     return null;
 }
 
@@ -1358,7 +1459,7 @@ function CollapseComponent({
     return <AntCollapse accordion={accordion} activeKey={activeKey} defaultActiveKey={defaultActiveKey} expandIcon={expandIcon === null ? () => null : expandIcon} items={items} onChange={onChange} />;
 }
 
-function CollapsePanel(_: CollapsePanelProps) {
+function CollapsePanel(_: CollapsePanelProps): null {
     return null;
 }
 

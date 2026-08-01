@@ -40,9 +40,9 @@ export default function StoreSwitcher() {
         value: Number(store.storeId),
         label: (
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {store.isMaster ? <LuStar size={14} /> : <LuMapPin size={14} />}
+                {store.isMaster === true ? <LuStar size={14} /> : <LuMapPin size={14} />}
                 {resolveStoreName(store)}
-                {store.isMaster && <span style={{ fontSize: 11, opacity: 0.6 }}>(HQ)</span>}
+                {store.isMaster === true && <span style={{ fontSize: 11, opacity: 0.6 }}>(HQ)</span>}
             </span>
         ),
     }));

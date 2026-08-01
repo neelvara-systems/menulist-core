@@ -132,7 +132,9 @@ async function run(): Promise<void> {
 
     const cancelledJob = buildJob('shared-kb-cancelled');
     await jobs.doc(cancelledJob.id).set(cancelledJob);
-    let releaseGeneration: (() => void) | null = null;
+    let releaseGeneration: () => void = () => {
+        throw new Error('Generation release was not initialized.');
+    };
     const generationGate = new Promise<void>(resolve => { releaseGeneration = resolve; });
     const cancellationRun = startGenerationLogic(cancelledJob.id, cancelledJob, {
         generateKnowledge: async () => {
@@ -146,7 +148,6 @@ async function run(): Promise<void> {
         status: INGESTION_JOB_STATUS.CANCELLED,
         modifiedOn: Timestamp.now(),
     }, { merge: true });
-    assert(releaseGeneration, 'Generation release must be initialized.');
     releaseGeneration();
     await cancellationRun;
     const cancelled = (await jobs.doc(cancelledJob.id).get()).data() || {};

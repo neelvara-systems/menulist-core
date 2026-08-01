@@ -97,6 +97,9 @@ export const parseSignalDeskOutboundContactAuthority = (params: {
     const expiresAtMillis = timestampToMillis(rawContact.expiresAt);
     const lifecycleObservedAtMillis = timestampToMillis(rawContact.sourceDataObservedAt);
     const lifecycleExpiresAtMillis = timestampToMillis(rawContact.sourceDataExpiresAt);
+    if (typeof params.policy.expiresAt !== "string") {
+        throw new Error("SIGNALDESK_CONTACT_AUTHORITY_POLICY_EXPIRY_INVALID");
+    }
     const policyExpiresAtMillis = Date.parse(params.policy.expiresAt);
     const nowMillis = params.nowMillis ?? Date.now();
     const permissionEvidenceRef = contact.permissionEvidenceRef?.trim() || "";

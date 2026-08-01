@@ -1,5 +1,5 @@
 import { FEATURE_FLAGS } from '@config/features';
-import { assertProjectUpdateSucceeded, updateProjectMetadata, uploadFile } from '@database/projects';
+import { assertProjectUpdateSucceeded, updateProjectMetadata, uploadFile, type ProjectExpectedScope } from '@database/projects';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getMediaImageProfile } from '@lib/media/imageProfiles';
@@ -36,6 +36,7 @@ type ProjectImageCandidateParams = {
 };
 
 type GenerateAndSaveProjectImageParams = ProjectImageCandidateParams & {
+    expectedScope: ProjectExpectedScope;
     summaryData?: Partial<ProjectSummaryData> | null;
 };
 
@@ -596,7 +597,7 @@ export async function generateAndSaveProjectImageIfMissing(
         type: preparedCandidate.mimeType,
         uid: `${projectId}-generated-menu-cover`,
         url: preparedCandidate.dataUrl,
-    } as any, 'project-images');
+    } as any, 'project-images', params.expectedScope);
 
     if (!imageUrl) {
         return { skippedReason: 'upload-failed' };
@@ -605,7 +606,10 @@ export async function generateAndSaveProjectImageIfMissing(
     const metadataResult = await updateProjectMetadata(
         projectId,
         { projectImage: imageUrl },
-        { preserveExistingProjectImage: true },
+        {
+            expectedScope: params.expectedScope,
+            preserveExistingProjectImage: true,
+        },
     );
     assertProjectUpdateSucceeded(
         metadataResult,

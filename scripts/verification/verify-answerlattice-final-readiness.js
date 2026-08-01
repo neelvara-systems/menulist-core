@@ -28,7 +28,11 @@ const functionFlags = read('functions-answerlattice/src/constants/features.ts');
 const audit = read('__docs__/answerlattice/final-production-readiness-audit.md');
 
 assertIncludes(nextConfig, 'poweredByHeader: false', 'Next server identity header guard');
-assertIncludes(nextConfig, "distDir: process.env.NEXT_DIST_DIR || '.next'", 'Isolated release-build output support');
+assertIncludes(nextConfig, 'const resolveNextDistDir = (value) => {', 'Isolated release-build output boundary');
+assertIncludes(nextConfig, 'path.isAbsolute(candidate)', 'Isolated release-build absolute-path rejection');
+assertIncludes(nextConfig, 'resolved.startsWith(`${__dirname}${path.sep}`)', 'Isolated release-build repository containment');
+assertIncludes(nextConfig, 'fs.realpathSync(resolved)', 'Isolated release-build symlink containment');
+assertIncludes(nextConfig, 'distDir: resolveNextDistDir(process.env.NEXT_DIST_DIR)', 'Isolated release-build output support');
 assertExcludes(nextConfig, 'collected[normalizeAppRoute(rawRoute)]', 'Next App Router manifest compatibility');
 assertIncludes(csp, 'https://us-central1-answerlattice-qa.cloudfunctions.net', 'Answerlattice QA callable CSP origin');
 assertIncludes(csp, 'https://us-central1-answerlattice.cloudfunctions.net', 'Answerlattice production callable CSP origin');

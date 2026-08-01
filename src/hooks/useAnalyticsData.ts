@@ -3,10 +3,12 @@ import { getBusinessAnalyticsDateKey } from '@lib/analytics/businessDay';
 import { getAnalyticsSchedulerCacheKey } from '@lib/analytics/dateKey';
 import {
   getCachedData,
+  removeCachedData,
   setCachedData,
   shouldRevalidate,
 } from '@lib/cache/swrLocalStorageProvider';
 import { AnalyticsData, AnalyticsDateRange } from '@lib/analytics/types';
+import { normalizeAnalyticsData } from '@lib/analytics/readBoundary';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useContext, useMemo } from 'react';
 import useSWR from 'swr';
@@ -32,12 +34,15 @@ function createCacheKey(type: string, ...parts: Array<string | number | undefine
 async function cachedFetcher<T>(
   cacheKey: string,
   fetcher: () => Promise<T | null>,
+  normalizeCached: (value: unknown) => T | null,
   dayKey?: string,
 ): Promise<T | null> {
   if (!shouldRevalidate(cacheKey, dayKey)) {
-    const cached = getCachedData<T>(cacheKey, undefined, dayKey);
+    const cached = getCachedData<unknown>(cacheKey, undefined, dayKey);
     if (cached !== undefined) {
-      return cached;
+      const normalized = normalizeCached(cached);
+      if (normalized !== null) return normalized;
+      removeCachedData(cacheKey);
     }
   }
 
@@ -53,12 +58,15 @@ async function cachedFetcher<T>(
 async function cachedFetcherWithTTL<T>(
   cacheKey: string,
   fetcher: () => Promise<T | null>,
+  normalizeCached: (value: unknown) => T | null,
   maxAgeMs: number,
   dayKey?: string,
 ): Promise<T | null> {
-  const cached = getCachedData<T>(cacheKey, maxAgeMs, dayKey);
+  const cached = getCachedData<unknown>(cacheKey, maxAgeMs, dayKey);
   if (cached !== undefined) {
-    return cached;
+    const normalized = normalizeCached(cached);
+    if (normalized !== null) return normalized;
+    removeCachedData(cacheKey);
   }
 
   const data = await fetcher();
@@ -139,7 +147,7 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
     error,
     isLoading,
     mutate,
-  } = useSWR<AnalyticsData>(
+  } = useSWR<AnalyticsData | null>(
     canFetch ? ['analytics', 'optimized', tId, sId, projectId, effectiveRange.startDate, effectiveRange.endDate] : null,
     () => {
       const cacheKey = createCacheKey(
@@ -163,6 +171,7 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
             storeDetails?.timeZone,
             storeDetails?.businessDayEndTime,
           ),
+          normalizeAnalyticsData,
           600000,
           analyticsDayKey
         );
@@ -179,6 +188,7 @@ export const useAnalyticsData = (dateRange?: AnalyticsDateRange, projectId?: str
           storeDetails?.timeZone,
           storeDetails?.businessDayEndTime,
         ),
+        normalizeAnalyticsData,
         schedulerCacheKey
       );
     },

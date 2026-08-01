@@ -6,6 +6,7 @@ import {
     buildAnswerlatticeSignalMemoryDedupKey,
     buildAnswerlatticeSignalPayloadFingerprint,
     hashAnswerlatticeSignalIdentity,
+    normalizeAnswerlatticeSignalDeduplicationKey,
     normalizeExactAnswerlatticeSignalScopeId,
 } from '@lib/answerlattice/signalIdentity';
 import { sanitizeAnswerlatticeSignalMetadata } from '@lib/answerlattice/signalEmitter';
@@ -32,6 +33,8 @@ assert.notEqual(first, buildAnswerlatticeSignalDocumentId({
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: ' 1', sId: 101, deduplicationKey: 'x' }), null);
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: 1, sId: 101, deduplicationKey: '' }), null);
 assert.equal(buildAnswerlatticeSignalDocumentId({ tId: 1, sId: 101, deduplicationKey: 123 }), null);
+assert.equal(normalizeAnswerlatticeSignalDeduplicationKey(' ticket:1 '), 'ticket:1');
+assert.equal(normalizeAnswerlatticeSignalDeduplicationKey('   '), null);
 assert.equal(hashAnswerlatticeSignalIdentity('same'), hashAnswerlatticeSignalIdentity('same'));
 assert.equal(
     buildAnswerlatticeSignalMemoryDedupKey({ tId: 1, sId: 101, deduplicationKey: 'ticket:ticket-1' }),
@@ -181,6 +184,11 @@ assert.ok(!clientEmitter.includes('const sessionDedupKey = getDeduplicationKey(p
 assert.ok(clientEmitter.includes('resolutionEventId'));
 assert.ok(signalDal.includes('answerlattice_signal_replay_conflict'));
 assert.ok(signalDal.includes('buildAnswerlatticeSignalPayloadFingerprint'));
+assert.ok(signalDal.includes('resolveExactSessionPlatformRole(session)'));
+assert.ok(!signalDal.includes("session?.platformRole || session?.user?.platformRole"));
+assert.ok(signalDal.includes('value.tId !== scope.tId'));
+assert.ok(signalDal.includes('value.sId !== scope.sId'));
+assert.ok(signalDal.includes('dedupKey !== data.dedupKey'));
 assert.ok(clientEmitter.includes('Promise<boolean>'));
 assert.ok(publicSignalRoute.includes("request.headers.get('idempotency-key')"));
 assert.ok(publicSignalRoute.includes('IDEMPOTENCY_KEY_CONFLICT'));

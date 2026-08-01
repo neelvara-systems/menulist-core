@@ -2,13 +2,28 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** Source-implemented and hardened — not current launch or deploy certification
-**Last Updated:** July 26, 2026
+**Last Updated:** July 29, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
 ---
 
 ## Codebase Analysis — Current AI Architecture
+
+### Solved: Business Copy Project-Context Tenant Boundary
+
+Desktop and mobile Business Copy collect optional menu context through
+`getDefaultProjectAiContext()`. The browser-memory cache requires an exact
+canonical tenant/store scope and includes both identities in its key. Project
+summary and detail reads receive that captured expected scope, so a tenant or
+store switch fails before menu names, descriptions, categories, or items can
+be cached or sent to `/api/business-copy`.
+
+The lookup uses `getExistingProjectsListWithoutLoader()` rather than the
+management helper that creates a default menu. A store with no menu therefore
+returns empty context without a Firestore write. In-flight cache cleanup is
+promise-owned so an older request cannot clear a newer scope's deduplication
+slot.
 
 ### Solved: SDK Standardization (✅ Complete)
 

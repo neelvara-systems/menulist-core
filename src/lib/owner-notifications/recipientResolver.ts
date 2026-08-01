@@ -40,7 +40,11 @@ function cleanString(value?: unknown, maxLength = 160): string | undefined {
     return normalized ? normalized.slice(0, maxLength) : undefined;
 }
 
-function cleanPhone(value?: unknown, context?: Record<string, any> | null): string | undefined {
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function cleanPhone(value?: unknown, context?: Record<string, unknown> | null): string | undefined {
     const raw = cleanString(value, 64);
     if (!raw) return undefined;
 
@@ -63,7 +67,10 @@ export function normalizeMenuListOwnerNotificationScopeDocumentId(
     return normalizeOwnerNotificationNumericScopeDocumentId(value);
 }
 
-function resolveFirstPhone(context: Record<string, any> | null | undefined, ...values: unknown[]): string | undefined {
+function resolveFirstPhone(
+    context: Record<string, unknown> | null | undefined,
+    ...values: unknown[]
+): string | undefined {
     for (const value of values) {
         const phone = cleanPhone(value, context);
         if (phone) return phone;
@@ -140,7 +147,7 @@ export function resolveOwnerNotificationRecipient(
     const data = event.productId === PRODUCT_IDS.ANSWERLATTICE
         ? scope.workspaceData || {}
         : scope.storeData || {};
-    const settings = data.notificationSettings || {};
+    const settings = isRecord(data.notificationSettings) ? data.notificationSettings : {};
     const hints = event.recipientHints || {};
     const phoneContext = {
         countryCode: data.countryCode || settings.countryCode,

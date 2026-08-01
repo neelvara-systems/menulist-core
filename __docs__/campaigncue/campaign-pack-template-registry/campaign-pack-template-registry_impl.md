@@ -188,6 +188,12 @@ Runtime behavior: selecting a template hydrates its Storage payload only on clic
 
 Fact readiness is deterministic and conservative. Business name, locality, approved contacts, available catalog items/services, confirmed prices, current capacity signals, active/fresh source evidence, and rights-confirmed assets can satisfy their matching slots. Unknown slot types and unsupported claim/date/rights evidence remain unresolved. The runtime does not ask a model whether a fact exists.
 
+Workspace save admission validates summary and payload identity before any
+Storage upload or Firestore transaction. Business category, template id,
+schema version, workspace type/quality tier, and required/optional fact-slot
+metadata must agree. This prevents a successfully written index entry from
+later failing the same identity checks during hydration.
+
 If the owner chooses an output intent without selecting a template, CampaignCue creates a pack with the intent's bounded channel set through the same guarded campaign API. The `custom_size` intent opens the existing blank shared-editor flow instead of creating a new format marketplace or new persistence path.
 
 ## Search Behavior

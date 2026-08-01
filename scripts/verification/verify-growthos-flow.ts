@@ -843,6 +843,16 @@ assertCheck(
 );
 assertCheck(growthOSClientDal.includes("projectGrowthOSSummaryForScope(snap.data(), expectedScope)"), "GrowthOS browser DAL projects and corroborates returned summary scope");
 assertCheck(growthOSClientContracts.includes('["growthos-summary", scope.tId, scope.sId] as const'), "GrowthOS summary cache identity includes tenant and store");
+assertCheck(growthOSClientContracts.includes("projectGrowthOSKitForScope"), "GrowthOS persisted kit and response DTOs use an exact scope projector");
+assertCheck(growthOSClientContracts.includes("projectGrowthOSExportForScope"), "GrowthOS persisted export replays use an exact scope projector");
+assertCheck(growthOSClientContracts.includes("return new Date(millis).toISOString();"), "GrowthOS timestamps serialize to public ISO strings");
+assertCheck(growthOSServerDal.includes("projectGrowthOSKitForScope(existingKitSnap.data()"), "GrowthOS generation replay validates persisted kits");
+assertCheck(growthOSServerDal.includes("projectGrowthOSExportForScope(existingExportSnap.data()"), "GrowthOS export replay validates persisted exports");
+assertCheck(!growthOSServerDal.includes("snap.data() as GrowthOSKit"), "GrowthOS server reads must not assert raw kit documents");
+assertCheck(!growthOSServerDal.includes("snap.data() as Partial<GrowthOSExport>"), "GrowthOS server reads must not assert raw export documents");
+assertCheck(growthOSClientDal.includes("projectGrowthOSKitForScope(data.kit, scope)"), "GrowthOS client validates generated kit responses");
+assertCheck(growthOSClientDal.includes("projectGrowthOSSummaryForScope(data.summary, scope)"), "GrowthOS client validates mutation summary responses");
+assertCheck(!growthOSClientDal.includes("return payload as T"), "GrowthOS client must not trust generic JSON response types");
 assertCheck(growthOSReadiness.includes("export function getGrowthOSTimestampMillis(value: unknown)"), "GrowthOS expiry uses an unknown-input timestamp boundary");
 assertCheck(!growthOSReadiness.includes("expiresAt?: any"), "GrowthOS expiry no longer accepts an unchecked any boundary");
 assertCheck(deferredMatches.length === 0, "deferred GrowthOS scope has no provider, posting, offer, order, or ROI hooks", deferredMatches.join(", "));

@@ -1,7 +1,12 @@
-import { getProjectDataWithoutLoader, getProjectsListWithoutLoader } from '@database/projects';
+import { getExistingProjectsListWithoutLoader, getProjectDataWithoutLoader } from '@database/projects';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { firstText } from '@services/ai/businessCopy/utils';
+import {
+    normalizeDefaultProjectAiContextRequest,
+    type DefaultProjectAiContextRequest,
+    type DefaultProjectAiContextStoreInput,
+} from './defaultProjectAiContextBoundary';
 
 type DefaultProjectAiContext = {
     categories: string[];
@@ -19,46 +24,36 @@ let cachedAt = 0;
 let cachedPromise: Promise<DefaultProjectAiContext | null> | null = null;
 let cachedPromiseKey = '';
 
-function buildCacheKey(storeDetails?: any) {
-    return JSON.stringify({
-        activeSpecialMenuId: storeDetails?.activeSpecialMenuId || '',
-        primaryProjectId: storeDetails?.primaryProjectId || '',
-        storeId: storeDetails?.storeId || '',
-    });
-}
-
-function isActiveSpecialMenuProject(projectData: any) {
-    if (!projectData?._specialMenu) return false;
-    if (projectData._specialMenu.status !== 'active') return false;
-    const endsAt = projectData._specialMenu.endsAt ? new Date(projectData._specialMenu.endsAt).getTime() : null;
-    return endsAt == null || (Number.isFinite(endsAt) && endsAt > Date.now());
-}
-
-function isActiveSpecialMenuSummary(projectSummary: any) {
+function isActiveSpecialMenuSummary(projectSummary: {
+    isSpecialMenu?: boolean;
+    specialMenuEndsAt?: string;
+    specialMenuStatus?: string;
+}) {
     if (!projectSummary?.isSpecialMenu) return false;
     if (projectSummary.specialMenuStatus !== 'active') return false;
     const endsAt = projectSummary.specialMenuEndsAt ? new Date(projectSummary.specialMenuEndsAt).getTime() : null;
     return endsAt == null || (Number.isFinite(endsAt) && endsAt > Date.now());
 }
 
-async function loadDefaultProjectAiContext(storeDetails?: any): Promise<DefaultProjectAiContext | null> {
-    const projectListResult = await getProjectsListWithoutLoader();
+async function loadDefaultProjectAiContext(
+    request: DefaultProjectAiContextRequest,
+): Promise<DefaultProjectAiContext | null> {
+    const projectListResult = await getExistingProjectsListWithoutLoader(false, request.expectedScope);
     const allProjects = projectListResult?.projects || [];
-    const activeNonSpecialProjects = allProjects.filter((project: any) =>
+    const activeNonSpecialProjects = allProjects.filter((project) =>
         project?.active !== false
-        && project?.deleted !== true
         && project?.isSpecialMenu !== true,
     );
 
     let targetProjectSummary =
-        (storeDetails?.activeSpecialMenuId
-            ? allProjects.find((project: any) =>
-                project?.projectId === storeDetails.activeSpecialMenuId
+        (request.activeSpecialMenuId
+            ? allProjects.find((project) =>
+                project?.projectId === request.activeSpecialMenuId
                 && isActiveSpecialMenuSummary(project),
             )
             : null)
-        || (storeDetails?.primaryProjectId
-            ? activeNonSpecialProjects.find((project: any) => project?.projectId === storeDetails.primaryProjectId)
+        || (request.primaryProjectId
+            ? activeNonSpecialProjects.find((project) => project?.projectId === request.primaryProjectId)
             : null)
         || activeNonSpecialProjects[0]
         || null;
@@ -67,19 +62,22 @@ async function loadDefaultProjectAiContext(storeDetails?: any): Promise<DefaultP
         return null;
     }
 
-    let projectDetails = await getProjectDataWithoutLoader(targetProjectSummary.projectId);
+    const projectDetails = await getProjectDataWithoutLoader(
+        targetProjectSummary.projectId,
+        request.expectedScope,
+    );
 
     const categories = Array.from(new Set(
         projectDetails?.files
-            ?.flatMap((file: any) => file.extractedData?.data?.categories || [])
-            .map((category: any) => firstText(category?.name))
+            ?.flatMap((file) => file.extractedData?.data?.categories || [])
+            .map((category) => firstText(category?.name))
             .filter(Boolean) || [],
     )).slice(0, 12) as string[];
 
     const items = Array.from(new Set(
         projectDetails?.files
-            ?.flatMap((file: any) => file.extractedData?.data?.items || [])
-            .map((item: any) => firstText(item?.name))
+            ?.flatMap((file) => file.extractedData?.data?.items || [])
+            .map((item) => firstText(item?.name))
             .filter(Boolean) || [],
     )).slice(0, 24) as string[];
 
@@ -102,9 +100,15 @@ async function loadDefaultProjectAiContext(storeDetails?: any): Promise<DefaultP
     };
 }
 
-export default async function getDefaultProjectAiContext(storeDetails?: any, forceRefresh = false): Promise<DefaultProjectAiContext | null> {
+export default async function getDefaultProjectAiContext(
+    storeDetails?: DefaultProjectAiContextStoreInput,
+    forceRefresh = false,
+): Promise<DefaultProjectAiContext | null> {
+    const request = normalizeDefaultProjectAiContextRequest(storeDetails);
+    if (!request) return null;
+
     const now = Date.now();
-    const nextKey = buildCacheKey(storeDetails);
+    const nextKey = request.cacheKey;
     if (!forceRefresh && cachedContext && cachedKey === nextKey && (now - cachedAt) < CACHE_TTL_MS) {
         return cachedContext;
     }
@@ -114,16 +118,19 @@ export default async function getDefaultProjectAiContext(storeDetails?: any, for
     }
 
     cachedPromiseKey = nextKey;
-    cachedPromise = loadDefaultProjectAiContext(storeDetails);
+    const nextPromise = loadDefaultProjectAiContext(request);
+    cachedPromise = nextPromise;
 
     try {
-        const nextContext = await cachedPromise;
+        const nextContext = await nextPromise;
         cachedContext = nextContext;
         cachedKey = nextKey;
         cachedAt = Date.now();
         return nextContext;
     } finally {
-        cachedPromise = null;
-        cachedPromiseKey = '';
+        if (cachedPromise === nextPromise) {
+            cachedPromise = null;
+            cachedPromiseKey = '';
+        }
     }
 }

@@ -3,6 +3,10 @@ import { FEATURE_FLAGS } from '@config/features';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { OWNER_BUSINESS_ASSISTANT_ENDPOINTS } from '@lib/ownerBusinessAssistant/constants';
 import { OWNER_BUSINESS_ASSISTANT_REQUEST_POLICY } from '@lib/ownerBusinessAssistant/clientResponses';
+import {
+  projectOwnerBusinessAssistantAnswerResponse,
+  type OwnerBusinessAssistantAnswerResponse,
+} from '@lib/ownerBusinessAssistant/answerResponseBoundary';
 import { normalizeOwnerBusinessAssistantThreadId } from '@lib/ownerBusinessAssistant/threadIdBoundary';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -19,12 +23,6 @@ import {
 const OWNER_BUSINESS_ASSISTANT_SAFE_ERROR = 'Business Health could not answer that.';
 const OWNER_BUSINESS_ASSISTANT_SAFE_ERROR_CODE = 'OWNER_BUSINESS_ASSISTANT_SAFE_ERROR';
 const OWNER_BUSINESS_ASSISTANT_ANSWER_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
-
-type OwnerBusinessAssistantAnswerPayload = {
-  data?: OwnerBusinessAssistantAnswer & {
-    threadId?: string;
-  };
-};
 
 type OwnerBusinessAssistantAnswerLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -65,12 +63,24 @@ const writeStoredThreadId = (storageKey: string, threadId: string): void => {
 const readOwnerBusinessAssistantAnswerResponseJson = async (
   response: Response,
   logContext: OwnerBusinessAssistantAnswerLogContext,
-): Promise<OwnerBusinessAssistantAnswerPayload | null> => {
+): Promise<OwnerBusinessAssistantAnswerResponse | null> => {
   try {
-    return await readJsonResponseWithLimit<OwnerBusinessAssistantAnswerPayload>(
+    const value = await readJsonResponseWithLimit<unknown>(
       response,
       OWNER_BUSINESS_ASSISTANT_ANSWER_RESPONSE_JSON_MAX_BYTES,
     );
+    const projected = projectOwnerBusinessAssistantAnswerResponse(value);
+    if (!projected && response.ok) {
+      logRuntimeFailure(
+        'owner_business_assistant_answer_response_invalid',
+        new Error('owner_business_assistant_answer_response_invalid'),
+        {
+          ...logContext,
+          responseStatus: response.status,
+        },
+      );
+    }
+    return projected;
   } catch (error) {
     logRuntimeFailure('owner_business_assistant_answer_response_parse_failed', error, {
       ...logContext,
@@ -204,10 +214,6 @@ export function useOwnerBusinessAssistantAnswer(
       }
       const answerData = payload?.data;
       if (!answerData) {
-        logRuntimeFailure('owner_business_assistant_answer_response_invalid', new Error('owner_business_assistant_answer_response_invalid'), {
-          ...logContext,
-          responseStatus: response.status,
-        });
         throw new OwnerBusinessAssistantSafeError();
       }
       const normalizedAnswerThreadId = normalizeOwnerBusinessAssistantThreadId(answerData.threadId);

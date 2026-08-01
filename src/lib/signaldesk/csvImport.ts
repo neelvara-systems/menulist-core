@@ -1,4 +1,7 @@
-import type { SignalDeskTargetImportRow } from "@lib/signaldesk/targetContracts";
+import {
+    SignalDeskTargetImportRowSchema,
+    type SignalDeskTargetImportRow,
+} from "@lib/signaldesk/targetContracts";
 
 export const SIGNALDESK_IMPORT_CSV_COLUMNS = [
     "displayName",
@@ -116,7 +119,7 @@ export const parseSignalDeskTargetImportCsv = (input: string): SignalDeskTargetI
             }
         });
         if (!normalized[0]) csvError(`Row ${rowIndex + 1 + (firstRecordIsHeader ? 1 : 0)} needs a display name.`);
-        return {
+        const parsed = SignalDeskTargetImportRowSchema.safeParse({
             category: normalized[1],
             city: normalized[2],
             country: normalized[3],
@@ -127,6 +130,8 @@ export const parseSignalDeskTargetImportCsv = (input: string): SignalDeskTargetI
             permissionEvidenceRef: normalized[9],
             phone: normalized[6],
             website: normalized[4],
-        };
+        });
+        if (parsed.success) return parsed.data;
+        return csvError(`Row ${rowIndex + 1 + (firstRecordIsHeader ? 1 : 0)} contains an invalid target value.`);
     });
 };

@@ -68,15 +68,29 @@ const accessible = getAccessibleStoreSummaries({
 assert.deepEqual(accessible.map(getStoreSummaryId), [1, 4]);
 
 const baseSession = {
+    expires: '2026-08-01T00:00:00.000Z',
+    pId: 'ML',
+    platformRole: 'OWNER',
+    role: 'OWNER',
     sId: 22,
     tId: 11,
+    uId: 'user-1',
     user: {
+        active: true,
+        email: 'owner@example.com',
+        id: 'user-1',
+        isVerified: true,
+        name: 'Owner',
+        pId: 'ML',
+        platformRole: 'OWNER',
+        productId: 'ML',
+        role: 'OWNER',
         storeId: 22,
         storeIds: [22, 33],
         stores: [],
         tenantId: 11,
     },
-} as LoginUserType;
+} satisfies LoginUserType;
 const validActiveContext = normalizeActiveStoreContextValue({
     baseStoreId: 22,
     storeId: 33,

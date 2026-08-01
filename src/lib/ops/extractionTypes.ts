@@ -28,7 +28,7 @@ export interface ExtractionJobSummary {
     createdAt: unknown;
     completedAt: unknown;
     isFirstExtraction: boolean | null;
-    destinationType?: MenuExtractionDestinationType;
+    destinationType?: MenuExtractionDestinationType | null;
     source?: string | null;
     hasError: boolean;
     errorMessage: string | null;

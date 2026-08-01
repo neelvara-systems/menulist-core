@@ -173,7 +173,7 @@ export async function updateImageBatchProcessingJobAdmin(
         delete processedData.statusHistory;
     }
 
-    const finalData: Record<string, unknown> = {
+    const finalData: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
         ...(removeUndefined(processedData) as Record<string, unknown>),
         modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
     };
@@ -481,6 +481,14 @@ export async function appendImageBatchItemResultAdmin({
     });
 }
 
+type ImageBatchItemAttemptFailureResult = {
+    cleanupStoragePaths: string[];
+    retainsStagedResult: boolean;
+    shouldRetry: boolean;
+    stale: boolean;
+    terminal: boolean;
+};
+
 export async function markImageBatchItemAttemptFailedAdmin({
     claimToken,
     itemId,
@@ -497,24 +505,28 @@ export async function markImageBatchItemAttemptFailedAdmin({
     projectId: string;
     reason: string;
     retryable?: boolean;
-}): Promise<{
-    cleanupStoragePaths: string[];
-    retainsStagedResult: boolean;
-    shouldRetry: boolean;
-    stale: boolean;
-    terminal: boolean;
-}> {
+}): Promise<ImageBatchItemAttemptFailureResult> {
     const projectScope = requireImageBatchProjectScope(projectId);
     const imageBatchJobId = requireImageBatchJobId(jobId);
     const jobRef = getScopedJobRef(imageBatchJobId, projectScope.tId, projectScope.sId);
-    return firestoreAdmin.runTransaction(async (transaction) => {
+    return firestoreAdmin.runTransaction<ImageBatchItemAttemptFailureResult>(async (transaction) => {
         const snap = await transaction.get(jobRef);
         const job = requirePersistedJob(snap, { requireRequestedItems: true });
         assertJobProject(job, projectScope.projectId);
-        if (IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(job.status)) {
-            return { cleanupStoragePaths: [], retainsStagedResult: true, shouldRetry: false, stale: false, terminal: true };
-        }
         const { execution, key } = getExecution(job, itemId);
+        if (IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(job.status)) {
+            const exactUnstagedClaim = execution?.claimToken === claimToken
+                && execution.status === 'processing'
+                && !execution.stagedItem
+                && !execution.stagedAccountingInput;
+            return {
+                cleanupStoragePaths: [],
+                retainsStagedResult: !exactUnstagedClaim,
+                shouldRetry: false,
+                stale: false,
+                terminal: true,
+            };
+        }
         if (!execution || execution.claimToken !== claimToken || !['processing', 'staged'].includes(execution.status)) {
             return { cleanupStoragePaths: [], retainsStagedResult: true, shouldRetry: false, stale: true, terminal: false };
         }

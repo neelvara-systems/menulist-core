@@ -3,6 +3,7 @@ import type { MenuCardGeneratedArtifact, MenuCardExportSettings, MenuCardSafeOve
 import type { MenuCardPrintSource, PrintCategory, PrintItem } from '../models/printModel';
 import { getMenuCardTemplate } from '../templates/registry';
 import { buildPrintSourceHash } from '../source/buildPrintSourceHash';
+import { normalizeMenuCardLogoUrl } from '../source/buildPrintSource';
 import { resolveMenuCardBusinessPrintProfile, type MenuCardBusinessPrintTone } from '../templates/businessPrintProfiles';
 import { applySafeLayoutOverrides } from '../overrides/applySafeLayoutOverrides';
 import { getPrintBox } from './renderPrintBoxes';
@@ -15,7 +16,10 @@ import {
 } from '../../menu-kit/platformAttribution';
 import { resolveMenuListAttributionPolicy } from '../../platform/menuListBranding';
 
-const logoDataUrlCache = new Map<string, string | null>();
+const logoDataUrlCache = new Map<string, string>();
+const MAX_MENU_CARD_LOGO_CACHE_ENTRIES = 16;
+export const MAX_MENU_CARD_LOGO_RASTER_DIMENSION = 2_048;
+export const MAX_MENU_CARD_LOGO_RASTER_PIXELS = 4_194_304;
 
 type RgbColor = [number, number, number];
 
@@ -155,7 +159,32 @@ function getVisualStyle(templateFamily: string, accentRgb: RgbColor, businessTon
     };
 }
 
-async function imageUrlToPngDataUrl(url?: string): Promise<string | null> {
+export function isMenuCardLogoRasterSafe(width: unknown, height: unknown): boolean {
+    return (
+        typeof width === 'number'
+        && typeof height === 'number'
+        && Number.isInteger(width)
+        && Number.isInteger(height)
+        && width > 0
+        && height > 0
+        && width <= MAX_MENU_CARD_LOGO_RASTER_DIMENSION
+        && height <= MAX_MENU_CARD_LOGO_RASTER_DIMENSION
+        && width * height <= MAX_MENU_CARD_LOGO_RASTER_PIXELS
+    );
+}
+
+function cacheLogoDataUrl(url: string, dataUrl: string): void {
+    logoDataUrlCache.delete(url);
+    while (logoDataUrlCache.size >= MAX_MENU_CARD_LOGO_CACHE_ENTRIES) {
+        const oldestKey = logoDataUrlCache.keys().next().value;
+        if (typeof oldestKey !== 'string') break;
+        logoDataUrlCache.delete(oldestKey);
+    }
+    logoDataUrlCache.set(url, dataUrl);
+}
+
+async function imageUrlToPngDataUrl(rawUrl?: string): Promise<string | null> {
+    const url = normalizeMenuCardLogoUrl(rawUrl);
     if (!url || typeof window === 'undefined' || typeof Image === 'undefined' || typeof document === 'undefined') {
         return null;
     }
@@ -174,7 +203,7 @@ async function imageUrlToPngDataUrl(url?: string): Promise<string | null> {
             if (settled) return;
             settled = true;
             window.clearTimeout(timeout);
-            if (dataUrl) logoDataUrlCache.set(url, dataUrl);
+            if (dataUrl) cacheLogoDataUrl(url, dataUrl);
             resolve(dataUrl);
         };
         image = new Image();
@@ -184,7 +213,7 @@ async function imageUrlToPngDataUrl(url?: string): Promise<string | null> {
                 const canvas = document.createElement('canvas');
                 const width = image.naturalWidth || image.width;
                 const height = image.naturalHeight || image.height;
-                if (!width || !height) {
+                if (!isMenuCardLogoRasterSafe(width, height)) {
                     finish(null);
                     return;
                 }
@@ -354,8 +383,16 @@ function itemHeight(doc: jsPDF, item: PrintItem, width: number, source: MenuCard
     const layout = getItemLayout(doc, item, width, source, settings);
     const nameLineHeight = settings.density === 'compact' ? 3.7 : settings.density === 'comfortable' ? 4.8 : 4.2;
     const desc = settings.includeDescriptions ? item.description || '' : '';
-    const descLines = desc ? (doc.splitTextToSize(desc, width - 4) as string[]).length : 0;
-    return Math.max(1, layout.nameLines.length) * nameLineHeight + sizes.gap + descLines * 3.3 + item.attributes.length * 3.4 + 1.8;
+    const maxDescriptionLines = settings.density === 'compact' ? 2 : 4;
+    const descLines = desc
+        ? Math.min((doc.splitTextToSize(desc, width - 4) as string[]).length, maxDescriptionLines)
+        : 0;
+    const attributeLines = Math.min(item.attributes.length, 6);
+    return Math.max(1, layout.nameLines.length) * nameLineHeight
+        + sizes.gap
+        + descLines * 3.3
+        + attributeLines * 3.4
+        + 1.8;
 }
 
 function drawLogoMark(

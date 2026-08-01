@@ -4,6 +4,7 @@ import {
     ANSWERLATTICE_CHAT_ANALYTICS_LIVE_SESSION_LIMIT,
     AnswerlatticeChatAnalyticsDay,
     getAnswerlatticeAnalyticsQueryWindow,
+    getAnswerlatticeTrailingAnalyticsQueryWindow,
     normalizeAnswerlatticeAnalyticsDays,
     normalizeAnswerlatticeAnalyticsPageSize,
     parseAnswerlatticeAnalyticsDateRange,
@@ -233,29 +234,25 @@ export const getChatStatisticsOptimized = async (session: any, days: number = 30
         async () => {
             const safeDays = normalizeAnswerlatticeAnalyticsDays(days, 30);
             const { scope } = getRequiredChatAnalyticsContext(session);
+            const trailingWindow = getAnswerlatticeTrailingAnalyticsQueryWindow(safeDays);
+            if (!trailingWindow) throw new Error('answerlattice_chat_analytics_trailing_window_invalid');
 
-            const today = new Date().toISOString().split('T')[0];
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - safeDays);
-
-            // Query aggregated daily stats for THIS STORE (excluding today)
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            const q = query(
-                await getCollectionRef(),
-                where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
-                where('tId', '==', scope.tId),
-                where('sId', '==', scope.sId), // CRITICAL: Filter by storeId
-                where('date', '>=', startDate.toISOString().split('T')[0]),
-                where('date', '<=', yesterday.toISOString().split('T')[0]),
-                orderBy('date', 'desc'),
-                limit(safeDays + 1)
-            );
-
-            const querySnapshot = await getDocs(q);
-            const dailyStats = querySnapshot.docs.flatMap((analyticsDoc) => {
+            // Read exactly `safeDays - 1` completed UTC buckets; today's
+            // bounded live read below supplies the final bucket.
+            const historicalDocs = trailingWindow.historicalStartDateKey
+                && trailingWindow.historicalEndDateKey
+                ? (await getDocs(query(
+                    await getCollectionRef(),
+                    where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
+                    where('tId', '==', scope.tId),
+                    where('sId', '==', scope.sId),
+                    where('date', '>=', trailingWindow.historicalStartDateKey),
+                    where('date', '<=', trailingWindow.historicalEndDateKey),
+                    orderBy('date', 'desc'),
+                    limit(safeDays - 1),
+                ))).docs
+                : [];
+            const dailyStats = historicalDocs.flatMap((analyticsDoc) => {
                 const parsed = parseAnswerlatticeChatAnalyticsDay({
                     id: analyticsDoc.id,
                     value: analyticsDoc.data(),
@@ -596,19 +593,18 @@ export const getConversationsPaginated = async (
                 if (!cursorId) throw new Error('answerlattice_chat_analytics_cursor_invalid');
                 const lastDocRef = doc(answerlatticeFirebaseClient, CHAT_SESSIONS_COLLECTION, cursorId);
                 const lastDocSnap = await getDoc(lastDocRef);
-                if (lastDocSnap.exists()) {
-                    const parsedCursor = parseAnswerlatticeChatSessionDocument({
-                        id: cursorId,
-                        value: lastDocSnap.data(),
-                        scope,
-                    });
-                    if (!parsedCursor) throw new Error('answerlattice_chat_analytics_cursor_scope_invalid');
-                    q = query(q, startAfter(lastDocSnap));
-                }
+                if (!lastDocSnap.exists()) throw new Error('answerlattice_chat_analytics_cursor_not_found');
+                const parsedCursor = parseAnswerlatticeChatSessionDocument({
+                    id: cursorId,
+                    value: lastDocSnap.data(),
+                    scope,
+                });
+                if (!parsedCursor) throw new Error('answerlattice_chat_analytics_cursor_scope_invalid');
+                q = query(q, startAfter(lastDocSnap));
             }
 
             const querySnapshot = await getDocs(q);
-            const parsedSessions = querySnapshot.docs.flatMap((sessionDoc) => {
+            const parsedSessions = querySnapshot.docs.slice(0, safePageSize).flatMap((sessionDoc) => {
                 const parsed = parseAnswerlatticeChatSessionDocument({
                     id: sessionDoc.id,
                     value: sessionDoc.data(),
@@ -616,10 +612,10 @@ export const getConversationsPaginated = async (
                 });
                 return parsed ? [parsed] : [];
             });
-            const hasNextPage = parsedSessions.length > safePageSize;
-            const pageSessions = parsedSessions.slice(0, safePageSize);
+            const hasNextPage = querySnapshot.docs.length > safePageSize;
+            const pageSessions = parsedSessions;
             const nextPageCursor = hasNextPage
-                ? pageSessions[pageSessions.length - 1]?.id || null
+                ? querySnapshot.docs[safePageSize - 1]?.id || null
                 : null;
             let sessions: ChatSession[] = pageSessions;
 

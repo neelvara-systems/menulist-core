@@ -143,16 +143,19 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'Business'), [storeDetails]);
     const { activeProject, setActiveProject, setCurrentView } =
         useContext<ProjectsDataProviderType>(ProjectsDataContext);
-    const [projectData, setProjectData] = useState<Project>(
-        removeObjRef(activeProject),
-    );
+    const [projectData, setProjectData] = useState<Project>(() => {
+        if (!activeProject) {
+            throw new Error("Menu editor requires an active project");
+        }
+        return removeObjRef(activeProject);
+    });
     const [isDescModalOpen, setIsDescModalOpen] = useState<{
         active: boolean;
         sourceFile?: ProjectFileType;
     }>({ active: false, sourceFile: undefined });
     const [isImageModalOpen, setIsImageModalOpen] = useState<{
         active: boolean;
-        item: ExtractedDataItem | null;
+        item: (ExtractedDataItem & { fileId?: string }) | null;
         from?: string;
     }>({ active: false, item: null });
     const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
@@ -222,6 +225,19 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     }) => setIsImageModalOpen(state as any);
 
     const dispatch = useAppDispatch();
+    const getRequiredEditorProjectId = useCallback(
+        (data: Project = projectData): string => {
+            const projectId =
+                data.projectId ||
+                activeProject?.projectId ||
+                selectedProject.projectId;
+            if (!projectId) {
+                throw new Error("Menu editor project identity is unavailable");
+            }
+            return projectId;
+        },
+        [activeProject?.projectId, projectData, selectedProject.projectId],
+    );
 
     // Detect unsaved changes
     useEffect(() => {
@@ -559,7 +575,10 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     ...projectToSave,
                     projectId: selectedProject.projectId,
                 });
-                saveCompletion = saveRequest.then(() => undefined, () => undefined);
+                saveCompletion = saveRequest.then(
+                    (): void => undefined,
+                    (): void => undefined,
+                );
                 activeEditorSavePromiseRef.current = saveCompletion;
                 const updatedProject = await saveRequest;
                 assertProjectUpdateSucceeded(
@@ -632,7 +651,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     const updated = removeObjRef(projectData);
                     const translatedProjectContent = await translateProjectPublicContent({
                         projectDetails: updated,
-                        projectId: updated.projectId,
+                        projectId: getRequiredEditorProjectId(updated),
                         storeDetails,
                     });
 
@@ -657,26 +676,27 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                             specialNote: translatedProjectContent.specialNote,
                         };
                     }
-                    if (translatedProjectContent.specialMenuDisplayName) {
+                    if (translatedProjectContent.specialMenuDisplayName && updated._specialMenu) {
                         updated._specialMenu = {
-                            ...(updated._specialMenu || {}),
+                            ...updated._specialMenu,
                             displayName: translatedProjectContent.specialMenuDisplayName,
                         };
                         (updated as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
                         projectMetadataTranslationUpdate.specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
                     }
 
-                    const savedProject = await updateProject({ ...updated, projectId: updated.projectId });
+                    const projectId = getRequiredEditorProjectId(updated);
+                    const savedProject = await updateProject({ ...updated, projectId });
                     assertProjectUpdateSucceeded(
                         savedProject,
-                        updated.projectId,
+                        projectId,
                         'menu_editor_project_public_content_project_update_rejected',
                     );
                     if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                        const metadataResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                        const metadataResult = await updateProjectMetadata(projectId, projectMetadataTranslationUpdate);
                         assertProjectUpdateSucceeded(
                             metadataResult,
-                            updated.projectId,
+                            projectId,
                             'menu_editor_project_public_content_metadata_update_rejected',
                         );
                     }
@@ -941,7 +961,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         if (!fileLanguages.some((language) => language.code === targetLang.code)) {
                             file.extractedData.data.languages = [
                                 ...fileLanguages,
-                                { code: targetLang?.code, name: targetLang?.name },
+                                { code: targetLang.code, isPrimary: false, name: targetLang.name },
                             ];
                         }
 
@@ -968,7 +988,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 if (!wasCancelled) {
                     const translatedProjectContent = await translateProjectPublicContent({
                         projectDetails: prevData,
-                        projectId: prevData.projectId,
+                        projectId: getRequiredEditorProjectId(prevData),
                         storeDetails,
                         targetLanguageCodes: newLanguages,
                     });
@@ -989,9 +1009,9 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                                 specialNote: translatedProjectContent.specialNote,
                             };
                         }
-                        if (translatedProjectContent.specialMenuDisplayName) {
+                        if (translatedProjectContent.specialMenuDisplayName && prevData._specialMenu) {
                             prevData._specialMenu = {
-                                ...(prevData._specialMenu || {}),
+                                ...prevData._specialMenu,
                                 displayName: translatedProjectContent.specialMenuDisplayName,
                             };
                             (prevData as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
@@ -1004,10 +1024,11 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             // Save to database
             const persistedProject = await persistEditorProject(prevData);
             if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                const metadataTranslationResult = await updateProjectMetadata(prevData.projectId, projectMetadataTranslationUpdate);
+                const projectId = getRequiredEditorProjectId(prevData);
+                const metadataTranslationResult = await updateProjectMetadata(projectId, projectMetadataTranslationUpdate);
                 assertProjectUpdateSucceeded(
                     metadataTranslationResult,
-                    prevData.projectId,
+                    projectId,
                     'menu_editor_project_public_content_metadata_update_rejected',
                 );
             }
@@ -1171,7 +1192,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
         if (updatedProjectData) {
             const persistedProject = await persistEditorProject({
                 ...updatedProjectData,
-                projectId: activeProject.projectId,
+                projectId: getRequiredEditorProjectId(updatedProjectData),
             });
             applyPersistedEditorProject(updatedProjectData, persistedProject || undefined);
             message.success("Image added successfully!");
@@ -1509,7 +1530,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 onProjectDataUpdate={async (updatedProject) => {
                     const persistedProject = await persistEditorProject({
                         ...updatedProject,
-                        projectId: activeProject.projectId,
+                        projectId: getRequiredEditorProjectId(updatedProject),
                     });
                     applyPersistedEditorProject(updatedProject, persistedProject || undefined);
                 }}
@@ -1530,7 +1551,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     }
                     const persistedProject = await appendImageBatchProjectSelections({
                         masterProjectId: projectData.masterProjectId,
-                        projectId: projectData.projectId || activeProject.projectId,
+                        projectId: getRequiredEditorProjectId(),
                         selections,
                     });
                     const updatedDisplayProject = appendImageBatchSelectionsToProject(projectData, selections);
@@ -1593,7 +1614,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 isTranslating={isTranslating}
                 translationProgress={translationProgress}
                 onCancelTranslation={handleCancelTranslation}
-                storeDetails={storeDetails}
+                storeDetails={storeDetails ?? undefined}
                 // Multi-outlet: Pass master project languages for outlet language activation
                 masterProjectLanguages={isMasterLinked ? masterProjectLanguages : undefined}
                 isMasterLinked={isMasterLinked}
@@ -1649,7 +1670,11 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     projectData={projectData}
                     onImageUpload={onImageUpload}
                     openAddImageModal={(itemData) =>
-                        setIsImageModalOpen({ active: true, item: itemData, from: "item" })
+                        setIsImageModalOpen({
+                            active: true,
+                            item: { ...itemData, fileId: editItemModalState.file?.uid },
+                            from: "item",
+                        })
                     }
                     onProjectDataUpdate={async (updatedProject) => {
                         const persistedProject = await persistEditorProject(updatedProject);

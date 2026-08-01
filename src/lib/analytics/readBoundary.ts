@@ -115,6 +115,23 @@ const normalizeNonNegativeNumber = (value: unknown): number | undefined => (
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
 );
 
+const normalizeTimestampIso = (value: unknown): string | undefined => {
+  try {
+    const candidate = value instanceof Date
+      ? value
+      : typeof value === 'string'
+        ? new Date(value)
+        : isRecord(value) && typeof value.toDate === 'function'
+          ? value.toDate()
+          : null;
+    if (!(candidate instanceof Date) || !Number.isFinite(candidate.getTime())) return undefined;
+    const iso = candidate.toISOString();
+    return typeof value !== 'string' || value === iso ? iso : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const normalizeNumberMap = (value: unknown): Record<string, number> | undefined => {
   if (!isRecord(value)) return undefined;
   const entries = Object.entries(value).filter((entry): entry is [string, number] => (
@@ -187,13 +204,8 @@ export function normalizeDailyAnalytics(value: unknown, fallbackDate?: string): 
   if (itemNames) normalized.itemNames = itemNames;
   const hourlyClicksByItem = normalizeHourlyClicksByItem(value.hourlyClicksByItem);
   if (hourlyClicksByItem) normalized.hourlyClicksByItem = hourlyClicksByItem;
-  const lastUpdated = value.lastUpdated;
-  if (lastUpdated instanceof Date && Number.isFinite(lastUpdated.getTime())) {
-    normalized.lastUpdated = lastUpdated;
-  } else if (isRecord(lastUpdated) && typeof lastUpdated.toDate === 'function') {
-    const converted = lastUpdated.toDate();
-    if (converted instanceof Date && Number.isFinite(converted.getTime())) normalized.lastUpdated = converted;
-  }
+  const lastUpdated = normalizeTimestampIso(value.lastUpdated);
+  if (lastUpdated) normalized.lastUpdated = lastUpdated;
   return normalized;
 }
 
@@ -238,7 +250,24 @@ export function normalizeAnalyticsSummary(value: unknown): AnalyticsSummary | nu
   if (last30Days) normalized.last30Days = last30Days;
   const lastAggregatedDate = normalizeAnalyticsDateKey(value.lastAggregatedDate);
   if (lastAggregatedDate) normalized.lastAggregatedDate = lastAggregatedDate;
+  const lastUpdated = normalizeTimestampIso(value.lastUpdated);
+  if (lastUpdated) normalized.lastUpdated = lastUpdated;
   return Object.keys(normalized).length > 0 ? normalized : null;
+}
+
+export function normalizeAnalyticsData(value: unknown): {
+  summary: AnalyticsSummary | null;
+  daily: DailyAnalytics[];
+} | null {
+  if (!isRecord(value) || !Array.isArray(value.daily)) return null;
+  const daily = value.daily.map((day) => normalizeDailyAnalytics(day));
+  if (daily.some((day) => day === null)) return null;
+  if (value.summary !== null && value.summary !== undefined) {
+    const summary = normalizeAnalyticsSummary(value.summary);
+    if (!summary) return null;
+    return { summary, daily: daily as DailyAnalytics[] };
+  }
+  return { summary: null, daily: daily as DailyAnalytics[] };
 }
 
 export function normalizeAnalyticsDashboardReadModel(

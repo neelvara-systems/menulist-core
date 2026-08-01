@@ -363,10 +363,11 @@ export const updatePredictiveTrigger = async (
             if (!normalizedTriggerId) throw new Error('Invalid predictive trigger id');
 
             const currentSnap = await getDoc(getDocRef(normalizedTriggerId));
-            const current = currentSnap.exists()
-                ? normalizePredictiveTriggerRecord(currentSnap.id, currentSnap.data())
+            const currentData = currentSnap.exists() ? currentSnap.data() : undefined;
+            const current = currentData
+                ? normalizePredictiveTriggerRecord(currentSnap.id, currentData)
                 : null;
-            if (!current) throw new Error('Predictive trigger ownership is invalid');
+            if (!current || !currentData) throw new Error('Predictive trigger ownership is invalid');
             const requestedScope = assertScope(expectedScope.tId, expectedScope.sId);
             if (current.tId !== requestedScope.tId || current.sId !== requestedScope.sId) {
                 throw new Error('Predictive trigger scope does not match the active workspace');
@@ -402,7 +403,7 @@ export const updatePredictiveTrigger = async (
                 throw new Error('Set an exact page before activating predictive support.');
             }
             const patch: Record<string, unknown> = {};
-            if (currentSnap.data().kind === undefined) patch.kind = next.kind;
+            if (currentData.kind === undefined) patch.kind = next.kind;
             if (data.name !== undefined) patch.name = next.name;
             if (data.description !== undefined) patch.description = next.description ?? null;
             if (data.conditions !== undefined) patch.conditions = next.conditions;

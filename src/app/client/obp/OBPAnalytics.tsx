@@ -95,7 +95,7 @@ export default function OBPAnalytics({
     activeLanguage,
     activeLanguageName,
     trackLanguageUsage = false,
-}: OBPAnalyticsProps) {
+}: OBPAnalyticsProps): null {
     useEffect(() => {
         if (!trackViews || !tenantId || !storeId) return;
 

@@ -93,6 +93,20 @@ function verifyDeliveryBoundaryMirror(appBoundary, functionsBoundary) {
   ].forEach((token) => assertIncludes(appBoundary, token, 'Owner notification delivery boundary'));
 }
 
+function verifyOwnerNotificationFormatters(formatters) {
+  [
+    'function isValidLocale(locale?: string): locale is string',
+    'new Intl.DateTimeFormat(locale).format(new Date(0));',
+    'locale: isValidLocale(defaultLanguage) ? defaultLanguage : DEFAULT_CONTEXT.locale',
+  ].forEach((token) => assertIncludes(formatters, token, 'Owner notification formatting boundary'));
+
+  assertNotIncludes(
+    formatters,
+    "locale: defaultLanguage.includes('-') ? defaultLanguage : DEFAULT_CONTEXT.locale",
+    'Owner notification formatting boundary',
+  );
+}
+
 function verifyLifecycleSubscriptionIndexes(firestoreIndexes, answerlatticeFirestoreIndexes) {
   const parsed = JSON.parse(firestoreIndexes);
   const answerlatticeParsed = JSON.parse(answerlatticeFirestoreIndexes);
@@ -291,7 +305,7 @@ function verifyOpsRoute(route) {
   ].forEach((token) => assertNotIncludes(route, token, 'Owner notification ops API route'));
 }
 
-function verifyCore(core, recipientResolver, emailChannel, whatsappChannel, appLifecycle, ownerHeader) {
+function verifyCore(core, recipientResolver, types, emailChannel, whatsappChannel, appLifecycle, ownerHeader) {
   [
     'if (!FEATURE_FLAGS.ENABLE_OWNER_NOTIFICATIONS)',
     'ENABLE_OWNER_NOTIFICATION_MENULIST_MIGRATION',
@@ -404,6 +418,11 @@ function verifyCore(core, recipientResolver, emailChannel, whatsappChannel, appL
     'workspaceData?.tenantId ?? workspaceData?.tId',
     'storeData?.tenantId ?? storeData?.tId',
   ].forEach((token) => assertNotIncludes(recipientResolver, token, 'Owner notification recipient resolver'));
+
+  assertIncludes(types, 'storeData?: Record<string, unknown> | null;', 'Owner notification scope type');
+  assertIncludes(types, 'workspaceData?: Record<string, unknown> | null;', 'Owner notification scope type');
+  assertNotIncludes(types, 'Record<string, any>', 'Owner notification scope type');
+  assertIncludes(recipientResolver, 'const settings = isRecord(data.notificationSettings)', 'Owner notification settings runtime boundary');
 
   [
     'normalizeOwnerNotificationNumericScopeDocumentId(payload.storeId)',
@@ -784,9 +803,16 @@ function verifyTemplateOutputBoundaries(menuTemplate, answerlatticeTemplate, app
     'function publishFailureReasonText(value: unknown): string',
     'MENU_PUBLISH_FAILED',
     'AI features such as image generation, descriptions, and translations',
+    '&& !url.username',
+    '&& !url.password',
   ].forEach((token) => {
     assertIncludes(appLifecycleTemplate, token, 'App lifecycle template output boundary');
     assertIncludes(functionsLifecycleTemplate, token, 'Functions lifecycle template output boundary');
+  });
+
+  ['&& !url.username', '&& !url.password'].forEach((token) => {
+    assertIncludes(menuTemplate, token, 'MenuList owner notification credential-free URL boundary');
+    assertIncludes(answerlatticeTemplate, token, 'Answerlattice owner notification credential-free URL boundary');
   });
 
   [
@@ -825,8 +851,9 @@ function verifyDocsAndPackage(
   lifecycleFirebaseDoc,
 ) {
   [
-    '"verify:owner-notifications-boundary": "node scripts/verification/verify-owner-notifications-boundary.js && npm run test:platform-notification-recipient"',
+    '"verify:owner-notifications-boundary": "node scripts/verification/verify-owner-notifications-boundary.js && npm run test:platform-notification-recipient && npm run test:notification-template-url-boundary"',
     '"test:owner-notification-delivery-boundaries":',
+    '"test:notification-template-url-boundary":',
     '"test:platform-notification-recipient":',
   ].forEach((token) => assertIncludes(packageJson, token, 'package.json owner notification verifier'));
 
@@ -1021,8 +1048,10 @@ function verifyOwnerNotificationsBoundary() {
     firestoreDocumentId: read('src/lib/firebase/firestoreDocumentId.ts'),
     route: read('src/app/api/ops/owner-notifications/route.ts'),
     core: read('src/lib/owner-notifications/index.ts'),
+    formatters: read('src/lib/owner-notifications/formatters.ts'),
     appLifecycle: read('src/lib/messaging/index.ts'),
     recipientResolver: read('src/lib/owner-notifications/recipientResolver.ts'),
+    types: read('src/lib/owner-notifications/types.ts'),
     whatsappChannel: read('src/lib/owner-notifications/channels/whatsapp.ts'),
     emailChannel: read('src/lib/owner-notifications/channels/email.ts'),
     processor: read('functions/src/ownerNotifications/processor.ts'),
@@ -1058,11 +1087,13 @@ function verifyOwnerNotificationsBoundary() {
   verifyCore(
     files.core,
     files.recipientResolver,
+    files.types,
     files.emailChannel,
     files.whatsappChannel,
     files.appLifecycle,
     files.ownerHeader,
   );
+  verifyOwnerNotificationFormatters(files.formatters);
   verifyFunctionsProcessor(
     files.processor,
     files.scheduler,

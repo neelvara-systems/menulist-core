@@ -48,7 +48,6 @@ for (const unsafeUrl of [
             expectedRevision: 0,
             productUrl: unsafeUrl,
         }),
-        undefined,
         `${unsafeUrl} must not pass the save contract`,
     );
 }
@@ -181,7 +180,6 @@ assert.throws(
         },
         revision: 2,
     }),
-    undefined,
     'a partial profile response must not gain implied client defaults',
 );
 assert.throws(
@@ -189,7 +187,6 @@ assert.throws(
         ...validProfile,
         productName: '',
     }),
-    undefined,
     'an invalid persisted product name must fail at the server response boundary',
 );
 assert.throws(
@@ -200,7 +197,6 @@ assert.throws(
         }),
         revision: 2,
     }),
-    undefined,
     'a malformed persisted profile must not be returned as a successful response',
 );
 assert.equal(answerlatticeWorkspaceProfilesEqual(validProfile, { ...validProfile }), true);

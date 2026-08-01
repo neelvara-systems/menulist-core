@@ -2,9 +2,10 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Flex, theme } from 'antd'
 import { FC, memo } from 'react'
+import type { SortableFontPreset } from '@lib/platform/fontPresetSortBoundary'
 
 interface Props {
-    fontData: any
+    fontData: SortableFontPreset
 }
 
 const SortableItem: FC<Props> = ({ fontData }) => {

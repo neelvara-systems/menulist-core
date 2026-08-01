@@ -12,7 +12,7 @@ const { Text } = Typography;
 interface ConversationCardProps {
     session: ChatSession;
     isActive: boolean;
-    onClick: (session: ChatSession) => void;
+    onClick?: (session: ChatSession) => void;
 }
 
 const ConversationCard = memo(({ session, isActive, onClick }: ConversationCardProps) => {
@@ -35,7 +35,7 @@ const ConversationCard = memo(({ session, isActive, onClick }: ConversationCardP
     return (
         <Card
             hoverable
-            onClick={() => onClick(session)}
+            onClick={onClick ? () => onClick(session) : undefined}
             style={{
                 marginBottom: 6,
                 cursor: 'pointer',

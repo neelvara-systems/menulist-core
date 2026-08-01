@@ -15,7 +15,6 @@ Special Menu Switching reuses the existing **project infrastructure** entirely. 
 ┌─────────────────────────────────────┐
 │         PROJECT (Base Menu)         │
 │  projectId: "14-abc-15"            │
-│  isSpecialMenu: false (default)    │
 │  files[], config, languages, etc.  │
 └─────────────────────────────────────┘
 
@@ -25,8 +24,8 @@ Special Menu Switching reuses the existing **project infrastructure** entirely. 
 │  _specialMenu: {                   │
 │    baseProjectId: "14-abc-15"      │
 │    mode: "replace" | "overlay"     │
-│    startsAt: Timestamp             │
-│    endsAt: Timestamp               │
+│    startsAt: ISO 8601 string       │
+│    endsAt: ISO 8601 string         │
 │    status: "scheduled"|"active"|   │
 │            "expired"|"cancelled"   │
 │    displayName: string             │
@@ -34,12 +33,13 @@ Special Menu Switching reuses the existing **project infrastructure** entirely. 
 │  files[], config, etc. (full menu) │
 └─────────────────────────────────────┘
 
-RESOLVER (at data layer):
-  getProjectBySlugOrDefault()
-    → check for active special menu on this store
-    → if mode=replace: return special project
-    → if mode=overlay: merge base + special sections
-    → if none active: return base project (current behavior)
+RESOLVER (public menu and configured screen):
+  store.activeSpecialMenuId
+    → read exact full project
+    → validate tenant/store/project/base identity and live _specialMenu window
+    → if mode=replace: special project is authoritative, including an empty menu
+    → if mode=overlay: merge regular base + special sections
+    → if invalid, stale, or unrelated to this base: use regular menu
 ```
 
 ### Key Architectural Decisions
@@ -56,6 +56,8 @@ RESOLVER (at data layer):
 | ADR-8 | Auto-set temp status banner on activation                    | Bridges special menu switching with existing Temp Status Layer.                                                                                                  |
 | ADR-9 | Exact tenant/store request ownership                         | SWR keys, DAL reads/mutations, mobile project state, and mobile screen settlement carry the same captured scope; stale requests cannot populate another scope. |
 | ADR-10 | Translation updates project + summary atomically             | Public name/description/special-menu display-name translation uses the project update transaction's optional summary projection rather than two separately acknowledged writes. |
+| ADR-11 | Full project `_specialMenu` owns runtime eligibility          | Compact-summary `isSpecialMenu` is a derived list marker. Public and screen outputs validate canonical full-project metadata instead of requiring a summary-only field that creation does not persist on the project. |
+| ADR-12 | Store-local, capability-aware owner scheduling                | Desktop/mobile controls and persistence use `stores.timeZone`; date-only and date-time categories use matching input and conversion contracts. |
 
 ### Tenant, cache, and browser-state boundary
 
@@ -177,15 +179,15 @@ All functions live in `src/database/projects/index.ts`:
 | Function                           | Purpose                                     | Firestore Ops                                      |
 | ---------------------------------- | ------------------------------------------- | -------------------------------------------------- |
 | `getSpecialMenus()`                | List all special menus from summary         | 2R in parallel (summary + store)                    |
-| `createSpecialMenuProject(params)` | Clone base + attach metadata + sync summary | scheduled: 2R + 2W; immediate: 3R + 3W transaction |
-| `updateSpecialMenuProject(params)` | Edit metadata/schedule and lifecycle state  | 3R + 2-3W transaction                              |
+| `createSpecialMenuProject(params)` | Clone base + attach metadata + sync summary | 3R + 2-3W transaction; +1 exact read only for an immediate different-pointer check |
+| `updateSpecialMenuProject(params)` | Edit metadata/schedule and lifecycle state  | 3R + 2-3W transaction; +1 exact read only for an active different-pointer check |
 | `activateSpecialMenu(projectId)`   | Set status=active, update store fields      | 3R + 2-3W transaction; +1 exact read only when a different pointer must be validated |
 | `deactivateSpecialMenu(projectId)` | Set status=expired, clear store fields      | 3R + 2-3W transaction                              |
 | `cancelSpecialMenu(projectId)`     | Set status=cancelled; best-effort owned store repair | 3-4R + 2-3W including the compatibility preflight |
 
 Create, update, activation, deactivation, and cancellation publish project truth, the compact project summary, and any store pointer/banner change atomically. Firestore may retry a transaction after contention, so operation counts can exceed the baseline, but a failed attempt cannot leave a partial lifecycle state. Temporary special-menu banners include `sourceProjectId`; cleanup deletes only the banner owned by the menu being ended (legacy banners are cleared only while the same project owns `activeSpecialMenuId`).
 
-Activation does not trust a different `store.activeSpecialMenuId` forever. Browser and Admin transactions read that exact project only on the conflict path. A correctly scoped, non-deleted, enabled special project with live `active` metadata and a future end time still blocks. A missing, malformed, inactive, cancelled, expired, or ended target is stale and the activating menu replaces the pointer/banner in the same transaction. The ordinary no-pointer and same-pointer paths retain their existing three transaction reads.
+Create, schedule edit, and activation do not trust a different `store.activeSpecialMenuId` forever. Browser and Admin transactions read that exact project only on the conflict path. A correctly scoped, non-deleted, enabled special project with live `active` metadata and a current window still blocks. A missing, malformed, cross-scope, inactive, cancelled, expired, not-yet-started, or ended target is stale and the activating menu replaces the pointer/banner in the same transaction.
 
 Every create, schedule edit, manual lifecycle action, delete, and Admin transition recomputes `specialMenuNextTransitionAt` from the fresh compact summary. A past marker is retained while work is blocked or interrupted, so the due query retries instead of silently losing the transition. Cancel still succeeds for a legacy/partially provisioned scope whose store document cannot be read; store-pointer cleanup is best-effort in that compatibility case, while project and summary cancellation remain atomic.
 
@@ -197,40 +199,33 @@ The `useSpecialMenus()` SWR hook in `src/hooks/useSpecialMenus.ts` calls these D
 
 ## Resolver Logic (Critical)
 
-### Location: Extend `getProjectBySlugOrDefault()`
+### Runtime Boundary
 
-```typescript
-// In src/database/clientMenu/index.ts (or wherever getProjectBySlugOrDefault lives)
-// PSEUDOCODE — actual implementation will follow exact patterns
+`src/lib/menu/specialMenuRuntime.ts` is shared by the public menu route and
+configured-screen resolver. It accepts only the exact pointed project when:
 
-async function getProjectBySlugOrDefault(tId, sId, slug?) {
-    // 1. Get store data (already fetched by caller)
-    // 2. Check if store has activeSpecialMenuId
+1. Project ID, optional persisted identity fields, tenant, store, and base menu
+   are consistent.
+2. The project is enabled and not deleted.
+3. `_specialMenu` has valid mode, bounded display name, start/end values, and
+   `status: "active"`.
+4. The store-local schedule window is live at resolution time.
 
-    if (FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING && store.activeSpecialMenuId) {
-        const specialProject = await getProject(store.activeSpecialMenuId);
+Schedule admission uses the byte-identical app/Functions boundary in
+`src/data/shared/specialMenuSchedule.ts` and
+`functions/src/sharedData/specialMenuSchedule.ts`. Inputs must be real
+ISO-8601 instants with an explicit `Z` or numeric timezone offset. Equivalent
+offset representations are normalized to canonical UTC before project,
+summary, temporary-status, lifecycle, due-marker, public-menu, or configured
+screen use. Timezone-less, impossible-calendar, whitespace-mutated, reversed,
+or otherwise malformed schedules fail closed. This preserves compatible
+legacy offset values without relying on environment-specific `Date.parse`
+behavior.
 
-        if (specialProject?._specialMenu?.status === 'active') {
-            const mode = specialProject._specialMenu.mode;
-
-            if (mode === 'replace') {
-                // Full replacement — return special menu as the project
-                return { projectData: specialProject, ... };
-            }
-
-            if (mode === 'overlay') {
-                // Get base project too
-                const baseProject = await getBaseProject(tId, sId, slug);
-                // Merge: base categories + special categories appended
-                return { projectData: mergeOverlay(baseProject, specialProject), ... };
-            }
-        }
-    }
-
-    // Default: return base project (existing behavior)
-    return getBaseProject(tId, sId, slug);
-}
-```
+The public route applies the override only to the regular route represented by
+`baseProjectId`. The configured screen applies it only to its configured base.
+Replace mode never falls back because the special menu has zero items; an empty
+active replacement is still customer-visible business truth.
 
 ### Overlay Merge Logic
 
@@ -370,9 +365,11 @@ export const TEMPLATE_CAPABILITIES: Record<
 | `src/hooks/useSpecialMenus.ts`                                          | SWR hook for special menu data        | ~60      |
 | `src/components/templates/main-app/projects/SpecialMenuCard.tsx`        | Dashboard card for special menus      | ~150     |
 | `src/components/templates/main-app/projects/CreateSpecialMenuModal.tsx` | Creation modal (name, mode, schedule) | ~200     |
+| `src/components/templates/main-app/projects/EditSpecialMenuScheduleModal.tsx` | Desktop schedule editor | Small |
 | `src/components/templates/main-app/projects/SpecialMenuStatusBadge.tsx` | Status indicator atom                 | ~40      |
 | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | Mobile management screen              | ~200     |
 | `src/data/shared/specialMenuSchedule.ts`                                | Shared next-boundary calculation       | Small    |
+| `src/lib/menu/specialMenuRuntime.ts`                                    | Shared live-project runtime validator  | Small    |
 
 ### Modified Files
 
@@ -442,11 +439,13 @@ export const TEMPLATE_CAPABILITIES: Record<
 - [x] Create `SpecialMenuStatusBadge.tsx`
 - [x] Create `useSpecialMenus.ts` hook
 - [x] Wire into projects list view
+- [x] Add desktop schedule editing with full date/time display and store-timezone conversion
 
 ### Phase 6: Mobile UI (~200 LOC)
 
 - [x] Create `MobileSpecialMenuScreen.tsx`
 - [x] Wire into MobileMoreScreen navigation
+- [x] Keep date-only/date-time controls aligned with business capability and store timezone
 
 ---
 
@@ -491,4 +490,4 @@ async function validateNoConflict(
 
 ---
 
-**Last Updated:** July 16, 2026
+**Last Updated:** July 30, 2026

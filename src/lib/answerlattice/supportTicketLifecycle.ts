@@ -53,6 +53,13 @@ const TicketMutableFieldsSchema = z.object({
     deleted: z.boolean().optional(),
 }).strict();
 
+const TicketClientDetailsSchema = z.object({
+    storeName: z.string().max(200),
+    tenantName: z.string().max(200),
+    email: z.string().max(254),
+    phone: z.string().max(80),
+}).strict();
+
 const ALLOWED_STATUS_TRANSITIONS: Record<string, ReadonlySet<string>> = {
     [SUPPORT_TICKET_STATUS.OPEN]: new Set([
         SUPPORT_TICKET_STATUS.IN_PROGRESS,
@@ -263,6 +270,14 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
     const documents = Array.isArray(params.value.documents) ? params.value.documents : [];
     const source = params.value.source;
     const escalationContext = parseAnswerlatticeEscalationContext(params.value.escalationContext);
+    const platformTags = z.array(z.enum(PLATFORM_SUPPORT_TICKET_TAG_OPTIONS)).max(20)
+        .safeParse(params.value.platformTags ?? []);
+    const contextKeys = z.array(
+        z.string().trim().min(1).max(140).regex(/^[A-Za-z0-9_.:/-]+$/),
+    ).max(20).safeParse(params.value.contextKeys ?? []);
+    const clientDetails = params.value.clientDetails === undefined
+        ? null
+        : TicketClientDetailsSchema.safeParse(params.value.clientDetails);
     const hasServerEscalationFields = (
         params.value.escalationContext !== undefined
         || params.value.knowledgeCandidate !== undefined
@@ -275,6 +290,14 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
         || !statuses.every(isTicketStatusEntry)
         || documents.length > ANSWERLATTICE_TICKET_DOCUMENT_LIMIT
         || !documents.every(isTicketDocument)
+        || typeof params.value.message !== 'string'
+        || params.value.message.length > 2000
+        || typeof params.value.platformNotes !== 'string'
+        || params.value.platformNotes.length > 4000
+        || !platformTags.success
+        || !contextKeys.success
+        || (clientDetails !== null && !clientDetails.success)
+        || (params.value.deleted !== undefined && typeof params.value.deleted !== 'boolean')
         || (source !== undefined && source !== 'manual' && source !== 'ai_escalation')
         || (
             source === 'ai_escalation'
@@ -301,7 +324,9 @@ export const parseAnswerlatticeSupportTicketDocument = (params: {
         documents,
         ...(source ? { source } : {}),
         ...(escalationContext ? { escalationContext } : {}),
-        platformNotes: typeof params.value.platformNotes === 'string' ? params.value.platformNotes : '',
-        platformTags: Array.isArray(params.value.platformTags) ? params.value.platformTags.slice(0, 20) : [],
+        ...(clientDetails?.success ? { clientDetails: clientDetails.data } : {}),
+        contextKeys: contextKeys.data,
+        platformNotes: params.value.platformNotes,
+        platformTags: platformTags.data,
     } as SupportTicketType;
 };

@@ -71,10 +71,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     if (!rateLimit.allowed) {
         const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+        const status = rateLimit.reason === 'provider_unavailable' ? 503 : 429;
         return NextResponse.json(
             { success: false, error: 'This invitation is unavailable.' },
             {
-                status: 429,
+                status,
                 headers: {
                     'Cache-Control': 'private, no-store',
                     'Retry-After': String(retryAfter),

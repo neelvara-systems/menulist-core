@@ -10,6 +10,7 @@ import {
 import {
     deleteDoc,
     doc,
+    serverTimestamp,
     setDoc,
     Timestamp,
     updateDoc,
@@ -97,8 +98,8 @@ async function run(): Promise<void> {
                 entityType: 'predictiveTrigger',
                 entityId: 'valid_batched_with_audit',
                 newState: { source: 'manual' },
-                performedBy: 'admin',
-                timestamp: NOW,
+                performedBy: 'owner-1',
+                timestamp: serverTimestamp(),
                 createdOn: NOW,
                 modifiedOn: NOW,
                 createdBy: 'Owner',

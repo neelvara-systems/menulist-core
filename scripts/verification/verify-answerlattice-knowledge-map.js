@@ -25,6 +25,8 @@ const hostedPage = read('src/app/answerlattice-hosted-help/[[...segments]]/page.
 const hostedClient = read('src/components/templates/answerlattice/hostedHelp/HostedHelpClient.tsx');
 const topicMap = read('src/components/templates/answerlattice/hostedHelp/ArticleTopicMap.tsx');
 const firebaseDoc = read('__docs__/answerlattice/knowledge-map/knowledge-map_firebase.md');
+const dedicatedIndexes = JSON.parse(read('firestore-answerlattice.indexes.json'));
+const sharedIndexes = JSON.parse(read('firestore.indexes.json'));
 const packageJson = JSON.parse(read('package.json'));
 
 includes(features, 'ENABLE_ANSWERLATTICE_KNOWLEDGE_MAP: true', 'Knowledge Map feature flag');
@@ -77,18 +79,21 @@ includes(dashboard, 'need review', 'Knowledge Map review status');
 includes(dashboard, 'denormalizeVersion', 'Knowledge Map version display');
 includes(dashboard, 'aria-expanded={relationshipsExpanded}', 'Knowledge Map mobile relationship disclosure');
 includes(dashboard, 'styles.mobileCollapsed', 'Knowledge Map mobile relationship collapse');
-includes(dashboard, "normalizeAnswerlatticeEntityId(searchParams.get('entity'))", 'Knowledge Map inbound entity focus validation');
+includes(dashboard, "normalizeAnswerlatticeEntityId(searchParams?.get('entity'))", 'Knowledge Map inbound entity focus validation');
 includes(dashboard, 'requestedEntityId && result.graph[requestedEntityId]', 'Knowledge Map inbound entity focus');
 includes(dashboard, 'getAnswerlatticeEntityContextRoute(', 'Knowledge Map canonical-answer context handoff');
 excludes(dashboard, 'onSnapshot(', 'Knowledge Map context handoff listener boundary');
-includes(canonicalAnswerEditor, "normalizeAnswerlatticeEntityId(searchParams.get('entity'))", 'canonical-answer entity context validation');
-includes(canonicalAnswerEditor, "normalizeAnswerlatticeCanonicalAnswerId(searchParams.get('answer'))", 'canonical-answer direct context validation');
+includes(canonicalAnswerEditor, "normalizeAnswerlatticeEntityId(searchParams?.get('entity'))", 'canonical-answer entity context validation');
+includes(canonicalAnswerEditor, "normalizeAnswerlatticeCanonicalAnswerId(searchParams?.get('answer'))", 'canonical-answer direct context validation');
 includes(canonicalAnswerEditor, 'answer.scope.entityIds.includes(requestedEntityId)', 'canonical-answer entity filtering');
 includes(canonicalAnswerEditor, 'answers.find(answer => answer.id === requestedAnswerId)', 'canonical-answer direct drawer focus');
 includes(canonicalAnswerEditor, 'createForm.setFieldsValue({ entityIds: [requestedEntityId] })', 'canonical-answer entity-focused proposal prefill');
 excludes(canonicalAnswerEditor, 'onSnapshot(', 'canonical-answer context listener boundary');
 includes(publicRenderer, 'MAX_PUBLIC_ARTICLE_HEADINGS = 40', 'Knowledge Map public heading cap');
 includes(publicRenderer, 'renderPublicTiptapArticle', 'Knowledge Map sanitized public renderer');
+includes(publicRenderer, 'new URL(value, PUBLIC_CONTENT_BASE_URL).origin === PUBLIC_CONTENT_BASE_URL', 'Knowledge Map parsed same-origin public URL admission');
+includes(publicRenderer, '|| parsed.username', 'Knowledge Map public URL credential rejection');
+includes(publicRenderer, 'UNSAFE_URL_CHARACTERS.test(value)', 'Knowledge Map public URL backslash and control-character rejection');
 includes(hostedPage, 'outline: rendered.outline', 'Knowledge Map compact public outline');
 includes(hostedClient, '<ArticleTopicMap', 'Knowledge Map hosted-help mount');
 includes(topicMap, 'aria-expanded={expanded}', 'Knowledge Map accessible disclosure');
@@ -98,6 +103,24 @@ excludes(hostedClient, 'article.content', 'Knowledge Map public raw article boun
 
 includes(firebaseDoc, '2 point reads', 'Knowledge Map cost contract');
 includes(firebaseDoc, 'AI calls: 0', 'Knowledge Map AI cost contract');
+for (const [label, manifest] of [['dedicated', dedicatedIndexes], ['shared', sharedIndexes]]) {
+  for (const fieldPath of ['graph', 'interactionRules']) {
+    assert(
+      manifest.fieldOverrides?.some((entry) => (
+        entry.collectionGroup === 'platformSummary'
+        && entry.fieldPath === fieldPath
+        && Array.isArray(entry.indexes)
+        && entry.indexes.length === 0
+      )),
+      `Knowledge Map ${label} index manifest must exempt platformSummary.${fieldPath}`,
+    );
+  }
+}
+includes(
+  firebaseDoc.replace(/\s+/g, ' '),
+  'automatic indexing is disabled for `graph` and `interactionRules`',
+  'Knowledge Map index-write cost boundary',
+);
 assert(
   packageJson.scripts?.['verify:answerlattice-knowledge-map']
     === "node scripts/verification/verify-answerlattice-knowledge-map.js && npm run test:answerlattice-knowledge-map",

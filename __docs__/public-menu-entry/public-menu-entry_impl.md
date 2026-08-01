@@ -17,7 +17,8 @@ July 28, 2026 persisted-identity correction: an authenticated draft claim revali
 | `src/lib/public-menu-entry/publicDraftId.ts` | One canonical UUID projector for intake responses, polling, preview routing, and claim |
 | `src/app/api/public/create-menu/route.ts` | Protected intake, dedupe, draft/job create, owner-bound polling |
 | shared menu extraction worker | Authoritative draft/job binding, provider extraction, DTO writeback |
-| `src/app/(website)/create-menu/PreviewClient.tsx` | Bounded polling, review, claim form, session refresh |
+| `src/app/(website)/create-menu/PreviewClient.tsx` | Bounded abort-owned polling, normalized review state, single-flight claim form, session refresh |
+| `src/lib/publicCreateMenu/previewDraftResponse.ts` | Browser response projector over canonical extracted-menu/profile contracts |
 | `src/app/api/public/create-menu/claim/route.ts` | Protected idempotent claim transaction and post-commit effects |
 | `src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx` | Safe URL actions, starter signals, dashboard handoff |
 | `functions/src/schedulers/menulistMaintenanceScheduler.ts` | Bounded expired draft/source cleanup |
@@ -28,7 +29,7 @@ July 28, 2026 persisted-identity correction: an authenticated draft claim revali
 
 The deterministic draft and `menuImageProcessingJobs` record are committed in one create-only batch. The worker verifies owner, source, destination, and lifecycle binding before provider work.
 
-`GET /api/public/create-menu` is owner-bound and has a fail-closed hashed user+draft 90-per-5-minute limiter. Intake responses, poll parameters, claim requests, and preview path segments all pass through `normalizePublicMenuDraftId()`; whitespace, path separators, malformed UUIDs, and unknown response values fail before navigation or document access. The client requests status only every 5 seconds, increments before each request, stops after 36 reads, and fetches the full DTO only when completion is reported. Persisted extracted prices are normalized again; malformed price truth is projected as a fixed failed state.
+`GET /api/public/create-menu` is owner-bound and has a fail-closed hashed user+draft 90-per-5-minute limiter. Intake responses, poll parameters, claim requests, and preview path segments all pass through `normalizePublicMenuDraftId()`; whitespace, path separators, malformed UUIDs, and unknown response values fail before navigation or document access. The client requests status only every 5 seconds, increments before each request, stops after 36 reads, and fetches the full DTO only when completion is reported. Each parsed browser response is re-projected through the canonical extracted-menu and extracted-business-profile normalizers before React state. Unknown status, malformed nested structures, unsafe color values, or a completed full response without a coherent menu produce the fixed load-failed state. The poll owns an `AbortController`, so cleanup or a changed draft/session/retry cycle prevents a late request from changing current state. Persisted extracted prices are normalized again; malformed price truth is projected as a fixed failed state.
 
 ## Claim transaction
 
@@ -44,11 +45,11 @@ The same transaction writes the project, compact project summary, store defaults
 
 After commit, `Promise.allSettled` refreshes `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, the affected Digital Screen content version and hashed token cache tag, and Owner Business Assistant packet state. A rejected effect is logged as bounded diagnostic evidence; committed success remains success.
 
-The preview waits at most 3 seconds for session refresh and still advances. For a new account it writes a strict versioned 24-hour session handoff containing exact tenant, store, project and canonical subdomain identity; invalid acknowledgements or unavailable sessionStorage cannot interrupt the already-committed redirect. The success page admits that browser value only through the same exact DTO, checks tenant/store against the current session before any starter-signal DAL call, evicts malformed/expired state, and repeats a bounded refresh before a full `/use-menulist` navigation.
+The preview claim action uses an immediate ref-backed single-flight guard, waits at most 3 seconds for session refresh, clears that timeout when refresh settles early, and still advances. For a new account it writes a strict versioned 24-hour session handoff containing exact tenant, store, project and canonical subdomain identity; invalid acknowledgements or unavailable sessionStorage cannot interrupt the already-committed redirect. The success page admits that browser value only through the same exact DTO, checks tenant/store against the current session before any starter-signal DAL call, evicts malformed/expired or known cross-session state, and keys in-memory signal acknowledgement by exact tenant/store/signal. Query-string menu/official-page links are accepted only on the active MenuList platform root or an exact tenant subdomain before render, copy, or WhatsApp composition. Copy feedback owns one cleanup-safe timer; dashboard refresh owns and clears its bounded timer, rejects parallel clicks, and then performs one full `/use-menulist` navigation.
 
 ## Cleanup
 
-The daily maintenance task queries up to 100 expired drafts. For unclaimed sources it verifies the exact draft prefix, deletes the Storage object first, then deletes the document. A Storage failure preserves the document as retry state. For a claimed draft, it preserves the promoted source object and deletes only the expired draft receipt. This changes Function source and therefore requires the scoped MenuList QA Function deployment after local gates.
+The daily maintenance task queries up to 100 expired drafts regardless of whether new Public Menu Entry intake is enabled. Disabling a write/admission flag must not pause retention for already-persisted private drafts. For unclaimed sources it verifies the exact draft prefix, deletes the Storage object first, then deletes the document. A Storage failure preserves the document as retry state. For a claimed draft, it preserves the promoted source object and deletes only the expired draft receipt. This changes Function source and therefore requires the scoped MenuList QA Function deployment after local gates.
 
 ## No added architecture
 

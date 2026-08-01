@@ -10,8 +10,17 @@
 3. `en-US` messages are deep-merged underneath the selected locale so missing keys retain a readable fallback (`src/i18n/request.ts:186`).
 4. `src/providers/localisationProvider.tsx` provides the validated timezone and selected date/time formats.
 5. `IntlClientWrapper` updates the document language and direction (`src/providers/IntlClientWrapper.tsx:17`).
-6. Ant Design combines automatic locale direction with the retained manual RTL override (`src/lib/antd/antdClient.tsx:91`).
+6. Ant Design combines automatic locale direction with the retained manual RTL
+   override. Redux Persist theme/direction values pass through exact boolean and
+   six-digit hex projectors before provider use; malformed legacy values use
+   governed defaults (`src/lib/antd/themeBoundary.ts`).
 7. React surfaces use next-intl or `formatNumber()` / `formatDateTime()`; direct browser-default formatting is disallowed on the audited owner dashboard, transaction, and MobileShell paths.
+8. The small mobile control/fullscreen dictionary resolves explicit and cookie
+   locale authorities through the same `normalizeLocalePreference()` contract.
+   Canonical region codes, base-language aliases, underscore/case variants and
+   invalid-explicit/valid-cookie fallback therefore match the rest of the app.
+   Cookie read failure uses `en-US`, and each call returns an isolated object so
+   one consumer cannot mutate later mobile copy.
 
 ## Owner UI Message Boundary
 
@@ -56,6 +65,11 @@ The resolved language and direction are applied consistently to OBP, public menu
 Standard temporary-status types use localized fixed copy. A custom status message remains owner-authored truth and is rendered verbatim rather than machine-translated. Compliance-page title, navigation, dates, missing-data state, and attribution use the public message bundle; generated or owner-edited legal body text remains canonical English unless a future owner-managed localized legal source is introduced. A non-English page marks that legal body `lang="en"` and `dir="ltr"` so assistive technology is not told that English legal text is translated.
 
 `npm run verify:public-customer-localization` enforces locale/key parity, generated-bundle freshness, runtime purity, placeholder and protected-term parity, canonical phone/email examples, provider-marker and sentence-expansion rejection, selected script boundaries, semantic-evidence hashes, public surface `lang`/`dir` wiring, query preservation, localized spice labels, legal-body language truth, and RTL public-image navigation. Functional boundary tests also cover regional-code normalization, store-policy fallback, URL propagation, localized hours, interpolation, and unknown enum fallback. The gate is included in `npm run verify:global-localization-boundary`.
+
+That aggregate also runs `npm run test:mobile-ui-locale-boundary`, which proves
+the complete seven-field mobile dictionary for every registered app locale,
+alias/cookie precedence, malformed input fallback, nonblank values, and
+cross-call mutation isolation.
 
 ## Maintainer Regeneration
 

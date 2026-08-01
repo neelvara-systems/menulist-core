@@ -59,6 +59,24 @@ export const MENU_KIT_UTM_SOURCES: Record<string, string> = {
     googleMaps: 'google_maps',
 } as const;
 
+const MENU_KIT_TEXT_MAX_LENGTH = 160;
+const MENU_KIT_LOGO_URL_MAX_LENGTH = 4_096;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readOwnDataField(value: unknown, field: string): unknown {
+    if (!isRecord(value)) return undefined;
+    const descriptor = Object.getOwnPropertyDescriptor(value, field);
+    return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+}
+
+function normalizeMenuKitText(value: unknown, maxLength = MENU_KIT_TEXT_MAX_LENGTH): string {
+    if (typeof value !== 'string') return '';
+    return value.trim().replace(/\s+/g, ' ').slice(0, maxLength).trim();
+}
+
 /**
  * Append UTM parameters to a menu URL for placement-level scan tracking.
  * Returns the original URL if utm_medium is not provided.
@@ -81,15 +99,63 @@ export function buildMenuKitUrl(menuUrl: string, utmMedium: string): string {
  * Returns the URL unchanged if valid, or null if invalid.
  * Prevents malicious protocol injection into printed QR codes.
  */
-export function validateMenuUrl(url: string): string | null {
-    if (!url) return null;
+export function validateMenuUrl(url: unknown): string | null {
+    if (typeof url !== 'string' || !url.trim() || url.length > 2_048 || /\s/.test(url.trim())) return null;
     try {
-        const parsed = new URL(url);
+        const parsed = new URL(url.trim());
         if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return null;
         return parsed.toString();
     } catch {
         return null;
     }
+}
+
+/**
+ * Exact runtime boundary for the shared Menu Kit renderer.
+ *
+ * The displayed short link is derived from the admitted QR destination so a
+ * stale or malformed caller value cannot disagree with the printed code.
+ */
+export function normalizeMenuKitInput(value: unknown): MenuKitInput | null {
+    if (!isRecord(value)) return null;
+
+    const storeName = normalizeMenuKitText(readOwnDataField(value, 'storeName'));
+    const menuUrl = validateMenuUrl(readOwnDataField(value, 'menuUrl'));
+    if (!storeName || !menuUrl) return null;
+
+    const parsedMenuUrl = new URL(menuUrl);
+    const lastPublishedAtValue = readOwnDataField(value, 'lastPublishedAt');
+    const lastPublishedAt = lastPublishedAtValue instanceof Date
+        && Number.isFinite(lastPublishedAtValue.getTime())
+        ? new Date(lastPublishedAtValue.getTime())
+        : undefined;
+    const logoUrl = normalizeMenuKitText(
+        readOwnDataField(value, 'logoUrl'),
+        MENU_KIT_LOGO_URL_MAX_LENGTH,
+    );
+    const brandColor = normalizeMenuKitText(readOwnDataField(value, 'brandColor'), 32);
+    const businessType = normalizeMenuKitText(readOwnDataField(value, 'businessType'));
+    const businessCategory = normalizeMenuKitText(readOwnDataField(value, 'businessCategory'));
+    const activePlanTypeValue = readOwnDataField(value, 'activePlanType');
+    const activePlanType = activePlanTypeValue === null
+        ? null
+        : normalizeMenuKitText(activePlanTypeValue, 64) || undefined;
+    const locale = normalizeMenuKitText(readOwnDataField(value, 'locale'), 35);
+    const templateFamilyId = normalizeMenuKitText(readOwnDataField(value, 'templateFamilyId'), 64);
+
+    return {
+        storeName,
+        menuUrl,
+        shortLink: `${parsedMenuUrl.host}${parsedMenuUrl.pathname}${parsedMenuUrl.search}${parsedMenuUrl.hash}`,
+        ...(logoUrl ? { logoUrl } : {}),
+        ...(brandColor ? { brandColor } : {}),
+        ...(lastPublishedAt ? { lastPublishedAt } : {}),
+        ...(businessType ? { businessType } : {}),
+        ...(businessCategory ? { businessCategory } : {}),
+        ...(activePlanType !== undefined ? { activePlanType } : {}),
+        ...(locale ? { locale } : {}),
+        ...(templateFamilyId ? { templateFamilyId } : {}),
+    };
 }
 
 export function buildPrintInstructions(

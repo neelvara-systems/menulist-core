@@ -47,9 +47,9 @@ export function normalizeAnswerlatticeVersionLabel(
 }
 
 const addVersionConsistencyIssue = (
-    value: { versionLabel: string; versionNormalized: number },
+    value: { versionLabel?: unknown; versionNormalized?: unknown },
     context: z.RefinementCtx,
-) => {
+): void => {
     const normalized = normalizeAnswerlatticeVersionLabel(value.versionLabel);
     if (!normalized
         || value.versionLabel !== normalized.label
@@ -94,7 +94,7 @@ export const AnswerlatticeReleaseActionSchema = z.discriminatedUnion('action', [
     AnswerlatticeActivateReleaseActionSchema,
 ]).superRefine((value, context) => {
     if (value.action === 'create') {
-        addVersionConsistencyIssue(value as { versionLabel: string; versionNormalized: number }, context);
+        addVersionConsistencyIssue(value, context);
     }
 });
 
@@ -222,6 +222,117 @@ export const AnswerlatticeStoredReleaseSchema = z.object({
     modifiedBy: z.string().trim().min(1).max(200),
 }).passthrough().superRefine(addVersionConsistencyIssue);
 
+const releaseDependencyEntityIdsSchema = z.array(strictDocumentId('Entity ID'))
+    .max(ANSWERLATTICE_RELEASE_MAX_ENTITY_CHANGES);
+
+export const AnswerlatticeReleaseDirectDependencyCoverageSchema = z.object({
+    mappingScope: z.literal('direct_entity_links_only'),
+    changedEntityIds: releaseDependencyEntityIdsSchema,
+    answerLinkedEntityIds: releaseDependencyEntityIdsSchema,
+    testLinkedEntityIds: releaseDependencyEntityIdsSchema,
+    entityIdsWithoutVisibleDirectLinks: releaseDependencyEntityIdsSchema,
+    directActiveAnswerCount: z.number().int().nonnegative().max(ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS),
+    activeLinkedTestCount: z.number().int().nonnegative().max(100),
+    testLinkEvidence: z.enum(['available', 'permission_required', 'not_requested']),
+}).strict().superRefine((coverage, context) => {
+    const changed = new Set(coverage.changedEntityIds);
+    const answerLinked = new Set(coverage.answerLinkedEntityIds);
+    const testLinked = new Set(coverage.testLinkedEntityIds);
+    const collections = [
+        ['changedEntityIds', coverage.changedEntityIds],
+        ['answerLinkedEntityIds', coverage.answerLinkedEntityIds],
+        ['testLinkedEntityIds', coverage.testLinkedEntityIds],
+        ['entityIdsWithoutVisibleDirectLinks', coverage.entityIdsWithoutVisibleDirectLinks],
+    ] as const;
+    for (const [key, values] of collections) {
+        if (new Set(values).size !== values.length) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Release dependency entity IDs must be unique.',
+                path: [key],
+            });
+        }
+    }
+    for (const entityId of Array.from(answerLinked)
+        .concat(Array.from(testLinked), coverage.entityIdsWithoutVisibleDirectLinks)) {
+        if (!changed.has(entityId)) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Release dependency links must belong to a changed entity.',
+            });
+            break;
+        }
+    }
+    const expectedWithoutLinks = coverage.changedEntityIds.filter(entityId => (
+        !answerLinked.has(entityId) && !testLinked.has(entityId)
+    ));
+    if (
+        expectedWithoutLinks.length !== coverage.entityIdsWithoutVisibleDirectLinks.length
+        || expectedWithoutLinks.some((entityId, index) => entityId !== coverage.entityIdsWithoutVisibleDirectLinks[index])
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Entities without visible direct links must match the changed-entity evidence.',
+            path: ['entityIdsWithoutVisibleDirectLinks'],
+        });
+    }
+    if (coverage.testLinkEvidence !== 'available'
+        && (coverage.testLinkedEntityIds.length > 0 || coverage.activeLinkedTestCount > 0)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Unavailable test-link evidence cannot report linked tests.',
+            path: ['testLinkEvidence'],
+        });
+    }
+    if ((coverage.directActiveAnswerCount === 0) !== (coverage.answerLinkedEntityIds.length === 0)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Direct answer count and linked changed entities must agree.',
+            path: ['directActiveAnswerCount'],
+        });
+    }
+    if (coverage.testLinkEvidence === 'available'
+        && ((coverage.activeLinkedTestCount === 0) !== (coverage.testLinkedEntityIds.length === 0))) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Direct Answer Test count and linked changed entities must agree.',
+            path: ['activeLinkedTestCount'],
+        });
+    }
+});
+
+export type AnswerlatticeReleaseDirectDependencyCoverage = z.infer<
+    typeof AnswerlatticeReleaseDirectDependencyCoverageSchema
+>;
+
+export const buildAnswerlatticeReleaseDirectDependencyCoverage = (input: {
+    activeLinkedTestCount: number;
+    answerEntityIds: string[];
+    changedEntityIds: string[];
+    directActiveAnswerCount: number;
+    testEntityIds: string[];
+    testLinkEvidence: AnswerlatticeReleaseDirectDependencyCoverage['testLinkEvidence'];
+}): AnswerlatticeReleaseDirectDependencyCoverage => {
+    const changedEntityIds = Array.from(new Set(input.changedEntityIds));
+    const changed = new Set(changedEntityIds);
+    const answerLinkedEntityIds = Array.from(new Set(input.answerEntityIds))
+        .filter(entityId => changed.has(entityId));
+    const testLinkedEntityIds = input.testLinkEvidence === 'available'
+        ? Array.from(new Set(input.testEntityIds)).filter(entityId => changed.has(entityId))
+        : [];
+    const linked = new Set([...answerLinkedEntityIds, ...testLinkedEntityIds]);
+    return AnswerlatticeReleaseDirectDependencyCoverageSchema.parse({
+        mappingScope: 'direct_entity_links_only',
+        changedEntityIds,
+        answerLinkedEntityIds,
+        testLinkedEntityIds,
+        entityIdsWithoutVisibleDirectLinks: changedEntityIds.filter(entityId => !linked.has(entityId)),
+        directActiveAnswerCount: input.directActiveAnswerCount,
+        activeLinkedTestCount: input.testLinkEvidence === 'available' ? input.activeLinkedTestCount : 0,
+        testLinkEvidence: input.testLinkEvidence,
+    });
+};
+
 const answerlatticeReleasePersistenceResultSchema = z.discriminatedUnion('action', [
     z.object({
         success: z.literal(true),
@@ -265,6 +376,7 @@ const answerlatticeReleasePersistenceResultSchema = z.discriminatedUnion('action
             criticalFailureCount: z.number().int().nonnegative().max(100),
             lastRunAt: z.string().datetime({ offset: true }).nullable(),
         }).strict(),
+        directDependencyCoverage: AnswerlatticeReleaseDirectDependencyCoverageSchema,
     }).strict(),
     z.object({
         success: z.literal(true),
@@ -290,6 +402,30 @@ const answerlatticeReleasePersistenceResultSchema = z.discriminatedUnion('action
             code: z.ZodIssueCode.custom,
             message: 'Review-required count must match the projected answers.',
             path: ['reviewRequiredCount'],
+        });
+    }
+    if (result.directDependencyCoverage.directActiveAnswerCount !== result.affectedAnswerCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Direct answer dependency count must match the affected-answer projection.',
+            path: ['directDependencyCoverage', 'directActiveAnswerCount'],
+        });
+    }
+    const testEvidenceAvailable = ![
+        'not_requested',
+        'permission_required',
+    ].includes(result.answerTestProof.state);
+    if (
+        (testEvidenceAvailable
+            ? result.directDependencyCoverage.testLinkEvidence !== 'available'
+                || result.directDependencyCoverage.activeLinkedTestCount !== result.answerTestProof.linkedCaseCount
+            : result.directDependencyCoverage.testLinkEvidence
+                !== (result.answerTestProof.state === 'permission_required' ? 'permission_required' : 'not_requested'))
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Direct test dependency evidence must match the Answer Test proof.',
+            path: ['directDependencyCoverage', 'testLinkEvidence'],
         });
     }
 });
@@ -338,6 +474,7 @@ export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('acti
             criticalFailureCount: z.number().int().nonnegative().max(100),
             lastRunAt: z.string().datetime({ offset: true }).nullable(),
         }).strict(),
+        directDependencyCoverage: AnswerlatticeReleaseDirectDependencyCoverageSchema,
         scope: actionScopeSchema,
     }).strict(),
     z.object({
@@ -365,6 +502,30 @@ export const AnswerlatticeReleaseActionResultSchema = z.discriminatedUnion('acti
             code: z.ZodIssueCode.custom,
             message: 'Review-required count must match the projected answers.',
             path: ['reviewRequiredCount'],
+        });
+    }
+    if (result.directDependencyCoverage.directActiveAnswerCount !== result.affectedAnswerCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Direct answer dependency count must match the affected-answer projection.',
+            path: ['directDependencyCoverage', 'directActiveAnswerCount'],
+        });
+    }
+    const testEvidenceAvailable = ![
+        'not_requested',
+        'permission_required',
+    ].includes(result.answerTestProof.state);
+    if (
+        (testEvidenceAvailable
+            ? result.directDependencyCoverage.testLinkEvidence !== 'available'
+                || result.directDependencyCoverage.activeLinkedTestCount !== result.answerTestProof.linkedCaseCount
+            : result.directDependencyCoverage.testLinkEvidence
+                !== (result.answerTestProof.state === 'permission_required' ? 'permission_required' : 'not_requested'))
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Direct test dependency evidence must match the Answer Test proof.',
+            path: ['directDependencyCoverage', 'testLinkEvidence'],
         });
     }
 });

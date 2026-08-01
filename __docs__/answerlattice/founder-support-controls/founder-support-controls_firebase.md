@@ -8,7 +8,12 @@
 
 The live source contract uses one scoped `platformSummary/answerTests_{tId}_{sId}` document with exact ID, product, numeric scope, supported schema, suite revision, valid-case, and unique-case admission. Stored releases use the strict release schema. The same summary holds at most five 15-minute run reservations whose SHA-256 request fingerprints bind run kind, mode, suite revision, selected case IDs, and release ID; successful runs remove their reservation, failed pre-execution runs attempt cleanup, and expired reservations are pruned on the next claim. Summary writes are measured and rejected above 480 KiB. Version 4 retains bounded risk, evidence policy, reference IDs, proof status, governed-source versions, request fingerprint, and suite revision. No Answer Tests listener, scheduled run, per-case document, search-history write, signal write, or instant-cache write is added.
 
-The admitted critical-RAG hardening is evaluator/UI logic over this existing summary. It requires no schema version, migration scan, new document, index, listener, scheduled function, Storage object, source read, or write. Legacy critical-RAG cases stay in the bounded summary and produce blocked evidence on their next owner-triggered run.
+The summary is loaded only by exact document ID. Both maintained Firestore
+manifests disable automatic indexing for `cases`, `runs`, and `reservations`,
+reducing index-entry storage and write amplification without changing Answer
+Tests reads, transactions, or evaluation behavior.
+
+The admitted critical-RAG hardening is evaluator/UI logic over this existing summary. It requires no schema version, migration scan, new document, listener, scheduled function, Storage object, source read, or write. Legacy critical-RAG cases stay in the bounded summary and produce blocked evidence on their next owner-triggered run.
 
 | Data | Location | Growth control |
 | --- | --- | --- |
@@ -18,6 +23,7 @@ The admitted critical-RAG hardening is evaluator/UI logic over this existing sum
 | Known-issue runtime | Existing `platformSummary/predictiveTriggers_{tId}_{sId}` and compiled bundle | Source-hash skip when unchanged |
 | Verified-context public key | Existing scoped store document | One active public key; rotation replaces the prior key |
 | Evidence links | Existing private widget-search history records | Maximum 3 links; no fetched content |
+| Answer Trace | Existing `aiSearchHistory` records | Existing retention/TTL; projected response only |
 | Export | HTTP response only | No Firestore export job or Storage artifact |
 | Owner assistant | Existing summaries only | No assistant transcript or collection |
 
@@ -69,6 +75,9 @@ The admitted critical-RAG hardening is evaluator/UI logic over this existing sum
 
 - 1 scoped release read.
 - 1 answer-test summary read.
+- Direct changed-entity answer/test mapping is derived in memory from the
+  affected answers and linked active tests already loaded for the preview. It
+  adds 0 reads and 0 writes.
 - 1 compact source-version read for the retained pre-execution snapshot; First 10 launch requests add 1 post-execution current-proof read.
 - Runs only matching cases, maximum 25.
 - Same reservation/finalization writes as a normal run.
@@ -120,6 +129,26 @@ The admitted critical-RAG hardening is evaluator/UI logic over this existing sum
 - No additional document. Links are embedded in an existing private widget-search history write.
 - Zero network fetches by Answerlattice.
 
+### Answer Trace
+
+- Trust Metrics performs 0 automatic trace reads.
+- **Load review traces** uses the existing
+  `pId/tId/sId/createdOn` composite index and reads at most 30 recent
+  `aiSearchHistory` documents. It returns at most 12 projected review traces
+  and selects only the fields required by that projection. The field mask
+  reduces transferred data; Firestore billing remains document-read based.
+- **Inspect answer trace** from an escalated widget ticket reads exactly 1
+  known `aiSearchHistory` document through the same projected field mask.
+- Existing `expiresAt` TTL and configured search-history retention remain the
+  only storage lifecycle. No trace document, summary, cache, listener,
+  scheduler, Function, Storage object, audit row, signal, or model call is
+  added.
+- The server projects a strict field allowlist. It does not return visitor
+  identity, request origin/path, user-agent detail, raw cache keys, debug
+  evidence URLs, source bodies, or arbitrary stored metadata.
+- Ref-based in-flight guards prevent rapid duplicate owner clicks from
+  starting duplicate bounded reads before the loading state rerenders.
+
 ### Support Truth Export
 
 - Owner-triggered reads only.
@@ -151,8 +180,12 @@ The admitted critical-RAG hardening is evaluator/UI logic over this existing sum
 - No per-widget known-issue collection query.
 - Evidence checking reuses references already returned by FAQ or full-runtime retrieval; it adds no Firestore query or provider call.
 - No external evidence URL fetch.
+- No automatic or unbounded Answer Trace query.
 - Export remains explicit and rate limited.
 
 ## Costing Verdict
+
+Answer Trace adds cost only after an explicit owner action: one exact read from
+an escalated ticket or at most 30 recent scoped reads from Trust Metrics.
 
 Normal end-user widget traffic gains no mandatory Firestore operation. Owner costs occur only on explicit tests, previews, known-issue mutations, key rotation, and export. Standard Answer Tests keep one summary read on load and one governed source-version snapshot read per new run. Current-proof freshness is opt-in for the First 10 launch screen: two compact reads on load, one compact source-version read after a launch-screen case save, and a second compact source-version read after a newly executed launch run. Activation adds one compact source-version read. Proposal impact is an explicit, rate-limited, read-only comparison that stops after compact/exact reads when no linked test exists and never duplicates the expensive approval overlap scan. When linked tests exist, its variable canonical reads remain bounded by the 10-case and 100-admitted-document-per-query guards described above. These checks add no listener, provider call, or write. The retained numeric snapshot slightly increases the existing bounded summary payload and remains protected by the 480 KiB write guard. The only variable provider cost is full-runtime testing, which is capped and settled through existing Answerlattice accounting. Critical-RAG blocking adds zero Firebase cost because it evaluates the already-resolved route in memory.

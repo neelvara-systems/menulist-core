@@ -48,9 +48,10 @@ EXISTING PROJECT INFRASTRUCTURE (100% reuse)
   │     └── projectId: "14-diwali-15"
   │     └── _specialMenu: { mode, startsAt, endsAt, status }
   │
-  └── Resolver (in getProjectBySlugOrDefault)
-        └── if store.activeSpecialMenuId → return special project
-        └── else → return base project (current behavior)
+  └── Public and configured-screen resolvers
+        └── validate store.activeSpecialMenuId against the full project
+        └── require live, scoped _specialMenu metadata and matching baseProjectId
+        └── replace or overlay; otherwise fail closed to the regular menu
 
 KEY INSIGHT: Special menu IS a regular project with scheduling metadata.
 Zero new editor, zero new collection, zero new UI for menu building.
@@ -90,6 +91,9 @@ Client-Side DAL
 | Indexed due-work marker + nightly recovery | The two-minute maintenance task reads only due summary documents; the existing nightly store pass repairs legacy/missing markers. |
 | Atomic lifecycle truth                    | Project metadata, compact summary, store pointer, and owned temp banner cannot split across partial writes. |
 | Stale pointer recovery                    | A different store pointer blocks activation only while its exact scoped project is still a live active menu. Missing, malformed, inactive, cancelled, expired, or ended pointer targets are replaced by the due menu in the same transaction. |
+| Canonical runtime eligibility             | `_specialMenu` on the full project owns runtime truth. `isSpecialMenu` is a derived compact-summary marker and is never required by public or configured-screen rendering. |
+| Base-scoped public override               | An active special menu applies only when its canonical `baseProjectId` matches the regular menu route or configured screen base. |
+| Store-local owner schedule                | Desktop and mobile convert owner-entered dates/times using `stores.timeZone`; date-only businesses and date-time businesses render matching controls. |
 | Scoped owner cache                        | Special-menu SWR data is keyed by tenant and store; one validated scope supplies both list reads. |
 | Overlay rows stay isolated                | New overlays retain the editor file/language context but start with no cloned base rows. Public and screen projections deduplicate legacy clones, namespace new category/item/attribute IDs, and remap category references at runtime. |
 
@@ -104,10 +108,12 @@ Client-Side DAL
 | `src/hooks/useSpecialMenus.ts`                                          | SWR hook for dashboard + mobile        |
 | `src/components/templates/main-app/projects/SpecialMenuCard.tsx`        | Dashboard card                         |
 | `src/components/templates/main-app/projects/CreateSpecialMenuModal.tsx` | Creation modal                         |
+| `src/components/templates/main-app/projects/EditSpecialMenuScheduleModal.tsx` | Desktop schedule editor           |
 | `src/components/templates/main-app/projects/SpecialMenuStatusBadge.tsx` | Status badge atom                      |
 | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | Mobile management                      |
 | `src/app/client/[[...slug]]/page.tsx`                                   | Client resolver (replace/overlay)      |
 | `src/lib/menu/specialMenuOverlay.ts`                                    | Shared safe overlay projection         |
+| `src/lib/menu/specialMenuRuntime.ts`                                    | Canonical live-project validation      |
 | `src/database/campaigns/serverScreen.ts`                                | Configured-screen active-menu resolver |
 | `src/data/shared/specialMenuSchedule.ts`                                | Canonical next-transition calculation  |
 | `functions/src/schedulers/menulistMaintenanceScheduler.ts`              | Two-minute due transition dispatcher   |
@@ -152,7 +158,8 @@ Costs are region, free-tier, retry, and active-store dependent. The precise path
 | 1.2     | Jul 13, 2026 | Atomic lifecycle/scheduler repair, scoped cache reads, owner-banner ownership, and deterministic legacy-safe overlay projection. |
 | 1.3     | Jul 16, 2026 | Indexed two-minute switching, nightly marker recovery, generic mutation guards, alternate mobile edit parity, and stale docs repair. |
 | 1.4     | Jul 16, 2026 | Browser and Admin activation now recover stale active-menu pointers while preserving real one-active contention. |
+| 1.5     | Jul 30, 2026 | End-to-end audit: canonical public/screen validation, configured-screen repair, base-route isolation, store-timezone/date-capability parity, desktop schedule editing, and owner duplicate-submit protection. |
 
 ---
 
-**Last Updated:** July 16, 2026
+**Last Updated:** July 30, 2026

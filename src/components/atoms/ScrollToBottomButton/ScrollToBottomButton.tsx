@@ -11,8 +11,8 @@ interface ScrollToBottomButtonProps {
 }
 
 interface UseScrollToBottomOptions {
-    scrollContainerRef: React.RefObject<HTMLElement>;
-    messagesEndRef: React.RefObject<HTMLElement>;
+    scrollContainerRef: React.RefObject<HTMLElement | null>;
+    messagesEndRef: React.RefObject<HTMLElement | null>;
     hasMessages: boolean;
     sessionId?: string; // Session ID to detect session changes
     threshold?: number; // Distance in pixels to trigger button visibility

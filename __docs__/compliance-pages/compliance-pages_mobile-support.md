@@ -8,6 +8,14 @@
 
 ---
 
+## Tenant/store response boundary
+
+The mobile Official Page editor receives the current tenant and store identities from the active store record. Its shared compliance cache, listeners, and in-flight request registry are partitioned by the exact tenant/store key. Authenticated API responses must echo the server-derived matching scope, and malformed or foreign-scope page and mutation envelopes fail closed before owner state changes. On tenant/store changes, the editor immediately clears prior policy content and stale request settlement cannot render or acknowledge another scope.
+
+Regression evidence: `npm run test:mobile-compliance-cache-boundary`, `npm run verify:compliance-pages-boundary`, `npm run verify:menulist-api-tenant-safety`, and `npm run verify:public-business-truth`.
+
+---
+
 ## Feature Admission Test (4 Gates)
 
 | Gate | Question | Answer | Pass? |

@@ -2,7 +2,7 @@
 
 **Version:** 1.6
 **Status:** ✅ IMPLEMENTED — All code complete, feature flags ON
-**Last Updated:** July 16, 2026 — Native file-share cancellation and failure acknowledgement
+**Last Updated:** July 29, 2026 — Width-bounded generated labels
 **Companion:** `menu-kit_spec.md` (business requirements)
 
 ---
@@ -46,6 +46,8 @@ src/lib/menu-kit/
 │   ├── tableTentTemplate.ts       # Compatibility wrapper for Print Menu Surfaces table tent
 │   ├── counterStickerTemplate.ts  # Store-level 8×8 sticker (businessType-aware)
 │   ├── entrancePosterTemplate.ts  # Store-level A4 entrance poster (businessType-aware)
+│   ├── deliveryBagTemplate.ts      # 60×60 mm delivery-bag QR sticker
+│   ├── takeawayCardTemplate.ts     # 85×55 mm takeaway insert
 │   ├── instagramStoryTemplate.ts  # 1080×1920 story image (businessType-aware)
 │   ├── whatsappStatusTemplate.ts  # 1080×1920 status image (businessType-aware)
 │   ├── googleMapsTemplate.ts      # 1200×900 maps image (businessType-aware)
@@ -219,6 +221,24 @@ Both renderers use `drawPrintMenuCardFace()` so the folded tent and single card 
 - Four-module QR quiet zone. Business logo/initials stay outside the QR pattern.
 
 Trust-cue boundary: use business identity, current-link wording, short link, and attribution. Do not add center-logo QR overlays, WhatsApp consent copy, self-declared official badges, "verified", "secure", "no spam", or ordinary scan preview pages inside Menu Kit.
+
+All variable store names and short links must pass through the shared measured
+canvas truncation/wrapping helpers before drawing. Multi-line surfaces must
+bound both the line count and a single unbroken word; clipped or silently
+omitted business identity is not an acceptable fallback.
+
+The generator must carry the canonical HTTPS URL returned by
+`validateMenuUrl()` into the prepared input. Templates and per-surface UTM
+projection must never receive the original pre-validation string.
+
+The same preparation step is the exact runtime boundary for every other
+renderer input. It requires a bounded scalar store name, derives `shortLink`
+from the admitted QR destination, accepts only bounded known optional strings
+and a finite JavaScript `Date`, omits unknown/accessor-backed fields, and then
+uses that projected record for logo loading, asset rendering, business labels,
+print instructions, and ZIP naming. Callers cannot override the displayed
+short link independently of the QR or reintroduce raw input during ZIP
+assembly.
 
 `src/lib/menu-kit/templates/tableTentTemplate.ts` remains a compatibility wrapper only. New physical tabletop layout work belongs under `src/lib/print-menu-surfaces/`.
 

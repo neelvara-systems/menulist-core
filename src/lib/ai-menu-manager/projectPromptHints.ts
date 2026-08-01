@@ -9,6 +9,7 @@ import {
     MenuLayout,
     MenuMood,
 } from '@template/main-app/projects/b2cView/designSystem';
+import { normalizeAiMenuManagerProjectSnapshot } from './projectIntegrity';
 
 type PromptItem = {
     active?: boolean;
@@ -78,6 +79,7 @@ const DISPLAY_OPTION_SUGGESTIONS: AiMenuManagerPromptSuggestion[] = [
 
 const WORKING_HOURS_SUGGESTIONS: AiMenuManagerPromptSuggestion[] = [
     { kind: 'more', label: 'Today only', prompt: 'Change working hours for today', helper: 'One-day hours change' },
+    { kind: 'more', label: 'Special date', prompt: 'Set special hours for a date', helper: 'Planned closure or different hours' },
     { kind: 'more', label: 'All weekdays', prompt: 'Change working hours for all weekdays', helper: 'Monday to Friday' },
     { kind: 'more', label: 'Weekend', prompt: 'Change working hours for weekend', helper: 'Saturday and Sunday' },
     { kind: 'more', label: 'Closed today', prompt: 'Set temporary status: closed today', helper: 'Use temporary status instead' },
@@ -86,7 +88,7 @@ const WORKING_HOURS_SUGGESTIONS: AiMenuManagerPromptSuggestion[] = [
 const TEMPORARY_STATUS_SUGGESTIONS: AiMenuManagerPromptSuggestion[] = [
     { kind: 'more', label: 'Closed today', prompt: 'Set temporary status: closed today', helper: 'Customers see you are closed today' },
     { kind: 'more', label: 'Holiday', prompt: 'Set temporary status: holiday', helper: 'Use existing holiday status flow' },
-    { kind: 'more', label: 'Special hours', prompt: 'Set temporary status: special hours', helper: 'Choose custom hours in existing flow' },
+    { kind: 'more', label: 'Temporary notice', prompt: 'Set temporary status notice', helper: 'Show a short live update' },
     { kind: 'more', label: 'Back open', prompt: 'Clear temporary status', helper: 'Remove temporary public status' },
 ];
 
@@ -158,10 +160,22 @@ function readLocalized(value: unknown, language = 'en', fallback = '') {
     return fallback;
 }
 
+function normalizePromptProject(project?: Project | null): Project | null {
+    try {
+        if (!project || typeof project !== 'object') return null;
+        const projectId = (project as { projectId?: unknown }).projectId;
+        if (typeof projectId !== 'string' || !projectId.trim()) return null;
+        return normalizeAiMenuManagerProjectSnapshot(project, projectId);
+    } catch {
+        return null;
+    }
+}
+
 function getPromptItems(project?: Project | null): PromptItem[] {
-    if (!project) return [];
-    const language = project.defaultLanguage || project.languages?.[0] || 'en';
-    return (project.files || []).flatMap((file) => (
+    const normalizedProject = normalizePromptProject(project);
+    if (!normalizedProject) return [];
+    const language = normalizedProject.defaultLanguage || normalizedProject.languages?.[0] || 'en';
+    return (normalizedProject.files || []).flatMap((file) => (
         (file.extractedData?.data?.items || [])
             .map((item) => ({
                 active: item.active !== false,
@@ -182,9 +196,10 @@ function getPromptItems(project?: Project | null): PromptItem[] {
 }
 
 function getPromptCategories(project?: Project | null): PromptCategory[] {
-    if (!project) return [];
-    const language = project.defaultLanguage || project.languages?.[0] || 'en';
-    return (project.files || []).flatMap((file) => {
+    const normalizedProject = normalizePromptProject(project);
+    if (!normalizedProject) return [];
+    const language = normalizedProject.defaultLanguage || normalizedProject.languages?.[0] || 'en';
+    return (normalizedProject.files || []).flatMap((file) => {
         const data = file.extractedData?.data;
         if (!data) return [];
         const activeItemCounts = new Map<string, number>();

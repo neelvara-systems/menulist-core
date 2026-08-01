@@ -22,6 +22,25 @@ export const getImageGenerationTaskConfigStatus = () => ({
     hasWorkerUrl: Boolean(IMAGE_GENERATION_WORKER_URL),
 });
 
+const requireImageGenerationTaskConfig = () => {
+    if (
+        !PROJECT_ID
+        || !QUEUE_LOCATION
+        || !QUEUE_ID
+        || !IMAGE_GENERATION_WORKER_URL
+        || !IMAGE_GENERATION_WORKER_SECRET
+    ) {
+        throw new Error('Cloud Tasks configuration is incomplete. Cannot enqueue image generation task.');
+    }
+    return {
+        projectId: PROJECT_ID,
+        queueLocation: QUEUE_LOCATION,
+        queueId: QUEUE_ID,
+        workerUrl: IMAGE_GENERATION_WORKER_URL,
+        workerSecret: IMAGE_GENERATION_WORKER_SECRET,
+    };
+};
+
 if (!getImageGenerationTaskConfigStatus().ready) {
     logRuntimeDiagnostic(CLOUD_TASKS_BATCH_IMAGE_CONFIG_MISSING, getImageGenerationTaskConfigStatus());
 }
@@ -63,19 +82,25 @@ export async function enqueueImageGenerationTask(data: GenerateImageViaApiPayloa
         throw new Error('Cloud Tasks configuration is incomplete. Cannot enqueue image generation task.');
     }
 
+    const config = requireImageGenerationTaskConfig();
     const cloudTasksClient = getCloudTasksClient();
-    const parent = cloudTasksClient.queuePath(PROJECT_ID, QUEUE_LOCATION, QUEUE_ID);
+    const parent = cloudTasksClient.queuePath(config.projectId, config.queueLocation, config.queueId);
     const taskId = getImageBatchCloudTaskId(String(data.jobId), String(data.itemDetails?.id));
-    const taskName = cloudTasksClient.taskPath(PROJECT_ID, QUEUE_LOCATION, QUEUE_ID, taskId);
+    const taskName = cloudTasksClient.taskPath(
+        config.projectId,
+        config.queueLocation,
+        config.queueId,
+        taskId,
+    );
 
     const task = {
         name: taskName,
         httpRequest: {
             httpMethod: 'POST' as const,
-            url: IMAGE_GENERATION_WORKER_URL,
+            url: config.workerUrl,
             headers: {
-                'project-id': process.env.FIREBASE_PROJECT_ID,
-                'x-menulist-task-secret': IMAGE_GENERATION_WORKER_SECRET,
+                'project-id': config.projectId,
+                'x-menulist-task-secret': config.workerSecret,
                 'Content-Type': 'application/json',
             },
             body: Buffer.from(JSON.stringify(data)).toString('base64'),
@@ -92,7 +117,7 @@ export async function enqueueImageGenerationTask(data: GenerateImageViaApiPayloa
             ...getImageGenerationTaskLogContext(data),
             ...getBoundedRuntimeStringContext('taskName', response.name),
         });
-        return response.name;
+        return response.name ?? undefined;
     } catch (error) {
         const errorCode = typeof error === 'object' && error !== null && 'code' in error
             ? (error as { code?: unknown }).code

@@ -105,6 +105,10 @@ assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc
 assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`knowledgeIntakeSummary_${tId}_${sId}`)", 'Knowledge Intake summary read');
 assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`activation_${tId}_${sId}`)", 'activation summary read');
 assertIncludes(assistantLib, 'const snapshots = await db.getAll(...refs);', 'bounded six-summary read');
+assertIncludes(assistantLib, 'const summaryLoadsInFlight = new Map<string, Promise<SummaryPacketValue>>();', 'same-workspace summary single-flight map');
+assertIncludes(assistantLib, 'const currentLoad = summaryLoadsInFlight.get(key);', 'same-workspace summary single-flight lookup');
+assertIncludes(assistantLib, 'if (currentLoad) return { ...(await currentLoad), cacheHit: true };', 'same-workspace summary single-flight join');
+assertIncludes(assistantLib, 'if (summaryLoadsInFlight.get(key) === load) summaryLoadsInFlight.delete(key);', 'attempt-owned summary single-flight cleanup');
 assertIncludes(assistantLib, "readModel: { firestoreReads: packet.cacheHit ? 0 : 6, source: 'summary_only', cacheHit: packet.cacheHit }", 'summary-only read model');
 assertIncludes(assistantLib, 'const DAILY_ACTION_LIMIT = 4;', 'bounded daily action count');
 assertIncludes(assistantLib, 'answer-outcome-review', 'explicit outcome review action');
@@ -153,10 +157,10 @@ assertIncludes(assistantUi, 'Summary updated', 'Support Assistant UI summary fre
 assertIncludes(assistantUi, 'Prepare review card', 'Support Assistant UI prepared-card action');
 assertIncludes(assistantUi, 'ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS', 'Support Assistant UI action flag gate');
 assertIncludes(assistantUi, 'style={{ minHeight: 44', 'Support Assistant UI mobile touch target');
-assertIncludes(supportBoardUi, "searchParams.get('create') !== '1'", 'Support Board prepared-card admission gate');
+assertIncludes(supportBoardUi, "searchParams?.get('create') !== '1'", 'Support Board prepared-card admission gate');
 assertIncludes(supportBoardUi, 'setCreateOpen(true)', 'Support Board prepared-card owner confirmation form');
 assertIncludes(supportBoardUi, 'router.replace(toAnswerlatticeDashboardRoute', 'Support Board prepared-card URL cleanup');
-assertIncludes(changelogUi, "searchParams.get('create') !== '1'", 'changelog founder-entry admission gate');
+assertIncludes(changelogUi, "searchParams?.get('create') !== '1'", 'changelog founder-entry admission gate');
 assertIncludes(changelogUi, 'setIsModalVisible(true)', 'changelog founder-entry owner form');
 assertIncludes(changelogUi, "nextParams.delete('create')", 'changelog founder-entry query cleanup');
 assertIncludes(assistantPage, "title: 'Daily Brief | Answerlattice'", 'Support Assistant page metadata');
@@ -182,12 +186,22 @@ assertIncludes(answerlatticeReadme, 'Founder Daily Brief', 'Answerlattice README
 assertIncludes(ownerAssistantReadme, 'dailyBrief', 'Owner Support Assistant README');
 assertIncludes(ownerAssistantReadme, 'release, install, reply, cost', 'Owner Support Assistant README intents');
 assertIncludes(ownerAssistantImpl, 'Deterministic ten-intent classifier', 'Owner Support Assistant implementation docs');
-assertIncludes(ownerAssistantFirebase, 'six reads on a cold packet and zero reads on a tenant/store cache hit', 'Owner Support Assistant Firebase docs');
+assertIncludes(ownerAssistantFirebase, 'six reads for one cold packet and zero reads on a tenant/store cache hit', 'Owner Support Assistant Firebase docs');
 assertIncludes(founderDailyBriefReadme, 'No new Firestore collection.', 'Founder Daily Brief README boundary');
 assertIncludes(founderDailyBriefSpec, 'New assistant task queue', 'Founder Daily Brief spec boundary');
 assertIncludes(founderDailyBriefImpl, 'no new route', 'Founder Daily Brief implementation boundary');
 assertIncludes(founderDailyBriefFirebase, 'uses the existing six-document Support Assistant packet', 'Founder Daily Brief Firebase cost boundary');
 assertIncludes(founderDailyBriefFirebase, 'adds no Firestore operation', 'Founder Daily Brief friction projection cost boundary');
+assertIncludes(
+  founderDailyBriefFirebase.replace(/\s+/g, ' '),
+  'Same-workspace concurrent cold requests share one in-flight packet load',
+  'Founder Daily Brief concurrent-read cost boundary',
+);
+assertIncludes(
+  ownerAssistantFirebase.replace(/\s+/g, ' '),
+  'Same-workspace concurrent cold requests share one in-flight `getAll()`',
+  'Owner Support Assistant concurrent-read cost boundary',
+);
 assertIncludes(changelog, 'Answerlattice Founder Daily Brief', 'changelog entry');
 assertIncludes(changelog, 'six compact summary reads on an uncached brief request', 'changelog cost boundary');
 

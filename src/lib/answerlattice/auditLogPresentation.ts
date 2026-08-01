@@ -1,3 +1,82 @@
+import { PRODUCT_IDS } from '@constant/product';
+import { Timestamp } from '@firebase/firestore';
+import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import type { AnswerlatticeAuditLog } from '@type/answerlattice';
+
+const AUDIT_TEXT_MAX_LENGTH = 180;
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+};
+
+const normalizeAuditText = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized && normalized.length <= AUDIT_TEXT_MAX_LENGTH ? normalized : null;
+};
+
+/**
+ * Project persisted audit truth into the exact owner-facing contract.
+ * Malformed or cross-scope legacy rows are omitted instead of being asserted
+ * into React-facing types.
+ */
+export function parseAnswerlatticeAuditLog(
+    documentId: unknown,
+    value: unknown,
+    expectedScope: Readonly<{ tId: number; sId: number }>,
+): AnswerlatticeAuditLog | null {
+    try {
+        if (!isPlainRecord(value)) return null;
+        const id = normalizeAuditText(documentId);
+        const action = normalizeAuditText(value.action);
+        const entityType = normalizeAuditText(value.entityType);
+        const entityId = normalizeAuditText(value.entityId);
+        const performedBy = normalizeAuditText(value.performedBy);
+        if (
+            !id
+            || !isValidFirestoreDocumentId(id)
+            || value.pId !== PRODUCT_IDS.ANSWERLATTICE
+            || value.tId !== expectedScope.tId
+            || value.sId !== expectedScope.sId
+            || !action
+            || !entityType
+            || !entityId
+            || !performedBy
+            || !(value.timestamp instanceof Timestamp)
+        ) {
+            return null;
+        }
+
+        const previousState = value.previousState;
+        const newState = value.newState;
+        if (previousState !== undefined && previousState !== null && !isPlainRecord(previousState)) return null;
+        if (newState !== undefined && newState !== null && !isPlainRecord(newState)) return null;
+        const traceId = normalizeAuditText(value.traceId);
+        const requestId = normalizeAuditText(value.requestId);
+
+        return {
+            id,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            tId: expectedScope.tId,
+            sId: expectedScope.sId,
+            action,
+            entityType,
+            entityId,
+            performedBy,
+            timestamp: value.timestamp,
+            ...(isPlainRecord(previousState) ? { previousState } : {}),
+            ...(isPlainRecord(newState) ? { newState } : {}),
+            ...(value.createdOn instanceof Timestamp ? { createdOn: value.createdOn } : {}),
+            ...(traceId ? { traceId } : {}),
+            ...(requestId ? { requestId } : {}),
+        };
+    } catch {
+        return null;
+    }
+}
+
 const toValidDate = (value: unknown): Date | null => {
     try {
         if (value instanceof Date) {

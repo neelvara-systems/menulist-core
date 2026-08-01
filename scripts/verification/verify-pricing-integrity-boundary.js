@@ -151,6 +151,7 @@ forbidToken(pricingPlansUi, 'handleSavePlan = async (values: any)', 'Pricing pla
   'removeObjRef',
   'plan: any',
   'CustomePlanForB2B: any',
+  'CustomePlanForB2B',
 ].forEach((token) => forbidToken(staticPlatformPlans, token, 'Static platform plan typed projection'));
 
 [
@@ -234,6 +235,7 @@ requireOccurrenceAtLeast(
   'projectId,',
   'touchScreen: true,',
   'const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();',
+  'mergePendingPublicCacheRevalidation(',
   'pending.rerunRequested = true;',
   '} while (entry.rerunRequested);',
 ].forEach((token) => requireToken(publicClientCache, token, 'Public client cache helper'));

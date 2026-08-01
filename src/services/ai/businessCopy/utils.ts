@@ -27,7 +27,15 @@ export function getActiveBusinessAttributeLabels(attributes?: Record<string, boo
     if (!attributes) return [];
 
     return getAllSemanticAttributes()
-        .filter((attribute) => attribute.storeField && attributes[attribute.storeField] === true)
+        .filter((attribute) => {
+            if (!attribute.storeField) return false;
+            try {
+                return Object.prototype.hasOwnProperty.call(attributes, attribute.storeField)
+                    && Reflect.get(attributes, attribute.storeField) === true;
+            } catch {
+                return false;
+            }
+        })
         .map((attribute) => attribute.label)
         .slice(0, 12);
 }

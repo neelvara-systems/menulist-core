@@ -44,7 +44,7 @@ import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { FEATURE_FLAGS } from "@config/features";
 import { runCampaignCueCreativeEditorAiTool } from "@lib/campaigncue/creativeEditorAiTools";
 import { buildCampaignCueDailyDesk } from "@lib/campaigncue/dailyDesk";
-import { isCampaignCueSourceInputCurrent } from "@lib/campaigncue/operatingLoop";
+import { evaluateCampaignCuePackFreshness, isCampaignCueSourceInputCurrent } from "@lib/campaigncue/operatingLoop";
 import { applyCampaignCueDesignCuePatchSet } from "@lib/campaigncue/design-cue/apply";
 import { runCampaignCueDesignCue } from "@lib/campaigncue/design-cue/intent";
 import {
@@ -803,7 +803,7 @@ const buildBusinessProtectedFacts = (overview: CampaignCueOverview): CampaignCue
             id: "business-locality",
             label: "Location",
             status: business.locality ? "ready" : "needs_review",
-            value: business.locality,
+            value: business.locality || "",
         },
         {
             id: "business-contact",
@@ -1255,11 +1255,13 @@ const replaceBounded = <T extends { id: string }>(items: T[], item: T, limit: nu
 
 const withFreshDailyDesk = (overview: CampaignCueOverview): CampaignCueOverview => {
     const campaigns = overview.campaigns.map((campaign) => {
-        const freshness = campaign.pack?.freshness;
+        const pack = campaign.pack;
+        if (!pack) return campaign;
+        const freshness = pack.freshness;
         const currentPatternHash = overview.workspace.patternCueSource?.patternCue?.sourceHash;
         const patternChanged = Boolean(
-            campaign.pack?.patternCueSourceHash
-            && campaign.pack.patternCueSourceHash !== currentPatternHash,
+            pack.patternCueSourceHash
+            && pack.patternCueSourceHash !== currentPatternHash,
         );
         const businessFactsChanged = Boolean(
             freshness?.sourceHash
@@ -1267,12 +1269,16 @@ const withFreshDailyDesk = (overview: CampaignCueOverview): CampaignCueOverview 
             && freshness.sourceHash !== overview.sourceHash,
         );
         if (!patternChanged && !businessFactsChanged) return campaign;
+        const resolvedFreshness = evaluateCampaignCuePackFreshness({
+            currentSourceHash: overview.sourceHash,
+            freshness,
+        });
         return {
             ...campaign,
             pack: {
-                ...campaign.pack,
+                ...pack,
                 freshness: {
-                    ...freshness,
+                    ...resolvedFreshness,
                     status: "stale" as const,
                 },
             },

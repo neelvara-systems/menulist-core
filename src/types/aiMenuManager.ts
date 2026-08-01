@@ -421,9 +421,9 @@ export interface AiMenuManagerActionDefinition {
         | "C0 local plus compact session doc"
         | "Compact proposal/session write";
     mobileBehavior: string;
-    sourceEvidence: string[];
+    sourceEvidence: readonly string[];
     readiness: AiMenuManagerActionReadiness;
-    requiredFlags?: string[];
+    requiredFlags?: readonly string[];
 }
 
 export type AiMenuManagerCommandContextTarget =

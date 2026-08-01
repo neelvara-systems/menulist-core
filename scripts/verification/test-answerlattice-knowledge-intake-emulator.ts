@@ -329,7 +329,7 @@ async function run(): Promise<void> {
             actor,
             jobId: packJobId,
         }),
-        /credit balance is invalid/,
+        /active Answerlattice subscription is required/,
         'String-coercible subscription credits must fail before intake provider work',
     );
     await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({

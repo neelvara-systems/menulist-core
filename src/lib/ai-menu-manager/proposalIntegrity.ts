@@ -62,24 +62,24 @@ function enumValue<T extends string>(value: unknown, allowed: Set<T>): T | null 
 }
 
 function timestampIsValid(value: unknown): boolean {
-    if (value instanceof Date) return !Number.isNaN(value.getTime());
-    if (typeof value === 'string') return !Number.isNaN(new Date(value).getTime());
-    if (!isRecord(value)) return false;
-    if (typeof value.toDate === 'function') {
-        try {
+    try {
+        if (value instanceof Date) return !Number.isNaN(value.getTime());
+        if (typeof value === 'string') return !Number.isNaN(new Date(value).getTime());
+        if (!isRecord(value)) return false;
+        if (typeof value.toDate === 'function') {
             const date = value.toDate();
             return date instanceof Date && !Number.isNaN(date.getTime());
-        } catch {
-            return false;
         }
+        return typeof value.seconds === 'number'
+            && Number.isFinite(value.seconds)
+            && (value.nanoseconds === undefined
+                || (typeof value.nanoseconds === 'number'
+                    && Number.isInteger(value.nanoseconds)
+                    && value.nanoseconds >= 0
+                    && value.nanoseconds < 1_000_000_000));
+    } catch {
+        return false;
     }
-    return typeof value.seconds === 'number'
-        && Number.isFinite(value.seconds)
-        && (value.nanoseconds === undefined
-            || (typeof value.nanoseconds === 'number'
-                && Number.isInteger(value.nanoseconds)
-                && value.nanoseconds >= 0
-                && value.nanoseconds < 1_000_000_000));
 }
 
 function normalizeIdempotencyKeys(value: unknown): string[] | null {

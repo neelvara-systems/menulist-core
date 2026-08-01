@@ -29,6 +29,10 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+    CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL,
+    normalizeCustomerAppDisplayName,
+} from '@lib/pwa/customerAppAssets';
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -157,6 +161,7 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
     const limit = await checkRateLimit({
         key: `public-dynamic-asset:screenshot:${ipHash}`,
         ...config,
+        failClosedOnProviderError: true,
     });
     return !limit.allowed;
 }
@@ -180,7 +185,7 @@ export async function GET(
             return new ImageResponse(renderScreenshot(form, 'Menu', 'Tap to explore', 'M', '#0f172a'), {
                 width,
                 height,
-                headers: { 'Cache-Control': SCREENSHOT_CACHE_CONTROL },
+                headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL },
             });
         }
 
@@ -194,7 +199,7 @@ export async function GET(
         }
 
         const contentLanguage = store?.defaultLanguage || store?.activeLanguages?.[0] || store?.language || 'en';
-        const displayName: string = getStoreContextName(store, 'Menu');
+        const displayName = normalizeCustomerAppDisplayName(getStoreContextName(store, 'Menu'));
         const resolvedTagline = getLocalizedText(
             store?.tagline,
             contentLanguage,
@@ -215,7 +220,7 @@ export async function GET(
         return new ImageResponse(renderScreenshot(form, displayName, tagline, letter, accent), {
             width,
             height,
-            headers: { 'Cache-Control': SCREENSHOT_CACHE_CONTROL },
+            headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL },
         });
     } catch (err) {
         logRuntimeFailure('customer_app_screenshot_generation_failed', err, {

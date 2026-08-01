@@ -15,7 +15,14 @@
  * @see __docs__/answerlattice/automatic-knowledge-creation/
  */
 
-import { AnswerlatticeProcedure, AnswerlatticeProcedureStep, AnswerlatticeProcedureWarning, AnswerlatticeProcedurePrerequisite } from '@type/answerlattice';
+import {
+    AnswerlatticePrerequisiteType,
+    AnswerlatticeProcedure,
+    AnswerlatticeProcedureAction,
+    AnswerlatticeProcedureStep,
+    AnswerlatticeWarningSeverity,
+} from '@type/answerlattice';
+import { AnswerlatticeProcedureSchema } from './procedureValidation';
 
 // ═══════════════════════════════════════════════════════════════
 // PROMPT VERSION (for reproducibility tracking)
@@ -173,37 +180,55 @@ export function parseDraftResponse(rawResponse: string | null): ParsedDraftRespo
 
         // Parse procedure if present
         let procedure: AnswerlatticeProcedure | null = null;
-        if (parsed.procedure && parsed.procedure.steps && Array.isArray(parsed.procedure.steps)) {
-            const steps: AnswerlatticeProcedureStep[] = parsed.procedure.steps
+        if (isRecord(parsed.procedure) && Array.isArray(parsed.procedure.steps)) {
+            const rawSteps: unknown[] = parsed.procedure.steps;
+            const stepsWithoutOrder: Omit<AnswerlatticeProcedureStep, 'stepOrder'>[] = rawSteps
                 .slice(0, 12) // Max 12 steps
-                .map((s: any, i: number) => ({
-                    stepOrder: s.stepOrder || i + 1,
-                    action: validateProcedureAction(s.action) || 'navigate',
-                    instruction: typeof s.instruction === 'string' ? s.instruction.substring(0, 80) : '',
-                    expectedResult: typeof s.expectedResult === 'string' ? s.expectedResult.substring(0, 120) : undefined,
-                    troubleshootingHint: typeof s.troubleshootingHint === 'string' ? s.troubleshootingHint.substring(0, 200) : undefined,
-                }));
+                .flatMap((step: unknown): Omit<AnswerlatticeProcedureStep, 'stepOrder'>[] => {
+                    if (!isRecord(step)) return [];
+                    const instruction = cleanBoundedText(step.instruction, 80);
+                    if (!instruction) return [];
+                    return [{
+                        action: validateProcedureAction(step.action) || 'navigate',
+                        instruction,
+                        expectedResult: cleanBoundedText(step.expectedResult, 120),
+                        troubleshootingHint: cleanBoundedText(step.troubleshootingHint, 200),
+                    }];
+                });
+            const steps: AnswerlatticeProcedureStep[] = stepsWithoutOrder
+                .map((step, index) => ({ ...step, stepOrder: index + 1 }));
 
-            const warnings: AnswerlatticeProcedureWarning[] = (parsed.procedure.warnings || [])
+            const warnings = (Array.isArray(parsed.procedure.warnings) ? parsed.procedure.warnings : [])
                 .slice(0, 5)
-                .map((w: any) => ({
-                    message: typeof w.message === 'string' ? w.message.substring(0, 200) : '',
-                    severity: validateWarningSeverity(w.severity) || 'info',
-                }));
+                .flatMap((warning: unknown) => {
+                    if (!isRecord(warning)) return [];
+                    const message = cleanBoundedText(warning.message, 200);
+                    if (!message) return [];
+                    return [{
+                        message,
+                        severity: validateWarningSeverity(warning.severity) || 'info',
+                    }];
+                });
 
-            const prerequisites: AnswerlatticeProcedurePrerequisite[] = (parsed.procedure.prerequisites || [])
+            const prerequisites = (Array.isArray(parsed.procedure.prerequisites) ? parsed.procedure.prerequisites : [])
                 .slice(0, 5)
-                .map((p: any) => ({
-                    description: typeof p.description === 'string' ? p.description.substring(0, 200) : '',
-                    type: validatePrerequisiteType(p.type) || 'general',
-                    value: typeof p.value === 'string' ? p.value : undefined,
-                }));
+                .flatMap((prerequisite: unknown) => {
+                    if (!isRecord(prerequisite)) return [];
+                    const description = cleanBoundedText(prerequisite.description, 200);
+                    if (!description) return [];
+                    return [{
+                        description,
+                        type: validatePrerequisiteType(prerequisite.type) || 'general',
+                        value: cleanBoundedText(prerequisite.value, 120),
+                    }];
+                });
 
-            procedure = {
+            const procedureResult = AnswerlatticeProcedureSchema.safeParse({
                 steps,
                 warnings: warnings.length > 0 ? warnings : undefined,
                 prerequisites: prerequisites.length > 0 ? prerequisites : undefined,
-            };
+            });
+            procedure = procedureResult.success ? procedureResult.data : null;
         }
 
         return {
@@ -232,17 +257,27 @@ const VALID_ACTIONS = [
 const VALID_SEVERITIES = ['info', 'warning', 'destructive'];
 const VALID_PREREQ_TYPES = ['role', 'plan', 'state', 'general'];
 
-function validateProcedureAction(action: string | undefined): string | null {
-    if (!action || !VALID_ACTIONS.includes(action)) return null;
-    return action;
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const cleanBoundedText = (value: unknown, maxLength: number): string | undefined => {
+    if (typeof value !== 'string') return undefined;
+    const cleaned = value.trim().slice(0, maxLength);
+    return cleaned || undefined;
+};
+
+function validateProcedureAction(action: unknown): AnswerlatticeProcedureAction | null {
+    if (typeof action !== 'string' || !VALID_ACTIONS.includes(action)) return null;
+    return action as AnswerlatticeProcedureAction;
 }
 
-function validateWarningSeverity(severity: string | undefined): string | null {
-    if (!severity || !VALID_SEVERITIES.includes(severity)) return null;
-    return severity;
+function validateWarningSeverity(severity: unknown): AnswerlatticeWarningSeverity | null {
+    if (typeof severity !== 'string' || !VALID_SEVERITIES.includes(severity)) return null;
+    return severity as AnswerlatticeWarningSeverity;
 }
 
-function validatePrerequisiteType(type: string | undefined): string | null {
-    if (!type || !VALID_PREREQ_TYPES.includes(type)) return null;
-    return type;
+function validatePrerequisiteType(type: unknown): AnswerlatticePrerequisiteType | null {
+    if (typeof type !== 'string' || !VALID_PREREQ_TYPES.includes(type)) return null;
+    return type as AnswerlatticePrerequisiteType;
 }

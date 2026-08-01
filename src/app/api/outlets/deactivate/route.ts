@@ -19,6 +19,7 @@ import {
 import { logger } from "@lib/monitoring/logger";
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { getOutletSessionScope, normalizeOutletDocumentId } from "@lib/multiOutlet/outletSessionScope";
+import { isMultiOutletTenantStoreListEntryInScope } from "@lib/multiOutlet/projectIdBoundary";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
@@ -128,7 +129,7 @@ export const POST = withAuth(async (request, session) => {
         const callerStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`);
         const callerSnap = await callerStoreRef.get();
         const callerStore = callerSnap.data();
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             callerStore,
@@ -164,7 +165,12 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Account not available" }, { status: 403 });
         }
         const storesList = Array.isArray(tenant?.storesList) ? tenant.storesList : [];
-        const target = storesList.find((s: any) => Number(s.storeId) === Number(outletStoreId));
+        const target = storesList.find((store: unknown) => (
+            isMultiOutletTenantStoreListEntryInScope(store, {
+                allowInactive: true,
+                storeId: Number(outletStoreId),
+            })
+        ));
         if (!target || target.isMaster) {
             return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
         }
@@ -181,8 +187,9 @@ export const POST = withAuth(async (request, session) => {
         // Update store, summary, and tenant storesList atomically so location
         // visibility cannot drift if one write fails.
         let alreadyInactive = false;
-        let activeStoresAfterDeactivation = Math.max(1, storesList.filter((s: any) => (
-            Number(s?.storeId) !== Number(outletStoreId) && s?.active !== false
+        let activeStoresAfterDeactivation = Math.max(1, storesList.filter((store: unknown) => (
+            isMultiOutletTenantStoreListEntryInScope(store, {})
+            && !isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(outletStoreId) })
         )).length);
         await db.runTransaction(async (tx) => {
             const [freshCallerSnap, freshTenantSnap, freshTargetSnap] = await Promise.all([
@@ -206,7 +213,7 @@ export const POST = withAuth(async (request, session) => {
             ) {
                 throw new OutletDeactivateScopeChangedError();
             }
-            const freshPermissionError = requireAnyStorePermissionForStoreData(
+            const freshPermissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 freshCaller,
@@ -236,11 +243,14 @@ export const POST = withAuth(async (request, session) => {
             const freshStoresList = Array.isArray(freshTenantSnap.data()?.storesList)
                 ? freshTenantSnap.data()?.storesList
                 : [];
-            const freshTargetSummary = freshStoresList.find((store: any) => (
-                Number(store?.storeId) === Number(outletStoreId)
+            const freshTargetSummary = freshStoresList.find((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, {
+                    allowInactive: true,
+                    storeId: Number(outletStoreId),
+                })
             ));
-            const freshCallerSummary = freshStoresList.find((store: any) => (
-                Number(store?.storeId) === Number(storeId)
+            const freshCallerSummary = freshStoresList.find((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })
             ));
             if (
                 !freshCallerSummary
@@ -252,12 +262,19 @@ export const POST = withAuth(async (request, session) => {
             if (!freshTargetSummary || freshTargetSummary.isMaster === true) {
                 throw new InvalidOutletTargetError();
             }
-            const updatedStoresList = freshStoresList.map((s: any) =>
-                Number(s.storeId) === Number(outletStoreId) ? { ...s, active: false } : s
+            const updatedStoresList = freshStoresList.map((store: unknown) =>
+                isMultiOutletTenantStoreListEntryInScope(store, {
+                    allowInactive: true,
+                    storeId: Number(outletStoreId),
+                })
+                    ? { ...store, active: false }
+                    : store
             );
             activeStoresAfterDeactivation = Math.max(
                 1,
-                updatedStoresList.filter((s: any) => s?.active !== false).length,
+                updatedStoresList.filter((store: unknown) => (
+                    isMultiOutletTenantStoreListEntryInScope(store, {})
+                )).length,
             );
 
             alreadyInactive = freshTarget?.active === false && freshTargetSummary.active === false;
@@ -301,7 +318,7 @@ export const POST = withAuth(async (request, session) => {
                 const sub = await getActiveSubscriptionForStore(tenantId as number, storeId as number);
                 if (sub && (sub.quantity || 1) > activeStoresAfterDeactivation) {
                     const providerSubId = getRazorpayManagedSubscriptionId(sub);
-                    if (providerSubId) {
+                    if (providerSubId && sub.id) {
                         const newQty = activeStoresAfterDeactivation;
                         await updateRazorpaySubscriptionQuantity(providerSubId, newQty);
                         await updateSubscription(sub.id, { quantity: newQty });

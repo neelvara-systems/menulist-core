@@ -12,7 +12,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { getProjectDataByStore } from "@database/projects";
 import { replaceUndefined } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
-import getActiveSession from "@lib/auth/getActiveSession";
+import getOptionalActiveSession from "@lib/auth/getActiveSession";
 import {
     revalidatePublicClientCache,
     revalidatePublicClientCacheForProject,
@@ -45,10 +45,36 @@ import {
     type MasterSnapshot,
     type OutletPolicy,
 } from "@type/multiOutlet.types";
+import type LoginUserType from "@type/loginUser";
 import { deleteField, doc, getDoc, increment, Timestamp, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.PROJECTS;
 const OUTLET_POLICY_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+type MultiOutletSession = LoginUserType & {
+    sId: number;
+    tId: number;
+    uId: string;
+};
+
+const isMultiOutletSession = (session: LoginUserType | null): session is MultiOutletSession => (
+    Boolean(session)
+    && typeof session?.tId === "number"
+    && Number.isSafeInteger(session.tId)
+    && session.tId > 0
+    && typeof session.sId === "number"
+    && Number.isSafeInteger(session.sId)
+    && session.sId > 0
+    && typeof session.uId === "string"
+    && session.uId.trim().length > 0
+);
+
+const getActiveSession = async (): Promise<MultiOutletSession> => {
+    const session = await getOptionalActiveSession();
+    if (!isMultiOutletSession(session)) {
+        throw new Error("Multi-outlet session scope is not available");
+    }
+    return session;
+};
 
 type OutletPolicyResponse = {
     masterPromoted: boolean;
@@ -58,6 +84,12 @@ type OutletPolicyResponse = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const hasExactlyOneMasterFile = (value: unknown): boolean => (
+    isRecord(value)
+    && Array.isArray(value.files)
+    && value.files.length === 1
 );
 
 const isOutletPolicyValue = (value: unknown): value is OutletPolicy => (
@@ -167,9 +199,9 @@ export const setProjectAsMaster = async (
             }
 
             // Single-file constraint for master projects
-            if (projectData.files?.length > 1) {
+            if (!hasExactlyOneMasterFile(projectData)) {
                 throw new Error(
-                    "Master project must be single-file menu. Multi-file menus cannot be designated as master.",
+                    "Master project must contain exactly one menu file.",
                 );
             }
 
@@ -335,9 +367,9 @@ export const linkStoreToMaster = async (
             }
 
             // CONSTRAINT: Master must be single-file menu
-            if (masterProject.files?.length > 1) {
+            if (!hasExactlyOneMasterFile(masterProject)) {
                 throw new Error(
-                    "Master project must be single-file. Multi-file projects cannot be masters.",
+                    "Master project must contain exactly one menu file.",
                 );
             }
 
@@ -474,8 +506,8 @@ export const switchStoreMaster = async (
             }
 
             // Single-file constraint
-            if (newMasterProject.files?.length > 1) {
-                throw new Error("New master must be single-file menu");
+            if (!hasExactlyOneMasterFile(newMasterProject)) {
+                throw new Error("New master must contain exactly one menu file");
             }
 
             const storeRef = doc(

@@ -12,6 +12,7 @@ import {
 } from '@lib/answerlattice/supportTicketLifecycle';
 import {
     calculateSupportTicketSLAStatus,
+    getFirstSupportTicketResponse,
     getSupportTicketTimestampMillis,
 } from '@type/supportTicket';
 
@@ -24,7 +25,7 @@ const baseTicket = {
     sId: 101,
     subject: 'Billing question',
     status: 'Open',
-    priority: 'Normal',
+    priority: 'Normal' as const,
     category: 'Billing Inquiry',
     message: 'Please help.',
     documents: [],
@@ -86,6 +87,22 @@ const lateSla = calculateSupportTicketSLAStatus({
 }, NOW.toMillis() + (26 * 60 * 60 * 1000));
 assert.equal(lateSla?.responseStatus, 'breached');
 assert.equal(lateSla?.resolutionStatus, 'breached');
+assert.equal(getFirstSupportTicketResponse({
+    clientDetails: {
+        storeName: 'Workspace',
+        tenantName: 'Tenant',
+        email: actor.email,
+        phone: '',
+    },
+    messages: [{
+        id: 'staff-without-email',
+        text: 'Reply',
+        type: 'user',
+        sender: { id: 'support-1', name: 'Support', email: '' },
+        timestamp: NOW,
+    }],
+    uId: actor.id,
+})?.id, 'staff-without-email');
 
 assert.equal(
     getSupportTicketTimestampMillis({ seconds: 1_700_000_000, nanoseconds: 123_000_000 }),
@@ -114,6 +131,25 @@ assert.ok(parseAnswerlatticeSupportTicketDocument({
     value: baseTicket,
     scope: { tId: 1, sId: 101 },
 }));
+assert.equal(parseAnswerlatticeSupportTicketDocument({
+    id: 'malformed-client-details',
+    value: {
+        ...baseTicket,
+        clientDetails: {
+            storeName: { unsafe: true },
+            tenantName: 'Tenant',
+            email: actor.email,
+            phone: '',
+        },
+    },
+}), null);
+assert.equal(parseAnswerlatticeSupportTicketDocument({
+    id: 'malformed-platform-tags',
+    value: {
+        ...baseTicket,
+        platformTags: ['Bug', { unsafe: true }],
+    },
+}), null);
 assert.ok(parseAnswerlatticeSupportTicketDocument({
     id: 'server-escalation-ticket',
     value: {

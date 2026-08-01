@@ -34,7 +34,8 @@
 - Conversation detail, drawer transcript and CSV exports use Positive Feedback Share or literal helpful/not-helpful counts; they contain no satisfaction label and do not coerce tied feedback to negative.
 - Period comparison shows Positive Feedback Share movement in percentage points and `Not available` when either period lacks recorded feedback; volume/message comparisons remain relative percentages.
 - Deterministic insight writes remove obsolete merged fields, never call negative-gap events total feedback, express feedback-share movement in percentage points, and return unavailable rather than zero when a weekly comparison denominator is absent. Legacy weekly field names remain readable until rewritten.
-- ROI rate limiting, statistics, response acknowledgement, browser state, and loader ownership remain on one exact Answerlattice workspace. Wrong-scope, extra-field, raw-analytics, malformed-date, nonfinite, negative, or unreconciled responses fail closed.
+- ROI rate limiting, current `canManageSupport` permission, statistics, response acknowledgement, browser state, and loader ownership remain on one exact Answerlattice workspace. Direct calls without permission and wrong-scope, extra-field, raw-analytics, malformed-date, nonfinite, negative, or unreconciled responses fail closed.
+- A trailing `N`-day ROI read combines exactly `N - 1` completed UTC aggregate buckets with today's bounded live bucket. Month boundaries remain UTC-stable, and `N = 1` performs no historical aggregate query.
 - ROI calculations use the real `qnaChats` and `assistantChats` fields, expose the minutes-saved assumption, return JSON-safe `null` for no payback, and reject invented resolution, automation, retention, churn, or revenue-attribution fields.
 
 ```bash

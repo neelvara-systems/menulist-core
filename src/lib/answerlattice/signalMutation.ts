@@ -260,7 +260,7 @@ export async function runSignalMutationEngine(
             }
             const { mutationType, targetAnswerId, reason } = mutation;
 
-            const proposalData: Omit<AnswerlatticeMutationProposal, 'id'> = {
+            const proposalData: Omit<AnswerlatticeMutationProposal, 'id' | 'pId'> = {
                 tId,
                 sId,
                 targetAnswerId: targetAnswerId || '',
@@ -287,7 +287,6 @@ export async function runSignalMutationEngine(
                 action: 'mutation_proposal_generated',
                 entityType: 'mutationProposal',
                 entityId: proposal?.id || 'unknown',
-                previousState: null,
                 newState: {
                     mutationType,
                     targetAnswerId,

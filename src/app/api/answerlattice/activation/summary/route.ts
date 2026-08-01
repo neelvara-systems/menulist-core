@@ -35,7 +35,12 @@ import {
     isAnswerlatticeContextBundleManifestForScope,
     normalizeCompiledSourceVersions,
 } from '@lib/answerlattice/compiledContext';
-import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
+import {
+    getAnswerlatticeSubscriptionTimestampMillis,
+    isAnswerlatticeSubscriptionCurrent,
+    projectActiveAnswerlatticeSubscriptionForRead,
+    projectAnswerlatticeSubscriptionForRead,
+} from '@lib/answerlattice/subscriptionReadBoundary';
 import {
     getContextContentSummaryDocId,
     normalizeAnswerlatticeSurfaceContentSummary,
@@ -44,6 +49,9 @@ import { isAnswerlatticeStoreInScope, resolveAnswerlatticeSessionScope } from '@
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { admin } from '@lib/firebase/firebaseAdminCompat';
+import type { AnswerlatticeCompiledContextReadiness } from '@type/answerlattice';
+import type { FirestoreSubscriptionDoc } from '@type/razorpay';
+import { Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../../middleware/auth';
 import { applyAnswerlatticeDashboardReadRateLimit } from '../../readRateLimit';
@@ -78,16 +86,18 @@ const normalizeTimestampIso = (value: unknown): string | null => {
     if (!value) return null;
     try {
         if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toISOString() : null;
-        if (typeof (value as any).toDate === 'function') {
-            const date = (value as any).toDate();
+        if (value instanceof Timestamp) {
+            const date = value.toDate();
             return date instanceof Date && Number.isFinite(date.getTime()) ? date.toISOString() : null;
         }
-        const seconds = typeof (value as any).seconds === 'number'
-            ? (value as any).seconds
-            : typeof (value as any)._seconds === 'number'
-                ? (value as any)._seconds
-                : null;
-        if (seconds !== null) {
+        const seconds = typeof value === 'object' && value !== null
+            ? typeof Reflect.get(value, 'seconds') === 'number'
+                ? Reflect.get(value, 'seconds')
+                : typeof Reflect.get(value, '_seconds') === 'number'
+                    ? Reflect.get(value, '_seconds')
+                    : null
+            : null;
+        if (typeof seconds === 'number') {
             const date = new Date(seconds * 1000);
             return Number.isFinite(date.getTime()) ? date.toISOString() : null;
         }
@@ -103,10 +113,10 @@ const buildCompiledContextReadiness = (
     manifest: unknown,
     tId: number,
     sId: number,
-) => {
+): AnswerlatticeCompiledContextReadiness => {
     if (!isAnswerlatticeContextBundleManifestForScope(manifest, tId, sId)) {
         return {
-            status: 'empty' as const,
+            status: 'empty',
             bundleVersion: 0,
             activeVersion: 0,
             lastReadyVersion: 0,
@@ -139,9 +149,16 @@ const buildCompiledContextReadiness = (
     };
 };
 
-const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+const getAnswerlatticeDb = (): Firestore | null => {
+    const candidate: unknown = answerlatticeFirestoreAdmin;
+    if (
+        !candidate
+        || typeof candidate !== 'object'
+        || typeof Reflect.get(candidate, 'collection') !== 'function'
+    ) {
+        return null;
+    }
+    return answerlatticeFirestoreAdmin;
 };
 
 const resolveSessionScope = (session: any): { tenantId: number; storeId: number } | null => {
@@ -150,7 +167,11 @@ const resolveSessionScope = (session: any): { tenantId: number; storeId: number 
     return { tenantId: answerlatticeScope.tenantId, storeId: answerlatticeScope.storeId };
 };
 
-const readLegacySubscription = async (db: any, tId: number, sId: number) => {
+const readLegacySubscription = async (
+    db: Firestore,
+    tId: number,
+    sId: number,
+): Promise<FirestoreSubscriptionDoc | null> => {
     const snapshot = await db
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
@@ -163,8 +184,21 @@ const readLegacySubscription = async (db: any, tId: number, sId: number) => {
         .get();
 
     const match = snapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
-        .find((data: any) => isAnswerlatticeSubscriptionInScope(data, { tId, sId }));
+        .map((docSnap) => projectAnswerlatticeSubscriptionForRead(
+            docSnap.data(),
+            docSnap.id,
+            tId,
+            sId,
+        ))
+        .filter((subscription): subscription is FirestoreSubscriptionDoc => subscription !== null)
+        .sort((left, right) => {
+            const leftActive = left.status === 'active' && isAnswerlatticeSubscriptionCurrent(left);
+            const rightActive = right.status === 'active' && isAnswerlatticeSubscriptionCurrent(right);
+            if (leftActive !== rightActive) return rightActive ? 1 : -1;
+            const leftEnd = getAnswerlatticeSubscriptionTimestampMillis(left.cycleEndDate) ?? 0;
+            const rightEnd = getAnswerlatticeSubscriptionTimestampMillis(right.cycleEndDate) ?? 0;
+            return rightEnd - leftEnd || String(left.id).localeCompare(String(right.id));
+        })[0];
 
     return match || null;
 };
@@ -230,16 +264,19 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             sourceVersionsRef.get(),
         ]);
 
-        const usedLegacySubscriptionFallback = !isAnswerlatticeSubscriptionInScope(
+        const embeddedActiveSubscription = projectActiveAnswerlatticeSubscriptionForRead(
             storeData.answerlatticeSubscription,
-            { tId, sId },
+            `activation_${tId}_${sId}`,
+            tId,
+            sId,
         );
+        const usedLegacySubscriptionFallback = embeddedActiveSubscription === null;
         const legacySubscription = usedLegacySubscriptionFallback
             ? await readLegacySubscription(db, tId, sId)
             : null;
 
         const compiledContext = buildCompiledContextReadiness(
-            bundleManifestSnap.exists ? bundleManifestSnap.data() as any : null,
+            bundleManifestSnap.exists ? bundleManifestSnap.data() : null,
             tId,
             sId,
         );

@@ -2,50 +2,50 @@ import TagElement from '@antdComponent/tagElement'
 import { PermissionKey } from '@constant/permissions'
 import { PERMISSION_CATEGORIES_CONFIG, PERMISSION_LABELS } from '@data/rolesPermissionsInitialData'
 import { getPermissionsForRole } from '@lib/permissions/hasPermission'
-import type { StaffStoreOption } from '@lib/staffManagement/types'
+import type { StaffFormUser, StaffStoreOption } from '@lib/staffManagement/types'
 import EditorWrapper from '@organisms/editor/editorWrapper'
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider'
 import { RolePermissions } from '@type/platform/roles'
-import { StoreDataType } from '@type/platform/store'
-import { UserDataType } from '@type/platform/user'
 import { Divider, Empty, Flex, Select, Tag, Typography } from 'antd'
 import { Fragment, useContext, useEffect, useState } from 'react'
 import { LuCheck, LuX } from 'react-icons/lu'
 const { Text } = Typography;
 
-function AccessPermissions({ staffStores = [], userDetails }: { staffStores?: StaffStoreOption[], userDetails: UserDataType }) {
+function AccessPermissions({ staffStores = [], userDetails }: { staffStores?: StaffStoreOption[], userDetails: StaffFormUser }) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [permissions, setPermissions] = useState<RolePermissions>({})
-    const [activeStore, setActiveStore] = useState(null)
+    const [activeStore, setActiveStore] = useState<number | null>(null)
     const [userRoleName, setUserRoleName] = useState<string>('')
 
     useEffect(() => {
         setPermissions({})
         setUserRoleName('')
 
-        if ((Boolean(storeDetails) && Boolean(userDetails?.stores?.length) && 'storeId' in userDetails)) {
-            const selectedStoreId = activeStore || userDetails.storeId;
-            const store: StoreDataType = staffStores.find((s) => s.storeId === selectedStoreId) as any
-                || tenantDetails?.storesList?.find((s: any) => s.storeId === selectedStoreId)?.storeDetails
-                || tenantDetails?.storesList?.find((s: any) => s.storeId === selectedStoreId)
-                || (storeDetails?.storeId === selectedStoreId ? storeDetails : null);
-            if (!store) return
+        if (storeDetails && userDetails.stores.length) {
+            const selectedStoreId = userDetails.stores.some((mapping) => mapping.storeId === activeStore)
+                ? activeStore
+                : userDetails.storeId ?? userDetails.stores[0]?.storeId ?? null;
+            if (!selectedStoreId) return;
+            const roles = staffStores.find((store) => store.storeId === selectedStoreId)?.roles
+                || tenantDetails?.storesList.find((store) => store.storeId === selectedStoreId)?.storeDetails?.roles
+                || (storeDetails.storeId === selectedStoreId ? storeDetails.roles : [])
+                || [];
 
             // Single role per store (not array)
-            const userStoreMapping = userDetails.stores?.find((s: any) => s.storeId === selectedStoreId);
+            const userStoreMapping = userDetails.stores.find((mapping) => mapping.storeId === selectedStoreId);
             const userRoleId = userStoreMapping?.role;  // Single role string
 
             if (!userRoleId) return
 
             // Get permissions directly from user's single role
-            const finalPermissions = getPermissionsForRole(userRoleId, store.roles || []);
+            const finalPermissions = getPermissionsForRole(userRoleId, roles);
 
             // Get role name for display
-            const roleData = store.roles?.find((r: any) => r.id === userRoleId);
+            const roleData = roles.find((role) => role.id === userRoleId);
             setUserRoleName(roleData?.name || userRoleId);
 
-            if (activeStore == null) setActiveStore(userDetails.storeId);
+            if (activeStore !== selectedStoreId) setActiveStore(selectedStoreId);
             setPermissions(finalPermissions)
         }
     }, [userDetails, activeStore, staffStores, storeDetails, tenantDetails?.storesList])

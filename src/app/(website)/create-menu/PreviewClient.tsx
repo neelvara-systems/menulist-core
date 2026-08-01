@@ -11,10 +11,15 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LuAlertCircle, LuCheck, LuLoader, LuLogIn, LuSend, LuUpload } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
 import { useWebsitePath } from '@/components/website/shared/WebsiteProductPathProvider';
+import type { ExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
+import type {
+    PublicMenuDraftExtractedData,
+    PublicMenuDraftItem,
+} from '@data/shared/publicMenuDraftData';
 import type { OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -22,30 +27,13 @@ import {
     PUBLIC_CREATE_MENU_LAST_CLAIM_KEY,
     serializePublicCreateMenuLastClaimHandoff,
 } from '@lib/publicCreateMenu/lastClaimHandoff';
-
-interface ExtractedCategory {
-    id: string;
-    name: Record<string, string>;
-}
-
-interface ExtractedItem {
-    id: string;
-    category: string;
-    name: Record<string, string>;
-    description?: Record<string, string>;
-    price?: string;
-    attributes?: Array<{ id: string; name: Record<string, string>; price?: string }>;
-    tags?: string[];
-    dietaryTags?: string[];
-}
+import {
+    normalizePublicCreateMenuPreviewDraft,
+} from '@lib/publicCreateMenu/previewDraftResponse';
 
 interface DraftData {
     status: 'pending' | 'processing' | 'completed' | 'failed' | 'expired';
-    extractedData: {
-        categories: ExtractedCategory[];
-        items: ExtractedItem[];
-        languages: Array<string | { code: string; name?: string; isPrimary?: boolean }>;
-    } | null;
+    extractedData: PublicMenuDraftExtractedData | null;
     detectedBusinessName: string | null;
     detectedBusinessType: string | null;
     detectedBusinessCategory: string | null;
@@ -53,9 +41,9 @@ interface DraftData {
     detectedBrandAccentColor?: string | null;
     detectedImageBackgroundColor?: string | null;
     suggestedProjectName?: string | null;
-    extractedBusinessProfile?: any;
+    extractedBusinessProfile: ExtractedBusinessProfile | null;
     imageUrl: string | null;
-    sourceType?: string;
+    sourceType: string | null;
     error: string | null;
 }
 
@@ -69,28 +57,7 @@ const CREATE_MENU_PREVIEW_POLL_INTERVAL_MS = 5_000;
 const CREATE_MENU_PREVIEW_MAX_POLLS = 36;
 const CREATE_MENU_SESSION_REFRESH_TIMEOUT_MS = 3_000;
 
-type PreviewDraftResponse = Omit<Partial<DraftData>, 'status'> & {
-    status?: unknown;
-};
-
-type PreviewClaimResponse = {
-    isNewAccount?: unknown;
-    menuUrl?: unknown;
-    officialPageUrl?: unknown;
-    projectId?: unknown;
-    storeId?: unknown;
-    tenantId?: unknown;
-    subdomain?: unknown;
-    success?: unknown;
-};
-
 type PreviewResponsePhase = 'status' | 'full' | 'claim';
-
-const DRAFT_STATUSES = new Set(['pending', 'processing', 'completed', 'failed', 'expired']);
-
-const isDraftStatus = (value: unknown): value is DraftData['status'] => (
-    typeof value === 'string' && DRAFT_STATUSES.has(value)
-);
 
 const isNonEmptyResponseString = (value: unknown): value is string => (
     typeof value === 'string' && value.trim().length > 0
@@ -114,11 +81,11 @@ const getPreviewResponseLogContext = (
     responseStatus: response.status,
 });
 
-async function readPreviewResponseJson<T>(
+async function readPreviewResponseJson(
     response: Response,
     draftId: string,
     phase: PreviewResponsePhase,
-): Promise<T | null> {
+): Promise<Record<string, unknown> | null> {
     const maxBytes = getPreviewResponseByteCap(phase);
     const parseFailureCode = phase === 'claim'
         ? 'public_create_menu_preview_claim_response_parse_failed'
@@ -144,15 +111,18 @@ async function readPreviewResponseJson<T>(
         return null;
     }
 
-    return payload as T;
+    return payload as Record<string, unknown>;
 }
 
 function cleanPreviewText(value: unknown): string {
     return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
 }
 
-function getSuggestionText(suggestion: any): string {
-    return cleanPreviewText(suggestion?.value ?? suggestion);
+function getSuggestionText(suggestion: unknown): string {
+    if (suggestion && typeof suggestion === 'object' && !Array.isArray(suggestion)) {
+        return cleanPreviewText((suggestion as Record<string, unknown>).value);
+    }
+    return cleanPreviewText(suggestion);
 }
 
 function addPreviewDetail(
@@ -180,7 +150,8 @@ function buildPreviewFailureDraft(status: DraftData['status'], error: string): D
         detectedBusinessType: null,
         detectedBusinessCategory: null,
         imageUrl: null,
-        sourceType: undefined,
+        sourceType: null,
+        extractedBusinessProfile: null,
         error,
     };
 }
@@ -240,7 +211,7 @@ function formatPreviewTag(tag: string, t: ReturnType<typeof useTranslations>): s
     }
 }
 
-function getPreviewItemTags(item: ExtractedItem): string[] {
+function getPreviewItemTags(item: PublicMenuDraftItem): string[] {
     const seen = new Set<string>();
     const output: string[] = [];
     [...(item.dietaryTags || []), ...(item.tags || [])].forEach((rawTag) => {
@@ -258,7 +229,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('Website');
-    const isClaimMode = searchParams.get('claim') === 'true';
+    const isClaimMode = searchParams?.get('claim') === 'true';
     const { data: session, status: sessionStatus, update: updateSession } = useSession();
     const createMenuPath = useWebsitePath('/create-menu');
     const createMenuSuccessPath = useWebsitePath('/create-menu/success');
@@ -280,8 +251,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const [addressLine, setAddressLine] = useState('');
     const [claiming, setClaiming] = useState(false);
     const [claimError, setClaimError] = useState<string | null>(null);
+    const claimInFlightRef = useRef(false);
 
-    const handlePreviewDraftResponseStatus = useCallback((res: Response) => {
+    const handlePreviewDraftResponseStatus = useCallback((res: Response, signal: AbortSignal) => {
+        if (signal.aborted) return 'cancelled';
         if (res.status === 401) {
             router.replace(signInUrl);
             return 'auth_required';
@@ -308,7 +281,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
         return null;
     }, [router, signInUrl, t]);
 
-    const fetchDraft = useCallback(async (statusOnly = true) => {
+    const fetchDraft = useCallback(async (signal: AbortSignal, statusOnly = true) => {
         if (sessionStatus !== 'authenticated') {
             return 'waiting_for_auth';
         }
@@ -321,20 +294,22 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     cache: 'no-store',
                     credentials: 'same-origin',
                     redirect: 'manual',
+                    signal,
                 });
             };
 
             let res = await requestDraft(statusOnly);
 
-            const previewFailure = handlePreviewDraftResponseStatus(res);
+            const previewFailure = handlePreviewDraftResponseStatus(res, signal);
             if (previewFailure) return previewFailure;
 
-            let data = await readPreviewResponseJson<PreviewDraftResponse>(
+            let payload = await readPreviewResponseJson(
                 res,
                 draftId,
                 statusOnly ? 'status' : 'full',
             );
-            if (!data || !isDraftStatus(data.status)) {
+            let data = normalizePublicCreateMenuPreviewDraft(payload);
+            if (!data) {
                 logRuntimeFailure('public_create_menu_preview_response_invalid', new Error('public_create_menu_preview_status_invalid'), {
                     ...getPreviewResponseLogContext(draftId, statusOnly ? 'status' : 'full', res),
                     hasValidStatus: false,
@@ -345,20 +320,23 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             }
             if (data.status === 'completed' && !data.extractedData && statusOnly) {
                 res = await requestDraft(false);
-                const fullPreviewFailure = handlePreviewDraftResponseStatus(res);
+                const fullPreviewFailure = handlePreviewDraftResponseStatus(res, signal);
                 if (fullPreviewFailure) return fullPreviewFailure;
 
-                data = await readPreviewResponseJson<PreviewDraftResponse>(res, draftId, 'full');
-                if (!data || !isDraftStatus(data.status)) {
+                payload = await readPreviewResponseJson(res, draftId, 'full');
+                data = normalizePublicCreateMenuPreviewDraft(payload);
+                if (!data || (data.status === 'completed' && !data.extractedData)) {
                     logRuntimeFailure('public_create_menu_preview_response_invalid', new Error('public_create_menu_preview_status_invalid'), {
                         ...getPreviewResponseLogContext(draftId, 'full', res),
-                        hasValidStatus: false,
+                        hasValidStatus: Boolean(data),
+                        completedDataPresent: Boolean(data?.extractedData),
                     });
                     setDraft(buildPreviewFailureDraft('failed', t('CreateMenu.previewErrorLoadFailed')));
                     setLoading(false);
                     return 'error';
                 }
             }
+            if (signal.aborted) return 'cancelled';
             const nextStatus = data.status;
             setDraft((previous) => ({
                 ...previous,
@@ -368,7 +346,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             }));
             setLoading(false);
             return nextStatus;
-        } catch {
+        } catch (error) {
+            if (signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+                return 'cancelled';
+            }
             setDraft(buildPreviewFailureDraft('failed', t('CreateMenu.previewErrorConnection')));
             setLoading(false);
             return 'error';
@@ -387,6 +368,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
         let timer: ReturnType<typeof setTimeout> | undefined;
         let active = true;
         let attempts = 0;
+        const controller = new AbortController();
         setPollTimedOut(false);
 
         const poll = async () => {
@@ -397,7 +379,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             }
             attempts += 1;
             setPollCount(attempts);
-            const status = await fetchDraft();
+            const status = await fetchDraft(controller.signal);
             if (!active || (status !== 'pending' && status !== 'processing')) return;
             if (attempts >= CREATE_MENU_PREVIEW_MAX_POLLS) {
                 setPollTimedOut(true);
@@ -410,6 +392,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
         return () => {
             active = false;
+            controller.abort();
             if (timer) clearTimeout(timer);
         };
     }, [fetchDraft, pollCycle, router, sessionStatus, signInUrl]);
@@ -425,6 +408,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     };
 
     const handleClaim = async () => {
+        if (claimInFlightRef.current) return;
         if (!businessName.trim() || businessName.trim().length < 2) {
             setClaimError(t('CreateMenu.previewClaimBusinessNameRequired'));
             return;
@@ -433,6 +417,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             setClaimError(t('CreateMenu.previewClaimCityRequired'));
             return;
         }
+        claimInFlightRef.current = true;
         setClaiming(true);
         setClaimError(null);
 
@@ -456,11 +441,10 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
             if (!res.ok) {
                 setClaimError(t('CreateMenu.previewClaimFailed'));
-                setClaiming(false);
                 return;
             }
 
-            const data = await readPreviewResponseJson<PreviewClaimResponse>(res, draftId, 'claim');
+            const data = await readPreviewResponseJson(res, draftId, 'claim');
             if (
                 data?.success !== true
                 || !isNonEmptyResponseString(data.menuUrl)
@@ -475,7 +459,6 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     success: data?.success === true,
                 });
                 setClaimError(t('CreateMenu.previewClaimFailed'));
-                setClaiming(false);
                 return;
             }
             if (typeof window !== 'undefined') {
@@ -503,10 +486,13 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     });
                 }
             }
+            let refreshTimer: ReturnType<typeof setTimeout> | null = null;
             try {
                 await Promise.race([
                     updateSession(),
-                    new Promise((resolve) => setTimeout(resolve, CREATE_MENU_SESSION_REFRESH_TIMEOUT_MS)),
+                    new Promise((resolve) => {
+                        refreshTimer = setTimeout(resolve, CREATE_MENU_SESSION_REFRESH_TIMEOUT_MS);
+                    }),
                 ]);
             } catch (error) {
                 // Non-blocking: the next authenticated page can refresh session state again.
@@ -514,6 +500,8 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     ...getBoundedRuntimeStringContext('draftId', draftId),
                     isNewAccount: data.isNewAccount === true,
                 });
+            } finally {
+                if (refreshTimer !== null) clearTimeout(refreshTimer);
             }
             const params = new URLSearchParams({
                 menuUrl: data.menuUrl,
@@ -524,7 +512,9 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             router.push(`${createMenuSuccessPath}?${params.toString()}`);
         } catch {
             setClaimError(t('CreateMenu.genericError'));
+        } finally {
             setClaiming(false);
+            claimInFlightRef.current = false;
         }
     };
 
@@ -664,10 +654,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const categories = extractedData?.categories || [];
     const items = extractedData?.items || [];
     const detectedDetails = buildPublicPreviewDetectedDetails(draft, t);
-    const firstLanguage = extractedData?.languages?.[0];
-    const lang = typeof firstLanguage === 'string'
-        ? firstLanguage
-        : firstLanguage?.code || 'en';
+    const lang = extractedData?.languages?.[0]?.code || 'en';
 
     return (
         <div style={{

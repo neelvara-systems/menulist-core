@@ -18,9 +18,11 @@ import {
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import type { KnowledgeBaseArticleMeta, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
-import type { AnswerlatticeFaq } from '@type/answerlattice';
-import type { ChangelogPage } from '@type/changelog';
-import type { AnswerlatticePublicArticle } from '@lib/answerlattice/publicContentBoundary';
+import type { AnswerlatticePublicFaq } from '@type/answerlattice';
+import type {
+    AnswerlatticePublicArticle,
+    AnswerlatticePublicChangelogPage,
+} from '@lib/answerlattice/publicContentBoundary';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -118,7 +120,7 @@ const compactCategoriesForClient = (
     };
 };
 
-const compactFaqsForClient = (faqs: AnswerlatticeFaq[]): HostedHelpFaq[] => (
+const compactFaqsForClient = (faqs: AnswerlatticePublicFaq[]): HostedHelpFaq[] => (
     (faqs || []).map(faq => ({
         id: String(faq.id || ''),
         question: String(faq.question || ''),
@@ -126,7 +128,9 @@ const compactFaqsForClient = (faqs: AnswerlatticeFaq[]): HostedHelpFaq[] => (
     })).filter(faq => faq.id && faq.question)
 );
 
-const compactChangelogForClient = (page: ChangelogPage | null): HostedHelpChangelogPage | null => {
+const compactChangelogForClient = (
+    page: AnswerlatticePublicChangelogPage | null,
+): HostedHelpChangelogPage | null => {
     if (!page) return null;
 
     return {

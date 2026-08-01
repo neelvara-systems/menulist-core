@@ -12,7 +12,7 @@ import {
     type ResellerMonthlySummaryTotals,
 } from "@lib/reseller/resellerMonthlySummary";
 import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
-import type { ResellerProfile } from "@type/reseller";
+import type { ResellerProfileRecord } from "@type/reseller";
 import { NextRequest } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { applyResellerReadRateLimit, resellerPrivateJson } from "../readRateLimit";
@@ -116,7 +116,7 @@ function parseMonth(value: string | null) {
 async function getVisibleProfileDocs(
     db: admin.firestore.Firestore,
     isPlatform: boolean,
-    currentProfile: ResellerProfile | null,
+    currentProfile: ResellerProfileRecord | null,
 ): Promise<ResellerMonthlyProfile[]> {
     if (isPlatform) {
         const snapshot = await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).limit(50).get();
@@ -151,7 +151,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         const { month, start, end } = parsedMonth;
         reportMonth = month;
         const db = admin.firestore();
-        let currentResellerProfile: ResellerProfile | null = null;
+        let currentResellerProfile: ResellerProfileRecord | null = null;
         if (isPlatform) {
             if (!await getCurrentPlatformUser(session)) {
                 return resellerPrivateJson({ error: "Access denied." }, { status: 403 });

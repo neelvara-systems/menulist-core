@@ -1951,7 +1951,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
 
     const captureReply = async (event: FormEvent) => {
         event.preventDefault();
-        if (!canReviewTargets) return;
+        if (!canReviewTargets || !data) return;
         const conversation = data.workspace.conversations.find((item) => (
             item.conversationId === resolvedTarget?.latestConversationId
             && item.channel === replyChannel

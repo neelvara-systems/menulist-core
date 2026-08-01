@@ -10,7 +10,7 @@
 
 | # | Surface | Docs Location | Feature Flag | Status | Spec Lock |
 |---|---------|--------------|-------------|--------|-----------|
-| 1 | **PDF Surface** | `__docs__/pdf-surface/` | `ENABLE_PDF_SURFACE: true` | ✅ Implemented | v2.1 |
+| 1 | **PDF Surface** | `__docs__/pdf-surface/` | Always-on compatibility adapter | ✅ Implemented | v2.1 |
 | 2 | **OBP (Official Business Page)** | `__docs__/official-business-page/` | `ENABLE_OBP: false` | ✅ Built, flag off | Draft |
 | 3 | **Digital Screens** | `__docs__/digital-screens/` | `DIGITAL_SCREENS_ENABLED: true` | ✅ Production | 🔒 v2.2 LOCKED |
 | 4 | **POS Webhook Sync** | `__docs__/pos-webhook-sync/` | `ENABLE_POS_SYNC: false` | ✅ Built, flag off | v2.0 |

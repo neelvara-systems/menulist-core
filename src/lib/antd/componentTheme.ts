@@ -1,4 +1,8 @@
-const antdComponentTheme = (token) => {
+import type { ThemeConfig } from 'antd';
+
+const antdComponentTheme = (
+    _token?: ThemeConfig['token'],
+): NonNullable<ThemeConfig['components']> => {
     return {
         Menu: {
             itemSelectedBg: "unset"
@@ -42,5 +46,6 @@ const antdComponentTheme = (token) => {
             splitBarDraggableSize: 80,
         }
     }
-}
+};
+
 export default antdComponentTheme;

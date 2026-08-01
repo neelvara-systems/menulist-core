@@ -17,6 +17,8 @@ import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
     CUSTOMER_APP_ICON_CACHE_CONTROL,
+    CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL,
+    normalizeCustomerAppDisplayName,
     parseCustomerAppSplashSize,
     renderCustomerAppSplash,
     resolveCustomerAppIconSource,
@@ -37,6 +39,7 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
     const limit = await checkRateLimit({
         key: `public-dynamic-asset:splash:${ipHash}`,
         ...config,
+        failClosedOnProviderError: true,
     });
     return !limit.allowed;
 }
@@ -65,7 +68,7 @@ export async function GET(
             }), {
                 width,
                 height,
-                headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
+                headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL },
             });
         }
 
@@ -84,7 +87,7 @@ export async function GET(
             });
         }
 
-        const displayName: string = getStoreContextName(store, 'Menu');
+        const displayName = normalizeCustomerAppDisplayName(getStoreContextName(store, 'Menu'));
         const iconSource = resolveCustomerAppIconSource(store);
         const themeColor = normalizePublicAccentColor(store?.publicPresence?.accentColor) || APP_THEME_COLOR;
 
@@ -99,7 +102,7 @@ export async function GET(
         }), {
             width,
             height,
-            headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
+            headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL },
         });
     } catch (err) {
         logRuntimeFailure('customer_app_splash_generation_failed', err, {

@@ -95,14 +95,14 @@ const SCHEDULER_TASK_NAMES = new Set<SchedulerTaskName>([
 function normalizeSchedulerDetails(value: unknown): Record<string, unknown> | undefined {
   if (!isRecord(value)) return undefined;
   try {
-    const entries = Object.entries(value).slice(0, 20).flatMap(([key, detail], index) => {
+    const entries: Array<[string, unknown]> = [];
+    Object.entries(value).slice(0, 20).forEach(([key, detail], index) => {
       const normalizedKey = /^[a-zA-Z0-9_.:-]{1,48}$/.test(key) ? key : `detail_${index + 1}`;
-      if (detail === null || typeof detail === 'boolean') return [[normalizedKey, detail] as const];
-      if (typeof detail === 'number' && Number.isFinite(detail)) return [[normalizedKey, detail] as const];
-      if (typeof detail === 'string') return [[normalizedKey, cleanSchedulerText(detail, 240)] as const];
-      if (Array.isArray(detail)) return [[normalizedKey, `[array:length=${Math.min(detail.length, 10_000)}]`] as const];
-      if (isRecord(detail)) return [[normalizedKey, `[object:keys=${Math.min(Object.keys(detail).length, 10_000)}]`] as const];
-      return [];
+      if (detail === null || typeof detail === 'boolean') entries.push([normalizedKey, detail]);
+      else if (typeof detail === 'number' && Number.isFinite(detail)) entries.push([normalizedKey, detail]);
+      else if (typeof detail === 'string') entries.push([normalizedKey, cleanSchedulerText(detail, 240)]);
+      else if (Array.isArray(detail)) entries.push([normalizedKey, `[array:length=${Math.min(detail.length, 10_000)}]`]);
+      else if (isRecord(detail)) entries.push([normalizedKey, `[object:keys=${Math.min(Object.keys(detail).length, 10_000)}]`]);
     });
     return entries.length ? Object.fromEntries(entries) : undefined;
   } catch {
@@ -154,14 +154,16 @@ export function normalizeSchedulerRunLog(id: string, value: unknown): SchedulerR
       }];
     })
     : [];
+  const completedAt = schedulerTimestamp(value.completedAt);
+  const expiresAt = schedulerTimestamp(value.expiresAt);
 
   return {
     id,
     trigger: value.trigger,
     triggeredBy: cleanSchedulerText(value.triggeredBy, 160) || 'system',
     startedAt,
-    completedAt: schedulerTimestamp(value.completedAt),
-    ...(schedulerTimestamp(value.expiresAt) ? { expiresAt: schedulerTimestamp(value.expiresAt) } : {}),
+    completedAt,
+    ...(expiresAt ? { expiresAt } : {}),
     durationMs: schedulerDuration(value.durationMs),
     status: value.status as SchedulerRunLog['status'],
     ...(typeof value.schedulerHour === 'number' && Number.isInteger(value.schedulerHour) && value.schedulerHour >= 0 && value.schedulerHour <= 23 ? { schedulerHour: value.schedulerHour } : {}),
@@ -193,16 +195,20 @@ export function normalizeSchedulerSettlementState(id: string, value: unknown): S
   const status = cleanSchedulerText(value.status, 32);
   const phase = cleanSchedulerText(value.phase, 80);
   const error = cleanSchedulerText(value.error, 160);
+  const lastAttemptedLocalDate = normalizeSchedulerLocalDate(value.lastAttemptedLocalDate);
+  const lastSettledLocalDate = normalizeSchedulerLocalDate(value.lastSettledLocalDate);
+  const lastCompletedAt = schedulerTimestamp(value.lastCompletedAt);
+  const updatedAt = schedulerTimestamp(value.updatedAt);
   return {
     id,
     ...(cleanSchedulerText(value.tId, 160) ? { tId: cleanSchedulerText(value.tId, 160) } : {}),
     ...(cleanSchedulerText(value.sId, 160) ? { sId: cleanSchedulerText(value.sId, 160) } : {}),
     ...(status ? { status } : {}),
     ...(phase ? { phase } : {}),
-    ...(normalizeSchedulerLocalDate(value.lastAttemptedLocalDate) ? { lastAttemptedLocalDate: normalizeSchedulerLocalDate(value.lastAttemptedLocalDate) } : {}),
-    ...(normalizeSchedulerLocalDate(value.lastSettledLocalDate) ? { lastSettledLocalDate: normalizeSchedulerLocalDate(value.lastSettledLocalDate) } : {}),
-    ...(schedulerTimestamp(value.lastCompletedAt) ? { lastCompletedAt: schedulerTimestamp(value.lastCompletedAt) } : {}),
-    ...(schedulerTimestamp(value.updatedAt) ? { updatedAt: schedulerTimestamp(value.updatedAt) } : {}),
+    ...(lastAttemptedLocalDate ? { lastAttemptedLocalDate } : {}),
+    ...(lastSettledLocalDate ? { lastSettledLocalDate } : {}),
+    ...(lastCompletedAt ? { lastCompletedAt } : {}),
+    ...(updatedAt ? { updatedAt } : {}),
     ...(error ? { error } : {}),
   };
 }

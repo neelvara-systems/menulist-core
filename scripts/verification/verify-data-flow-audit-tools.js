@@ -102,6 +102,11 @@ assert.match(manifestGenerator, /vanishedDuringInventory/, 'coverage manifest ge
 assert.match(manifestGenerator, /'\.py'/, 'coverage manifest generator must include first-party Python scripts');
 assert.match(manifestGenerator, /\['\.next-audit-build', 'generated Next\.js audit build output; next\.config\.js and source inputs remain in scope'\]/, 'coverage manifest generator must exclude generated Next.js audit build output');
 assert.match(
+    manifestGenerator,
+    /'src\/scripts\/fabric\.min\.js'[\s\S]*vendored minified Fabric\.js 1\.6\.4 bundle with no first-party callers/,
+    'coverage manifest generator must explicitly exclude the dormant vendored Fabric 1.6.4 bundle',
+);
+assert.match(
     collectionGenerator,
     /if \(\/\^\\s\*match\\s\+\\\/\/\.test\(line\)\)/,
     'collection catalog generator must restrict rule parsing to actual match declarations',
@@ -261,9 +266,21 @@ const manifestCsv = readFileSync(
     path.join(root, '__docs__/audits/data-flow-pipeline-deep-audit.manifest.csv'),
     'utf8',
 );
+const exclusionsCsv = readFileSync(
+    path.join(root, '__docs__/audits/data-flow-pipeline-deep-audit.exclusions.csv'),
+    'utf8',
+);
 assert(
     manifestCsv.includes('"scripts/localization/translate-owner-locale-units.py","script/maintenance"'),
     'coverage manifest must inventory the first-party owner-locale Python pipeline',
+);
+assert(
+    !manifestCsv.includes('"src/scripts/fabric.min.js",'),
+    'coverage manifest must not count the dormant vendored Fabric 1.6.4 bundle as first-party runtime',
+);
+assert(
+    exclusionsCsv.includes('"src/scripts/fabric.min.js","vendored minified Fabric.js 1.6.4 bundle with no first-party callers; active Fabric dependency, adapters, editor source, and lockfiles remain in scope","upstream Fabric.js distribution"'),
+    'coverage exclusions must record the exact vendored Fabric bundle and retained first-party sources',
 );
 
 const collectionCsv = readFileSync(

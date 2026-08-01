@@ -1,13 +1,21 @@
 # AnswerLattice Website Marketing
 
 > **Status:** Implemented public acquisition contract; outcome proof still requires real buyers
-> **Last audited:** July 29, 2026
+> **Last audited:** July 31, 2026
 
 ## Audience
 
-The primary buyer is a solo founder or small founder-led SaaS team that has recurring setup, billing, onboarding, settings, integration, release, or error questions but no dedicated support-operations function.
+The primary buyer and first-use path are a solo technical founder or small founder-led SaaS team that has expected or recurring setup, billing, onboarding, settings, integration, release, or error questions but no dedicated support-operations function.
 
-Secondary audiences are small support teams and studios managing several SaaS launches. Enterprise governance buyers are not the initial public acquisition wedge.
+Secondary audiences are small support teams, product/engineering operators, studios managing several SaaS launches, and bounded cross-functional product groups inside growing companies. Larger-company fit should appear in deeper use-case and operating-guide content, not replace the founder problem in the homepage hero.
+
+Teach one progressive path:
+
+- **Start:** one accountable owner, ten priority questions, approved truth, verified widget, safe fallback, and Daily Brief.
+- **Coordinate:** selected teammates, protected roles, qualified notifications, and selected follow-up when ownership spreads.
+- **Govern:** critical Answer Tests, release impact, stricter permissions, exports, and audit evidence when answer risk becomes material.
+
+These are optional operating depths, not product editions or a promise that every company should enable every feature.
 
 ## Job To Be Done
 
@@ -43,6 +51,8 @@ Use `governed support layer` as the category. Describe help as available inside 
 ## Claim Boundaries
 
 Do not claim zero hallucinations, guaranteed accuracy, guaranteed ticket reduction, automatic truth improvement, helpdesk replacement, certification, residency, customer adoption, or autonomous account actions.
+
+Do not turn a larger-company audience into unsupported enterprise claims. Employee count does not prove seat capacity, SAML/SCIM, contractual service levels, procurement readiness, certifications, workforce management, omnichannel routing, or contact-center capability.
 
 Do not use `the first 24/7 support layer`; the superlative has no market evidence and the phrase can imply an uptime promise. Use `governed support layer` or `your first support layer`.
 

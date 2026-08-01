@@ -8,6 +8,7 @@ import {
   type ExternalLocationIdentityMutationResult,
 } from '@database/stores';
 import { functions } from '@lib/firebase/firebaseClient';
+import { normalizeOBPGoogleMapsUrl } from '@lib/obp/publicLinks';
 import { buildMapsPlaceCheckIdentityBinding } from '@lib/public-truth-tools/externalLocationIdentity';
 import { httpsCallable } from 'firebase/functions';
 
@@ -41,7 +42,27 @@ export type MapsPlaceCheckClientResult = {
   } | null;
 };
 
-const isMapsPlaceCheckClientResult = (value: unknown): value is MapsPlaceCheckClientResult => {
+const isOptionalBoundedString = (value: unknown, maxLength: number): boolean => (
+  value === undefined || (
+    typeof value === 'string'
+    && value.trim().length > 0
+    && value.length <= maxLength
+  )
+);
+
+const isBoundedFactList = (value: unknown): boolean => (
+  value === undefined || (
+    Array.isArray(value)
+    && value.length <= 8
+    && value.every((item) => (
+      typeof item === 'string'
+      && item.trim().length > 0
+      && item.length <= 120
+    ))
+  )
+);
+
+export const isMapsPlaceCheckClientResult = (value: unknown): value is MapsPlaceCheckClientResult => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
   if (
@@ -49,20 +70,47 @@ const isMapsPlaceCheckClientResult = (value: unknown): value is MapsPlaceCheckCl
     || typeof record.attributionRequired !== 'boolean'
     || typeof record.checkedAt !== 'string'
     || !Number.isFinite(new Date(record.checkedAt).getTime())
+    || new Date(record.checkedAt).toISOString() !== record.checkedAt
     || typeof record.model !== 'string'
+    || !record.model.trim()
+    || record.model.length > 120
   ) {
     return false;
   }
-  if (record.status === 'no_grounded_result') return record.candidate === null;
+  if (record.status === 'no_grounded_result') {
+    return record.attributionRequired === false && record.candidate === null;
+  }
+  if (record.attributionRequired !== true) return false;
   if (!record.candidate || typeof record.candidate !== 'object' || Array.isArray(record.candidate)) {
     return false;
   }
   const candidate = record.candidate as Record<string, unknown>;
-  return Boolean(
-    candidate.proposedFacts
-    && typeof candidate.proposedFacts === 'object'
-    && !Array.isArray(candidate.proposedFacts)
-    && Array.isArray(candidate.sources),
+  const proposedFacts = candidate.proposedFacts;
+  if (!proposedFacts || typeof proposedFacts !== 'object' || Array.isArray(proposedFacts)) return false;
+  const facts = proposedFacts as Record<string, unknown>;
+  return (
+    isOptionalBoundedString(candidate.title, 180)
+    && isOptionalBoundedString(candidate.placeId, 2048)
+    && isOptionalBoundedString(candidate.uri, 2048)
+    && isOptionalBoundedString(facts.address, 300)
+    && isOptionalBoundedString(facts.openingHours, 500)
+    && isBoundedFactList(facts.amenities)
+    && isBoundedFactList(facts.paymentOptions)
+    && isBoundedFactList(facts.accessibility)
+    && isBoundedFactList(facts.serviceOptions)
+    && Array.isArray(candidate.sources)
+    && candidate.sources.length <= 8
+    && candidate.sources.every((source) => (
+      source !== null
+      && typeof source === 'object'
+      && !Array.isArray(source)
+      && typeof (source as Record<string, unknown>).title === 'string'
+      && ((source as Record<string, unknown>).title as string).trim().length > 0
+      && ((source as Record<string, unknown>).title as string).length <= 180
+      && typeof (source as Record<string, unknown>).uri === 'string'
+      && Boolean(normalizeOBPGoogleMapsUrl((source as Record<string, unknown>).uri))
+      && isOptionalBoundedString((source as Record<string, unknown>).placeId, 2048)
+    ))
   );
 };
 

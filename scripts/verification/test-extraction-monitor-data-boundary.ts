@@ -60,6 +60,21 @@ assert.deepEqual(costs, {
     mostExpensiveJobCost: 10,
 });
 
+const boundedReadCosts = buildExtractionCostMetricsFromOperations(
+    Array.from({ length: 75 }, (_, index) => ({
+        action: 'IMAGE_PROCESSING',
+        createdAt: recentTimestamp,
+        totalCharge: index + 1,
+    })),
+    now - 60_000,
+);
+assert.deepEqual(boundedReadCosts, {
+    callsToday: 75,
+    avgCostPerExtraction: 38,
+    dailySpend: 2850,
+    mostExpensiveJobCost: 75,
+}, 'the cost projector must account for every operation supplied by the bounded Firestore read');
+
 const details = normalizeExtractionJobDetails('job-1', {
     projectId: 'tenant-a-default-store-a',
     status: 'failed',

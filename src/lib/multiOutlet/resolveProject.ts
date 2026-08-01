@@ -21,7 +21,12 @@ import {
     ProjectFileType,
     ProjectOverrides,
 } from "@template/main-app/projects/types/project.types";
-import { InheritanceState, ResolvedProjectMeta } from "@type/multiOutlet.types";
+import {
+    InheritanceState,
+    ResolvedProjectMeta,
+    isLocalCategory,
+    isLocalItem,
+} from "@type/multiOutlet.types";
 
 // ══════════════════════════════════════════════════════════════════════════
 // MASTER PROJECT CACHE
@@ -99,11 +104,21 @@ async function getCachedMasterProject(
  * Used by useMasterUpdateAwareness hook to share its fetched master
  * with the resolver — avoids duplicate Firestore reads.
  */
-export function populateMasterCache(masterProjectId: string, project: Project): void {
+export function populateMasterCache(masterProjectId: string, project: Project): boolean {
+    const expectedScope = normalizeMultiOutletProjectId(masterProjectId);
+    const projectScope = normalizeMultiOutletProjectId(project?.projectId);
+    if (
+        !expectedScope
+        || !projectScope
+        || projectScope.projectId !== expectedScope.projectId
+    ) {
+        return false;
+    }
     masterProjectCache.set(masterProjectId, {
         project,
         timestamp: Date.now(),
     });
+    return true;
 }
 
 /**
@@ -164,6 +179,71 @@ export interface ResolvedProject extends Project {
 interface ResolveParams {
     /** Pass existing project data to avoid redundant Firestore reads */
     storeProject: Project;
+}
+
+const DANGEROUS_ENTITY_IDS = new Set(["__proto__", "constructor", "prototype"]);
+
+function hasUniqueEntityIds(
+    entities: ReadonlyArray<{ id?: unknown }>,
+): boolean {
+    const ids = new Set<string>();
+    for (const entity of entities) {
+        const id = typeof entity?.id === "string" ? entity.id : "";
+        if (!id || id.trim() !== id || id.includes("/") || DANGEROUS_ENTITY_IDS.has(id) || ids.has(id)) {
+            return false;
+        }
+        ids.add(id);
+    }
+    return true;
+}
+
+function isPlainOverrideMap(value: unknown): boolean {
+    if (value === undefined) return true;
+    try {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+        const prototype = Object.getPrototypeOf(value);
+        return prototype === Object.prototype || prototype === null;
+    } catch {
+        return false;
+    }
+}
+
+function hasValidLinkedProjectStructure(master: Project, store: Project): boolean {
+    if (
+        master.masterProjectId
+        || master.files?.length !== 1
+        || (store.files?.length || 0) > 1
+        || (
+            store.overrides !== undefined
+            && (
+                !isPlainOverrideMap(store.overrides.items)
+                || !isPlainOverrideMap(store.overrides.categories)
+                || !isPlainOverrideMap(store.overrides.attributes)
+            )
+        )
+    ) {
+        return false;
+    }
+
+    const masterItems = extractItems(master);
+    const masterCategories = extractCategories(master);
+    const storeItems = extractItems(store);
+    const storeCategories = extractCategories(store);
+    if (
+        !hasUniqueEntityIds(masterItems)
+        || !hasUniqueEntityIds(masterCategories)
+        || !hasUniqueEntityIds(storeItems)
+        || !hasUniqueEntityIds(storeCategories)
+    ) {
+        return false;
+    }
+
+    const masterItemIds = new Set(masterItems.map((item) => item.id));
+    const masterCategoryIds = new Set(masterCategories.map((category) => category.id));
+    return storeItems.every((item) => masterItemIds.has(item.id) || isLocalItem(item.id))
+        && storeCategories.every((category) => (
+            masterCategoryIds.has(category.id) || isLocalCategory(category.id)
+        ));
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -260,6 +340,27 @@ export async function resolveProjectForRender(
             },
         };
     }
+    const cachedMasterScope = normalizeMultiOutletProjectId(masterProject.projectId);
+    if (
+        !cachedMasterScope
+        || cachedMasterScope.projectId !== masterProjectScope.projectId
+        || !hasValidLinkedProjectStructure(masterProject, storeProject)
+    ) {
+        logMultiOutletFailure('multi_outlet_linked_project_structure_invalid', undefined, {
+            ...getMultiOutletProjectLogContext(storeProject.projectId, storeProject.masterProjectId),
+            masterFileCount: masterProject.files?.length ?? 0,
+            storeFileCount: storeProject.files?.length ?? 0,
+        });
+        return {
+            ...storeProject,
+            _resolved: {
+                isMasterLinked: false,
+                masterProjectId: storeProject.masterProjectId,
+                itemStates: {},
+                categoryStates: {},
+            },
+        };
+    }
 
     // Build resolved project
     return mergeProjects(masterProject, storeProject);
@@ -280,10 +381,10 @@ export async function resolveProjectForRender(
  * Enforcement: linkStoreToMaster() validates both master and store are single-file.
  */
 function mergeProjects(master: Project, store: Project): ResolvedProject {
-    const overrides: ProjectOverrides = store.overrides || {
-        items: {},
-        categories: {},
-        attributes: {},
+    const overrides: ProjectOverrides = {
+        items: store.overrides?.items || {},
+        categories: store.overrides?.categories || {},
+        attributes: store.overrides?.attributes || {},
     };
     const masterItems = extractItems(master);
     const masterCategories = extractCategories(master);

@@ -33,6 +33,36 @@ assert.equal(normalizeImageBatchProjectSelections([
     { itemId: 'item-1', images: [image] },
     { itemId: 'item-1', images: [image] },
 ], projectId), null);
+let imageSizeCoercionCalled = false;
+assert.equal(normalizeImageBatchProjectSelections([{
+    itemId: 'item-1',
+    images: [{
+        ...image,
+        size: {
+            valueOf() {
+                imageSizeCoercionCalled = true;
+                return 123;
+            },
+        },
+    }],
+}], projectId, 'demo'), null);
+assert.equal(imageSizeCoercionCalled, false, 'image size admission must not execute coercion hooks');
+assert.equal(normalizeImageBatchProjectSelections([{
+    itemId: 'item-1',
+    images: [{
+        ...image,
+        get url() {
+            throw new Error('untrusted image URL getter');
+        },
+    }],
+}], projectId, 'demo'), null, 'throwing image metadata must fail closed');
+const { proxy: revokedSelectionEntry, revoke: revokeSelectionEntry } = Proxy.revocable({}, {});
+revokeSelectionEntry();
+assert.equal(
+    normalizeImageBatchProjectSelections([revokedSelectionEntry], projectId, 'demo'),
+    null,
+    'revoked selection entries must fail closed',
+);
 
 const baseProject = {
     projectId,
@@ -50,12 +80,46 @@ const baseProject = {
 } as unknown as Project;
 
 const standalone = appendImageBatchSelectionsToProject(baseProject, selections);
-assert.equal(standalone.files[0].extractedData.data.items[0].images?.length, 1, 'same URL must be idempotent');
+assert.ok(standalone.files?.[0], 'updated standalone project must retain its source file');
+assert.equal(
+    standalone.files[0].extractedData?.data.items[0]?.images?.length,
+    1,
+    'same URL must be idempotent',
+);
 assert.notEqual(standalone, baseProject);
 assert.notEqual(standalone.files, baseProject.files);
 assert.throws(
     () => appendImageBatchSelectionsToProject(baseProject, [{ ...selections[0], itemId: 'missing-item' }]),
     /item_missing/,
+);
+assert.ok(baseProject.files?.[0], 'batch project fixture must contain its source file');
+const baseProjectFile = baseProject.files[0];
+assert.ok(baseProjectFile.extractedData, 'batch project source file must contain extracted menu data');
+const baseExtractedData = baseProjectFile.extractedData;
+const duplicateItemProject = {
+    ...baseProject,
+    files: [
+        baseProjectFile,
+        {
+            ...baseProjectFile,
+            uid: 'file-2',
+            extractedData: {
+                ...baseExtractedData,
+                data: {
+                    ...baseExtractedData.data,
+                    items: baseExtractedData.data.items.map((item) => ({
+                        ...item,
+                        name: { en: 'Duplicate dish' },
+                    })),
+                },
+            },
+        },
+    ],
+} as Project;
+assert.throws(
+    () => appendImageBatchSelectionsToProject(duplicateItemProject, selections),
+    /item_ambiguous/,
+    'batch selection must fail closed when an item ID resolves in multiple project files',
 );
 
 const outlet = {
@@ -74,6 +138,12 @@ const master = {
 } as Project;
 const outletResult = appendImageBatchSelectionsToOutletProject(outlet, master, selections);
 assert.equal(outletResult.overrides?.items?.['item-1']?.images?.length, 1);
-assert.equal(outlet.files[0].extractedData.data.items.length, 0, 'pure append must not mutate the input outlet');
+assert.ok(outlet.files?.[0], 'outlet fixture must retain its local source file');
+assert.equal(outlet.files[0].extractedData?.data.items.length, 0, 'pure append must not mutate the input outlet');
+assert.throws(
+    () => appendImageBatchSelectionsToOutletProject(outlet, duplicateItemProject, selections),
+    /item_ambiguous/,
+    'inherited batch selection must fail closed when the master item ID is ambiguous',
+);
 
 console.log('Image batch project selection boundary tests passed.');

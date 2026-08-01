@@ -9,15 +9,16 @@
 import { FEATURE_FLAGS } from "@config/features";
 import type { SpecialMenuListItem } from "@hook/useSpecialMenus";
 import { useSpecialMenus } from "@hook/useSpecialMenus";
-import { formatDateTime } from "@util/dateTime";
+import { formatDateTimeRange } from "@util/dateTime";
 import { Button, Card, Empty, Flex, Modal, Popconfirm, Space, Typography, theme } from "antd";
 import { useFormatter } from "next-intl";
 import { useState } from "react";
-import { LuCalendar, LuPause, LuPlus, LuSparkles, LuX } from "react-icons/lu";
+import { LuCalendar, LuPause, LuPencil, LuPlus, LuSparkles, LuX } from "react-icons/lu";
 import CreateSpecialMenuModal from "./CreateSpecialMenuModal";
+import EditSpecialMenuScheduleModal from "./EditSpecialMenuScheduleModal";
 import SpecialMenuStatusBadge from "./SpecialMenuStatusBadge";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface SpecialMenuCardProps {
     baseProjectId?: string;
@@ -29,10 +30,12 @@ function SpecialMenuItem({
     item,
     onDeactivate,
     onCancel,
+    onEdit,
 }: {
     item: SpecialMenuListItem;
     onDeactivate: (id: string) => void;
     onCancel: (id: string) => void;
+    onEdit: (item: SpecialMenuListItem) => void;
 }) {
     const { token } = theme.useToken();
     const formatter = useFormatter();
@@ -41,6 +44,8 @@ function SpecialMenuItem({
         <Flex
             justify="space-between"
             align="center"
+            gap={12}
+            wrap="wrap"
             style={{
                 padding: "10px 12px",
                 borderRadius: 8,
@@ -49,9 +54,9 @@ function SpecialMenuItem({
                 marginBottom: 8,
             }}
         >
-            <Flex vertical gap={2} style={{ flex: 1 }}>
-                <Flex align="center" gap={8}>
-                    <Text strong style={{ fontSize: 14 }}>
+            <Flex vertical gap={4} style={{ flex: "1 1 260px", minWidth: 0 }}>
+                <Flex align="center" gap={8} wrap="wrap">
+                    <Text strong style={{ fontSize: 14, overflowWrap: "anywhere" }}>
                         {item.displayName}
                     </Text>
                     <SpecialMenuStatusBadge status={item.status} size="small" />
@@ -59,15 +64,20 @@ function SpecialMenuItem({
                 <Flex align="center" gap={4}>
                     <LuCalendar size={12} />
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        {formatDateTime(item.startsAt, "date", formatter)} → {formatDateTime(item.endsAt, "date", formatter)}
+                        {formatDateTimeRange(item.startsAt, item.endsAt, formatter, "Schedule unavailable")}
                     </Text>
                 </Flex>
                 <Text type="secondary" style={{ fontSize: 11 }}>
-                    Mode: {item.mode === "replace" ? "Full replacement" : "Added section"}
+                    {item.mode === "replace" ? "Replaces the regular menu" : "Appears with the regular menu"}
                 </Text>
             </Flex>
 
-            <Space size={4}>
+            <Space size={4} wrap>
+                {(item.status === "active" || item.status === "scheduled") && (
+                    <Button size="small" icon={<LuPencil size={14} />} onClick={() => onEdit(item)}>
+                        Edit schedule
+                    </Button>
+                )}
                 {item.status === "active" && (
                     <Popconfirm
                         title="End this special menu?"
@@ -111,11 +121,13 @@ export default function SpecialMenuCard({
         expiredMenus,
         isLoading,
         createSpecialMenu,
+        updateSpecialMenu,
         deactivateMenu,
         cancelMenu,
     } = useSpecialMenus();
 
     const [createModalOpen, setCreateModalOpen] = useState(false);
+    const [editingMenu, setEditingMenu] = useState<SpecialMenuListItem | null>(null);
     const [showExpired, setShowExpired] = useState(false);
 
     if (!FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING) return null;
@@ -185,6 +197,7 @@ export default function SpecialMenuCard({
                         item={item}
                         onDeactivate={handleDeactivate}
                         onCancel={handleCancel}
+                        onEdit={setEditingMenu}
                     />
                 ))}
 
@@ -210,6 +223,7 @@ export default function SpecialMenuCard({
                             item={item}
                             onDeactivate={handleDeactivate}
                             onCancel={handleCancel}
+                            onEdit={setEditingMenu}
                         />
                     ))}
             </Card>
@@ -224,6 +238,13 @@ export default function SpecialMenuCard({
                     onSubmit={createSpecialMenu}
                 />
             )}
+            <EditSpecialMenuScheduleModal
+                item={editingMenu}
+                onClose={() => setEditingMenu(null)}
+                onSubmit={updateSpecialMenu}
+                open={Boolean(editingMenu)}
+                specialMenus={specialMenus}
+            />
         </>
     );
 }

@@ -25,13 +25,14 @@ export function logHoursStatusTimeZoneFallback(
     error: unknown,
     timeZone: string | undefined,
     source: HoursStatusTimeZoneFallbackSource,
-    fallbackPolicy: "local_day_key" | "local_time" | "browser_local_time",
+    fallbackPolicy: "default_time_zone" | "browser_local_time",
 ): void {
-    const timeZoneLength = timeZone ? timeZone.length : 0;
+    const safeTimeZone = typeof timeZone === "string" ? timeZone : undefined;
+    const timeZoneLength = safeTimeZone ? safeTimeZone.length : 0;
     const failureKey = [
         source,
         timeZoneLength,
-        timeZone ? "time-zone-present" : "time-zone-missing",
+        safeTimeZone ? "time-zone-present" : "time-zone-missing",
         fallbackPolicy,
     ].join(":");
 
@@ -40,7 +41,7 @@ export function logHoursStatusTimeZoneFallback(
     reportedHoursStatusTimeZoneFailures.add(failureKey);
 
     logRuntimeFailure("hours_status_timezone_fallback_failed", error, {
-        ...getBoundedRuntimeStringContext("timeZone", timeZone),
+        ...getBoundedRuntimeStringContext("timeZone", safeTimeZone),
         ...getBoundedRuntimeStringContext("source", source),
         ...getBoundedRuntimeStringContext("fallbackPolicy", fallbackPolicy),
         hasIntl: typeof Intl !== "undefined",
@@ -52,11 +53,13 @@ export function logHoursStatusInvalidTimeRange(
     hoursValue: string | undefined,
     source: HoursStatusInvalidTimeRangeSource,
 ): void {
+    const safeDayKey = typeof dayKey === "string" ? dayKey : "";
+    const safeHoursValue = typeof hoursValue === "string" ? hoursValue : undefined;
     const failureKey = [
         source,
-        dayKey,
-        hoursValue ? hoursValue.length : 0,
-        hoursValue?.includes("-") ? "range" : "no-range",
+        safeDayKey,
+        safeHoursValue ? safeHoursValue.length : 0,
+        safeHoursValue?.includes("-") ? "range" : "no-range",
     ].join(":");
 
     if (reportedHoursStatusInvalidTimeRanges.has(failureKey)) return;
@@ -65,9 +68,9 @@ export function logHoursStatusInvalidTimeRange(
 
     logRuntimeDiagnostic("hours_status_time_range_invalid", {
         ...getBoundedRuntimeStringContext("source", source),
-        ...getBoundedRuntimeStringContext("dayKey", dayKey),
-        hoursValuePresent: Boolean(hoursValue),
-        hoursValueLength: hoursValue ? hoursValue.length : 0,
-        hasRangeSeparator: Boolean(hoursValue?.includes("-")),
+        ...getBoundedRuntimeStringContext("dayKey", safeDayKey),
+        hoursValuePresent: Boolean(safeHoursValue),
+        hoursValueLength: safeHoursValue ? safeHoursValue.length : 0,
+        hasRangeSeparator: Boolean(safeHoursValue?.includes("-")),
     });
 }

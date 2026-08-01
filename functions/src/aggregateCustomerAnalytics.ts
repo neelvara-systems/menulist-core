@@ -22,6 +22,9 @@ import {
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { FUNCTION_MAX_INSTANCES } from './config/secrets';
 import {
+    normalizeOwnerNotificationDocumentId,
+} from './sharedData/ownerNotificationDeliveryBoundary';
+import {
     normalizeStoreSummaryNumericDocumentId,
     parsePlatformStoreSummary,
 } from './sharedData/storeSummaryBoundary';
@@ -1806,6 +1809,38 @@ async function generateMonthlyAISummaryPayload(
 
 // Note: getISOWeek moved to constants/database.ts
 
+export async function assertCurrentPlatformAnalyticsAuthority(
+    db: FirebaseFirestore.Firestore,
+    auth: {
+        uid: string;
+        token: Record<string, unknown>;
+    },
+): Promise<void> {
+    const userDocumentId = normalizeOwnerNotificationDocumentId(auth.uid);
+    if (!userDocumentId) {
+        throw new HttpsError('permission-denied', 'Account is not allowed to perform this action.');
+    }
+
+    const tokenRole = String(auth.token.platformRole || auth.token.role || '');
+    const userSnap = await db.collection(DB_COLLECTIONS.USERS).doc(userDocumentId).get();
+    const userData = userSnap.exists ? userSnap.data() : undefined;
+    const currentRole = String(userData?.platformRole || userData?.role || '');
+    if (
+        tokenRole !== ECOMSAI_PLATFORM_USER_ROLE
+        || currentRole !== ECOMSAI_PLATFORM_USER_ROLE
+        || userData?.active === false
+        || userData?.deleted === true
+        || userData?.authDisabled === true
+        || userData?.blocked === true
+        || userData?.isVerified === false
+    ) {
+        throw new HttpsError(
+            'permission-denied',
+            'Only active platform owners can manually trigger analytics aggregation.',
+        );
+    }
+}
+
 /**
  * Manual trigger for testing/backfill
  */
@@ -1823,13 +1858,8 @@ export const triggerCustomerAnalyticsManually = onCall({
         );
     }
 
-    const requesterRole = String(request.auth.token.platformRole || request.auth.token.role || '');
-    if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
-        throw new HttpsError(
-            'permission-denied',
-            'Only platform owners can manually trigger analytics aggregation.'
-        );
-    }
+    await assertCurrentPlatformAnalyticsAuthority(firestoreAdmin, request.auth);
+    const requesterRole = ECOMSAI_PLATFORM_USER_ROLE;
 
     const { tId, sId, projectId, forceWeekly, forceMonthly } = request.data || {};
     const tenantId = normalizeStoreSummaryNumericDocumentId(tId);

@@ -546,7 +546,8 @@ export function isMessagingOnboardingOpsSnapshotResponse(
   if (metrics.eventsByType !== undefined && !isNumberRecord(metrics.eventsByType)) return false;
   const costs = value.health.costs;
   if (costs.currency !== undefined && costs.currency !== 'INR') return false;
-  if (!isRecord(value.webhookWindow) || ![
+  const webhookWindow = value.webhookWindow;
+  if (!isRecord(webhookWindow) || ![
     'hours',
     'recentEventsShown',
     'invalidSignatures',
@@ -556,9 +557,10 @@ export function isMessagingOnboardingOpsSnapshotResponse(
     'messageSent',
     'messageSendFailed',
     'providerMediaDownloadFailed',
-  ].every((key) => isNonNegativeSafeInteger(value.webhookWindow?.[key]))) return false;
-  if (!isRecord(value.inboundQueue) || !['pending', 'processing', 'failed']
-    .every((key) => isNonNegativeSafeInteger(value.inboundQueue?.[key]))) return false;
+  ].every((key) => isNonNegativeSafeInteger(webhookWindow[key]))) return false;
+  const inboundQueue = value.inboundQueue;
+  if (!isRecord(inboundQueue) || !['pending', 'processing', 'failed']
+    .every((key) => isNonNegativeSafeInteger(inboundQueue[key]))) return false;
   if (!isNumberRecord(value.sessionsByState, 16)) return false;
   if (!Array.isArray(value.recentSessions) || value.recentSessions.length > MESSAGING_ONBOARDING_RECENT_SESSION_LIMIT) return false;
   if (!value.recentSessions.every((session) => (

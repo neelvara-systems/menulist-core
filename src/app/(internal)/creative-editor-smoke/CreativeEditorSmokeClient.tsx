@@ -193,7 +193,7 @@ function CreativeEditorSmokeQaProbe({
 }: {
     expectedLayerCount: number;
     variant: SmokeVariant;
-}) {
+}): null {
     useEffect(() => {
         let cancelled = false;
         const panel = createQaPanel();

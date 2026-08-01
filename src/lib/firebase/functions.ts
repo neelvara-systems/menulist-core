@@ -12,6 +12,9 @@ import type { IngestionJobCategoriesMap } from '@type/knowledgeBase';
 import { firebaseApp } from './firebaseClient';
 
 // MenuList Cloud Functions (menulist-qa locally/preview; menulist in production)
+if (!firebaseApp) {
+    throw new Error('MenuList Firebase client is unavailable.');
+}
 const functions = getFunctions(firebaseApp);
 
 type FirebaseCallableLogContext = Record<string, boolean | number | string | undefined>;

@@ -1,7 +1,7 @@
 # Answerlattice — Firebase Cost Optimization Audit
 
-> **Status:** Cross-checked July 20, 2026 after the 44-feature hardening audit
-> **Scope:** Answerlattice help center, KB, tickets, chat, changelog, feedback, governance, public API, widget, and scheduler functions
+> **Status:** Cross-checked July 29, 2026 after the owner-decision feature audit
+> **Scope:** Answerlattice help center, KB, tickets, chat, changelog, feedback, governance, public API, widget, scheduler functions, Knowledge Map, Daily Brief, Product Friction Evidence, release impact, Answer Tests, and Answer Trace
 > **Rule:** Correctness stays higher priority than lower Firebase spend.
 
 ---
@@ -11,6 +11,46 @@
 Answerlattice is Firebase-cost-conscious after this pass. The live user-facing paths avoid duplicate KB category reads, route public KB/FAQ/changelog reads through tenant/store-tagged Next cache, bound customer chat/ticket history reads, use aggregated chat analytics for ROI, avoid an extra feedback refetch after submit, and validate cached search answers through tiny source-version manifests. The July 20 follow-up also removes unused ontology reads from governance tabs, replaces the predictive-trigger create guard's document fetch with a count aggregate, and instruments the existing scheduler run log with bounded logical source-operation windows. Governance and scheduler paths remain feature-flagged and bounded.
 
 Remaining cost risks are non-blocking and documented below.
+
+---
+
+## July 29 Owner-Decision Feature Audit
+
+| Feature | Existing cost shape | Audit decision |
+| --- | --- | --- |
+| Daily Brief / external Owner Action Center proposal | Six exact `platformSummary` point reads, one `getAll()`, 60-second 300-workspace process cache | Added same-workspace single-flight loading. Concurrent cold requests now share one six-document load; no summary, cache service, listener, or write was added. |
+| Knowledge Map / Product Truth Map | Graph summary plus source-version point read; interactions remain in memory | Kept the two-read freshness contract. Exempted the point-read-only `graph` and `interactionRules` payloads from automatic indexing. |
+| Product Friction Evidence / Customer Friction Map | One snapshot and one optional advisory owner read; bounded nightly aggregates | Kept the two-read owner surface and existing daily rows. Exempted `topFrictionEntities` and `emergingTopics` from automatic indexing. |
+| Release impact | Explicit release point read, capped affected-answer query, optional Answer Tests summary | Kept uncached and owner-triggered. Current release/answer authority is more important than avoiding these bounded reads. No release summary or background monitor was added. |
+| Answer Tests / Critical Answer Test Suite | One bounded summary document with a 480 KiB guard and request-local evaluation reuse | Kept one source of truth. Exempted `cases`, `runs`, and `reservations` from automatic indexing. No cross-request result cache, scheduled run, or artifact store was added. |
+| Answer Trace | One exact read from a ticket or at most 30 recent projected records after an explicit owner action | Kept uncached and rate limited. A trace summary would add reconciliation cost and could hide current routing evidence. |
+| Activation proof used by Daily Brief | Existing compact `activation_*` summary with signature-skip writes | Exempted bounded `steps`, `launchProof`, and `content.surfaceReadiness` payloads from automatic indexing; scalar readiness fields remain unchanged. |
+
+The dedicated and shared Firestore manifests carry the same Answerlattice
+point-read exemptions. These exemptions reduce index-entry storage and write
+amplification only; they do not reduce billed document reads and do not change
+query results because none of the exempt payloads is a query predicate.
+
+### Cache Pattern Decision
+
+The MenuList public-menu and Answerlattice public-content pattern uses tagged
+Next cache plus explicit write invalidation because the payload is published,
+anonymous, and safe to serve briefly from a shared cache. That pattern does not
+transfer directly to owner-decision proof:
+
+- Daily Brief already reads six compact summary documents and now coalesces
+  same-workspace cold requests inside each server process.
+- Knowledge Map freshness depends on its graph/source-version pair.
+- release impact, Answer Tests execution, and Answer Trace must reflect current
+  authority when the owner explicitly opens or runs them.
+- adding Redis/Upstash value caching would require invalidation across answer,
+  article, entity, release, test, ticket, signal, and activation writes. A
+  partial contract could lower reads while showing stale governance evidence.
+
+Upstash remains useful for bounded route admission/rate limiting where already
+wired. It is not added as a second owner-data store in this pass. Reconsider a
+shared value cache only after production telemetry shows material cross-instance
+repeat reads and the invalidation contract can be proven end to end.
 
 ---
 
@@ -91,7 +131,7 @@ Answerlattice cache freshness ID boundary: cache freshness checks now validate c
    - Help Center changelog passes `useInternalFallback={false}` so the shared changelog renderer cannot issue its older direct browser Firestore read while the cached API response is loading.
    - Changelog management preview also disables the shared renderer fallback because the parent management screen already owns the changelog page fetch.
    - Changelog related-article breadcrumbs lazy-load the shared cached KB category payload only when an entry has `kbSources`.
-   - Added `/api/revalidate/answerlattice` plus `revalidateAnswerlatticePublicClientCache()` so owner FAQ, KB category, article, and changelog writes clear the affected public cache tags.
+   - Added `/api/revalidate/answerlattice` plus `revalidateAnswerlatticePublicClientCache()` so owner FAQ, KB category, article, and changelog writes clear the affected public cache tags. Same-workspace callers share an active request, but a mutation that joins it guarantees one trailing invalidation so a later committed write cannot disappear behind the older request.
    - Browser-side revalidation failures use dev-only bounded diagnostics with tenant/store presence, segment count, response status, and error name only. This adds no cache calls or Firestore reads/writes.
    - Public article payloads remove embedding/generated/internal fields before returning to the browser.
 
@@ -145,6 +185,8 @@ Answerlattice cache freshness ID boundary: cache freshness checks now validate c
 | Fresh Firestore search cache hit | 1 cache query + up to N article reads, or 1 canonical answer read | 1 cache query + 1 tiny source-version check (manifest when present, latest-article version fallback for KB) |
 | Fresh Redis canonical cache hit | 1 Redis read + 1 canonical answer read | 1 Redis read + 1 tiny canonical source-version manifest read |
 | Nightly source-read diagnosis | Query overlap could be inferred only by reading code and logs | Existing run log now records bounded per-task/per-tenant logical source windows with operation/result/limit saturation evidence and no additional source read |
+| Concurrent Daily Brief cold requests | Each request reaching an empty process cache could start the same six-document packet load | Same-workspace requests share one in-flight promise; only the load owner incurs the six reads |
+| Large owner summary writes | Point-read-only arrays/maps received automatic single-field index entries | Dedicated/shared manifests exempt the graph, friction rankings, Answer Tests payloads, and Activation proof arrays |
 
 ---
 
@@ -155,7 +197,7 @@ Answerlattice cache freshness ID boundary: cache freshness checks now validate c
 | Ticket documents keep messages inline | Existing support-ticket contract uses one document per ticket. Splitting messages would be a schema change. | Existing message hard cap remains. Revisit only with a migration plan. |
 | Old cache rows without `sourceVersions` still validate source docs | Pre-change cache rows cannot prove freshness from the manifest or latest-article source version. | Safe fallback remains; rows naturally age out or are replaced by new source-version-backed cache entries. |
 | Public API key validation reads `stores` on each request | Security-sensitive auth path. In-memory caching could delay revocation. | Keep current fail-closed behavior unless revocation-aware cache is designed. |
-| Governance tabs can still refetch on tab navigation when enabled | Feature is off by default; active governance users need fresh review state. | Future improvement: governance-level data provider with explicit refresh. |
+| Governance tabs can still refetch on tab navigation when enabled | Active governance users need current review state, and source-version freshness differs by surface. | Keep current bounded reads until production telemetry proves repeated navigation is material; do not add a broad stale owner cache speculatively. |
 | Nightly tasks query overlapping source collections | Drift, mutation, trust, graph, support-board, and friction work use different windows, filters, ordering, flags, and failure-isolation rules. Blind snapshot sharing could make one saturated task suppress otherwise valid summaries. | Logical source-window instrumentation is now implemented. Observe at least 14 complete daily runs across representative active tenants. Reuse a snapshot only when source, filters, ordering, limits, freshness, completeness, and failure-isolation contracts are identical; reject consolidation when any candidate window saturates, task failures occur, or the measured reduction is negligible. |
 | Today live analytics capped at 500 sessions | Prevents runaway dashboard reads but can undercount extreme same-day volume until nightly aggregate catches up. | Use nightly/manual aggregation for exact high-volume reporting. |
 | Hosted help domain prefixes are intentionally narrow | Middleware cannot query Firestore at the edge, so only common help/docs/support/kb host prefixes route to the hosted resolver. | Add explicit prefixes only when needed; do not reroute all custom domains because MenuList custom domains share this Vercel project. |
@@ -163,6 +205,31 @@ Answerlattice cache freshness ID boundary: cache freshness checks now validate c
 ---
 
 ## Verification
+
+The July 29 owner-decision feature pass, cross-checked again on July 30, produced the following current-worktree evidence:
+
+| Check | Result |
+| --- | --- |
+| `npm run verify:answerlattice-founder-daily-brief` | PASS, including the Firestore emulator scheduler |
+| `npm run verify:answerlattice-knowledge-map` | PASS |
+| `npm run verify:answerlattice-founder-support-controls` | PASS |
+| `node scripts/verification/verify-answerlattice-runtime-truth.js` | PASS |
+| `node scripts/verification/verify-firebase-scale-cost-closeout.js` | PASS, 108 checks |
+| `npx tsc --noEmit --incremental false` | PASS |
+| Scoped ESLint for the changed runtime and verifier files | PASS with no warnings or errors |
+| `npm run verify:dependency-freeze` | PASS |
+| `git diff --check` | PASS |
+
+The dedicated Answerlattice QA index deployment was attempted with:
+
+```bash
+firebase deploy --project answerlattice-qa \
+  --config firebase-answerlattice.json \
+  --only firestore:indexes \
+  --non-interactive
+```
+
+Firebase CLI stopped before any remote change with `Error: Failed to authenticate, have you run firebase login?`. The same scoped command was retried on July 30 after the complete cross-check and failed at the same authentication boundary. The source manifests and verifier gates are complete; the remote index exemptions remain pending an authenticated operator retry.
 
 The July 20 cross-check ran the source, contract, rules-emulator, type, lint, dependency-freeze, and Functions build gates below. The older production-build and browser-smoke evidence is retained for audit history; those checks were not rerun because this follow-up changed only client read selection, a count guard, tests, and documentation.
 

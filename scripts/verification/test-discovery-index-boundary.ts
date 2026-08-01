@@ -28,6 +28,7 @@ assert.equal(taxonomy.totalItems, 1);
 assert.deepEqual(taxonomy.topItems, [{ name: 'Curry', price: '250' }]);
 
 const validTimestamp = '2025-01-02T03:04:05.000Z';
+const validTimestampMillis = Date.parse(validTimestamp);
 const baseInput = {
     businessCategory: 'food',
     projectFiles: [],
@@ -54,7 +55,13 @@ const baseInput = {
 
 const valid = buildBusinessEntityIndexDoc({
     ...baseInput,
-    projectData: { lastPublishedAt: { toDate: () => new Date(validTimestamp) }, menuVersion: 3 },
+    projectData: {
+        lastPublishedAt: {
+            seconds: Math.floor(validTimestampMillis / 1000),
+            nanoseconds: (validTimestampMillis % 1000) * 1_000_000,
+        },
+        menuVersion: 3,
+    },
 });
 assert.equal(valid.lastPublishedAt, validTimestamp);
 assert.equal(valid.storeId, 34);

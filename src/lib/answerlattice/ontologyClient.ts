@@ -8,10 +8,15 @@ import {
     type AnswerlatticeOntologyAction,
     type AnswerlatticeOntologyActionResult,
 } from './ontologyContracts';
+import {
+    acquireAnswerlatticePendingMutation,
+    settleAnswerlatticePendingMutation,
+    type AnswerlatticePendingMutationEntry,
+} from './pendingMutationRequests';
 
 const ONTOLOGY_RESPONSE_MAX_BYTES = 128 * 1024;
 const MAX_PENDING_ONTOLOGY_REQUESTS = 200;
-const pendingRequests = new Map<string, { fingerprint: string; requestId: string }>();
+const pendingRequests = new Map<string, AnswerlatticePendingMutationEntry>();
 
 type OntologyActionWithoutRequestId = AnswerlatticeOntologyAction extends infer Action
     ? Action extends AnswerlatticeOntologyAction
@@ -19,24 +24,19 @@ type OntologyActionWithoutRequestId = AnswerlatticeOntologyAction extends infer 
         : never
     : never;
 
-const getRequestId = (retryKey: string, fingerprint: string) => {
-    const pending = pendingRequests.get(retryKey);
-    if (pending?.fingerprint === fingerprint) return pending.requestId;
-    if (pendingRequests.size >= MAX_PENDING_ONTOLOGY_REQUESTS) {
-        const oldest = pendingRequests.keys().next().value;
-        if (oldest) pendingRequests.delete(oldest);
-    }
-    const requestId = createRuntimeId('ontology');
-    pendingRequests.set(retryKey, { fingerprint, requestId });
-    return requestId;
-};
-
 export const runAnswerlatticeOntologyAction = async (
     action: OntologyActionWithoutRequestId,
     retryKey: string,
 ): Promise<AnswerlatticeOntologyActionResult> => {
     const fingerprint = JSON.stringify(action);
-    const requestId = getRequestId(retryKey, fingerprint);
+    const claim = acquireAnswerlatticePendingMutation(
+        pendingRequests,
+        retryKey,
+        fingerprint,
+        () => createRuntimeId('ontology'),
+        MAX_PENDING_ONTOLOGY_REQUESTS,
+    );
+    const { requestId } = claim;
     const parsedAction = AnswerlatticeOntologyActionSchema.safeParse({ ...action, requestId });
     if (!parsedAction.success) throw new Error('Invalid product-structure action');
     const response = await fetch('/api/answerlattice/ontology', {
@@ -47,10 +47,11 @@ export const runAnswerlatticeOntologyAction = async (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsedAction.data),
     });
-    const payload = await readJsonResponseWithLimit<unknown>(response, ONTOLOGY_RESPONSE_MAX_BYTES).catch(() => null);
+    const payload = await readJsonResponseWithLimit<unknown>(response, ONTOLOGY_RESPONSE_MAX_BYTES)
+        .catch((): null => null);
     if (!response.ok) throw new Error('Product-structure action failed');
     const parsed = AnswerlatticeOntologyActionResultSchema.safeParse(payload);
     if (!parsed.success) throw new Error('Product-structure action returned an invalid response');
-    pendingRequests.delete(retryKey);
+    settleAnswerlatticePendingMutation(pendingRequests, retryKey, claim);
     return parsed.data;
 };

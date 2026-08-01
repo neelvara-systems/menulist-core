@@ -50,7 +50,8 @@ export type SuccessfulPosSyncTestResponse = PosSyncTestResponse & {
 export const isSuccessfulPosSyncTestResponse = (
     value: PosSyncTestResponse | null | undefined,
 ): value is SuccessfulPosSyncTestResponse => (
-    Boolean(value)
+    value !== null
+    && value !== undefined
     && value.success === true
     && isHttpStatusCode(value.statusCode)
     && isFiniteNumber(value.responseTime)

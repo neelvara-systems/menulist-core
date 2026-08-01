@@ -1,8 +1,9 @@
 import { SearchOutlined } from '@ant-design/icons';
 import { getBusinessAssetsByType } from '@database/static/static';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AssetsCategoryType } from '@type/assets';
-import { Divider, Drawer, Flex, Input, Upload, theme } from 'antd';
+import { Divider, Drawer, Flex, Input, Upload, theme, type UploadProps } from 'antd';
 import Image from 'next/image';
 import { useContext, useEffect, useState } from 'react';
 import { LuUpload } from 'react-icons/lu';
@@ -11,7 +12,7 @@ interface ImageGalleryDrawerProps {
     open: boolean;
     onClose: () => void;
     onImageSelect: (imageUrl: string) => void;
-    uploadProps?: any;
+    uploadProps?: UploadProps;
 }
 
 export default function ImageGalleryDrawer({ open, onClose, onImageSelect, uploadProps }: ImageGalleryDrawerProps) {
@@ -22,30 +23,33 @@ export default function ImageGalleryDrawer({ open, onClose, onImageSelect, uploa
     const { assetsList, setAssetsList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
 
     const prepareImages = (images: AssetsCategoryType[]) => {
-        const allImages = [];
-        images?.forEach((list: AssetsCategoryType) => {
-            if (list.items && list.items.length > 0) {
-                allImages.push(...list.items);
-            }
-        });
+        const allImages: AssetsCategoryType[] = images.flatMap((list) => list.items || []);
         setImagesList(allImages);
         setFilteredImages(allImages);
     }
 
     useEffect(() => {
+        let cancelled = false;
         if (assetsList?.images?.length > 0) {
             prepareImages(assetsList.images)
         } else {
             getBusinessAssetsByType("images", '').then((res: AssetsCategoryType[]) => {
-                if (Boolean(res)) {
-                    setAssetsList({
-                        ...assetsList,
+                if (!cancelled && Array.isArray(res)) {
+                    setAssetsList((current) => ({
+                        ...current,
                         images: res
-                    });
+                    }));
                     prepareImages(res)
+                }
+            }).catch((error: unknown) => {
+                if (!cancelled) {
+                    logRuntimeFailure('project_image_gallery_load_failed', error);
                 }
             })
         }
+        return () => {
+            cancelled = true;
+        };
     }, [])
 
     // Filter images based on search term
@@ -112,10 +116,10 @@ export default function ImageGalleryDrawer({ open, onClose, onImageSelect, uploa
                         width: '100%',
                         alignItems: "flex-start"
                     }}>
-                        {filteredImages.map((imageData: AssetsCategoryType, index) => {
+                        {filteredImages.map((imageData: AssetsCategoryType) => {
                             return (
                                 <div
-                                    key={index}
+                                    key={String(imageData.id || imageData.preview)}
                                     onClick={() => onImageSelect(imageData.preview)}
                                     style={{
                                         borderRadius: 8,

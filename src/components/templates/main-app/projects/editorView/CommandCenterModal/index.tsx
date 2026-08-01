@@ -355,6 +355,12 @@ export default function CommandCenterModal({
         setRepairStep('Preparing repair');
 
         let updated = removeObjRef(internalProject);
+        const projectId = updated.projectId?.trim();
+        if (!projectId) {
+            antdMessage.error('This menu is missing its project ID.');
+            setIsRepairing(false);
+            return;
+        }
         let completedLanguageRepairs = 0;
         try {
             undoProjectRef.current = null;
@@ -400,7 +406,7 @@ export default function CommandCenterModal({
                 setRepairStep('Repairing project details');
                 const translatedProjectContent = await translateProjectPublicContent({
                     projectDetails: updated,
-                    projectId: updated.projectId,
+                    projectId,
                     storeDetails,
                     targetLanguageCodes: projectPublicContentLanguagesNeedingRepair,
                 });
@@ -420,9 +426,9 @@ export default function CommandCenterModal({
                             specialNote: translatedProjectContent.specialNote,
                         };
                     }
-                    if (translatedProjectContent.specialMenuDisplayName) {
+                    if (translatedProjectContent.specialMenuDisplayName && updated._specialMenu) {
                         updated._specialMenu = {
-                            ...(updated._specialMenu || {}),
+                            ...updated._specialMenu,
                             displayName: translatedProjectContent.specialMenuDisplayName,
                         };
                         (updated as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
@@ -432,10 +438,10 @@ export default function CommandCenterModal({
             }
 
             if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                const metadataTranslationResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                const metadataTranslationResult = await updateProjectMetadata(projectId, projectMetadataTranslationUpdate);
                 assertProjectUpdateSucceeded(
                     metadataTranslationResult,
-                    updated.projectId,
+                    projectId,
                     'command_center_project_metadata_translation_update_rejected',
                 );
             }

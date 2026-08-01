@@ -18,6 +18,7 @@ import {
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { getRazorpayManagedSubscriptionId } from "@lib/billing/subscriptionProviderSync";
+import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -107,6 +108,10 @@ export const POST = withAuth(async (request, session) => {
         if (!internalSub || !internalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "No subscription found to resume." }, { status: 404 });
         }
+        const internalSubscriptionId = normalizeBillingSubscriptionDocumentId(internalSub.id);
+        if (!internalSubscriptionId) {
+            return NextResponse.json({ error: "Subscription requires billing reconciliation." }, { status: 409 });
+        }
         subscriptionForLog = internalSub;
 
         // 🔒 CRITICAL: Verify subscription belongs to user's tenant/store
@@ -168,7 +173,7 @@ export const POST = withAuth(async (request, session) => {
                 currency: internalSub.currency,
                 remark: "Resumed by user",
             },
-            subscriptionId: internalSub.id,
+            subscriptionId: internalSubscriptionId,
         });
         if (!statusApplication || (!statusApplication.applied && !statusApplication.duplicate)) {
             return NextResponse.json({ error: "Subscription state changed while resuming. Please refresh and try again." }, { status: 409 });

@@ -30,7 +30,14 @@ export interface PreloadedLogo {
  * @param maxSize - Maximum dimension (width or height) to scale down to. Default 200px.
  */
 export async function loadLogo(url: string, maxSize = 200): Promise<PreloadedLogo | null> {
-    if (!url) return null;
+    if (
+        typeof url !== 'string'
+        || !url.trim()
+        || url.length > 4_096
+        || !Number.isSafeInteger(maxSize)
+        || maxSize < 1
+        || maxSize > 4_096
+    ) return null;
 
     try {
         const element = await loadImageElement(url);
@@ -38,6 +45,13 @@ export async function loadLogo(url: string, maxSize = 200): Promise<PreloadedLog
 
         // Scale to fit within maxSize while preserving aspect ratio
         let { naturalWidth: w, naturalHeight: h } = element;
+        if (
+            !Number.isSafeInteger(w)
+            || !Number.isSafeInteger(h)
+            || w < 1
+            || h < 1
+            || w * h > 100_000_000
+        ) return null;
         if (w > maxSize || h > maxSize) {
             const scale = maxSize / Math.max(w, h);
             w = Math.round(w * scale);

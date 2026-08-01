@@ -8,6 +8,12 @@
 > **Scope:** This document covers the full two-layer permission model. Layer 1 (RolePermissions) type details are included here for completeness but the canonical reference for staff-level RBAC (default roles, `hasPermission()`, adding permissions guide) is [Roles & Permissions Impl](../roles-permissions/roles-permissions_impl.md). This document focuses on Layer 2 (OutletPolicy) and the intersection enforcement.
 
 > **May 27, 2026 audit note:** OutletPolicy writes are server-owned through `POST /api/outlets/policy`. Desktop and mobile access gates use `canManageLocationSettings()` from `src/lib/multiOutlet/locationAccess.ts`. Outlet sessions load the master store policy once when it is not already hydrated in `tenantDetails.storesList`, and `applyOutletPolicy()` falls back to `DEFAULT_OUTLET_POLICY` for non-master stores so missing policy hydration cannot grant chain/billing permissions. Linked outlet menu saves, description/image APIs, and extraction jobs enforce the policy server-side.
+>
+> **July 30, 2026 type-contract note:** `applyOutletPolicy()` returns
+> `EffectiveRolePermissions`, which includes the optional attached
+> `outletPolicy`. The platform context uses that same type so mobile and
+> desktop editors consume the effective session policy without `any` casts or
+> a second master-store read.
 
 ---
 

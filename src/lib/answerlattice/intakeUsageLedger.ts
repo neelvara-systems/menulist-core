@@ -13,6 +13,10 @@ import {
 } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
 import {
+    getAnswerlatticeSubscriptionTimestampMillis,
+    projectActiveAnswerlatticeSubscriptionForRead,
+} from '@lib/answerlattice/subscriptionReadBoundary';
+import {
     isAnswerlatticeIntakeLedgerInScope,
     resolveAnswerlatticeIntakeRefundAllocation,
 } from '@lib/answerlattice/intakeUsageSettlement';
@@ -20,7 +24,6 @@ import { sanitizeAnswerlatticeIntakeMetadata } from '@lib/answerlattice/knowledg
 import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
 import { getBillingPeriodKey, isValidBillingPeriodKey } from '@lib/billing/billingPeriod';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { Timestamp } from 'firebase-admin/firestore';
 
 type AnswerlatticeScope = {
@@ -84,27 +87,6 @@ const cleanText = (value: unknown, max = 300) => String(value || '')
     .trim()
     .slice(0, max);
 
-const toMillis = (value: any): number | null => {
-    if (!value) return null;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.toDate === 'function') return value.toDate().getTime();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    if (value instanceof Date) return value.getTime();
-    if (typeof value === 'number') return value;
-    return null;
-};
-
-const isActiveSubscription = (subscription: Record<string, any>) => {
-    if (
-        subscription.pId !== PRODUCT_IDS.ANSWERLATTICE
-        || subscription.productId !== PRODUCT_IDS.ANSWERLATTICE
-    ) return false;
-    const status = String(subscription.status || '').toLowerCase();
-    if (!['active', 'trialing'].includes(status)) return false;
-    const endMs = toMillis(subscription.subscriptionEndDate || subscription.cycleEndDate || subscription.currentPeriodEnd);
-    return !endMs || endMs > Date.now();
-};
-
 async function resolveSubscriptionRef(scope: AnswerlatticeScope) {
     const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
     const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
@@ -146,12 +128,13 @@ async function resolveSubscriptionRef(scope: AnswerlatticeScope) {
         .get();
 
     const match = fallback.docs
-        .map((doc): Record<string, any> & { id: string } => ({ id: doc.id, ...(doc.data() as Record<string, any>) }))
-        .filter(data => isAnswerlatticeSubscriptionInScope(data, {
-            tId: tenantScope.numericId,
-            sId: storeScope.numericId,
-        }))
-        .find(isActiveSubscription);
+        .map((doc) => projectActiveAnswerlatticeSubscriptionForRead(
+            doc.data(),
+            doc.id,
+            tenantScope.numericId,
+            storeScope.numericId,
+        ))
+        .find((subscription) => subscription !== null);
 
     if (!match?.id) {
         throw new Error('An active Answerlattice subscription is required before running paid intake processing.');
@@ -204,18 +187,13 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
             throw new Error('Answerlattice workspace is not available.');
         }
 
-        const subscription = {
-            ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
-            id: subscriptionSnap.id,
-        } as FirestoreSubscriptionDoc;
-
-        if (!isAnswerlatticeSubscriptionInScope(subscription, {
-            tId: tenantScope.numericId,
-            sId: storeScope.numericId,
-        })) {
-            throw new Error('Answerlattice subscription scope does not match this workspace.');
-        }
-        if (!isActiveSubscription(subscription as any)) {
+        const subscription = projectActiveAnswerlatticeSubscriptionForRead(
+            subscriptionSnap.data(),
+            subscriptionSnap.id,
+            tenantScope.numericId,
+            storeScope.numericId,
+        );
+        if (!subscription) {
             throw new Error('An active Answerlattice subscription is required before running paid intake processing.');
         }
 
@@ -460,7 +438,7 @@ export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, 
             throw new Error('Answerlattice subscription billing period is invalid.');
         }
         const storedBillingPeriod = getCreditBillingPeriodKey(ledger.billingPeriod);
-        const reservedOnMillis = toMillis(ledger.reservedOn);
+        const reservedOnMillis = getAnswerlatticeSubscriptionTimestampMillis(ledger.reservedOn);
         const reservedBillingPeriod = storedBillingPeriod !== null && isValidBillingPeriodKey(storedBillingPeriod)
             ? storedBillingPeriod
             : reservedOnMillis

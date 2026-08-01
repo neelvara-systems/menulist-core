@@ -281,7 +281,7 @@ const isSignalDeskFirebaseAdminConfigured = hasSignalDeskAdminFirebaseConfig;
 const isSignalDeskFirebaseConfigured = isSignalDeskFirebaseAdminConfigured;
 const signaldeskFirebaseMode = signaldeskFirebaseBoundary.mode;
 const signaldeskFirebaseProjectId = signaldeskFirebaseBoundary.activeProjectId || undefined;
-const signaldeskFirestoreDatabaseId = undefined;
+const signaldeskFirestoreDatabaseId: undefined = undefined;
 
 export {
     expectedSignalDeskProjectId,

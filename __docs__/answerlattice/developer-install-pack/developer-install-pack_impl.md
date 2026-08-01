@@ -57,6 +57,8 @@ No public page, dashboard packet, ZIP file, or agent-specific instruction file m
 
 Framework examples read from client-safe env variables where the framework supports that pattern. Plain HTML can either use the direct dashboard snippet or inject the values through the product's build template. The new `/install/frameworks/*` pages provide the agent-ready versions and `.md` mirrors.
 
+The Next.js, React, and Vue examples bind their initial `page()` call to the widget script's load acknowledgement as well as later route changes. Calling context before the async loader exists remains a harmless no-op, but the load callback replays the current path so a user does not need to navigate before Answerlattice receives initial page context.
+
 ## Dashboard Install Center
 
 `src/components/templates/answerlattice/install/AnswerlatticeInstallCenter.tsx` is the dashboard route for workspace-specific install handoff:

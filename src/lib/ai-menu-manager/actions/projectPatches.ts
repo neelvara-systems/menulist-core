@@ -284,7 +284,7 @@ export function projectContainsAiMenuManagerPatch(
 
         return Array.from(attributeIds).every((id) => {
             const match = matchedAttributes.get(id);
-            return Boolean(match?.count) && match.allMatch;
+            return match !== undefined && match.count > 0 && match.allMatch;
         });
     }
 

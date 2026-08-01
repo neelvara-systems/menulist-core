@@ -4,6 +4,7 @@ import { getClockTimeInputFormat } from '@util/dateTime';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
+import SpecialHoursEditor from './SpecialHoursEditor';
 const { Title, Text } = Typography;
 
 interface WorkingHourSlot {
@@ -13,7 +14,7 @@ interface WorkingHourSlot {
 }
 
 interface WorkingHoursTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     workingHours: WorkingHourSlot[];
     setWorkingHours: (hours: WorkingHourSlot[]) => void;
     form: FormInstance;
@@ -62,7 +63,7 @@ const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHou
                         sat: null
                     }
                 });
-                setWorkingHours(workingHours.map(slot => ({ ...slot, start: null, end: null })));
+                setWorkingHours(workingHours.map((slot): WorkingHourSlot => ({ ...slot, start: null, end: null })));
             },
         });
     };
@@ -141,6 +142,7 @@ const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHou
                         />
                     </Flex>
                 ))}
+                <SpecialHoursEditor />
             </div>
         </Card>
     );

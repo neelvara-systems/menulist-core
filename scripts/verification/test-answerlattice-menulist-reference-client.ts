@@ -35,6 +35,30 @@ assert.equal(
     false,
     'server/test execution must safely no-op without a browser widget runtime',
 );
+const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+try {
+    Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: {
+            AnswerlatticeWidget: {
+                emitWorkflowEvent: () => {
+                    throw new Error('optional widget instrumentation failed');
+                },
+            },
+        },
+    });
+    assert.equal(
+        emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLISH_COMPLETED),
+        false,
+        'optional Answerlattice instrumentation must never fail a MenuList workflow',
+    );
+} finally {
+    if (originalWindowDescriptor) {
+        Object.defineProperty(globalThis, 'window', originalWindowDescriptor);
+    } else {
+        Reflect.deleteProperty(globalThis, 'window');
+    }
+}
 assert.equal(isVerifiedMenuPublishResult({ status: 'OK' }), true);
 assert.equal(isVerifiedMenuPublishResult({ status: 'ERROR' }), false);
 assert.equal(isVerifiedMenuPublishResult(null), false);

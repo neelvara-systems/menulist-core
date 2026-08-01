@@ -1047,7 +1047,10 @@ async function approveProposal(
     if (!proposalId) throw new AnswerlatticeGovernanceError('proposal_id_invalid', 400);
     const proposalRef = db.collection(PROPOSAL_COLLECTION).doc(proposalId);
 
-    const result = await db.runTransaction(async transaction => {
+    const result = await db.runTransaction<{
+        answerId?: string;
+        status: 'approved' | 'implemented';
+    }>(async transaction => {
         const proposalSnapshot = await transaction.get(proposalRef);
         if (!proposalSnapshot.exists || !documentIsInScope(proposalSnapshot.data() || {}, scope)) {
             throw new AnswerlatticeGovernanceError('proposal_not_found', 404, 'The proposal is no longer available.');

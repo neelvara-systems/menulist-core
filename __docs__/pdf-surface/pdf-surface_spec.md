@@ -2,7 +2,7 @@
 
 **Status:** Implemented compatibility bridge
 **Last Updated:** July 16, 2026
-**Feature Flag:** `ENABLE_PDF_SURFACE`
+**Runtime:** Always-on compatibility adapter; `ENABLE_MENU_CARD_EXPORT` controls the successor routed workflow
 
 ---
 

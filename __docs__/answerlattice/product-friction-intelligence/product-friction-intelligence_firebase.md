@@ -27,6 +27,10 @@ One optional server-owned advisory summary linked to a strictly normalized deter
 - Owner surface: one deterministic snapshot read and one optional advisory read.
 - Daily Brief focus and Knowledge Map links: zero operations until the owner
   opens the destination; no friction listener or navigation write.
+- Evidence brief preparation, review-path changes, copy, and Markdown download:
+  zero Firebase reads, writes, deletes, listeners, Storage objects, Functions,
+  scheduler tasks, provider calls, or integration calls. The browser reuses the
+  already-loaded compact snapshot.
 
 The component-breakdown hardening changes neither owner read count nor nightly
 query count. It adds bounded numeric fields to the existing compact snapshot
@@ -45,6 +49,12 @@ Actual cost must be measured from Firebase and AI-operation accounting. Static c
 
 The maintained dedicated and shared index files include the friction history/cleanup shape `pId + tId + sId + date desc` and the `aiSearchHistory` canonical-miss shape `pId + tId + sId + canonical + createdOn desc`. Product identity is constrained before both bounded windows, preventing another product with colliding numeric scope from consuming the cap or entering retention deletion. Any query-shape change must update and test both index contracts before deployment.
 
+The owner snapshot is retrieved only by exact document ID, so automatic
+indexing is disabled for `topFrictionEntities` and `emergingTopics` in both
+maintained manifests. The scalar scope, window, health, and count fields remain
+unchanged. This reduces index-entry storage and snapshot-write amplification;
+it does not change the two-read owner surface or any history query.
+
 ## Deployment
 
 Function changes require a narrow QA deployment of `answerlatticeNightly`; this exact product-aware daily-stat query also requires both maintained index manifests to be deployed to the matching environment. Rules deployment is required only when rules source changes.
@@ -57,6 +67,14 @@ not authenticated: `Failed to authenticate, have you run firebase login?`.
 Source, contract, emulator, rules, typecheck, lint, and Functions-build gates
 passed. No QA Function revision changed.
 
+### July 30, 2026 authentication recheck
+
+`firebase projects:list --json` still stops with `Failed to authenticate, have
+you run firebase login?`. No deploy command was run after that preflight. The
+feature's source and local emulator contracts can be completed without a live
+write, but QA deployment and hosted summary readback remain operator evidence,
+not unfinished Product Friction Evidence code.
+
 ## Rejected Firebase Expansion
 
 Do not add:
@@ -64,6 +82,8 @@ Do not add:
 - per-workflow tree snapshots;
 - per-release friction documents;
 - per-classification or per-root-cause documents;
+- evidence-brief, owner-review-path, product-problem, or delivery-state
+  documents for this local handoff;
 - raw product-event, abandonment, session-replay, or mouse-event collections;
 - owner-page collection scans or listeners;
 - one document per displayed evidence item.

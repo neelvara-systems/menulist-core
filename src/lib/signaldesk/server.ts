@@ -116,7 +116,7 @@ const KILL_SWITCH_SCOPES = new Set<SignalDeskKillSwitchScope>(SIGNALDESK_KILL_SW
 
 const KILL_SWITCH_STATUSES = new Set<SignalDeskKillSwitchStatus>(["active", "inactive"]);
 
-const sanitizeForFirestore = (value: unknown) => sanitizeFirestoreValue(value, {
+const sanitizeForFirestore = <T>(value: T): T extends undefined ? null : T => sanitizeFirestoreValue(value, {
     dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
 });
 
@@ -395,6 +395,7 @@ const canonicalizeLegacyOverviewSummaries = async (params: {
             result.queues = currentQueues;
         } else if (queueCandidate && hasMissingLegacyIdentity(queueSnapshot.data(), "queueSummaryId")) {
             const currentQueue = queueSnapshot.data();
+            if (!currentQueue) throw new Error("QUEUE_LEGACY_SUMMARY_SHAPE_INVALID");
             const updatedAt = currentQueue.updatedAt === undefined ? timestamp : currentQueue.updatedAt;
             const projected = projectSignalDeskQueueDocument({
                 ...currentQueue,

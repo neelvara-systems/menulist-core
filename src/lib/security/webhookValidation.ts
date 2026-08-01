@@ -27,7 +27,7 @@ import {
 /**
  * Supported hashing algorithms for webhook signatures
  */
-export type HashAlgorithm = 'sha256' | 'sha512' | 'sha1' | 'md5';
+export type HashAlgorithm = 'sha256' | 'sha512';
 
 /**
  * Webhook signature verification options
@@ -101,10 +101,15 @@ export function validateWebhookSignature(
         }
 
         // Remove prefix from signature if provided
-        let cleanSignature = receivedSignature;
-        if (signaturePrefix && receivedSignature.startsWith(signaturePrefix)) {
-            cleanSignature = receivedSignature.substring(signaturePrefix.length);
+        if (signaturePrefix && !receivedSignature.startsWith(signaturePrefix)) {
+            logSecurityDiagnostic('webhook_validator_signature_prefix_mismatch', {
+                ...getBoundedSecurityStringContext('provider', provider),
+            });
+            return false;
         }
+        const cleanSignature = signaturePrefix
+            ? receivedSignature.substring(signaturePrefix.length)
+            : receivedSignature;
 
         // Generate expected signature
         const hmac = createHmac(algorithm, secret);
@@ -288,15 +293,10 @@ export function validateWebhookIP(
         return false;
     }
 
-    // Basic IP validation (exact match)
-    // For CIDR range support, use a library like 'ipaddr.js'
-    const isAllowed = allowedIPs.some(ip => {
-        // Exact match
-        if (ip === requestIP) return true;
-
-        // Current contract is exact-match allowlisting only.
-        return false;
-    });
+    const normalizedRequestIp = normalizeWebhookIp(requestIP);
+    const isAllowed = normalizedRequestIp !== null && allowedIPs.some((entry) => (
+        webhookIpAllowlistEntryMatches(normalizedRequestIp, entry)
+    ));
 
     if (!isAllowed) {
         logSecurityDiagnostic('webhook_ip_validator_ip_not_allowed', {
@@ -307,6 +307,45 @@ export function validateWebhookIP(
     }
 
     return isAllowed;
+}
+
+function normalizeWebhookIp(value: string): string | null {
+    const normalized = value.trim().toLowerCase().replace(/^\[(.*)\]$/, '$1');
+    if (!normalized || normalized.includes(',') || /\s/.test(normalized)) return null;
+    return normalized;
+}
+
+function parseWebhookIpv4(value: string): number | null {
+    const parts = value.split('.');
+    if (
+        parts.length !== 4
+        || parts.some((part) => !/^(?:0|[1-9]\d{0,2})$/.test(part))
+    ) {
+        return null;
+    }
+    const octets = parts.map(Number);
+    if (octets.some((octet) => octet > 255)) return null;
+    return (
+        ((octets[0] << 24) >>> 0)
+        + (octets[1] << 16)
+        + (octets[2] << 8)
+        + octets[3]
+    ) >>> 0;
+}
+
+function webhookIpAllowlistEntryMatches(requestIp: string, rawEntry: string): boolean {
+    const entry = normalizeWebhookIp(rawEntry);
+    if (!entry) return false;
+    if (!entry.includes('/')) return entry === requestIp;
+
+    const [networkText, prefixText, ...extra] = entry.split('/');
+    if (extra.length > 0 || !/^(?:[0-9]|[12]\d|3[0-2])$/.test(prefixText)) return false;
+    const request = parseWebhookIpv4(requestIp);
+    const network = parseWebhookIpv4(networkText);
+    if (request === null || network === null) return false;
+    const prefix = Number(prefixText);
+    const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
+    return (request & mask) === (network & mask);
 }
 
 /**

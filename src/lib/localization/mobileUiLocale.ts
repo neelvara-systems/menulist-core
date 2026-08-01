@@ -1,5 +1,8 @@
 import { getCookie } from 'cookies-next';
-import { APP_LOCALE_COOKIES_KEY } from './config';
+import {
+    APP_LOCALE_COOKIES_KEY,
+    normalizeLocalePreference,
+} from './config';
 
 type MobileUiLocaleText = {
     cancel: string;
@@ -484,8 +487,27 @@ const MOBILE_UI_LOCALE_MAP: Record<string, MobileUiLocaleText> = {
     },
 };
 
+export function resolveMobileUiLocaleText(
+    locale: unknown,
+    cookieLocale: unknown,
+): MobileUiLocaleText {
+    const explicitLocale = typeof locale === 'string'
+        ? normalizeLocalePreference(locale)
+        : null;
+    const persistedLocale = typeof cookieLocale === 'string'
+        ? normalizeLocalePreference(cookieLocale)
+        : null;
+    const activeLocale = explicitLocale || persistedLocale || FALLBACK_LOCALE;
+    const resolved = MOBILE_UI_LOCALE_MAP[activeLocale] || MOBILE_UI_LOCALE_MAP[FALLBACK_LOCALE];
+    return { ...resolved };
+}
+
 export function getMobileUiLocaleText(locale?: string): MobileUiLocaleText {
-    const cookieLocale = getCookie(APP_LOCALE_COOKIES_KEY);
-    const activeLocale = locale || (typeof cookieLocale === 'string' ? cookieLocale : FALLBACK_LOCALE);
-    return MOBILE_UI_LOCALE_MAP[activeLocale] || MOBILE_UI_LOCALE_MAP[FALLBACK_LOCALE];
+    let cookieLocale: unknown;
+    try {
+        cookieLocale = getCookie(APP_LOCALE_COOKIES_KEY);
+    } catch {
+        cookieLocale = undefined;
+    }
+    return resolveMobileUiLocaleText(locale, cookieLocale);
 }

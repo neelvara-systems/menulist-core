@@ -299,7 +299,7 @@ export default function MobileDashboardScreen({
     const hasWorkingHours = Boolean(storeDetails?.workingHours && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean));
     const confirmedPlacementCount = ['googleBusiness', 'instagramBio', 'whatsappProfile']
         .filter((surface) => Boolean((storeDetails as any)?.menuPresence?.[surface])).length;
-    const feedbackReady = Boolean(storeDetails) && storeDetails.feedbackEnabled !== false;
+    const feedbackReady = storeDetails ? storeDetails.feedbackEnabled !== false : false;
     const hasConfirmedPlacement = confirmedPlacementCount > 0;
     const selectedMenuIsLive = selectedProjectSummary?.active !== false;
     const attentionItems = [

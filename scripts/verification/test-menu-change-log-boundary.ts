@@ -33,7 +33,7 @@ const entry = (overrides: Partial<MenuChangeLogInput> = {}): MenuChangeLogInput 
 });
 
 const assertThrows = (callback: () => unknown, message: string): void => {
-    assert.throws(callback, undefined, message);
+    assert.throws(callback, message);
 };
 
 async function run(): Promise<void> {

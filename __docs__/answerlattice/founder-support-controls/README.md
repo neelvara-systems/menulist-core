@@ -4,7 +4,7 @@
 > **Product:** Answerlattice
 > **Updated:** 2026-07-29
 
-Founder Support Controls add the missing safety workflows around Answerlattice's existing governed support layer. They let owners test answers, check release impact, publish temporary known-issue notices, verify visitor context, attach bounded debugging evidence, and export approved support truth without turning Answerlattice into a helpdesk, status platform, session-replay product, or project manager.
+Founder Support Controls add the missing safety workflows around Answerlattice's existing governed support layer. They let owners test answers, check release impact, inspect retained answer-routing evidence, publish temporary known-issue notices, verify visitor context, attach bounded debugging evidence, and export approved support truth without turning Answerlattice into a helpdesk, status platform, session-replay product, or project manager.
 
 ## Included Controls
 
@@ -14,6 +14,7 @@ Founder Support Controls add the missing safety workflows around Answerlattice's
 4. Optional signed visitor context for trusted plan, role, locale, and requester identity claims.
 5. Bounded external evidence links on private widget-search activity.
 6. Owner-triggered support-truth export.
+7. Read-only Answer Trace from Trust Metrics and escalated ticket review.
 
 The private Owner Support Assistant remains documented separately under `__docs__/answerlattice/owner-support-assistant/`. Its shipped runtime is read-only and uses six existing compact summaries, including activation proof; it does not execute these controls.
 
@@ -43,6 +44,14 @@ The private Owner Support Assistant remains documented separately under `__docs_
 - Release-impact links may open the existing Answer Tests release check with a
   validated release ID, and a failed result may open its approved canonical
   answer with a validated answer ID. Neither link executes a run or mutation.
+- Release impact discloses direct changed-entity links to active approved
+  answers and active Answer Tests. It names changed entities with no visible
+  direct link, but it never claims complete article, FAQ, workflow,
+  product-surface, factual, or customer-resolution coverage.
+- Answer Trace projects only already-retained routing evidence for
+  support-authorized users. It excludes visitor identity, request origin/path,
+  user-agent detail, raw cache keys, and internal source bodies. Opening a
+  trace never creates a proposal or changes support truth.
 - Rollback is a mutation proposal, never a direct answer overwrite.
 - Known issues do not change canonical retrieval priority and do not create a public status platform.
 - Unsigned visitor data is informational only and never authorizes private data or tenant scope.
@@ -54,6 +63,7 @@ The private Owner Support Assistant remains documented separately under `__docs_
 
 | Date | Change |
 | --- | --- |
+| 2026-07-29 | Added support-authorized, read-only Answer Trace in existing Trust Metrics and escalated ticket workflows plus direct changed-entity answer/test link disclosure in Release Impact. |
 | 2026-07-29 | Wired Release Impact to the existing release-scoped Answer Tests modal and failed Answer Tests to the exact Canonical Answer review surface through validated, zero-persistence URL context. |
 | 2026-07-29 | Implemented deterministic critical-RAG blocking in the shared evaluator, save API, owner form, and focused regression suite without adding a migration, read, write, provider call, scheduler, or Storage artifact. |
 | 2026-07-28 | Validated the proposed Critical Answer Test Suite against the shipped Answer Tests runtime. Kept the existing bounded proof loop, admitted only deterministic critical-RAG blocking for the subsequent bounded implementation, and rejected duplicate suites, multi-turn simulation, model judging, scheduled runs, and Storage-backed artifacts. |

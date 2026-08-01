@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { Timestamp } from 'firebase/firestore';
+import { projectIngestionJobDocument } from '../../src/database/kb-generation/jobs';
 import {
     getIngestionJobTimestampMillis,
     isDeletableIngestionJobStatus,
@@ -60,5 +62,49 @@ assert.throws(
     }], [[{ storagePath: `${sourcePrefix}../unsafe.pdf` }]], sourcePrefix),
     /invalid source-file reference data/,
 );
+
+const validJob = {
+    pId: 'AL',
+    tId: 12,
+    sId: 34,
+    uId: 'platform-user',
+    status: 'failed',
+    sourceFiles: [{
+        storagePath: `${sourcePrefix}job-a.pdf`,
+        fileName: 'job-a.pdf',
+        type: 'application/pdf',
+        gsUri: 'gs://answerlattice/job-a.pdf',
+        downloadURL: 'https://storage.example/job-a.pdf',
+    }],
+    categories: null,
+    errorMessage: null,
+    failureStage: 'generation',
+    createdOn: Timestamp.fromMillis(1_000),
+    modifiedOn: Timestamp.fromMillis(2_000),
+    internalProviderPayload: { secret: 'must-not-project' },
+};
+const projectedJob = projectIngestionJobDocument('job_valid', validJob);
+assert.ok(projectedJob);
+assert.equal(projectedJob.id, 'job_valid');
+assert.equal(projectedJob.pId, 'AL');
+assert.equal(projectedJob.tId, 12);
+assert.equal(projectedJob.sId, 34);
+assert.equal(projectedJob.errorMessage, null);
+assert.equal('internalProviderPayload' in projectedJob, false);
+
+for (const [label, mutation] of [
+    ['wrong product', { pId: 'ML' }],
+    ['coercive tenant', { tId: '012' }],
+    ['unknown lifecycle status', { status: 'done' }],
+    ['non-Timestamp creation time', { createdOn: { toMillis: () => 1_000 } }],
+    ['missing source fields', { sourceFiles: [{ storagePath: `${sourcePrefix}job-a.pdf` }] }],
+    ['malformed navigation', { categories: { category_1: { id: 'category_1' } } }],
+] as const) {
+    assert.equal(
+        projectIngestionJobDocument('job_invalid', { ...validJob, ...mutation }),
+        null,
+        `${label} persisted job was admitted`,
+    );
+}
 
 process.stdout.write('Answerlattice ingestion-job deletion boundary tests passed.\n');

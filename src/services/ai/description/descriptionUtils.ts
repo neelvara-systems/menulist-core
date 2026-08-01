@@ -3,7 +3,12 @@ import { getBoundedAiServiceStringContext, logAiServiceFailure } from "@services
 import { AICapacityError } from "@services/ai/capacityError";
 import { hasAnyNonEmptyDescription } from "@lib/menu/descriptionQuality";
 import type { DescriptionTone } from "@template/main-app/projects/editorView/descriptionGeneration.shared";
-import { LanguageType, Project, ProjectFileType } from "@template/main-app/projects/types";
+import {
+    type LanguageType,
+    type Project,
+    type ProjectFileType,
+    type DescriptionAPIItem,
+} from "@template/main-app/projects/types";
 import { InheritanceState } from "@type/multiOutlet.types";
 import { removeObjRef } from "@util/utils";
 import getDescriptionsViaAPI from "./generateDescriptionViaAPI";
@@ -15,6 +20,51 @@ export const DESCRIPTION_ITEM_PAYLOAD_BYTES_PER_REQUEST = 180 * 1024;
 // Keep common one-to-three-language menus at the 100-item ceiling while
 // bounding structured output for unusually multilingual projects.
 export const DESCRIPTION_OUTPUT_CELLS_PER_REQUEST = 300;
+
+export type DescriptionAction =
+    | typeof AI_ACTIONS_TYPES.ADD_DESCRIPTION
+    | typeof AI_ACTIONS_TYPES.REWRITE_DESCRIPTION;
+
+export interface DescriptionSourceAttribute {
+    name?: Record<string, string | undefined>;
+}
+
+export interface DescriptionSourceCategory {
+    id: string;
+    name?: Record<string, string | undefined>;
+}
+
+export interface DescriptionSourceItem {
+    attributes?: DescriptionSourceAttribute[];
+    category?: string;
+    description?: Record<string, string | undefined>;
+    descriptionSource?: string;
+    id: string;
+    name?: Record<string, string | undefined>;
+}
+
+export interface DescriptionFileData {
+    categories?: DescriptionSourceCategory[];
+    items?: DescriptionSourceItem[];
+}
+
+export interface DescriptionMergeItem {
+    description?: Record<string, string | undefined>;
+    descriptionSource?: string;
+    id: string;
+}
+
+export interface DescriptionMergeData {
+    items: DescriptionMergeItem[];
+}
+
+export interface DescriptionPayloadItem extends DescriptionAPIItem {
+    attributes: string;
+    category: string;
+    description: string;
+}
+
+export type GeneratedDescriptionMap = Record<string, Record<string, string>>;
 
 export function chunkDescriptionItems<T>(
     items: readonly T[],
@@ -91,15 +141,15 @@ const shouldGenerateDescriptionForItem = (
 };
 
 export const prepareDescriptionPayload = (
-    fileData: any,
+    fileData: DescriptionFileData,
     sourceLang: string,
-    action: string,
+    action: DescriptionAction,
     governance?: DescriptionGovernanceOptions
-): any[] => {
-    const payloadList: any[] = [];
+): DescriptionPayloadItem[] => {
+    const payloadList: DescriptionPayloadItem[] = [];
 
     // Extract item names and attribute names (only local-only if governance provided)
-    fileData.items?.forEach((item: any) => {
+    (fileData.items || []).forEach((item) => {
         // Multi-outlet: Skip inherited/overridden items - they get descriptions from master
         if (!shouldGenerateDescriptionForItem(item.id, governance?.itemStates)) {
             return;
@@ -146,10 +196,10 @@ export const prepareDescriptionPayload = (
                 id: item.id,
                 name: sourceName,
                 category: String(
-                    fileData.categories?.find((cat: any) => cat.id === item.category)?.name?.[sourceLang] || '',
+                    fileData.categories?.find((category) => category.id === item.category)?.name?.[sourceLang] || '',
                 ).trim().slice(0, 200),
                 attributes: (item.attributes || [])
-                    .map((attr: any) => typeof attr.name?.[sourceLang] === 'string' ? attr.name[sourceLang].trim() : '')
+                    .map((attribute) => typeof attribute.name?.[sourceLang] === 'string' ? attribute.name[sourceLang].trim() : '')
                     .filter(Boolean)
                     .join(', ')
                     .slice(0, 500),
@@ -166,9 +216,12 @@ export const prepareDescriptionPayload = (
     return payloadList;
 };
 
-export const mergeDescription = (fileData: any, generatedDescription: any) => {
-    const updatedFileData = removeObjRef(fileData);
-    updatedFileData.items?.forEach((item: any) => {
+export const mergeDescription = <T extends DescriptionMergeData>(
+    fileData: T,
+    generatedDescription: GeneratedDescriptionMap,
+): T => {
+    const updatedFileData = removeObjRef(fileData) as T;
+    updatedFileData.items.forEach((item) => {
         const hasGeneratedDescription = Object.prototype.hasOwnProperty.call(
             generatedDescription,
             item.id,
@@ -186,7 +239,7 @@ export const addDescription = async (
     file: ProjectFileType,
     targetLanguages: LanguageType[],
     sourceLanguage: LanguageType,
-    action: any,
+    action: DescriptionAction,
     contentLength: "Standard" | "Detailed",
     tone: DescriptionTone = "Professional",
     governance?: DescriptionGovernanceOptions,
@@ -195,6 +248,15 @@ export const addDescription = async (
     const prevData = removeObjRef(projectData)
 
     if (file.extractedData?.data) {
+        const projectId = projectData.projectId?.trim();
+        if (!projectId) {
+            logAiServiceFailure(AI_DESCRIPTION_FILE_GENERATION_FAILED, new Error('Project ID is unavailable'), {
+                action,
+                contentLength,
+                tone,
+            });
+            return { updatedProject: prevData, message: "Error getting descriptions", messageType: "error", requestCount: 0 };
+        }
         // Multi-outlet: Pass governance to filter out inherited/overridden items
         const itemsList = prepareDescriptionPayload(file.extractedData.data, sourceLanguage.code, action, governance);
 
@@ -216,7 +278,7 @@ export const addDescription = async (
                     targetLang: targetLanguages,
                     sourceLang: sourceLanguage,
                     action,
-                    projectId: projectData.projectId,
+                    projectId,
                     fileId: file.uid,
                     contentLength,
                     tone,
@@ -245,7 +307,7 @@ export const addDescription = async (
                 const updated = {
                     ...prevData,
                     files: prevData.files?.map(f =>
-                        f.uid === file.uid
+                        f.uid === file.uid && f.extractedData?.data
                             ? {
                                 ...f,
                                 extractedData: {

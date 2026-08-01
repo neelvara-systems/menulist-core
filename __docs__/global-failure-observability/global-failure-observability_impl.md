@@ -12,13 +12,20 @@
   retrying the same failed child tree inside its fallback.
 
 Each boundary logs a stable code plus bounded metadata, not raw message/stack.
+The root boundary reads its optional Next.js digest through the same
+descriptor-safe bounded-field helper as the diagnostic handoff, so a throwing
+getter or malformed proxy cannot break the last-resort fallback.
 
 ## Diagnostic acknowledgement
 
 `ErrorReportButton` calls the sanitized logger. A Sentry event ID produces
 `Report sent`. Without an event ID it says automatic reporting is unavailable
 and offers explicitly copied support details. It never labels console-only
-logging as a sent report.
+logging as a sent report. Current-page diagnostics retain origin plus path
+without query or fragment; external referrers retain origin only. HTTP(S)
+credential-bearing and non-HTTP values are excluded. Error name and digest are
+read through descriptor-safe bounded helpers, so a hostile accessor cannot
+break the fallback while the original error is being reported.
 
 ## Retained browser diagnostics
 

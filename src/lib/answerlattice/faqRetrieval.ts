@@ -398,10 +398,10 @@ export const attemptFaqAnswerRetrieval = async (
         if (currentMatch) {
             return {
                 found: true,
-                faq: currentFaq,
+                faq: currentMatch.faq,
                 score: currentMatch.score,
                 confidence: currentMatch.score >= 110 ? 'high' : 'medium',
-                references: await loadLinkedArticleReference(currentFaq, options.includeFullArticleReference !== false),
+                references: await loadLinkedArticleReference(currentMatch.faq, options.includeFullArticleReference !== false),
                 matchReason: `related_verified_${currentMatch.reason}`,
             };
         }

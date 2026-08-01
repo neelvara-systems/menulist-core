@@ -10,6 +10,7 @@ import {
     shouldHoldAnswerlatticeOnboardingProviderRecovery,
 } from '../../src/lib/answerlattice/onboardingProvisioning';
 import { normalizeRazorpaySubscriptionCheckoutUrl } from '../../src/lib/razorpay/checkoutUrl';
+import { normalizeAnswerlatticeOnboardResult } from '../../src/lib/answerlattice/onboardingResponse';
 
 const baseRequest = {
     billingModel: 'subscription' as const,
@@ -210,6 +211,80 @@ assert.equal(
     normalizeRazorpaySubscriptionCheckoutUrl('https://user:pass@rzp.io/rzp/Dqdqx3h'),
     null,
     'credential-bearing checkout URLs must fail closed',
+);
+
+const validOnboardResponse = {
+    apiKey: `al_${'a'.repeat(32)}`,
+    billing: {
+        amount: 99_900,
+        currency: 'INR',
+        interval: 'MONTH',
+    },
+    recovered: false,
+    subscription: {
+        id: 'sub_answerlattice_123',
+        shortUrl: 'https://rzp.io/rzp/Dqdqx3h#discarded',
+        status: 'created',
+    },
+    plan: {
+        id: 'answerlattice_starter',
+        isBeta: false,
+        name: 'Starter',
+    },
+    widgetKeyNeedsRotation: false,
+    workspaceCreated: true,
+};
+assert.deepEqual(
+    normalizeAnswerlatticeOnboardResult(validOnboardResponse),
+    {
+        ...validOnboardResponse,
+        subscription: {
+            ...validOnboardResponse.subscription,
+            shortUrl: 'https://rzp.io/rzp/Dqdqx3h',
+        },
+    },
+    'the browser acknowledgement must contain canonical current plan, amount, checkout and one-time key truth',
+);
+assert.equal(
+    normalizeAnswerlatticeOnboardResult({
+        ...validOnboardResponse,
+        billing: { ...validOnboardResponse.billing, amount: 1 },
+    }),
+    null,
+    'a positive but incorrect provider amount must not become displayed billing truth',
+);
+assert.equal(
+    normalizeAnswerlatticeOnboardResult({
+        ...validOnboardResponse,
+        apiKey: 'not-an-answerlattice-key',
+    }),
+    null,
+    'a malformed one-time widget key must not become successful setup truth',
+);
+assert.equal(
+    normalizeAnswerlatticeOnboardResult({
+        ...validOnboardResponse,
+        subscription: {
+            ...validOnboardResponse.subscription,
+            shortUrl: 'https://rzp.io.attacker.example/checkout',
+        },
+    }),
+    null,
+    'lookalike checkout hosts must invalidate the complete onboarding acknowledgement',
+);
+assert.equal(
+    normalizeAnswerlatticeOnboardResult({
+        ...validOnboardResponse,
+        apiKey: null,
+        recovered: true,
+        subscription: {
+            ...validOnboardResponse.subscription,
+            status: 'pending',
+        },
+        widgetKeyNeedsRotation: true,
+    })?.apiKey,
+    null,
+    'a recovered payment-pending workspace may require a new widget key without inventing the lost plaintext',
 );
 
 process.stdout.write('Answerlattice onboarding provisioning contract tests passed.\n');

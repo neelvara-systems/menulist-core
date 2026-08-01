@@ -19,7 +19,7 @@ const allowedCanvasPresets = new Set(["poster", "square", "story", "wide"]);
 const allowedTextPlacements = new Set(["center", "cta_zone", "near_target"]);
 const allowedAlignValues = new Set(["center", "left", "right"]);
 const allowedFontStyleValues = new Set(["italic", "normal"]);
-const allowedFontWeightValues = new Set(["400", "600", "700", "800", "bold", "normal"]);
+const allowedFontWeightValues = new Set(["400", "600", "700", "800", "900", "bold", "normal"]);
 
 const UNSAFE_TEXT_PATTERN = /<\s*script|javascript:|data:text\/html|onerror\s*=|onload\s*=/i;
 
@@ -149,7 +149,7 @@ const validateOperation = (
     return { ok: false, error: "Unsupported patch operation." };
 };
 
-export const validateCampaignCueDesignCuePatchSet = (
+const validateCampaignCueDesignCuePatchSetUnsafe = (
     documentValue: CreativeEditorDocument,
     patchSet: CreativeEditorDesignCuePatchSet,
 ): CampaignCueDesignCueValidationResult => {
@@ -168,4 +168,15 @@ export const validateCampaignCueDesignCuePatchSet = (
     }
 
     return { ok: true, warnings };
+};
+
+export const validateCampaignCueDesignCuePatchSet = (
+    documentValue: CreativeEditorDocument,
+    patchSet: CreativeEditorDesignCuePatchSet,
+): CampaignCueDesignCueValidationResult => {
+    try {
+        return validateCampaignCueDesignCuePatchSetUnsafe(documentValue, patchSet);
+    } catch {
+        return { ok: false, error: "Prepared changes are invalid." };
+    }
 };

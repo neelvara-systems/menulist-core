@@ -51,6 +51,7 @@ import {
     buildCampaignCueIdempotencyRequestHash,
     CampaignCueIdempotencyIdentityError,
     getCampaignCueIdempotencyClaimDecision,
+    type CampaignCueIdempotencyRecord,
 } from "@lib/campaigncue/idempotency";
 import {
     assertCampaignCueBusinessBrainRecordScope,
@@ -220,7 +221,7 @@ const getCampaignCueSourceErrorContext = (error: unknown): CampaignCueLogMetadat
     sourceStatusCode: getCampaignCueSourceErrorStatus(error),
 });
 
-const sanitizeForAdminFirestore = (value: unknown) => sanitizeFirestoreValue(value, {
+const sanitizeForAdminFirestore = <T>(value: T): T extends undefined ? null : T => sanitizeFirestoreValue(value, {
     dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
     undefinedObjectValue: "omit",
 });
@@ -2627,7 +2628,10 @@ async function checkIdempotency(params: {
     const claimId = buildId("idem_claim");
     const nowMillis = Date.now();
     try {
-        const result = await firestoreAdmin.runTransaction(async (transaction) => {
+        const result = await firestoreAdmin.runTransaction<{
+            claimId: string | null;
+            replay: CampaignCueIdempotencyRecord | null;
+        }>(async (transaction) => {
             const [snap] = await Promise.all([
                 transaction.get(ref),
                 assertCurrentCampaignCueWorkspaceAccess(
@@ -3893,7 +3897,8 @@ export async function createCampaignCueAssetDownloadServer(params: {
     if (!storagePath) {
         throw new CampaignCueAssetAccessError("This asset does not have a downloadable file.", 409);
     }
-    const storageGeneration = asset.file?.storageGeneration;
+    const assetFile = asset.file;
+    const storageGeneration = assetFile?.storageGeneration;
     if (!storageGeneration) {
         throw new CampaignCueAssetAccessError("This legacy asset must be registered again before download.", 409);
     }
@@ -3907,7 +3912,7 @@ export async function createCampaignCueAssetDownloadServer(params: {
     return {
         assetId: asset.id,
         expiresAt,
-        mimeType: asset.file.mimeType,
+        mimeType: assetFile.mimeType,
         name: asset.name,
         url,
     };
@@ -3937,10 +3942,11 @@ export async function createCampaignCueSourceInputServer(params: {
     if (idempotency.replay?.resultId) {
         if (idempotency.replay.resultId === "cc_source_pattern_current") {
             const currentWorkspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
-            if (!isCampaignCuePatternCueSourceInput(currentWorkspace.patternCueSource)) {
+            const patternCueSource = currentWorkspace.patternCueSource;
+            if (!isCampaignCuePatternCueSourceInput(patternCueSource)) {
                 throw new CampaignCueIdempotencyConflictError("The saved example-pattern retry result is unavailable.");
             }
-            return currentWorkspace.patternCueSource;
+            return patternCueSource;
         }
         const replaySnap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS)
             .doc(idempotency.replay.resultId)

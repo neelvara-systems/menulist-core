@@ -92,6 +92,26 @@ type IntakeActor = {
     email?: string | null;
 };
 
+type KnowledgeIntakeMediaClaim = {
+    claimId: string;
+    duplicate: null;
+} | {
+    claimId: null;
+    duplicate: AnswerlatticeKnowledgeSource & { duplicate: true };
+};
+
+type KnowledgeIntakeMediaProcessResult = {
+    source: AnswerlatticeKnowledgeSource;
+    usage: {
+        ledgerId: string | null;
+        unitsConsumed: number;
+        remainingBalance: {
+            monthlyCredits: number;
+            topUpCredits: number;
+        } | null;
+    };
+};
+
 type CreateJobInput = {
     title?: string;
     description?: string;
@@ -1134,7 +1154,7 @@ async function claimKnowledgeIntakeMediaSource(params: {
     const leaseExpiresAt = Timestamp.fromMillis(startedAt.toMillis() + ANSWERLATTICE_INTAKE_MEDIA_LEASE_MS);
     const ref = sourceRef(params.sourceId);
 
-    return db.runTransaction(async (tx) => {
+    return db.runTransaction<KnowledgeIntakeMediaClaim>(async (tx) => {
         const [jobSnap, sourceSnap] = await Promise.all([
             tx.get(jobRef(params.job.id)),
             tx.get(ref),
@@ -1262,7 +1282,12 @@ async function markKnowledgeIntakeMediaSourceFailed(
     });
 }
 
-export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope, jobId: string, input: ProcessMediaSourceInput, actor?: IntakeActor) {
+export async function processKnowledgeIntakeMediaSource(
+    scopeInput: IntakeScope,
+    jobId: string,
+    input: ProcessMediaSourceInput,
+    actor?: IntakeActor,
+): Promise<KnowledgeIntakeMediaProcessResult> {
     assertEnabled();
     assertDb();
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_MEDIA_EXTRACTION) {
@@ -1397,7 +1422,7 @@ export async function processKnowledgeIntakeMediaSource(scopeInput: IntakeScope,
             candidatesTokenCount: extracted.usageMetadata.candidatesTokenCount || 0,
             tokenCountSource: extracted.usageMetadata.tokenCountSource || 'none',
             unitsConsumed: getUnitCost(action),
-        }, actor).catch((operationError) => {
+        }, actor).catch((operationError): null => {
             logAnswerlatticeKnowledgeIntakeFailure(
                 '[Answerlattice Intake] Media AI operation log failed',
                 'answerlattice_intake_media_ai_operation_log_failed',
@@ -1694,7 +1719,7 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
             }, { merge: true });
         }
 
-        updatedItem = { id: normalizedItemId, ...current, ...patch };
+        updatedItem = { ...current, ...patch, id: normalizedItemId };
         if (shouldClearProcedure && updatedItem) {
             delete (updatedItem as AnswerlatticeIntakeReviewItem).procedure;
         }
@@ -2106,7 +2131,7 @@ export async function publishKnowledgeIntakeJob(
     } catch (error) {
         const failedAt = now();
         const safeFailureMessage = getKnowledgeIntakePublishFailureMessage(published.length);
-        const counters = await refreshJobCounters(scope, normalizedJobId).catch((counterError) => {
+        const counters = await refreshJobCounters(scope, normalizedJobId).catch((counterError): null => {
             logAnswerlatticeKnowledgeIntakeFailure('[Answerlattice Intake] Failed to refresh counters after partial publish failure', 'answerlattice_intake_publish_counter_refresh_failed', counterError, {
                 jobId: normalizedJobId,
                 scope,
@@ -2612,7 +2637,11 @@ async function publishSurface(scope: IntakeScope, item: AnswerlatticeIntakeRevie
     return { id: surfaceId, segments };
 }
 
-async function publishCanonicalProposal(scope: IntakeScope, item: AnswerlatticeIntakeReviewItem, actor?: IntakeActor) {
+async function publishCanonicalProposal(
+    scope: IntakeScope,
+    item: AnswerlatticeIntakeReviewItem,
+    actor?: IntakeActor,
+): Promise<{ id: string; segments: AnswerlatticePublicCacheSegment[] }> {
     const proposalRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS).doc(`intake_proposal_${sha256(`${scope.tId}:${scope.sId}:${item.id}`).slice(0, 24)}`);
     await db.runTransaction(async (tx) => {
         const [reviewSnap, proposalSnap] = await Promise.all([
@@ -2744,6 +2773,8 @@ function buildReviewItemsFromSource(
     const text = cleanLongText(source.contentText || source.contentExcerpt, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_BODY_CHARS);
     if (!text) return [];
     const items: AnswerlatticeIntakeReviewItem[] = [];
+    const unpublishedTargetId: AnswerlatticeIntakeReviewItem['publishTargetId'] = null;
+    const unpublishedOn: AnswerlatticeIntakeReviewItem['publishedOn'] = null;
     const base = {
         pId: PRODUCT_IDS.ANSWERLATTICE,
         tId: scope.tId,
@@ -2757,8 +2788,8 @@ function buildReviewItemsFromSource(
         entityIds: source.entityIds || [],
         confidenceScore: 0.72,
         reason: 'Generated from owner-provided intake source.',
-        publishTargetId: null,
-        publishedOn: null,
+        publishTargetId: unpublishedTargetId,
+        publishedOn: unpublishedOn,
     };
 
     if (source.type === ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE.REPEATED_REPLY) {
@@ -3217,19 +3248,24 @@ export async function discoverKnowledgeIntakeLinks(rawUrl: string) {
         });
     };
 
-    const page = await fetchWithCap(root).catch(() => null);
+    const page = await fetchWithCap(root).catch((): null => null);
     discoveryPageUrl = page?.finalUrl || discoveryPageUrl;
     add(root.url.toString(), extractTitle(page?.text || '') || 'Home', 'Starting URL');
     if (page?.text) {
         extractLinks(page.text).forEach(link => add(link.href, link.text, 'Linked from starting page'));
     }
 
-    const sitemapTarget = await assertSafePublicUrl(new URL('/sitemap.xml', root.url.origin).toString()).catch(() => null);
-    const sitemap = sitemapTarget ? await fetchWithCap(sitemapTarget).catch(() => null) : null;
+    const sitemapTarget = await assertSafePublicUrl(
+        new URL('/sitemap.xml', root.url.origin).toString(),
+    ).catch((): null => null);
+    const sitemap = sitemapTarget ? await fetchWithCap(sitemapTarget).catch((): null => null) : null;
     if (sitemap?.text) {
-        Array.from(sitemap.text.matchAll(/<loc>([^<]+)<\/loc>/gi))
+        const sitemapMatches: RegExpMatchArray[] = Array.from(
+            sitemap.text.matchAll(/<loc>([^<]+)<\/loc>/gi),
+        );
+        sitemapMatches
             .slice(0, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_LINK_DISCOVERY_RESULTS)
-            .forEach(match => add(match[1], '', 'Found in sitemap'));
+            .forEach((match) => add(match[1], '', 'Found in sitemap'));
     }
 
     return Array.from(discovered.values())

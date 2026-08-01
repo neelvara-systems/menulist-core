@@ -179,8 +179,10 @@ export const projectTimeSlotPresetReferences = (
     let changed = false;
 
     const files = project.files.map((file) => {
-        const categories = file.extractedData?.data?.categories;
-        if (!Array.isArray(categories)) return file;
+        const extractedData = file.extractedData;
+        const data = extractedData?.data;
+        const categories = data?.categories;
+        if (!data || !Array.isArray(categories)) return file;
         let fileChanged = false;
         const nextCategories = categories.map((category) => {
             if (!Array.isArray(category.timeSlots)) return category;
@@ -215,10 +217,12 @@ export const projectTimeSlotPresetReferences = (
         return {
             ...file,
             extractedData: {
-                ...file.extractedData,
+                ...extractedData,
                 data: {
-                    ...file.extractedData?.data,
+                    ...data,
                     categories: nextCategories,
+                    items: data.items ?? [],
+                    languages: data.languages ?? [],
                 },
             },
         };

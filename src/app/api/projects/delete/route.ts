@@ -139,7 +139,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 transaction.get(tenantRef),
             ]);
             const storeData = storeSnap.data();
-            const permissionError = requireAnyStorePermissionForStoreData(
+            const permissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 storeData,

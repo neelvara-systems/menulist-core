@@ -49,7 +49,11 @@ const ALLOWED_ORIGINS = [
     ...(!isProductionRuntime ? LOCAL_DEVELOPMENT_ORIGINS : []),
     PLATFORM_URL,
     DASHBOARD_URL,
-].filter((origin): origin is string => Boolean(origin) && (!isProductionRuntime || !isLocalDevelopmentOrigin(origin)));
+].filter((origin): origin is string => (
+    typeof origin === 'string'
+    && origin.length > 0
+    && (!isProductionRuntime || !isLocalDevelopmentOrigin(origin))
+));
 
 const isConfiguredOriginAllowed = (origin: string, allowedOrigin: string): boolean => {
     const originUrl = parseOrigin(origin);
@@ -259,10 +263,10 @@ export function handleCORSPreflight(request: Request): NextResponse {
  * });
  * ```
  */
-export function withCORS(
-    handler: (request: Request) => Promise<NextResponse> | NextResponse
-) {
-    return async (request: Request): Promise<NextResponse> => {
+export function withCORS<TRequest extends Request>(
+    handler: (request: TRequest) => Promise<NextResponse> | NextResponse
+): (request: TRequest) => Promise<NextResponse> {
+    return async (request: TRequest): Promise<NextResponse> => {
         // Handle preflight requests
         if (request.method === 'OPTIONS') {
             return handleCORSPreflight(request);

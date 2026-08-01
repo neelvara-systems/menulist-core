@@ -19,8 +19,8 @@ export function readCommittedPWAIconOverride(
 ): CommittedPWAIconOverride | null {
     if (!isRecord(storeData)) return null;
     if (
-        String(storeData.storeId) !== String(scope.storeId)
-        || String(storeData.tenantId) !== String(scope.tenantId)
+        storeData.storeId !== scope.storeId
+        || storeData.tenantId !== scope.tenantId
     ) {
         return null;
     }

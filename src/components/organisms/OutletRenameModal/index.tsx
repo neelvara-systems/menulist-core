@@ -117,7 +117,7 @@ export default function OutletRenameModal({
                 message.error(currentSlug ? 'Outlet already uses this URL' : 'Rename failed');
                 return;
             }
-            if (!isOutletRenameResponse(body)) {
+            if (!isOutletRenameResponse(body, outletStoreId, proposedSlug)) {
                 const invalidResponseError = createMultiOutletStatusError('desktop_location_rename_response_invalid', res.status);
                 logMultiOutletFailure('desktop_location_rename_response_invalid', invalidResponseError, {
                     responseOk: res.ok,

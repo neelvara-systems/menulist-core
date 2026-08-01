@@ -20,6 +20,8 @@ import {
     mergeEntities,
     updateEntity,
     upsertEntitySearchIndex,
+    type AnswerlatticeEntityCreateInput,
+    type AnswerlatticeEntityUpdateInput,
 } from '@database/answerlattice/entities';
 import { AnswerlatticeEntity, AnswerlatticeEntityRelation, AnswerlatticeEntitySearchIndex } from '@type/answerlattice';
 import { message } from 'antd';
@@ -44,14 +46,14 @@ interface UseEntitiesReturn {
     error: string | null;
     selectedEntity: AnswerlatticeEntity | null;
     setSelectedEntity: (entity: AnswerlatticeEntity | null) => void;
-    create: (data: Omit<AnswerlatticeEntity, 'id'>) => Promise<AnswerlatticeEntity | null>;
-    update: (data: Partial<AnswerlatticeEntity> & { id: string }) => Promise<boolean>;
+    create: (data: AnswerlatticeEntityCreateInput) => Promise<AnswerlatticeEntity | null>;
+    update: (data: AnswerlatticeEntityUpdateInput) => Promise<boolean>;
     deprecate: (entityId: string) => Promise<boolean>;
     updateAliases: (entityId: string, aliases: string[]) => Promise<boolean>;
     merge: (survivorId: string, mergedId: string) => Promise<boolean>;
-    addRelation: (data: Omit<AnswerlatticeEntityRelation, 'id'>) => Promise<boolean>;
+    addRelation: (data: Omit<AnswerlatticeEntityRelation, 'id' | 'pId'>) => Promise<boolean>;
     removeRelation: (relationId: string) => Promise<boolean>;
-    upsertSearchEntry: (data: Omit<AnswerlatticeEntitySearchIndex, 'id'> & { id?: string }) => Promise<boolean>;
+    upsertSearchEntry: (data: Omit<AnswerlatticeEntitySearchIndex, 'id' | 'pId'> & { id?: string }) => Promise<boolean>;
     refresh: () => Promise<void>;
 }
 
@@ -119,7 +121,7 @@ export function useEntities(
         refresh();
     }, [refresh]);
 
-    const create = useCallback(async (data: Omit<AnswerlatticeEntity, 'id'>): Promise<AnswerlatticeEntity | null> => {
+    const create = useCallback(async (data: AnswerlatticeEntityCreateInput): Promise<AnswerlatticeEntity | null> => {
         const operationScopeKey = scopeKeyRef.current;
         if (!operationScopeKey || mutationInFlightRef.current) return null;
         mutationInFlightRef.current = true;
@@ -140,7 +142,7 @@ export function useEntities(
         }
     }, [tId, sId, refresh]);
 
-    const update = useCallback(async (data: Partial<AnswerlatticeEntity> & { id: string }) => {
+    const update = useCallback(async (data: AnswerlatticeEntityUpdateInput) => {
         const operationScopeKey = scopeKeyRef.current;
         if (!operationScopeKey || mutationInFlightRef.current) return false;
         mutationInFlightRef.current = true;
@@ -231,7 +233,7 @@ export function useEntities(
         }
     }, [tId, sId, refresh]);
 
-    const addRelation_ = useCallback(async (data: Omit<AnswerlatticeEntityRelation, 'id'>) => {
+    const addRelation_ = useCallback(async (data: Omit<AnswerlatticeEntityRelation, 'id' | 'pId'>) => {
         const operationScopeKey = scopeKeyRef.current;
         if (!operationScopeKey || mutationInFlightRef.current) return false;
         mutationInFlightRef.current = true;
@@ -271,7 +273,7 @@ export function useEntities(
         }
     }, [refresh]);
 
-    const upsertSearchEntry = useCallback(async (data: Omit<AnswerlatticeEntitySearchIndex, 'id'> & { id?: string }) => {
+    const upsertSearchEntry = useCallback(async (data: Omit<AnswerlatticeEntitySearchIndex, 'id' | 'pId'> & { id?: string }) => {
         const operationScopeKey = scopeKeyRef.current;
         if (!operationScopeKey || mutationInFlightRef.current) return false;
         mutationInFlightRef.current = true;

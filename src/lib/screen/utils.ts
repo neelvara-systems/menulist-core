@@ -120,13 +120,13 @@ export function getScreenReloadGuardKey(componentName: string, screenToken: stri
     return `menulist-${component}-${token}-last-reload`;
 }
 
-export function guardedReload(componentName: string, screenToken: string): void {
+export function guardedReload(componentName: string, screenToken: string): boolean {
     const guardKey = getScreenReloadGuardKey(componentName, screenToken);
     try {
         if (guardKey) {
             const nowMilliseconds = Date.now();
             if (shouldSuppressScreenReload(localStorage.getItem(guardKey), nowMilliseconds)) {
-                return;
+                return false;
             }
             localStorage.setItem(guardKey, String(nowMilliseconds));
         }
@@ -137,6 +137,7 @@ export function guardedReload(componentName: string, screenToken: string): void 
         });
     }
     window.location.reload();
+    return true;
 }
 
 /**
@@ -145,7 +146,42 @@ export function guardedReload(componentName: string, screenToken: string): void 
  * simultaneously causing SSR/Firestore spikes. Random jitter smooths the load.
  * Used for content-version-triggered reloads only (not 6-hour health refreshes).
  */
-export function guardedReloadWithJitter(componentName: string, screenToken: string): void {
+const scheduleGuardedReload = (
+    componentName: string,
+    screenToken: string,
+    initialDelayMs: number,
+): (() => void) => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+    const attemptReload = () => {
+        if (cancelled) return;
+        if (!guardedReload(componentName, screenToken)) {
+            // A recent health/listener reload may still own the guard. Retry
+            // once the full guard window has elapsed instead of acknowledging
+            // the new content version without ever loading it.
+            timer = setTimeout(attemptReload, RELOAD_GUARD_MS);
+        }
+    };
+    timer = setTimeout(attemptReload, initialDelayMs);
+
+    return () => {
+        cancelled = true;
+        if (timer !== null) clearTimeout(timer);
+        timer = null;
+    };
+};
+
+export function guardedReloadWithRetry(
+    componentName: string,
+    screenToken: string,
+): () => void {
+    return scheduleGuardedReload(componentName, screenToken, 0);
+}
+
+export function guardedReloadWithJitter(
+    componentName: string,
+    screenToken: string,
+): () => void {
     const jitterMs = Math.floor(Math.random() * 60000); // 0-60 seconds
-    setTimeout(() => guardedReload(componentName, screenToken), jitterMs);
+    return scheduleGuardedReload(componentName, screenToken, jitterMs);
 }

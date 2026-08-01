@@ -30,17 +30,19 @@ import {
 import { Alert, Badge, Button, Card, Empty, Flex, Grid, Skeleton, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
     LuAlertTriangle,
     LuArrowDown,
     LuArrowRight,
     LuArrowUp,
+    LuFileText,
     LuGitBranch,
     LuRefreshCw,
     LuSparkles,
     LuTrendingUp,
 } from 'react-icons/lu';
+import FrictionEvidenceBriefDrawer from './FrictionEvidenceBriefDrawer';
 
 const { Text, Paragraph, Title } = Typography;
 const KNOWLEDGE_MAP_ROUTE = getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.MAP);
@@ -140,7 +142,13 @@ function EvidenceMix({ entity }: { entity: AnswerlatticeFrictionEntitySummary })
     );
 }
 
-function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntitySummary[] }) {
+function TopFrictionTable({
+    entities,
+    onPrepareBrief,
+}: {
+    entities: AnswerlatticeFrictionEntitySummary[];
+    onPrepareBrief: (entity: AnswerlatticeFrictionEntitySummary) => void;
+}) {
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
@@ -176,11 +184,21 @@ function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntityS
                             <Text type="secondary">
                                 Previous 7 days: {entity.previous7d.queryCount} evidence events · load {Math.round(entity.previous7d.frictionScore)}
                             </Text>
-                            <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, entity.entityId)}>
-                                <Button block icon={<LuGitBranch />} style={{ minHeight: 44 }}>
-                                    Open in Knowledge Map
+                            <Flex gap={8} vertical>
+                                <Button
+                                    block
+                                    icon={<LuFileText />}
+                                    onClick={() => onPrepareBrief(entity)}
+                                    style={{ minHeight: 44 }}
+                                >
+                                    Prepare evidence brief
                                 </Button>
-                            </Link>
+                                <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, entity.entityId)}>
+                                    <Button block icon={<LuGitBranch />} style={{ minHeight: 44 }}>
+                                        Open in Knowledge Map
+                                    </Button>
+                                </Link>
+                            </Flex>
                         </Flex>
                     </div>
                 ))}
@@ -259,18 +277,29 @@ function TopFrictionTable({ entities }: { entities: AnswerlatticeFrictionEntityS
         {
             title: '',
             key: 'actions',
-            width: 56,
+            width: 104,
             render: (_: unknown, record: AnswerlatticeFrictionEntitySummary) => (
-                <Tooltip title={`Open ${record.entityName} in Knowledge Map`}>
-                    <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, record.entityId)}>
+                <Space size={4}>
+                    <Tooltip title={`Prepare evidence brief for ${record.entityName}`}>
                         <Button
-                            aria-label={`Open ${record.entityName} in Knowledge Map`}
-                            icon={<LuGitBranch />}
+                            aria-label={`Prepare evidence brief for ${record.entityName}`}
+                            icon={<LuFileText />}
+                            onClick={() => onPrepareBrief(record)}
                             style={{ minHeight: 44, minWidth: 44 }}
                             type="text"
                         />
-                    </Link>
-                </Tooltip>
+                    </Tooltip>
+                    <Tooltip title={`Open ${record.entityName} in Knowledge Map`}>
+                        <Link href={getAnswerlatticeEntityContextRoute(KNOWLEDGE_MAP_ROUTE, record.entityId)}>
+                            <Button
+                                aria-label={`Open ${record.entityName} in Knowledge Map`}
+                                icon={<LuGitBranch />}
+                                style={{ minHeight: 44, minWidth: 44 }}
+                                type="text"
+                            />
+                        </Link>
+                    </Tooltip>
+                </Space>
             ),
         },
     ];
@@ -397,7 +426,8 @@ function WeeklySummaryCard({
 export default function FrictionTab({ tId, sId }: FrictionTabProps) {
     const { snapshot, insight, loading, error, refresh } = useFrictionInsights(tId, sId);
     const searchParams = useSearchParams();
-    const focusedEntityId = normalizeAnswerlatticeEntityId(searchParams.get('entity')) || '';
+    const [briefEntity, setBriefEntity] = useState<AnswerlatticeFrictionEntitySummary | null>(null);
+    const focusedEntityId = normalizeAnswerlatticeEntityId(searchParams?.get('entity')) || '';
     const rankedEntities = useMemo(() => {
         const entities = snapshot?.topFrictionEntities || [];
         if (!focusedEntityId) return entities;
@@ -463,7 +493,7 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
             ) : null}
 
             <Title level={5} style={{ marginBottom: 12 }}>Top Support-Evidence Areas</Title>
-            <TopFrictionTable entities={rankedEntities} />
+            <TopFrictionTable entities={rankedEntities} onPrepareBrief={setBriefEntity} />
 
             <EmergingTopicsCard topics={snapshot.emergingTopics || []} />
 
@@ -487,6 +517,14 @@ export default function FrictionTab({ tId, sId }: FrictionTabProps) {
                     {snapshot.legacyDailyStatCount > 0 ? ` · ${snapshot.legacyDailyStatCount} legacy daily rows included` : ''}
                 </Text>
             )}
+
+            <FrictionEvidenceBriefDrawer
+                entity={briefEntity}
+                metricWindow={snapshot.window}
+                onClose={() => setBriefEntity(null)}
+                open={Boolean(briefEntity)}
+                sourceLastUpdated={lastUpdatedDate?.toISOString()}
+            />
         </div>
     );
 }

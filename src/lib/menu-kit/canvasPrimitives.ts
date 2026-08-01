@@ -1,3 +1,18 @@
+const MAX_CANVAS_TEXT_LENGTH = 4096;
+const MAX_CANVAS_FONT_SIZE = 512;
+const MIN_CANVAS_FONT_SIZE = 1;
+const MAX_CANVAS_TEXT_WIDTH = 100_000;
+
+function normalizeCanvasText(text: string): string {
+    return typeof text === 'string' ? text.slice(0, MAX_CANVAS_TEXT_LENGTH) : '';
+}
+
+function normalizeCanvasWidth(maxWidth: number): number {
+    return Number.isFinite(maxWidth)
+        ? Math.max(0, Math.min(MAX_CANVAS_TEXT_WIDTH, maxWidth))
+        : 0;
+}
+
 export function drawRoundedRectPath(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -91,30 +106,89 @@ export function fitCanvasText(
     font: string,
     minSize: number,
 ): string {
-    const match = font.match(/(\d+)px/);
-    const startSize = match ? Number(match[1]) : minSize;
-    const fontWithoutSize = font.replace(/\d+px/, '{size}px');
+    const safeText = normalizeCanvasText(text);
+    const safeMaxWidth = normalizeCanvasWidth(maxWidth);
+    const safeMinSize = Number.isFinite(minSize)
+        ? Math.max(MIN_CANVAS_FONT_SIZE, Math.min(MAX_CANVAS_FONT_SIZE, Math.round(minSize)))
+        : MIN_CANVAS_FONT_SIZE;
+    const safeFont = typeof font === 'string' ? font.slice(0, 512) : '';
+    const match = safeFont.match(/(\d+)px/);
+    const requestedStartSize = match ? Number(match[1]) : safeMinSize;
+    const startSize = Math.max(safeMinSize, Math.min(MAX_CANVAS_FONT_SIZE, requestedStartSize));
+    const fontWithoutSize = match
+        ? safeFont.replace(/\d+px/, '{size}px')
+        : '{size}px sans-serif';
     let size = startSize;
 
-    while (size > minSize) {
+    while (size > safeMinSize) {
         ctx.font = fontWithoutSize.replace('{size}', String(size));
-        if (ctx.measureText(text).width <= maxWidth) return ctx.font;
+        if (ctx.measureText(safeText).width <= safeMaxWidth) return ctx.font;
         size -= 2;
     }
 
-    ctx.font = fontWithoutSize.replace('{size}', String(minSize));
+    ctx.font = fontWithoutSize.replace('{size}', String(safeMinSize));
     return ctx.font;
 }
 
 export function truncateCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
-    if (ctx.measureText(text).width <= maxWidth) return text;
+    const safeText = normalizeCanvasText(text);
+    const safeMaxWidth = normalizeCanvasWidth(maxWidth);
+    if (ctx.measureText(safeText).width <= safeMaxWidth) return safeText;
+    if (ctx.measureText('...').width > safeMaxWidth) return '';
 
-    let output = text;
-    while (output.length > 3 && ctx.measureText(`${output}...`).width > maxWidth) {
-        output = output.slice(0, -1);
+    let lower = 0;
+    let upper = safeText.length;
+    while (lower < upper) {
+        const middle = Math.ceil((lower + upper) / 2);
+        if (ctx.measureText(`${safeText.slice(0, middle)}...`).width <= safeMaxWidth) {
+            lower = middle;
+        } else {
+            upper = middle - 1;
+        }
     }
 
-    return `${output}...`;
+    return `${safeText.slice(0, lower)}...`;
+}
+
+export function wrapCanvasText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number,
+    maxLines: number,
+): string[] {
+    const safeText = normalizeCanvasText(text).replace(/\s+/g, ' ').trim();
+    const safeMaxWidth = normalizeCanvasWidth(maxWidth);
+    const safeMaxLines = Number.isSafeInteger(maxLines)
+        ? Math.max(0, Math.min(100, maxLines))
+        : 0;
+    if (!safeText || safeMaxWidth <= 0 || safeMaxLines <= 0) return [];
+
+    const words = safeText.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (let index = 0; index < words.length; index += 1) {
+        const word = words[index];
+        const candidate = currentLine ? `${currentLine} ${word}` : word;
+        if (ctx.measureText(candidate).width <= safeMaxWidth) {
+            currentLine = candidate;
+            continue;
+        }
+
+        if (lines.length === safeMaxLines - 1) {
+            const remainder = [currentLine, ...words.slice(index)].filter(Boolean).join(' ');
+            const finalLine = truncateCanvasText(ctx, remainder, safeMaxWidth);
+            return finalLine ? [...lines, finalLine] : lines;
+        }
+
+        if (currentLine) lines.push(currentLine);
+        currentLine = ctx.measureText(word).width <= safeMaxWidth
+            ? word
+            : truncateCanvasText(ctx, word, safeMaxWidth);
+    }
+
+    if (currentLine && lines.length < safeMaxLines) lines.push(currentLine);
+    return lines;
 }
 
 export function stripDecorativeStatusSymbols(text: string): string {

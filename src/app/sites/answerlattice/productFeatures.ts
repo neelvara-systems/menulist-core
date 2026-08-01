@@ -910,6 +910,10 @@ export const ANSWERLATTICE_SUPPORT_FEATURES: AnswerlatticeProductFeature[] = [
     },
 ];
 
-export function getAnswerlatticeSupportFeature(slug: string) {
-    return ANSWERLATTICE_SUPPORT_FEATURES.find((feature) => feature.slug === slug);
+export function getAnswerlatticeSupportFeature(slug: string): AnswerlatticeProductFeature {
+    const feature = ANSWERLATTICE_SUPPORT_FEATURES.find((candidate) => candidate.slug === slug);
+    if (!feature) {
+        throw new Error(`AnswerLattice product feature configuration is missing for "${slug}".`);
+    }
+    return feature;
 }

@@ -25,7 +25,7 @@ import { normalizeStoreSwitchStoreId } from '@lib/multiOutlet/storeSwitchAccess'
 import { assertPreparedPWAIconFile, isPWAIconStoragePath } from '@lib/pwa/pwaIconStorageBoundary';
 import { readCommittedPWAIconOverride } from '@lib/pwa/pwaIconCommitBoundary';
 import { createRuntimeId } from '@lib/runtime/randomId';
-import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
 import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
@@ -282,38 +282,24 @@ const readCurrentPWAIconStore = async (scope: PWAIconScope): Promise<Record<stri
     const data = snapshot.exists() ? snapshot.data() : null;
     if (
         !data
-        || String(data.storeId) !== String(scope.storeId)
-        || String(data.tenantId) !== String(scope.tenantId)
+        || data.storeId !== scope.storeId
+        || data.tenantId !== scope.tenantId
     ) {
         throw new Error('pwa_icon_current_store_scope_invalid');
     }
     return data;
 };
 
-const cleanupSupersededPWAIconUrl = async (
+const deferSupersededPWAIconUrlCleanup = (
     previousUrl: string,
     operation: PWAIconCleanupOperation,
     scope: PWAIconScope,
-): Promise<void> => {
-    try {
-        const currentStore = await readCurrentPWAIconStore(scope);
-        const publicPresence = currentStore.publicPresence;
-        if (
-            publicPresence
-            && typeof publicPresence === 'object'
-            && !Array.isArray(publicPresence)
-            && (publicPresence as Record<string, unknown>).pwaIconOverrideUrl === previousUrl
-        ) {
-            return;
-        }
-    } catch (error) {
-        logRuntimeFailure('pwa_icon_superseded_cleanup_guard_failed', error, {
-            operation,
-            previousUrlPresent: Boolean(previousUrl),
-        });
-        return;
-    }
-    await cleanupPWAIconOverrideUrls([previousUrl], operation, scope);
+): void => {
+    if (!isOwnedPWAIconUrl(previousUrl, scope)) return;
+    logRuntimeDiagnostic('pwa_icon_persisted_cleanup_deferred_shared_reference', {
+        operation,
+        previousUrlPresent: true,
+    });
 };
 
 export const replacePWAIconOverride = async ({
@@ -358,7 +344,7 @@ export const replacePWAIconOverride = async ({
         }
     }
     if (previousUrl && previousUrl !== uploadedUrl) {
-        await cleanupSupersededPWAIconUrl(previousUrl, 'replace', scope);
+        deferSupersededPWAIconUrlCleanup(previousUrl, 'replace', scope);
     }
     return { ...result, url: uploadedUrl };
 };
@@ -378,7 +364,7 @@ export const removePWAIconOverride = async ({
         pwaIconOverrideUrl: null,
     });
     assertPWAIconOverrideUpdateSucceeded(result);
-    if (previousUrl) await cleanupSupersededPWAIconUrl(previousUrl, 'remove', scope);
+    if (previousUrl) deferSupersededPWAIconUrlCleanup(previousUrl, 'remove', scope);
     return result;
 };
 

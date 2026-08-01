@@ -99,6 +99,14 @@ const hashValue = (value: string) => createHash("sha256").update(value).digest("
 const fail = (code: string): never => {
     throw new Error(code);
 };
+function assertParsedData<T>(
+    result: { success: boolean; data?: T },
+    errorCode: string,
+): asserts result is { success: true; data: NonNullable<T> } {
+    if (!result.success || result.data === undefined || result.data === null) {
+        fail(errorCode);
+    }
+}
 const requireKeys = (value: object, keys: readonly string[], errorCode: string) => {
     if (keys.some((key) => !hasOwn(value, key))) fail(errorCode);
 };
@@ -166,7 +174,7 @@ const parseCompletedSourceDataLifecycle = (
     }).strict().safeParse(Object.fromEntries(
         SOURCE_DATA_LIFECYCLE_FIELDS.map((field) => [field, raw[field]]),
     ));
-    if (!parsed.success) fail(errorCode);
+    assertParsedData(parsed, errorCode);
     const completedAt = requiredTimestamp(parsed.data.sourceDataLifecycleCompletedAt, errorCode);
     if (toMillis(completedAt) > toMillis(updatedAt)) fail(errorCode);
     return {
@@ -271,7 +279,7 @@ export const createSignalDeskRouteTokenIntentFingerprint = (
     input: SignalDeskRouteTokenIntentInput,
 ) => {
     const parsed = routeTokenIntentInputSchema.safeParse(input);
-    if (!parsed.success) return fail("ROUTE_TOKEN_INTENT_INPUT_INVALID");
+    assertParsedData(parsed, "ROUTE_TOKEN_INTENT_INPUT_INVALID");
     const canonicalFacts = JSON.stringify({
         actionId: parsed.data.actionId || null,
         actorId: parsed.data.actorId,
@@ -291,7 +299,7 @@ export const signalDeskRouteTokenIdempotencyHashFor = (params: {
         actorId: canonicalId(3, 180),
         idempotencyKey: idempotencyKeySchema,
     }).strict().safeParse(params);
-    if (!parsed.success) return fail("ROUTE_TOKEN_IDEMPOTENCY_INPUT_INVALID");
+    assertParsedData(parsed, "ROUTE_TOKEN_IDEMPOTENCY_INPUT_INVALID");
     return hashValue(`${ROUTE_TOKEN_IDEMPOTENCY_DOMAIN}\0${parsed.data.actorId}\0${parsed.data.idempotencyKey}`);
 };
 
@@ -312,7 +320,7 @@ export const createSignalDeskRouteTokenRequestFingerprint = (
     input: SignalDeskRouteTokenFingerprintInput,
 ) => {
     const parsed = routeTokenFingerprintInputSchema.safeParse(input);
-    if (!parsed.success) return fail("ROUTE_TOKEN_FINGERPRINT_INPUT_INVALID");
+    assertParsedData(parsed, "ROUTE_TOKEN_FINGERPRINT_INPUT_INVALID");
     const ownerQualifiedAt = new Date(parsed.data.ownerQualifiedAt).toISOString();
     const expiresAt = new Date(parsed.data.expiresAt).toISOString();
     if (toMillis(expiresAt) <= toMillis(ownerQualifiedAt)) fail("ROUTE_TOKEN_FINGERPRINT_INPUT_INVALID");
@@ -445,7 +453,7 @@ export const parseSignalDeskRouteTokenDocument = (
         "updatedAt",
     ], "ROUTE_TOKEN_SHAPE_INVALID");
     const parsed = routeTokenSchema.safeParse(raw);
-    if (!parsed.success) fail("ROUTE_TOKEN_SHAPE_INVALID");
+    assertParsedData(parsed, "ROUTE_TOKEN_SHAPE_INVALID");
     if (parsed.data.routeTokenId !== documentId) fail("ROUTE_TOKEN_IDENTITY_MISMATCH");
     const expectedRouteTokenId = `route_${parsed.data.tokenHash.slice(0, 32)}`;
     if (documentId !== expectedRouteTokenId) fail("ROUTE_TOKEN_HASH_IDENTITY_MISMATCH");
@@ -470,7 +478,8 @@ export const parseSignalDeskRouteTokenDocument = (
     }
     if (parsed.data.status === "revoked") {
         if (!revokedAt || !revokedBy || !revocationReason) fail("ROUTE_TOKEN_STATUS_INVALID");
-        if (toMillis(revokedAt) < toMillis(createdAt) || toMillis(revokedAt) > toMillis(updatedAt)) {
+        const revokedAtValue = revokedAt || fail("ROUTE_TOKEN_STATUS_INVALID");
+        if (toMillis(revokedAtValue) < toMillis(createdAt) || toMillis(revokedAtValue) > toMillis(updatedAt)) {
             fail("ROUTE_TOKEN_TIME_ORDER_INVALID");
         }
     }
@@ -559,7 +568,7 @@ export const parseSignalDeskRouteTokenIdempotencyClaimDocument = (
         "updatedAt",
     ], "ROUTE_TOKEN_CLAIM_SHAPE_INVALID");
     const parsed = routeTokenIdempotencyClaimSchema.safeParse(raw);
-    if (!parsed.success) fail("ROUTE_TOKEN_CLAIM_SHAPE_INVALID");
+    assertParsedData(parsed, "ROUTE_TOKEN_CLAIM_SHAPE_INVALID");
     if (documentId !== `route_token_${parsed.data.idempotencyKeyHash}`) {
         fail("ROUTE_TOKEN_CLAIM_IDENTITY_MISMATCH");
     }
@@ -646,7 +655,7 @@ export const parseSignalDeskOutcomeEventDocument = (
         "targetName",
     ], "OUTCOME_EVENT_SHAPE_INVALID");
     const parsed = outcomeEventSchema.safeParse(raw);
-    if (!parsed.success) fail("OUTCOME_EVENT_SHAPE_INVALID");
+    assertParsedData(parsed, "OUTCOME_EVENT_SHAPE_INVALID");
     if (parsed.data.outcomeEventId !== documentId) fail("OUTCOME_EVENT_IDENTITY_MISMATCH");
     if (documentId !== `outcome_${parsed.data.idempotencyKeyHash.slice(0, 32)}`) {
         fail("OUTCOME_EVENT_IDEMPOTENCY_IDENTITY_MISMATCH");
@@ -752,7 +761,7 @@ export const parseSignalDeskOutcomeDemandSourceDocument = (
         "targetName",
     ], "OUTCOME_DEMAND_SOURCE_SHAPE_INVALID");
     const parsed = outcomeDemandSourceSchema.safeParse(raw);
-    if (!parsed.success) fail("OUTCOME_DEMAND_SOURCE_SHAPE_INVALID");
+    assertParsedData(parsed, "OUTCOME_DEMAND_SOURCE_SHAPE_INVALID");
     if (parsed.data.demandSignalId !== documentId) fail("OUTCOME_DEMAND_SOURCE_IDENTITY_MISMATCH");
     const createdAt = requiredTimestamp(parsed.data.createdAt, "OUTCOME_DEMAND_SOURCE_TIMESTAMP_INVALID");
     if (!Number.isFinite(atMillis) || toMillis(createdAt) > atMillis + CLOCK_SKEW_MS) {
@@ -807,7 +816,7 @@ export const signalDeskOutcomeSummaryIdFor = (params: {
         source: outcomeSourceSchema,
         targetId: canonicalId(3, 160),
     }).strict().safeParse(params);
-    if (!parsed.success) fail("OUTCOME_SUMMARY_ID_INPUT_INVALID");
+    assertParsedData(parsed, "OUTCOME_SUMMARY_ID_INPUT_INVALID");
     return `${parsed.data.day}_${parsed.data.outcomeType}_${parsed.data.source}_${parsed.data.channel}_${parsed.data.targetId}`;
 };
 
@@ -845,7 +854,7 @@ export const parseSignalDeskOutcomeSummaryDocument = (
         "updatedAt",
     ], "OUTCOME_SUMMARY_SHAPE_INVALID");
     const parsed = outcomeSummarySchema.safeParse(raw);
-    if (!parsed.success) fail("OUTCOME_SUMMARY_SHAPE_INVALID");
+    assertParsedData(parsed, "OUTCOME_SUMMARY_SHAPE_INVALID");
     const expectedId = signalDeskOutcomeSummaryIdFor({
         channel: parsed.data.channel,
         day: parsed.data.day,
@@ -959,7 +968,7 @@ export const parseSignalDeskOutcomeIdempotencyClaimDocument = (
         "updatedAt",
     ], "OUTCOME_CLAIM_SHAPE_INVALID");
     const parsed = outcomeIdempotencyClaimSchema.safeParse(raw);
-    if (!parsed.success) fail("OUTCOME_CLAIM_SHAPE_INVALID");
+    assertParsedData(parsed, "OUTCOME_CLAIM_SHAPE_INVALID");
     const expectedDocumentId = `outcome_${parsed.data.idempotencyKeyHash}`;
     const expectedEntityId = `outcome_${parsed.data.idempotencyKeyHash.slice(0, 32)}`;
     if (documentId !== expectedDocumentId || parsed.data.entityId !== expectedEntityId) {
@@ -1022,7 +1031,7 @@ export const parseSignalDeskAttributionTouchDocument = (
         "weight",
     ], "ATTRIBUTION_TOUCH_SHAPE_INVALID");
     const parsed = attributionTouchSchema.safeParse(raw);
-    if (!parsed.success) fail("ATTRIBUTION_TOUCH_SHAPE_INVALID");
+    assertParsedData(parsed, "ATTRIBUTION_TOUCH_SHAPE_INVALID");
     const expectedTouchId = `touch_${hashValue(parsed.data.eventId).slice(0, 32)}`;
     if (documentId !== expectedTouchId || parsed.data.touchId !== expectedTouchId) {
         fail("ATTRIBUTION_TOUCH_IDENTITY_MISMATCH");
@@ -1068,9 +1077,9 @@ export const parseSignalDeskOutcomeTargetAuthority = (
         .safeParse(persisted.sourceDataLifecycleState);
     const sourcePolicyId = canonicalId(3, 160).safeParse(persisted.sourcePolicyId);
     const sourceRunId = canonicalId(3, 160).safeParse(persisted.sourceRunId);
-    if (!lifecycleState.success || !sourcePolicyId.success || !sourceRunId.success) {
-        fail("OUTCOME_TARGET_SOURCE_LIFECYCLE_INVALID");
-    }
+    assertParsedData(lifecycleState, "OUTCOME_TARGET_SOURCE_LIFECYCLE_INVALID");
+    assertParsedData(sourcePolicyId, "OUTCOME_TARGET_SOURCE_LIFECYCLE_INVALID");
+    assertParsedData(sourceRunId, "OUTCOME_TARGET_SOURCE_LIFECYCLE_INVALID");
     if (
         target.sourcePolicyId !== sourcePolicyId.data
         || target.sourceRunId !== sourceRunId.data
@@ -1085,10 +1094,11 @@ export const parseSignalDeskOutcomeTargetAuthority = (
         persisted.sourceDataExpiresAt,
         "OUTCOME_TARGET_SOURCE_LIFECYCLE_INVALID",
     );
+    const targetUpdatedAt = target.updatedAt || fail("OUTCOME_TARGET_SOURCE_LIFECYCLE_INVALID");
     if (
         !Number.isFinite(atMillis)
         || toMillis(sourceDataObservedAt) > toMillis(sourceDataExpiresAt)
-        || toMillis(sourceDataObservedAt) > toMillis(target.updatedAt) + CLOCK_SKEW_MS
+        || toMillis(sourceDataObservedAt) > toMillis(targetUpdatedAt) + CLOCK_SKEW_MS
     ) {
         fail("OUTCOME_TARGET_SOURCE_LIFECYCLE_INVALID");
     }
@@ -1153,7 +1163,7 @@ export const parseSignalDeskOutcomeEvidenceAuthority = (
         "updatedAt",
     ], "OUTCOME_EVIDENCE_SHAPE_INVALID");
     const parsed = outcomeEvidenceSchema.safeParse(raw);
-    if (!parsed.success) fail("OUTCOME_EVIDENCE_SHAPE_INVALID");
+    assertParsedData(parsed, "OUTCOME_EVIDENCE_SHAPE_INVALID");
     if (parsed.data.evidencePacketId !== documentId) fail("OUTCOME_EVIDENCE_IDENTITY_MISMATCH");
     if (
         parsed.data.targetId !== targetAuthority.target.targetId
@@ -1232,7 +1242,7 @@ export const parseSignalDeskConversationSummaryDocument = (
         "updatedAt",
     ], "CONVERSATION_SUMMARY_SHAPE_INVALID");
     const parsed = conversationSummarySchema.safeParse(raw);
-    if (!parsed.success) fail("CONVERSATION_SUMMARY_SHAPE_INVALID");
+    assertParsedData(parsed, "CONVERSATION_SUMMARY_SHAPE_INVALID");
     if (parsed.data.conversationId !== documentId) fail("CONVERSATION_SUMMARY_IDENTITY_MISMATCH");
     if (Boolean(parsed.data.legalRetentionReviewReason) !== Boolean(parsed.data.legalRetentionReviewRequired)) {
         fail("CONVERSATION_SUMMARY_SHAPE_INVALID");

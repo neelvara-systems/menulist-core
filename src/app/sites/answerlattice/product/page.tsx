@@ -198,7 +198,7 @@ const FOUNDER_CONTROL_CARDS = [
     {
         eyebrow: 'Answer assurance',
         title: 'Run saved Answer Tests',
-        description: 'Check priority questions, expected sources, required or forbidden claims, evidence, fallback, escalation, and no-answer behavior. Provider-backed fallback cannot certify critical proof.',
+        description: 'Check priority questions, expected sources, required or forbidden claims, evidence, fallback, escalation, and no-answer behavior. These deterministic checks are regression evidence, not an independent correctness guarantee, and never change a release. A rollback request creates a proposal for owner review. It never overwrites the live answer or applies a rollback automatically. Provider-backed fallback cannot certify critical proof.',
         href: '/product/knowledge-governance',
         cta: 'Review answer controls',
     },
@@ -212,7 +212,7 @@ const FOUNDER_CONTROL_CARDS = [
     {
         eyebrow: 'Trusted context',
         title: 'Use verified visitor context',
-        description: 'Optionally sign short-lived visitor context on your server. Invalid tokens lose signed-only identity claims while normal page-aware support continues.',
+        description: 'Optionally sign short-lived visitor context on your server. Invalid tokens lose signed-only identity claims while normal page-aware support continues. When owners attach up to three support-safe HTTPS evidence links, AnswerLattice stores them with private widget-search activity and never fetches or embeds them.',
         href: '/developers/verified-visitor-context',
         cta: 'Read the developer boundary',
     },

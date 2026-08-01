@@ -159,6 +159,12 @@ Staleness lifecycle delivery diagnostics follow-up (July 5, 2026): `functions/sr
 
 Template output boundary follow-up (July 5, 2026): the Next and Functions lifecycle template mirrors (`src/lib/messaging/templates.ts` and `functions/src/messaging/templates.ts`) now strip control characters from subject/text values, escape all metadata before HTML output, validate email links as `http:`/`https:` before rendering, and include the missing `MENU_PUBLISH_FAILED` app-side template. Publish verification failure codes are mapped to fixed owner copy, so arbitrary `failureReason` strings cannot print into owner emails. Valid event routing, SMTP delivery, idempotency, rate limits, message logs, and owner-notification migration fallback are unchanged.
 
+Credential-free URL follow-up (July 29, 2026): the Next and Functions lifecycle
+templates plus the shared MenuList/Answerlattice owner-notification templates
+reject HTTP(S) URLs containing a username or password. This prevents ambiguous
+links such as `https://trusted.example@attacker.example/` from rendering in an
+owner email while preserving credential-free HTTP(S) links.
+
 Publish-verification delivery completion follow-up (July 13, 2026): `verifyMenuPublish` still treats lifecycle messaging as best-effort for the owner-facing verification result, but it now awaits both the `STORE_PUBLISHED` and `MENU_PUBLISH_FAILED` delivery promises inside bounded catches. The callable no longer returns while a durable claim/provider attempt is still running, so Cloud Functions cannot terminate the invocation before that side effect settles. No extra delivery, Firestore operation, provider call, or owner-facing wait is added beyond awaiting the already-started work.
 
 ### Frontend (types + entry point)

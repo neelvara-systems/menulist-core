@@ -179,7 +179,7 @@ export const removeColorFromGradient = (
  * Checks if a string is a gradient
  */
 export const isGradientString = (value: string): boolean => {
-  return value && value.includes('linear-gradient');
+  return value.length > 0 && value.includes('linear-gradient');
 };
 
 /**

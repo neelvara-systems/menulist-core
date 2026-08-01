@@ -30,7 +30,7 @@ export default function MobileLocalizedLanguageSelector({
             <Flex gap={10} vertical>
                 <Text strong>{title || t('contentLanguageTitle')}</Text>
                 <Select
-                    onChange={(value) => {
+                    onChange={(value: string) => {
                         if (typeof value === 'string') onChange(value);
                     }}
                     options={languages.map((languageCode) => ({

@@ -9,6 +9,7 @@ import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { OwnerBusinessAssistantAnswerRequestSchema } from '@lib/ownerBusinessAssistant/schemas';
 import type { OwnerBusinessAssistantAnswerRequest } from '@lib/ownerBusinessAssistant/schemas';
+import { projectOwnerBusinessAssistantAnswerResponse } from '@lib/ownerBusinessAssistant/answerResponseBoundary';
 import { logOwnerBusinessAssistantAnswerEvent } from '@lib/ownerBusinessAssistant/server/answerEventLogger';
 import { resolveOwnerBusinessAssistantAnswer } from '@lib/ownerBusinessAssistant/server/resolveOwnerBusinessAssistantAnswer';
 import { persistOwnerBusinessAssistantExchange } from '@lib/ownerBusinessAssistant/server/threadStore';
@@ -91,7 +92,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   }
 
   const scope = resolveOwnerAssistantSelectedStoreScope(request, session, normalizedRequest.storeId);
-  if ('error' in scope && scope.error) return scope.error;
+  if ('error' in scope) return scope.error;
 
   const permissionError = await requireAnyStorePermissionForStore(
     request,
@@ -186,5 +187,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
   }
 
-  return NextResponse.json({ data: answer });
+  const publicResponse = projectOwnerBusinessAssistantAnswerResponse({ data: answer });
+  if (!publicResponse) {
+    logRuntimeFailure(
+      'owner_business_assistant_answer_output_invalid',
+      new Error('owner_business_assistant_answer_output_invalid'),
+      buildOwnerBusinessAssistantAnswerLogContext(scope, {
+        answerId: answer.answerId,
+        threadId: answer.threadId,
+      }),
+    );
+    return NextResponse.json({ error: 'Business Health could not answer that.' }, { status: 500 });
+  }
+
+  return NextResponse.json(publicResponse);
 });

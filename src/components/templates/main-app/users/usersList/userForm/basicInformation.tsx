@@ -1,10 +1,16 @@
 import FormElementWrapper from '@atoms/formElementWrapper';
 import PhoneNumberInput from '@atoms/phoneNumberInput';
+import type { StaffFormUser } from '@lib/staffManagement/types';
 import EditorWrapper from '@organisms/editor/editorWrapper';
 import { Alert, Input, Switch, Typography } from 'antd';
 const { Text } = Typography;
 
-function BasicInformation({ userDetails, onChangeValue }) {
+type BasicInformationProps = {
+    onChangeValue: (from: string, value: unknown) => void;
+    userDetails: StaffFormUser;
+};
+
+function BasicInformation({ userDetails, onChangeValue }: BasicInformationProps) {
     const isEditing = Boolean(userDetails?.id);
     const staffLoginId = userDetails?.staffLoginId || userDetails?.loginUsername || '';
     const isOwnerPasscodeLogin = userDetails?.staffAuthMode === 'owner_passcode';

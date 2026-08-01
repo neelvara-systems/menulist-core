@@ -1,29 +1,46 @@
+import type { StaffStoreOption, StaffUserSummary } from "@lib/staffManagement/types";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { Button, Flex, Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import { Fragment, memo, useContext } from "react";
 import { LuEye, LuKeyRound, LuLogOut, LuPen, LuTrash2, LuUser } from "react-icons/lu";
 const { Text } = Typography;
 
-function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, onDeleteUser, onEditUser, onForceSignOut, onResetPassword, staffStores = [], usersList }) {
+type UsersListTableProps = {
+    canManageTarget: (user: StaffUserSummary) => boolean;
+    canManageUsers: boolean;
+    onClickUserDetails: (user: StaffUserSummary) => void;
+    onDeleteUser: (user: StaffUserSummary) => void | Promise<void>;
+    onEditUser: (user: StaffUserSummary) => void;
+    onForceSignOut: (user: StaffUserSummary) => void | Promise<void>;
+    onResetPassword: (user: StaffUserSummary) => void | Promise<void>;
+    pendingStaffUserId: string | null;
+    staffStores?: StaffStoreOption[];
+    usersList: StaffUserSummary[];
+};
+
+function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, onDeleteUser, onEditUser, onForceSignOut, onResetPassword, pendingStaffUserId, staffStores = [], usersList }: UsersListTableProps) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const safeUsersList = Array.isArray(usersList) ? usersList : [];
-    const roleStores = staffStores.length
-        ? staffStores.map((store) => ({ storeDetails: store, storeId: store.storeId }))
-        : (tenantDetails?.storesList || []);
-    const getLoginLabel = (record: any) => (
+    const getRolesForStore = (storeId: number) => (
+        staffStores.find((store) => store.storeId === storeId)?.roles
+        || tenantDetails?.storesList.find((store) => store.storeId === storeId)?.storeDetails?.roles
+        || []
+    );
+    const getLoginLabel = (record: StaffUserSummary) => (
         record?.staffAuthMode === 'owner_passcode'
             ? record?.staffLoginId || record?.loginUsername || 'Staff ID pending'
-            : record?.displayEmail || record?.phone || record?.phoneNumber || record?.email || 'No email'
+            : record?.displayEmail || record?.phoneNumber || record?.email || 'No email'
     );
 
-    const columns = [
+    const columns: ColumnsType<StaffUserSummary> = [
         {
             title: 'Name',
             dataIndex: 'name',
             key: 'name',
             render: (_, record) => {
-                const image = record.profileImage || record.image
+                const image = record.profileImage
                 return <>
                     <Flex align='center' justify='flex-start' gap={10}>
                         {Boolean(image) ? <img alt="" src={image} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <LuUser />}
@@ -56,7 +73,7 @@ function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, o
                 <>
                     {(Array.isArray(record.stores) ? record.stores : []).map((store, i) => {
                         if (store.storeId != storeDetails?.storeId) return null;
-                        const roleData = roleStores.find((s) => s.storeId == store.storeId)?.storeDetails?.roles?.find((r) => r.id == store.role);
+                        const roleData = getRolesForStore(store.storeId).find((role) => role.id === store.role);
                         return <Fragment key={i}>
                             <Tag>{roleData?.name || store.role}</Tag>
                         </Fragment>
@@ -81,9 +98,10 @@ function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, o
             key: 'action',
             render: (_, record) => {
                 const targetCanBeManaged = canManageUsers && canManageTarget(record);
+                const mutationPending = pendingStaffUserId === record.id;
                 return (
                     <Space>
-                    <Button disabled={!targetCanBeManaged} onClick={(event) => {
+                    <Button disabled={!targetCanBeManaged || mutationPending} onClick={(event) => {
                         event.stopPropagation();
                         onEditUser(record);
                     }} shape="circle" icon={<LuPen />} />
@@ -101,7 +119,7 @@ function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, o
                         title="Create a new temporary passcode for this staff member?"
                     >
                         <Button
-                            disabled={!targetCanBeManaged}
+                            disabled={!targetCanBeManaged || mutationPending}
                             onClick={(event) => event.stopPropagation()}
                             shape="circle"
                             icon={<LuKeyRound />}
@@ -118,7 +136,7 @@ function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, o
                     >
                         <Tooltip title="Sign out staff">
                             <Button
-                                disabled={!targetCanBeManaged || record?.active === false}
+                                disabled={!targetCanBeManaged || mutationPending || record.active === false}
                                 onClick={(event) => event.stopPropagation()}
                                 shape="circle"
                                 icon={<LuLogOut />}
@@ -137,7 +155,7 @@ function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, o
                     >
                         <Button
                             danger
-                            disabled={!targetCanBeManaged}
+                            disabled={!targetCanBeManaged || mutationPending}
                             onClick={(event) => event.stopPropagation()}
                             shape="circle"
                             icon={<LuTrash2 />}

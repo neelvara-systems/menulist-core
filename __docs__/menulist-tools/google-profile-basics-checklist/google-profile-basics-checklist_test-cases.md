@@ -10,6 +10,7 @@
 | Missing category, hours, and menu/service link | Missing basics |
 | Phone present but customer link invalid | Unclear |
 | Business identity missing | Missing basics or unclear depending on remaining facts |
+| City entered and name-matches selected but business name blank | Business identity remains unclear |
 | No selections | Missing basics |
 
 ## Boundary Cases

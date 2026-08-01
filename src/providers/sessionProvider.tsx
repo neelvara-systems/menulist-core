@@ -41,10 +41,13 @@ import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptio
 import { ChangelogPage } from '@type/changelog';
 import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType } from '@type/knowledgeBase';
 import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
+import type { AssetsCategoryType, FontPresetsType } from '@type/assets';
+import type { EffectiveRolePermissions } from '@type/platform/roles';
 import { StoreDataType } from '@type/platform/store';
 import { TenantDataType } from '@type/platform/tenant';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { SupportTicketType } from '@type/supportTicket';
+import type { StaffUserSummary } from '@lib/staffManagement/types';
 import { objectNullCheck, removeObjRef } from '@util/utils';
 import { normalizeAiBalanceUpdate } from '@services/ai/balanceSync';
 import { Timestamp } from 'firebase/firestore';
@@ -77,22 +80,22 @@ export default function SessionProvider({ children, session }: Props) {
     const pathname = usePathname();
 
     // Define the initial state for tenant details
-    const [tenantDetails, setTenantDetails] = useState<TenantDataType>(null)
+    const [tenantDetails, setTenantDetails] = useState<TenantDataType | null>(null)
 
     // Define the initial state for store details
-    const [storeDetails, setStoreDetails] = useState<StoreDataType>(null)
+    const [storeDetails, setStoreDetails] = useState<StoreDataType | null>(null)
 
     // Login store remains the authority store. storeDetails can change when an
     // HQ user views an outlet, but permissions must still come from this store.
-    const [loginStoreDetails, setLoginStoreDetails] = useState<StoreDataType>(null)
+    const [loginStoreDetails, setLoginStoreDetails] = useState<StoreDataType | null>(null)
 
-    const [userPermissions, setUserPermissions] = useState<any>(null)
+    const [userPermissions, setUserPermissions] = useState<EffectiveRolePermissions | null>(null)
 
-    const [usersList, setUsersList] = useState<any>(null)
+    const [usersList, setUsersList] = useState<StaffUserSummary[] | null>(null)
 
-    const [fontsList, setFontsList] = useState<any>(null)
+    const [fontsList, setFontsList] = useState<FontPresetsType[] | null>(null)
 
-    const [assetsList, setAssetsList] = useState<any>({ images: [] })
+    const [assetsList, setAssetsList] = useState<{ images: AssetsCategoryType[] }>({ images: [] })
 
     const [activeSubscription, setActiveSubscription] = useState<FirestoreSubscriptionDoc | null>(null)
     const [activeSubscriptionLoading, setActiveSubscriptionLoading] = useState(Boolean(session?.user?.storeId))
@@ -111,9 +114,9 @@ export default function SessionProvider({ children, session }: Props) {
         });
     }, [session?.user?.storeId, session?.user?.tenantId]);
 
-    const [cachedKBCategories, setCachedKBCategories] = useState<{ cachedOn: Timestamp | null, kBCategories: KnowledgeBaseCategoriesType, scopeKey: string | null }>({ cachedOn: null, kBCategories: null, scopeKey: null })//this are knowledge base categories which used in changelog
+    const [cachedKBCategories, setCachedKBCategories] = useState<{ cachedOn: Timestamp | null, kBCategories: KnowledgeBaseCategoriesType | null, scopeKey: string | null }>({ cachedOn: null, kBCategories: null, scopeKey: null })//this are knowledge base categories which used in changelog
 
-    const [cachedChangelog, setCachedChangelog] = useState<{ cachedOn: Timestamp | null, changelog: ChangelogPage, scopeKey: string | null }>({ cachedOn: null, changelog: null, scopeKey: null })
+    const [cachedChangelog, setCachedChangelog] = useState<{ cachedOn: Timestamp | null, changelog: ChangelogPage | null, scopeKey: string | null }>({ cachedOn: null, changelog: null, scopeKey: null })
 
     const [cachedTickets, setCachedTickets] = useState<{ cachedOn: Timestamp | null, tickets: SupportTicketType[], scopeKey: string | null }>({ cachedOn: null, tickets: [], scopeKey: null })
 
@@ -128,7 +131,7 @@ export default function SessionProvider({ children, session }: Props) {
     const [firebaseAuthSyncError, setFirebaseAuthSyncError] = useState<Error | null>(null)
     const activeSubscriptionScopeKeyRef = useRef<string | null>(null);
     const activeSubscriptionRequestScopeKeyRef = useRef<string | null>(null);
-    const normalizedPathname = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
+    const normalizedPathname = pathname === '/' ? pathname : (pathname || '').replace(/\/+$/, '');
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
     const isAnswerlatticeRoute = isAnswerlatticeRuntimeRoute(normalizedPathname, currentHostname);
     const answerlatticeScope = isAnswerlatticeRoute ? resolveAnswerlatticeSessionScope(session) : null;
@@ -278,7 +281,7 @@ export default function SessionProvider({ children, session }: Props) {
             if (!detail) return;
             setActiveSubscription((prev: FirestoreSubscriptionDoc | null) => {
                 const scope = getMenuListSubscriptionEntitlementScope(prev);
-                if (!scope || scope.storeId !== detail.billingStoreId) return prev;
+                if (!prev || !scope || scope.storeId !== detail.billingStoreId) return prev;
                 return { ...prev, monthlyCredits: detail.monthlyCredits, topUpCredits: detail.topUpCredits };
             });
         };
@@ -406,8 +409,8 @@ export default function SessionProvider({ children, session }: Props) {
                         id: session.user.id,
                         email: (session.user as any).displayEmail || (session.user as any).phone || (session.user as any).phoneUsername || session.user.email,
                         name: session.user.name,
-                        tId: session.user.tenantId,
-                        sId: session.user.storeId,
+                        tId: session.user.tenantId ?? undefined,
+                        sId: session.user.storeId ?? undefined,
                         tenantName: fetchedTenant?.name,
                         storeName: fetchedStore.name,
                         role: session.user.stores?.find((store: any) => Number(store.storeId) === Number(session.user.storeId))?.role || 'user',
@@ -521,7 +524,7 @@ export default function SessionProvider({ children, session }: Props) {
                 : null;
             const targetStore = embeddedTargetStore || await getStoreById(targetStoreId);
             if (cancelled) return;
-            if (!isActiveStoreRecordInTenantScope(targetStore, {
+            if (!targetStore || !isActiveStoreRecordInTenantScope(targetStore, {
                 storeId: targetStoreId,
                 tenantId: loginTenantId,
             })) {
@@ -529,7 +532,7 @@ export default function SessionProvider({ children, session }: Props) {
             }
 
             if (!embeddedTargetStore) {
-                setTenantDetails((current: TenantDataType) => {
+                setTenantDetails((current) => {
                     if (!current?.storesList?.length) return current;
                     return {
                         ...current,
@@ -601,7 +604,7 @@ export default function SessionProvider({ children, session }: Props) {
 
         let cancelled = false;
         void getStoreById(masterStoreId)
-            .then((masterStore: StoreDataType) => {
+            .then((masterStore) => {
                 if (
                     cancelled
                     || !masterStore
@@ -613,7 +616,7 @@ export default function SessionProvider({ children, session }: Props) {
                     return;
                 }
 
-                setTenantDetails((current: TenantDataType) => {
+                setTenantDetails((current) => {
                     if (!current?.storesList?.length) return current;
                     return {
                         ...current,

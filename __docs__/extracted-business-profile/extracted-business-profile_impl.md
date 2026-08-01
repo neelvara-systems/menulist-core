@@ -47,6 +47,11 @@ The merged profile is available before cancellation, first extraction, preview, 
 
 Desktop owner upload and mobile owner upload already use this shared helper.
 
+The shared helper treats business type as controlled public/store truth.
+Provider suggestions must exactly match a canonical business-type value or
+label, case-insensitively. Ambiguous substring descriptions are discarded
+instead of being mapped to whichever canonical option happens to appear first.
+
 Extracted `businessName` is not offered as an existing-store rename. In this codebase, `businessName` maps to tenant/brand identity for new-account creation, while `stores.name` is the location/outlet name. Existing owners can still correct brand/store names in business settings, where the brand path updates tenant identity and the store path updates the current location.
 
 Desktop and mobile upload confirmations show detected business details and owner-safe mismatch labels before extraction continues. Extraction success views show profile highlights such as menu name, brand color, and image background when those suggestions were found.

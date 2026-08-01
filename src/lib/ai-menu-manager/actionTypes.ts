@@ -113,7 +113,7 @@ export const AI_MENU_MANAGER_ACTION_TYPES = {
     SYSTEM_UNSUPPORTED_ACTION: 'system_unsupported_action',
 } as const satisfies Record<string, AiMenuManagerActionType>;
 
-export const AI_MENU_MANAGER_EXECUTABLE_ACTIONS: AiMenuManagerActionType[] = [
+export const AI_MENU_MANAGER_EXECUTABLE_ACTIONS: readonly AiMenuManagerActionType[] = Object.freeze([
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_PRICE_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_NAME_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.ITEM_DESCRIPTION_UPDATE,
@@ -133,7 +133,7 @@ export const AI_MENU_MANAGER_EXECUTABLE_ACTIONS: AiMenuManagerActionType[] = [
     AI_MENU_MANAGER_ACTION_TYPES.MENU_DESIGN_COLOR_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.BULK_PRICE_UPDATE,
     AI_MENU_MANAGER_ACTION_TYPES.BULK_AVAILABILITY_UPDATE,
-];
+]);
 
 export type AiMenuManagerFieldHandling =
     | 'direct_project_patch'
@@ -202,7 +202,7 @@ export const AI_MENU_MANAGER_ITEM_FIELD_ACTION_COVERAGE = [
     handling: AiMenuManagerFieldHandling;
 }>;
 
-export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[] = [
+const aiMenuManagerActionDefinitions: AiMenuManagerActionDefinition[] = [
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_PRICE_UPDATE,
         ownerLabel: 'Update price',
@@ -1582,5 +1582,36 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
     },
 ];
 
-export const AI_MENU_MANAGER_ACTION_DEFINITION_BY_TYPE: Record<AiMenuManagerActionType, AiMenuManagerActionDefinition> =
-    Object.fromEntries(AI_MENU_MANAGER_ACTION_DEFINITIONS.map((definition) => [definition.actionType, definition])) as Record<AiMenuManagerActionType, AiMenuManagerActionDefinition>;
+export const AI_MENU_MANAGER_ACTION_DEFINITIONS: readonly AiMenuManagerActionDefinition[] = Object.freeze(
+    aiMenuManagerActionDefinitions.map((definition) => Object.freeze({
+        ...definition,
+        sourceEvidence: Object.freeze([...definition.sourceEvidence]),
+        ...(definition.requiredFlags
+            ? { requiredFlags: Object.freeze([...definition.requiredFlags]) }
+            : {}),
+    })),
+);
+
+function buildAiMenuManagerActionDefinitionRegistry(
+    definitions: readonly AiMenuManagerActionDefinition[],
+): Readonly<Record<AiMenuManagerActionType, AiMenuManagerActionDefinition>> {
+    const registry: Partial<Record<AiMenuManagerActionType, AiMenuManagerActionDefinition>> = {};
+
+    for (const definition of definitions) {
+        if (Object.prototype.hasOwnProperty.call(registry, definition.actionType)) {
+            throw new Error(`Duplicate AI Menu Manager action definition: ${definition.actionType}`);
+        }
+        registry[definition.actionType] = definition;
+    }
+
+    for (const actionType of Object.values(AI_MENU_MANAGER_ACTION_TYPES)) {
+        if (!Object.prototype.hasOwnProperty.call(registry, actionType)) {
+            throw new Error(`Missing AI Menu Manager action definition: ${actionType}`);
+        }
+    }
+
+    return Object.freeze(registry) as Readonly<Record<AiMenuManagerActionType, AiMenuManagerActionDefinition>>;
+}
+
+export const AI_MENU_MANAGER_ACTION_DEFINITION_BY_TYPE =
+    buildAiMenuManagerActionDefinitionRegistry(AI_MENU_MANAGER_ACTION_DEFINITIONS);

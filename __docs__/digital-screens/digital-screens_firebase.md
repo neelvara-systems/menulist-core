@@ -39,7 +39,7 @@
 | Daily seen signal      | `platformSummary`, `stores`, `tenants` | 1x/day/screen after bounded/rate/token checks | 1x/day | control + canonical screen + store + tenant transaction reads; no-store legacy requests first resolve a unique private or legacy token candidate | `api/screen/seen/route.ts` |
 | Owner: getScreenState  | `platformSummary` | Settings view         | Occasional     | 2 (canonical + private control); no writes on an unchanged migrated state | `api/digital-screens/route.ts`, `screenManagementServer.ts` |
 | Owner: addPinnedSlide  | `platformSummary` | Upload image          | Rare           | 2 (read + check)              | `database/campaigns/index.ts:677`     |
-| Screen version touch   | `platformSummary` | Public menu cache invalidation or rendered store-output change | Per relevant change where screen exists | canonical screen + private control reads in one Admin transaction | `lib/screen/serverScreenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
+| Screen version touch   | `platformSummary` | Public menu cache invalidation, rendered store-output change, or nested OBP accent change | Per relevant change where screen exists | canonical screen + private control reads in one Admin transaction | `lib/screen/serverScreenInvalidation.ts`, `functions/src/logic/publicCacheRevalidation.ts` |
 
 ### Writes
 
@@ -157,10 +157,21 @@ Prepared `digitalScreenSlide` uploads keep a variant URL ledger, but the determi
 | Content normalization | Prevents weak public screen copy without extra reads/writes | `lib/screen/screenContent.ts` |
 | Dedicated source gate | Locks the route, public-safe listener mirror, seen-signal cheap-fail order, screen invalidation touch, owner acknowledgement guards, and docs parity without adding reads/writes | `scripts/verification/verify-digital-screens-boundary.js` |
 | Token-free mirror migration | Dry-run by default, explicit project/scope/write confirmation, 200-row pagination, replace writes | `scripts/backfill-digital-screen-public-mirrors.ts` |
-| Private control migration | Dry-run by default; explicit project/scope/write confirmation; atomic token move | `scripts/backfill-digital-screen-private-controls.ts` |
+| Private control migration | Dry-run by default; explicit validated project/scope/write confirmation; exact store/tenant aliases and active lifecycle; transaction-current tenant fence; project-pinned Admin app; atomic token move | `scripts/backfill-digital-screen-private-controls.ts` |
 | Expired-slide capacity recovery | Owner reads ignore expired slides; the next mutation prunes expired Firestore references before enforcing the shared cap | `database/campaigns/index.ts` |
 
 > **Scoped cache correction (July 29, 2026):** Screen state uses a hashed bearer-token tag and menu reconstruction uses `menu-store-{storeId}`. A version touch expires only the affected screen state; a menu write expires the affected store menu. This removes global `screen-data` fan-out while retaining a 60-second fallback TTL.
+
+> **OBP accent continuity (July 29, 2026):** `/screen/[token]` reads the already-loaded store's normalized `publicPresence.accentColor`; rendering adds no Firestore operation. A save that owns the nested accent is classified as a rendered screen-output change. For an initialized screen, the existing guarded refresh transaction reads canonical screen plus private control and writes the updated canonical version plus token-free listener mirror. No screen-specific theme field, collection, index, listener, Storage path, Function, or scheduler was added.
+
+> **Private-control backfill scope correction (July 29, 2026):** migration
+> eligibility now requires canonical numeric store/tenant aliases, an exact
+> store-document match and the same active/unblocked store-plus-tenant
+> authority used by live screen mutations. Write transactions re-read store,
+> tenant, summary and existing control together and reject tenant changes or
+> conflicting control identity. A dedicated named Admin app is pinned to the
+> validated and explicitly confirmed Firebase project. Missing or malformed
+> legacy screen objects are skipped in dry run rather than crashing.
 
 > **Server invalidation correction (July 29, 2026):** browser writes to canonical screen state and the public mirror are denied. `/api/revalidate/menu` invokes the Admin transaction only when `touchScreen=true`; it reads canonical state plus private control, bumps the version, replaces the mirror, and expires the exact token tag. Missing screen state returns without creating a partial screen.
 
@@ -183,6 +194,8 @@ Prepared `digitalScreenSlide` uploads keep a variant URL ledger, but the determi
 > **June 29, 2026 fullscreen recovery diagnostic note:** public Highlights and Menu Board display clients now log `digital_screen_display_fullscreen_request_failed` or `digital_screen_menuboard_fullscreen_request_failed` when the browser rejects a tap-to-fullscreen recovery request. The hint still hides after the tap. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, routes, rules, indexes, schema fields, screen tokens, or screen-state changes.
 >
 > **June 30, 2026 seen-signal browser-request note:** public Highlights and Menu Board display clients now post `/api/screen/seen` with same-origin credentials, `no-store` cache policy, and manual redirect handling, then set the daily `screen_seen_*` localStorage marker only after the endpoint returns an OK response. Non-OK responses log bounded `digital_screen_display_seen_signal_rejected` or `digital_screen_menuboard_seen_signal_rejected` diagnostics with response status metadata only. This changes no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, routes, rules, indexes, schema fields, screen tokens, screen-state writes, public display layout, Firebase deploy requirement, or Vercel deploy action.
+
+> **July 29, 2026 public display browser-lifecycle note:** a browser policy that throws while reading the daily seen marker now produces a bounded `digital_screen_display_seen_storage_read_failed` or `digital_screen_menuboard_seen_storage_read_failed` diagnostic and leaves the display operational. Both offline caches now project real arrays and bounded public fields, cached poster expiry is rechecked, empty-slide/page rotation is bounded, fullscreen and jittered reload timers are cleanup-owned, and missing/disabled mirrors retain a guarded reload retry. These corrections add no Firestore reads/writes/deletes beyond the already documented listener and best-effort daily request, and change no Storage operations, Cloud Functions, routes, rules, indexes, schema fields, screen tokens, screen-state writes, server cache keys, Firebase deploy requirement, or Vercel deploy action.
 >
 > **June 28, 2026 seen-signal key-privacy note:** `/api/screen/seen` still applies the same IP and token rate limits before Firestore lookup, but the Upstash keys now use `hashPublicRateLimitValue()` for IP, store, and screen-token segments. This changes no Firestore read/write behavior and prevents raw screen tokens or IP addresses from being persisted in rate-limit key names.
 
@@ -267,4 +280,5 @@ If a store uses TWO screens (one Menu Board + one Highlights):
 | 4.6     | 2026-06-27 | Codex   | Removed direct console diagnostics from public screen resolver/fallback, owner mutation success, invalidation, and reload helper paths. Diagnostics-only change; no Firebase cost impact. |
 | 4.7     | 2026-06-28 | Codex   | Added optional Functions-side screen version touch for server-side public-output changes. No new collections/indexes/routes; only initialized screens receive the existing two-write listener update. |
 | 4.8     | 2026-07-01 | Codex   | Added enabled-screen, numeric summary-id, and shared public store eligibility gates to `/api/screen/seen`; daily seen cost can include one cached store eligibility read. |
+| 4.9     | 2026-07-29 | Codex   | Documented canonical OBP accent reuse and classified nested accent saves as existing rendered screen-output refreshes; no new schema or infrastructure. |
 | 4.9     | 2026-07-16 | Codex   | Decoupled requested Functions screen-version touch from Next.js cache configuration and returned separate cache/screen acknowledgements. Existing initialized-screen read/write cost only; no new collection, index, rule, route, or scheduler. |

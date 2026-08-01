@@ -38,7 +38,7 @@ export const resolveAiMenuManagerSelectedStoreScope = (
     requestedStoreId?: string | number | null,
 ) => {
     const { tId, sId, userId } = getAiMenuManagerSessionScope(session);
-    if (!tId || !sId) {
+    if (!tId || !sId || !userId) {
         return {
             error: NextResponse.json({ error: 'User not onboarded' }, { status: 400 }),
         };
@@ -54,10 +54,10 @@ export const resolveAiMenuManagerSelectedStoreScope = (
         };
     }
 
-    const selectedStoreId = selectedStoreScope?.documentId || null;
-    if (!selectedStoreId || selectedStoreId === sId) {
+    if (!selectedStoreScope || selectedStoreScope.documentId === sId) {
         return { tId, sId, userId };
     }
+    const selectedStoreId = selectedStoreScope.documentId;
 
     const sessionUser = buildSessionUserForStoreAccess(session, sId);
     if (!canUserAccessStore({ sessionUser, storeId: selectedStoreScope.numericId })) {

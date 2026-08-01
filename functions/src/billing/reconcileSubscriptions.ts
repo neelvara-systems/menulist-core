@@ -33,7 +33,35 @@ const MENULIST_PRODUCT_ID = 'ML' as const;
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-type PaymentStatus = 'pending' | 'active' | 'past_due' | 'paused' | 'cancelled' | 'completed' | 'expired';
+type PaymentStatus =
+    | 'pending'
+    | 'active'
+    | 'cancelled'
+    | 'expired'
+    | 'paid'
+    | 'failed'
+    | 'past_due'
+    | 'paused'
+    | 'completed';
+
+const SUBSCRIPTION_ENTITLEMENT_AUDIT_STATUSES = new Set<PaymentStatus>([
+    'pending',
+    'active',
+    'cancelled',
+    'expired',
+    'paid',
+    'failed',
+    'past_due',
+    'paused',
+    'completed',
+]);
+
+export function projectSubscriptionEntitlementAuditStatus(value: unknown): PaymentStatus | null {
+    return typeof value === 'string'
+        && SUBSCRIPTION_ENTITLEMENT_AUDIT_STATUSES.has(value as PaymentStatus)
+        ? value as PaymentStatus
+        : null;
+}
 
 // Map Razorpay API status → our internal PaymentStatus
 const RAZORPAY_STATUS_MAP: Record<string, PaymentStatus> = {
@@ -111,7 +139,8 @@ function getReconciliationUpdateLogContext(updates: Record<string, any>): Record
 }
 
 function normalizePlanId(planId: unknown): string | null {
-    const normalized = String(planId || '').trim().toLowerCase();
+    if (typeof planId !== 'string' || planId.length > 160) return null;
+    const normalized = planId.trim().toLowerCase();
     return normalized || null;
 }
 
@@ -145,15 +174,30 @@ export function normalizeScopeDocumentId(value: unknown): { documentId: string; 
 }
 
 function toTimestampMillis(value: unknown): number {
-    if (!value || typeof value !== 'object') return 0;
+    if (value === undefined || value === null) return 0;
     try {
-        const toMillis = (value as { toMillis?: unknown }).toMillis;
-        if (typeof toMillis === 'function') {
-            const millis = Number(toMillis.call(value));
-            return Number.isFinite(millis) ? millis : 0;
+        if (value instanceof Date) {
+            const millis = Date.prototype.getTime.call(value);
+            return Number.isFinite(millis) && millis >= 0 ? millis : 0;
         }
-        const seconds = Number((value as { seconds?: unknown }).seconds);
-        return Number.isFinite(seconds) ? seconds * 1000 : 0;
+        if (typeof value !== 'object' || Array.isArray(value)) return 0;
+        const descriptors = Object.getOwnPropertyDescriptors(value);
+        if (Object.values(descriptors).some((descriptor) => descriptor.get || descriptor.set)) return 0;
+        const seconds = descriptors.seconds?.value ?? descriptors._seconds?.value;
+        const nanoseconds = descriptors.nanoseconds?.value
+            ?? descriptors._nanoseconds?.value
+            ?? 0;
+        if (
+            typeof seconds !== 'number'
+            || !Number.isSafeInteger(seconds)
+            || seconds < 0
+            || typeof nanoseconds !== 'number'
+            || !Number.isSafeInteger(nanoseconds)
+            || nanoseconds < 0
+            || nanoseconds >= 1_000_000_000
+        ) return 0;
+        const millis = (seconds * 1_000) + Math.floor(nanoseconds / 1_000_000);
+        return Number.isSafeInteger(millis) ? millis : 0;
     } catch {
         return 0;
     }
@@ -171,9 +215,11 @@ export function hasCurrentSubscriptionPlanEntitlement(
     status: PaymentStatus = sub.status,
     nowMs = Date.now(),
 ): boolean {
-    if (status === 'active') return true;
-    if (status !== 'cancelled' && status !== 'paused') return false;
-    return Number.isFinite(nowMs) && toTimestampMillis(sub.cycleEndDate) >= nowMs;
+    if (!Number.isFinite(nowMs) || nowMs < 0) return false;
+    if (!['active', 'cancelled', 'paused'].includes(status)) return false;
+    if (sub.cycleEndDate === undefined || sub.cycleEndDate === null) return false;
+    const cycleEndMs = toTimestampMillis(sub.cycleEndDate);
+    return cycleEndMs > 0 && cycleEndMs >= nowMs;
 }
 
 function getActivePlanTypeForSubscription(
@@ -311,7 +357,7 @@ export async function syncStorePlanEntitlement(
         transaction.set(subscriptionRef, {
             analyticsEntitlement: {
                 activePlanType,
-                status: current.status || null,
+                status: projectSubscriptionEntitlementAuditStatus(current.status),
                 syncedAt,
                 source,
             },

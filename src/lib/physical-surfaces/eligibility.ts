@@ -9,6 +9,22 @@ import {
 } from "@type/campaigns";
 import { Timestamp } from "firebase/firestore";
 
+function readOwnDataField(value: unknown, key: string): unknown {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && "value" in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function boundedText(value: unknown, maxLength: number): string {
+    if (typeof value !== "string") return "";
+    const normalized = value.trim();
+    return normalized && normalized.length <= maxLength ? normalized : "";
+}
+
 /**
  * Calculate physical surface eligibility
  * Called during campaign summary sync
@@ -25,38 +41,57 @@ export function calculatePhysicalSurfaceEligibility(
 ): PhysicalSurfaceEligibility {
     const result: PhysicalSurfaceEligibility = {};
 
-    if (!primary || !primary.subject?.itemName) {
+    const subject = readOwnDataField(primary, "subject");
+    const itemName = boundedText(readOwnDataField(subject, "itemName"), 200);
+    const itemId = boundedText(readOwnDataField(subject, "itemId"), 160);
+    const confidence = readOwnDataField(primary, "confidence");
+    const campaignType = boundedText(readOwnDataField(primary, "type"), 64);
+    const qrUrl = boundedText(menuQrUrl, 4_096);
+    if (
+        !itemName
+        || !itemId
+        || !qrUrl
+        || typeof confidence !== "number"
+        || !Number.isFinite(confidence)
+        || confidence < 0
+        || confidence > 1
+    ) {
         return result;
     }
+    const itemImageUrl = boundedText(readOwnDataField(subject, "itemImageUrl"), 4_096) || undefined;
 
     // Tent Card: Lower threshold (0.7)
-    if (primary.confidence >= TENT_CARD_CONFIDENCE_THRESHOLD) {
+    if (confidence >= TENT_CARD_CONFIDENCE_THRESHOLD) {
         result.tentCard = {
             eligible: true,
-            itemId: primary.subject.itemId,
-            itemName: primary.subject.itemName,
-            itemImageUrl: primary.subject.itemImageUrl,
-            templateId: selectTentCardTemplate(primary.type),
-            confidence: primary.confidence,
-            qrUrl: menuQrUrl,
+            itemId,
+            itemName,
+            itemImageUrl,
+            templateId: selectTentCardTemplate(campaignType),
+            confidence,
+            qrUrl,
             recheckAfter: getRecheckAfter(7), // System rechecks eligibility after 7 days
         };
     }
 
     // Counter Sticker: Higher threshold (0.8) + stability requirement
-    const stableDays = itemStabilityDays || 0;
+    const stableDays = typeof itemStabilityDays === "number"
+        && Number.isSafeInteger(itemStabilityDays)
+        && itemStabilityDays >= 0
+        ? itemStabilityDays
+        : 0;
     if (
-        primary.confidence >= COUNTER_STICKER_CONFIDENCE_THRESHOLD &&
+        confidence >= COUNTER_STICKER_CONFIDENCE_THRESHOLD &&
         stableDays >= STICKER_STABILITY_DAYS
     ) {
         result.counterSticker = {
             eligible: true,
-            itemId: primary.subject.itemId,
-            itemName: primary.subject.itemName,
-            templateId: selectStickerTemplate(primary.type),
-            confidence: primary.confidence,
+            itemId,
+            itemName,
+            templateId: selectStickerTemplate(campaignType),
+            confidence,
             stableSinceDays: stableDays,
-            qrUrl: menuQrUrl,
+            qrUrl,
             recheckAfter: getRecheckAfter(30), // System rechecks eligibility after 30 days
         };
     }

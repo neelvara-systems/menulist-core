@@ -21,6 +21,7 @@ storeDetails + selected project
 | `src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx` | Renders desktop "Next owner action" card and routes to existing desktop pages. |
 | `src/components/mobile/screens/MobileDashboardScreen.tsx` | Renders mobile card and routes through `MobileShell` callbacks. |
 | `scripts/verification/verify-owner-action-layer.js` | Source gate for helper, flag, desktop, mobile, docs, and boundary copy. |
+| `scripts/verification/test-owner-action-layer-boundary.ts` | Behavior regression for current publication, links, hours, and placement timestamps. |
 
 ## Data Inputs
 
@@ -56,6 +57,12 @@ The helper reads existing `storeDetails.menuPresence.googleBusiness`, `instagram
 - latest confirmed age
 - missing labels
 - stale state after 45 days
+
+Only normalized valid timestamps count as confirmed. Publication uses the same
+current-project contract as menu presence readiness: the project needs a
+non-empty ID, a valid publish timestamp, and must not be inactive or
+soft-deleted. Customer links and hours are admitted only from non-empty string
+values, so malformed legacy maps cannot suppress the next corrective action.
 
 No screenshot, external fetch, or verification storage is added in this slice.
 

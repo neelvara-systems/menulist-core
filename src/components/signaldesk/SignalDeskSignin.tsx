@@ -48,7 +48,7 @@ export default function SignalDeskSignin() {
                 setError("Sign in failed. Check your details and try again.");
                 return;
             }
-            router.replace(getSafeCallbackUrl(searchParams.get("callbackUrl")));
+            router.replace(getSafeCallbackUrl(searchParams?.get("callbackUrl") ?? null));
             router.refresh();
         } catch {
             setError("Sign in failed. Try again.");

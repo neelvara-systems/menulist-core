@@ -29,9 +29,9 @@ async function run(): Promise<void> {
     ]);
 
     const first = await expireStaleAnswerlatticeGenerationJobs(now);
-    assert.equal(first.scanned, 4, 'only stale processing candidates should be scanned');
+    assert.equal(first.scanned, 3, 'the product-scoped query must exclude non-Answerlattice jobs before scanning');
     assert.equal(first.timedOut, 1, 'only the exact Answerlattice-scoped job may be mutated');
-    assert.equal(first.skippedInvalidScope, 3);
+    assert.equal(first.skippedInvalidScope, 2);
     assert.equal(first.skippedChanged, 0);
 
     const timedOut = (await jobs.doc('stale-valid').get()).data();
@@ -49,7 +49,7 @@ async function run(): Promise<void> {
 
     const replay = await expireStaleAnswerlatticeGenerationJobs(now);
     assert.equal(replay.timedOut, 0, 'terminal replay must not repeat the side effect');
-    assert.equal(replay.skippedInvalidScope, 3, 'malformed/cross-product candidates remain fail-closed');
+    assert.equal(replay.skippedInvalidScope, 2, 'malformed Answerlattice candidates remain fail-closed');
 }
 
 run()

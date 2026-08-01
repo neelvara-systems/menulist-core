@@ -81,6 +81,19 @@ The shared result also carries owner intent, truth risk, menu structure assessme
 
 After the owner chooses to continue in the current project, desktop and mobile compare detected business name, phone, address, and business type against current store details. Medium/high-confidence differences are shown in a per-field acceptance dialog. `updateStore()` writes only selected fields, and the local store context is updated after the write succeeds. The dialog is skipped for low-confidence identity results and for the `Create new menu` branch so a different upload cannot silently alter the current store.
 
+The mobile acknowledgement path binds its optimistic context settlement to
+the tenant/store identity captured for the write. If the active location or
+account changes before the write settles, the persisted write keeps its
+original server-validated scope but the late response cannot merge old
+business details into the newly active browser context.
+
+Business-type suggestions are accepted only when the provider value exactly
+matches a canonical `BUSINESS_TYPES` value or label after case and surrounding
+whitespace normalization. Partial descriptions such as `shop`, `service`,
+`restaurant and cafe`, or `pet grooming` are not guessed into the first
+matching type; they remain unset so the owner can choose the correct business
+identity explicitly.
+
 When a strong mismatch is detected for an existing project, desktop and mobile show a direct `Create new menu` action when a separate menu is the safe next action. That action creates a fresh project using the detected business name when available, keeps the valid uploaded menu files, and creates the extraction job against the new project instead of the original project.
 
 Mixed uploads are filtered before extraction. Files not listed as valid menu/list pages are deleted from temporary storage and are not sent into `menuImageProcessingJobs`.

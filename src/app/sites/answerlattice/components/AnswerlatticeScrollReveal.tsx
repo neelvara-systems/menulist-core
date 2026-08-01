@@ -100,7 +100,7 @@ function getSiblingRevealIndex(element: HTMLElement, targets: HTMLElement[]) {
     return Math.max(index, 0);
 }
 
-export default function AnswerlatticeScrollReveal() {
+export default function AnswerlatticeScrollReveal(): null {
     const pathname = usePathname();
 
     useEffect(() => {

@@ -48,7 +48,7 @@ export default function AntdLayoutWrapper(props: any) {
     const isDarkMode = useAppSelector(getDarkModeState);
     const isRTLDirection = useAppSelector(getRTLDirectionState)
     const { token } = theme.useToken();
-    const pathname = usePathname();
+    const pathname = usePathname() || '';
     const router = useRouter();
     const searchParams = useSearchParams();
     const { activeSubscription, storeDetails } = useContext(PlatformGlobalDataContext);
@@ -62,7 +62,7 @@ export default function AntdLayoutWrapper(props: any) {
     const isOpsRoute = pathname === '/ops' || pathname.startsWith('/ops/');
     const isResellerRoute = pathname === '/reseller' || pathname.startsWith('/reseller/');
     const isHelpCenterRoute = pathname === '/help-center' || pathname.startsWith('/help-center/');
-    const isLocalMobileAudit = process.env.NODE_ENV !== 'production' && searchParams.has('mobileAudit');
+    const isLocalMobileAudit = process.env.NODE_ENV !== 'production' && Boolean(searchParams?.has('mobileAudit'));
     const routeHasMobileShell = !isDesktopOnlyRoute && (
         isLocalMobileAudit || isHandheld || (isMobile && (isPlatformRoute || isOpsRoute || isResellerRoute || isHelpCenterRoute))
     );

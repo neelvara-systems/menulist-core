@@ -55,8 +55,11 @@ const packageJson = read('package.json');
 
 requires(publicEligibility, [
   'export function isMenuListPublicEntityEligible(value: unknown): boolean',
-  'entity.active !== false',
-  'entity.deleted !== true',
+  'hasValidLifecycleShape(entity)',
+  'isOptionalBoolean(active.value)',
+  'isOptionalBoolean(deleted.value)',
+  'isOptionalBoolean(blocked.value)',
+  'isOptionalBoolean(tenantBlocked.value)',
   '!isPlatformEntityBlocked(entity)',
   'export function normalizeMenuListPublicEntityIdentityAliases(',
   'scopes.every((scope) => scope?.documentId === firstScope.documentId)',
@@ -108,6 +111,10 @@ requires(route, [
   'writeReleasingCustomDomainClaim(',
   'writeReleasedCustomDomainClaim(',
   'const reservationId = randomUUID();',
+  'db.runTransaction<DomainReservationTransactionResult>',
+  'db.runTransaction<DomainFinalizeTransactionResult>',
+  'db.runTransaction<DomainInitialState>',
+  'db.runTransaction<DomainRemovalState>',
   'isReservedCustomDomainClaimCandidate(normalizedDomain)',
   'This domain is reserved for MenuList services',
   'isAnswerlatticeHostedHelpCandidateHostname(normalizedDomain)',
@@ -182,6 +189,7 @@ requires(storesDal, [
   '`/api/domain?candidate=${encodeURIComponent(normalizedDomain)}`',
   'AUTH_BROWSER_REQUEST_POLICY',
   'CUSTOM_DOMAIN_AVAILABILITY_RESPONSE_MAX_BYTES',
+  '!response.ok',
   "typeof (payload as { available?: unknown }).available !== 'boolean'",
 ], 'custom-domain owner availability client boundary');
 forbids(storesDal, [

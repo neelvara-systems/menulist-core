@@ -8,8 +8,14 @@ import {
     type AnswerlatticeChatSessionScope,
     updateChatSession,
 } from '@database/chatSessions';
+import { getAnswerlatticeInternalNotePlainText } from '@lib/answerlattice/chatSessionContracts';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
-import { ChatSession, ADMIN_STATUS_OPTIONS, ADMIN_PRIORITY_OPTIONS } from '@type/chatSession';
+import {
+    ChatSession,
+    ADMIN_STATUS_OPTIONS,
+    ADMIN_PRIORITY_OPTIONS,
+    type ChatInternalNoteContent,
+} from '@type/chatSession';
 import { Avatar, Button, Empty, Flex, Input, message, Popover, Tag, theme, Tooltip, Typography } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
@@ -23,7 +29,7 @@ const { Text, Paragraph, Title } = Typography;
 interface ConversationDetailProps {
     session: ChatSession | null;
     scope: AnswerlatticeChatSessionScope;
-    onNoteUpdate?: (sessionId: string, noteJson: any) => void;
+    onNoteUpdate?: (sessionId: string, noteJson: ChatInternalNoteContent) => void;
     onSessionUpdate?: (sessionId: string, updates: Partial<ChatSession>) => void; // Callback to refresh session list
 }
 
@@ -202,7 +208,7 @@ function ConversationDetail({ session, scope, onNoteUpdate, onSessionUpdate }: C
             lines.push('---');
             lines.push('');
             lines.push('**Internal Note:**');
-            lines.push(session.internalNotes[0].content);
+            lines.push(getAnswerlatticeInternalNotePlainText(session.internalNotes[0].content));
         }
 
         return lines.join('\n');

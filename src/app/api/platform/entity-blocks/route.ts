@@ -738,7 +738,7 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
             });
             const nextUser = { ...freshUser, blocked };
             const desiredDisabled = getDesiredUserAuthDisabled(nextUser);
-            const updateData: Record<string, unknown> = {
+            const updateData: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
                 authDisabled: desiredDisabled,
                 authSyncPending: {
                     desiredDisabled,

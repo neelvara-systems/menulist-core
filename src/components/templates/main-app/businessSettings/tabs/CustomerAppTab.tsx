@@ -88,7 +88,7 @@ const copyCustomerAppDesktopInstallLink = async (value: string): Promise<void> =
 };
 
 interface CustomerAppTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export default function CustomerAppTab({ scrollRef }: CustomerAppTabProps) {

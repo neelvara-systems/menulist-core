@@ -20,6 +20,8 @@ const changelog = read('__docs__/changelog.md');
 const requireText = (source, token, label) => assert.ok(source.includes(token), `${label}: missing ${token}`);
 const forbidText = (source, token, label) => assert.ok(!source.includes(token), `${label}: forbidden ${token}`);
 
+requireText(route, '.catch((): null => null);', 'onboarding exact persistence recovery miss');
+
 for (const token of [
   'assertCurrentUserAvailableForOnboardingInTransaction(',
   'isCurrentUserAvailableForOnboarding({',
@@ -33,6 +35,7 @@ for (const token of [
   "rateLimitResult.reason === 'provider_unavailable'",
   'status: providerUnavailable ? 503 : 429',
   'const selectedPrice = resolveOnboardingPlanPrice(',
+  "currency === 'USD' ? selectedPlan.priceUSD : selectedPlan.priceINR",
   'if (!isOnboardingProviderSubscription(providerSubscription))',
   'normalizeRazorpaySubscriptionCheckoutUrl(providerSubscription.short_url)',
   'onboardingAttemptId,',
@@ -65,6 +68,7 @@ requireText(paymentHandler, 'const subscriptionId = subscription.id;', 'bounded 
 requireText(route, 'isMatchingPersistedOnboardingSubscription({', 'exact ambiguous local persistence recovery');
 forbidText(route, 'subscription: razorpaySubscription,', 'raw provider response');
 forbidText(route, 'let razorpaySubscription: any;', 'provider response type');
+forbidText(route, 'selectedPlan[priceKey]', 'dynamic plan-price registry index');
 
 const schemaStart = schemas.indexOf('export const OnboardingSubscriptionSchema');
 const schemaEnd = schemas.indexOf('export type OnboardingSubscriptionRequest', schemaStart);

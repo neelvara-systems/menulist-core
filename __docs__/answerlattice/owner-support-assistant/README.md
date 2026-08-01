@@ -18,7 +18,7 @@ The live runtime is intentionally smaller than the frozen target architecture:
 
 - `/answerlattice/support-assistant` is visible only when the app flag is enabled and the current management user has `MANAGE_SUPPORT`.
 - The Support Control navigation presents the route as `Daily Brief` and lists it first because the live runtime opens with today's read-only plan before follow-up questions.
-- `GET /api/answerlattice/support-assistant/brief` reads six compact `platformSummary` documents through one bounded `getAll()` call, with a 60-second, 300-entry in-process cache.
+- `GET /api/answerlattice/support-assistant/brief` reads six compact `platformSummary` documents through one bounded `getAll()` call, with same-workspace single-flight loading and a 60-second, 300-entry in-process cache.
 - `POST /api/answerlattice/support-assistant/query` accepts one 3-500 character question, rate-limits before the Firestore-backed permission check, and classifies only attention, answer-risk, friction, readiness, intake, release, install, reply, cost, or unsupported intents.
 - Each source is strictly parsed and reported as available, missing, invalid, or stale. Scheduled evidence older than 48 hours is stale; implausible future timestamps are invalid.
 - Evidence, next actions, Daily Brief actions, launch verification, product-change controls, and prepared-card capability are filtered by the caller's current route permissions.

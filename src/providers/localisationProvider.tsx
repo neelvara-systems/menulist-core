@@ -36,7 +36,7 @@ export default async function LocalisationProvider({ children, locale }: Props) 
             locale={locale}
             timeZone={timeZone}
             formats={APP_LOCALISATION_FORMATTERS}
-            messages={messages as Record<string, unknown>}
+            messages={messages}
         >
             {children}
         </IntlClientWrapper>

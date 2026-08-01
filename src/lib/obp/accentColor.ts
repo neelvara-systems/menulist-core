@@ -15,3 +15,13 @@ export function normalizePublicAccentColor(value: unknown): string | null {
 export function resolveOBPAccentColor(publicPresence?: Record<string, unknown> | null): string {
     return normalizePublicAccentColor(publicPresence?.accentColor) || DEFAULT_OBP_ACCENT_COLOR;
 }
+
+export function resolvePublicMenuAccentColor(
+    projectAccentColor: unknown,
+    publicPresence?: Record<string, unknown> | null,
+    fallback?: unknown,
+): string | null {
+    return normalizePublicAccentColor(projectAccentColor)
+        || normalizePublicAccentColor(publicPresence?.accentColor)
+        || normalizePublicAccentColor(fallback);
+}

@@ -91,6 +91,13 @@ Authenticated browser click-through remains an external certification gate befor
 | QR quiet zone too small | Export is blocked. |
 | QR module size too small | Export is blocked or QR is resized. |
 | QR URL too dense | Short URL fallback or warning appears. |
+| Credential-bearing, relative, script, non-HTTP(S), or incomplete QR URL | Preflight blocks, no display short URL is produced, and the final renderer rejects the destination even if a compatibility caller bypasses preflight. |
+| Numeric/equal legacy store scope aliases | Typed print provenance contains canonical string tenant/store IDs. |
+| Conflicting store scope aliases | Conflicting provenance is omitted rather than selecting one alias. |
+| Malformed primary project update timestamp with valid fallback | The next valid timestamp is emitted as canonical ISO. |
+| Invalid Date or throwing Firestore-like timestamp | Export assembly remains available and emits `null` when no valid fallback exists. |
+| Throwing localized getter, tag conversion object, attribute field, or item-array Proxy | Sanitization stays available, executes no conversion hook, retains later safe text, and excludes only malformed values. |
+| Multiple unnamed legacy categories | Stable positional fallback IDs preserve separate category/item grouping. |
 | Low contrast token pair | Template adjusts or export blocks. |
 | Low-resolution photo | Warning appears and non-photo fallback is available. |
 | File too large for WhatsApp | Warning appears with smaller preset behavior. |
@@ -187,6 +194,11 @@ Authenticated browser click-through remains an external certification gate befor
 | Business type/category change | Changing store business type/category creates a different source hash instead of reusing an old menu-style, service-style, or catalog-style export. |
 | Currency change | Changing store currency symbol or code creates a different source hash instead of reusing a wrong-currency export. |
 | Repeat logo export | Same logo URL is converted from in-memory cache during the route session instead of refetching for every export. |
+| Malformed or credentialed logo URL | Source projection and final rendering omit it before `Image` loading; the PDF continues with the business initial and brand color. |
+| Oversized logo raster | Either dimension above 2,048 pixels or more than 4,194,304 total pixels is rejected before canvas allocation. |
+| Many distinct logo exports | Successful logo raster cache remains capped at 16 entries and evicts the oldest entry. |
+| Oversized persisted print text | IDs, category/item/attribute names, descriptions and tags are capped at their governed limits before PDF wrapping. |
+| Description/attribute pagination | Height estimation counts exactly the same maximum description lines and attributes that the renderer draws. |
 | Auto design cost | No provider call, AI credit consumption, Firestore write, Storage upload, Cloud Function, rule, or index. |
 | History flag off | Local history UI is hidden and no browser history record is written. |
 | History flag on | Reads shaped local browser history only, max 20 records per tenant/store/project. Equal project IDs in another store return no records. Invalid preset/page count/timestamp/project records, oversized arrays, and malformed JSON are evicted. |
@@ -225,6 +237,10 @@ Authenticated browser click-through remains an external certification gate befor
 | Dashboard/mobile PDF parity | Dashboard and mobile both call `createArtifact(false)` from `useMenuCardExportController`; neither surface calls `renderPdf` or the source/hash/history helpers directly. |
 | Dashboard/mobile share parity | Dashboard and mobile both call `createArtifact(true)` from `useMenuCardExportController`; share fallback/download behavior remains controller-owned. |
 | Same settings, same source hash | For the same project, preset, style, density, and toggles, dashboard and mobile produce the same source hash and route through the same PDF or packet builder. |
+| Malformed persisted brand color | A number, object, invalid string, or throwing legacy candidate is not returned as a brand color; the next valid candidate or governed default is used. |
+| Internal preset defaults | Every `MenuCardExportPreset` resolves to its own registry entry and `buildDefaultSettings()` retains the requested preset ID. |
+| Oversized canvas text/font | Text fitting and truncation remain bounded, produce deterministic output, and do not loop once per input character or requested font point. |
+| Malformed print guidance store | Throwing persisted accessors and object/number logo, name, color, or link values do not abort readiness or handoff copy and are never coerced. |
 
 ---
 

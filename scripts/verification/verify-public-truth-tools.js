@@ -470,12 +470,12 @@ function assertPublicToolInventoryBoundary() {
   );
   assertIncludes(
     externalLocationIdentity,
-    'normalizeProviderLocationId(attributableSource?.placeId)',
+    "normalizeProviderLocationId(\n    readOwnDataField(attributableSource, 'placeId'),",
     'Maps Place Check stable identity must use grounding source Place ID',
   );
   assertIncludes(
     externalLocationIdentity,
-    'normalizeOBPGoogleMapsUrl(attributableSource?.uri)',
+    "normalizeOBPGoogleMapsUrl(readOwnDataField(attributableSource, 'uri'))",
     'Maps Place Check stable identity must use grounding source URI',
   );
   assertIncludes(

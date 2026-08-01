@@ -11,8 +11,10 @@ const searchRoute = read('src/app/api/widget/search/route.ts');
 const feedbackRoute = read('src/app/api/widget/feedback/route.ts');
 const escalationRoute = read('src/app/api/widget/escalation/route.ts');
 const escalationServer = read('src/lib/answerlattice/widgetEscalationServer.ts');
+const searchCore = read('src/lib/search/searchCore.ts');
 const ticketLifecycle = read('src/lib/answerlattice/supportTicketLifecycle.ts');
 const widgetClient = read('src/app/widget/[apiKey]/WidgetClient.tsx');
+const widgetPage = read('src/app/widget/[apiKey]/page.tsx');
 const historyType = read('src/types/aiSearchHistory.ts');
 const ticketType = read('src/types/supportTicket.ts');
 const featureFlags = read('src/config/features.ts');
@@ -64,6 +66,10 @@ assert(escalationServer.includes('isAnswerlatticeSearchHistoryAvailableForIntera
 assert(escalationServer.includes('widgetEscalation?.searchHistoryId !== searchHistoryId'), 'widget escalation replay must verify persisted ticket ownership');
 assert(escalationServer.includes("triggerTypes: ['explicit_user_request']"), 'widget escalation must record an explicit human-support request without inventing model failure evidence');
 assert(escalationServer.includes('transaction.set(historyRef, historyUpdate, { merge: true })'), 'ticket creation and search-history linkage must share the transaction');
+assert(!searchCore.includes('buildSearchHistoryContextFields'), 'transient page context must not be written to search history');
+assert(!escalationServer.includes('history.contextKey'), 'legacy page context must not be copied from search history into a ticket');
+assert(!escalationServer.includes('history.surfacePage'), 'legacy surface page context must remain outside durable escalation state');
+assert(!escalationServer.includes('contextKeys: [contextKey]'), 'transient context keys must not classify durable support tickets');
 
 assert(widgetClient.includes('The screenshot could not be used. This answer is based on your text only.'), 'widget must disclose image-processing fallback');
 assert(widgetClient.includes("fetch('/api/widget/escalation'"), 'widget must submit an explicit support request');
@@ -77,6 +83,16 @@ assert(widgetClient.includes('if (!q || loading || activeSearchControllerRef.cur
 assert(widgetClient.includes('activeSearchControllerRef.current = searchController'), 'widget search must claim the synchronous request boundary before fetch');
 assert(widgetClient.includes('signal: searchController.signal'), 'widget search must make the active request cancellable');
 assert(widgetClient.includes('activeSearchControllerRef.current?.abort()'), 'widget clear/unmount must cancel active search work');
+assert(widgetClient.includes('const feedbackInFlightRef = useRef<Set<string>>(new Set())'), 'widget feedback must keep an immediate per-message single-flight boundary');
+assert(widgetClient.includes('feedbackInFlightRef.current.has(msgId)'), 'widget feedback must reject duplicate admission before React state settles');
+assert(widgetClient.includes('const escalationInFlightRef = useRef(false)'), 'widget escalation must keep an immediate single-flight boundary');
+assert(widgetClient.includes('escalationSubmitting || escalationInFlightRef.current'), 'widget escalation must reject duplicate admission before React state settles');
+assert(widgetClient.includes('const conversationGeneration = conversationGenerationRef.current'), 'widget mutations must capture the current conversation generation');
+assert(widgetClient.includes('if (conversationGenerationRef.current !== conversationGeneration) return'), 'late widget mutations must not repopulate a cleared conversation');
+assert(widgetClient.includes('activeImageReaderRef.current?.abort()'), 'widget screenshot selection and cleanup must abort obsolete file reads');
+assert(widgetClient.includes('if (imageReadGenerationRef.current !== imageReadGeneration) return'), 'obsolete screenshot reads must not replace the latest selection');
+assert(!widgetClient.includes('Record<string, any>'), 'widget browser context and request contracts must not use broad any-valued records');
+assert(widgetPage.includes('<WidgetClient key={params.apiKey} apiKey={params.apiKey} />'), 'legacy dynamic widget navigation must remount all client state when the credential changes');
 
 assert(historyType.includes('escalationTicketId?: string'), 'search history type must expose ticket linkage');
 assert(historyType.includes("escalationStatus?: 'ticket_created'"), 'search history type must expose bounded escalation status');

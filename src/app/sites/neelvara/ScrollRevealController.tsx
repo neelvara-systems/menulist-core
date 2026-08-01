@@ -25,7 +25,7 @@ function getSiblingRevealIndex(element: HTMLElement, targets: HTMLElement[]) {
     return Math.max(siblings.indexOf(element), 0);
 }
 
-export default function ScrollRevealController() {
+export default function ScrollRevealController(): null {
     const pathname = usePathname();
 
     useEffect(() => {

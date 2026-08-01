@@ -49,7 +49,7 @@ export const createAnswerlatticeFirstTrustedAnswerCases = (
 
     return STARTER_CASES
         .filter(testCase => !existing.has(testCase.id))
-        .map(testCase => ({
+        .map((testCase): AnswerlatticeAnswerTestCase => ({
             id: testCase.id,
             title: testCase.title,
             query: testCase.query,

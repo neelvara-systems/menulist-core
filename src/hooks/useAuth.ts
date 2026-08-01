@@ -18,7 +18,7 @@ export function useAuth(): AuthState {
     useEffect(() => {
         let generation = 0;
         let active = true;
-        const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+        const unsubscribe = firebaseAuth.onAuthStateChanged(async (user: User | null) => {
             const callbackGeneration = ++generation;
             if (user) {
                 logAuthDiagnostic('auth_state_changed', {

@@ -400,9 +400,19 @@ function verifyDebouncedDeliveryBoundary(eventBuilder, projectDal, platformProvi
   ].forEach((token) => assertNotIncludes(eventBuilder, token, 'POS debounced delivery silent failure boundary'));
 
   [
-    'registerPosSyncDeliveryConfig(storeId, tenantId, contextState?.storeDetails?.posSync)',
+    'registerPosSyncDeliveryConfig(storeId, tenantId, contextData.storeDetails?.posSync)',
     'return () => unregisterPosSyncDeliveryConfig(storeId, tenantId);',
   ].forEach((token) => assertIncludes(platformProvider, token, 'POS loaded-store integration registration'));
+  assertIncludes(
+    platformProvider,
+    '<PlatformGlobalDataContext.Provider value={contextData} >',
+    'Platform global context must expose the current session-scoped value without an effect-delayed mirror',
+  );
+  assertNotIncludes(
+    platformProvider,
+    'setContextState(contextData)',
+    'Platform global context must not retain the previous tenant/store scope for one render',
+  );
   assertIncludes(projectDal, 'import { triggerPosSyncForAcknowledgedProjectSave }', 'Project DAL POS trigger import');
   assert(
     countOccurrences(projectDal, 'triggerPosSyncForAcknowledgedProjectSave(') >= 2,
@@ -470,6 +480,8 @@ function verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRule
     'const sessionScope = resolveStorePermissionSessionScope(session);',
     'sessionScope.tenantScope.numericId !== tenantScope.numericId',
     'sessionScope.storeScope.numericId !== storeScope.numericId',
+    'const actorId = resolveCurrentSessionUserDocumentId(session);',
+    '`${actorId}:${tenantScope.documentId}:${storeScope.documentId}:${action}`',
     'failClosedOnProviderError: true',
     'requireAnyStorePermissionForStoreData(',
     '[PERMISSIONS.MANAGE_INTEGRATIONS]',

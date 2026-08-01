@@ -94,7 +94,7 @@ Desktop and mobile settings are keyed by exact tenant/store identity. A store sw
 
 `npm run verify:customer-app-pwa` enforces the desktop/mobile settings diagnostic contract and the Customer App analytics source-chain contract from event field mapping through public analytics preference checks, daily writes, summary aggregation, dashboard-summary generation, scheduler inclusion, dashboard DAL reads, `useCustomerAppDashboard`, and desktop/mobile KPI cards.
 
-Custom icon replacement uses an attempt-unique `stores/pwa-icons/{tId}/{sId}/{pwa_icon_runtimeId}.png` object. If resumable upload completes but download-URL resolution fails, `uploadPWAIconOverride()` opts into shared completed-upload cleanup before returning generic failure. Once a URL is available, `replacePWAIconOverride()` persists `publicPresence` truth first. A rejected/ambiguous client acknowledgement is reconciled through an exact tenant/store server-only read: confirmed new URL plus timestamp is treated as committed, confirmed different truth permits new-attempt compensation, and unreadable/indeterminate truth retains the object with a stable ambiguity diagnostic. Previous owned-object cleanup occurs only after acknowledgement and a current server-reference guard; guard failure retains the object rather than risking a broken public icon.
+Custom icon replacement uses an attempt-unique `stores/pwa-icons/{tId}/{sId}/{pwa_icon_runtimeId}.png` object. If resumable upload completes but download-URL resolution fails, `uploadPWAIconOverride()` opts into shared completed-upload cleanup before returning generic failure. Once a URL is available, `replacePWAIconOverride()` persists `publicPresence` truth first. A rejected/ambiguous client acknowledgement is reconciled through an exact tenant/store server-only read: confirmed new URL plus timestamp is treated as committed, confirmed different truth permits new-attempt compensation, and unreadable/indeterminate truth retains the object with a stable ambiguity diagnostic. A previously persisted icon is retained with `pwa_icon_persisted_cleanup_deferred_shared_reference`; a client-side Firestore read cannot prove that another concurrent save will not restore that URL before Storage deletion. Only an attempt-unique upload proven not committed is deleted immediately.
 
 ---
 
@@ -142,21 +142,28 @@ Frozen rules:
 - Offline means branded offline page only.
 - Never serve a stale cached menu as a fallback.
 
-The owner dashboard keeps a bounded `next-pwa`/Workbox worker through
-`public/sw.js`, but only for the generic offline fallback, precached build/icon
-assets, and public Google fonts. Authenticated owner pages, sign-in pages,
-screen pages, APIs, Firestore/Storage responses, broad extension matches, and
-customer routes are not runtime-cached. On activation, the
-custom worker deletes the retired `start-url`, `owner-dashboard-pages`,
+The owner dashboard keeps a bounded Serwist worker through
+`/serwist/sw.js`, limited to the generic offline fallback and bounded build/icon
+assets. Authenticated owner pages, sign-in pages, screen pages, APIs,
+Firestore/Storage responses, broad extension matches, and customer routes are
+not runtime-cached. On activation, the custom worker deletes the retired
+`start-url`, `owner-dashboard-pages`,
 `auth-pages`, `screen-pages`, `firebase-images`, and `static-assets` caches so
 old private HTML or broadly cached media does not remain on a shared device.
 
-Platform public website routes do not install the owner Workbox worker, but they preserve an already-registered `public/sw.js` owner worker. Standalone platform launches are treated as owner-app context so an installed owner PWA can repair/register `public/sw.js` even if iOS opens it at `/`. This keeps a normal visit to `menulist.online/` from removing the owner PWA offline fallback for the same origin.
+Platform public website routes do not install the owner Serwist worker, but
+they preserve an already-registered `/serwist/sw.js` owner worker. Standalone
+platform launches are treated as owner-app context so an installed owner PWA
+can repair/register that worker even if iOS opens it at `/`. This keeps a normal
+visit to `menulist.online/` from removing the owner PWA offline fallback for the
+same origin.
 
 Vercel preview and development builds do not generate the owner worker.
 `ServiceWorkerRegister` therefore refuses to register the checked-in `sw.js` on
 those stages and removes a stale registration instead. Existing production
-registrations are explicitly checked for updates on each full app load.
+registrations are explicitly checked after the initial load and relevant App
+Router pathname changes. Reconciliation is serialized and admits an existing
+registration only when both its script URL and root scope match.
 Reconnection does not auto-reload an owner workflow.
 
 Service-worker cleanup is best-effort but observable. If unregistering a stale or wrong-scope worker fails, `src/components/ServiceWorkerRegister.tsx` logs `service_worker_unregister_failed` with only bounded worker labels (`owner`, `customer`, `mycodex`, `none`, or `unknown`), cleanup reason, controller presence, and source error name/code/status. It does not log tenant hostnames, raw service-worker URLs, store IDs, tenant IDs, or route paths.
@@ -239,16 +246,25 @@ Supported sizes:
 Resolution order:
 
 1. Render `publicPresence.pwaIconOverrideUrl` into a square padded PNG when set.
-2. Render the store logo into a square padded PNG when it is a usable image URL.
+2. Render the store logo into a square padded PNG only when it is a bounded
+   HTTPS Firebase/Google Storage image URL in the configured MenuList bucket.
+   Legacy arbitrary, private-host, or foreign-bucket URLs are never fetched by
+   the server renderer.
 3. Generate deterministic first-letter PNG with `ImageResponse`.
 
-The icon route validates store ID shape and applies the shared `PUBLIC_DYNAMIC_ASSET` rate limit before resolving store branding through `getPublicStoreById()`. That shared lookup returns `null` for inactive, deleted, platform-blocked, or tenant-blocked stores. Invalid, rate-limited, or non-public-safe stores receive the deterministic generic icon so install flows do not receive a 500 and blocked store branding is not exposed. Failure paths use `logRuntimeFailure()` with the stable `customer_app_icon_generation_failed` code, size, source error name/code/status, and store-id presence/length metadata only.
+The icon route validates store ID shape and applies the shared `PUBLIC_DYNAMIC_ASSET` rate limit before resolving store branding through `getPublicStoreById()`. Limiter provider failures fail closed. That shared lookup returns `null` for inactive, deleted, platform-blocked, or tenant-blocked stores. Invalid, rate-limited, or non-public-safe stores receive the deterministic generic icon so install flows do not receive a 500 and blocked store branding is not exposed. Rate-limit/provider and render-failure fallbacks use `private, no-store` so a transient generic image cannot poison the shared branded CDN entry. Failure paths use `logRuntimeFailure()` with the stable `customer_app_icon_generation_failed` code, size, source error name/code/status, and store-id presence/length metadata only.
 
 ### Splash Images
 
 Route: `src/app/api/app-splash/[storeId]/[size]/route.tsx`
 
-Splash images use the same public dynamic asset limiter and public-safe store fallback behavior as icons. Generation failures use `logRuntimeFailure()` with the stable `customer_app_splash_generation_failed` code, dimensions, source error name/code/status, and store-id presence/length metadata only, then return a generic startup image.
+Splash images use the same fail-closed public dynamic asset limiter, trusted
+server-rendered image boundary, bounded display-name projection, and
+non-cacheable transient fallback behavior as icons. Generation failures use
+`logRuntimeFailure()` with the stable
+`customer_app_splash_generation_failed` code, dimensions, source error
+name/code/status, and store-id presence/length metadata only, then return a
+generic startup image.
 
 ### Screenshots
 
@@ -261,9 +277,9 @@ Supported form factors:
 
 The manifest includes both generated screenshots for richer install UI support. Screenshot branding also resolves through `getPublicStoreById()` and falls back to generic generated screenshots when the store is not public-safe.
 
-The screenshot route rejects unsupported form factors with 404 before rate limiting or store lookup, then validates store ID shape and applies the shared `PUBLIC_DYNAMIC_ASSET` rate limit before reading `stores/{storeId}`. Failure paths use `logRuntimeFailure()` with the stable `customer_app_screenshot_generation_failed` code, dimensions, form factor, source error name/code/status, and store-id presence/length metadata only, then return a generic screenshot image.
+The screenshot route rejects unsupported form factors with 404 before rate limiting or store lookup, then validates store ID shape and applies the fail-closed shared `PUBLIC_DYNAMIC_ASSET` rate limit before reading `stores/{storeId}`. Display names and taglines are bounded before rendering. Limiter/provider and render-failure generic screenshots use `private, no-store`; successful public-safe and stable missing-store results retain the documented CDN policy. Failure paths use `logRuntimeFailure()` with the stable `customer_app_screenshot_generation_failed` code, dimensions, form factor, source error name/code/status, and store-id presence/length metadata only, then return a generic screenshot image.
 
-Dynamic asset store ID fallback boundary: `src/app/api/app-icons/[storeId]/[size]/route.tsx`, `src/app/api/app-splash/[storeId]/[size]/route.tsx`, and `src/app/api/app-screenshots/[storeId]/[formFactor]/route.tsx` all keep the same `/^\d{1,20}$/` store ID admission rule and return a generic generated asset before `getPublicStoreById(storeId)` when the route store ID is malformed or the public dynamic asset limiter blocks the request. `npm run verify:customer-app-pwa` source-gates that fallback-before-store-lookup ordering.
+Dynamic asset store ID fallback boundary: `src/app/api/app-icons/[storeId]/[size]/route.tsx`, `src/app/api/app-splash/[storeId]/[size]/route.tsx`, and `src/app/api/app-screenshots/[storeId]/[formFactor]/route.tsx` all keep the same `/^\d{1,20}$/` store ID admission rule and return a non-shared-cacheable generic generated asset before `getPublicStoreById(storeId)` when the route store ID is malformed, the limit is exhausted, or the limiter provider is unavailable. `npm run verify:customer-app-pwa` source-gates that fallback-before-store-lookup ordering and transient cache policy.
 
 Not current runtime:
 

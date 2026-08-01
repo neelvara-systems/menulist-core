@@ -41,6 +41,26 @@ export interface MenuAnalyticsDetailSection {
 }
 
 type DashboardTranslationValues = Record<string, string | number>;
+type UnknownRecord = Record<string, unknown>;
+
+interface ProjectedOwnerAnalyticsDetailData {
+    metrics: OwnerDashboardMetrics;
+    sourceQuality: SourceQuality[];
+    utmSources: TrafficBreakdown[];
+    utmMediums: TrafficBreakdown[];
+    utmCampaigns: TrafficBreakdown[];
+    utmContent: TrafficBreakdown[];
+    topItems: TopItem[];
+    topCategories: TopCategory[];
+    menuActions?: MenuActionBreakdown;
+    openHoursActionBreakdown?: OpenHoursActionBreakdown;
+    topSearchTerms: SearchTerm[];
+    topZeroResultSearchTerms: SearchTerm[];
+    unavailableItems: TopItem[];
+    topLanguages: LanguageUsage[];
+    topAttributeFilters: AttributeFilterInterest[];
+    blockPerformance?: BlockPerformance;
+}
 
 export type OwnerDashboardTranslator = (key: string, values?: DashboardTranslationValues) => string;
 
@@ -52,47 +72,272 @@ const MENU_ACTION_LABEL_KEYS: Record<keyof MenuActionBreakdown, string> = {
     order: 'Order',
 };
 
+const MAX_ANALYTICS_ROWS = 100;
+const MAX_ANALYTICS_TEXT_LENGTH = 160;
+const MAX_ANALYTICS_COUNT = 1_000_000_000_000_000;
+
+function isRecord(value: unknown): value is UnknownRecord {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readOwnDataField(value: unknown, field: string): unknown {
+    if (!isRecord(value)) return undefined;
+    const descriptor = Object.getOwnPropertyDescriptor(value, field);
+    return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+}
+
+function normalizeAnalyticsText(value: unknown): string {
+    if (typeof value !== 'string') return '';
+    return value.trim().replace(/\s+/g, ' ').slice(0, MAX_ANALYTICS_TEXT_LENGTH).trim();
+}
+
+function normalizeAnalyticsCount(value: unknown): number {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 0;
+    return Math.min(MAX_ANALYTICS_COUNT, Math.floor(value));
+}
+
+function normalizeAnalyticsRate(value: unknown): number {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return 0;
+    return Math.min(100, Math.round(value * 100) / 100);
+}
+
+function projectRecordArray<T>(
+    value: unknown,
+    projector: (entry: UnknownRecord, index: number) => T | null,
+): T[] {
+    if (!Array.isArray(value)) return [];
+    const projected: T[] = [];
+    value.slice(0, MAX_ANALYTICS_ROWS).forEach((entry, index) => {
+        if (!isRecord(entry)) return;
+        const row = projector(entry, index);
+        if (row) projected.push(row);
+    });
+    return projected;
+}
+
+function projectMetrics(value: unknown): OwnerDashboardMetrics {
+    const metrics = isRecord(value) ? value : {};
+    return {
+        menuVisits: normalizeAnalyticsCount(readOwnDataField(metrics, 'menuVisits') ?? readOwnDataField(metrics, 'totalViews')),
+        itemClicks: normalizeAnalyticsCount(readOwnDataField(metrics, 'itemClicks') ?? readOwnDataField(metrics, 'totalClicks')),
+        menuSessions: normalizeAnalyticsCount(readOwnDataField(metrics, 'menuSessions')),
+        engagedSessions: normalizeAnalyticsCount(readOwnDataField(metrics, 'engagedSessions')),
+        intentSessions: normalizeAnalyticsCount(readOwnDataField(metrics, 'intentSessions')),
+        actionSessions: normalizeAnalyticsCount(readOwnDataField(metrics, 'actionSessions')),
+        engagedSessionRate: normalizeAnalyticsRate(readOwnDataField(metrics, 'engagedSessionRate')),
+        intentRate: normalizeAnalyticsRate(readOwnDataField(metrics, 'intentRate')),
+        actionRate: normalizeAnalyticsRate(readOwnDataField(metrics, 'actionRate')),
+        searches: normalizeAnalyticsCount(readOwnDataField(metrics, 'searches') ?? readOwnDataField(metrics, 'totalSearches')),
+        unavailableItemTaps: normalizeAnalyticsCount(
+            readOwnDataField(metrics, 'unavailableItemTaps')
+            ?? readOwnDataField(metrics, 'totalUnavailableItemTaps'),
+        ),
+        menuActionClicks: normalizeAnalyticsCount(
+            readOwnDataField(metrics, 'menuActionClicks')
+            ?? readOwnDataField(metrics, 'totalMenuActionClicks'),
+        ),
+        zeroResultSearches: normalizeAnalyticsCount(
+            readOwnDataField(metrics, 'zeroResultSearches')
+            ?? readOwnDataField(metrics, 'totalZeroResultSearches'),
+        ),
+        smartPicksRendered: normalizeAnalyticsCount(
+            readOwnDataField(metrics, 'smartPicksRendered')
+            ?? readOwnDataField(metrics, 'totalSmartPicksRendered'),
+        ),
+        smartPicksClicks: normalizeAnalyticsCount(
+            readOwnDataField(metrics, 'smartPicksClicks')
+            ?? readOwnDataField(metrics, 'totalSmartPicksClicks'),
+        ),
+    };
+}
+
+function projectTopItems(value: unknown): TopItem[] {
+    return projectRecordArray(value, (entry, index) => {
+        const itemId = normalizeAnalyticsText(readOwnDataField(entry, 'itemId'));
+        const name = normalizeAnalyticsText(readOwnDataField(entry, 'name'));
+        if (!itemId && !name) return null;
+        return {
+            itemId: itemId || `legacy-item-${index + 1}`,
+            ...(name ? { name } : {}),
+            clicks: normalizeAnalyticsCount(readOwnDataField(entry, 'clicks')),
+            views: normalizeAnalyticsCount(readOwnDataField(entry, 'views')),
+            recommendationClicks: normalizeAnalyticsCount(readOwnDataField(entry, 'recommendationClicks')),
+            unavailableTaps: normalizeAnalyticsCount(readOwnDataField(entry, 'unavailableTaps')),
+            ...(normalizeAnalyticsText(readOwnDataField(entry, 'statusLabel'))
+                ? { statusLabel: normalizeAnalyticsText(readOwnDataField(entry, 'statusLabel')) }
+                : {}),
+            ...(normalizeAnalyticsText(readOwnDataField(entry, 'statusReason'))
+                ? { statusReason: normalizeAnalyticsText(readOwnDataField(entry, 'statusReason')) }
+                : {}),
+        };
+    });
+}
+
+function projectTopCategories(value: unknown): TopCategory[] {
+    return projectRecordArray(value, (entry, index) => {
+        const categoryId = normalizeAnalyticsText(readOwnDataField(entry, 'categoryId'));
+        const name = normalizeAnalyticsText(readOwnDataField(entry, 'name'));
+        if (!categoryId && !name) return null;
+        return {
+            categoryId: categoryId || `legacy-category-${index + 1}`,
+            ...(name ? { name } : {}),
+            views: normalizeAnalyticsCount(readOwnDataField(entry, 'views')),
+            clicks: normalizeAnalyticsCount(readOwnDataField(entry, 'clicks')),
+        };
+    });
+}
+
+function projectSourceQuality(value: unknown): SourceQuality[] {
+    return projectRecordArray(value, (entry) => {
+        const source = normalizeAnalyticsText(readOwnDataField(entry, 'source'));
+        const label = normalizeAnalyticsText(readOwnDataField(entry, 'label'));
+        if (!source && !label) return null;
+        return {
+            source: source || label,
+            label: label || source,
+            menuSessions: normalizeAnalyticsCount(readOwnDataField(entry, 'menuSessions')),
+            actionSessions: normalizeAnalyticsCount(readOwnDataField(entry, 'actionSessions')),
+            actionClicks: normalizeAnalyticsCount(readOwnDataField(entry, 'actionClicks')),
+            actionRate: normalizeAnalyticsRate(readOwnDataField(entry, 'actionRate')),
+        };
+    });
+}
+
+function projectTraffic(value: unknown): TrafficBreakdown[] {
+    return projectRecordArray(value, (entry) => {
+        const key = normalizeAnalyticsText(readOwnDataField(entry, 'key'));
+        const label = normalizeAnalyticsText(readOwnDataField(entry, 'label'));
+        if (!key && !label) return null;
+        return {
+            key: key || label,
+            label: label || key,
+            views: normalizeAnalyticsCount(readOwnDataField(entry, 'views')),
+        };
+    });
+}
+
+function projectSearchTerms(value: unknown): SearchTerm[] {
+    return projectRecordArray(value, (entry) => {
+        const term = normalizeAnalyticsText(readOwnDataField(entry, 'term'));
+        if (!term) return null;
+        return {
+            term,
+            count: normalizeAnalyticsCount(readOwnDataField(entry, 'count')),
+        };
+    });
+}
+
+function projectLanguages(value: unknown): LanguageUsage[] {
+    return projectRecordArray(value, (entry) => {
+        const language = normalizeAnalyticsText(readOwnDataField(entry, 'language'));
+        const label = normalizeAnalyticsText(readOwnDataField(entry, 'label'));
+        if (!language && !label) return null;
+        return {
+            language: language || label,
+            label: label || language,
+            menuViews: normalizeAnalyticsCount(readOwnDataField(entry, 'menuViews')),
+            menuSessions: normalizeAnalyticsCount(readOwnDataField(entry, 'menuSessions')),
+            adoptions: normalizeAnalyticsCount(readOwnDataField(entry, 'adoptions')),
+        };
+    });
+}
+
+function projectFilters(value: unknown): AttributeFilterInterest[] {
+    return projectRecordArray(value, (entry) => {
+        const filterId = normalizeAnalyticsText(readOwnDataField(entry, 'filterId'));
+        const label = normalizeAnalyticsText(readOwnDataField(entry, 'label'));
+        if (!filterId && !label) return null;
+        return {
+            filterId: filterId || label,
+            label: label || filterId,
+            interactions: normalizeAnalyticsCount(readOwnDataField(entry, 'interactions')),
+            itemViews: normalizeAnalyticsCount(readOwnDataField(entry, 'itemViews')),
+            itemTaps: normalizeAnalyticsCount(readOwnDataField(entry, 'itemTaps')),
+            searches: normalizeAnalyticsCount(readOwnDataField(entry, 'searches')),
+            unavailableTaps: normalizeAnalyticsCount(readOwnDataField(entry, 'unavailableTaps')),
+            actionClicks: normalizeAnalyticsCount(readOwnDataField(entry, 'actionClicks')),
+        };
+    });
+}
+
+function projectMenuActions(value: unknown): MenuActionBreakdown | undefined {
+    if (!isRecord(value)) return undefined;
+    return {
+        call: normalizeAnalyticsCount(readOwnDataField(value, 'call')),
+        whatsapp: normalizeAnalyticsCount(readOwnDataField(value, 'whatsapp')),
+        directions: normalizeAnalyticsCount(readOwnDataField(value, 'directions')),
+        reserve: normalizeAnalyticsCount(readOwnDataField(value, 'reserve')),
+        order: normalizeAnalyticsCount(readOwnDataField(value, 'order')),
+    };
+}
+
+function projectOpenHours(value: unknown): OpenHoursActionBreakdown | undefined {
+    if (!isRecord(value)) return undefined;
+    return {
+        open: normalizeAnalyticsCount(readOwnDataField(value, 'open')),
+        closed: normalizeAnalyticsCount(readOwnDataField(value, 'closed')),
+        unknown: normalizeAnalyticsCount(readOwnDataField(value, 'unknown')),
+        closedShare: normalizeAnalyticsRate(readOwnDataField(value, 'closedShare')),
+    };
+}
+
+function projectBlockPerformance(value: unknown): BlockPerformance | undefined {
+    if (!isRecord(value)) return undefined;
+    const projectBlock = (block: unknown) => ({
+        rendered: normalizeAnalyticsCount(readOwnDataField(block, 'rendered')),
+        clicks: normalizeAnalyticsCount(readOwnDataField(block, 'clicks')),
+    });
+    return {
+        popular: projectBlock(readOwnDataField(value, 'popular')),
+        quickPick: projectBlock(readOwnDataField(value, 'quickPick')),
+        bestValue: projectBlock(readOwnDataField(value, 'bestValue')),
+    };
+}
+
+function projectOwnerAnalyticsDetailData(value: unknown): ProjectedOwnerAnalyticsDetailData | null {
+    if (!isRecord(value)) return null;
+    const directMetrics = readOwnDataField(value, 'metrics');
+    const lifetimeMetrics = readOwnDataField(value, 'lifetimeMetrics');
+    return {
+        metrics: projectMetrics(isRecord(directMetrics) ? directMetrics : lifetimeMetrics),
+        sourceQuality: projectSourceQuality(readOwnDataField(value, 'sourceQuality')),
+        utmSources: projectTraffic(readOwnDataField(value, 'utmSources')),
+        utmMediums: projectTraffic(readOwnDataField(value, 'utmMediums')),
+        utmCampaigns: projectTraffic(readOwnDataField(value, 'utmCampaigns')),
+        utmContent: projectTraffic(readOwnDataField(value, 'utmContent')),
+        topItems: projectTopItems(readOwnDataField(value, 'topItems')),
+        topCategories: projectTopCategories(readOwnDataField(value, 'topCategories')),
+        menuActions: projectMenuActions(readOwnDataField(value, 'menuActions')),
+        openHoursActionBreakdown: projectOpenHours(readOwnDataField(value, 'openHoursActionBreakdown')),
+        topSearchTerms: projectSearchTerms(readOwnDataField(value, 'topSearchTerms')),
+        topZeroResultSearchTerms: projectSearchTerms(readOwnDataField(value, 'topZeroResultSearchTerms')),
+        unavailableItems: projectTopItems(readOwnDataField(value, 'unavailableItems')),
+        topLanguages: projectLanguages(readOwnDataField(value, 'topLanguages')),
+        topAttributeFilters: projectFilters(readOwnDataField(value, 'topAttributeFilters')),
+        blockPerformance: projectBlockPerformance(readOwnDataField(value, 'blockPerformance')),
+    };
+}
+
 function dashboardLabel(
     t: OwnerDashboardTranslator | undefined,
     key: string,
     fallback: string,
     values?: DashboardTranslationValues,
 ): string {
-    return t ? t(key, values) : fallback;
+    const translated = t ? t(key, values) : fallback;
+    return normalizeAnalyticsText(translated) || fallback;
 }
 
 function formatCount(value?: number): string {
-    return Math.max(0, Number(value) || 0).toLocaleString();
+    return normalizeAnalyticsCount(value).toLocaleString();
 }
 
 function formatRate(value?: number): string {
-    return `${Math.max(0, Number(value) || 0)}%`;
+    return `${normalizeAnalyticsRate(value)}%`;
 }
 
 function hasPositiveValue(values: Array<number | undefined>): boolean {
-    return values.some((value) => Number(value || 0) > 0);
-}
-
-function getMetrics(data: OwnerMenuAnalyticsDetailData): OwnerDashboardMetrics {
-    if ('metrics' in data) return data.metrics;
-
-    return {
-        menuVisits: data.lifetimeMetrics.totalViews || 0,
-        itemClicks: data.lifetimeMetrics.totalClicks || 0,
-        menuSessions: data.lifetimeMetrics.menuSessions || 0,
-        engagedSessions: data.lifetimeMetrics.engagedSessions || 0,
-        intentSessions: data.lifetimeMetrics.intentSessions || 0,
-        actionSessions: data.lifetimeMetrics.actionSessions || 0,
-        engagedSessionRate: data.lifetimeMetrics.engagedSessionRate || 0,
-        intentRate: data.lifetimeMetrics.intentRate || 0,
-        actionRate: data.lifetimeMetrics.actionRate || 0,
-        searches: data.lifetimeMetrics.totalSearches || 0,
-        unavailableItemTaps: data.lifetimeMetrics.totalUnavailableItemTaps || 0,
-        menuActionClicks: data.lifetimeMetrics.totalMenuActionClicks || 0,
-        zeroResultSearches: data.lifetimeMetrics.totalZeroResultSearches || 0,
-        smartPicksRendered: data.lifetimeMetrics.totalSmartPicksRendered || 0,
-        smartPicksClicks: data.lifetimeMetrics.totalSmartPicksClicks || 0,
-    };
+    return values.some((value) => normalizeAnalyticsCount(value) > 0);
 }
 
 function pushSection(sections: MenuAnalyticsDetailSection[], section: MenuAnalyticsDetailSection): void {
@@ -341,9 +586,10 @@ export function buildMenuAnalyticsDetailSections(
     data: OwnerMenuAnalyticsDetailData | null | undefined,
     t?: OwnerDashboardTranslator,
 ): MenuAnalyticsDetailSection[] {
-    if (!data) return [];
+    const projected = projectOwnerAnalyticsDetailData(data);
+    if (!projected) return [];
 
-    const metrics = getMetrics(data);
+    const metrics = projected.metrics;
     const sections: MenuAnalyticsDetailSection[] = [];
 
     pushSection(sections, {
@@ -356,7 +602,7 @@ export function buildMenuAnalyticsDetailSections(
         key: 'source-quality',
         title: dashboardLabel(t, 'details.sections.visitorSources', 'Visitor Sources'),
         description: dashboardLabel(t, 'details.descriptions.visitorSources', 'Sessions and final actions by entry source.'),
-        rows: buildSourceRows(data.sourceQuality, t),
+        rows: buildSourceRows(projected.sourceQuality, t),
     });
 
     pushSection(sections, {
@@ -364,66 +610,66 @@ export function buildMenuAnalyticsDetailSections(
         title: dashboardLabel(t, 'details.sections.campaignTracking', 'Campaign Tracking'),
         description: dashboardLabel(t, 'details.descriptions.campaignTracking', 'UTM traffic saved from links and QR placements.'),
         rows: [
-            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.source', 'Source'), data.utmSources, t),
-            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.medium', 'Medium'), data.utmMediums, t),
-            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.campaign', 'Campaign'), data.utmCampaigns, t),
-            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.content', 'Content'), data.utmContent, t),
+            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.source', 'Source'), projected.utmSources, t),
+            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.medium', 'Medium'), projected.utmMediums, t),
+            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.campaign', 'Campaign'), projected.utmCampaigns, t),
+            ...buildTrafficRows(dashboardLabel(t, 'details.traffic.content', 'Content'), projected.utmContent, t),
         ],
     });
 
     pushSection(sections, {
         key: 'top-items',
         title: dashboardLabel(t, 'details.sections.topItems', 'Top Items'),
-        rows: buildTopItemRows(data.topItems, t),
+        rows: buildTopItemRows(projected.topItems, t),
     });
 
     pushSection(sections, {
         key: 'categories',
         title: dashboardLabel(t, 'details.sections.categories', 'Categories'),
-        rows: buildCategoryRows(data.topCategories, t),
+        rows: buildCategoryRows(projected.topCategories, t),
     });
 
     pushSection(sections, {
         key: 'actions',
         title: dashboardLabel(t, 'details.sections.customerActions', 'Customer Actions'),
-        rows: buildActionRows(data.menuActions, t),
+        rows: buildActionRows(projected.menuActions, t),
     });
 
     pushSection(sections, {
         key: 'open-hours-actions',
         title: dashboardLabel(t, 'details.sections.openHoursActions', 'Actions by business hours'),
         description: dashboardLabel(t, 'details.descriptions.openHoursActions', 'Final customer actions grouped by whether the business was open, closed, or its hours status was unavailable when the customer visited.'),
-        rows: buildOpenHoursRows(data.openHoursActionBreakdown, t),
+        rows: buildOpenHoursRows(projected.openHoursActionBreakdown, t),
     });
 
     pushSection(sections, {
         key: 'search',
         title: dashboardLabel(t, 'details.sections.searchDemand', 'Search Demand'),
-        rows: buildSearchRows(metrics, data.topSearchTerms, data.topZeroResultSearchTerms, t),
+        rows: buildSearchRows(metrics, projected.topSearchTerms, projected.topZeroResultSearchTerms, t),
     });
 
     pushSection(sections, {
         key: 'unavailable',
         title: dashboardLabel(t, 'details.sections.unavailableInterest', 'Unavailable Interest'),
-        rows: buildTopItemRows(data.unavailableItems, t),
+        rows: buildTopItemRows(projected.unavailableItems, t),
     });
 
     pushSection(sections, {
         key: 'languages',
         title: dashboardLabel(t, 'details.sections.languages', 'Languages'),
-        rows: buildLanguageRows(data.topLanguages, t),
+        rows: buildLanguageRows(projected.topLanguages, t),
     });
 
     pushSection(sections, {
         key: 'filters',
         title: dashboardLabel(t, 'details.sections.filters', 'Filters'),
-        rows: buildFilterRows(data.topAttributeFilters, t),
+        rows: buildFilterRows(projected.topAttributeFilters, t),
     });
 
     pushSection(sections, {
         key: 'smart-picks',
         title: dashboardLabel(t, 'details.sections.smartPicks', 'Smart Picks'),
-        rows: buildSmartPickRows(data.blockPerformance, t),
+        rows: buildSmartPickRows(projected.blockPerformance, t),
     });
 
     return sections;

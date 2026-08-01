@@ -51,7 +51,7 @@ export function isBrandSafe(name: string): boolean {
         if (/[a-z][A-Z]/.test(word) && !/^[A-Z]/.test(word)) return true;
 
         // ALL CAPS words (3+ chars, likely intentional brand): KFC, BBQ, XL
-        if (/^[A-Z]{2,}$/.test(word) && words.length > 1) return true;
+        if (/^[A-Z]{2,}$/.test(word)) return true;
     }
 
     return false;

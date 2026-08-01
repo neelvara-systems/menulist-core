@@ -35,6 +35,7 @@ export function getTaxonomyCategories(businessCategory: string): TaxonomyCategor
 
     return raw.map(entry => ({
         ...entry,
+        aliases: [...entry.aliases],
         businessCategory,
     }));
 }
@@ -46,7 +47,7 @@ export function getAllTaxonomyCategories(): TaxonomyCategory[] {
     const all: TaxonomyCategory[] = [];
     for (const [businessCategory, entries] of Object.entries(categoriesMap)) {
         for (const entry of entries) {
-            all.push({ ...entry, businessCategory });
+            all.push({ ...entry, aliases: [...entry.aliases], businessCategory });
         }
     }
     return all;
@@ -58,7 +59,7 @@ export function getAllTaxonomyCategories(): TaxonomyCategory[] {
 export function getTaxonomyCategoryById(categoryId: string): TaxonomyCategory | undefined {
     for (const [businessCategory, entries] of Object.entries(categoriesMap)) {
         const found = entries.find(e => e.id === categoryId);
-        if (found) return { ...found, businessCategory };
+        if (found) return { ...found, aliases: [...found.aliases], businessCategory };
     }
     return undefined;
 }
@@ -73,14 +74,15 @@ const dietaryTags = dietaryTagsData as TaxonomyDietaryTag[];
  * Get all standard dietary tags.
  */
 export function getAllDietaryTags(): TaxonomyDietaryTag[] {
-    return dietaryTags;
+    return dietaryTags.map((tag) => ({ ...tag, aliases: [...tag.aliases] }));
 }
 
 /**
  * Look up a dietary tag by its ID.
  */
 export function getDietaryTagById(tagId: string): TaxonomyDietaryTag | undefined {
-    return dietaryTags.find(t => t.id === tagId);
+    const tag = dietaryTags.find(t => t.id === tagId);
+    return tag ? { ...tag, aliases: [...tag.aliases] } : undefined;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -93,27 +95,34 @@ const cuisines = cuisinesData as TaxonomyCuisine[];
  * Get all standard cuisine types.
  */
 export function getAllCuisines(): TaxonomyCuisine[] {
-    return cuisines;
+    return cuisines.map((cuisine) => ({ ...cuisine, aliases: [...cuisine.aliases] }));
 }
 
 /**
  * Look up a cuisine type by its ID.
  */
 export function getCuisineById(cuisineId: string): TaxonomyCuisine | undefined {
-    return cuisines.find(c => c.id === cuisineId);
+    const cuisine = cuisines.find(c => c.id === cuisineId);
+    return cuisine ? { ...cuisine, aliases: [...cuisine.aliases] } : undefined;
 }
 
 // ═══════════════════════════════════════════════════════════════
 // OFFERING TAG REGISTRY (SMB-Universal)
 // ═══════════════════════════════════════════════════════════════
 
-const offeringTags = (offeringTagsData as any).tags as OfferingTag[];
+const offeringTags = (offeringTagsData as { tags: OfferingTag[] }).tags;
+
+const cloneOfferingTag = (tag: OfferingTag): OfferingTag => ({
+    ...tag,
+    aliases: [...tag.aliases],
+    scope: [...tag.scope],
+});
 
 /**
  * Get all offering tags.
  */
 export function getAllOfferingTags(): OfferingTag[] {
-    return offeringTags;
+    return offeringTags.map(cloneOfferingTag);
 }
 
 /**
@@ -121,14 +130,15 @@ export function getAllOfferingTags(): OfferingTag[] {
  * Returns tags where scope includes the category OR scope is ['*'].
  */
 export function getOfferingTagsForCategory(businessCategory: string): OfferingTag[] {
-    return offeringTags.filter(t =>
-        t.scope.includes('*') || t.scope.includes(businessCategory)
-    );
+    return offeringTags
+        .filter(t => t.scope.includes('*') || t.scope.includes(businessCategory))
+        .map(cloneOfferingTag);
 }
 
 /**
  * Look up an offering tag by its ID.
  */
 export function getOfferingTagById(tagId: string): OfferingTag | undefined {
-    return offeringTags.find(t => t.id === tagId);
+    const tag = offeringTags.find(t => t.id === tagId);
+    return tag ? cloneOfferingTag(tag) : undefined;
 }

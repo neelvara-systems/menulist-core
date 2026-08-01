@@ -6,6 +6,7 @@ import {
     normalizeImageProviderOrientation,
     normalizeImageProviderPage,
     normalizeImageProviderQuery,
+    normalizeImageProviderResultUrl,
 } from "@lib/imageProviderRequests";
 import { axiosClient } from "../axios/axiosClient";
 
@@ -48,7 +49,65 @@ export const UNPLASH_IMAGE_SIZES = {
     SRC: 'full'
 }
 
-export const getUnsplashImagesBySearchQuery = (searchQuery: any, orientation = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE, page = 1) => {
+export interface UnsplashImageSearchResult {
+    images: Array<{ src: string; thumb: string }>;
+    total: number;
+    totalPages: number;
+}
+
+export const parseUnsplashImageSearchResponse = (value: unknown): UnsplashImageSearchResult | null => {
+    try {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        const payload = value as Record<string, unknown>;
+        if (
+            !Number.isSafeInteger(payload.total)
+            || (payload.total as number) < 0
+            || !Number.isSafeInteger(payload.total_pages)
+            || (payload.total_pages as number) < 0
+            || !Array.isArray(payload.results)
+            || payload.results.length > SEARCHED_IMAGES_COUNT_PER_REQUEST_UNSPLASH
+        ) return null;
+        const images = payload.results.map((item) => {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+            const source = (item as Record<string, unknown>).urls;
+            if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+            const urls = source as Record<string, unknown>;
+            const src = normalizeImageProviderResultUrl(urls.full, ['images.unsplash.com']);
+            const thumb = normalizeImageProviderResultUrl(urls.thumb, ['images.unsplash.com']);
+            return src && thumb ? { src, thumb } : null;
+        });
+        if (images.some((image) => image === null)) return null;
+        return {
+            total: payload.total as number,
+            totalPages: payload.total_pages as number,
+            images: images as UnsplashImageSearchResult['images'],
+        };
+    } catch {
+        return null;
+    }
+};
+
+export const parseUnsplashTrendingTopicsResponse = (value: unknown): string[] | null => {
+    try {
+        if (!Array.isArray(value)) return null;
+        const words = value.slice(0, 4).map((topic) => {
+            if (!topic || typeof topic !== 'object' || Array.isArray(topic)) return null;
+            const title = (topic as Record<string, unknown>).title;
+            if (typeof title !== 'string') return null;
+            const normalized = title.trim();
+            return normalized && normalized.length <= 80 ? normalized : null;
+        });
+        return words.some((word) => word === null) ? null : words as string[];
+    } catch {
+        return null;
+    }
+};
+
+export const getUnsplashImagesBySearchQuery = async (
+    searchQuery: unknown,
+    orientation: unknown = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE,
+    page: unknown = 1,
+): Promise<UnsplashImageSearchResult> => {
     const normalizedOrientation = normalizeImageProviderOrientation(orientation);
     const normalizedPage = normalizeImageProviderPage(page);
     const requestUrl = buildImageProviderUrl(SEARCH_API_URL, {
@@ -59,44 +118,38 @@ export const getUnsplashImagesBySearchQuery = (searchQuery: any, orientation = B
         query: normalizeImageProviderQuery(searchQuery),
     });
 
-    return new Promise((res, rej) => {
-        axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS })
-            .then((response) => {
-                const data = {
-                    total: response.data.total,
-                    totalPages: response.data.total_pages,
-                    images: response.data.results.map((i: any) => { return { src: i.urls.full, thumb: i.urls.thumb } })
-                }
-                res(data);
-            }).catch(function (error) {
-                logImageProviderFailure('image_provider_unsplash_search_failed', error, getImageProviderRequestLogContext({
-                    operation: 'search',
-                    orientation: normalizedOrientation,
-                    page: normalizedPage,
-                    provider: 'unsplash',
-                    query: searchQuery,
-                }));
-                rej('Error while fetching images');
-            });
-    })
+    try {
+        const response = await axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS });
+        const parsed = parseUnsplashImageSearchResponse(response.data);
+        if (!parsed) throw new Error('IMAGE_PROVIDER_RESPONSE_INVALID');
+        return parsed;
+    } catch (error) {
+        logImageProviderFailure('image_provider_unsplash_search_failed', error, getImageProviderRequestLogContext({
+            operation: 'search',
+            orientation: normalizedOrientation,
+            page: normalizedPage,
+            provider: 'unsplash',
+            query: searchQuery,
+        }));
+        throw new Error('Error while fetching images');
+    }
 }
 
-export const getTrendingWords = () => {
+export const getTrendingWords = async (): Promise<string[]> => {
     const requestUrl = buildImageProviderUrl(TOPICS_API_URL, {
         client_id: process.env.NEXT_PUBLIC_UNSPLASH_API_CLIENTID || '',
     });
 
-    return new Promise((res, rej) => {
-        axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS })
-            .then((response) => {
-                const words = response.data.slice(0, 4).map((topic: any) => topic.title);
-                res(words);
-            }).catch(function (error) {
-                logImageProviderFailure('image_provider_unsplash_topics_failed', error, getImageProviderRequestLogContext({
-                    operation: 'topics',
-                    provider: 'unsplash',
-                }));
-                rej('Error while fetching image topics');
-            });
-    })
+    try {
+        const response = await axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS });
+        const words = parseUnsplashTrendingTopicsResponse(response.data);
+        if (!words) throw new Error('IMAGE_PROVIDER_RESPONSE_INVALID');
+        return words;
+    } catch (error) {
+        logImageProviderFailure('image_provider_unsplash_topics_failed', error, getImageProviderRequestLogContext({
+            operation: 'topics',
+            provider: 'unsplash',
+        }));
+        throw new Error('Error while fetching image topics');
+    }
 }

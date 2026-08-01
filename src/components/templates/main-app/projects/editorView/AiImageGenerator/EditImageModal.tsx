@@ -2,6 +2,7 @@ import ImageUploadInput from '@atoms/imageUploadInput';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
 import { createUppercaseRandomIdSegment } from '@lib/runtime/randomId';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
@@ -32,7 +33,7 @@ interface EditImageModalProps {
     onClose: () => void;
     imageData: UserUploadedFileType | null;
     selectedItem: ItemForDropdown | null;
-    onUploadGeneratedImage: (images: UserUploadedFileType[]) => void;
+    onUploadGeneratedImage: (images: UserUploadedFileType[]) => Promise<void>;
 }
 
 const EditImageModal: React.FC<EditImageModalProps> = ({
@@ -66,8 +67,11 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
     const [sourceImage, setSourceImage] = useState<UserUploadedFileType | null>(imageData);
     const [selectedForUpload, setSelectedForUpload] = useState<string[]>([]);
     const [uploadSuccess, setUploadSuccess] = useState(false);
-    const fileInputRef = useRef(null);
-    const [selectedPromptImage, setSelectedPromptImage] = useState<UserUploadedFileType>({ name: "", size: 0, type: "", url: null })
+    const [isUploading, setIsUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const uploadInFlightRef = useRef(false);
+    const successCloseTimerRef = useRef<number | null>(null);
+    const [selectedPromptImage, setSelectedPromptImage] = useState<UserUploadedFileType | null>(null);
 
     useEffect(() => {
         if (open && imageData) {
@@ -84,6 +88,16 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
             setUploadSuccess(false);
         }
     }, [open, imageData]);
+
+    useEffect(() => () => {
+        if (successCloseTimerRef.current !== null) {
+            window.clearTimeout(successCloseTimerRef.current);
+        }
+    }, []);
+
+    const closeWhenIdle = () => {
+        if (!uploadInFlightRef.current) onClose();
+    };
 
     const handleSelectSource = (image: UserUploadedFileType) => {
         setSourceImage(image);
@@ -144,9 +158,10 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
 
             const uniqueId = createUppercaseRandomIdSegment(6);
 
+            const newEditedImageUid = `edited-${uniqueId}-${sourceImage.uid?.substring(0, 4) || "image"}`;
             const newEditedImage: UserUploadedFileType = {
                 ...sourceImage,
-                uid: `edited-${uniqueId}-${sourceImage?.uid?.substring(0, 4)}`,
+                uid: newEditedImageUid,
                 url: editedImages[0].base64,
                 type: editedImages[0].mimeType,
                 name: `edited-${uniqueId}`,
@@ -156,7 +171,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
             setGeneratedImages(updatedEdits);
             handleSelectThumbnail(updatedEdits.length - 1, updatedEdits);
             // Auto-select new image for upload (UX-18)
-            setSelectedForUpload(prev => [...prev, newEditedImage.uid]);
+            setSelectedForUpload(prev => [...prev, newEditedImageUid]);
             setPrompt('');
             setSelectedFeature(platformfeaturesList[platformfeaturesList.length - 1]);
             message.success("Edit preview generated! ✅ Selected for upload.");
@@ -172,20 +187,37 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
         }
     };
 
-    const handleUploadEditedImage = () => {
+    const handleUploadEditedImage = async () => {
+        if (uploadInFlightRef.current) return;
         if (selectedForUpload.length === 0) {
             message.error("Please select at least one image to upload.");
             return;
         }
-        const imagesToUpload = generatedImages.filter(img => selectedForUpload.includes(img.uid));
-        if (imagesToUpload.length > 0) {
-            onUploadGeneratedImage(imagesToUpload);
-            // NEW-1: Show success state briefly before closing
+        const imagesToUpload = generatedImages.filter(
+            (img) => Boolean(img.uid && selectedForUpload.includes(img.uid)),
+        );
+        if (imagesToUpload.length === 0) return;
+
+        uploadInFlightRef.current = true;
+        setIsUploading(true);
+        try {
+            await onUploadGeneratedImage(imagesToUpload);
             setUploadSuccess(true);
-            setTimeout(() => {
+            successCloseTimerRef.current = window.setTimeout(() => {
+                successCloseTimerRef.current = null;
                 setUploadSuccess(false);
                 onClose();
             }, 800);
+        } catch (error) {
+            logRuntimeFailure('menu_editor_edited_image_upload_failed', error, {
+                ...getBoundedRuntimeStringContext('itemId', selectedItem?.id),
+                ...getBoundedRuntimeStringContext('projectId', activeProject?.projectId),
+                selectedImageCount: imagesToUpload.length,
+            });
+            message.error('Could not save edited image. Please try again.');
+        } finally {
+            uploadInFlightRef.current = false;
+            setIsUploading(false);
         }
     };
 
@@ -256,15 +288,16 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
 
     const footerActions = (
         <Flex gap={12} style={{ width: '100%' }}>
-            <Button block disabled={uploadSuccess} onClick={onClose}>
+            <Button block disabled={uploadSuccess || isUploading} onClick={closeWhenIdle}>
                 Cancel
             </Button>
             {generatedImages.length > 0 ? (
                 <Button
                     block
                     icon={uploadSuccess ? <LuCheckCircle style={{ color: token.colorSuccess }} /> : <LuUploadCloud />}
-                    onClick={handleUploadEditedImage}
-                    disabled={selectedForUpload.length === 0 || uploadSuccess}
+                    onClick={() => { void handleUploadEditedImage(); }}
+                    disabled={selectedForUpload.length === 0 || uploadSuccess || isUploading}
+                    loading={isUploading}
                     style={{
                         borderColor: selectedForUpload.length > 0 ? token.colorSuccess : undefined,
                         color: selectedForUpload.length > 0 ? token.colorSuccess : undefined,
@@ -273,7 +306,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                     {uploadSuccess ? 'Done' : `Upload ${selectedForUpload.length > 0 ? `${selectedForUpload.length} Image${selectedForUpload.length > 1 ? 's' : ''}` : 'Selected'}`}
                 </Button>
             ) : null}
-            <Button block type="primary" icon={<LuSparkles />} onClick={generateNewImageClick} disabled={uploadSuccess}>
+            <Button block type="primary" icon={<LuSparkles />} onClick={generateNewImageClick} disabled={uploadSuccess || isUploading}>
                 {selectedFeature?.userPrompt === 'required' ? 'Apply Edit' : 'Enhance Now'}
             </Button>
         </Flex>
@@ -291,7 +324,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                             onClick={() => setSelectedForUpload(
                                 selectedForUpload.length === generatedImages.length
                                     ? []
-                                    : generatedImages.map(img => img.uid)
+                                    : generatedImages.flatMap((img) => img.uid ? [img.uid] : [])
                             )}
                         >
                             {selectedForUpload.length === generatedImages.length ? 'Deselect All' : 'Select All'}
@@ -300,7 +333,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                     <Flex wrap gap="small" justify='center' align='center' style={{ maxHeight: '120px', overflowY: 'auto', paddingBottom: '10px' }}>
                         {generatedImages.map((edit, index) => {
                             const isSelectedPreview = index === selectedPreviewIndex;
-                            const isSelectedForUpload = selectedForUpload.includes(edit.uid);
+                            const isSelectedForUpload = Boolean(edit.uid && selectedForUpload.includes(edit.uid));
                             return (
                                 <Tooltip key={edit.uid} title="Click image to preview • Click ✓ to select for upload" placement="bottom">
                                     <div style={{ position: 'relative' }}>
@@ -348,7 +381,10 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                                                 boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                                                 border: `2px solid ${isSelectedForUpload ? token.colorSuccess : token.colorBorder}`,
                                             }}
-                                            onClick={(e) => { e.stopPropagation(); toggleImageSelection(edit.uid); }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (edit.uid) toggleImageSelection(edit.uid);
+                                            }}
                                         >
                                             <LuCheckCircle
                                                 style={{
@@ -478,7 +514,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                             }}
                         />
                     ) : (
-                        <Button size='large' type='text' style={{ height: 45, width: 45, marginLeft: 3, fontSize: 24 }} icon={<LuImagePlus />} onClick={() => fileInputRef.current.click()} />
+                        <Button size='large' type='text' style={{ height: 45, width: 45, marginLeft: 3, fontSize: 24 }} icon={<LuImagePlus />} onClick={() => fileInputRef.current?.click()} />
                     )}
                 </Flex>}
                 <Input.TextArea
@@ -499,11 +535,11 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                 <Popup
                     bodyStyle={{ minHeight: '72vh', maxHeight: '92vh', overflowX: 'hidden', padding: 0 }}
                     destroyOnClose
-                    onMaskClick={onClose}
+                    onMaskClick={isUploading ? undefined : closeWhenIdle}
                     visible={open}
                 >
                     <Flex style={{ height: '100%' }} vertical>
-                        <NavBar onBack={onClose}>
+                        <NavBar onBack={closeWhenIdle}>
                             {selectedItem?.itemName ? `Edit ${selectedItem.itemName}` : 'Edit Image'}
                         </NavBar>
                         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 12px 16px' }}>
@@ -529,7 +565,7 @@ const EditImageModal: React.FC<EditImageModalProps> = ({
                         </Flex>
                     }
                     open={open}
-                    onCancel={onClose}
+                    onCancel={isUploading ? undefined : closeWhenIdle}
                     destroyOnHidden
                     maskClosable={false}
                     footer={footerActions}

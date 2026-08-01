@@ -247,7 +247,15 @@ export const normalizeAnswerlatticeFeedbackRecord = (
     const role = normalizeBoundedOptionalText(value.role, 80);
     const modifiedBy = normalizeBoundedOptionalText(value.modifiedBy, 200);
     const createdBy = normalizeBoundedOptionalText(value.createdBy, 200);
-    if ([contextKey, surfaceId, surfaceLabel, surfaceAssignedBy, traceId, requestId, role, modifiedBy, createdBy].includes(null)) {
+    if (contextKey === null
+        || surfaceId === null
+        || surfaceLabel === null
+        || surfaceAssignedBy === null
+        || traceId === null
+        || requestId === null
+        || role === null
+        || modifiedBy === null
+        || createdBy === null) {
         return null;
     }
     if (value.surfaceAssignedAt !== undefined

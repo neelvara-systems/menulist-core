@@ -73,6 +73,14 @@ July 1 store-permission target hardening is Firebase-cost neutral. `src/lib/perm
 
 July 6 store permission scope document-ID boundary is Firebase-cost neutral. `normalizeStorePermissionScopeDocumentId()` rejects malformed, reserved, empty, whitespace-mutated, path-shaped, decimal, zero, negative, unsafe, or nonnumeric session and explicit tenant/store scope IDs before the shared `stores/{storeId}` permission read. Valid permission checks keep the same one store read, tenant ownership comparison, blocked-store rejection, role resolution, owner/staff permission behavior, route-specific writes/provider calls, and Firestore read/write counts. This changes app-side permission-scope admission only and adds no Firestore rules/indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
 
+July 29 current-platform permission authority adds one exact
+`users/{sessionUserId}` Admin read whenever a signed platform session requests
+the shared store-role override. That read verifies current identity, email,
+lifecycle, revocation and platform role before tenant/store operations; revoked
+or stale platform sessions fail closed. Ordinary owner/staff permission checks
+retain their existing read counts. The change adds no writes, indexes, rules,
+Cloud Functions or deployment requirement.
+
 July 28 exact permission-alias admission is also Firebase-cost neutral. All three shared permission overloads now reconcile root/nested session aliases before authority, reconcile every present persisted store tenant alias, and verify optional embedded store aliases against the selected document. Staff-management authority uses the same exact session projection. Conflicting or malformed present compatibility state stops before existing permission/store/role reads or mutations; valid-path read/write counts, rules, indexes, Functions, caches and provider behavior are unchanged.
 
 July 1 staff/role target-store hardening adds no writes, deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action. Staff create/update mapping validation and role create/update/deactivate use existing store reads to reject inactive, soft-deleted, or platform-blocked stores before assignment or `roles[]` writes. Staff list now performs the target-store eligibility read before user enumeration; for master users this can add one target-store document read to a rare staff-list request.

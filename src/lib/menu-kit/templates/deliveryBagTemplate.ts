@@ -14,6 +14,7 @@
 import QRCode from 'qrcode';
 import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
+import { truncateCanvasText } from '../canvasPrimitives';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution } from '../platformAttribution';
 import { MenuKitInput } from '../types';
@@ -89,20 +90,13 @@ export async function generateDeliveryBagSticker(input: DeliveryInput): Promise<
     ctx.fillStyle = brand.text;
     ctx.textBaseline = 'middle';
 
-    // Truncate long names
-    let displayName = storeName;
-    while (ctx.measureText(displayName).width > SIZE - 60 && displayName.length > 3) {
-        displayName = displayName.slice(0, -1);
-    }
-    if (displayName !== storeName) displayName += '\u2026';
-
-    ctx.fillText(displayName, SIZE / 2, storeNameY);
+    ctx.fillText(truncateCanvasText(ctx, storeName, SIZE - 60), SIZE / 2, storeNameY);
 
     // Short link fallback — tiny, bottom
     if (shortLink) {
         ctx.font = '18px system-ui, -apple-system, sans-serif';
         ctx.fillStyle = brand.muted;
-        ctx.fillText(shortLink, SIZE / 2, SIZE - 38);
+        ctx.fillText(truncateCanvasText(ctx, shortLink, SIZE - 60), SIZE / 2, SIZE - 38);
     }
 
     drawMenuListAttribution(ctx, {

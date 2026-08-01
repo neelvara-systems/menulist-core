@@ -258,7 +258,13 @@ GBP conflict resolution, external surface sync, and cross-platform truth governa
 | `ENABLE_OUTPUT_CONTROL`         | Confidence-gated rendering              | `false` |
 | `ENABLE_FIELD_CONFIDENCE`       | Per-field confidence states             | `false` |
 | `ENABLE_HOURS_INTEGRITY`        | Extended hours validation in MCE        | `false` |
-| `ENABLE_NAMING_STANDARDIZATION` | Capitalization/formatting normalization | `false` |
+| `ENABLE_NAMING_STANDARDIZATION` | Compatibility helper enabled; no active runtime consumer | `true` |
+
+`ENABLE_NAMING_STANDARDIZATION` currently exposes the shared normalization
+contract only. Repository runtime searches show no persistence, extraction, or
+public-rendering caller, so turning the flag on does not silently rewrite menu
+truth. Any future integration requires its own data-contract and regression
+review.
 
 ---
 

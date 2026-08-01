@@ -25,6 +25,7 @@ const staff = read('src/lib/staffManagement/server.ts');
 includes(authClient, 'await signOutFirebaseAuth()', 'Firebase sign-out attempt');
 includes(authClient, 'const nextAuthResult = await signOut({', 'independent NextAuth sign-out attempt');
 includes(authClient, 'clearAuthenticatedBrowserState();', 'post-NextAuth browser cleanup');
+includes(cleanup, 'clearClientSessionCache();', 'logout raw session cache cleanup');
 assert(
   authClient.indexOf('const nextAuthResult = await signOut({') > authClient.indexOf('await signOutFirebaseAuth()'),
   'NextAuth sign-out must still be attempted after Firebase sign-out',

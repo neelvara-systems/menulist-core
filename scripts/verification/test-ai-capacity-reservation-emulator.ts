@@ -6,7 +6,9 @@ import { DB_COLLECTIONS } from '../../src/constants/database';
 import { recoverAiCapacityReservationsInCollectionRef } from '../../functions/src/schedulers/aiCapacityReservationRecovery';
 import { finalizeAiOperationAccounting } from '../../src/lib/ai/accounting';
 import {
+    checkAICapacity,
     consumeAICapacity,
+    hasCurrentAiCapacitySubscriptionEntitlement,
     refundDurableAiCapacityReservationByIdSafely,
     refundAiCapacityReservation,
     reserveAiCapacity,
@@ -14,6 +16,7 @@ import {
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '../../src/types/razorpay';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { Timestamp as ClientTimestamp } from 'firebase/firestore';
 
 const tId = 71;
 const sId = 72;
@@ -32,6 +35,7 @@ const inheritedOutletOperationCollection = firestoreAdmin
 
 function subscription(): FirestoreSubscriptionDoc {
     return {
+        cycleEndDate: ClientTimestamp.fromMillis(Date.now() + 86_400_000),
         id: subscriptionId,
         monthlyCredits: 12,
         monthlyCreditsAllowance: 12,
@@ -39,6 +43,7 @@ function subscription(): FirestoreSubscriptionDoc {
         productId: 'ML',
         sId,
         storeId: sId,
+        status: 'active',
         tId,
         tenantId: tId,
         topUpCredits: 0,
@@ -47,6 +52,7 @@ function subscription(): FirestoreSubscriptionDoc {
 
 async function resetSubscription(monthlyCredits = 12, topUpCredits = 0): Promise<void> {
     await subscriptionRef.set({
+        cycleEndDate: Timestamp.fromMillis(Date.now() + 86_400_000),
         cycleStartDate: null,
         monthlyCredits,
         monthlyCreditsAllowance: 12,
@@ -54,6 +60,7 @@ async function resetSubscription(monthlyCredits = 12, topUpCredits = 0): Promise
         productId: 'ML',
         sId,
         storeId: sId,
+        status: 'active',
         tId,
         tenantId: tId,
         topUpCredits,
@@ -79,6 +86,72 @@ async function deleteOperation(id: string): Promise<void> {
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
+
+    const entitlementNow = Date.now();
+    const entitlementBase = subscription();
+    assert.equal(
+        hasCurrentAiCapacitySubscriptionEntitlement({
+            ...entitlementBase,
+            status: 'active',
+            cycleEndDate: ClientTimestamp.fromMillis(entitlementNow + 60_000),
+        }, entitlementNow),
+        true,
+        'a current active subscription may fund MenuList AI work',
+    );
+    assert.equal(
+        hasCurrentAiCapacitySubscriptionEntitlement({
+            ...entitlementBase,
+            status: 'pending',
+            cycleEndDate: ClientTimestamp.fromMillis(entitlementNow + 60_000),
+        }, entitlementNow),
+        false,
+        'a pending subscription with credits must not fund MenuList AI work',
+    );
+    assert.equal(
+        hasCurrentAiCapacitySubscriptionEntitlement({
+            ...entitlementBase,
+            status: 'paused',
+            cycleEndDate: ClientTimestamp.fromMillis(entitlementNow - 1),
+        }, entitlementNow),
+        false,
+        'a stale paused subscription with credits must not fund MenuList AI work',
+    );
+    assert.equal(
+        hasCurrentAiCapacitySubscriptionEntitlement({
+            ...entitlementBase,
+            status: 'past_due',
+            cycleEndDate: ClientTimestamp.fromMillis(entitlementNow - 60_000),
+            pastDueSinceAt: ClientTimestamp.fromMillis(entitlementNow - 86_400_000),
+        }, entitlementNow),
+        true,
+        'a past-due subscription inside a known grace period may fund MenuList AI work',
+    );
+    assert.equal(
+        hasCurrentAiCapacitySubscriptionEntitlement({
+            ...entitlementBase,
+            status: 'past_due',
+            cycleEndDate: ClientTimestamp.fromMillis(entitlementNow - 60_000),
+            pastDueSinceAt: null,
+        }, entitlementNow),
+        false,
+        'a past-due subscription without a grace marker must fail closed',
+    );
+    const pendingCapacity = await checkAICapacity(tId, sId, action, 1, {
+        ...entitlementBase,
+        status: 'pending',
+    });
+    assert.equal(pendingCapacity.allowed, false);
+    assert.equal(pendingCapacity.reason, 'no_subscription');
+
+    await resetSubscription();
+    await subscriptionRef.update({ status: 'pending' });
+    await assert.rejects(
+        reserve('reservation-status-race', 1),
+        /entitlement is not current/,
+        'transaction-current subscription lifecycle must block a stale pre-provider admission',
+    );
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 12);
+    assert.equal((await operationCollection.doc('reservation-status-race').get()).exists, false);
 
     await resetSubscription();
     await subscriptionRef.set({ pId: 'CC', productId: 'CC' }, { merge: true });

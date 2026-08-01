@@ -10,6 +10,8 @@
 | Ordinary route crash | no Cache Storage deletion |
 | Monitoring configured and event ID returned | `Report sent` plus ID |
 | Monitoring absent or capture unacknowledged | support details ready; no sent/queued claim |
+| Failure page URL contains query, fragment, credentials, or an external referrer path | report retains same-origin origin/path or external origin only; credentials and non-HTTP values are omitted |
+| Error digest/name is exposed through a throwing accessor or malformed Proxy | accessor is not invoked; diagnostic preparation remains available |
 | Bare email/bearer token in captured console text | redacted |
 | Logged object contains getter, `toJSON`, conversion hook or malformed Proxy | hook is not executed; logging remains bounded and does not throw |
 | Unhandled rejection contains arbitrary object | only type/presence retained |

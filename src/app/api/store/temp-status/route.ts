@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/currentPlatformUser";
 import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { admin } from "@lib/firebase/firebaseAdmin";
@@ -79,14 +80,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const { tId: rawTenantId, sId: rawStoreId } = session;
-    const rawUserId = session.uId || session.user?.id;
     const tenantId = normalizeSessionDocumentId(rawTenantId);
     const storeId = normalizeSessionDocumentId(rawStoreId);
-    const userId = normalizeSessionDocumentId(rawUserId);
+    const userId = normalizeSessionDocumentId(resolveCurrentSessionUserDocumentId(session));
     const sessionScope = resolveStorePermissionSessionScope(session);
     if (
         !tenantId
         || !storeId
+        || !userId
         || !sessionScope
         || sessionScope.tenantScope.documentId !== tenantId
         || sessionScope.storeScope.documentId !== storeId
@@ -95,7 +96,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
-    const userRateLimitHash = hashPublicRateLimitValue(userId || 'unknown');
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
     const storeRateLimitHash = hashPublicRateLimitValue(storeId);
     const rateLimitResult = await checkRateLimit({
         key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`,
@@ -136,7 +137,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantId);
 
     try {
-        let storeUpdate: Record<string, unknown>;
+        let storeUpdate: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData>;
         if (validation.data.action === 'set') {
             const { type, message, expiresAt } = validation.data;
 
@@ -156,7 +157,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     message: finalMessage,
                     expiresAt,
                     createdAt: new Date().toISOString(),
-                    createdBy: userId || null,
+                    createdBy: userId,
                 },
             };
         } else {
@@ -185,7 +186,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 throw new TempStatusScopeChangedError();
             }
 
-            const freshPermissionError = requireAnyStorePermissionForStoreData(
+            const freshPermissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 freshStore,
@@ -236,7 +237,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         logRuntimeFailure("store_temp_status_update_failed", error, {
             ...getBoundedRuntimeStringContext("tenantId", tenantId),
             ...getBoundedRuntimeStringContext("storeId", storeId),
-            ...getBoundedRuntimeStringContext("userId", userId || session.user?.id),
+            ...getBoundedRuntimeStringContext("userId", userId),
             action: validation.data.action,
             statusType: validation.data.action === "set" ? validation.data.type : undefined,
             messagePresent: validation.data.action === "set" ? Boolean(validation.data.message) : undefined,

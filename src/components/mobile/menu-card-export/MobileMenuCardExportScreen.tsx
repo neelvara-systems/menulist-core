@@ -71,7 +71,7 @@ export default function MobileMenuCardExportScreen({ initialProjectId, onBack }:
     const [isProjectSheetOpen, setIsProjectSheetOpen] = useState(false);
     const notify = useCallback(notifyMobile, []);
     const shouldUseMobileProjectState = !mobileProjectsLoading || projectsList.length > 0;
-    const resolvedInitialProjectId = initialProjectId || mobileSelectedProjectId || searchParams.get('projectId');
+    const resolvedInitialProjectId = initialProjectId || mobileSelectedProjectId || searchParams?.get('projectId');
     const handleBack = onBack || (() => router.back());
     const {
         adviceError,

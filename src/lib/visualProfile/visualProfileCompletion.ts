@@ -54,8 +54,43 @@ const OFFERING_PHOTO_LABEL_BY_CATEGORY: Record<string, string> = {
     retail: 'Product photo',
 };
 
-function hasValue(value?: string | null): boolean {
+function hasValue(value: unknown): value is string {
     return typeof value === 'string' && value.trim().length > 0;
+}
+
+function asOptionalText(value: unknown): string | null | undefined {
+    if (typeof value === 'string') return value;
+    if (value === null) return null;
+    return undefined;
+}
+
+function readOwnDataField(value: unknown, key: string): unknown {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function snapshotArray(value: unknown, maxItems: number): unknown[] | null {
+    if (!Array.isArray(value)) return null;
+    try {
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+        const length = lengthDescriptor && 'value' in lengthDescriptor
+            ? lengthDescriptor.value
+            : undefined;
+        if (!Number.isSafeInteger(length) || length < 0 || length > maxItems) return null;
+        const output: unknown[] = [];
+        for (let index = 0; index < length; index += 1) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+            output.push(descriptor && 'value' in descriptor ? descriptor.value : undefined);
+        }
+        return output;
+    } catch {
+        return null;
+    }
 }
 
 function pluralizePhoto(count: number): string {
@@ -67,17 +102,21 @@ function getOfferingPhotoLabel(category: string): string {
 }
 
 export function buildVisualProfileCompletion(input: VisualProfileCompletionInput): VisualProfileCompletionResult {
+    const businessType = readOwnDataField(input, 'businessType');
+    const businessCategory = readOwnDataField(input, 'businessCategory');
     const category = resolveBusinessCategoryOrFallback(
-        input.businessType || undefined,
-        input.businessCategory || undefined,
+        typeof businessType === 'string' ? businessType : undefined,
+        typeof businessCategory === 'string' ? businessCategory : undefined,
     );
     const requiredPhotoCount = REQUIRED_GALLERY_PHOTOS_BY_CATEGORY[category] || REQUIRED_GALLERY_PHOTOS_BY_CATEGORY.specialty;
+    const photos = snapshotArray(readOwnDataField(input, 'photos'), 64) || [];
     const photoCount = new Set(
-        (input.photos || [])
+        photos
             .filter(hasValue)
-            .map((photo) => photo!.trim()),
+            .map((photo) => photo.trim()),
     ).size;
-    const hasBusinessCover = hasValue(input.businessCover);
+    const businessCover = readOwnDataField(input, 'businessCover');
+    const hasBusinessCover = hasValue(asOptionalText(businessCover));
     const tasks: VisualProfileCompletionTask[] = [
         {
             detail: hasBusinessCover
@@ -97,14 +136,20 @@ export function buildVisualProfileCompletion(input: VisualProfileCompletionInput
         },
     ];
 
-    const hasProjectCoverage = Array.isArray(input.projects);
+    const projectsValue = readOwnDataField(input, 'projects');
+    const projects = snapshotArray(projectsValue, 1_000);
+    const hasProjectCoverage = projects !== null;
     if (hasProjectCoverage) {
-        const hasOfferingPhoto = input.projects.some((project) => (
-            project?.active !== false
-            && project?.deleted !== true
-            && project?.isSpecialMenu !== true
-            && hasValue(project?.projectImage)
-        ));
+        const hasOfferingPhoto = projects.some((project) => {
+            const active = readOwnDataField(project, 'active');
+            const deleted = readOwnDataField(project, 'deleted');
+            const isSpecialMenu = readOwnDataField(project, 'isSpecialMenu');
+            const projectImage = readOwnDataField(project, 'projectImage');
+            return active !== false
+                && deleted !== true
+                && isSpecialMenu !== true
+                && hasValue(asOptionalText(projectImage));
+        });
 
         tasks.push({
             detail: hasOfferingPhoto

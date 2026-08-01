@@ -47,7 +47,7 @@ export interface UseMenuListData {
     projectId: string | null;
     projectName: string | null;
     isDefaultProject: boolean;
-    menuModifiedOn: any;
+    menuModifiedOn: unknown;
 
     // Multi-project support
     allProjects: ProjectLink[];

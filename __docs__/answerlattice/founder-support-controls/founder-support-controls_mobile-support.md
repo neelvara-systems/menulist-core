@@ -32,7 +32,23 @@ Widget security uses the responsive Access & Security panel with 44px create, ro
   release-context link opens the existing responsive release-check modal with
   the exact loaded release selected.
 - Proposal impact opens as a responsive modal. Summary counts stack on narrow screens, current/proposed outcomes render as separate labelled panels, long answer previews wrap, and every close/check/publish action remains at least 44px high.
+- Release impact direct-link evidence wraps into count tags and a vertical list
+  of unmapped changed entities. It always states that direct links are not a
+  complete article, FAQ, workflow, surface, factual, or resolution audit.
 - The preview explicitly labels missing linked tests and advisory proof; color is never the only regression or improvement signal.
+- Trust Metrics does not load Answer Trace automatically. The owner uses one
+  44px **Load review traces** action, then opens a full-height responsive
+  drawer with wrapping question/answer text, labelled review signals, safe
+  citation links, and 44px navigation actions.
+- Long questions, answers, governed IDs, citation titles, and unmapped release
+  entity IDs wrap instead of widening the mobile drawer or modal.
+- Escalated widget tickets expose the same drawer from the existing Knowledge
+  Loop card. Support staff see governed IDs and Support Board navigation
+  without receiving unauthorized governance actions.
+- Switching workspace or ticket clears the drawer and invalidates any
+  in-flight trace request before another mobile owner context can render it.
+- A rapid repeat tap cannot start a duplicate trace read, and an unavailable
+  request stops after the shared 15-second browser timeout.
 - Known Issues render as status cards with primary status action, expiry, affected context, and resolve confirmation.
 - Private keys are shown once in a copyable code area that wraps safely; the screen warns before dismissal.
 - Evidence links open externally with `noopener,noreferrer`.

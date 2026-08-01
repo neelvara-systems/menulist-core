@@ -272,19 +272,19 @@ export default function AnswerlatticeSupportBoard() {
         || access?.permissions?.[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE] === true;
 
     useEffect(() => {
-        if (preparedCardHandledRef.current || searchParams.get('create') !== '1') return;
-        const title = String(searchParams.get('title') || '').trim().slice(0, 140);
+        if (preparedCardHandledRef.current || searchParams?.get('create') !== '1') return;
+        const title = String(searchParams?.get('title') || '').trim().slice(0, 140);
         if (!title) return;
         preparedCardHandledRef.current = true;
-        const priority = searchParams.get('priority');
+        const priority = searchParams?.get('priority');
         createForm.setFieldsValue({
             title,
-            description: String(searchParams.get('description') || '').trim().slice(0, 1200),
+            description: String(searchParams?.get('description') || '').trim().slice(0, 1200),
             priority: priority === ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.HIGH || priority === ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.LOW
                 ? priority
                 : ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.MEDIUM,
             status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_TRIAGE,
-            tags: String(searchParams.get('tags') || '').split(',').map(value => value.trim()).filter(Boolean).slice(0, 8).join(', '),
+            tags: String(searchParams?.get('tags') || '').split(',').map(value => value.trim()).filter(Boolean).slice(0, 8).join(', '),
         });
         setCreateOpen(true);
         router.replace(toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.SUPPORT_BOARD, currentHostname));
@@ -315,7 +315,7 @@ export default function AnswerlatticeSupportBoard() {
         syncSignals,
         syncTickets,
         updateCard,
-    } = useSupportBoard(session?.tId, session?.sId, actor);
+    } = useSupportBoard(session?.tId ?? undefined, session?.sId ?? undefined, actor);
 
     const groupedCards = useMemo(() => (
         BOARD_COLUMNS.reduce((acc, column) => {

@@ -168,8 +168,9 @@ export function getImagePrompts(inputJson: GenerateImageViaApiPayloadType, model
         }
 
         concludingSentence = `The final image should strongly reflect the content and composition of the reference image, interpreted through the lens of the specified ${styleCategory.toLowerCase()} aesthetic, styles, mood, and other details. Aim for high quality.`;
-        if (config.selectedImageTypes?.length > 0) {
-            for (const typeName of config.selectedImageTypes) {
+        const selectedImageTypes = config.selectedImageTypes ?? [];
+        if (selectedImageTypes.length > 0) {
+            for (const typeName of selectedImageTypes) {
                 const businessInfo = IMAGE_VIEW_TYPES.find((businessInfo) => businessInfo.businessType === businessType);
                 const imageTypeDefinition = businessInfo?.imageTypes.find((imgType) => imgType.type === typeName);
 
@@ -248,8 +249,9 @@ export function getImagePrompts(inputJson: GenerateImageViaApiPayloadType, model
         }
 
         concludingSentence = `Emphasize the key characteristics of the ${itemName.toLowerCase()} according to the specified styles, mood, and overall ${styleCategory.toLowerCase()} aesthetic. Aim for high quality and detail appropriate for the chosen composition and background.`;
-        if (config.selectedImageTypes?.length > 0) {
-            for (const typeName of config.selectedImageTypes) {
+        const selectedImageTypes = config.selectedImageTypes ?? [];
+        if (selectedImageTypes.length > 0) {
+            for (const typeName of selectedImageTypes) {
                 const businessInfo = IMAGE_VIEW_TYPES.find((businessInfo) => businessInfo.businessType === businessType);
                 const imageTypeDefinition = businessInfo?.imageTypes.find((imgType) => imgType.type === typeName);
 

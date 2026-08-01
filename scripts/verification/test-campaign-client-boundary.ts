@@ -171,6 +171,14 @@ assert.equal(projectCampaignRecord({
     sId: 11,
     tId: 1,
 }), null, 'duplicate persisted surfaces must fail closed');
+assert.equal(projectCampaignRecord({
+    ...persistedCampaign,
+    suggestedFor: '2026-02-30',
+}, {
+    campaignId: 'campaign_1',
+    sId: 11,
+    tId: 1,
+}), null, 'impossible persisted campaign dates must fail closed');
 
 const persistedExport = {
     campaignId: 'campaign_1',
@@ -235,6 +243,33 @@ assert.equal(projectStaffPrompt({
     text: 'Most people take the Masala Dosa.',
     validatedOnSurfaces: ['decision_blocks'],
 }), undefined);
+assert.equal(projectStaffPrompt({
+    confidence: 0.9,
+    eligible: true,
+    inertia: {
+        consecutiveDays: 3,
+        startDate: '2026-02-30',
+        weekAppearances: 1,
+        weekStartDate: '2026-07-20',
+    },
+    itemId: 'item_1',
+    itemName: 'Masala Dosa',
+    stableDays: 12,
+    text: 'Most people take the Masala Dosa.',
+    validatedOnSurfaces: ['decision_blocks'],
+}), undefined, 'impossible staff-prompt calendar dates must fail closed');
+assert.equal(
+    getCampaignStatsState({
+        stats: {
+            totalCompleted: 1,
+            totalSkipped: 1,
+            lastCampaignDate: '2026-02-30',
+            typeSkipCounts: {},
+        },
+    }).lastCampaignDate,
+    undefined,
+    'impossible summary dates must not become campaign chronology authority',
+);
 assert.equal(projectPhysicalSurfaceEligibility({
     counterSticker: {
         confidence: 0.85,

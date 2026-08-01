@@ -450,8 +450,10 @@ export default function BulkActionsSheet({
             setApplyDetail(t('repairMenuAiPreparing'));
             const previousProject = removeObjRef(workingProject);
             let updated = removeObjRef(workingProject);
+            const projectId = updated.projectId?.trim();
             let completedLanguageRepairs = 0;
             try {
+                if (!projectId) throw new Error('Cannot repair a menu without a project ID.');
                 const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
                 const sourceLanguageCode = getCanonicalProjectSourceLanguage(updated.languages);
                 let repairedCategoryIconCount = 0;
@@ -494,7 +496,7 @@ export default function BulkActionsSheet({
                     setApplyDetail('Repairing project details');
                     const translatedProjectContent = await translateProjectPublicContent({
                         projectDetails: updated,
-                        projectId: updated.projectId,
+                        projectId,
                         storeDetails,
                         targetLanguageCodes: projectPublicContentLanguagesNeedingRepair,
                     });
@@ -514,9 +516,9 @@ export default function BulkActionsSheet({
                                 specialNote: translatedProjectContent.specialNote,
                             };
                         }
-                        if (translatedProjectContent.specialMenuDisplayName) {
+                        if (translatedProjectContent.specialMenuDisplayName && updated._specialMenu) {
                             updated._specialMenu = {
-                                ...(updated._specialMenu || {}),
+                                ...updated._specialMenu,
                                 displayName: translatedProjectContent.specialMenuDisplayName,
                             };
                             (updated as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
@@ -526,10 +528,10 @@ export default function BulkActionsSheet({
                 }
 
                 if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                    const metadataTranslationResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                    const metadataTranslationResult = await updateProjectMetadata(projectId, projectMetadataTranslationUpdate);
                     assertProjectUpdateSucceeded(
                         metadataTranslationResult,
-                        updated.projectId,
+                        projectId,
                         'mobile_bulk_actions_project_metadata_translation_update_rejected',
                     );
                 }

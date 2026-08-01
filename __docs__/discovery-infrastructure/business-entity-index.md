@@ -160,6 +160,10 @@ When OFF: No index documents written, no nightly task runs.
 - Current Firestore access: no collection-specific rule exists, so root default deny blocks every browser read and write while the feature remains inactive.
 - No sensitive data in the collection (see §3)
 - The dormant builder's safety guard recursively rejects sensitive-looking keys, hostile objects, and cyclic structures; this remains defense in depth rather than authorization.
+- Freshness test fixtures and runtime projection use descriptor-safe timestamp
+  data (`seconds`/`nanoseconds`, ISO text, epoch numbers, or valid `Date`
+  instances). Method-only objects such as a caller-supplied `toDate()` wrapper
+  are not trusted persisted timestamp data.
 - Feature-flagged OFF by default
 - Store deactivation cleanup is not wired yet; when activated, the scheduler/DAL must delete or mark index entries inactive.
 - Activation requires a separate runtime schema, server-only writer, public DTO review, query/index/cost plan, tenant/product ownership model, deactivation cleanup, and focused Firestore rules tests before any rule path is added.

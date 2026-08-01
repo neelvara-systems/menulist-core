@@ -4,7 +4,7 @@ import { getSessionProviderScopeKey } from '@lib/multiOutlet/sessionProviderScop
 import { NextResponse } from 'next/server';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
-export async function applyAnalyticsReadRateLimit(session: any, routeKey: string) {
+export async function applyAnalyticsReadRateLimit(session: unknown, routeKey: string) {
     const rateLimitConfig = getRateLimitForFeature('DATA_READ');
     const sessionScopeKey = getSessionProviderScopeKey(session);
     if (!sessionScopeKey) {

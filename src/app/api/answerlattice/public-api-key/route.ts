@@ -8,7 +8,10 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
-import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import {
+    requireAnswerlatticePermission,
+    type AnswerlatticeAccessContext,
+} from '@lib/answerlattice/accessControl';
 import {
     AnswerlatticePublicApiKeyActionSchema,
     AnswerlatticePublicApiManagementScopeSchema,
@@ -65,7 +68,26 @@ const getRateLimitResponse = (result: {
     },
 });
 
-async function authorizePublicApiKeyManagement(request: NextRequest, session: any) {
+type PublicApiKeyManagementAdmission =
+    | {
+        access: null;
+        response: NextResponse;
+        scope: null;
+    }
+    | {
+        access: AnswerlatticeAccessContext;
+        response: null;
+        scope: {
+            tenantId: number;
+            storeId: number;
+            role?: string;
+        };
+    };
+
+async function authorizePublicApiKeyManagement(
+    request: NextRequest,
+    session: any,
+): Promise<PublicApiKeyManagementAdmission> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PUBLIC_API) {
         return { access: null, response: keyResponse({ error: 'Not found' }, { status: 404 }), scope: null };
     }
@@ -107,6 +129,9 @@ async function authorizePublicApiKeyManagement(request: NextRequest, session: an
     );
     if (permission.response) {
         return { access: null, response: withPrivateHeaders(permission.response), scope: null };
+    }
+    if (!permission.access) {
+        return { access: null, response: keyResponse({ error: 'Forbidden' }, { status: 403 }), scope: null };
     }
 
     return { access: permission.access, response: null, scope };

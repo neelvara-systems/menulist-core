@@ -18,12 +18,15 @@
 2. The signed-in client admits one submission at a time and submits a JPEG, PNG, WebP, or permission-confirmed public link. The returned draft identifier must pass the same exact UUID projector used by polling, claim, and preview routing.
 3. The protected route applies feature flags, a fail-closed 30-per-5-minute admission limit, account-scope integrity, current extraction permission for existing stores, SAFE_MODE, bounded parsing, source validation, active-draft reuse, and the 5-new-sources-per-24-hours quota.
 4. The route creates one owner-bound 24-hour draft and deterministic extraction job atomically. Link acquisition keeps its existing SSRF, redirect, MIME, size, and confidence boundaries.
-5. The preview checks status every 5 seconds, up to 36 times, and fetches the full extracted DTO once completion is reported. Invalid price truth fails closed instead of reaching claim.
-6. Claim validates ownership, TTL, source envelope, prices, phone, account scope, and current publish permission for an existing store. New accounts receive the existing starter tenant/store setup.
+5. The preview checks status every 5 seconds, up to 36 times, and fetches the full extracted DTO once completion is reported. Each response is projected through the canonical browser-safe extracted-menu/profile contract; malformed completed truth fails closed, and cleanup aborts an obsolete in-flight poll.
+6. One browser claim can be in flight at a time. Claim validates ownership, TTL, source envelope, prices, phone, account scope, and current publish permission for an existing store. New accounts receive the existing starter tenant/store setup.
 7. One transaction creates the canonical project, summary projection, new account records when needed, and the complete idempotency receipt. Project identity, unique non-reserved slug, public price truth, and optional Menu Correctness metadata are committed together.
 8. Public menu, OBP, client-store, screen, and assistant caches are refreshed after commit. A refresh failure does not roll back committed truth.
-9. The success page retries the session refresh with a bounded timeout before dashboard handoff.
-10. Daily maintenance removes expired draft documents. Unclaimed source files are deleted first; a failed deletion preserves the draft for retry. A claimed draft document is deleted but the source now referenced by the project is retained.
+9. The success page admits only the active MenuList platform/tenant host family
+   for displayed/copied/shared URLs, scopes starter signals to the exact
+   current tenant/store handoff, and retries the session refresh with a
+   cleanup-owned bounded timeout before one dashboard handoff.
+10. Daily maintenance removes expired draft documents even when new intake is disabled. Unclaimed source files are deleted first; a failed deletion preserves the draft for retry. A claimed draft document is deleted but the source now referenced by the project is retained.
 
 ## Owner and account boundaries
 

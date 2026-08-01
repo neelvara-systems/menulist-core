@@ -21,6 +21,10 @@ code. `next.config.js` publishes the canonical resolved public marker.
 `src/lib/env/validateEnv.ts` compares each configured Firebase project to the
 resolved product/stage target and checks complete credential tuples without
 logging values. The validator is invoked by `src/instrumentation.ts`.
+Non-Vercel production startup throws after the bounded failure diagnostic when
+required configuration is missing. Vercel retains its deliberate log-only
+exception because static generation can run without every runtime value; live
+Vercel values remain an external release check.
 
 ## CampaignCue model rollout
 

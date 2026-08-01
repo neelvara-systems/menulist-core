@@ -141,7 +141,10 @@ function verifySearchBoundary() {
   assertIncludes(faqView, "if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT)", 'Help Center explicit FAQ flag fallback');
   assertIncludes(faqView, 'if (failed) {', 'Help Center visible managed FAQ failure');
   assertNotIncludes(faqView, 'if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT || failed)', 'Help Center silent static FAQ failure fallback');
-  assertIncludes(articleView, 'editor.commands.setContent(article.content, false);', 'Help Center article editor prop synchronization');
+  assertIncludes(articleView, 'normalizeArticleEditorContent(article.content)', 'Help Center article editor content boundary');
+  assertIncludes(articleView, 'content: editorContent,', 'Help Center article editor initial normalized content');
+  assertIncludes(articleView, 'editor.commands.setContent(editorContent, false);', 'Help Center article editor prop synchronization');
+  assertIncludes(articleView, '[editorContent, editor]', 'Help Center article editor normalized synchronization dependencies');
   assertIncludes(articleViewModal, 'let active = true;', 'Help Center article modal request lifecycle fence');
   assertIncludes(articleViewModal, 'if (active) setFullArticle(article);', 'Help Center article modal stale-result rejection');
   assertIncludes(articleViewModal, "logRuntimeFailure('answerlattice_article_modal_load_failed'", 'Help Center article modal fetch failure diagnostics');

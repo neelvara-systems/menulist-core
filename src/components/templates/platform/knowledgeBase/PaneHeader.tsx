@@ -6,7 +6,7 @@ const { Title } = Typography;
 interface PaneHeaderProps {
   title: string;
   buttonText: string | null;
-  onButtonClick: () => void | null;
+  onButtonClick?: (() => void) | null;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   extra?: React.ReactNode;

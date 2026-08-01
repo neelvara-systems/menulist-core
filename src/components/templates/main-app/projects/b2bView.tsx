@@ -10,6 +10,7 @@ import 'react18-json-view/src/style.css'; // Import base styles for JsonView
 import { ShareModal } from './ShareModal';
 import { getBoundedProjectPageStringContext, getProjectPageProjectLogContext, logProjectPageFailure } from './utils/projectPageDiagnostics';
 import { transformForSingleLanguage } from "./utils";
+import type { Project } from "./types";
 
 // Lazy load Excel export to avoid loading ExcelJS on initial bundle
 const handleDownloadAsync = async (projectData: any, type: 'json' | 'xlsx') => {
@@ -35,6 +36,8 @@ const jsonViewerThemes = {
         'winter_is_coming': { 'color': '#a7dbf7', '--json-property': '#91dacd', '--json-index': '#8dec95', '--json-number': '#8dec95', '--json-string': '#e0aff5', '--json-boolean': '#f29fd8', '--json-null': '#f29fd8' },
     },
 };
+type JsonViewerMode = keyof typeof jsonViewerThemes;
+type JsonViewerThemeKey = keyof typeof jsonViewerThemes.light;
 
 interface JsonEditResult {
     newValue: any;
@@ -42,7 +45,7 @@ interface JsonEditResult {
     depth: number;
     src: any;
     indexOrName: string | number;
-    parentType: 'object' | 'array';
+    parentType: 'object' | 'array' | null;
     parentPath: string[];
 }
 
@@ -70,27 +73,34 @@ function B2BView() {
     const [jsonTheme, setJsonTheme] = useState<string>('default_light');
     const [selectedThemeStyle, setSelectedThemeStyle] = useState<any>(jsonViewerThemes['light']['default']);
     const { activeProject, setCurrentView, currentView } = useContext<ProjectsDataProviderType>(ProjectsDataContext)
-    const [projectData, setProjectData] = useState(removeObjRef(activeProject))
+    const [projectData, setProjectData] = useState<Project | null>(() => removeObjRef(activeProject))
 
     const setSelectedStyle = (theme: string) => {
-        const mode = theme.includes('dark') ? 'dark' : 'light';
-        const themeKey = theme.replace(/_dark|_light/, '');
+        const mode: JsonViewerMode = theme.includes('dark') ? 'dark' : 'light';
+        const rawThemeKey = theme.replace(/_dark|_light/, '');
+        const themeKey: JsonViewerThemeKey = rawThemeKey in jsonViewerThemes[mode]
+            ? rawThemeKey as JsonViewerThemeKey
+            : 'default';
         const selectedThemeStyle = jsonViewerThemes[mode][themeKey] || jsonViewerThemes[mode].default;
         setJsonTheme(theme);
         setSelectedThemeStyle(selectedThemeStyle);
     }
 
     useEffect(() => {
+        if (!activeProject) {
+            setProjectData(null);
+            return;
+        }
         const projectDataCopy = removeObjRef(activeProject)
-        if (activeProject.languages.length == 1) {
-            projectDataCopy.files.map((file) => {
+        if ((activeProject.languages?.length || 0) == 1) {
+            (projectDataCopy.files || []).forEach((file) => {
                 if (file.extractedData?.data) {
-                    const languageCodes = projectDataCopy.languages.map(lang => {
+                    const languageCodes = (projectDataCopy.languages || []).map(lang => {
                         const match = lang.match(/\((.*?)\)/);
                         return match ? match[1] : lang;
                     });
                     const data = file.extractedData.data;
-                    const transformedData = transformForSingleLanguage(data, languageCodes[0]);
+                    const transformedData = transformForSingleLanguage(data, languageCodes[0] || 'en');
                     file.extractedData.data = transformedData;
                 }
             });
@@ -103,6 +113,7 @@ function B2BView() {
 
     const handleJsonEdit = (file: any, edit: JsonEditResult) => {
         try {
+            if (!projectData?.files) return;
             // Validate edited JSON before updating state
             // With react18-json-view we directly use the src object which is already updated
             const index = projectData.files.findIndex((f) => f.uid === file.uid);
@@ -138,6 +149,8 @@ function B2BView() {
             },
         });
     };
+
+    if (!projectData) return null;
 
     return (
         <Flex vertical style={{ width: '100%' }} gap={10}>
@@ -182,7 +195,7 @@ function B2BView() {
                                     marginLeft: 'auto'
                                 }}
                             />
-                            {projectData.files.map((file) => (
+                            {(projectData.files || []).map((file) => (
                                 <JsonView
                                     key={file.uid}
                                     src={file.extractedData?.data}

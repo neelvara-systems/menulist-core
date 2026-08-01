@@ -8,6 +8,36 @@
 
 import { normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 
+function readOwnDataField(value: unknown, key: string): unknown {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function getLocalizedName(value: unknown, primaryLang: string): string | null {
+    if (typeof value === 'string') return value;
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+
+    const primary = readOwnDataField(value, primaryLang);
+    if (typeof primary === 'string' && primary.length > 0) return primary;
+
+    try {
+        const keys = Object.keys(value);
+        if (keys.length > 64) return null;
+        for (const key of keys) {
+            const candidate = readOwnDataField(value, key);
+            if (typeof candidate === 'string' && candidate.length > 0) return candidate;
+        }
+    } catch {
+        return null;
+    }
+    return null;
+}
+
 /**
  * Validate price format
  * 
@@ -39,14 +69,10 @@ export function isValidPrice(price: string | undefined | null): boolean {
  * @returns true if valid
  */
 export function isValidCategoryName(
-    name: Record<string, string> | string | undefined,
+    name: unknown,
     primaryLang: string = 'en'
 ): boolean {
-    if (!name) return false;
-
-    const nameStr = typeof name === 'string'
-        ? name
-        : name[primaryLang] || Object.values(name)[0];
+    const nameStr = getLocalizedName(name, primaryLang);
 
     if (!nameStr) return false;
     if (nameStr.trim().length === 0) return false;
@@ -63,14 +89,10 @@ export function isValidCategoryName(
  * @returns true if valid
  */
 export function isValidItemName(
-    name: Record<string, string> | string | undefined,
+    name: unknown,
     primaryLang: string = 'en'
 ): boolean {
-    if (!name) return false;
-
-    const nameStr = typeof name === 'string'
-        ? name
-        : name[primaryLang] || Object.values(name)[0];
+    const nameStr = getLocalizedName(name, primaryLang);
 
     if (!nameStr) return false;
     if (nameStr.trim().length === 0) return false;
@@ -107,28 +129,30 @@ export interface ItemValidationResult {
  * @returns Validation result with warnings and errors
  */
 export function validateExtractedItem(
-    item: {
-        name?: Record<string, string> | string;
-        category?: string;
-        price?: string;
-    },
+    item: unknown,
     primaryLang: string = 'en'
 ): ItemValidationResult {
     const warnings: string[] = [];
     const errors: string[] = [];
 
     // Name validation
-    if (!isValidItemName(item.name, primaryLang)) {
+    const name = readOwnDataField(item, 'name');
+    const category = readOwnDataField(item, 'category');
+    const price = readOwnDataField(item, 'price');
+
+    if (!isValidItemName(name, primaryLang)) {
         errors.push('Invalid or missing item name');
     }
 
     // Category validation
-    if (!item.category) {
+    if (typeof category !== 'string' || !category.trim() || category.length > 200) {
         errors.push('Missing category reference');
     }
 
     // Price validation (warning, not error)
-    if (item.price && !isValidPrice(item.price)) {
+    if (price !== undefined && price !== null && price !== '' && (
+        typeof price !== 'string' || !isValidPrice(price)
+    )) {
         warnings.push('Invalid price format - will be skipped');
     }
 
@@ -147,15 +171,13 @@ export function validateExtractedItem(
  * @returns Validation result
  */
 export function validateExtractedCategory(
-    category: {
-        name?: Record<string, string> | string;
-    },
+    category: unknown,
     primaryLang: string = 'en'
 ): ItemValidationResult {
     const warnings: string[] = [];
     const errors: string[] = [];
 
-    if (!isValidCategoryName(category.name, primaryLang)) {
+    if (!isValidCategoryName(readOwnDataField(category, 'name'), primaryLang)) {
         errors.push('Invalid or missing category name');
     }
 

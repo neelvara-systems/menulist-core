@@ -25,6 +25,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { logger } from "@lib/monitoring/logger";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import {
     canMenuRevalidationSessionAccessStore,
     resolveMenuRevalidationSessionAccess,
@@ -188,6 +189,13 @@ async function handleRevalidateMenuCache(
         if (rateLimitResponse) return rateLimitResponse;
         sessionAccess = session ? resolveMenuRevalidationSessionAccess(session) : null;
         if (authMode === 'session' && !sessionAccess) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        if (
+            authMode === 'session'
+            && sessionAccess?.platformSession
+            && !(await getCurrentPlatformUser(session))
+        ) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 

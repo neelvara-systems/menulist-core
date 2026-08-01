@@ -1,7 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
+import {
+    cleanPublicAnalyticsString,
+    getPublicAnalyticsAttributionToken,
+    getPublicAnalyticsReferrerGroup,
+    getPublicAnalyticsSessionEntryPage,
+    getPublicAnalyticsUrl,
+} from '@lib/website/publicAnalyticsContext';
 
 const trackedReferrers = [
     { group: 'chatgpt', hosts: ['chatgpt.com', 'chat.openai.com'] },
@@ -19,41 +26,26 @@ interface ResourceAnalyticsProps {
     slug?: string;
 }
 
-function getReferrerHost(): string | undefined {
-    if (!document.referrer) return undefined;
-
-    try {
-        return new URL(document.referrer).hostname.replace(/^www\./, '');
-    } catch {
-        return undefined;
-    }
-}
-
 function getUtmSource(): string | undefined {
-    return new URLSearchParams(window.location.search).get('utm_source') || undefined;
+    return getPublicAnalyticsAttributionToken(
+        new URLSearchParams(window.location.search).get('utm_source'),
+    );
 }
 
 function getUtmMedium(): string | undefined {
-    return new URLSearchParams(window.location.search).get('utm_medium') || undefined;
+    return getPublicAnalyticsAttributionToken(
+        new URLSearchParams(window.location.search).get('utm_medium'),
+    );
 }
 
 function getEntryPage(): string {
-    const storageKey = 'menulist_resource_entry_page';
-    const entryPage = `${window.location.pathname}${window.location.search}`;
-
-    try {
-        const existing = window.sessionStorage.getItem(storageKey);
-        if (existing) return existing;
-        window.sessionStorage.setItem(storageKey, entryPage);
-    } catch {
-        return entryPage;
-    }
-
-    return entryPage;
+    return getPublicAnalyticsSessionEntryPage('menulist_resource_entry_page');
 }
 
 function getPageLocale(explicitLocale?: string | null): string | undefined {
-    return explicitLocale || document.documentElement.lang || undefined;
+    return getPublicAnalyticsAttributionToken(
+        explicitLocale || document.documentElement.lang,
+    );
 }
 
 export default function ResourceAnalytics({
@@ -61,39 +53,33 @@ export default function ResourceAnalytics({
     locale,
     pageType,
     slug,
-}: ResourceAnalyticsProps) {
+}: ResourceAnalyticsProps): ReactNode {
     useEffect(() => {
-        const referrerHost = getReferrerHost();
         const pageLocale = getPageLocale(locale);
-        const referrerMatch = referrerHost
-            ? trackedReferrers.find((referrer) => (
-                referrer.hosts.some((host) => referrerHost === host || referrerHost.endsWith(`.${host}`))
-            ))
-            : undefined;
+        const referrerGroup = getPublicAnalyticsReferrerGroup(document.referrer, trackedReferrers);
 
         trackPlausibleEvent('resource_page_viewed');
 
         const payload = {
-            category: cluster,
-            cluster,
+            category: cleanPublicAnalyticsString(cluster, 80),
+            cluster: cleanPublicAnalyticsString(cluster, 80),
             entry_page: getEntryPage(),
             locale: pageLocale,
             page_type: pageType,
-            referrer: document.referrer || undefined,
-            referrer_host: referrerHost,
-            slug,
-            target_url: window.location.href,
+            referrer_group: referrerGroup,
+            slug: cleanPublicAnalyticsString(slug, 120),
+            target_url: getPublicAnalyticsUrl(window.location.href),
             utm_medium: getUtmMedium(),
             utm_source: getUtmSource(),
         };
 
         trackGoogleMarketingEvent('resource_page_view', payload);
 
-        if (referrerMatch) {
+        if (referrerGroup) {
             trackPlausibleEvent('ai_referral_detected');
             trackGoogleMarketingEvent('ai_crawler_referral_detected', {
                 ...payload,
-                referrer_group: referrerMatch.group,
+                referrer_group: referrerGroup,
             });
         }
     }, [cluster, locale, pageType, slug]);

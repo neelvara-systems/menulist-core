@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { IconType } from "react-icons";
 import {
@@ -158,6 +158,9 @@ function DrawerSection({
 export default function CampaignCueMobileNavigation({ basePath }: { basePath: string }) {
     const [isOpen, setIsOpen] = useState(false);
     const drawerId = useId();
+    const triggerRef = useRef<HTMLButtonElement | null>(null);
+    const drawerRef = useRef<HTMLElement | null>(null);
+    const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
     useEffect(() => {
         if (!isOpen) return undefined;
@@ -166,18 +169,51 @@ export default function CampaignCueMobileNavigation({ basePath }: { basePath: st
         document.body.style.overflow = "hidden";
         document.body.dataset.campaigncueMobileMenu = "open";
 
+        const focusFrame = window.requestAnimationFrame(() => {
+            closeButtonRef.current?.focus();
+        });
+
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
+                event.preventDefault();
                 setIsOpen(false);
+                return;
+            }
+
+            if (event.key !== "Tab") {
+                return;
+            }
+
+            const drawer = drawerRef.current;
+            if (!drawer) return;
+            const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(
+                'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            ));
+            if (!focusable.length) {
+                event.preventDefault();
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const active = document.activeElement;
+            if (event.shiftKey && (active === first || !drawer.contains(active))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (active === last || !drawer.contains(active))) {
+                event.preventDefault();
+                first.focus();
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
 
         return () => {
+            window.cancelAnimationFrame(focusFrame);
             document.body.style.overflow = previousOverflow;
             delete document.body.dataset.campaigncueMobileMenu;
             window.removeEventListener("keydown", handleKeyDown);
+            triggerRef.current?.focus();
         };
     }, [isOpen]);
 
@@ -193,6 +229,7 @@ export default function CampaignCueMobileNavigation({ basePath }: { basePath: st
                     onClick={closeDrawer}
                 />
                 <aside
+                    ref={drawerRef}
                     className="campaigncue-mobile-menu-drawer"
                     id={drawerId}
                     role="dialog"
@@ -204,7 +241,7 @@ export default function CampaignCueMobileNavigation({ basePath }: { basePath: st
                             <LuMegaphone />
                         </span>
                         <strong>CampaignCue</strong>
-                        <button type="button" aria-label="Close menu" onClick={closeDrawer}>
+                        <button ref={closeButtonRef} type="button" aria-label="Close menu" onClick={closeDrawer}>
                             <LuX aria-hidden="true" />
                         </button>
                     </div>
@@ -266,6 +303,7 @@ export default function CampaignCueMobileNavigation({ basePath }: { basePath: st
     return (
         <div className="campaigncue-mobile-menu">
             <button
+                ref={triggerRef}
                 type="button"
                 className="campaigncue-mobile-menu-trigger"
                 aria-controls={drawerId}

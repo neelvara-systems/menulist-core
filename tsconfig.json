@@ -10,7 +10,7 @@
     "allowJs": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
-    "strict": false,
+    "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -126,8 +126,7 @@
       "logs/*": [
         "src/lib/logs/*"
       ]
-    },
-    "strictNullChecks": false
+    }
   },
   "include": [
     "next-env.d.ts",

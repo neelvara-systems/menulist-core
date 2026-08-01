@@ -317,6 +317,112 @@ when an owner-approved proof asset is eligible for distribution.
   distribution research, SignalDesk boundaries, and the active proof gates;
   retained the useful principles as already covered.
 
+### ML-MKT-EXT-005 - Guarded Google Ads Keyword Research Workflow
+
+- **Status:** `DEFERRED_REFERENCE`
+- **Shared:** July 31, 2026
+- **Source:** Founder-supplied raw text matching Jackson Blackledge
+  (`@blvckledge`); a [similar author-published LinkedIn
+  version](https://www.linkedin.com/posts/jacksonblackledge_how-to-discover-keywords-with-big-scaling-activity-7404853055323705344-T5jH)
+  and an [archived earlier X-thread
+  variant](https://threadreaderapp.com/thread/1999042285007253976.html) were
+  found, but the exact X URL and referenced images were not supplied.
+- **Source type:** X post
+- **Topics:** google-ads, paid-search, keyword-planner, search-intent,
+  keyword-match-types, smart-bidding, negative-keywords, search-terms-report,
+  campaign-forecasting, ad-group-structure, paid-acquisition
+- **Use when:** MenuList's upload-to-activation attribution chain is certified,
+  the founder opens a capped Google Search test, and a specific market,
+  customer-list job, landing page, budget ceiling, and stop-loss rule have been
+  approved.
+- **Revalidate:** Current Google Ads match definitions, broad-match and AI Max
+  settings, Smart Bidding guidance, negative-keyword behavior, Keyword Planner
+  metrics and forecast semantics, privacy and consent requirements, MenuList
+  conversion delivery, and the active paid-acquisition gate.
+
+**Source idea**
+
+Classify searches by intent, start with commercial and transactional demand,
+discover and refine ideas in Keyword Planner, use exact, phrase, and broad match
+deliberately, inspect competition and bid ranges, review forecasts and actual
+search terms, maintain negative keywords, and organize closely related
+keywords into themed ad groups.
+
+**MenuList verdict**
+
+Retain the intent-first research loop, Keyword Planner and search-term review,
+careful negative-keyword maintenance, landing-page relevance, and themed ad
+groups. Treat informational, navigational, commercial, and transactional intent
+as a planning heuristic rather than a Google Ads platform taxonomy.
+
+Correct the post's unsupported universal rules before future use:
+
+- no fixed `>30` discovery filter or `1,000-2,000+` exact-match threshold
+  determines profitability; local and high-intent demand can be valuable at
+  much lower volume;
+- do not choose a high-volume head term automatically over a lower-volume
+  high-intent term; rank ideas by offer relevance, search intent, landing-page
+  fit, expected activation value, likely cost, and then available volume;
+- exact match can reach searches with the same meaning or intent, phrase match
+  reaches that set plus broader meaning-based variations, and broad match can
+  reach related searches using additional account and page signals;
+- broad match has no supported three-to-five-word minimum. For MenuList, test it
+  only with accurate conversion tracking, conversion-based Smart Bidding, a
+  bounded budget, search-term review, and stop-loss controls. Prior conversion
+  data can improve the starting foundation, but Google does not define a
+  universal minimum conversion count;
+- negative keywords are necessary controls, not a complete filter: they do not
+  expand to close variants in the same way as positive keywords and require
+  ongoing search-term review;
+- Keyword Planner competition is relative advertiser activity, not conversion
+  probability. Top-of-page bid ranges are historical low/high percentile bid
+  signals, not promised CPCs or positions one through four;
+- Planner forecasts are estimates affected by bid, budget, seasonality,
+  historical ad quality, targeting, and available account data. They support
+  scenario and budget planning but do not prove profitability or scaling room;
+- keep one intent and landing-page promise per ad group, but do not split exact
+  and phrase match into separate ad groups by default. Match types overlap, so
+  separate them only when a controlled experiment or a real difference in
+  budget, bid strategy, geography, message, or landing page justifies the data
+  fragmentation.
+
+The first MenuList test should therefore use a small, consolidated set of
+commercial or transactional exact and phrase themes tied to one approved
+owner outcome. Informational demand remains a separate funnel decision; it is
+not added merely because the search campaign becomes profitable.
+
+**Current decision**
+
+No campaign, keyword upload, Google Ads account change, provider connection, or
+spend. Preserve the corrected workflow for the existing paid-acquisition gate.
+MenuList remains focused on the permissioned pilot, approved proof, and
+measurable two-surface activation chain.
+
+**Validation basis**
+
+- [Google Ads keyword matching options](https://support.google.com/google-ads/answer/7478529)
+- [Google guidance for effective keyword lists](https://support.google.com/google-ads/answer/10039665)
+- [Google Keyword Planner forecasts and historical metrics](https://support.google.com/google-ads/answer/3022575)
+- [Google Ads search terms report](https://support.google.com/google-ads/answer/2472708)
+- [Google Ads negative keywords](https://support.google.com/google-ads/answer/2453972)
+- [Google Ads ad-group organization](https://support.google.com/google-ads/answer/6372655)
+
+**Related MenuList truth**
+
+- [Simplified paid SaaS acquisition playbook](#ml-mkt-ext-001---simplified-paid-saas-acquisition-playbook)
+- [Marketing and distribution strategy](./menulist-marketing-distribution_strategy.md)
+- [Paid ad cutdowns and launch gates](../videos/videos_paid-ad-cutdowns.md)
+- [Campaign measurement ledger](../videos/videos_campaign-measurement-ledger.md)
+- [Growth and funnel strategy](../marketing/menulist-growth-and-funnel-strategy.md)
+
+**Outcome history**
+
+- July 31, 2026 - Matched the text to Jackson Blackledge's similar published
+  versions and checked it against current Google Ads match, planning,
+  search-term, negative-keyword, and account-organization guidance; retained
+  the useful research loop, corrected the unsupported thresholds and
+  structural absolutes, and deferred use to MenuList's paid-acquisition gate.
+
 ## Maintenance
 
 - Add entries sequentially as `ML-MKT-EXT-001`, `ML-MKT-EXT-002`, and so on.

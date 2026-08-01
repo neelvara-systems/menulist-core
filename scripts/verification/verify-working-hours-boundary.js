@@ -60,7 +60,8 @@ function verifyStoreDal(storesDal, presetBoundary, cascadeReconciler) {
     'normalizeWorkingHoursUpdate',
     "throw new Error('store_working_hours_day_invalid')",
     "throw new Error('store_working_hours_range_invalid')",
-    'await revalidatePublicClientCache(data.storeId, "updateStore");',
+    'await revalidatePublicClientCache(data.storeId, "updateStore", {',
+    'touchScreen: hasDigitalScreenStoreOutputFieldChanges(data),',
     'export function assertStoreUpdateSucceeded(',
     "throw new Error(rejectionCode);",
     'export function assertTimeSlotPresetUpdateSucceeded',
@@ -133,7 +134,10 @@ function verifyDesktopSettings(businessSettings, timeSlotPresetsTab) {
     "String(previous?.tenantId ?? '') === String(expectedTenantId ?? '')",
     "String(previous?.storeId ?? '') === String(expectedStoreId ?? '')",
     'function BusinessSettingsContent(',
-    '<BusinessSettingsContent key={scopeKey}',
+    '<BusinessSettingsStateBoundary',
+    'key={scopeKey}',
+    "if (typeof update === 'function')",
+    'notifyStoreSaved(update);',
     'const settingsSaveInFlightRef = useRef(false);',
     'const componentActiveRef = useRef(true);',
     'activeBusinessSettingsScopeRef.current !== requestScopeKey',
@@ -207,7 +211,10 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     'const previousHoursLastUpdatedAt = (storeDetails as any).hoursLastUpdatedAt;',
     'storeId: expectedStoreId,',
     'tenantId: expectedTenantId,',
-    'workingHours: { [expectedTodayKey]: nextRange },',
+    'const previousSpecialHours = normalizeSpecialHours(storeDetails.specialHours) || {};',
+    'const nextSpecialHours = todaySpecialHours',
+    '? { specialHours: nextSpecialHours }',
+    ': { workingHours: { [expectedTodayKey]: nextRange } }',
     'assertStoreUpdateSucceeded(',
     "'mobile_today_hours_store_update_rejected'",
     "'mobile_today_hours_update_failed'",
@@ -216,7 +223,8 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     'hasPreviousHoursLastUpdatedAt: Boolean(previousHoursLastUpdatedAt)',
     'workingHours: previousHours',
     'getStoreDayKey(storeDetails?.timeZone, hoursNow)',
-    'getStoreStatus(storeDetails?.workingHours, storeDetails?.timeZone, undefined, hoursNow)',
+    'storeDetails?.specialHours,',
+    'todaySpecialHours?.hours ?? storeDetails?.workingHours?.[todayKey]',
     'isValidClockRange(todayOpenTime, todayCloseTime)',
     'function MobileHoursScreenContent(',
     '<MobileHoursScreenContent key={scopeKey}',
@@ -261,8 +269,100 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
   ].forEach((token) => assertIncludes(mobileMore, token, 'Mobile More hours/time-slot route boundary'));
 }
 
-function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals, decisionBlocks, schema, obpSurface) {
+function verifySpecialHoursOwnerSettings(
+  storesDal,
+  desktopSpecialHours,
+  mobileSpecialHours,
+  mobileWorkingHours,
+  aiMenuManagerResolver,
+  aiMenuManagerPromptHints,
+) {
+  [
+    'normalizeSpecialHoursUpdate',
+    "throw new Error('store_special_hours_invalid')",
+    'if (data.specialHours !== undefined) {',
+    'data.specialHours = normalizeSpecialHoursUpdate(data.specialHours);',
+  ].forEach((token) => assertIncludes(storesDal, token, 'Special-hours DAL boundary'));
+
+  [
+    'SPECIAL_HOURS_MAX_ENTRIES',
+    'normalizeSpecialHours(storeDetails?.specialHours)',
+    'const actionInFlightRef = useRef<symbol | null>(null);',
+    'const activeScopeRef = useRef(scopeKey);',
+    'const componentActiveRef = useRef(true);',
+    "const attempt = Symbol('desktop-special-hours-save');",
+    'actionInFlightRef.current !== attempt',
+    'desktop_special_hours_store_update_rejected',
+    'hoursLastUpdatedAt',
+    'specialHours: Object.keys(normalized).length ? normalized : null',
+    'assertStoreUpdateSucceeded',
+    'Special hours published.',
+    'sortSpecialHoursEntriesForOwner(specialHours, todayKey)',
+    'const isPast = dateKey < todayKey;',
+    '{!isPast ? (',
+    'theme.useToken()',
+    'token.colorBorderSecondary',
+  ].forEach((token) => assertIncludes(desktopSpecialHours, token, 'Desktop special-hours owner boundary'));
+  assertOrder(
+    desktopSpecialHours,
+    ['assertStoreUpdateSucceeded', 'activeScopeRef.current !== requestScopeKey', 'setStoreDetails'],
+    'Desktop special-hours acknowledgement order',
+  );
+
+  [
+    'SPECIAL_HOURS_MAX_ENTRIES',
+    'normalizeSpecialHours(storeDetails?.specialHours)',
+    'const actionInFlightRef = useRef<symbol | null>(null);',
+    'const activeScopeRef = useRef(scopeKey);',
+    'const componentActiveRef = useRef(true);',
+    "const attempt = Symbol('mobile-special-hours-save');",
+    'actionInFlightRef.current !== attempt',
+    'mobile_special_hours_store_update_rejected',
+    'hoursLastUpdatedAt',
+    'specialHours: Object.keys(normalized).length ? normalized : null',
+    'assertStoreUpdateSucceeded',
+    'Special hours published.',
+    'sortSpecialHoursEntriesForOwner(specialHours, todayKey)',
+    'const isPast = dateKey < todayKey;',
+    '{!isPast ? (',
+  ].forEach((token) => assertIncludes(mobileSpecialHours, token, 'Mobile special-hours owner boundary'));
+  assertIncludes(
+    mobileWorkingHours,
+    '<MobileSpecialHoursManager />',
+    'Mobile Working Hours special-hours placement',
+  );
+  assertIncludes(
+    mobileWorkingHours,
+    'Use Special hours below for a planned date, or Temporary Status for a live interruption.',
+    'Mobile Working Hours planned-vs-live owner wording',
+  );
+
+  [
+    '/\\bspecial hours\\b/',
+    '/\\bholiday hours\\b/',
+    "{ label: 'Special date', prompt: 'Set special hours for a date', helper: 'Planned closure or different hours' }",
+    'regular weekly hours and planned date-specific special hours',
+  ].forEach((token) => assertIncludes(aiMenuManagerResolver, token, 'AI Menu Manager special-hours routing'));
+  assertNotIncludes(
+    aiMenuManagerResolver,
+    "prompt: 'Set temporary status: special hours'",
+    'AI Menu Manager must not misroute planned special hours to Temporary Status',
+  );
+  assertIncludes(
+    aiMenuManagerPromptHints,
+    "{ kind: 'more', label: 'Special date', prompt: 'Set special hours for a date', helper: 'Planned closure or different hours' }",
+    'AI Menu Manager special-date prompt hint',
+  );
+  assertNotIncludes(
+    aiMenuManagerPromptHints,
+    "prompt: 'Set temporary status: special hours'",
+    'AI Menu Manager prompt hints must not misroute special hours',
+  );
+}
+
+function verifyPublicHoursOutput(features, hoursBoundary, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals, decisionBlocks, schema, obpSurface, menuFooter) {
   assertIncludes(features, 'ENABLE_HOURS_STATUS_DISPLAY: true', 'Hours status feature flag');
+  assertIncludes(features, 'ENABLE_SPECIAL_HOURS: true', 'Special hours feature flag');
 
   [
     'hours_status_timezone_fallback_failed',
@@ -271,7 +371,9 @@ function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHou
     'MAX_HOURS_STATUS_INVALID_TIME_RANGE_DIAGNOSTICS',
     'reportedHoursStatusTimeZoneFailures',
     'reportedHoursStatusInvalidTimeRanges',
-    'getBoundedRuntimeStringContext("timeZone", timeZone)',
+    'const safeTimeZone = typeof timeZone === "string" ? timeZone : undefined;',
+    'getBoundedRuntimeStringContext("timeZone", safeTimeZone)',
+    'const safeHoursValue = typeof hoursValue === "string" ? hoursValue : undefined;',
     'logRuntimeFailure("hours_status_timezone_fallback_failed"',
     'logRuntimeDiagnostic("hours_status_time_range_invalid"',
   ].forEach((token) => assertIncludes(hoursDiagnostics, token, 'Hours status diagnostics boundary'));
@@ -280,35 +382,40 @@ function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHou
     'export function getStoreStatus(',
     "statusText: 'Hours not available'",
     'export function getStoreDayKey(',
-    'export function normalizeWorkingHoursValue(',
-    'export function parseWorkingHoursRanges(',
     'const previousIntervals =',
     '.filter((range) => range.endMinutes < range.startMinutes)',
     'interval.start <= currentMinutes && currentMinutes < interval.end',
     'export function getMinutesUntilStoreStatusChange(',
-    'return getStoreStatus(workingHours, timeZone, timeFormat);',
-    "logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_day_key', 'local_day_key')",
-    "logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_time', 'local_time')",
-    "getRangesForDay(workingHours, previousDay, 'hours_engine_current_status')",
-    "getRangesForDay(workingHours, currentDay, 'hours_engine_next_change')",
+    'return getStoreStatus(workingHours, timeZone, timeFormat, new Date(), specialHours);',
+    "logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_day_key', 'default_time_zone')",
+    "logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_time', 'default_time_zone')",
+    "getRangesForValue(previousEffective.source, previousDateKey || previousDay, 'hours_engine_current_status')",
+    "getRangesForValue(effective.source, dateKey, 'hours_engine_next_open')",
   ].forEach((token) => assertIncludes(hoursEngine, token, 'Hours engine boundary'));
+  [
+    'export function normalizeWorkingHoursValue(',
+    'export function parseWorkingHoursRanges(',
+  ].forEach((token) => assertIncludes(hoursBoundary, token, 'Hours normalization boundary'));
   assertNotIncludes(hoursEngine, '    } catch {\n        // Fallback', 'Hours engine timezone fallback must not be silent');
 
   [
     "import { getStoreStatus } from '@lib/hours/hoursEngine';",
-    "const status = getStoreStatus(workingHours, timeZone || 'Asia/Kolkata', undefined, now);",
+    "const status = getStoreStatus(workingHours, timeZone, undefined, now, specialHours);",
     "status.statusText === 'Open' ? 'Open now' : status.statusText",
   ].forEach((token) => assertIncludes(obpHoursStatus, token, 'OBP hours status boundary'));
 
   assertIncludes(decisionBlocks, 'return isWithinTimeSlot(category.timeSlots, storeTimeZone);', 'Decision Blocks canonical time-slot boundary');
   assertNotIncludes(decisionBlocks, 'currentMinutes <= slotEnd', 'Decision Blocks must use the canonical exclusive-end time-slot boundary');
   assertIncludes(schema, 'parseWorkingHoursRanges(hours).map((range)', 'Structured-data hours validation boundary');
+  assertIncludes(schema, 'export function buildSpecialOpeningHours(', 'Structured-data special-hours boundary');
   assertIncludes(obpSurface, 'parseWorkingHoursRanges(todayHours)', 'OBP hours display validation boundary');
+  assertIncludes(obpSurface, "if (!workingHours && !specialEntry) return t('publicHoursNotAvailable');", 'OBP special-hours-only current-date boundary');
+  assertIncludes(obpSurface, 'const hours = workingHours?.[day];', 'OBP special-hours-only weekly-list boundary');
 
   [
-    'getStoreStatus(workingHours, timezone)',
-    'getMinutesUntilStoreStatusChange(workingHours, timezone)',
-    'if (!workingHours || Object.keys(workingHours).length === 0) return null;',
+    'getStoreStatus(workingHours, timezone, undefined, new Date(), specialHours)',
+    'getMinutesUntilStoreStatusChange(workingHours, timezone, new Date(), specialHours)',
+    '&& (!specialHours || Object.keys(specialHours).length === 0)',
     'if (urgentOnly && !isUrgentStatusChange) return null;',
   ].forEach((token) => assertIncludes(storeStatusBadge, token, 'Store status badge boundary'));
 
@@ -321,8 +428,13 @@ function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHou
 
   [
     'hoursLastUpdatedAt',
-    'getStoreStatus(workingHours, timeZone)',
+    'getStoreStatus(workingHours, timeZone, undefined, new Date(), specialHours)',
   ].forEach((token) => assertIncludes(trustSignals, token, 'Trust signals hours output boundary'));
+
+  [
+    'storeDetails?.specialHours',
+    "storeStatus.statusText === 'Hours not available'",
+  ].forEach((token) => assertIncludes(menuFooter, token, 'Public menu action-hours analytics boundary'));
 }
 
 function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog) {
@@ -333,15 +445,15 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
     '`npm run verify:working-hours-boundary`',
     'Current Source Contract',
     '`ENABLE_HOURS_STATUS_DISPLAY`',
-    'public open/closed status from saved weekly working hours',
-    "use Temporary Status or today's hours",
+    '`ENABLE_SPECIAL_HOURS` gates owner exception management',
+    'owner-set date-specific special hours',
   ].forEach((token) => assertIncludes(readme, token, 'Working hours README source gate'));
 
   [
     '## Current Source Boundary',
-    'Current runtime covers owner-set weekly working hours, public open/closed status, Today quick-hours edits, and time-slot presets.',
-    'Holiday calendars and date-specific exception managers are not shipped',
-    "Temporary Status or today's hours",
+    'Current runtime covers owner-set weekly working hours, exact-date special hours, public open/closed status, Today quick-hours edits, and time-slot presets.',
+    'Automatic holiday calendars are not shipped',
+    'A current-date exception suppresses previous-day overnight carry.',
   ].forEach((token) => assertIncludes(spec, token, 'Working hours spec source boundary'));
 
   [
@@ -373,7 +485,8 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
 
   [
     'Current Source Boundary',
-    'No holiday-calendar or exception manager is shipped in the current runtime.',
+    'owner-set special dates',
+    'add that date under Special hours',
     "Customers See If You're Open",
     'Customers see the status before they visit.',
     'current open/closed status',
@@ -381,18 +494,19 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
 
   [
     'Current Source Boundary',
-    'For an unscheduled closure, use Temporary Status or update today\'s hours.',
+    'date-specific special hours',
+    'Use **Temporary Status** for an unplanned closure',
   ].forEach((token) => assertIncludes(helpDoc, token, 'Working hours helpdoc source boundary'));
 
   assertIncludes(
     marketingDoc,
-    'Do not publish this as current public copy until a source-backed holiday/exception runtime exists.',
+    'Automatic holiday calendars are not shipped.',
     'Working hours marketing launch boundary',
   );
   [
-    'Current source-backed claim is limited to owner-set weekly working hours, public open/closed status, Today quick-hours edits, and time-slot presets.',
-    'One setup. Current status.',
-    "Use Temporary Status or today's hours",
+    'Current source-backed claim includes owner-set weekly hours, exact-date special hours, public open/closed status, Today quick edits, and time-slot presets.',
+    'Use Special hours for a planned date.',
+    'Use Temporary Status for a live interruption.',
   ].forEach((token) => assertIncludes(marketingDoc, token, 'Working hours marketing source boundary'));
 
   [
@@ -489,12 +603,17 @@ function main() {
   const cascadeReconciler = read('src/lib/menu/reconcileTimeSlotPresetCascade.ts');
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const timeSlotPresetsTab = read('src/components/templates/main-app/businessSettings/tabs/TimeSlotPresetsTab.tsx');
+  const desktopSpecialHours = read('src/components/templates/main-app/businessSettings/tabs/SpecialHoursEditor.tsx');
   const mobileWorkingHours = read('src/components/mobile/screens/MobileWorkingHoursEditScreen.tsx');
+  const mobileSpecialHours = read('src/components/mobile/components/MobileSpecialHoursManager.tsx');
   const mobileHours = read('src/components/mobile/screens/MobileHoursScreen.tsx');
   const mobileTimeSlots = read('src/components/mobile/screens/MobileTimeSlotsScreen.tsx');
   const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const aiMenuManagerResolver = read('src/lib/ai-menu-manager/commandResolver.ts');
+  const aiMenuManagerPromptHints = read('src/lib/ai-menu-manager/projectPromptHints.ts');
   const features = read('src/config/features.ts');
   const hoursEngine = read('src/lib/hours/hoursEngine.ts');
+  const hoursBoundary = read('src/lib/hours/hoursBoundary.ts');
   const hoursDiagnostics = read('src/lib/hours/hoursDiagnostics.ts');
   const obpHoursStatus = read('src/lib/obp/hoursStatus.ts');
   const storeStatusBadge = read('src/components/atoms/StoreStatusBadge/index.tsx');
@@ -503,6 +622,7 @@ function main() {
   const decisionBlocks = read('src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx');
   const schema = read('src/lib/schema/index.ts');
   const obpSurface = read('src/app/client/obp/OBPResolvedSurface.tsx');
+  const menuFooter = read('src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx');
   const readme = read('__docs__/hours-holiday-accuracy/README.md');
   const spec = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_spec.md');
   const impl = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_impl.md');
@@ -522,7 +642,15 @@ function main() {
   verifyProjectCascade(projectsDal);
   verifyDesktopSettings(businessSettings, timeSlotPresetsTab);
   verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore);
-  verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals, decisionBlocks, schema, obpSurface);
+  verifySpecialHoursOwnerSettings(
+    storesDal,
+    desktopSpecialHours,
+    mobileSpecialHours,
+    mobileWorkingHours,
+    aiMenuManagerResolver,
+    aiMenuManagerPromptHints,
+  );
+  verifyPublicHoursOutput(features, hoursBoundary, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals, decisionBlocks, schema, obpSurface, menuFooter);
   verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog);
 
   console.log('Working Hours and time-slot boundary verifier passed');

@@ -14,6 +14,7 @@ import { generateMessageTemplates, getTodayHours, MessageTemplate, type MessageT
 import { Button, Card, Flex, message, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuCheck, LuCopy, LuMessageCircle, LuMessageSquare } from 'react-icons/lu';
+import type { StoreSpecialHours } from '@type/platform/store';
 import {
     getBoundedUseMenuListStringContext,
     logUseMenuListFailure,
@@ -32,6 +33,7 @@ interface CommunicationKitProps {
     address?: string;
     phone?: string;
     workingHours?: Record<string, string>;
+    specialHours?: StoreSpecialHours;
     timeZone?: string;
     themeToken: any;
     diagnosticContext?: UseMenuListLogContext;
@@ -99,11 +101,15 @@ export default function CommunicationKit({
     address,
     phone,
     workingHours,
+    specialHours,
     timeZone,
     themeToken,
     diagnosticContext,
 }: CommunicationKitProps) {
-    const todayResult = useMemo(() => getTodayHours(workingHours, timeZone), [workingHours, timeZone]);
+    const todayResult = useMemo(
+        () => getTodayHours(workingHours, timeZone, specialHours),
+        [specialHours, timeZone, workingHours],
+    );
 
     const input: MessageTemplateInput = useMemo(() => ({
         storeName,

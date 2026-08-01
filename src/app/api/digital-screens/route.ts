@@ -4,14 +4,20 @@ import { FEATURE_FLAGS } from "@config/features";
 import { PERMISSIONS } from "@constant/permissions";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
+import { resolveCurrentSessionUserDocumentId } from "@lib/auth/sessionUserDocumentId";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { requireAnyStorePermission, resolveStorePermissionSessionScope } from "@lib/permissions/server";
 import { mutateDigitalScreenOwnerStateServer } from "@lib/screen/screenManagementServer";
-import type { DigitalScreenManagementMutation } from "@lib/screen/screenManagementContracts";
+import {
+    FIRESTORE_TIMESTAMP_MAX_MILLISECONDS,
+    getDigitalScreenManagementClientError,
+    type DigitalScreenManagementMutation,
+} from "@lib/screen/screenManagementContracts";
 import { logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { withAuth } from "../../../middleware/auth";
+import { hashPublicRateLimitValue } from "../../../middleware/publicApi";
 
 const SlideSchema = z.object({
     availabilityLinked: z.literal(false),
@@ -22,7 +28,7 @@ const SlideSchema = z.object({
     imageUrl: z.string().trim().min(1).max(4096),
     source: z.literal("pinned"),
     type: z.literal("owner_upload"),
-    validUntilMs: z.number().int().positive(),
+    validUntilMs: z.number().int().positive().max(FIRESTORE_TIMESTAMP_MAX_MILLISECONDS),
 }).strict();
 
 const MutationSchema = z.discriminatedUnion("action", [
@@ -50,10 +56,16 @@ const MutationSchema = z.discriminatedUnion("action", [
 
 const MAX_BODY_BYTES = 8 * 1024;
 
-async function applyDigitalScreenRateLimit(session: any) {
-    const identity = String(session?.uId || session?.user?.id || session?.user?.email || "unknown");
+async function applyDigitalScreenRateLimit(
+    session: unknown,
+    scope: { storeId: string; tenantId: string },
+) {
+    const identity = resolveCurrentSessionUserDocumentId(session);
+    if (!identity) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const result = await checkRateLimit({
-        key: `digital-screen-management:${identity}`,
+        key: `digital-screen-management:${hashPublicRateLimitValue(identity)}:${hashPublicRateLimitValue(scope.tenantId)}:${hashPublicRateLimitValue(scope.storeId)}`,
         ...getRateLimitForFeature("DATA_WRITE"),
     });
     return result.allowed
@@ -61,9 +73,24 @@ async function applyDigitalScreenRateLimit(session: any) {
         : NextResponse.json({ error: "Too many requests" }, { status: 429 });
 }
 
-async function authorize(request: NextRequest, session: any) {
-    const rateLimitResponse = await applyDigitalScreenRateLimit(session);
-    if (rateLimitResponse) return { response: rateLimitResponse };
+type DigitalScreenAuthorization =
+    | { ok: false; response: NextResponse }
+    | { ok: true; scope: { storeId: string; tenantId: string } };
+
+async function authorize(request: NextRequest, session: any): Promise<DigitalScreenAuthorization> {
+    const sessionScope = resolveStorePermissionSessionScope(session);
+    if (!sessionScope) {
+        return {
+            ok: false,
+            response: NextResponse.json({ error: "Not onboarded" }, { status: 400 }),
+        };
+    }
+    const scope = {
+        storeId: sessionScope.storeScope.documentId,
+        tenantId: sessionScope.tenantScope.documentId,
+    };
+    const rateLimitResponse = await applyDigitalScreenRateLimit(session, scope);
+    if (rateLimitResponse) return { ok: false, response: rateLimitResponse };
 
     const permissionResponse = await requireAnyStorePermission(
         request,
@@ -71,21 +98,9 @@ async function authorize(request: NextRequest, session: any) {
         [PERMISSIONS.MANAGE_DIGITAL_SCREENS],
         "Digital Screens",
     );
-    if (permissionResponse) return { response: permissionResponse };
+    if (permissionResponse) return { ok: false, response: permissionResponse };
 
-    const scope = resolveStorePermissionSessionScope(session);
-    if (!scope) {
-        return {
-            response: NextResponse.json({ error: "Not onboarded" }, { status: 400 }),
-        };
-    }
-
-    return {
-        scope: {
-            storeId: scope.storeScope.documentId,
-            tenantId: scope.tenantScope.documentId,
-        },
-    };
+    return { ok: true, scope };
 }
 
 const getHandler = withAuth(async (request: NextRequest, session) => {
@@ -140,6 +155,13 @@ const postHandler = withAuth(async (request: NextRequest, session) => {
             endpoint: request.nextUrl.pathname,
             storeIdLength: authorization.scope.storeId.length,
         });
+        const clientError = getDigitalScreenManagementClientError(error);
+        if (clientError) {
+            return NextResponse.json(
+                { error: clientError.error },
+                { status: clientError.status },
+            );
+        }
         return NextResponse.json({ error: "Unable to update Digital Screens" }, { status: 500 });
     }
 });

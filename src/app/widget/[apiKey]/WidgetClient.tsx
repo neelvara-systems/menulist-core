@@ -191,6 +191,71 @@ type WidgetEscalationDraft = {
 
 type WidgetResponseLogContext = Record<string, boolean | number | string | null | undefined>;
 
+type WidgetProductContext = {
+    contextKey?: string;
+    feature?: string;
+    page?: string;
+    workflow?: string;
+    userRole?: string;
+    plan?: string;
+    state?: string;
+    path?: string;
+    title?: string;
+    role?: string;
+    locale?: string;
+    version?: string;
+    contextVersion?: number;
+    entityHints?: string[];
+};
+
+const WIDGET_STRING_CONTEXT_KEYS = [
+    'contextKey',
+    'feature',
+    'page',
+    'workflow',
+    'userRole',
+    'plan',
+    'state',
+] as const satisfies readonly (keyof WidgetProductContext)[];
+
+const WIDGET_MEANINGFUL_CONTEXT_KEYS = [
+    ...WIDGET_STRING_CONTEXT_KEYS,
+    'version',
+    'path',
+    'title',
+    'role',
+    'locale',
+] as const satisfies readonly (keyof WidgetProductContext)[];
+
+type WidgetVisitorContext = {
+    id?: string;
+    name?: string;
+    email?: string;
+};
+
+type WidgetEvidenceLink = {
+    url: string;
+    label?: string;
+};
+
+type WidgetConversationEntry = {
+    role: WidgetMessage['role'];
+    content: string;
+};
+
+type WidgetSearchRequestBody = {
+    requestId: string;
+    query: string;
+    conversationHistory?: WidgetConversationEntry[];
+    context?: WidgetProductContext;
+    visitor?: WidgetVisitorContext;
+    verifiedContextToken?: string;
+    evidenceLinks?: WidgetEvidenceLink[];
+    sessionId: string;
+    imageBase64?: string;
+    imageMimeType?: string;
+};
+
 const SENSITIVE_CONTEXT_PATTERN = /(?:[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}|\+?\d[\d\s().-]{7,}\d)/i;
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
@@ -480,11 +545,11 @@ const sanitizeContextVersion = (value: unknown): string | null => {
     return normalized;
 };
 
-const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
+const sanitizeContextPayload = (value: unknown): WidgetProductContext | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const input = value as Record<string, unknown>;
-    const output: Record<string, any> = {};
-    ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'state'].forEach((key) => {
+    const output: WidgetProductContext = {};
+    WIDGET_STRING_CONTEXT_KEYS.forEach((key) => {
         const current = sanitizeContextString(input[key]);
         if (current) output[key] = current;
     });
@@ -517,7 +582,7 @@ const sanitizeContextPayload = (value: unknown): Record<string, any> | null => {
             .map((hint) => sanitizeContextString(hint, 64))
             .filter((hint): hint is string => Boolean(hint));
     }
-    const hasMeaningfulContext = ['contextKey', 'feature', 'page', 'workflow', 'userRole', 'plan', 'state', 'version', 'path', 'title', 'role', 'locale'].some((key) => Boolean(output[key]))
+    const hasMeaningfulContext = WIDGET_MEANINGFUL_CONTEXT_KEYS.some((key) => Boolean(output[key]))
         || (Array.isArray(output.entityHints) && output.entityHints.length > 0);
     if (!hasMeaningfulContext) return null;
 
@@ -543,10 +608,10 @@ const sanitizeVisitorEmail = (value: unknown): string | null => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 };
 
-const sanitizeVisitorPayload = (value: unknown): Record<string, any> | null => {
+const sanitizeVisitorPayload = (value: unknown): WidgetVisitorContext | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const input = value as Record<string, unknown>;
-    const output: Record<string, any> = {};
+    const output: WidgetVisitorContext = {};
     const id = sanitizeVisitorId(input.id || input.customerId);
     const name = sanitizeVisitorText(input.name || input.displayName, 160);
     const email = sanitizeVisitorEmail(input.email);
@@ -599,7 +664,7 @@ const normalizeHexColor = (value: unknown): string | null => {
     return /^#[0-9a-fA-F]{6}$/.test(color) ? color : null;
 };
 
-const formatContextLabel = (context: Record<string, any> | null): string | null => {
+const formatContextLabel = (context: WidgetProductContext | null): string | null => {
     const rawValue = typeof context?.contextKey === 'string'
         ? context.contextKey
         : typeof context?.page === 'string'
@@ -629,11 +694,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
-    const [productContext, setProductContext] = useState<Record<string, any> | null>(null);
-    const [visitorContext, setVisitorContext] = useState<Record<string, any> | null>(null);
+    const [productContext, setProductContext] = useState<WidgetProductContext | null>(null);
+    const [visitorContext, setVisitorContext] = useState<WidgetVisitorContext | null>(null);
     const [verifiedContextToken, setVerifiedContextToken] = useState<string | null>(null);
     const [runtimeAuthorizationToken, setRuntimeAuthorizationToken] = useState<string | null>(null);
-    const [evidenceLinks, setEvidenceLinks] = useState<Array<{ url: string; label?: string }>>([]);
+    const [evidenceLinks, setEvidenceLinks] = useState<WidgetEvidenceLink[]>([]);
     const [historyMode, setHistoryMode] = useState<WidgetHistoryMode>('session');
     const [greeting, setGreeting] = useState('How can we help?');
     const [headerTitle, setHeaderTitle] = useState('Help');
@@ -651,6 +716,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeRequestRef = useRef(0);
     const activeSearchControllerRef = useRef<AbortController | null>(null);
+    const conversationGenerationRef = useRef(0);
+    const feedbackInFlightRef = useRef<Set<string>>(new Set());
+    const escalationInFlightRef = useRef(false);
+    const activeImageReaderRef = useRef<FileReader | null>(null);
+    const imageReadGenerationRef = useRef(0);
     const widgetSessionIdRef = useRef(createTimestampedRuntimeId('w', 8));
     const activeGuidanceRef = useRef<ActiveWidgetGuidance | null>(null);
     const guidanceOutcomeSentRef = useRef<Set<string>>(new Set());
@@ -662,8 +732,12 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
     useEffect(() => () => {
         activeRequestRef.current += 1;
+        conversationGenerationRef.current += 1;
+        imageReadGenerationRef.current += 1;
         activeSearchControllerRef.current?.abort();
         activeSearchControllerRef.current = null;
+        activeImageReaderRef.current?.abort();
+        activeImageReaderRef.current = null;
     }, []);
 
     const setCurrentGuidance = useCallback((guidance: ActiveWidgetGuidance | null) => {
@@ -814,8 +888,14 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
     const clearConversation = useCallback(() => {
         activeRequestRef.current += 1;
+        conversationGenerationRef.current += 1;
+        imageReadGenerationRef.current += 1;
         activeSearchControllerRef.current?.abort();
         activeSearchControllerRef.current = null;
+        activeImageReaderRef.current?.abort();
+        activeImageReaderRef.current = null;
+        feedbackInFlightRef.current.clear();
+        escalationInFlightRef.current = false;
         clearGuidanceWithoutOutcome();
         setMessages([]);
         setQuery('');
@@ -877,13 +957,14 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                     ? e.data.verifiedContextToken
                     : null;
                 const links = Array.isArray(e.data.evidenceLinks)
-                    ? e.data.evidenceLinks.slice(0, 3).flatMap((link: any) => {
+                    ? e.data.evidenceLinks.slice(0, 3).flatMap((link: unknown) => {
+                        if (!isPlainRecord(link)) return [];
                         try {
-                            const parsed = new URL(String(link?.url || ''));
+                            const parsed = new URL(typeof link.url === 'string' ? link.url : '');
                             if (parsed.protocol !== 'https:') return [];
                             return [{
                                 url: parsed.toString().slice(0, 1000),
-                                ...(typeof link?.label === 'string' ? { label: link.label.replace(/[<>]/g, '').trim().slice(0, 80) } : {}),
+                                ...(typeof link.label === 'string' ? { label: link.label.replace(/[<>]/g, '').trim().slice(0, 80) } : {}),
                             }];
                         } catch {
                             return [];
@@ -955,7 +1036,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                         content,
                         suggestedQuestions: Array.isArray(suggestion.articles)
                             ? suggestion.articles
-                                .map((article: any) => typeof article?.title === 'string' ? article.title.slice(0, 160) : '')
+                                .map((article) => typeof article.title === 'string' ? article.title.slice(0, 160) : '')
                                 .filter(Boolean)
                                 .slice(0, 3)
                             : [],
@@ -1042,9 +1123,10 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         setError(null);
 
         try {
-            const body: Record<string, any> = {
+            const body: WidgetSearchRequestBody = {
                 requestId: createTimestampedRuntimeId('widget_search', 12),
                 query: q,
+                sessionId: widgetSessionIdRef.current,
             };
 
             // Session memory: include conversation history after first exchange
@@ -1067,8 +1149,6 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (evidenceLinks.length > 0) {
                 body.evidenceLinks = evidenceLinks;
             }
-            body.sessionId = widgetSessionIdRef.current;
-
             // Image support: send base64 inline
             if (currentImage) {
                 body.imageBase64 = currentImage.base64;
@@ -1173,6 +1253,11 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
     // Image upload handler
     const handleImageSelect = (file: File) => {
+        imageReadGenerationRef.current += 1;
+        const imageReadGeneration = imageReadGenerationRef.current;
+        activeImageReaderRef.current?.abort();
+        activeImageReaderRef.current = null;
+        setSelectedImage(null);
         const normalizedMimeType = normalizeAnswerlatticeChatImageMimeType(file.type);
         const maxImageSizeMb = Math.floor(ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES / (1024 * 1024));
 
@@ -1187,7 +1272,10 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         }
 
         const reader = new FileReader();
+        activeImageReaderRef.current = reader;
         reader.onload = () => {
+            if (imageReadGenerationRef.current !== imageReadGeneration) return;
+            activeImageReaderRef.current = null;
             const rawDataUrl = typeof reader.result === 'string' ? reader.result : '';
             const base64 = stripDataUrlPrefix(rawDataUrl);
             if (!base64) {
@@ -1198,8 +1286,24 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             setError(null);
             setSelectedImage({ base64, mimeType: normalizedMimeType, name: file.name });
         };
-        reader.onerror = () => setError('Could not read image. Try a different file.');
+        reader.onerror = () => {
+            if (imageReadGenerationRef.current !== imageReadGeneration) return;
+            activeImageReaderRef.current = null;
+            setError('Could not read image. Try a different file.');
+        };
+        reader.onabort = () => {
+            if (imageReadGenerationRef.current === imageReadGeneration) {
+                activeImageReaderRef.current = null;
+            }
+        };
         reader.readAsDataURL(file);
+    };
+
+    const clearSelectedImage = () => {
+        imageReadGenerationRef.current += 1;
+        activeImageReaderRef.current?.abort();
+        activeImageReaderRef.current = null;
+        setSelectedImage(null);
     };
 
     // Clipboard paste support for images
@@ -1222,7 +1326,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
         setEscalationDraft({
             messageId: msg.id,
             email: sanitizeVisitorEmail(visitorContext?.email) || '',
-            name: sanitizeVisitorText(visitorContext?.name || visitorContext?.displayName, 160) || '',
+            name: sanitizeVisitorText(visitorContext?.name, 160) || '',
             details: '',
         });
     };
@@ -1230,7 +1334,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     // Feedback handler
     const handleFeedback = async (msgId: string, resolutionOutcome: 'resolved' | 'not_resolved') => {
         const msg = messages.find(m => m.id === msgId);
-        if (!msg?.searchHistoryId || msg.feedback) return;
+        if (!msg?.searchHistoryId || msg.feedback || feedbackInFlightRef.current.has(msgId)) return;
+        feedbackInFlightRef.current.add(msgId);
+        const conversationGeneration = conversationGenerationRef.current;
         const isGood = resolutionOutcome === 'resolved';
 
         setMessages(prev => prev.map(m =>
@@ -1258,6 +1364,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             }
             const feedbackResponse = await readWidgetFeedbackResponse(response);
             if (!feedbackResponse) throw new Error(WIDGET_FEEDBACK_FAILED_MESSAGE);
+            if (conversationGenerationRef.current !== conversationGeneration) return;
             setMessages(prev => prev.map(m => (
                 m.id === msgId ? { ...m, feedback: feedbackResponse.resolutionOutcome } : m
             )));
@@ -1265,15 +1372,18 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 openEscalationForm(msg);
             }
         } catch {
+            if (conversationGenerationRef.current !== conversationGeneration) return;
             setMessages(prev => prev.map(m =>
                 m.id === msgId ? { ...m, feedback: null } : m
             ));
             setError(WIDGET_FEEDBACK_FAILED_MESSAGE);
+        } finally {
+            feedbackInFlightRef.current.delete(msgId);
         }
     };
 
     const handleEscalationSubmit = async () => {
-        if (!escalationDraft || escalationSubmitting) return;
+        if (!escalationDraft || escalationSubmitting || escalationInFlightRef.current) return;
         const msg = messages.find(item => item.id === escalationDraft.messageId);
         if (!msg?.searchHistoryId || msg.escalationTicketDisplayId) return;
         const email = sanitizeVisitorEmail(escalationDraft.email);
@@ -1282,6 +1392,8 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             return;
         }
 
+        escalationInFlightRef.current = true;
+        const conversationGeneration = conversationGenerationRef.current;
         setEscalationSubmitting(true);
         setEscalationError(null);
         try {
@@ -1312,6 +1424,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (!response.ok) throw new Error(WIDGET_ESCALATION_FAILED_MESSAGE);
             const escalationResponse = await readWidgetEscalationResponse(response);
             if (!escalationResponse) throw new Error(WIDGET_ESCALATION_FAILED_MESSAGE);
+            if (conversationGenerationRef.current !== conversationGeneration) return;
             setMessages(prev => prev.map(item => (
                 item.id === msg.id
                     ? {
@@ -1326,9 +1439,13 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 endGuidance('escalated');
             }
         } catch {
+            if (conversationGenerationRef.current !== conversationGeneration) return;
             setEscalationError(WIDGET_ESCALATION_FAILED_MESSAGE);
         } finally {
-            setEscalationSubmitting(false);
+            escalationInFlightRef.current = false;
+            if (conversationGenerationRef.current === conversationGeneration) {
+                setEscalationSubmitting(false);
+            }
         }
     };
 
@@ -1860,7 +1977,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                 <div style={styles.imagePreview}>
                     <img src={`data:${selectedImage.mimeType};base64,${selectedImage.base64}`} alt="Preview" style={{ height: 40, borderRadius: 6 }} />
                     <span style={{ fontSize: 11, color: '#6b7280', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedImage.name}</span>
-                    <button style={styles.imageRemoveBtn} onClick={() => setSelectedImage(null)} aria-label="Remove image">
+                    <button style={styles.imageRemoveBtn} onClick={clearSelectedImage} aria-label="Remove image">
                         <LuX size={14} aria-hidden />
                     </button>
                 </div>

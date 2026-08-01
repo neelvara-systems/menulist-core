@@ -36,6 +36,16 @@ function isValidTimeZone(timeZone?: string): timeZone is string {
     }
 }
 
+function isValidLocale(locale?: string): locale is string {
+    if (!locale || !locale.includes('-')) return false;
+    try {
+        new Intl.DateTimeFormat(locale).format(new Date(0));
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function asString(value: unknown, fallback = ''): string {
     return typeof value === 'string' && value.trim() ? value.trim() : fallback;
 }
@@ -50,7 +60,7 @@ export function resolveOwnerNotificationFormattingContext(
     const defaultLanguage = asString(source?.defaultLanguage || source?.locale, fallback?.locale || DEFAULT_CONTEXT.locale);
 
     return {
-        locale: defaultLanguage.includes('-') ? defaultLanguage : DEFAULT_CONTEXT.locale,
+        locale: isValidLocale(defaultLanguage) ? defaultLanguage : DEFAULT_CONTEXT.locale,
         timeZone: isValidTimeZone(timeZone) ? timeZone : DEFAULT_CONTEXT.timeZone,
         dateFormat: asString(source?.dateFormat, fallback?.dateFormat || DEFAULT_CONTEXT.dateFormat),
         timeFormat: asString(source?.timeFormat, fallback?.timeFormat || DEFAULT_CONTEXT.timeFormat),

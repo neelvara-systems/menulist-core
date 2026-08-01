@@ -139,7 +139,9 @@ async function run(): Promise<void> {
         await Promise.all(['operation-a', 'operation-b'].map((operationId) => (
             runTransaction(ownerDb, async (transaction) => {
                 const snapshot = await transaction.get(sessionRef);
-                assert.equal(snapshot.exists(), true);
+                if (!snapshot.exists()) {
+                    throw new Error('AI Menu Manager session must exist before the concurrency fixture runs');
+                }
                 const current = snapshot.data();
                 const pendingOperations = [
                     { operationId },

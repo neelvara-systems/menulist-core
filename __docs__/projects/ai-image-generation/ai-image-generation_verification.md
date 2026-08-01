@@ -18,6 +18,8 @@ The codebase was traced across single generation, reference-image input, image e
 | `ENABLE_AI_IMAGE_GENERATION` existed but did not gate routes or UI | Enforced in single/edit/batch-trigger/authenticated-worker routes, central cover helpers, item modal/editing, and desktop/mobile project/business-cover entry points |
 | Mobile **Generate image** opened upload instead of generation | Corrected to open the shared modal with `preferredInitialTab='generate'` |
 | Batch UI could select more than the server maximum | Shared 50-item limit now applies to individual, category, visible-all, quick-select, initial mobile selection, modal admission, schema, and server projection |
+| A batch item ID matches multiple project files | Transaction-current standalone, local and master projection rejects the selection as ambiguous before persistence |
+| Selection metadata uses getters, Proxies or coercive size objects | Admission snapshots bounded arrays and own scalar fields, rejects hostile access, and does not execute conversion hooks |
 | Batch UI showed an unsupported fixed duration | Removed; owner sees selected count and shared credit estimate |
 | Batch settings used a second icon library and prohibited `Smart` copy | Replaced with `react-icons/lu` and **Recommended Defaults** |
 | Batch review and retention inferred delete authority from browser/job plus one-project state | Browser review actions no longer delete generated media. Job retention prunes heavy metadata after seven days and deletes terminal job rows after 30 days, but keeps public media objects until global cross-project/outlet exclusive-reference proof exists. |

@@ -4,7 +4,7 @@
 > **Status:** 🔒 **LOCKED** — Slug, canonical, product-domain, and path-segment guardrails implemented
 > **Date:** July 2, 2026
 > **Author:** Cascade (Lead Architect)
-> **Feature Flags:** `ENABLE_STORED_SLUGS` (ON), `ENABLE_MULTI_OUTLET` (ON), `ENABLE_OBP` (OFF), `ENABLE_MYCODEX_READER` (ON)
+> **Feature Flags:** `ENABLE_MULTI_OUTLET` (ON), `ENABLE_OBP` (OFF), `ENABLE_MYCODEX_READER` (ON). Stored slugs are a permanent routing invariant, not a runtime toggle.
 > **ADRs:** 12 decisions documented — see [url-routing-architecture_adr.md](./url-routing-architecture_adr.md)
 > **Codebase = Single Source of Truth**
 > **Local Source Gate:** `npm run verify:url-routing-boundary`
@@ -249,7 +249,7 @@ Desktop and mobile Domain Settings browser handoffs for subdomain/custom-domain 
 
 Custom-domain removal acknowledgements must include both `success: true` and `removed: true` before desktop Domain Settings, embedded Custom Domain, or Mobile Domain Settings clear local custom-domain state. Missing `removed` is treated as an invalid remove response.
 
-Owner-side browser update paths use `src/lib/cache/publicClientCache.ts` to request the same public menu/OBP/customer-app cache refresh after store, project, tenant, PWA, extraction, or outlet propagation changes. The helper de-duplicates in-flight requests per store, times out after 4 seconds, fails open, and uses dev-only bounded secure logging for revalidation failures instead of raw fetch exception logs.
+Owner-side browser update paths use `src/lib/cache/publicClientCache.ts` to request the same public menu/OBP/customer-app cache refresh after store, project, tenant, PWA, extraction, or outlet propagation changes. The helper de-duplicates in-flight requests per store, preserves an already queued Digital Screen refresh when a later cache-only mutation joins the same slot, times out after 4 seconds, fails open, and uses dev-only bounded secure logging for revalidation failures instead of raw fetch exception logs.
 
 ### What's Already Well-Built
 

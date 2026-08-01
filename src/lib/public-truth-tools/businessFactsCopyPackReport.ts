@@ -284,15 +284,15 @@ export function buildBusinessFactsCopyPackReport(input: BusinessFactsCopyPackInp
   const hasContact = hasContactHint(phoneOrWhatsapp);
   const hasAction = Boolean(input.preferredAction) && (hasActionLink ? validActionLink : hasContact || validCurrentCustomerLink);
   const copyBlocks = buildCopyBlocks({
-    actionLink,
+    actionLink: validActionLink ? actionLink : '',
     businessName,
     businessType,
     cityOrArea,
-    currentCustomerLink,
+    currentCustomerLink: validCurrentCustomerLink ? currentCustomerLink : '',
     hours,
     locationOrServiceArea,
     offerSummary,
-    phoneOrWhatsapp,
+    phoneOrWhatsapp: hasContact ? phoneOrWhatsapp : '',
     preferredAction: input.preferredAction,
     shortDescription,
   });

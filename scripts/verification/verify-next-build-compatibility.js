@@ -23,6 +23,7 @@ function assertIncludes(haystack, needle, message) {
 
 const nextConfig = read('next.config.js');
 const razorpayDiagnostics = read('src/lib/billing/razorpayDiagnostics.ts');
+const feedbackDal = read('src/database/feedback/index.ts');
 const sessionUserDocumentId = read('src/lib/auth/sessionUserDocumentId.ts');
 const packageJson = JSON.parse(read('package.json'));
 const packageLock = JSON.parse(read('package-lock.json'));
@@ -148,6 +149,15 @@ assert(
   !sessionUserDocumentId.includes('firebaseAdmin')
     && !sessionUserDocumentId.includes('firebase-admin'),
   'The browser-safe session identity projector must remain free of Firebase Admin imports.',
+);
+assertIncludes(
+  feedbackDal,
+  "from '@lib/auth/sessionUserDocumentId'",
+  'Shared feedback DAL must use the browser-safe session identity projector.',
+);
+assert(
+  !feedbackDal.includes("from '@lib/auth/currentPlatformUser'"),
+  'Shared feedback DAL must not pull Firebase Admin current-user authority into browser graphs.',
 );
 assert(
   !webpackServerExternalsBlock.includes("'firebase-admin'")

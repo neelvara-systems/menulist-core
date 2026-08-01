@@ -8,6 +8,8 @@ import {
 import { buildPrintShareToolReport } from '../../src/lib/public-asset-tools/printShareToolReport';
 import { buildBookingInquiryReadinessReport } from '../../src/lib/public-truth-tools/bookingInquiryReadinessReport';
 import { buildBusinessFactsCopyPackReport } from '../../src/lib/public-truth-tools/businessFactsCopyPackReport';
+import { buildCustomerFaqReplyPackReport } from '../../src/lib/public-truth-tools/customerFaqReplyPackReport';
+import { buildCustomerLinkPreviewReport } from '../../src/lib/public-truth-tools/customerLinkPreviewReport';
 import {
   buildMapsPlaceCheckIdentityBinding,
   buildOwnerGoogleMapsLinkIdentityBinding,
@@ -18,6 +20,8 @@ import {
   isLikelyPhoneNumber,
   normalizePhoneDigits,
 } from '../../src/lib/public-truth-tools/phoneValidation';
+import { buildGoogleProfileBasicsReport } from '../../src/lib/public-truth-tools/googleProfileBasicsReport';
+import { buildMenuReadabilityReport } from '../../src/lib/public-truth-tools/menuReadabilityReport';
 import { buildPublicTruthCheckReport } from '../../src/lib/public-truth-tools/publicTruthCheckReport';
 import {
   isPublicHttpsUrl,
@@ -206,6 +210,24 @@ assert.deepEqual(
   },
   'valid long Place IDs must be preserved exactly',
 );
+assert.equal(
+  buildMapsPlaceCheckIdentityBinding({
+    sources: new Proxy([], {
+      getOwnPropertyDescriptor() {
+        throw new Error('blocked');
+      },
+    }),
+  }, '2026-07-19T10:07:00.000Z'),
+  null,
+);
+assert.equal(
+  normalizeExternalLocationIdentityBinding(new Proxy({}, {
+    getOwnPropertyDescriptor() {
+      throw new Error('blocked');
+    },
+  })),
+  null,
+);
 
 assert.equal(isPublicHttpsUrl('https://example.com/menu'), true);
 assert.equal(isPublicHttpsUrl('example.com/menu'), true);
@@ -259,6 +281,32 @@ for (const checkId of ['prices', 'hours', 'location', 'contact', 'customer_actio
   );
 }
 
+const readabilityUrlKeywordReport = buildMenuReadabilityReport({
+  mode: 'self_report',
+  businessName: 'Example Cafe',
+  cityOrArea: 'Pune',
+  sourceKind: 'menu',
+  sourceText: [
+    'Breakfast',
+    'Masala dosa',
+    'Idli plate',
+    'Filter coffee',
+    'Prices include applicable taxes.',
+  ].join('\n'),
+  publicUrl: 'https://example.com/order-book-call-whatsapp',
+  categoriesClear: true,
+  pricesShown: true,
+  pricesNotNeeded: false,
+  descriptionsHelpful: true,
+  notesShown: true,
+  customerActionShown: false,
+});
+assert.equal(
+  getCheckResult(readabilityUrlKeywordReport.checks, 'customer_action'),
+  'missing',
+  'URL text must not prove a customer action in pasted menu readability',
+);
+
 const bookingBase = {
   mode: 'self_report' as const,
   businessName: 'Example Clinic',
@@ -299,6 +347,46 @@ for (const validDestination of [
   assert.equal(getCheckResult(report.checks, 'action_destination'), 'present');
 }
 
+const bookingHoursWithoutResponseExpectation = buildBookingInquiryReadinessReport({
+  ...bookingBase,
+  actionText: 'Book a slot during our opening hours.',
+  actionLinkOrNumber: 'https://example.com/book',
+  responseTimeShown: false,
+  confirmationExpectationShown: false,
+});
+assert.equal(
+  getCheckResult(bookingHoursWithoutResponseExpectation.checks, 'hours_context'),
+  'present',
+);
+assert.equal(
+  getCheckResult(bookingHoursWithoutResponseExpectation.checks, 'response_expectation'),
+  'unclear',
+  'hours and slot wording must not prove that the business set a response expectation',
+);
+assert.equal(
+  getCheckResult(bookingHoursWithoutResponseExpectation.checks, 'confirmation_expectation'),
+  'unclear',
+  'the word slot must not prove that the business explained confirmation',
+);
+
+const bookingPrimaryCallWithoutFallback = buildBookingInquiryReadinessReport({
+  ...bookingBase,
+  actionText: 'Call to book during opening hours.',
+  actionLinkOrNumber: '+91 98765 43210',
+  fallbackContactShown: false,
+  serviceAreaOrLocationShown: false,
+});
+assert.equal(
+  getCheckResult(bookingPrimaryCallWithoutFallback.checks, 'fallback_contact'),
+  'unclear',
+  'the primary call action must not also prove a fallback contact',
+);
+assert.equal(
+  getCheckResult(bookingPrimaryCallWithoutFallback.checks, 'location_or_service_area'),
+  'unclear',
+  'a booking action must not prove location or service-area context',
+);
+
 const invalidContactPack = buildBusinessFactsCopyPackReport({
   mode: 'self_report',
   businessName: 'Example Cafe',
@@ -314,6 +402,97 @@ const invalidContactPack = buildBusinessFactsCopyPackReport({
   preferredAction: 'call',
 });
 assert.equal(getCheckResult(invalidContactPack.checks, 'contact_path'), 'missing');
+assert.equal(
+  invalidContactPack.copyBlocks.some((block) => block.body.includes('+91hello9876543210')),
+  false,
+  'invalid contact text must not enter publishable business copy',
+);
+
+const invalidBusinessFactsLinks = buildBusinessFactsCopyPackReport({
+  mode: 'self_report',
+  businessName: 'Example Cafe',
+  cityOrArea: 'Pune',
+  businessType: 'Cafe',
+  offerSummary: 'Current food menu and pickup options',
+  shortDescription: 'A local cafe serving the current menu all day.',
+  hours: 'Open 9am to 6pm',
+  locationOrServiceArea: 'Pune',
+  phoneOrWhatsapp: '+91 98765 43210',
+  currentCustomerLink: 'javascript:alert(1)',
+  actionLink: 'https://user:password@example.com/order',
+  preferredAction: 'order',
+});
+assert.equal(
+  invalidBusinessFactsLinks.copyBlocks.some((block) =>
+    block.body.includes('javascript:') || block.body.includes('user:password')),
+  false,
+  'invalid or credential-bearing links must not enter publishable business copy',
+);
+
+const invalidFaqLinks = buildCustomerFaqReplyPackReport({
+  mode: 'self_report',
+  actionLink: 'javascript:alert(1)',
+  answerSource: 'Current menu, opening hours, prices, contact details, and pickup information.',
+  availabilityNotes: 'Ask before travelling.',
+  businessName: 'Example Cafe',
+  cityOrArea: 'Pune',
+  currentCustomerLink: 'https://user:password@example.com/menu',
+  customerQuestions: 'What is available today?',
+  hours: 'Open 9am to 6pm',
+  locationContact: 'Pune',
+  menuOrServices: 'Current food menu and pickup options',
+  preferredAction: 'order',
+  prices: 'See current menu',
+});
+assert.equal(
+  invalidFaqLinks.copyBlocks.some((block) =>
+    block.body.includes('javascript:') || block.body.includes('user:password')),
+  false,
+  'invalid links must not enter publishable FAQ reply copy',
+);
+
+const incompleteGoogleIdentity = buildGoogleProfileBasicsReport({
+  mode: 'self_report',
+  businessName: '',
+  cityOrArea: 'Pune',
+  profileClaimedOrVerified: true,
+  nameMatchesRealWorld: true,
+  primaryCategorySet: true,
+  addressOrServiceAreaClear: true,
+  hoursCurrent: true,
+  phoneOrMessagePresent: true,
+  websiteOrCustomerLink: 'https://example.com/menu',
+  menuOrServiceLinkPresent: true,
+  orderBookingOrActionPresent: true,
+  photosPresent: true,
+});
+assert.equal(
+  getCheckResult(incompleteGoogleIdentity.checks, 'business_identity'),
+  'unclear',
+  'a city alone must not prove the Google profile business identity',
+);
+
+const incompleteCustomerLinkIdentity = buildCustomerLinkPreviewReport({
+  mode: 'self_report',
+  businessName: '',
+  cityOrArea: 'Pune',
+  businessKind: 'restaurant',
+  currentCustomerLink: 'https://example.com/menu',
+  businessNameVisible: true,
+  menuOrServiceVisible: true,
+  pricesOrRatesVisible: true,
+  hoursVisible: true,
+  locationVisible: true,
+  contactVisible: true,
+  customerActionVisible: true,
+  photosOrIdentityVisible: true,
+  mobileFriendly: true,
+});
+assert.equal(
+  getCheckResult(incompleteCustomerLinkIdentity.checks, 'business_identity'),
+  'unclear',
+  'a city plus a visibility checkbox must not prove a missing business name',
+);
 
 const whatsAppReply = buildWhatsAppReplyPackReport({
   mode: 'self_report',
@@ -333,6 +512,28 @@ const whatsAppReply = buildWhatsAppReplyPackReport({
 assert.equal(getCheckResult(whatsAppReply.checks, 'whatsapp_number'), 'missing');
 assert.equal(whatsAppReply.previewLink, null);
 
+const invalidWhatsAppReplyLinks = buildWhatsAppReplyPackReport({
+  mode: 'self_report',
+  actionLink: 'javascript:alert(1)',
+  businessName: 'Example Cafe',
+  cityOrArea: 'Pune',
+  currentCustomerLink: 'https://user:password@example.com/menu',
+  deliveryOrPickup: 'Pickup available',
+  hours: 'Open 9am to 6pm',
+  locationOrServiceArea: 'Pune',
+  offerSummary: 'Current food menu and pickup options',
+  paymentInfo: 'Pay at pickup',
+  preferredAction: 'order',
+  responseTime: 'Within one hour',
+  whatsappNumber: '+91 98765 43210',
+});
+assert.equal(
+  invalidWhatsAppReplyLinks.copyBlocks.some((block) =>
+    block.body.includes('javascript:') || block.body.includes('user:password')),
+  false,
+  'invalid links must not enter publishable WhatsApp reply copy',
+);
+
 const invalidWhatsAppLink = buildWhatsAppActionLinkReport({
   mode: 'self_report',
   businessName: 'Example Cafe',
@@ -347,6 +548,30 @@ const invalidWhatsAppLink = buildWhatsAppActionLinkReport({
   fallbackActionShown: true,
 });
 assert.notEqual(getCheckResult(invalidWhatsAppLink.checks, 'click_to_chat_format'), 'present');
+assert.notEqual(
+  getCheckResult(invalidWhatsAppLink.checks, 'whatsapp_number'),
+  'present',
+  'an invalid WhatsApp link must not prove that a WhatsApp number is present',
+);
+
+const whatsAppActionWithoutHoursExpectation = buildWhatsAppActionLinkReport({
+  mode: 'self_report',
+  businessName: 'Example Cafe',
+  cityOrArea: 'Pune',
+  whatsappNumber: '+91 98765 43210',
+  existingWhatsappLink: '',
+  currentCustomerLink: 'https://example.com/menu',
+  messageIntent: 'order',
+  suggestedMessage: 'I would like to order for pickup today.',
+  menuOrServiceLinkAttached: true,
+  hoursExpectationSet: false,
+  fallbackActionShown: true,
+});
+assert.equal(
+  getCheckResult(whatsAppActionWithoutHoursExpectation.checks, 'hours_expectation'),
+  'unclear',
+  'today and pickup wording must not prove a business hours or response expectation',
+);
 
 const printShareReport = buildPrintShareToolReport('qr-poster-maker', {
   accentColor: '#24564d',

@@ -198,9 +198,10 @@ export class KeyManager {
      * Mark the current key as rate-limited.
      * Applies exponential cooldown and advances to the next key.
      */
-    markCurrentKeyRateLimited(): void {
-        const entry = this.keys[this.currentIndex];
-        if (!entry) return;
+    markKeyRateLimited(client: GoogleGenAI): void {
+        const entryIndex = this.keys.findIndex((candidate) => candidate.client === client);
+        if (entryIndex < 0) return;
+        const entry = this.keys[entryIndex];
 
         entry.rateLimitHits++;
         entry.totalRateLimits++;
@@ -213,22 +214,24 @@ export class KeyManager {
         entry.cooldownUntil = Date.now() + cooldownMs;
 
         logger.warn('[KeyManager] Key rate limited', {
-            keySlot: this.currentIndex + 1,
+            keySlot: entry.index + 1,
             rateLimitHits: entry.rateLimitHits,
             cooldownSeconds: Math.ceil(cooldownMs / 1000),
             keyRotationEnabled: this.keys.length > 1,
         });
 
         // Advance to next key
-        this.currentIndex = (this.currentIndex + 1) % this.keys.length;
+        if (this.currentIndex === entryIndex) {
+            this.currentIndex = (entryIndex + 1) % this.keys.length;
+        }
     }
 
     /**
      * Reset rate limit counter for the current key on a successful request.
      * Called after a successful API call.
      */
-    markCurrentKeySuccess(): void {
-        const entry = this.keys[this.currentIndex];
+    markKeySuccess(client: GoogleGenAI): void {
+        const entry = this.keys.find((candidate) => candidate.client === client);
         if (!entry) return;
 
         // Reset consecutive hit counter on success

@@ -2,7 +2,7 @@
 
 **Status:** Current source map
 
-**Last verified:** July 23, 2026
+**Last verified:** July 30, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation doc is source-gated working-hours runtime evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.
 
@@ -10,7 +10,7 @@
 
 This implementation doc is source-gated by `npm run verify:working-hours-boundary`. Historical blueprint sections below are not launch approval; the superseded blueprint is archived under `_archive/pre-2026-07-16/`.
 
-## Canonical Weekly-Hours Runtime
+## Canonical Hours Runtime
 
 `src/lib/hours/hoursEngine.ts` owns parsing, normalization, store-timezone weekday resolution, status, next-opening copy, and urgent minutes-to-change.
 
@@ -20,12 +20,19 @@ This implementation doc is source-gated by `npm run verify:working-hours-boundar
 - `getStoreStatus()` evaluates the previous day's overnight carry before today's start portions. It uses inclusive start and exclusive end.
 - `getMinutesUntilStoreStatusChange()` returns only an immediate current-store-day boundary.
 - Invalid configured truth logs bounded `hours_status_time_range_invalid` metadata and suppresses authority.
+- Missing or invalid timezone metadata uses the shared deterministic `UTC` runtime fallback. Public menu, OBP, owner status, and server rendering therefore cannot disagree based on a hardcoded region or the host/browser local clock.
 
 `src/lib/obp/hoursStatus.ts` is an adapter over this engine. It contains no second open/closed calculation.
+
+`src/lib/hours/hoursBoundary.ts` owns strict weekly/special value normalization, Gregorian date validation, the 64-entry/80-character bounds, and deterministic store-local date keys. `src/lib/hours/specialHours.ts` adds presentation helpers without creating another truth evaluator.
+
+For an exact date, `getStoreStatus()` first resolves `specialHours[storeLocalDate]`; when present, that entry owns the full date. This intentionally suppresses a weekly or special prior-day overnight carry into a date marked closed. If no current-date override exists, prior-day overnight behavior remains unchanged.
 
 ## Write Boundary
 
 `src/database/stores/index.tsx` normalizes `workingHours` on store create/update. Unknown weekday keys, non-record shapes, invalid clock values, equal endpoints, and malformed comma-separated content fail before Firestore. Nested delete markers remain supported for day removal.
+
+The same DAL normalizes `specialHours`, rejects invalid dates/entries/extra fields, and writes the compact map on the existing store document. `projectPublicClientStore()` and the Public Business API independently normalize the map before exposing it.
 
 `updateStore()` retains its existing behavior:
 
@@ -45,12 +52,16 @@ Every owner surface additionally owns browser settlement. The complete desktop B
 
 `WorkingHoursTab.tsx` supports copy-Monday, clear, preview, normal/overnight selection, and rejects equal endpoints. The existing shared Business Settings submission stamps `hoursLastUpdatedAt` only when the deep patch contains hours.
 
+`SpecialHoursEditor.tsx` lives below regular hours and provides date, optional occasion, closed/different-hours modes, and acknowledged add/edit/remove actions. Upcoming entries sort first in ascending order; historical entries sort newest-first below them and remain removable without entering an unsavable edit state. It uses existing Ant Design tokens, so the owner theme color controls the primary action.
+
 Time-slot changes run through `TimeSlotPresetsTab.tsx`, `updateTimeSlotPresets()`, and `reconcileTimeSlotPresetCascade()`. Create writes only the normalized preset list. Edit/delete uses one store transaction to write the normalized list and an operation-owned `timeSlotPresetCascadePending` marker. The parent updates local and global store context only after the project cascade and exact marker clear acknowledge success.
 
 ## Mobile Owner Flow
 
 - `MobileHoursScreen.tsx` uses the canonical store-timezone day/status engine, refreshes its clock every minute, edits only the captured current-store weekday, validates its range, and conditionally rolls back exact-scope optimistic state on rejection.
 - `MobileWorkingHoursEditScreen.tsx` rehydrates/remounts with exact store truth, serializes only actual edits over a captured existing map, detects day removals, and shows saved copy only after current-scope acknowledgement.
+- `MobileSpecialHoursManager.tsx` is embedded in the existing Working Hours sub-screen and provides the same bounded date/add/edit/remove contract with 44px actions. It shares the desktop upcoming-first/history-last ordering and does not expose edit for expired dates.
+- When today has an exact-date exception, Mobile Today derives its visible times and status from that entry and quick edit updates the exact date; otherwise quick edit continues to update the regular weekday.
 - `MobileTimeSlotsScreen.tsx` shares strict range, overlap, durable marker recovery, and exact tenant/store settlement behavior with desktop. It refreshes global store context only after acknowledged store/cascade completion.
 - All screens remain inside `MobileShell` through the existing More/Today screen contracts.
 
@@ -62,18 +73,19 @@ Preset references are denormalized into category snapshots. Edit/delete scans ex
 
 ## Public Output
 
-- Public menu/status badges call `getStoreStatus()`.
-- OBP status delegates to the engine; today/all-day display parses validated ranges.
+- Public menu/status badges and Output Control call `getStoreStatus()` with both weekly and special truth.
+- OBP status delegates to the engine; today display uses effective truth and the expanded hours panel visibly lists upcoming exceptions.
 - `buildOpeningHours()` emits each valid range and omits malformed values.
+- `buildSpecialOpeningHours()` emits exact-date `specialOpeningHoursSpecification`; a closed date omits `opens`/`closes` as defined by Schema.org.
 - FAQ hours include only validated ranges.
-- Output Control and trust signals consume the same saved working-hours source.
+- Communication Kit replies, Public Business API, browser client projection, Output Control, and trust signals consume the same normalized source.
 
 ## Failure and Recovery
 
 Hours status fallback diagnostics are bounded and contain metadata rather than raw weekly-hour payloads.
 Output Control timestamp diagnostics remain bounded and suppress confidence when freshness metadata cannot be parsed safely.
 
-- Invalid timezone: bounded diagnostic, consistent local fallback for day and minute.
+- Invalid timezone: bounded diagnostic, deterministic shared `UTC` fallback for day and minute.
 - Malformed hours: no open claim; `Hours not available` on the affected status.
 - Store save failure: owner surface restores previous local truth and shows fixed copy.
 - Preset store/cascade failure: no local success state. If the store transaction committed, its durable marker remains, blocks another mutation, and is retried when the exact store screen is mounted. Project writes are idempotent and only the matching operation may clear the marker.
@@ -81,4 +93,4 @@ Output Control timestamp diagnostics remain bounded and suppress confidence when
 
 ## Scalability Decision
 
-The useful long-term fixes are canonical evaluation, leaf/deep patches, bounded diagnostics, no redundant reads, existing cache reuse, and the one-field store-local recovery marker. A new hours collection, holiday scheduler, reference index, separate cascade ledger/queue, or provider sync would add operational and Firebase cost without current evidence. Revisit only if project-cascade telemetry shows sustained owner-impacting latency or the product explicitly admits date exceptions.
+The useful long-term fixes are canonical evaluation, compact store-document overrides, leaf/deep patches, bounded diagnostics, no redundant reads, existing cache reuse, and the one-field store-local recovery marker. A holiday provider, new hours collection, scheduler, reference index, separate cascade ledger/queue, or provider sync would add operational and Firebase cost without current evidence. Revisit only if measured owner demand justifies automatic holiday suggestions or external publishing.

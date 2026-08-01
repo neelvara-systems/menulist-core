@@ -2,12 +2,16 @@ import { FEATURE_FLAGS } from '@config/features';
 import { assertProjectUpdateSucceeded, updateProject } from '@database/projects';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
+import {
+    buildItemImageEditorTarget,
+    removeItemImageFromProject,
+} from '@lib/media/itemImageAssociationBoundary';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { UserUploadedFileType } from '@type/common';
 import { removeObjRef } from '@util/utils';
 import { Button, Flex, Image, Modal, Popover, Space, Tooltip, message, theme } from 'antd';
-import { Fragment, useContext, useState } from 'react';
+import { Fragment, useContext, useRef, useState } from 'react';
 import { LuMoreVertical, LuPencil, LuTrash } from 'react-icons/lu';
 import { ExtractedDataItem, Project } from '../types';
 import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorDiagnostic, logMenuEditorFailure } from '../utils/editorDiagnostics';
@@ -15,26 +19,45 @@ import EditImageModal from './AiImageGenerator/EditImageModal';
 
 function UploadedImagesList({
     disabled = false,
+    fileId,
     item,
     onProjectDataUpdate,
     onUploadGeneratedImage,
     projectData,
 }: {
     disabled?: boolean;
-    item: any;
+    fileId?: string;
+    item: ExtractedDataItem & { fileId?: string };
     onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
-    onUploadGeneratedImage: any;
+    onUploadGeneratedImage: (imagesToUpload: UserUploadedFileType[]) => Promise<void>;
     projectData: Project;
 }) {
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const dispatch = useAppDispatch()
     const { activeProject, setActiveProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext)
-    const [imageEditModal, setImageEditModal] = useState({ active: false, imageData: null })
+    const [imageEditModal, setImageEditModal] = useState<{
+        active: boolean;
+        imageData: UserUploadedFileType | null;
+    }>({ active: false, imageData: null });
     const [mobileActionImageUrl, setMobileActionImageUrl] = useState<string | null>(null);
+    const deleteInFlightRef = useRef(false);
+    const itemForEditing = buildItemImageEditorTarget(projectData, {
+        fileId: item.fileId || fileId,
+        id: item.id,
+    });
 
-    const onImageDelete = async (selectedItem: ExtractedDataItem, imageToDelete: UserUploadedFileType) => {
-        if (disabled) return;
+    const onImageDelete = (
+        selectedItem: ExtractedDataItem & { fileId?: string },
+        imageToDelete: UserUploadedFileType,
+    ) => {
+        if (disabled || deleteInFlightRef.current) return;
+        const projectId = activeProject?.projectId || projectData.projectId;
+        if (!projectId) {
+            message.error('The active project identity is unavailable.');
+            return;
+        }
+        deleteInFlightRef.current = true;
 
         Modal.confirm({
             title: 'Delete item photo?',
@@ -42,42 +65,31 @@ function UploadedImagesList({
             okText: 'Delete photo',
             okType: 'danger',
             cancelText: 'Cancel',
+            onCancel: () => {
+                deleteInFlightRef.current = false;
+            },
             onOk: async () => {
                 dispatch(startLoader("deleting image"));
-                const updatedProjectData: Project = removeObjRef(projectData);
-                let itemUpdated = false;
+                const updatedProjectData = removeItemImageFromProject(
+                    projectData,
+                    {
+                        fileId: selectedItem.fileId || fileId || '',
+                        id: selectedItem.id,
+                    },
+                    imageToDelete.url,
+                );
 
-                // Iterate through files and their extractedData
-                if (updatedProjectData?.files) {
-                    for (const file of updatedProjectData.files) {
-                        const itemsList = file.extractedData?.data?.items || [];
-                        if (itemsList.length > 0) {
-                            for (const item of itemsList) {
-                                if (item.id === selectedItem.id && item.images) {
-                                    const imageIndex = item.images.findIndex(image => image.url === imageToDelete.url);
-                                    if (imageIndex !== -1) {
-                                        item.images.splice(imageIndex, 1); // Remove the image URL
-                                        itemUpdated = true;
-                                        break; // Found and updated item
-                                    }
-                                }
-                            }
-                            if (itemUpdated) break; // Item found in this file
-                        }
-                    }
-                }
-
-                if (itemUpdated) {
+                if (updatedProjectData) {
                     // Directly sync the changes without waiting for the full sync function logic
                     // because we only modified the existing data structure
                     try {
                         if (onProjectDataUpdate) {
-                            await onProjectDataUpdate({ ...updatedProjectData, projectId: activeProject.projectId });
+                            await onProjectDataUpdate({ ...updatedProjectData, projectId });
                         } else {
-                            const savedProject = await updateProject({ ...updatedProjectData, projectId: activeProject.projectId });
+                            const savedProject = await updateProject({ ...updatedProjectData, projectId });
                             assertProjectUpdateSucceeded(
                                 savedProject,
-                                activeProject.projectId,
+                                projectId,
                                 'menu_editor_item_image_delete_project_update_rejected',
                             );
                             setActiveProject(removeObjRef(savedProject));
@@ -101,10 +113,12 @@ function UploadedImagesList({
                         message.error('Failed to delete image.');
                     } finally {
                         dispatch(stopLoader("deleting image"));
+                        deleteInFlightRef.current = false;
                     }
 
                 } else {
                     dispatch(stopLoader("deleting image"));
+                    deleteInFlightRef.current = false;
                     message.error('Failed to find the image to delete.');
                 }
             },
@@ -117,7 +131,7 @@ function UploadedImagesList({
                 const imagePreviewConfig = disabled || isMobile ? true : {
                     mask: (
                         <Space size={12}>
-                            {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+                            {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && itemForEditing ? (
                                 <LuPencil
                                     style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
                                     onClick={(e) => { e.stopPropagation(); setImageEditModal({ active: true, imageData: image }); }}
@@ -125,7 +139,7 @@ function UploadedImagesList({
                             ) : null}
                             <LuTrash
                                 style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
-                                onClick={(e) => { e.stopPropagation(); onImageDelete(item, image); }}
+                            onClick={(e) => { e.stopPropagation(); onImageDelete(item, image); }}
                             />
                         </Space>
                     )
@@ -133,7 +147,7 @@ function UploadedImagesList({
 
                 const mobileActionContent = (
                     <Flex gap={6} style={{ minWidth: 132 }} vertical>
-                        {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+                        {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && itemForEditing ? (
                             <Button
                                 icon={<LuPencil size={14} />}
                                 onClick={() => {
@@ -150,7 +164,7 @@ function UploadedImagesList({
                             icon={<LuTrash size={14} />}
                             onClick={() => {
                                 setMobileActionImageUrl(null);
-                                void onImageDelete(item, image);
+                                onImageDelete(item, image);
                             }}
                             size="small"
                         >
@@ -183,7 +197,7 @@ function UploadedImagesList({
                                 <Popover
                                     content={mobileActionContent}
                                     open={mobileActionImageUrl === image.url}
-                                    onOpenChange={(open) => setMobileActionImageUrl(open ? image.url : null)}
+                                    onOpenChange={(open) => setMobileActionImageUrl(open ? image.url ?? null : null)}
                                     placement="bottomRight"
                                     trigger="click"
                                 >
@@ -205,9 +219,9 @@ function UploadedImagesList({
                     </Flex>
                 </Fragment>
             })}
-            {!disabled && FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+            {!disabled && FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && itemForEditing ? (
                 <EditImageModal
-                    selectedItem={item}
+                    selectedItem={itemForEditing}
                     open={imageEditModal.active}
                     onClose={() => setImageEditModal({ active: false, imageData: null })}
                     imageData={imageEditModal.imageData}

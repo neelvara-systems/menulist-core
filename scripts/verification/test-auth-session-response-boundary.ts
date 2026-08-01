@@ -48,6 +48,29 @@ assert.ok(normalized, 'the compact serialized NextAuth session contract must be 
 assert.equal(normalized.expires, validSession.expires, 'session expiry must remain an ISO string');
 assert.deepEqual(normalized.user.storeIds, [22, 33]);
 assert.equal(normalized.user.productAccounts?.AL?.tenantId, 101);
+assert.equal('updatedAt' in (normalized.user.productAccounts?.AL || {}), false);
+
+const privateProductAccountFields = clone();
+Object.assign(privateProductAccountFields.user.productAccounts.AL, {
+    createdAt: 'private',
+    internalNote: 'private',
+    updatedAt: 'private',
+});
+const projectedProductAccount = normalizeLoginUserSession(privateProductAccountFields);
+assert.ok(projectedProductAccount);
+assert.deepEqual(projectedProductAccount.user.productAccounts?.AL, {
+    role: 'owner',
+    storeId: 202,
+    tenantId: 101,
+});
+
+const conflictingProductAccountScope = clone();
+Object.assign(conflictingProductAccountScope.user.productAccounts.AL, { tId: 999 });
+assert.equal(
+    normalizeLoginUserSession(conflictingProductAccountScope),
+    null,
+    'conflicting product-account tenant aliases must fail closed',
+);
 
 const dateExpiry = clone();
 dateExpiry.expires = new Date(validSession.expires) as unknown as string;
@@ -91,6 +114,13 @@ onboardingSession.sId = null as unknown as number;
 onboardingSession.user.tenantId = null as unknown as number;
 onboardingSession.user.storeId = null as unknown as number;
 assert.ok(normalizeLoginUserSession(onboardingSession), 'pre-store onboarding sessions may use explicit null scope');
+
+const hostileSession = new Proxy({}, {
+    get() {
+        throw new Error('hostile session getter');
+    },
+});
+assert.equal(normalizeLoginUserSession(hostileSession), null, 'hostile session access must fail closed');
 
 const hookSource = fs.readFileSync(
     path.resolve(process.cwd(), 'src/hooks/useClientAuthSession.ts'),

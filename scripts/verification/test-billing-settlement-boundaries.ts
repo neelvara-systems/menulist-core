@@ -370,7 +370,21 @@ assert.equal(statusHistory.at(-1), 999);
 const entitlementNowMs = Date.UTC(2026, 6, 16, 12, 0, 0);
 const futureCycleEnd = { seconds: Math.floor((entitlementNowMs + 60_000) / 1_000) };
 const endedCycle = { toMillis: () => entitlementNowMs - 1 };
-assert.equal(getActivePlanTypeForSubscription({ status: 'active', planId: ' Pro ' }, entitlementNowMs), 'pro');
+assert.equal(getActivePlanTypeForSubscription({
+    cycleEndDate: futureCycleEnd,
+    status: 'active',
+    planId: ' Pro ',
+}, entitlementNowMs), 'pro');
+assert.equal(
+    getActivePlanTypeForSubscription({ status: 'active', planId: 'pro' }, entitlementNowMs),
+    null,
+    'active rows without exact paid-cycle evidence must fail closed',
+);
+assert.equal(getActivePlanTypeForSubscription({
+    cycleEndDate: { seconds: Math.floor((entitlementNowMs - 1_000) / 1_000) },
+    planId: 'pro',
+    status: 'active',
+}, entitlementNowMs), null, 'an elapsed active row must not retain plan entitlement');
 assert.equal(getActivePlanTypeForSubscription({
     cycleEndDate: futureCycleEnd,
     planId: 'premium',
@@ -392,6 +406,27 @@ assert.equal(hasCurrentSubscriptionPlanEntitlement({
 assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: futureCycleEnd, planId: 'pro', status: 'past_due' }, entitlementNowMs), null);
 assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: futureCycleEnd, planId: 'pro', status: 'expired' }, entitlementNowMs), null);
 assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: 'invalid', planId: 'pro', status: 'cancelled' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({
+    cycleEndDate: { seconds: String(Math.floor((entitlementNowMs + 60_000) / 1_000)) },
+    planId: 'pro',
+    status: 'active',
+}, entitlementNowMs), null, 'numeric-string timestamp components must not retain plan entitlement');
+assert.equal(getActivePlanTypeForSubscription({
+    planId: { toString: () => 'pro' } as unknown as string,
+    status: 'active',
+}, entitlementNowMs), null, 'object plan IDs must not be coerced into plan entitlement');
+let entitlementTimestampMethodCalled = false;
+assert.equal(getActivePlanTypeForSubscription({
+    cycleEndDate: {
+        toMillis: () => {
+            entitlementTimestampMethodCalled = true;
+            return entitlementNowMs + 60_000;
+        },
+    },
+    planId: 'pro',
+    status: 'active',
+}, entitlementNowMs), null);
+assert.equal(entitlementTimestampMethodCalled, false, 'persisted timestamp methods must not execute during entitlement projection');
 
 const validHistoryTimestampSeconds = 1_767_225_600;
 assert.equal(formatBillingHistoryEvents([{
@@ -510,6 +545,16 @@ assert.deepEqual(calculateProration({
     proratedAmount: 299900,
     fullCycleAmount: 299900,
     daysRemaining: 0,
+    totalDays: 30,
+});
+assert.deepEqual(calculateProration({
+    amount: 3000,
+    cycleStartDate: { toDate: () => utcDate(2026, 6, 10) },
+    cycleEndDate: { toDate: () => utcDate(2026, 7, 9) },
+} as unknown as FirestoreSubscriptionDoc, utcDate(2026, 6, 1)), {
+    proratedAmount: 3000,
+    fullCycleAmount: 3000,
+    daysRemaining: 30,
     totalDays: 30,
 });
 

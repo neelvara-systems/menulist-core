@@ -148,9 +148,9 @@ const renderer = read('src/lib/printable-asset-templates/renderPrintableAsset.ts
   'renderPrintableAssetEditorTemplate',
   'renderPrintableAssetDownloadFiles',
   'renderPrintableAssetEditorTemplateFiles',
-  "input.assetTypeId === 'print_menu'",
-  "input.assetTypeId === 'feedback_qr'",
-  "input.assetTypeId === 'complete_menu_kit'",
+  "admittedInput.assetTypeId === 'print_menu'",
+  "admittedInput.assetTypeId === 'feedback_qr'",
+  "admittedInput.assetTypeId === 'complete_menu_kit'",
   'requestedFormat',
   'renderPdfFirstPageToPng',
   'PDFJS_CDN_SRC',
@@ -180,6 +180,11 @@ const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdap
   'product_tag',
   'campaign_poster',
   'buildPrintableAssetEditorDocument',
+  'admitPrintableAssetEditorDocument',
+  'creativeEditorDocumentSchema.safeParse(documentValue)',
+  'parsed.data.productContext.productId !== "menulist"',
+  'parsed.data.canvas.width !== dimensions.width',
+  'parsed.data.canvas.height !== dimensions.height',
   'renderPrintableAssetEditorDocument',
   'renderPrintableAssetEditorDocumentFiles',
   'renderPrintableAssetEditorDocumentFile',
@@ -206,11 +211,24 @@ const editorAdapter = read('src/lib/printable-asset-templates/editorDocumentAdap
   'printFrameLocked',
   'editorGuide: true',
   'excludeFromExport: true',
-  'printFrames: input.assetTypeId === "business_card"',
+  'printFrames: admittedInput.assetTypeId === "business_card"',
   'resolveMenuListAttributionPolicy',
   'errorCorrectionLevel: "H"',
   'jsPDF',
 ].forEach((token) => requireToken(editorAdapter, token, 'editor-backed printable asset adapter'));
+const printableInputBoundary = read('src/lib/printable-asset-templates/inputBoundary.ts');
+[
+  'normalizePrintableAssetRenderInput',
+  'normalizeMenuKitInput(value)',
+  'normalizeMenuCardLogoUrl',
+  'isPrintableAssetTypeId',
+  'isPrintableTemplateFamilyId',
+  "parsed.protocol !== 'https:'",
+  'parsed.username',
+  'parsed.password',
+].forEach((token) => requireToken(printableInputBoundary, token, 'printable asset input boundary'));
+requireToken(renderer, 'admitPrintableAssetRenderInput(input)', 'printable asset renderer input admission');
+requireToken(editorAdapter, 'admitPrintableAssetRenderInput(input)', 'editor-backed printable asset input admission');
 requireToken(editorAdapter, 'margin: 4', 'editor-backed printable asset QR quiet zone');
 if (/margin:\s*[123]\b/.test(editorAdapter)) {
   failures.push('editor-backed printable asset adapter uses a QR quiet zone below four modules');

@@ -21,7 +21,7 @@ import {
 } from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildOwnerDetectedUploadDetails, buildOwnerUploadConcernDetails, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
-import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
+import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, mergeBusinessIdentityUpdatesForCurrentStore, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { MAX_MENU_EXTRACTION_FILES } from '@template/main-app/projects/constants';
 import createProcessingJob from '@template/main-app/projects/getProcessedFile';
@@ -65,6 +65,10 @@ type PreparedFile = {
     url: string;
 };
 
+type PreparedFileUploadResult =
+    | { error: null; file: PreparedFile }
+    | { error: unknown; file: null };
+
 type MenuIntakeDecisionResult =
     | { action: 'continue'; files: PreparedFile[]; ignoredFiles: PreparedFile[]; identityOverrideConfirmed?: boolean }
     | { action: 'cancel' }
@@ -74,6 +78,8 @@ type ProjectCreationPayload = Parameters<typeof addProject>[0] & {
     defaultLanguage?: string;
     languages?: string[];
 };
+
+const EMPTY_UPLOAD_FILE_LIST: NonNullable<UploadProps['fileList']> = [];
 
 const getPendingMenuExtractionFileCount = (files?: ProjectFileType[] | null): number => (
     (files || []).filter((file) => !file?.extractedData).length
@@ -187,14 +193,15 @@ export default function MenuUploadSheet({
     const [linkPermissionConfirmed, setLinkPermissionConfirmed] = useState(false);
     const [linkImporting, setLinkImporting] = useState(false);
     const selectedFileCountRef = useRef(0);
+    const selectedFilesRef = useRef<SelectedUploadFile[]>([]);
 
     useEffect(() => {
         return () => {
-            selectedFiles.forEach((file) => {
+            selectedFilesRef.current.forEach((file) => {
                 if (file.previewUrl) URL.revokeObjectURL(file.previewUrl);
             });
         };
-    }, [selectedFiles]);
+    }, []);
 
     useEffect(() => {
         selectedFileCountRef.current = selectedFiles.length;
@@ -212,7 +219,7 @@ export default function MenuUploadSheet({
         if (isMasterUser || storeDetails?.isMaster !== false) return null;
         return {
             ...DEFAULT_OUTLET_POLICY,
-            ...((userPermissions as any)?.outletPolicy || {}),
+            ...(userPermissions?.outletPolicy || {}),
         };
     }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
     const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
@@ -258,6 +265,7 @@ export default function MenuUploadSheet({
                 }
             });
 
+            selectedFilesRef.current = next;
             return next;
         });
     }, []);
@@ -328,7 +336,7 @@ export default function MenuUploadSheet({
                 setStatusText('');
                 setStep('review');
                 return false;
-            } catch (error: any) {
+            } catch (error: unknown) {
                 logMenuProcessingFailure('mobile_menu_upload_pdf_conversion_failed', error, {
                     ...getBoundedMenuProcessingStringContext('fileType', file.type),
                     fileSize: Number(file.size || 0),
@@ -372,10 +380,10 @@ export default function MenuUploadSheet({
     const uploadProps: UploadProps = useMemo(() => ({
         accept: '.pdf,.jpg,.jpeg,.png,.webp,image/*,application/pdf',
         beforeUpload: async (file, fileList) => {
-            const result = await handleSelectedFile(file as File, fileList as File[]);
+            const result = await handleSelectedFile(file, fileList);
             return result ?? false;
         },
-        fileList: [],
+        fileList: EMPTY_UPLOAD_FILE_LIST,
         multiple: true,
         showUploadList: false,
     }), [handleSelectedFile]);
@@ -472,17 +480,23 @@ export default function MenuUploadSheet({
                 if (!Object.keys(updates).length) return;
 
                 try {
+                    const expectedStoreId = storeDetails.storeId;
+                    const expectedTenantId = storeDetails.tenantId;
                     const writeResult = await updateStore({
-                        storeId: storeDetails.storeId,
-                        tenantId: storeDetails.tenantId,
+                        storeId: expectedStoreId,
+                        tenantId: expectedTenantId,
                         ...updates,
                     });
                     assertStoreUpdateSucceeded(
                         writeResult,
-                        storeDetails.storeId,
+                        expectedStoreId,
                         'mobile_menu_upload_business_details_store_update_rejected',
                     );
-                    setStoreDetails((previous: any) => ({ ...previous, ...updates }));
+                    setStoreDetails((previous) => mergeBusinessIdentityUpdatesForCurrentStore(
+                        previous,
+                        { storeId: expectedStoreId, tenantId: expectedTenantId },
+                        updates,
+                    ));
                     Toast.show({ content: 'Business details updated', duration: 1400 });
                 } catch (error) {
                     logMenuProcessingFailure('mobile_menu_upload_business_details_update_failed', error, {
@@ -578,14 +592,14 @@ export default function MenuUploadSheet({
                     ignoredFiles,
                     identityOverrideConfirmed: true,
                 };
-            } catch (createError: any) {
+            } catch {
                 Toast.show({
-                    content: createError?.message || t('menuUploadCreateProjectFailed'),
+                    content: t('menuUploadCreateProjectFailed'),
                     duration: 2400,
                 });
                 return { action: 'cancel' };
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             logMenuProcessingFailure('mobile_menu_upload_intake_preflight_skipped', error, {
                 ...getMenuProcessingProjectLogContext(projectId),
                 fileCount: files.length,
@@ -678,7 +692,7 @@ export default function MenuUploadSheet({
             setStatusText(t('uploadUploadingFiles'));
 
             let completedUploads = 0;
-            const uploadResults = await Promise.all(preparedFiles.map(async (file) => {
+            const uploadResults = await Promise.all(preparedFiles.map(async (file): Promise<PreparedFileUploadResult> => {
                 try {
                     const uploadedUrl = await uploadFile({
                         uid: file.uid,
@@ -772,7 +786,7 @@ export default function MenuUploadSheet({
 
             setProgress(100);
             onJobCreated({ jobId, projectId: targetProjectId });
-        } catch (error: any) {
+        } catch (error: unknown) {
             logMenuProcessingFailure('mobile_menu_upload_job_create_failed', error, {
                 ...getMenuProcessingProjectLogContext(currentProjectId),
                 fileCount: selectedFiles.length,
@@ -852,7 +866,7 @@ export default function MenuUploadSheet({
             setLinkUrl('');
             setLinkPermissionConfirmed(false);
             onJobCreated({ jobId: result.jobId, projectId: result.projectId });
-        } catch (error: any) {
+        } catch (error: unknown) {
             logMenuProcessingFailure('mobile_menu_upload_link_import_failed', error, {
                 ...getMenuProcessingProjectLogContext(currentProjectId),
                 ...getBoundedMenuProcessingStringContext('linkUrl', linkUrl),
@@ -1131,9 +1145,6 @@ export default function MenuUploadSheet({
                                     {statusText || t('uploadingDesc')}
                                 </Text>
                                 <ProgressBar percent={progress} />
-                                <Button block fill="outline" onClick={onClose} size="large">
-                                    {t('cancel')}
-                                </Button>
                             </Flex>
                         </Card>
                     ) : null}

@@ -1,10 +1,18 @@
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
+import { normalizeSignalDeskDocumentId } from "@lib/signaldesk/documentIdBoundary";
 import { z } from "zod";
 
 const signalTypeSchema = z.enum(["qr_scan", "link_click", "share", "claim_attempt", "referral"]);
 const sourceSurfaceSchema = z.enum(["menu", "qr", "website", "manual", "other"]);
-const canonicalId = (max: number) => z.string().trim().min(3).max(max);
-const nullableTargetId = canonicalId(160).nullable();
+const canonicalId = (max: number) => z.string().min(3).max(max).refine(
+    (value) => value === value.trim(),
+    "Identifier must be canonical.",
+);
+const documentId = (max: number) => canonicalId(max).refine(
+    (value) => normalizeSignalDeskDocumentId(value, max) !== null,
+    "Document ID is invalid.",
+);
+const nullableTargetId = documentId(160).nullable();
 const nullableTargetName = z.string().trim().min(2).max(180).nullable();
 
 type FirestoreTimestampLike = {
@@ -47,7 +55,7 @@ const demandSignalEventSchema = z.object({
 const demandSignalSummarySchema = z.object({
     count: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    demandSignalId: canonicalId(300),
+    demandSignalId: documentId(300),
     pId: z.literal(SIGNALDESK_PRODUCT_CODE),
     signalType: signalTypeSchema,
     sourceSurface: sourceSurfaceSchema,

@@ -6,10 +6,22 @@ import { PRODUCT_IDS } from '../../src/constants/product';
 import {
     claimRazorpayWebhookEvent,
     completeRazorpayWebhookEvent,
+    type RazorpayWebhookClaim,
 } from '../../src/lib/billing/razorpayWebhookLease';
+
 import { writeProductPaymentTransactionAudit } from '../../src/lib/billing/productBillingServer';
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
+
+const processingClaimContract = {
+    eventKey: 'compile-time-processing-claim',
+    outcome: 'processing',
+} satisfies Extract<RazorpayWebhookClaim, { outcome: 'processing' }>;
+assert.equal(
+    processingClaimContract.outcome,
+    'processing',
+    'processing webhook claims must remain a separately discriminated contract variant',
+);
 
 async function clearWebhookEvents(): Promise<void> {
     const snapshot = await firestoreAdmin.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS).get();

@@ -1,7 +1,9 @@
-import type { MenuItemForSlide } from "@type/campaigns";
+import { Timestamp } from "@firebase/firestore";
+import type { MenuItemForSlide, ScreenSlide } from "@type/campaigns";
 import { formatMenuPrice, parseSingleMenuPrice } from "@lib/pricing/formatMenuPrice";
 import { getActivePublicItemPriceAttributes } from "@lib/pricing/publicItemPricePresentation";
 import { normalizeOptionalMenuPrice } from "@lib/validation/pricing.schema";
+import { screenTimestampToMillis } from "./screenTimestamp";
 
 const SCREEN_TEXT_MAX_DEFAULT = 120;
 const OWNER_CAPTION_MAX = 48;
@@ -21,6 +23,50 @@ const LOCALIZED_TEXT_KEYS = [
 
 const TECHNICAL_CATEGORY_PATTERN = /^(cat|category|menu|section|item)[_-]?[a-z0-9_-]{4,}$/i;
 const UUID_LIKE_PATTERN = /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+const SCREEN_PROJECT_FILE_LIMIT = 100;
+const SCREEN_PROJECT_CATEGORY_LIMIT = 500;
+const SCREEN_PROJECT_ITEM_INSPECTION_LIMIT = 2_000;
+
+const readScreenOwnValue = (value: unknown, key: PropertyKey): unknown => {
+    if (!value || typeof value !== "object") return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && "value" in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+const snapshotScreenArray = (value: unknown, limit: number): unknown[] => {
+    try {
+        if (!Array.isArray(value)) return [];
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+        const length = lengthDescriptor && "value" in lengthDescriptor
+            && Number.isSafeInteger(lengthDescriptor.value)
+            && lengthDescriptor.value >= 0
+            ? Math.min(lengthDescriptor.value, limit)
+            : 0;
+        const snapshot: unknown[] = [];
+        for (let index = 0; index < length; index += 1) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, index);
+            if (descriptor && "value" in descriptor) snapshot.push(descriptor.value);
+        }
+        return snapshot;
+    } catch {
+        return [];
+    }
+};
+
+const normalizeScreenOrderIndex = (value: unknown, fallback: number): number => {
+    if (typeof value === "number") {
+        return Number.isSafeInteger(value) && value >= 0 ? value : fallback;
+    }
+    if (typeof value !== "string" || !/^(?:0|[1-9]\d*)$/.test(value)) {
+        return fallback;
+    }
+    const numeric = Number(value);
+    return Number.isSafeInteger(numeric) && String(numeric) === value ? numeric : fallback;
+};
 
 export function resolveScreenText(value: unknown, fallback = ""): string {
     let raw = "";
@@ -28,9 +74,8 @@ export function resolveScreenText(value: unknown, fallback = ""): string {
     if (typeof value === "string" || typeof value === "number") {
         raw = String(value);
     } else if (value && typeof value === "object") {
-        const record = value as Record<string, unknown>;
         for (const key of LOCALIZED_TEXT_KEYS) {
-            const candidate = record[key];
+            const candidate = readScreenOwnValue(value, key);
             if (typeof candidate === "string" && candidate.trim()) {
                 raw = candidate;
                 break;
@@ -38,10 +83,19 @@ export function resolveScreenText(value: unknown, fallback = ""): string {
         }
 
         if (!raw) {
-            const candidate = Object.values(record).find(
-                (entry) => typeof entry === "string" && entry.trim().length > 0,
-            );
-            raw = typeof candidate === "string" ? candidate : "";
+            try {
+                const descriptors = Object.getOwnPropertyDescriptors(value);
+                const candidate = Object.values(descriptors).find(
+                    (descriptor) => "value" in descriptor
+                        && typeof descriptor.value === "string"
+                        && descriptor.value.trim().length > 0,
+                );
+                raw = candidate && "value" in candidate && typeof candidate.value === "string"
+                    ? candidate.value
+                    : "";
+            } catch {
+                raw = "";
+            }
         }
     }
 
@@ -119,10 +173,12 @@ export function hasScreenPrice(price: unknown): boolean {
 export function getScreenItemPrice(item: unknown): number | string | undefined {
     const priceAttributes = getActivePublicItemPriceAttributes(item);
     if (priceAttributes.length === 0) {
-        return parseScreenPrice((item as { price?: unknown } | null)?.price);
+        return parseScreenPrice(readScreenOwnValue(item, "price"));
     }
 
-    const numericPrices = priceAttributes.map((attribute) => parseSingleMenuPrice(attribute.price as string | number));
+    const numericPrices = priceAttributes.map((attribute) => (
+        parseSingleMenuPrice(readScreenOwnValue(attribute, "price") as string | number)
+    ));
     if (numericPrices.every((price): price is number => price !== null && price > 0)) {
         const min = Math.min(...numericPrices);
         const max = Math.max(...numericPrices);
@@ -130,7 +186,7 @@ export function getScreenItemPrice(item: unknown): number | string | undefined {
     }
 
     const labels = Array.from(new Set(priceAttributes
-        .map((attribute) => truncateScreenText(attribute.price, 40))
+        .map((attribute) => truncateScreenText(readScreenOwnValue(attribute, "price"), 40))
         .filter(Boolean)));
     return labels.slice(0, 2).join(" / ") || undefined;
 }
@@ -163,12 +219,10 @@ export function normalizeScreenImageUrl(value: unknown): string | undefined {
 }
 
 export function normalizeScreenTags(value: unknown): string[] | undefined {
-    if (!Array.isArray(value)) return undefined;
-
     const seen = new Set<string>();
     const tags: string[] = [];
 
-    for (const entry of value) {
+    for (const entry of snapshotScreenArray(value, 64)) {
         const tag = truncateScreenText(entry, 32);
         if (!tag) continue;
 
@@ -200,6 +254,160 @@ export function getScreenDietType(tags?: string[]): "veg" | "nonVeg" | null {
 
 export function normalizeOwnerSlideCaption(caption?: unknown): string {
     return truncateScreenText(caption, OWNER_CAPTION_MAX, "Custom slide");
+}
+
+/**
+ * Project browser-owned offline menu data back into the public screen contract.
+ * localStorage is mutable input, so compile-time MenuItemForSlide types are not
+ * sufficient at this boundary.
+ */
+export function normalizeCachedScreenMenuItems(value: unknown): MenuItemForSlide[] {
+    const normalized: MenuItemForSlide[] = [];
+    const entries = snapshotScreenArray(value, SCREEN_MENU_RENDER_ITEM_LIMIT);
+
+    for (let index = 0; index < entries.length; index += 1) {
+        const entry = entries[index];
+        const id = truncateScreenText(readScreenOwnValue(entry, "id"), 160);
+        const name = truncateScreenText(readScreenOwnValue(entry, "name"), 120);
+        const available = readScreenOwnValue(entry, "available");
+        if (!id || !name || typeof available !== "boolean") continue;
+
+        const categoryOrderValue = readScreenOwnValue(entry, "categoryOrderIndex");
+        const itemOrderValue = readScreenOwnValue(entry, "orderIndex");
+        normalized.push(withoutUndefined({
+            id,
+            name,
+            imageUrl: normalizeScreenImageUrl(readScreenOwnValue(entry, "imageUrl")),
+            price: parseScreenPrice(readScreenOwnValue(entry, "price")),
+            available,
+            isBestSeller: readScreenOwnValue(entry, "isBestSeller") === true,
+            categoryName: normalizeScreenCategoryName(
+                readScreenOwnValue(entry, "categoryName"),
+            ),
+            categoryOrderIndex: categoryOrderValue === undefined
+                ? undefined
+                : normalizeScreenOrderIndex(categoryOrderValue, index),
+            orderIndex: itemOrderValue === undefined
+                ? undefined
+                : normalizeScreenOrderIndex(itemOrderValue, index),
+            description: truncateScreenText(
+                readScreenOwnValue(entry, "description"),
+                SCREEN_TEXT_MAX_DEFAULT,
+            ) || undefined,
+            tags: normalizeScreenTags(readScreenOwnValue(entry, "tags")),
+        }));
+    }
+
+    return dedupeScreenMenuItems(normalized);
+}
+
+/**
+ * Validate and normalize browser-owned cached slides. Expired or malformed
+ * entries are omitted so offline mode cannot revive withdrawn poster truth.
+ */
+export function normalizeCachedScreenSlides(
+    value: unknown,
+    nowMilliseconds = Date.now(),
+): ScreenSlide[] {
+    const normalized: ScreenSlide[] = [];
+
+    for (const entry of snapshotScreenArray(value, 8)) {
+        const id = truncateScreenText(readScreenOwnValue(entry, "id"), 160);
+        const source = readScreenOwnValue(entry, "source");
+        const type = readScreenOwnValue(entry, "type");
+        const confidenceScore = readScreenOwnValue(entry, "confidenceScore");
+        const availabilityLinked = readScreenOwnValue(entry, "availabilityLinked");
+        const availabilityReliability = readScreenOwnValue(
+            entry,
+            "availabilityReliability",
+        );
+        if (
+            !id
+            || (source !== "campaign" && source !== "evergreen" && source !== "pinned")
+            || (
+                type !== "item_highlight"
+                && type !== "brand_fallback"
+                && type !== "owner_upload"
+            )
+            || typeof confidenceScore !== "number"
+            || !Number.isFinite(confidenceScore)
+            || confidenceScore < 0
+            || confidenceScore > 1
+            || typeof availabilityLinked !== "boolean"
+            || (
+                availabilityReliability !== "high"
+                && availabilityReliability !== "medium"
+                && availabilityReliability !== "low"
+            )
+            || (type === "owner_upload" && source !== "pinned")
+            || (type === "brand_fallback" && source !== "evergreen")
+        ) {
+            continue;
+        }
+
+        const imageUrl = normalizeScreenImageUrl(readScreenOwnValue(entry, "imageUrl"));
+        if (type !== "brand_fallback" && !imageUrl) continue;
+
+        const rawValidUntil = readScreenOwnValue(entry, "validUntil");
+        const validUntilMilliseconds = rawValidUntil === undefined
+            ? null
+            : screenTimestampToMillis(rawValidUntil);
+        if (
+            rawValidUntil !== undefined
+            && (
+                validUntilMilliseconds === null
+                || validUntilMilliseconds <= nowMilliseconds
+            )
+        ) {
+            continue;
+        }
+
+        const slide: ScreenSlide = {
+            id,
+            source,
+            type,
+            imageUrl: imageUrl || "",
+            confidenceScore,
+            availabilityLinked,
+            availabilityReliability,
+        };
+        const itemId = truncateScreenText(
+            readScreenOwnValue(entry, "itemId"),
+            160,
+        );
+        const itemName = truncateScreenText(
+            readScreenOwnValue(entry, "itemName"),
+            120,
+        );
+        const price = parseScreenPrice(readScreenOwnValue(entry, "price"));
+        const description = truncateScreenText(
+            readScreenOwnValue(entry, "description"),
+            SCREEN_TEXT_MAX_DEFAULT,
+        );
+        const tags = normalizeScreenTags(readScreenOwnValue(entry, "tags"));
+        const caption = truncateScreenText(
+            readScreenOwnValue(entry, "caption"),
+            80,
+        );
+        const qrUrl = normalizeScreenImageUrl(readScreenOwnValue(entry, "qrUrl"));
+        if (itemId) slide.itemId = itemId;
+        if (itemName) slide.itemName = itemName;
+        if (price !== undefined) slide.price = price;
+        if (description) slide.description = description;
+        if (tags) slide.tags = tags;
+        if (caption) slide.caption = caption;
+        if (qrUrl) slide.qrUrl = qrUrl;
+        if (validUntilMilliseconds !== null) {
+            try {
+                slide.validUntil = Timestamp.fromMillis(validUntilMilliseconds);
+            } catch {
+                continue;
+            }
+        }
+        normalized.push(slide);
+    }
+
+    return normalized;
 }
 
 export function getScreenCategoryCaption(categoryName?: string): string {
@@ -244,57 +452,82 @@ const withoutUndefined = <T extends Record<string, unknown>>(value: T): T => (
 );
 
 export function extractScreenMenuItemsFromProject(
-    projectData: any,
+    projectData: unknown,
     options: { limit?: number } = {},
 ): MenuItemForSlide[] {
     const extractedItems: MenuItemForSlide[] = [];
-    const itemLimit = Math.max(
-        1,
-        Math.min(options.limit || SCREEN_MENU_RENDER_ITEM_LIMIT, SCREEN_MENU_RENDER_ITEM_LIMIT),
-    );
+    const itemLimit = normalizeScreenOrderIndex(options.limit, SCREEN_MENU_RENDER_ITEM_LIMIT);
+    const boundedItemLimit = Math.max(1, Math.min(itemLimit, SCREEN_MENU_RENDER_ITEM_LIMIT));
+    let inspectedItems = 0;
 
-    for (const file of (projectData?.files || [])) {
-        const categories = Array.isArray(file?.extractedData?.data?.categories)
-            ? file.extractedData.data.categories
-            : [];
-        const categoryMap = categories.reduce((acc: Record<string, { name: string; orderIndex: number }>, category: any, index: number) => {
-            const categoryName = normalizeScreenCategoryName(category?.name, "");
-            if (category?.id && categoryName) {
-                acc[category.id] = {
+    for (const file of snapshotScreenArray(
+        readScreenOwnValue(projectData, "files"),
+        SCREEN_PROJECT_FILE_LIMIT,
+    )) {
+        const extractedData = readScreenOwnValue(file, "extractedData");
+        const data = readScreenOwnValue(extractedData, "data");
+        const categories = snapshotScreenArray(
+            readScreenOwnValue(data, "categories"),
+            SCREEN_PROJECT_CATEGORY_LIMIT,
+        );
+        const categoryMap = new Map<string, { name: string; orderIndex: number }>();
+        categories.forEach((category, index) => {
+            const categoryName = normalizeScreenCategoryName(
+                readScreenOwnValue(category, "name"),
+                "",
+            );
+            const categoryId = resolveScreenText(readScreenOwnValue(category, "id"));
+            if (categoryId && categoryName) {
+                categoryMap.set(categoryId, {
                     name: categoryName,
-                    orderIndex: Number.isFinite(Number(category?.orderIndex)) ? Number(category.orderIndex) : index,
-                };
+                    orderIndex: normalizeScreenOrderIndex(
+                        readScreenOwnValue(category, "orderIndex"),
+                        index,
+                    ),
+                });
             }
-            return acc;
-        }, {});
+        });
 
-        const items = Array.isArray(file?.extractedData?.data?.items)
-            ? file.extractedData.data.items
-            : [];
+        const items = snapshotScreenArray(
+            readScreenOwnValue(data, "items"),
+            Math.min(SCREEN_PROJECT_ITEM_INSPECTION_LIMIT - inspectedItems, SCREEN_PROJECT_ITEM_INSPECTION_LIMIT),
+        );
 
-        for (const [index, item] of items.entries()) {
-            const itemName = resolveScreenText(item?.name);
+        for (let index = 0; index < items.length; index += 1) {
+            const item = items[index];
+            inspectedItems += 1;
+            const itemName = resolveScreenText(readScreenOwnValue(item, "name"));
             if (!itemName) continue;
 
-            const itemDesc = resolveScreenText(item?.description) || undefined;
+            const itemDesc = resolveScreenText(readScreenOwnValue(item, "description")) || undefined;
             const parsedPrice = getScreenItemPrice(item);
-            const categoryInfo = item?.category ? categoryMap[item.category] : undefined;
+            const categoryId = resolveScreenText(readScreenOwnValue(item, "category"));
+            const categoryInfo = categoryId ? categoryMap.get(categoryId) : undefined;
+            const images = snapshotScreenArray(readScreenOwnValue(item, "images"), 1);
+            const rawAvailability = readScreenOwnValue(item, "available");
 
             extractedItems.push(withoutUndefined({
-                id: item?.id || `item-${extractedItems.length}`,
+                id: resolveScreenText(readScreenOwnValue(item, "id"))
+                    || `item-${extractedItems.length}`,
                 name: itemName,
-                imageUrl: normalizeScreenImageUrl(item?.images?.[0]?.url),
+                imageUrl: normalizeScreenImageUrl(readScreenOwnValue(images[0], "url")),
                 price: parsedPrice,
-                available: item?.available !== false,
-                isBestSeller: item?.isBestSeller || false,
-                categoryName: categoryInfo?.name || normalizeScreenCategoryName(item?.category),
+                available: rawAvailability === undefined || rawAvailability === true,
+                isBestSeller: readScreenOwnValue(item, "isBestSeller") === true,
+                categoryName: categoryInfo?.name || normalizeScreenCategoryName(categoryId),
                 categoryOrderIndex: categoryInfo?.orderIndex,
-                orderIndex: Number.isFinite(Number(item?.orderIndex)) ? Number(item.orderIndex) : index,
+                orderIndex: normalizeScreenOrderIndex(
+                    readScreenOwnValue(item, "orderIndex"),
+                    index,
+                ),
                 description: itemDesc,
-                tags: normalizeScreenTags(item?.tags),
+                tags: normalizeScreenTags(readScreenOwnValue(item, "tags")),
             }));
+
+            if (extractedItems.length >= boundedItemLimit) break;
         }
+        if (extractedItems.length >= boundedItemLimit || inspectedItems >= SCREEN_PROJECT_ITEM_INSPECTION_LIMIT) break;
     }
 
-    return dedupeScreenMenuItems(extractedItems).slice(0, itemLimit);
+    return dedupeScreenMenuItems(extractedItems).slice(0, boundedItemLimit);
 }

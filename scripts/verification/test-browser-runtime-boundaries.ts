@@ -9,6 +9,7 @@ import { parseCookieItem, serializeCookieItem } from '../../src/hooks/useCookie'
 import { normalizeStoredColorList, parseStoredColorList } from '../../src/hooks/useRecentColors';
 import { matchesKeyboardShortcut } from '../../src/hooks/useKeyboardShortcuts';
 import { loader, startLoader, stopLoader } from '../../src/redux/slices/loader';
+import { matchesShortcut } from '../../src/utils/keyboardShortcuts.utils';
 
 let loaderState = loader.reducer(undefined, startLoader('same-request'));
 loaderState = loader.reducer(loaderState, startLoader('same-request'));
@@ -109,6 +110,14 @@ assert.equal(
     ),
     true,
     'the cross-platform Ctrl shortcut contract must continue accepting Command on macOS',
+);
+assert.equal(
+    matchesShortcut(
+        { key: 'k', ctrlKey: false, metaKey: true, shiftKey: false } as KeyboardEvent,
+        { key: 'k', metaKey: true, description: 'Open command menu' },
+    ),
+    true,
+    'the shared utility must use the same explicit Meta-key contract as the runtime hook',
 );
 
 process.stdout.write('Browser runtime boundary tests passed.\n');

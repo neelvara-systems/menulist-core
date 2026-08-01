@@ -25,6 +25,15 @@ function desktopScreen(fileName: string, alt: string): AnswerlatticeWebsiteAsset
     };
 }
 
+function publicScreen(fileName: string, alt: string): AnswerlatticeWebsiteAsset {
+    return {
+        src: `/${fileName}`,
+        width: DESKTOP_SCREEN_WIDTH,
+        height: DESKTOP_SCREEN_HEIGHT,
+        alt,
+    };
+}
+
 function motionAsset(src: string, fallbackSrc: string, poster: string, alt: string): AnswerlatticeWebsiteMotionAsset {
     return {
         src,
@@ -60,6 +69,26 @@ export const ANSWERLATTICE_PAGE_AWARE_WIDGET_MOTION = motionAsset(
     '/answerlattice-page-aware-widget-clip.mp4',
     '/answerlattice-page-aware-widget-clip-poster.png',
     'AnswerLattice page-aware widget using safe page context and approved answers'
+);
+
+export const ANSWERLATTICE_OWNER_DECISION_ASSET = publicScreen(
+    'answerlattice-owner-decision-system.webp',
+    'Sample AnswerLattice Daily Brief routing qualified work to evidence and owner review'
+);
+
+export const ANSWERLATTICE_KNOWLEDGE_MAP_ASSET = publicScreen(
+    'answerlattice-knowledge-map.webp',
+    'Sample AnswerLattice Knowledge Map showing curated product hierarchy, answer coverage, drift, and review state'
+);
+
+export const ANSWERLATTICE_RELEASE_ASSURANCE_ASSET = publicScreen(
+    'answerlattice-release-assurance.webp',
+    'Sample AnswerLattice release impact and Answer Tests review before owner-controlled activation'
+);
+
+export const ANSWERLATTICE_ARTICLE_TOPIC_MAP_ASSET = publicScreen(
+    'answerlattice-article-topic-map.webp',
+    'Sample public article topic map built from published guide headings'
 );
 
 export const ANSWERLATTICE_WIDGET_RUNTIME_ASSET = desktopScreen(
@@ -120,10 +149,7 @@ export const ANSWERLATTICE_FEATURE_ASSETS: Record<string, AnswerlatticeWebsiteAs
         'answerlattice-feature-knowledge-intake.png',
         'Sample AnswerLattice Knowledge Intake feature screen'
     ),
-    'knowledge-base': desktopScreen(
-        'answerlattice-feature-knowledge-base.png',
-        'Sample AnswerLattice Knowledge Base feature screen'
-    ),
+    'knowledge-base': ANSWERLATTICE_ARTICLE_TOPIC_MAP_ASSET,
     'faq-management': desktopScreen(
         'answerlattice-feature-faq-management.png',
         'Sample AnswerLattice FAQ Management feature screen'

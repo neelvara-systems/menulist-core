@@ -201,7 +201,7 @@ async function assertResellerUniqueness(
         db.collection(DB_COLLECTIONS.RESELLER_PROFILES).where('username', '==', username).limit(1).get(),
         db.collection(DB_COLLECTIONS.USERS).where('email', '==', email).limit(1).get(),
     ]);
-    const authUser = await authAdmin.getUserByEmail(email).catch((error: unknown) => {
+    const authUser = await authAdmin.getUserByEmail(email).catch((error: unknown): null => {
         if (getFirebaseErrorCode(error) === 'auth/user-not-found') return null;
         throw error;
     });
@@ -417,7 +417,7 @@ export const POST = withAuth(async (request, session) => {
                 authUserId: existingAuthUser?.uid,
                 db,
                 email: nextEmail,
-                name: updates.name || existing.name,
+                name: updates.name || existing.name || nextEmail,
                 password: updates.password,
                 resellerProfileId: profileId,
             });
@@ -443,7 +443,7 @@ export const POST = withAuth(async (request, session) => {
                         active: updates.active ?? existing.active !== false,
                         createdAuthUser: syncedAccount.createdAuthUser,
                         email: nextEmail,
-                        name: updates.name || existing.name,
+                        name: updates.name || existing.name || nextEmail,
                         now: modifiedOn,
                         resellerProfileId: profileId,
                         username: nextUsername,

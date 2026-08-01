@@ -4,7 +4,7 @@ import { LuFlame, LuShieldAlert, LuThermometerSun } from 'react-icons/lu';
 
 function SupportTicketPriority({ ticket, style }: { ticket: Partial<SupportTicketType>, style?: React.CSSProperties }) {
 
-    const getPriorityDetails = (priority: string) => {
+    const getPriorityDetails = (priority?: string) => {
         switch (priority) {
             case SUPPORT_TICKET_PRIORITY.LOW:
                 return { icon: <LuThermometerSun />, color: 'blue' };

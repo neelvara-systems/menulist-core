@@ -1,5 +1,10 @@
-import { getBoundedCampaignStringContext, type CampaignLogContext } from '@lib/campaigns/campaignDiagnostics';
-import { TodayCampaignSummary } from '@type/campaigns';
+import {
+    getBoundedCampaignStringContext,
+    logCampaignFailure,
+    type CampaignLogContext,
+} from '@lib/campaigns/campaignDiagnostics';
+import { parsePublicHttpsUrl } from '@lib/public-truth-tools/publicUrlValidation';
+import type { TodayCampaignSummary } from '@type/campaigns';
 
 export type TodayReadyActionKind = 'critical_fix' | 'growth_move' | 'trust_move';
 export type TodayGrowthPackAssetId = 'whatsapp' | 'google_post' | 'instagram_caption' | 'staff_prompt';
@@ -46,7 +51,30 @@ export interface BuildTodayWeeklyGrowthPackInput {
     todayTimingsLabel?: string;
 }
 
-const cleanText = (value?: string | null) => String(value || '').trim();
+const MAX_SHORT_COPY_LENGTH = 160;
+const MAX_LONG_COPY_LENGTH = 500;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    value !== null && typeof value === 'object' && !Array.isArray(value)
+);
+
+const readOwnDataField = (value: unknown, field: string): unknown => {
+    if (!isRecord(value)) return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, field);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch (error) {
+        logCampaignFailure('today_weekly_growth_pack_input_projection_failed', error, {
+            ...getBoundedCampaignStringContext('field', field),
+        });
+        return undefined;
+    }
+};
+
+const cleanText = (value: unknown, maxLength = MAX_SHORT_COPY_LENGTH): string => {
+    if (typeof value !== 'string') return '';
+    return value.trim().replace(/\s+/g, ' ').slice(0, maxLength).trim();
+};
 
 const sentence = (value: string) => {
     const normalized = cleanText(value);
@@ -55,31 +83,60 @@ const sentence = (value: string) => {
 };
 
 const getCampaignSubject = (
-    primaryCampaign?: TodayCampaignSummary,
-    operationalCampaigns: TodayCampaignSummary[] = [],
+    primaryCampaign: unknown,
+    operationalCampaigns: unknown,
 ) => {
-    const candidates = [primaryCampaign, ...operationalCampaigns];
-    return cleanText(candidates.find((campaign) => cleanText(campaign?.subject?.itemName))?.subject?.itemName);
+    const candidates: unknown[] = [primaryCampaign];
+    if (Array.isArray(operationalCampaigns)) {
+        candidates.push(...operationalCampaigns.slice(0, 20));
+    }
+
+    for (const campaign of candidates) {
+        const subject = readOwnDataField(campaign, 'subject');
+        const itemName = cleanText(readOwnDataField(subject, 'itemName'));
+        if (itemName) return itemName;
+    }
+    return '';
 };
 
-const appendUrl = (copy: string, menuUrl?: string) => {
-    const url = cleanText(menuUrl);
+const normalizeMenuUrl = (value: unknown): string => {
+    if (typeof value !== 'string') return '';
+    const candidate = value.trim();
+    if (!candidate || candidate.length > 2048 || /\s/.test(candidate)) return '';
+    return parsePublicHttpsUrl(candidate, 'today_weekly_growth_pack_menu_url')?.toString() || '';
+};
+
+const normalizeInactiveItemCount = (value: unknown): number => (
+    typeof value === 'number' && Number.isFinite(value) && value > 0
+        ? Math.min(100_000, Math.floor(value))
+        : 0
+);
+
+const normalizeInactiveItemNames = (value: unknown): string[] => {
+    if (!Array.isArray(value)) return [];
+    return value
+        .slice(0, 3)
+        .map((item) => cleanText(item))
+        .filter(Boolean);
+};
+
+const appendUrl = (copy: string, menuUrl: string) => {
+    const url = normalizeMenuUrl(menuUrl);
     return url ? `${copy}\n${url}` : copy;
 };
 
-export function buildTodayWeeklyGrowthPack({
-    businessName,
-    hasActiveTempStatus,
-    inactiveItemCount = 0,
-    inactiveItemNames = [],
-    menuUrl,
-    operationalCampaigns = [],
-    primaryCampaign,
-    projectName,
-    staffPromptText,
-    tempStatusMessage,
-    todayTimingsLabel,
-}: BuildTodayWeeklyGrowthPackInput): TodayWeeklyGrowthPack {
+export function buildTodayWeeklyGrowthPack(input: BuildTodayWeeklyGrowthPackInput): TodayWeeklyGrowthPack {
+    const businessName = readOwnDataField(input, 'businessName');
+    const hasActiveTempStatus = readOwnDataField(input, 'hasActiveTempStatus') === true;
+    const inactiveItemCount = normalizeInactiveItemCount(readOwnDataField(input, 'inactiveItemCount'));
+    const inactiveItemNames = normalizeInactiveItemNames(readOwnDataField(input, 'inactiveItemNames'));
+    const menuUrl = normalizeMenuUrl(readOwnDataField(input, 'menuUrl'));
+    const operationalCampaigns = readOwnDataField(input, 'operationalCampaigns');
+    const primaryCampaign = readOwnDataField(input, 'primaryCampaign');
+    const projectName = readOwnDataField(input, 'projectName');
+    const staffPromptText = readOwnDataField(input, 'staffPromptText');
+    const tempStatusMessage = readOwnDataField(input, 'tempStatusMessage');
+    const todayTimingsLabel = cleanText(readOwnDataField(input, 'todayTimingsLabel'));
     const resolvedBusinessName = cleanText(businessName) || 'your business';
     const resolvedProjectName = cleanText(projectName) || 'your menu';
     const campaignSubject = getCampaignSubject(primaryCampaign, operationalCampaigns);
@@ -89,7 +146,7 @@ export function buildTodayWeeklyGrowthPack({
     const readyActions: TodayReadyAction[] = [];
 
     if (inactiveItemCount > 0) {
-        const previewNames = inactiveItemNames.slice(0, 3).filter(Boolean).join(', ');
+        const previewNames = inactiveItemNames.join(', ');
         readyActions.push({
             id: 'inactive-items',
             kind: 'critical_fix',
@@ -106,7 +163,10 @@ export function buildTodayWeeklyGrowthPack({
             id: 'temporary-status',
             kind: 'trust_move',
             title: 'Temporary status is active',
-            description: sentence(tempStatusMessage || 'Check that the public status is still correct for today.'),
+            description: sentence(
+                cleanText(tempStatusMessage, MAX_LONG_COPY_LENGTH)
+                || 'Check that the public status is still correct for today.',
+            ),
             actionLabel: 'Check status',
         });
     }
@@ -163,7 +223,7 @@ export function buildTodayWeeklyGrowthPack({
         menuUrl,
     );
 
-    const staffPromptCopy = cleanText(staffPromptText)
+    const staffPromptCopy = cleanText(staffPromptText, MAX_LONG_COPY_LENGTH)
         || `If customers ask what to try this week, mention ${primarySubject}.`;
 
     return {
@@ -235,7 +295,7 @@ export async function copyTodayGrowthPackText(
     text: string,
     options: TodayGrowthPackCopyOptions = {},
 ): Promise<boolean> {
-    if (!text) {
+    if (typeof text !== 'string' || !text.trim()) {
         options.onFailure?.('empty_text');
         return false;
     }

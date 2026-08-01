@@ -16,6 +16,25 @@ export type MultiOutletProjectIdScope = {
     sId: number;
 };
 
+export function isMultiOutletTenantStoreListEntryInScope(
+    value: unknown,
+    expected: {
+        allowInactive?: boolean;
+        isMaster?: boolean;
+        storeId?: number;
+    },
+): value is Record<string, unknown> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const entry = value as Record<string, unknown>;
+    const storeScope = normalizeMultiOutletNumericDocumentId(entry.storeId);
+    if (!storeScope) return false;
+    if (expected.storeId !== undefined && storeScope.numericId !== expected.storeId) return false;
+    if (entry.active !== undefined && typeof entry.active !== "boolean") return false;
+    if (!expected.allowInactive && entry.active === false) return false;
+    if (expected.isMaster !== undefined && entry.isMaster !== expected.isMaster) return false;
+    return true;
+}
+
 export function normalizeMultiOutletNumericDocumentId(value: unknown): MultiOutletNumericDocumentId | null {
     const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
     const documentId = raw.trim();

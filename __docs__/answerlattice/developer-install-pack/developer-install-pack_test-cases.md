@@ -23,6 +23,9 @@
 - Allowed origins and blocked routes stay dashboard-owned and are not generated as client-product owner settings or manual variables.
 - Install Center copies the AI install packet, AGENTS.md, CLAUDE.md, Cursor RULE.md, Cursor .mdc, and Windsurf rule.
 - Generated widget snippets escape quotes, ampersands, and angle brackets in attribute values.
+- Next.js, React, and Vue generated snippets replay initial page context after
+  the async widget script acknowledges load; route-change updates remain
+  active afterward.
 - Agent kit download uses a same-origin no-store fetch to `/api/answerlattice/widget-agent-kit`, requires a successful ZIP content type, and rejects empty or over-2-MiB output.
 - Agent packet and kit routes use actor/tenant/workspace rate-limit keys, `MANAGE_WIDGET`, exact store ownership, private no-store responses, and do not expose raw widget keys.
 - Malformed widget-config timestamps, oversized strings/lists, negative/non-integer counters, and invalid response shapes do not replace Install Center state.

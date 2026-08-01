@@ -38,9 +38,14 @@ import {
     type MultiOutletLogContext,
 } from "@lib/multiOutlet/diagnostics";
 import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
-import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
+import {
+    isMultiOutletTenantStoreListEntryInScope,
+    normalizeMultiOutletNumericDocumentId,
+    normalizeMultiOutletProjectId,
+} from "@lib/multiOutlet/projectIdBoundary";
+import { normalizePersistedOutletPolicy } from "@lib/multiOutlet/outletPolicyBoundary";
 import { normalizeMenuExtractionJobId } from "@lib/menu-extraction/jobIdBoundary";
-import { DEFAULT_OUTLET_POLICY, LOCAL_CATEGORY_PREFIX, LOCAL_ITEM_PREFIX, type OutletPolicy } from "@type/multiOutlet.types";
+import { LOCAL_CATEGORY_PREFIX, LOCAL_ITEM_PREFIX, type OutletPolicy } from "@type/multiOutlet.types";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -469,7 +474,7 @@ const runLinkedOutletPostCommitEffects = async ({
     return result;
 };
 
-const requireLinkedOutletAuthority = ({
+const requireLinkedOutletAuthority = async ({
     callerStoreSnap,
     currentStoreId,
     masterStoreId,
@@ -508,7 +513,7 @@ const requireLinkedOutletAuthority = ({
     ) {
         throw new LinkedOutletSaveRejection(403, "Forbidden", "linked_outlet_caller_store_invalid");
     }
-    const permissionError = requireAnyStorePermissionForStoreData(
+    const permissionError = await requireAnyStorePermissionForStoreData(
         request,
         session,
         callerStore,
@@ -559,18 +564,20 @@ const requireLinkedOutletAuthority = ({
         throw new LinkedOutletSaveRejection(409, "Tenant not available", "linked_outlet_tenant_invalid");
     }
     const tenantStores = Array.isArray(tenant?.storesList) ? tenant.storesList : [];
-    const callerIsInTenant = tenantStores.some((store: any) => (
-        Number(store?.storeId) === currentStoreId && store?.active !== false
+    const callerIsInTenant = tenantStores.some((store: unknown) => (
+        isMultiOutletTenantStoreListEntryInScope(store, { storeId: currentStoreId })
     ));
-    const targetIsInTenant = tenantStores.some((store: any) => (
-        Number(store?.storeId) === outletStoreId
-        && store?.active !== false
-        && store?.isMaster !== true
+    const targetIsInTenant = tenantStores.some((store: unknown) => (
+        isMultiOutletTenantStoreListEntryInScope(store, {
+            isMaster: false,
+            storeId: outletStoreId,
+        })
     ));
-    const masterIsInTenant = tenantStores.some((store: any) => (
-        Number(store?.storeId) === masterStoreId
-        && store?.active !== false
-        && store?.isMaster === true
+    const masterIsInTenant = tenantStores.some((store: unknown) => (
+        isMultiOutletTenantStoreListEntryInScope(store, {
+            isMaster: true,
+            storeId: masterStoreId,
+        })
     ));
     if (!callerIsInTenant || !targetIsInTenant || !masterIsInTenant) {
         throw new LinkedOutletSaveRejection(409, "Store membership changed", "linked_outlet_membership_invalid");
@@ -583,10 +590,11 @@ const requireLinkedOutletAuthority = ({
         );
     }
 
-    return {
-        ...DEFAULT_OUTLET_POLICY,
-        ...(masterStore?.outletPolicy || {}),
-    } as OutletPolicy;
+    const outletPolicy = normalizePersistedOutletPolicy(masterStore?.outletPolicy);
+    if (!outletPolicy) {
+        throw new LinkedOutletSaveRejection(409, "Master store not available", "linked_outlet_policy_invalid");
+    }
+    return outletPolicy;
 };
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -715,7 +723,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         transaction.get(persistedOutletProjectRef),
                         transaction.get(masterProjectDocumentRef),
                     ]);
-                    const outletPolicy = requireLinkedOutletAuthority({
+                    const outletPolicy = await requireLinkedOutletAuthority({
                         callerStoreSnap,
                         currentStoreId,
                         masterStoreId,
@@ -852,7 +860,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         ? transaction.get(extractionReviewJobRef)
                         : Promise.resolve(null),
                 ]);
-                const outletPolicy = requireLinkedOutletAuthority({
+                const outletPolicy = await requireLinkedOutletAuthority({
                     callerStoreSnap,
                     currentStoreId,
                     masterStoreId,

@@ -475,9 +475,11 @@ function verifyScheduler(functionConstants, scheduler, snapshotScheduler, transi
 
 function verifyStoresSummaryContract(platformSummaryDal, storesDal) {
   [
-    'menuPresence?: StoreDistributionPresenceSummary;',
-    'presence?: StoreDistributionPresenceSummary;',
-    'export type StoreDistributionPresenceSummary =',
+    'StoreDistributionPresence,',
+    'StoreDistributionPresenceValue,',
+    'menuPresence?: StoreDistributionPresence;',
+    'presence?: StoreDistributionPresence;',
+    'export type StoreDistributionPresenceSummary = StoreDistributionPresence;',
     'const STORE_DISTRIBUTION_PRESENCE_KEYS',
     'export const buildStoreDistributionPresenceSummary =',
     'summaryEntry.menuPresence = buildStoreDistributionPresenceSummary(data.menuPresence) || {};',

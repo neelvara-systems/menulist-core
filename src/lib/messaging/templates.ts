@@ -62,7 +62,11 @@ function urlValue(value: unknown): string {
   if (!text) return '';
   try {
     const url = new URL(text);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? text : '';
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:')
+      && !url.username
+      && !url.password
+    ) ? text : '';
   } catch {
     return '';
   }

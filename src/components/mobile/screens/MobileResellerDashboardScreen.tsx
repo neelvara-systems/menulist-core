@@ -724,7 +724,7 @@ export default function MobileResellerDashboardScreen({
                             <Card size="small">
                                 <Flex gap={4} vertical>
                                     <Text type="secondary">Collect before confirming</Text>
-                                    <Text strong>{formatInrPaise(renewalAmount)}</Text>
+                                    <Text strong>{renewalAmount === null ? 'Not available' : formatInrPaise(renewalAmount)}</Text>
                                     <Text type="secondary">
                                         Covers {renewalClient.subscriptionQuantity || renewalClient.locationCount || 1} paid location{(renewalClient.subscriptionQuantity || renewalClient.locationCount || 1) > 1 ? 's' : ''}.
                                     </Text>

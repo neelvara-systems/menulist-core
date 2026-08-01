@@ -1,7 +1,15 @@
 import { Tag } from 'antd'
+import type { MouseEventHandler, ReactNode } from 'react'
 import { LuCheck, LuX } from 'react-icons/lu'
 
-function TagRenderer({ tag, active, onClick, showSelectIcon }) {
+interface TagRendererProps {
+    active: boolean;
+    onClick?: MouseEventHandler<HTMLElement>;
+    showSelectIcon?: boolean;
+    tag: ReactNode;
+}
+
+function TagRenderer({ tag, active, onClick, showSelectIcon = false }: TagRendererProps) {
     return (
         <Tag
             className='animate__animated animate__fadeInRight animate__faster'

@@ -9,6 +9,11 @@ import type LoginUserType from '@type/loginUser';
 import type { PlatformBlockDetails, PlatformBlockEntityType } from '@type/platform/blocking';
 
 type UnknownRecord = Record<string, unknown>;
+type WithoutNullValues<T> = {
+    [Key in keyof T]: Exclude<T[Key], null>;
+};
+
+const INVALID_SCOPE = Symbol('invalid-login-session-scope');
 
 const isRecord = (value: unknown): value is UnknownRecord => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -29,6 +34,12 @@ const optionalBoolean = (value: unknown): boolean | undefined | null => {
     if (value === undefined) return undefined;
     return typeof value === 'boolean' ? value : null;
 };
+
+const hasNoNullValues = <T extends UnknownRecord>(
+    value: T,
+): value is T & WithoutNullValues<T> => (
+    Object.values(value).every((item) => item !== null)
+);
 
 const normalizeNullableScopeId = (value: unknown): number | null | undefined => {
     if (value === null) return null;
@@ -63,9 +74,13 @@ const normalizeStores = (value: unknown): AuthSessionStoreMapping[] | null => {
 
 const normalizeStoreIds = (value: unknown): number[] | null => {
     if (!Array.isArray(value)) return null;
-    const normalized = value.map(normalizeStoreSwitchStoreId);
-    if (normalized.some((storeId) => !storeId)) return null;
-    return Array.from(new Set(normalized as number[]));
+    const normalized: number[] = [];
+    for (const item of value) {
+        const storeId = normalizeStoreSwitchStoreId(item);
+        if (!storeId) return null;
+        normalized.push(storeId);
+    }
+    return Array.from(new Set(normalized));
 };
 
 const normalizeProductAccounts = (
@@ -78,9 +93,70 @@ const normalizeProductAccounts = (
     for (const [key, account] of Object.entries(value)) {
         const productId = normalizeProductId(key);
         if (!productId || !isRecord(account)) return null;
-        accounts[productId] = { ...account };
+        const tenantId = normalizeOptionalConsistentScopeIds([
+            account.tenantId,
+            account.tId,
+        ]);
+        const storeId = normalizeOptionalConsistentScopeIds([
+            account.storeId,
+            account.sId,
+        ]);
+        const storeIds = account.storeIds === undefined
+            ? undefined
+            : normalizeStoreIds(account.storeIds);
+        const role = optionalBoundedString(account.role, 64);
+        const platformRole = optionalBoundedString(account.platformRole, 64);
+        const active = optionalBoolean(account.active);
+        const authDisabled = optionalBoolean(account.authDisabled);
+        const deleted = optionalBoolean(account.deleted);
+        const accessRevision = account.accessRevision === undefined
+            ? undefined
+            : (
+                typeof account.accessRevision === 'number'
+                && Number.isSafeInteger(account.accessRevision)
+                && account.accessRevision >= 0
+                    ? account.accessRevision
+                    : null
+            );
+        if (
+            tenantId === INVALID_SCOPE
+            || storeId === INVALID_SCOPE
+            || storeIds === null
+            || role === null
+            || platformRole === null
+            || active === null
+            || authDisabled === null
+            || deleted === null
+            || accessRevision === null
+        ) return null;
+
+        accounts[productId] = {
+            ...(accessRevision !== undefined ? { accessRevision } : {}),
+            ...(active !== undefined ? { active } : {}),
+            ...(authDisabled !== undefined ? { authDisabled } : {}),
+            ...(deleted !== undefined ? { deleted } : {}),
+            ...(platformRole !== undefined ? { platformRole } : {}),
+            ...(role !== undefined ? { role } : {}),
+            ...(storeId !== undefined ? { storeId } : {}),
+            ...(storeIds !== undefined ? { storeIds } : {}),
+            ...(tenantId !== undefined ? { tenantId } : {}),
+        };
     }
     return accounts;
+};
+
+const normalizeOptionalConsistentScopeIds = (
+    values: readonly unknown[],
+): number | null | undefined | typeof INVALID_SCOPE => {
+    const supplied = values.filter((value) => value !== undefined);
+    if (supplied.length === 0) return undefined;
+    const normalized = supplied.map((value) => (
+        value === null ? null : normalizeStoreSwitchStoreId(value) ?? INVALID_SCOPE
+    ));
+    const first = normalized[0];
+    return normalized.every((value) => Object.is(value, first))
+        ? first
+        : INVALID_SCOPE;
 };
 
 const normalizeBlockDetails = (value: unknown): PlatformBlockDetails | undefined | null => {
@@ -112,7 +188,7 @@ const normalizeBlockDetails = (value: unknown): PlatformBlockDetails | undefined
         updatedByEmail: optionalBoundedString(value.updatedByEmail, 320),
         updatedByUserId: optionalBoundedString(value.updatedByUserId, 256),
     };
-    if (entityType === null || entityId === null || Object.values(stringFields).some((item) => item === null)) {
+    if (entityType === null || entityId === null || !hasNoNullValues(stringFields)) {
         return null;
     }
     const normalized: PlatformBlockDetails = {
@@ -184,7 +260,7 @@ const normalizeSessionUser = (value: unknown): AuthSessionUserType | null => {
         resellerProfileId: optionalBoundedString(value.resellerProfileId, 256),
         staffLoginId: optionalBoundedString(value.staffLoginId, 320),
     };
-    if (blockDetails === null || Object.values(optionalStrings).some((item) => item === null)) return null;
+    if (blockDetails === null || !hasNoNullValues(optionalStrings)) return null;
     const staffAuthMode = value.staffAuthMode === undefined
         ? undefined
         : (value.staffAuthMode === 'email' || value.staffAuthMode === 'owner_passcode' ? value.staffAuthMode : null);
@@ -234,7 +310,7 @@ const normalizeSessionUser = (value: unknown): AuthSessionUserType | null => {
     return normalizedUser;
 };
 
-export const normalizeLoginUserSession = (value: unknown): LoginUserType | null => {
+const normalizeLoginUserSessionValue = (value: unknown): LoginUserType | null => {
     if (!isRecord(value)) return null;
     const user = normalizeSessionUser(value.user);
     if (!user) return null;
@@ -276,4 +352,12 @@ export const normalizeLoginUserSession = (value: unknown): LoginUserType | null 
         uId,
         user,
     };
+};
+
+export const normalizeLoginUserSession = (value: unknown): LoginUserType | null => {
+    try {
+        return normalizeLoginUserSessionValue(value);
+    } catch {
+        return null;
+    }
 };

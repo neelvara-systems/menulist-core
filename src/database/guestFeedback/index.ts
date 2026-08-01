@@ -171,9 +171,11 @@ export const isGuestFeedbackListResult = (
     ) return false;
     const ids = new Set<string>();
     for (const item of candidate.items) {
+        const itemId = item.id;
         if (
             !isGuestFeedbackRecord(item)
-            || ids.has(item.id)
+            || !itemId
+            || ids.has(itemId)
             || (
                 expectedScope
                 && (
@@ -182,7 +184,7 @@ export const isGuestFeedbackListResult = (
                 )
             )
         ) return false;
-        ids.add(item.id);
+        ids.add(itemId);
     }
     return candidate.items.length === 0
         ? candidate.lastDocId === null && candidate.hasMore === false

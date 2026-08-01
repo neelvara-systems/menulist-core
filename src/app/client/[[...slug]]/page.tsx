@@ -56,9 +56,11 @@ import { getPrimaryPublicMenuImage } from "@lib/menu/publicMenuImages";
 import { attachPublicMenuSearchIndex } from "@lib/menu/publicMenuSearch";
 import { getPublicMenuFreshness } from "@lib/menu/publicMenuStructuredData";
 import { mergeSpecialMenuOverlayProjects } from "@lib/menu/specialMenuOverlay";
+import { resolveLiveSpecialMenuProject } from "@lib/menu/specialMenuRuntime";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
 import { normalizePublicAccentColor } from "@lib/obp/accentColor";
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
+import { resolvePublicMenuCurrencyCode } from "@lib/pricing/publicCurrency";
 import { sanitizeForClient } from "@lib/mce/utils";
 import { populateMasterCache, resolveProjectForRender } from "@lib/multiOutlet";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
@@ -78,10 +80,10 @@ import {
     buildBreadcrumbList,
     buildGeoCoordinates,
     buildOpeningHours,
+    buildEffectiveSpecialOpeningHours,
     buildSchemaPriceRange,
     buildSchemaTelephone,
     buildSameAs,
-    buildTempStatusSchema,
     getMenuSchemaType,
     getOfferingItemSchemaType,
     isFoodBusinessCategory,
@@ -498,18 +500,26 @@ async function resolveSpecialMenuOverride(
             return baseResult;
         }
 
-        // Verify it's actually active (guard against stale store field)
-        if (specialProjectData._specialMenu?.status !== "active") {
+        const specialMenu = resolveLiveSpecialMenuProject(specialProjectData, {
+            projectId: storeData.activeSpecialMenuId,
+            sId: storeData.storeId,
+            tId: storeData.tenantId,
+        });
+        if (!specialMenu) {
             return baseResult;
         }
 
-        // Check expiry — if past endsAt, skip (nightly scheduler will clean up)
-        const endsAt = new Date(specialProjectData._specialMenu.endsAt).getTime();
-        if (endsAt <= Date.now()) {
+        const baseProjectId = String(
+            baseResult.projectData?.projectId
+            || baseResult.projectMetadata?.projectId
+            || baseResult.projectMetadata?.id
+            || "",
+        );
+        if (specialMenu.metadata.baseProjectId !== baseProjectId) {
             return baseResult;
         }
 
-        const mode = specialProjectData._specialMenu.mode;
+        const mode = specialMenu.metadata.mode;
 
         if (mode === "replace") {
             // Full replacement — return special menu as the project.
@@ -520,7 +530,7 @@ async function resolveSpecialMenuOverride(
                 projectData: specialProjectData,
                 projectMetadata: {
                     ...baseResult.projectMetadata,
-                    name: specialProjectData._specialMenu.displayName,
+                    name: specialMenu.metadata.displayName,
                     isSpecialMenu: true,
                 },
                 redirectSlug: baseResult.redirectSlug,
@@ -891,7 +901,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
             requestedOutletSlug
                 ? getStoreByOutletSlug(storeData.tenantId, requestedOutletSlug)
                 : Promise.resolve(null),
-        ).catch((error) => {
+        ).catch((error): null => {
             logPublicMenuResolutionFailure('metadata_outlet_lookup_failed', {
                 tenantId: storeData.tenantId,
                 storeId: storeData.storeId,
@@ -928,7 +938,7 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
                 metadataStore.storeId,
                 projectSlugForLookup,
             ),
-        ).catch((error) => {
+        ).catch((error): null => {
             logPublicMenuResolutionFailure('metadata_project_lookup_failed', {
                 tenantId: metadataStore.tenantId,
                 storeId: metadataStore.storeId,
@@ -945,7 +955,6 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
         }
     }
 
-    const resolvedStoreName = metadataStore?.name || storeName;
     const resolvedImageUrl = metadataStore?.logo || imageUrl;
     const metadataLanguage = metadataProject
         ? resolveProjectPublicLanguage(metadataProject, metadataStore, requestedLanguage)
@@ -963,6 +972,9 @@ export async function generateMetadata(props: PageProps): Promise<Metadata> {
         && !metadataProjectResult
     );
     const isOBPMetadata = FEATURE_FLAGS.ENABLE_OBP && !metadataProject && !missingProjectPath;
+    const resolvedStoreName = isOBPMetadata && !metadataOutletSlug
+        ? getBrandName(metadataStore, storeName)
+        : getStoreContextName(metadataStore, storeName);
     const publicTruthIndexDecision = missingProjectPath
         ? {
             index: false,
@@ -1213,6 +1225,7 @@ function generateSchemaOrgJsonLd(
     const address = buildAddress(storeData);
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);
+    const specialOpeningHours = buildEffectiveSpecialOpeningHours(storeData);
     const sameAs = buildSameAs(storeData);
     const telephone = buildSchemaTelephone({
         countryCode: storeData?.countryCode,
@@ -1221,7 +1234,6 @@ function generateSchemaOrgJsonLd(
         phone: storeData?.phone,
     });
     const priceRange = buildSchemaPriceRange(storeData?.priceRange);
-    const tempStatusHours = buildTempStatusSchema(storeData?.tempStatus, storeData?.timeZone);
     const effectiveBusinessType = resolvePublicBusinessType(
         storeData?.businessType,
         storeData?.businessIndustry,
@@ -1230,6 +1242,7 @@ function generateSchemaOrgJsonLd(
     const publicDescription = getPublicBusinessDescription(storeData, contentLanguage);
     const showItemPrices = projectData?.config?.design?.menu?.showItemPrices ?? true;
     const showImages = projectData?.config?.design?.menu?.showImages ?? true;
+    const currencyCode = resolvePublicMenuCurrencyCode(storeData?.currencyCode);
     const freshness = getPublicMenuFreshness(projectData, storeData);
     const catalogSchema = buildPublicCatalogStructuredData({
         businessCategory: storeData?.businessCategory,
@@ -1237,7 +1250,7 @@ function generateSchemaOrgJsonLd(
         canonicalUrl,
         categories,
         contentLanguage,
-        currencyCode: storeData?.currencyCode || 'USD',
+        currencyCode,
         freshness,
         items,
         projectData,
@@ -1259,15 +1272,12 @@ function generateSchemaOrgJsonLd(
         ...(storeData?.logo && { image: storeData.logo }),
         url: canonicalUrl,
         ...(telephone && { telephone }),
-        ...(storeData?.email && { email: storeData.email }),
-        ...(storeData?.currencyCode && {
-            currenciesAccepted: storeData.currencyCode,
-        }),
+        currenciesAccepted: currencyCode,
         ...(priceRange && { priceRange }),
         ...(address && { address }),
         ...(geo && { geo }),
         ...(openingHours && { openingHoursSpecification: openingHours }),
-        ...(tempStatusHours && { specialOpeningHoursSpecification: tempStatusHours }),
+        ...(specialOpeningHours && { specialOpeningHoursSpecification: specialOpeningHours }),
         ...(sameAs && { sameAs }),
         ...(freshness.dateModified && { dateModified: freshness.dateModified }),
         ...(storeData?.cuisineTypes?.length && { servesCuisine: storeData.cuisineTypes }),
@@ -1932,7 +1942,7 @@ async function MenuContent({
     if (requestedOutletSlug && storeData.isMaster && FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
         const outletStore = await withRetry(() =>
             withTimeout(getStoreByOutletSlug(storeData.tenantId, requestedOutletSlug))
-        ).catch((error) => {
+        ).catch((error): null => {
             logPublicMenuResolutionFailure('outlet_lookup_failed', {
                 tenantId: storeData.tenantId,
                 storeId: storeData.storeId,
@@ -2215,6 +2225,7 @@ async function MenuContent({
               * AND we have a real outletSlug to link to.
               */}
             <MenuBreadcrumb
+                activeLanguage={contentLanguage}
                 ariaLabel={publicCustomerT('menu.businessInformation')}
                 businessName={masterBrandName || storeName}
                 outletName={

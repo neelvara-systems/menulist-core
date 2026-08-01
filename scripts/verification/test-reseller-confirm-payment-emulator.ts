@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { deleteApp } from 'firebase-admin/app';
 import { DB_COLLECTIONS } from '../../src/constants/database';
 import { confirmManualSubscriptionPaymentServer } from '../../src/database/subscriptions/server';
 import { admin, firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
@@ -84,10 +85,10 @@ async function run(): Promise<void> {
 run()
     .then(async () => {
         console.log('Reseller manual payment confirmation emulator tests passed.');
-        await admin.app().delete();
+        await deleteApp(admin.app());
     })
     .catch(async (error) => {
         console.error(error);
-        await admin.app().delete();
+        await deleteApp(admin.app());
         process.exitCode = 1;
     });

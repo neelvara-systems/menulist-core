@@ -107,3 +107,30 @@ export interface ResellerProfile {
     modifiedOn: Timestamp;
     createdBy: string;                         // Founder who activated this reseller
 }
+
+/**
+ * Runtime-projected profile used for authorization and private reseller
+ * routes. Legacy documents may omit non-authority counters or timestamps, so
+ * those fields remain optional until their owning response/mutation boundary
+ * applies defaults or stricter requirements.
+ */
+export type ResellerProfileRecord = Pick<
+    ResellerProfile,
+    'active' | 'email' | 'id'
+> & Partial<Omit<
+    ResellerProfile,
+    | 'activatedAt'
+    | 'active'
+    | 'createdOn'
+    | 'deactivatedAt'
+    | 'email'
+    | 'id'
+    | 'modifiedOn'
+    | 'passwordSetAt'
+>> & {
+    activatedAt?: unknown;
+    createdOn?: unknown;
+    deactivatedAt?: unknown;
+    modifiedOn?: unknown;
+    passwordSetAt?: unknown;
+};

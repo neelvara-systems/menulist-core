@@ -190,7 +190,7 @@ export const POST = withAuth(async (request, session) => {
             return privateJson({ error: 'Master store not found' }, { status: 404 });
         }
 
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             masterStore,
@@ -233,7 +233,7 @@ export const POST = withAuth(async (request, session) => {
             ) {
                 throw new BrandPropagationScopeChangedError();
             }
-            const freshPermissionError = requireAnyStorePermissionForStoreData(
+            const freshPermissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 freshMaster,

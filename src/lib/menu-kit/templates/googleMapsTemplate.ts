@@ -10,6 +10,7 @@
 import QRCode from 'qrcode';
 import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
+import { truncateCanvasText, wrapCanvasText } from '../canvasPrimitives';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution, MENU_LIST_MENU_ATTRIBUTION_TEXT } from '../platformAttribution';
 import { MenuKitInput } from '../types';
@@ -95,23 +96,7 @@ export async function generateGoogleMapsImage(input: GoogleMapsInput): Promise<B
 
     // Word wrap store name in right column
     const maxWidth = W - 520;
-    const words = storeName.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
-
-    for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        if (ctx.measureText(testLine).width > maxWidth) {
-            if (currentLine) lines.push(currentLine);
-            currentLine = word;
-        } else {
-            currentLine = testLine;
-        }
-    }
-    if (currentLine) lines.push(currentLine);
-
-    // Max 3 lines
-    const displayLines = lines.slice(0, 3);
+    const displayLines = wrapCanvasText(ctx, storeName, maxWidth, 3);
     const lineHeight = 60;
     const startY = storeNameStartY;
     displayLines.forEach((line, i) => {
@@ -122,7 +107,7 @@ export async function generateGoogleMapsImage(input: GoogleMapsInput): Promise<B
     ctx.font = '32px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = brand.text;
     ctx.textAlign = 'left';
-    ctx.fillText(shortLink, 80, H - 120);
+    ctx.fillText(truncateCanvasText(ctx, shortLink, W - 160), 80, H - 120);
 
     // Current-source note — bottom, smaller
     ctx.font = '26px system-ui, -apple-system, sans-serif';

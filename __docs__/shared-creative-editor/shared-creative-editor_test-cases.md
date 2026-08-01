@@ -43,7 +43,12 @@
 | Apply canvas size preset | Background drawer size presets update the workspace dimensions and scale existing layers through the same path as manual width/height edits. |
 | Import native JSON | A downloaded editor JSON file reopens with the same neutral schema and product context preserved. |
 | Import compatible Fabric JSON | A legacy Fabric JSON file is normalized into editor layers. |
+| Fabric JSON completion | Import awaits Fabric 7's complete Promise-based deserialization; the reviver callback is not treated as completion. |
+| Fabric JSON isolation | Legacy JSON loads in an off-screen canvas and reaches the live editor only after object/node, image-source, neutral-shape, and revision validation. |
+| Fabric JSON complexity | More than 300 Fabric objects or 5,000 traversed payload nodes is rejected before deserialization. |
 | Import image file | PNG, JPEG, WebP, or GIF file becomes an image layer. |
+| Spoofed raster import | A raster MIME label whose bytes do not match PNG, JPEG, WebP, or GIF is rejected before creating or replacing a layer. |
+| Oversized raster import | Files above 1.4 MB are rejected so their base64 source cannot exceed the persisted document contract. |
 | Upload from Images drawer | The Images drawer exposes local raster upload in addition to image URL and approved assets. |
 | Upload from My Stuff | My Stuff exposes a clear upload card, recent session insertions, and approved assets without remote search. |
 | Import SVG file | No SVG-file import button exists; owner uses raster image upload or product-approved assets instead. |
@@ -68,6 +73,7 @@
 | Select layer | Right properties panel opens and reflects the selected layer. |
 | Right-panel focus retention | Typing in selected text, changing font size, editing layer name, adjusting opacity, and changing X/Y/W/H update the canvas while the active inspector field keeps focus. |
 | No-op property edit guard | Re-emitting the same selected-layer value does not commit a new document snapshot, reload Fabric, or add a history entry. |
+| Invalid property edit guard | `NaN`, non-positive required values, out-of-range opacity/size fields, and other schema-invalid mutations do not change Fabric, document state, history, autosave, or callbacks. |
 | Floating right drawer | Opening or closing the right properties panel or Active Layers panel does not change the Fabric viewport width, workspace frame position, or fit zoom. |
 | Open layers panel | The canvas Layers button opens the dedicated Active Layers panel instead of selected-item properties. |
 | Select from layers panel | Selecting a layer from the Active Layers panel keeps the stack panel open and highlights the selected row. |
@@ -164,7 +170,9 @@
 | Download PNG with blocked external image | Editor shows a clear export error and leaves SVG/JSON available. |
 | Download readiness check | First download with actionable issues opens the download check panel, selects/focuses fixable layers when chosen, and allows a repeated intentional export for the same issue signature. |
 | Download clean design | A design with readable text, action copy, safe placement, safe image sources, and QR values shows the clean readiness state before export. |
+| Uploaded raster readiness | A magic-byte-validated PNG/JPEG/WebP/GIF data URL is treated as a safe local image source rather than a false readiness warning. |
 | Export bundle | Bundle downloads client-side PNG variants for square, portrait, story/status, and flyer handoff sizes from the active workspace frame. |
+| Stale export bundle | A document replacement or unmount invalidates pending resize completions before they trigger additional downloads. |
 | Download JSON | Browser downloads neutral `CreativeEditorDocument` JSON. |
 | Fresh JSON export | JSON export serializes the latest canvas state before download. |
 | Copy PNG | Browser-local clipboard writes a PNG when supported and shows a clear unsupported-browser message otherwise. |

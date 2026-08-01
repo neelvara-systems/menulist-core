@@ -214,7 +214,7 @@ function applyBaseObjectData(fabricApi: FabricStatic, object: CreativeFabricObje
     object.creativeEditorType = element.type;
     object.gradient = "gradient" in element ? element.gradient : undefined;
     object.arrowStyle = "arrowStyle" in element ? element.arrowStyle : undefined;
-    object.strokeLineCap = "strokeLineCap" in element ? element.strokeLineCap : undefined;
+    object.strokeLineCap = "strokeLineCap" in element ? (element.strokeLineCap ?? "butt") : "butt";
     object.pathStroke = "pathStroke" in element ? element.pathStroke : undefined;
     object.pathVisible = "pathVisible" in element ? element.pathVisible : undefined;
     object.outlineColor = "outlineColor" in element ? element.outlineColor : undefined;
@@ -222,7 +222,7 @@ function applyBaseObjectData(fabricApi: FabricStatic, object: CreativeFabricObje
     object.outlineOnly = "outlineOnly" in element ? element.outlineOnly : undefined;
     object.outlineWidth = "outlineWidth" in element ? element.outlineWidth : undefined;
     object.editorGuide = element.editorGuide;
-    object.excludeFromExport = element.excludeFromExport;
+    object.excludeFromExport = element.excludeFromExport ?? false;
     object.printFrameId = element.printFrameId;
     object.printFrameLocked = element.printFrameLocked;
     object.sourceRefs = element.sourceRefs;
@@ -548,7 +548,7 @@ function createLineObject(fabricApi: FabricStatic, element: Extract<CreativeEdit
         top: element.y,
     }) as CreativeFabricObject;
     group.stroke = element.stroke;
-    group.strokeDashArray = getDashArray(strokeStyle, strokeWidth);
+    group.strokeDashArray = getDashArray(strokeStyle, strokeWidth) ?? null;
     group.strokeLineCap = strokeLineCap;
     group.strokeWidth = strokeWidth;
     return group;

@@ -30,6 +30,7 @@ import {
     ANSWERLATTICE_FEATURE_ASSETS,
     ANSWERLATTICE_DEMO_SURFACE_ASSETS,
     ANSWERLATTICE_HOME_SUPPORT_CONTROL_MOTION,
+    ANSWERLATTICE_OWNER_DECISION_ASSET,
     ANSWERLATTICE_PRODUCT_AREA_ASSETS,
 } from './answerlatticeWebsiteAssets';
 import { ANSWERLATTICE_SITE_DESCRIPTION, ANSWERLATTICE_SITE_TITLE } from './siteConfig';
@@ -1370,8 +1371,8 @@ function FounderReviewSection({ basePath }: { basePath: string }) {
             <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center">
                 <div className="order-2 rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3 lg:order-1">
                     <AnswerlatticeAssetImage
-                        asset={ANSWERLATTICE_PRODUCT_AREA_ASSETS['Review approved answers']}
-                        assetSlotId="home.product-overview.feature-cards"
+                        asset={ANSWERLATTICE_OWNER_DECISION_ASSET}
+                        assetSlotId="home.owner-decision-system"
                         assetRole="owner-decision-system"
                         className="rounded-[1.5rem] border border-white/[0.08]"
                     />

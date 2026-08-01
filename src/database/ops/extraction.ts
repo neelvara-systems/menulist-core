@@ -453,8 +453,7 @@ export function buildExtractionCostMetricsFromOperations(
 ): ExtractionCostMetrics {
     const ops = operations
         .map(getRecord)
-        .filter((op) => op.action === 'IMAGE_PROCESSING' && getExtractionDateMs(op.createdAt) >= todayStartMs)
-        .slice(0, 50);
+        .filter((op) => op.action === 'IMAGE_PROCESSING' && getExtractionDateMs(op.createdAt) >= todayStartMs);
     const charges = ops.map((op) => getNonNegativeNumber(op.totalCharge) ?? 0);
     const callsToday = ops.length;
     const totalCharge = charges.reduce((sum, charge) => sum + charge, 0);

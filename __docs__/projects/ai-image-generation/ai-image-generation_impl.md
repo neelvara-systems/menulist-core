@@ -15,6 +15,16 @@ July 13 durability/security follow-up: Each registered job/item now has a determ
 
 July 13 project-selection follow-up: accepting reviewed batch images no longer clones and merges the browser's complete `project.files` snapshot. `BatchImageGenerationResultView` emits a bounded `ImageBatchProjectSelection[]`; the shared project DAL validates project/session scope plus the exact configured Firebase Storage bucket and same-store generated-media path, then appends by URL against current persisted truth. Standalone projects use a browser Firestore transaction and resolve the bucket from the active Firebase app. Linked outlets call the authenticated outlet-save operation `append_image_batch_selection`, whose Admin transaction resolves the server bucket, reads current outlet and master projects, enforces `imageOverride` for inherited items, writes local files or item overrides, and returns the complete latest outlet state. A same-path URL from another Firebase bucket is rejected before persistence. Desktop and mobile drain active/pending saves before this append so an older autosave cannot remove accepted images. Fabric/editor state is unaffected, no second image collection is introduced, and the owner action remains idempotent on repeated URLs.
 
+July 29 project-selection hardening: because the durable batch payload uses one
+item ID without a file ID, transaction-current projection now requires that ID
+to resolve exactly once. Duplicate IDs across standalone/local/master files
+fail closed instead of applying one image to multiple items or silently
+choosing the last master item. Unknown selection/image objects are read through
+exception-contained own-field and bounded-array snapshots; byte size accepts
+only a safe integer number or canonical integer string and never executes
+object coercion hooks. Existing same-store bucket/path, MIME, size, count,
+image-ceiling and idempotent-URL rules remain unchanged.
+
 July 13 credit-reservation follow-up: single generation, image editing, and non-cache batch workers now atomically reserve exact positive integer units before provider work. The existing operation document is a hidden `reserved` shell until successful accounting promotes it to `consumed`; provider or non-retry failure restores the exact charged recurring/top-up buckets once. Batch workers use the deterministic job/item operation ID, retain that reservation only while staged output remains retryable, and recover it on terminal/cancelled/max-attempt acknowledgement. An expired third-attempt execution now transactionally records the item/job failure and retention markers instead of leaving a permanent `processing` row. Prompt-cache hits remain zero-unit and do not reserve.
 
 July 13 owner-outcome convergence follow-up: `finished`, `discarded`, and `cancelled` owner actions remain strict terminal transitions, but a retry after a lost Firestore acknowledgement now succeeds when both the stored status and `selectedImagesPersisted` value exactly match the requested outcome. The transaction returns without another write or duplicate status-history row. A different terminal status or different selection outcome still fails closed. Client and server runtime projectors preserve both explicit `true` and explicit `false` selection outcomes so discarded/cancelled truth is not erased during normalization.

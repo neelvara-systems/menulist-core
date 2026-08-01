@@ -1042,6 +1042,16 @@ const assertSmallFunctionsConsoleCleanup = () => {
     );
     assertIncludes(
         aggregateCustomerAnalytics,
+        'await assertCurrentPlatformAnalyticsAuthority(firestoreAdmin, request.auth);',
+        'Manual customer analytics must re-prove current persisted platform authority before target reads or writes.',
+    );
+    assertIncludes(
+        aggregateCustomerAnalytics,
+        'const userSnap = await db.collection(DB_COLLECTIONS.USERS).doc(userDocumentId).get();',
+        'Manual customer analytics current-authority check must read the exact persisted platform user.',
+    );
+    assertIncludes(
+        aggregateCustomerAnalytics,
         "const CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED = 'CUSTOMER_ANALYTICS_PROJECT_AGGREGATION_FAILED';",
         'Customer analytics project aggregation failures must use a stable failure code.',
     );
@@ -1368,7 +1378,6 @@ const applicationLogger = read('src/database/loggers/applicationLogger.ts');
 const errorLogger = read('src/database/loggers/errorLogger.ts');
 const i18nDiagnostics = read('src/i18n/diagnostics.ts');
 const i18nRequest = read('src/i18n/request.ts');
-const legacyI18nRequest = read('src/i18n-old.ts');
 const intlClientWrapper = read('src/providers/IntlClientWrapper.tsx');
 const securityDiagnostics = read('src/lib/security/securityDiagnostics.ts');
 const inputValidation = read('src/lib/security/inputValidation.ts');
@@ -1401,6 +1410,10 @@ const navigationConstants = read('src/constants/navigations.ts');
 const permissionRequirements = read('src/lib/permissions/permissionRequirements.ts');
 const layoutProvider = read('src/providers/layoutProvider.tsx');
 const mainLayout = read('src/app/(main)/layout.tsx');
+assert(
+    !exists('src/app/(main)/layout-old.tsx'),
+    'The retired owner layout must stay removed so private routes cannot drift back to a session-only auth guard.',
+);
 const globalPagesLayout = read('src/app/(global-pages)/layout.tsx');
 const analyticsContext = read('src/contexts/AnalyticsContext.tsx');
 const chatAnalyticsService = read('src/lib/answerlattice/chatAnalyticsBackfillClient.ts');
@@ -1408,6 +1421,8 @@ const systemHealthDashboard = read('src/components/analytics/SystemHealthDashboa
 const analyticsExportButton = read('src/components/analytics/ExportButton.tsx');
 const ownerBusinessAssistantAnswerHook = read('src/hooks/ownerBusinessAssistant/useOwnerBusinessAssistantAnswer.ts');
 const businessCopyLocalization = read('src/services/ai/businessCopy/localizeBusinessCopyResult.ts');
+const defaultProjectAiContext = read('src/services/ai/shared/getDefaultProjectAiContext.ts');
+const defaultProjectAiContextBoundary = read('src/services/ai/shared/defaultProjectAiContextBoundary.ts');
 const formatters = read('src/utils/formatters.ts');
 const exportUtils = read('src/utils/exportUtils.ts');
 const securityInputValidationGuide = read('__docs__/security/input-validation/input-validation-guide.md');
@@ -1470,6 +1485,7 @@ const platformTenantsDashboard = read('src/components/templates/platform/tenants
 const platformAnalyticsBackfill = read('src/components/templates/answerlattice/platform/AnalyticsBackfill.tsx');
 const platformPricingPlans = read('src/components/templates/platform/pricingPlans/index.tsx');
 const platformStoresDashboard = read('src/components/templates/platform/stores/index.tsx');
+const platformStoreDetailsModal = read('src/components/templates/platform/stores/storeDetailsModal.tsx');
 const platformFontPresets = read('src/components/templates/platform/fontPresets/index.tsx');
 const storageDiagnostics = read('src/database/storage/storageDiagnostics.ts');
 const deleteFromStorage = read('src/database/storage/deleteFromStorage.ts');
@@ -1561,6 +1577,26 @@ const myCodexClientContainer = read('src/app/sites/mycodex/components/MyCodexCli
 const functionsTestHtml = read('functions/functions-test.html');
 const stagingEnv = read('.env.staging.example');
 const productionEnv = read('.env.production.example');
+
+assertIncludes(
+    storePermissionServer,
+    'import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";',
+    'Store permission guards must resolve current persisted platform authority.',
+);
+assertIncludes(
+    storePermissionServer,
+    'if (await getCurrentPlatformUser(session)) return null;',
+    'The platform store-permission bypass must require a currently eligible persisted platform user.',
+);
+assertIncludes(
+    storePermissionServer,
+    'Authorization Failed - Current Platform Authority Missing',
+    'Rejected stale platform permission bypasses must emit a bounded critical security event.',
+);
+assert(
+    !storePermissionServer.includes('if (isPlatformSession(session)) return null;'),
+    'A signed platform role alone must never bypass current store permission authority.',
+);
 
 assertIncludes(
     publicApi,
@@ -2266,6 +2302,8 @@ assert(!serviceWorkerRegister.includes("} catch {\n        return 'unknown';\n  
 assert(!serviceWorkerRegister.includes('} catch {\n                            window.location.reload();\n                        }'), 'Service worker cleanup reload guard failures must not silently reload.');
 assert(!serviceWorkerRegister.includes('reg.unregister().catch(() => { })'), 'Service worker unregister failures must not be silently swallowed.');
 assertIncludes(globalError, 'global_error_boundary_rendered', 'Global error boundary must code crash diagnostics.');
+assertIncludes(globalError, "getBoundedErrorStringField(error, 'digest')", 'Global error boundary must use descriptor-safe digest admission.');
+assert(!globalError.includes('error?.digest'), 'Global error boundary must not invoke an error digest getter.');
 assertIncludes(errorPageTheme, 'error_page_theme_persisted_state_read_failed', 'Error page persisted theme fallback failures must be coded.');
 assertIncludes(errorPageTheme, "getBoundedRuntimeStringContext('persistedState'", 'Error page persisted theme diagnostics must bound persisted Redux state metadata.');
 assertIncludes(errorPageTheme, "getBoundedRuntimeStringContext('clientThemeConfig'", 'Error page persisted theme diagnostics must bound client theme metadata.');
@@ -2355,8 +2393,7 @@ assertIncludes(securityInputValidationGuide, 'escapeCSVValue()', 'Security input
 assertIncludes(productionReadinessAudit, 'CSV export spreadsheet formula boundary checkpoint: fixed in source.', 'Production readiness audit must document CSV spreadsheet formula hardening.');
 assertIncludes(changelog, 'CSV Export Spreadsheet Formula Boundary', 'Changelog must document CSV spreadsheet formula hardening.');
 assertIncludes(sharedUtils, 'image_compression_failed', 'Shared utility helpers must code image compression failures.');
-assertIncludes(sharedUtils, 'await Promise.allSettled(names.map((name) => caches.delete(name)))', 'Browser cache reset must finish deletion attempts before reload.');
-assert(!sharedUtils.includes('names.forEach(async'), 'Browser cache reset must not launch unobserved deletions.');
+assert(!sharedUtils.includes('clearBrowserCache'), 'Unreferenced destructive browser cache reset helper must remain retired.');
 assert(!globalPagesError.includes('clearBrowserCache'), 'Ordinary global error recovery must not delete browser caches.');
 assertIncludes(globalPagesError, 'onClick={() => reset()}>Try Again</Button>', 'Global error recovery must expose an in-place retry.');
 assertIncludes(globalPagesError, 'onClick={() => window.location.reload()}>Refresh Page</Button>', 'Global error recovery must make hard refresh explicit.');
@@ -2434,6 +2471,13 @@ assertIncludes(businessSettings, 'desktop_business_copy_store_update_rejected', 
 assertIncludes(businessSettings, 'desktop_business_copy_translation_store_update_rejected', 'Desktop Business Copy setup must code translation-repair store acknowledgement failures.');
 assertIncludes(businessCopySetupTab, 'business_settings_business_copy_translation_repair_failed', 'Business Copy setup tab must code translation repair failures.');
 assertIncludes(businessCopySetupTab, 'BUSINESS_COPY_CAPACITY_MESSAGE', 'Business Copy setup tab must keep fixed capacity copy.');
+assertIncludes(defaultProjectAiContextBoundary, 'expectedScope.tId', 'Default project AI context cache must include tenant scope.');
+assertIncludes(defaultProjectAiContextBoundary, 'expectedScope.sId', 'Default project AI context cache must include store scope.');
+assertIncludes(defaultProjectAiContext, 'getExistingProjectsListWithoutLoader(false, request.expectedScope)', 'Default project AI context list read must remain read-only and pin expected tenant/store scope.');
+assert(!defaultProjectAiContext.includes('getProjectsListWithoutLoader('), 'Default project AI context must not create a default project while preparing an AI request.');
+assertIncludes(defaultProjectAiContext, 'request.expectedScope,', 'Default project AI context detail read must pin expected tenant/store scope.');
+assertIncludes(defaultProjectAiContext, 'if (!request) return null;', 'Default project AI context must fail closed without exact tenant/store scope.');
+assert(!defaultProjectAiContext.includes("storeId: storeDetails?.storeId || ''"), 'Default project AI context cache must not use store-only scope.');
 assertIncludes(reviewReplyTool, 'REVIEW_REPLY_CAPACITY_MESSAGE', 'Review reply tool must keep fixed capacity copy.');
 assertIncludes(reviewReplyTool, 'desktop_review_reply_copy_failed', 'Review reply tool must code clipboard copy failures.');
 assertIncludes(reviewReplyTool, 'readJsonResponseWithLimit<ReviewReplySuggestionResponse>', 'Review reply tool must parse suggestion responses through a bounded reader.');
@@ -2514,6 +2558,21 @@ assertOrder(
         `${label} route must validate input and permission before expensive AI work`,
     );
 });
+assertIncludes(
+    seoRoute,
+    'if (!FEATURE_FLAGS.ENABLE_SEO_AEO_GENERATION) {',
+    'SEO generation route must enforce its server-side feature gate.',
+);
+assertOrder(
+    seoRoute,
+    [
+        'if (!FEATURE_FLAGS.ENABLE_SEO_AEO_GENERATION) {',
+        "const { checkSafeMode } = await import('@lib/ops/safeMode');",
+        'const rateLimitResponse = await checkAIOperationLimit();',
+        'const bodyResult = await readBoundedJsonBody(',
+    ],
+    'SEO generation feature gate must reject before operational reads, rate limiting, or body parsing',
+);
 assertIncludes(aiPackStatusRoute, '[PERMISSIONS.ACCESS_BILLING]', 'AI pack status route must require billing access before capacity reads.');
 assertIncludes(aiPackStatusRoute, 'failClosedOnProviderError: true', 'AI pack status read admission must fail closed.');
 assertIncludes(aiPackStatusRoute, 'resolveCurrentSessionUserDocumentId(session)', 'AI pack status limiter must use exact actor identity.');
@@ -2622,6 +2681,22 @@ assertIncludes(platformUsers, 'assertUserUpdateSucceeded(', 'Platform users dash
 assertIncludes(platformUsers, 'platform_user_update_rejected', 'Platform users dashboard must include bounded rejected user-write acknowledgement code.');
 assertIncludes(platformUsers, 'platform_user_update_failed', 'Platform users dashboard must code user-update failures.');
 assertIncludes(platformUsers, 'readCreateStaffCompatibilityResponse', 'Platform users dashboard must use bounded create-staff compatibility response parsing.');
+assertIncludes(
+    staffServer,
+    'if (!FEATURE_FLAGS.ENABLE_SERVER_STAFF_CREATION) {',
+    'Staff creation server authority must enforce its feature gate.',
+);
+assertOrder(
+    staffServer,
+    [
+        'export const createStaffUser = async (',
+        'if (!FEATURE_FLAGS.ENABLE_SERVER_STAFF_CREATION) {',
+        'const rateLimit = await applyRateLimit(request, session, "AUTH_SENSITIVE", "staff-create");',
+        'const bodyResult = await readStaffMutationBody(request);',
+        'const authority = await getAuthority(session, input.tenantId, [input.storeId]);',
+    ],
+    'Staff creation feature gate must reject before rate limiting, parsing, authority reads, or mutation work',
+);
 assertIncludes(platformUsers, 'isCreateStaffCompatibilityVerificationResponse(', 'Platform users dashboard must require an explicit Auth-binding acknowledgement.');
 assertIncludes(platformUsers, 'userModal.id,', 'Platform users dashboard must bind verification acknowledgement to the expected user ID.');
 assertIncludes(platformUsers, 'userModal.email,', 'Platform users dashboard must bind verification acknowledgement to the expected email.');
@@ -2716,9 +2791,32 @@ assertIncludes(staffConcurrencyBoundary, "throw new StaffConcurrencyError('LAST_
 assertIncludes(staffConcurrencyBoundary, "throw new StaffConcurrencyError('ROLE_IN_USE')", 'Staff transaction boundary must reject assigned-role deactivation.');
 assertNoRandomReactKeys(tooltipElement, 'Tooltip wrapper');
 assertNoRandomReactKeys(platformUsers, 'Platform users dashboard');
+assertIncludes(platformUsers, 'const tenantRequestEpochRef = useRef(0);', 'Platform users must bind tenant-scoped reads to a request epoch.');
+assertIncludes(platformUsers, 'tenantRequestEpochRef.current !== requestEpoch', 'Platform users must reject late tenant/store/user results.');
+assertIncludes(platformUsers, 'platform_user_update_scope_mismatch', 'Platform users must validate tenant and store scope before persistence.');
+assertIncludes(platformUsers, 'setFilterStoresList([]);', 'Platform users must clear prior-tenant store choices before loading a new scope.');
+assertIncludes(platformUsers, 'userCopy.stores = [];', 'Platform user tenant changes must clear prior-tenant mappings.');
+assertIncludes(platformUsers, 'userCopy.storeIds = [];', 'Platform user tenant changes must clear prior-tenant store IDs.');
+assertIncludes(platformUsers, 'userCopy.storeId = undefined;', 'Platform user tenant changes must clear the prior default store.');
+assertIncludes(platformUsers, 'if (mutationInFlightRef.current) return;', 'Platform user writes must have synchronous duplicate-submit ownership.');
+assertIncludes(platformUsers, 'setAllTenantUsers((current) => current.map((user) => (', 'Platform user updates must reconcile the unfiltered tenant cache.');
+assertIncludes(platformUsers, 'if (!userCopy.storeIds.includes(userCopy.storeId ?? -1)) userCopy.storeId = userCopy.storeIds[0];', 'Platform user mapping removal must repair the default store.');
+assert(!platformUsers.includes('userCopy.stores.push({ storeId: null'), 'Platform user mapping drafts must not introduce a null persisted store ID.');
+assertIncludes(usersDal, 'export type PlatformUserMutation =', 'Platform user persistence must expose an exact mutation contract.');
+assertIncludes(usersDal, 'const data: PlatformUserMutation = {', 'Platform user persistence must copy caller state before upload transformation.');
+assertIncludes(usersDal, 'id: createRuntimeId(`${data.id}-${i}`)', 'Platform user additional documents must use user-bound unique object identities.');
+assert(!usersDal.includes('export const updatePlatformUser = async (data: any)'), 'Platform user persistence must not accept an unvalidated any-shaped mutation.');
+assert(!usersDal.includes("imageToUpdate: data.additionalDocuments[i].url }, 'additionalDocuments'"), 'Platform user additional documents must not upload under an undefined object ID.');
 assertIncludes(platformTenantsDashboard, 'platform_tenants_load_failed', 'Platform tenants dashboard must code tenant load failures.');
 assertIncludes(platformTenantsDashboard, 'platform_tenants_summary_load_failed', 'Platform tenants dashboard must code summary load failures.');
+assertIncludes(platformTenantsDashboard, 'platform_tenant_store_acknowledgement_scope_mismatch', 'Platform tenant dashboard must reject cross-tenant store acknowledgements.');
+assertIncludes(platformTenantsDashboard, 'platform_tenant_store_acknowledgement_tenant_missing', 'Platform tenant dashboard must reject store acknowledgements without current tenant authority.');
 assertNoRandomReactKeys(platformTenantsDashboard, 'Platform tenants dashboard');
+assertIncludes(platformTenantDetailsModal, 'const scopeKeyRef = useRef(scopeKey);', 'Platform tenant details must bind async file/store settlement to the selected tenant scope.');
+assertIncludes(platformTenantDetailsModal, 'scopeKeyRef.current !== requestScopeKey', 'Platform tenant store reads must reject late cross-scope settlement.');
+assertIncludes(platformTenantDetailsModal, 'storeDetails.tenantId !== tenantData.tenantId', 'Platform tenant store reads must verify the returned tenant identity.');
+assertIncludes(platformTenantDetailsModal, 'if (mutationInFlightRef.current) return;', 'Platform tenant mutations must have synchronous duplicate-submit ownership.');
+assert(!platformTenantDetailsModal.includes('<Text style={{ minWidth: 150 }}>Phone Prefix</Text>'), 'Platform tenant details must not expose a duplicate country-code field as Phone Prefix.');
 assertIncludes(platformAnalyticsBackfill, 'answerlattice_platform_analytics_backfill_failed', 'Platform analytics backfill must code report generation failures.');
 assert(!platformAnalyticsBackfill.includes('error.message ||'), 'Platform analytics backfill must not surface raw exception messages in failure toasts.');
 assertIncludes(platformPricingPlans, 'platform_pricing_plans_load_failed', 'Platform pricing plans must code load failures.');
@@ -2726,7 +2824,25 @@ assertIncludes(platformPricingPlans, 'platform_pricing_plan_save_failed', 'Platf
 assertIncludes(platformPricingPlans, 'platform_pricing_plan_deactivate_failed', 'Platform pricing plans must code deactivate failures.');
 assertIncludes(platformStoresDashboard, 'platform_stores_tenants_load_failed', 'Platform stores dashboard must code tenant load failures.');
 assertIncludes(platformStoresDashboard, 'platform_stores_load_failed', 'Platform stores dashboard must code store load failures.');
+assertIncludes(platformStoresDashboard, 'if (filterTenant === null)', 'Platform stores dashboard must clear visible stores when tenant scope is cleared.');
+assertIncludes(platformStoresDashboard, 'storeRequestEpochRef.current === requestEpoch', 'Platform stores dashboard must bind async store results to the active tenant filter.');
+assertIncludes(platformStoresDashboard, 'platform_store_acknowledgement_scope_mismatch', 'Platform stores dashboard must reject cross-tenant mutation acknowledgements.');
+assertIncludes(platformStoresDashboard, 'disabled={filterTenant === null}', 'Platform stores dashboard must require an exact tenant before opening Add Store.');
 assertNoRandomReactKeys(platformStoresDashboard, 'Platform stores dashboard');
+assertIncludes(
+    platformStoreDetailsModal,
+    'const data: PlatformStoreModalState = fromPage',
+    'Platform store details must select global owner context only for the explicit owner-page mode.',
+);
+assertIncludes(
+    platformStoreDetailsModal,
+    ': modalData;',
+    'Platform store details must preserve the platform administrator selected tenant/store context.',
+);
+assert(
+    !platformStoreDetailsModal.includes('useEffect(() => {\\n        setData({\\n            ...modalData,\\n            data: storeDetails'),
+    'Platform store details must not overwrite an administrator-selected store with signed-in global context.',
+);
 assertIncludes(platformFontPresets, 'platform_font_presets_load_failed', 'Platform font presets must code preset load failures.');
 assertIncludes(platformFontPresets, 'platform_font_preset_preview_failed', 'Platform font presets must code preview generation failures.');
 assertIncludes(platformTenantDetailsModal, 'platform_tenant_save_failed', 'Platform tenant details modal must code bounded tenant save failures.');
@@ -2875,7 +2991,6 @@ assertIncludes(
 assertNoDirectConsole(i18nDiagnostics, 'i18n diagnostics must not direct-console failures.');
 [
     ['active i18n request config', i18nRequest],
-    ['legacy i18n request config', legacyI18nRequest],
     ['Intl client wrapper', intlClientWrapper],
 ].forEach(([label, source]) => {
     assertIncludes(source, 'logI18n', `${label} must use bounded i18n diagnostics.`);
@@ -2886,8 +3001,6 @@ assertIncludes(i18nRequest, 'i18n_missing_message', 'i18n request must code miss
 assertIncludes(i18nRequest, 'i18n_request_config_failed', 'i18n request must code request config failures.');
 assert(!i18nRequest.includes('i18n Configuration Error'), 'i18n request must not keep old raw configuration logger text.');
 assert(!i18nRequest.includes('windowRef'), 'i18n request must not log browser location/user-agent context.');
-assertIncludes(legacyI18nRequest, 'i18n_old_request_config_failed', 'Legacy i18n request must code request config failures.');
-assert(!legacyI18nRequest.includes('error payload'), 'Legacy i18n request must not log raw error payloads.');
 assertIncludes(intlClientWrapper, 'i18n_client_missing_message', 'Intl client wrapper must code missing-message diagnostics.');
 assertIncludes(intlClientWrapper, 'i18n_client_runtime_error', 'Intl client wrapper must code runtime translation errors.');
 assertIncludes(
@@ -4642,9 +4755,12 @@ assertIncludes(
 );
 assertIncludes(
     switchStore,
-    'normalizeStorePermissionScopeDocumentId(store.storeId)?.numericId === targetStoreScope.numericId',
-    'Switch-store tenant membership must use exact canonical store IDs.',
+    'isMultiOutletTenantStoreListEntryInScope(store, {',
+    'Switch-store tenant membership must use the shared exact lifecycle-aware store-list boundary.',
 );
+assertIncludes(switchStore, '!isOptionalBoolean(targetStoreData.active)', 'Switch-store must reject malformed persisted active state.');
+assertIncludes(switchStore, '!isOptionalBoolean(targetStoreData.deleted)', 'Switch-store must reject malformed persisted deleted state.');
+assertIncludes(switchStore, '!isOptionalBoolean(targetStoreData.isMaster)', 'Switch-store must reject malformed persisted master-store state.');
 assert(!switchStore.includes('const body = bodyResult.data as any;'), 'Switch-store must pass unknown request data to runtime validation without an any cast.');
 assert(!switchStore.includes('Number(s.storeId) === targetStoreScope.numericId'), 'Switch-store must not coerce tenant-list store IDs.');
 assertIncludes(storeSwitchAccess, 'export const normalizeStoreSwitchStoreId = (value: unknown): number | null =>', 'Shared store access exact ID normalizer.');

@@ -1330,7 +1330,7 @@ function MobileAccountProfileScreen({
                             <Flex gap={8} vertical>
                                 <Text type="secondary">Phone</Text>
                                 <Select
-                                    onChange={(value) => {
+                                    onChange={(value: string) => {
                                         setDraftCountryCode(value);
                                         setDraftDialCode(getDialCodeForCountry(value));
                                     }}

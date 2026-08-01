@@ -77,13 +77,12 @@ export default function AnswerVersionHistory({ tId, sId }: Props) {
         loading: boolean;
         error: boolean;
     }>({ scopeKey: null, answerId: null, history: [], loading: false, error: false });
-    const requestGuardRef = useRef<ReturnType<typeof createLatestRequestGuard> | null>(null);
-    if (!requestGuardRef.current) requestGuardRef.current = createLatestRequestGuard();
+    const requestGuardRef = useRef(createLatestRequestGuard());
 
     useEffect(() => {
         const requestGuard = requestGuardRef.current;
-        if (!requestGuard || !scopeKey || !selectedAnswerId) {
-            requestGuard?.invalidate();
+        if (!scopeKey || !selectedAnswerId) {
+            requestGuard.invalidate();
             setHistoryState({
                 scopeKey,
                 answerId: selectedAnswerId,

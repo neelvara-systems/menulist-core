@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import {
     requireAnyStorePermissionForStoreData,
@@ -72,8 +73,14 @@ async function readOrMutateSecret(params: {
     ) {
         return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
     }
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) {
+        return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+    }
 
-    const rateLimitHash = hashPublicRateLimitValue(`${tenantScope.documentId}:${storeScope.documentId}`);
+    const rateLimitHash = hashPublicRateLimitValue(
+        `${actorId}:${tenantScope.documentId}:${storeScope.documentId}:${action}`,
+    );
     const rlResult = await checkRateLimit({
         key: `pos-secret:${rateLimitHash}`,
         limit: action === 'rotate' ? 5 : 20,
@@ -100,11 +107,18 @@ async function readOrMutateSecret(params: {
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
     const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId);
     const secretRef = getPosSyncSecretRef(db, tenantScope.documentId, storeScope.documentId);
-    const actorId = String(session?.uId || session?.user?.id || session?.user?.email || 'unknown');
     const actorEmail = String(session?.user?.email || '');
     const nowIso = new Date().toISOString();
 
-    const result = await db.runTransaction(async (transaction) => {
+    const result = await db.runTransaction<{
+        permissionError: NextResponse;
+        secret?: undefined;
+        version?: undefined;
+    } | {
+        permissionError: null;
+        secret: string;
+        version: number;
+    }>(async (transaction) => {
         const [storeSnapshot, tenantSnapshot, secretSnapshot] = await Promise.all([
             transaction.get(storeRef),
             transaction.get(tenantRef),
@@ -124,7 +138,7 @@ async function readOrMutateSecret(params: {
             return { permissionError: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
         }
 
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             storeData,
@@ -133,7 +147,8 @@ async function readOrMutateSecret(params: {
             storeScope.numericId,
             tenantScope.numericId,
         );
-        if (permissionError) return { permissionError };
+        if (permissionError instanceof NextResponse) return { permissionError };
+        if (permissionError) throw new Error('pos_sync_secret_permission_response_invalid');
 
         const current = resolvePosSyncSecretInTransaction({
             migrate: action !== 'rotate',

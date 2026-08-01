@@ -5,6 +5,7 @@ import {
     IMAGE_PROVIDER_REQUEST_TIMEOUT_MS,
     normalizeImageProviderPage,
     normalizeImageProviderQuery,
+    normalizeImageProviderResultUrl,
     normalizePixabayImageProviderOrientation,
 } from "@lib/imageProviderRequests";
 import { axiosClient } from "../axios/axiosClient";
@@ -17,7 +18,42 @@ export const PIXABAY_IMAGE_SIZES = {
     "webformatURL": 'webformatURL',//19kb webp
 }
 
-export const getPixabayImagesBySearchQuery = (searchQuery: any, orientation = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE, page = 1) => {
+export interface PixabayImageSearchResult {
+    images: Array<{ src: string; thumb: string }>;
+    total: number;
+    totalPages: number;
+}
+
+export const parsePixabayImageSearchResponse = (value: unknown): PixabayImageSearchResult | null => {
+    try {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        const payload = value as Record<string, unknown>;
+        if (!Number.isSafeInteger(payload.total) || (payload.total as number) < 0 || !Array.isArray(payload.hits)) return null;
+        if (payload.hits.length > SEARCHED_IMAGES_COUNT_PER_REQUEST_PIXABAY) return null;
+        const images = payload.hits.map((item) => {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+            const record = item as Record<string, unknown>;
+            const src = normalizeImageProviderResultUrl(record.largeImageURL, ['pixabay.com']);
+            const thumb = normalizeImageProviderResultUrl(record.previewURL, ['pixabay.com']);
+            return src && thumb ? { src, thumb } : null;
+        });
+        if (images.some((image) => image === null)) return null;
+        const total = payload.total as number;
+        return {
+            total,
+            totalPages: Math.ceil(total / SEARCHED_IMAGES_COUNT_PER_REQUEST_PIXABAY),
+            images: images as PixabayImageSearchResult['images'],
+        };
+    } catch {
+        return null;
+    }
+};
+
+export const getPixabayImagesBySearchQuery = async (
+    searchQuery: unknown,
+    orientation: unknown = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE,
+    page: unknown = 1,
+): Promise<PixabayImageSearchResult> => {
     const normalizedOrientation = normalizePixabayImageProviderOrientation(orientation);
     const normalizedPage = normalizeImageProviderPage(page);
     const requestUrl = buildImageProviderUrl(SEARCH_API_URL, {
@@ -28,26 +64,21 @@ export const getPixabayImagesBySearchQuery = (searchQuery: any, orientation = BA
         q: normalizeImageProviderQuery(searchQuery),
     });
 
-    return new Promise((res, rej) => {
-        axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS })
-            .then((response) => {
-                const data = {
-                    total: response.data.total,
-                    totalPages: (response.data.total / SEARCHED_IMAGES_COUNT_PER_REQUEST_PIXABAY).toFixed(),
-                    images: response.data.hits.map((i: any) => { return { src: i.largeImageURL, thumb: i.previewURL } })
-                }
-                res(data);
-            }).catch(function (error) {
-                logImageProviderFailure('image_provider_pixabay_search_failed', error, getImageProviderRequestLogContext({
-                    operation: 'search',
-                    orientation: normalizedOrientation,
-                    page: normalizedPage,
-                    provider: 'pixabay',
-                    query: searchQuery,
-                }));
-                rej('Error while fetching images');
-            });
-    })
+    try {
+        const response = await axiosClient.GET(requestUrl, { timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS });
+        const parsed = parsePixabayImageSearchResponse(response.data);
+        if (!parsed) throw new Error('IMAGE_PROVIDER_RESPONSE_INVALID');
+        return parsed;
+    } catch (error) {
+        logImageProviderFailure('image_provider_pixabay_search_failed', error, getImageProviderRequestLogContext({
+            operation: 'search',
+            orientation: normalizedOrientation,
+            page: normalizedPage,
+            provider: 'pixabay',
+            query: searchQuery,
+        }));
+        throw new Error('Error while fetching images');
+    }
 }
 // {
 //     "total": 4692,

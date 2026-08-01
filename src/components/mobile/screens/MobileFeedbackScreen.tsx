@@ -60,7 +60,8 @@ function resolveMobileFeedbackScope(
         : null;
 }
 
-function toMobileFeedbackItem(feedback: GuestFeedback): FeedbackItem {
+function toMobileFeedbackItem(feedback: GuestFeedback): FeedbackItem | null {
+    if (typeof feedback.id !== 'string' || !feedback.id) return null;
     return {
         createdAt: feedback.createdOn.toDate().toISOString(),
         customerName: feedback.customerName || 'Anonymous',
@@ -184,7 +185,10 @@ function MobileFeedbackScreenContent({ onBack }: MobileFeedbackScreenProps) {
                 latestRequestRef.current !== requestId
                 || !isExpectedScope(expectedScope)
             ) return;
-            const items = result.items.map(toMobileFeedbackItem);
+            const items = result.items.flatMap((feedback) => {
+                const item = toMobileFeedbackItem(feedback);
+                return item ? [item] : [];
+            });
             setFeedbackList((previous) => {
                 if (
                     latestRequestRef.current !== requestId

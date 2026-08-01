@@ -1,7 +1,7 @@
 # MenuList Activation Concierge - Firebase and Scale
 
 **Status:** Local source complete; scoped Firestore index deployment pending
-**Last reviewed:** July 17, 2026
+**Last reviewed:** July 29, 2026
 
 ## Existing data
 
@@ -9,6 +9,12 @@
 - `stores/{storeId}.starterActivationSignals.lastSignalAt`: last acknowledged owner action time.
 - `stores/{storeId}.menuPresence.{surface}`: current owner-confirmed external placement timestamp.
 - `platformSummary/storesSummary.stores.{storeId}.menuPresence`: existing compact presence projection.
+
+`activationDeadline` is required authority for unpaid starter access. Both
+current creation producers write it as a Firestore Timestamp. A legacy or
+corrupt starter document without a valid deadline is treated as expired; the
+read boundary never upgrades missing data into indefinite access. Firestore
+Timestamp data is projected from its numeric seconds/nanoseconds fields.
 
 ## Operations
 

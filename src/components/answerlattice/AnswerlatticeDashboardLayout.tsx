@@ -89,7 +89,7 @@ function AnswerlatticeDashboardLayoutContent({ children }: { children: React.Rea
     const layoutBackground = token.colorBgLayout;
     const canUseManagementSurfaces = access?.canUseManagement ?? canUseAnswerlatticeManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname);
+    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
     const isAdminRoute = useMemo(() => (
         ANSWERLATTICE_MANAGEMENT_ROUTES.some((route) => normalizedPathname === route || normalizedPathname.startsWith(`${route}/`))
     ), [normalizedPathname]);

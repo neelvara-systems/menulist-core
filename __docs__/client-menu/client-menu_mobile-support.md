@@ -1,6 +1,6 @@
 # Client Menu (Customer-Facing Digital Menu) — Mobile Support
 
-**Last Updated:** May 10, 2026
+**Last Updated:** July 31, 2026
 **Decision:** ✅ ALREADY MOBILE-FIRST — Public page, not inside owner MobileShell
 
 ---
@@ -32,7 +32,11 @@ Not applicable — this is a CUSTOMER-facing feature, not an owner-operational f
 - Owner-selected category icons, including emoji values, render on public mobile output through the shared icon system.
 - Image-enabled layouts must not show blank image cards for items without images; broken image URLs may keep their reserved frame to avoid a late scroll jump.
 - Item image reads must use the public image normalizer so legacy object-shaped image data cannot crash mobile PDP galleries or featured/item cards.
+- Item descriptions use a 14px mobile floor and compact-grid descriptions use a 13px floor; decision chips use at least 12px text.
+- Scheduled categories must govern cards, filters, Featured choices, and shared item links. Admission refreshes at the wall-clock minute boundary and after returning to a backgrounded page, using deterministic UTC only when store timezone truth is unavailable. When every category opens later, the mobile empty surface shows the localized upcoming day and time.
+- Sold-out shared items remain inspectable as unavailable. Removed, inactive, uncategorized, or currently hidden item links return to the canonical menu URL with a bounded notice, including when the catalog is empty.
 - PDP close must not leave stale sticky-row hit-test regions; iPhone PWA top-of-page detail views use lightweight scroll lock and history-driven close without synthetic scroll/resize events after close.
+- PDP open moves focus to the close control, traps Tab inside the sheet, supports Escape, and restores focus to the invoking item after close.
 - PDP close must not remount the sticky command row or synthesize scroll/resize events because that can move the horizontal category rail after closing a featured item.
 - PDP content must remain inside a viewport-capped scroll container with touch scrolling enabled and the close control reachable during long detail scrolls.
 - Back-to-top must not perform scroll work on pointerdown; it scrolls on completed tap/click and stops press propagation so the item card below it cannot receive the same gesture.

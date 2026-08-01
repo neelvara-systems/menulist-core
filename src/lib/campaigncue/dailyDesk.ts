@@ -1884,7 +1884,7 @@ export function buildCampaignCueDailyDesk(params: {
         workspace: params.workspace,
         now: params.now,
     }) : undefined;
-    const packReview: CampaignCueCampaignPackReview | undefined = latestCampaign ? {
+    const packReview: CampaignCueCampaignPackReview | undefined = latestCampaign && outputPack ? {
         campaignId: latestCampaign.id,
         title: latestCampaign.title,
         ownerGoal: packRecipe.ownerGoal,

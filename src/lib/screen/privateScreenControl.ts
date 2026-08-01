@@ -14,9 +14,12 @@ export const getPrivateScreenControlDocId = (storeId: string | number): string =
     `${PRIVATE_SCREEN_CONTROL_PREFIX}${String(storeId).trim()}`
 );
 
-export const generatePrivateScreenToken = (): string => (
-    randomBytes(16).toString("base64url")
-);
+export const generatePrivateScreenToken = (): string => {
+    for (;;) {
+        const token = randomBytes(16).toString("base64url");
+        if (/^[a-z0-9]{22}$/i.test(token)) return token;
+    }
+};
 
 export const getPrivateScreenTokenCacheTag = (screenToken: string): string => (
     `screen-token-${createHash("sha256").update(screenToken).digest("hex").slice(0, 24)}`

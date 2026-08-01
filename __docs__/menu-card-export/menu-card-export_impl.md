@@ -30,6 +30,13 @@ July 6 AI advisor session scope boundary: `/api/menu-card-export/design-advisor`
 | `generateMenuPdf()` exists for older buttons and returns a Blob plus snapshot hash. | `src/lib/export/menuPdfGenerator.ts` | Keep as a compatibility wrapper only. |
 | Legacy quick export builds a `MenuCardPrintSource` through the Menu Card Export source builder. | `src/lib/export/menuPdfGenerator.ts`, `src/lib/menu-card-export/source/buildPrintSource.ts` | No second snapshot model. |
 | Legacy quick export renders through `renderPdf()`. | `src/lib/export/menuPdfGenerator.ts`, `src/lib/menu-card-export/render/renderPdf.ts` | No second visual renderer. |
+
+The compatibility wrapper projects its runtime options before composing
+fallback records: required names/language and item/category arrays are bounded,
+menu/logo URLs use the shared credential-free boundary, scalar/boolean/preset/
+style fields are exact, project IDs are slash-free, and only known
+store/public-presence fields survive. Raw persisted project/store records are
+never spread into the print source.
 | Desktop Share modal now opens the route when the feature flag is on. | `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:327` | Flag-off direct download must use the Menu Card Export bridge. |
 | Use MenuList opens the route when the feature flag is on. | `src/components/templates/main-app/useMenuList/index.tsx:951` | Flag-off direct download must use the Menu Card Export bridge. |
 | Mobile Share opens the route when the feature flag is on. | `src/components/mobile/screens/MobileShareScreen.tsx:889` | Flag-off direct download must use the Menu Card Export bridge. |
@@ -122,7 +129,8 @@ ENABLE_MENU_CARD_EXPORT_AI_ADVISOR: true,
 MENU_CARD_EXPORT_AI_ADVISOR_PLAN_IDS: ["pro", "premium"],
 ```
 
-`ENABLE_PDF_SURFACE` remains the predecessor flag at `src/config/features.ts:1666`.
+The predecessor PDF adapter is an always-on compatibility path and no longer
+advertises a no-op feature flag.
 Batch export remains off because it creates additional multi-project scope. AI advisor is enabled only as a Pro/Premium value-add and is metered through the existing AI enhancement capacity system.
 
 Rollout rule:
@@ -259,7 +267,7 @@ Brand source rules:
 - `buildPrintSource()` must prefer `store.publicPresence.accentColor`, matching OBP.
 - Logo comes from the existing store logo fields, primarily `store.logo`.
 - Older `primaryColor`, `brandColor`, `themeColor`, and project design brand color are fallback-only.
-- The renderer embeds the logo in the PDF header when the image can be loaded safely and uses the brand color for the header, category dividers, and prices. Remote logo loading is bounded to five seconds; timeout/CORS failure omits the logo and keeps rendering. Successful data is cached for the route session, while a failed load is not cached permanently.
+- The renderer embeds the logo in the PDF header when the image can be loaded safely and uses the brand color for the header, category dividers, and prices. Logo source projection and final rendering both require a credential-free absolute HTTP(S) URL of at most 4,096 characters. Remote loading is bounded to five seconds; timeout/CORS failure, invalid dimensions, dimensions above 2,048 pixels, or more than 4,194,304 raster pixels omit the logo and keep rendering. Successful raster data uses a 16-entry oldest-first route-session cache; failed loads are not cached permanently.
 - The renderer prints subtle `Menu powered by MenuList | menulist.ai` attribution with the MenuList logo mark in the footer for non-Premium stores. `src/lib/platform/menuListBranding.ts` hides visible MenuList attribution only when the already-loaded `activePlanType` is `premium`; missing, Starter, Pro, and unknown plans keep attribution visible. This is platform attribution only; the business logo/name/color remain the primary visual identity.
 - The source hash includes logo URL, brand color, business type, business category, catalog kind, offering kind, currency symbol, and currency code so local export history does not reuse stale unbranded, wrong-profile, or wrong-currency files after the owner changes store settings.
 
@@ -353,6 +361,19 @@ export type MenuCardPrintSource = {
 
 Sanitization rules:
 
+- Raw category/item/attribute/tag arrays are snapshotted through bounded,
+  exception-contained readers; malformed getters or Proxies cannot abort the
+  complete export.
+- Localized print text admits strings only, checks preferred language then
+  English then at most 64 known keys, and never executes unknown conversion
+  hooks.
+- Category and item names are capped at 240 characters, descriptions at 2,000,
+  attribute names at 160, tags at 80, and scalar IDs at 1,500 before PDF text
+  wrapping. Layout estimation uses the same two/four description-line and
+  six-attribute limits as drawing, so pagination cannot drift from emitted
+  content.
+- Missing category IDs use stable positional fallbacks so separate malformed
+  legacy categories cannot overwrite each other in the print map.
 - Hidden items are excluded.
 - Unavailable items are excluded by default.
 - Internal notes are excluded.
@@ -360,7 +381,15 @@ Sanitization rules:
 - Official category and item order is preserved.
 - Prices are formatted from source data without AI rewriting.
 - Variants, add-ons, and dietary tags are preserved when they are part of visible menu data and the selected template supports them.
-- QR destination is always a live menu URL or approved short URL, never a generated PDF artifact URL.
+- QR destination is always a credential-free absolute HTTP(S) live-menu URL
+  or approved short URL, never a generated PDF artifact URL. Source assembly,
+  preflight, and the final raster renderer share the same URL admission; the
+  renderer repeats the check so compatibility callers cannot bypass preflight.
+- Print-source tenant/store provenance is emitted as canonical string document
+  IDs only when current and legacy aliases agree. Project IDs are bounded,
+  slash-free strings. Update timestamps are exception-contained, finite and
+  canonical ISO values; malformed primary fields fall through to the next
+  supported legacy timestamp instead of producing `Invalid Date`.
 
 ---
 
@@ -451,7 +480,9 @@ Use existing authenticated owner page context and DAL access for export. The Pro
 - Check plan and AI capacity before provider call.
 - Do not expose public Storage URLs because no Storage object is created.
 - Validate image URLs before embedding logo/photos into output; if a remote logo cannot be loaded safely, skip the image and keep the branded color output.
-- Generate QR from approved live-menu URL builders only; do not accept arbitrary owner-provided QR destination in launch scope.
+- Generate QR from approved live-menu URL builders only; require an absolute,
+  credential-free HTTP(S) destination at source, preflight, and final render,
+  and do not accept arbitrary owner-provided QR destinations in launch scope.
 - Do not accept custom CSS or owner-supplied template code.
 
 ---
@@ -675,6 +706,18 @@ npm run verify:menu-card-export
 `npm run verify:menu-export` verifies structured export normalization plus bounded share/export diagnostics for clipboard share, Web Share API, external endpoint share, structured JSON/XLSX export, and PDF generation. It also guards the ShareModal external endpoint admission so the browser does not post menu data to raw owner-entered, non-HTTPS, credentialed, localhost, private/local, or redirected URLs.
 
 `npm run verify:menu-card-export` verifies route/library files, feature flags, auto print design, client-side preflight, client-side PDF/packet generation, local history flag wiring, print-shop flag wiring, mobile Share/Menu/More entry points, the Pro/Premium AI advisor guard path, bounded AI advisor response parsing, bounded share-modal export diagnostics, and the absence of export-storage API routes.
+
+The preset registry must contain every `MenuCardExportPreset`, including
+flag-gated and internal presets. `buildDefaultSettings()` must preserve the
+requested preset ID; it may not silently turn an internal preset into Home
+Print. Store brand fields are untrusted persisted input: the shared Menu Kit
+brand resolver accepts only valid string hex colors and falls through malformed
+legacy candidates without executing or coercing them.
+
+Shared canvas text and attribution helpers cap visible text, font size, logo
+height, width calculations and iteration work before drawing. Print-readiness
+and print-shop handoff copy project persisted store/logo/link fields without
+coercing unknown values or invoking accessors.
 
 Verifier must also assert:
 

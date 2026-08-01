@@ -5,6 +5,8 @@
 > **July 22, 2026:** paid-cycle entitlement parity retains the plan mirror for current-cycle cancelled/paused rows. Every owner, settlement, reconciliation, expiry, messaging, AI-recovery, and Founder Monitor subscription path now requires both exact MenuList aliases, with product-prefixed composites such as `subscriptions(pId ASC, productId ASC, status ASC, cycleEndDate ASC)`. The source requires MenuList rules/index/Function deployment; no app/Vercel deploy was performed here.
 
 > **July 22, 2026 bounded-fallback closure:** MenuList entitlement selection and Answerlattice activation/license/intake/server fallbacks constrain both product and tenant/store alias pairs before `limit`. Shared and dedicated index files add `subscriptions(pId, productId, tenantId, storeId, tId, sId)`; exact current rows are reprojected inside entitlement transactions before any store/platform/subscription mirror write.
+>
+> **July 29, 2026 master-store runtime authority:** MenuList client/Admin outlet entitlement fallback shares one exact tenant `storesList` projector. Coercive IDs, malformed/conflicting activity or master flags, duplicate IDs, multiple masters and ambiguous legacy rows return no master before the fallback subscription query. Valid current lists keep the same reads; no billing or provider write is added.
 
 **Purpose:** Track ALL Firestore reads/writes/deletes for the Razorpay billing system.
 **Last Updated:** July 27, 2026

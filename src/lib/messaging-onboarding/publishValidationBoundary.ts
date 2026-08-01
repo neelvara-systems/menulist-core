@@ -37,3 +37,33 @@ export function validateMessagingPublishMenu(
     valid: activeCategoryIds.size > 0 && activeItems.length > 0 && pricedItemCount > 0,
   };
 }
+
+type MessagingPublishProjectFileLike = {
+  active?: unknown;
+  deleted?: unknown;
+  extractedData?: {
+    data?: PublicMenuDraftExtractedData | null;
+  } | null;
+};
+
+/**
+ * Validate the exact file graph persisted to the project. The aggregate
+ * extraction summary is only advisory once the public renderer consumes
+ * `project.files`, so publish admission must prove that renderer truth too.
+ */
+export function validateMessagingPublishProjectFiles(
+  files: readonly MessagingPublishProjectFileLike[],
+): MessagingPublishMenuValidation {
+  const menu: PublicMenuDraftExtractedData = {
+    categories: [],
+    items: [],
+    languages: [],
+  };
+  for (const file of files) {
+    if (file.active === false || file.deleted === true || !file.extractedData?.data) continue;
+    menu.categories.push(...file.extractedData.data.categories);
+    menu.items.push(...file.extractedData.data.items);
+    menu.languages.push(...file.extractedData.data.languages);
+  }
+  return validateMessagingPublishMenu(menu);
+}

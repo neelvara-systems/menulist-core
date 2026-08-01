@@ -16,11 +16,13 @@
  */
 
 import Link from 'next/link';
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { appendPublicLanguageParam, normalizePublicLanguageCode } from '@lib/localization/publicRenderLanguage';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 
 interface MenuBreadcrumbProps {
+    /** Server-resolved public language used to preserve localized navigation in the initial HTML. */
+    activeLanguage?: string | null;
     ariaLabel?: string;
     /** Master-tenant brand display name (always shown as the root node). */
     businessName: string;
@@ -87,6 +89,7 @@ function logBreadcrumbLanguagePreserveFailure(
 }
 
 export default function MenuBreadcrumb({
+    activeLanguage,
     ariaLabel,
     businessName,
     outletName,
@@ -102,6 +105,8 @@ export default function MenuBreadcrumb({
     const showOutletNode = Boolean(outletName && outletSlug);
     const normalizedLogoUrl = typeof logoUrl === 'string' ? logoUrl.trim() : '';
     const [failedLogoUrl, setFailedLogoUrl] = useState<string | null>(null);
+    const normalizedActiveLanguage = normalizePublicLanguageCode(activeLanguage);
+    const [currentLanguage, setCurrentLanguage] = useState<string | null>(normalizedActiveLanguage);
     const logoImageRef = useRef<HTMLImageElement | null>(null);
     const showLogoImage = Boolean(normalizedLogoUrl && failedLogoUrl !== normalizedLogoUrl);
     const resolvedOutletHref = outletHref || (outletSlug ? `/${outletSlug}` : undefined);
@@ -120,25 +125,28 @@ export default function MenuBreadcrumb({
     // have an outlet, the outlet itself is the terminal node.
     const outletIsTerminal = showOutletNode && !hasProject;
     const businessInitial = businessName?.trim()?.charAt(0)?.toUpperCase() || 'M';
-    const getCurrentLanguageHref = (href?: string) => {
-        if (!href || typeof window === 'undefined') return href;
+    const getCurrentLanguageHref = (href?: string) => (
+        href && currentLanguage ? appendPublicLanguageParam(href, currentLanguage) : href
+    );
+    const languageHomeHref = getCurrentLanguageHref(homeHref) || homeHref;
+    const languageOutletHref = getCurrentLanguageHref(resolvedOutletHref);
+
+    useEffect(() => {
+        if (normalizedActiveLanguage) {
+            setCurrentLanguage(normalizedActiveLanguage);
+            return;
+        }
         try {
-            const currentLanguage = normalizePublicLanguageCode(new URL(window.location.href).searchParams.get('lang'));
-            return currentLanguage ? appendPublicLanguageParam(href, currentLanguage) : href;
+            setCurrentLanguage(
+                normalizePublicLanguageCode(new URL(window.location.href).searchParams.get('lang')),
+            );
         } catch (error) {
             logBreadcrumbLanguagePreserveFailure(error, {
-                href,
+                href: homeHref,
                 currentUrl: typeof window !== 'undefined' ? window.location.href : undefined,
             });
-            return href;
         }
-    };
-    const preserveCurrentLanguage = (event: MouseEvent<HTMLAnchorElement>, href?: string) => {
-        const nextHref = getCurrentLanguageHref(href);
-        if (nextHref && nextHref !== href) {
-            event.currentTarget.href = nextHref;
-        }
-    };
+    }, [homeHref, normalizedActiveLanguage]);
 
     useEffect(() => {
         const image = logoImageRef.current;
@@ -188,7 +196,7 @@ export default function MenuBreadcrumb({
                         minWidth: 0,
                     }}
                 >
-                    <Link href={homeHref} onClick={(event) => preserveCurrentLanguage(event, homeHref)} style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={businessName}>
+                    <Link href={languageHomeHref} style={{ ...baseLinkStyle, ...logoBoxStyle }} prefetch={false} aria-label={businessName}>
                         {showLogoImage ? (
                             <img
                                 ref={logoImageRef}
@@ -220,8 +228,7 @@ export default function MenuBreadcrumb({
                         }}
                     >
                         <Link
-                            href={homeHref}
-                            onClick={(event) => preserveCurrentLanguage(event, homeHref)}
+                            href={languageHomeHref}
                             style={{
                                 ...baseLinkStyle,
                                 color: theme?.headingColor || 'inherit',
@@ -259,8 +266,7 @@ export default function MenuBreadcrumb({
                                     </span>
                                 ) : (
                                     <Link
-                                        href={resolvedOutletHref || `/${outletSlug}`}
-                                        onClick={(event) => preserveCurrentLanguage(event, resolvedOutletHref || `/${outletSlug}`)}
+                                        href={languageOutletHref || `/${outletSlug}`}
                                         style={{
                                             ...baseLinkStyle,
                                             color: 'inherit',
@@ -321,7 +327,7 @@ export default function MenuBreadcrumb({
             }}
         >
             {/* Business node — always links to OBP root */}
-            <Link href={homeHref} onClick={(event) => preserveCurrentLanguage(event, homeHref)} style={linkStyle} prefetch={false}>
+            <Link href={languageHomeHref} style={linkStyle} prefetch={false}>
                 {businessName}
             </Link>
 
@@ -333,7 +339,7 @@ export default function MenuBreadcrumb({
                             {outletName}
                         </span>
                     ) : (
-                        <Link href={resolvedOutletHref || `/${outletSlug}`} onClick={(event) => preserveCurrentLanguage(event, resolvedOutletHref || `/${outletSlug}`)} style={linkStyle} prefetch={false}>
+                        <Link href={languageOutletHref || `/${outletSlug}`} style={linkStyle} prefetch={false}>
                             {outletName}
                         </Link>
                     )}

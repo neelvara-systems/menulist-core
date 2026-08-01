@@ -355,6 +355,7 @@ App Check is per-Firebase project. When Answerlattice project is created, it nee
 - [x] `answerlatticeRequestBodyComposer` — Answerlattice DAL writes now force `pId = 'AL'` and attach source context + trace IDs
 - [x] KB callable functions — `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` exported from `functions-answerlattice/src/index.ts`
 - [x] Answerlattice KB embeddings — callable functions use Answerlattice Firebase Admin and Answerlattice-owned Gemini API secrets so separate-mode cost/accounting stays inside Answerlattice
+- [x] MenuList compatibility exports — historical same-name handlers in `functions/src/triggers/shared.ts` are data-free migration stubs and cannot run Answerlattice embedding or publishing logic in the MenuList Firebase project
 - [x] Answerlattice Next.js AI paths — embeddings, image-query interpretation, RAG fallback, entity extraction, draft regeneration, FAQ generation, translation, and Knowledge Intake media extraction use the app-side Answerlattice `ANSWERLATTICE_GEMINI_AI_KEY*` gateway without MenuList credential fallback
 - [x] API hardening — Answerlattice translate/widget routes use Answerlattice Admin surfaces and structured secure logging
 

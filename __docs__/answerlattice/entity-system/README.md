@@ -89,6 +89,8 @@ Answerlattice App Entity Candidate ID Boundary: candidate review actions normali
 
 Answerlattice App Entity DAL ID Boundary: entity, relation, and entity search-index document refs normalize IDs through `src/lib/answerlattice/governanceIdBoundary.ts` before entity update/deprecate refs, relation delete refs, search-index writes, alias sync, merge reads/writes, merge audit state, and compiled-context source-version IDs. Malformed, reserved, empty, path-shaped, or unresolved entity IDs fail before Firestore access while valid entity governance behavior is unchanged.
 
+Persisted ontology rows are projected through exact runtime schemas before they leave the data boundary. Entity, relation, search-index, and candidate readers preserve declared legacy-compatible fields while stripping undeclared/private Firestore fields from owner DAL and protected action results.
+
 Feature 7 hardening keeps extraction and governance authority separate. The protected extraction route uses only persisted article truth, fingerprints that truth across provider latency, revalidates every matched active entity, and commits changed article links with KB cache/source/bundle invalidation in one transaction. Candidate writes happen only after that source revalidation and remain review work. If a name or alias matches more than one active entity, extraction does not silently choose the first row.
 
 The entity dashboard now exposes aliases, relation creation/removal, same-type entity merge, retryable load failure, and accurate success/failure completion. The workspace-wide relation read remains capped at 500 rows and is not paginated; this is a monitored scale boundary, not a claim of unlimited graph administration.

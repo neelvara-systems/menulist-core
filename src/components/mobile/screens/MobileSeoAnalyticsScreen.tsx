@@ -484,7 +484,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
             const ownsCurrentAnalytics = currentStoreDetails?.storeId === expectedStoreId
                 && currentStoreDetails?.tenantId === expectedTenantId
                 && currentStoreDetails?.analytics === previousAnalytics;
-            setStoreDetails((currentDetails: typeof storeDetails) => (
+            setStoreDetails((currentDetails) => (
                 currentDetails?.storeId === expectedStoreId
                 && currentDetails?.tenantId === expectedTenantId
                 && currentDetails?.analytics === previousAnalytics
@@ -581,7 +581,7 @@ function MobileSeoAnalyticsScreenContent({ onBack, mode = 'seo' }: MobileSeoAnal
             const ownsCurrentSeo = currentStoreDetails?.storeId === expectedStoreId
                 && currentStoreDetails?.tenantId === expectedTenantId
                 && seoFields.every((field) => currentStoreDetails[field] === sourceStoreDetails[field]);
-            setStoreDetails((currentDetails: typeof storeDetails) => (
+            setStoreDetails((currentDetails) => (
                 currentDetails?.storeId === expectedStoreId
                 && currentDetails?.tenantId === expectedTenantId
                 && seoFields.every((field) => currentDetails[field] === sourceStoreDetails[field])
@@ -1245,11 +1245,11 @@ function StepList({ items }: { items: string[] }) {
 
 function getAnalyticsDraft(storeDetails: any): AnalyticsDraft {
     return {
+        ...getResolvedAnalyticsPreferences(storeDetails?.analytics),
         enhancedEcommerce: storeDetails?.analytics?.enhancedEcommerce || false,
         facebookPixelId: storeDetails?.analytics?.facebookPixelId || '',
         googleAnalyticsId: storeDetails?.analytics?.googleAnalyticsId || '',
         googleSearchConsole: storeDetails?.analytics?.googleSearchConsole || (storeDetails?.analytics as any)?.searchConsoleVerification || '',
-        ...getResolvedAnalyticsPreferences(storeDetails?.analytics),
     };
 }
 

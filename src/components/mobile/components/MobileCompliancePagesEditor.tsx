@@ -5,27 +5,35 @@ import {
     logBusinessSettingsFailure,
 } from '@template/main-app/businessSettings/utils/businessSettingsDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import {
+    getOwnerComplianceScope,
+    isOwnerComplianceMutationScopeAcknowledged,
+    normalizeOwnerComplianceLoadResponse,
+    type OwnerCompliancePagesState,
+    type OwnerComplianceScope,
+} from '@lib/compliance/ownerComplianceResponseBoundary';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { theme } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuEye, LuPenLine, LuRotateCcw } from 'react-icons/lu';
 import { Button, Card, Flex, NavBar, Popup, Text, TextArea, Toast } from '../antd';
 
 type ComplianceTab = 'privacy' | 'terms' | 'refund';
-type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
-type CompliancePagesState = Record<ComplianceTab, CompliancePageData>;
 type ComplianceMutationAction = 'save' | 'reset';
 type ComplianceApiMutationAction = 'override' | 'reset';
 type ComplianceMutationResponse = {
     action?: unknown;
+    storeId?: unknown;
     success?: boolean;
+    tenantId?: unknown;
     type?: unknown;
 };
-type ComplianceLoadResponse = Partial<CompliancePagesState>;
 
 interface MobileCompliancePagesEditorProps {
     baseUrl?: string;
     compact?: boolean;
+    storeId?: unknown;
+    tenantId?: unknown;
     type: ComplianceTab;
 }
 
@@ -35,7 +43,7 @@ const TAB_LABELS: Record<ComplianceTab, string> = {
     refund: 'Refund & Cancellation Policy',
 };
 
-const EMPTY_COMPLIANCE_PAGES: CompliancePagesState = {
+const EMPTY_COMPLIANCE_PAGES: OwnerCompliancePagesState = {
     privacy: null,
     refund: null,
     terms: null,
@@ -58,6 +66,7 @@ function isSuccessfulComplianceMutationResponse(
     value: ComplianceMutationResponse | null,
     type: ComplianceTab,
     action: ComplianceMutationAction,
+    expectedScope: OwnerComplianceScope,
 ): value is ComplianceMutationResponse & {
     action: ComplianceApiMutationAction;
     success: true;
@@ -67,7 +76,8 @@ function isSuccessfulComplianceMutationResponse(
         value
         && value.success === true
         && value.type === type
-        && value.action === getExpectedComplianceApiMutationAction(action),
+        && value.action === getExpectedComplianceApiMutationAction(action)
+        && isOwnerComplianceMutationScopeAcknowledged(value, expectedScope)
     );
 }
 
@@ -85,21 +95,20 @@ function buildMobileComplianceMutationResponseLogContext(
     };
 }
 
-let compliancePagesCache: CompliancePagesState | null = null;
-let compliancePagesRequest: Promise<CompliancePagesState | null> | null = null;
-const compliancePagesListeners = new Set<(pages: CompliancePagesState) => void>();
+let compliancePagesCache: {
+    pages: OwnerCompliancePagesState;
+    scopeKey: string;
+} | null = null;
+const compliancePagesRequests = new Map<string, Promise<OwnerCompliancePagesState | null>>();
+const compliancePagesListeners = new Map<string, Set<(pages: OwnerCompliancePagesState) => void>>();
 
-function normalizeCompliancePages(data: any): CompliancePagesState {
-    return {
-        privacy: data?.privacy || null,
-        refund: data?.refund || null,
-        terms: data?.terms || null,
-    };
+function getCachedCompliancePages(scopeKey: string): OwnerCompliancePagesState | null {
+    return compliancePagesCache?.scopeKey === scopeKey ? compliancePagesCache.pages : null;
 }
 
-function publishCompliancePages(pages: CompliancePagesState) {
-    compliancePagesCache = pages;
-    compliancePagesListeners.forEach((listener) => listener(pages));
+function publishCompliancePages(scopeKey: string, pages: OwnerCompliancePagesState) {
+    compliancePagesCache = { pages, scopeKey };
+    compliancePagesListeners.get(scopeKey)?.forEach((listener) => listener(pages));
 }
 
 async function readMobileComplianceMutationResponseJson(
@@ -130,7 +139,7 @@ async function readMobileComplianceMutationResponseJson(
 
 async function readMobileComplianceLoadResponseJson(
     response: Response,
-): Promise<ComplianceLoadResponse | null> {
+): Promise<unknown | null> {
     try {
         const payload = await readJsonResponseWithLimit<unknown>(
             response,
@@ -149,7 +158,7 @@ async function readMobileComplianceLoadResponseJson(
             );
             return null;
         }
-        return payload as ComplianceLoadResponse;
+        return payload;
     } catch (error) {
         logBusinessSettingsFailure(
             'mobile_compliance_pages_load_response_parse_failed',
@@ -165,16 +174,18 @@ async function readMobileComplianceLoadResponseJson(
     }
 }
 
-async function loadCompliancePages(force = false) {
-    if (!force && compliancePagesCache) {
-        return compliancePagesCache;
+async function loadCompliancePages(scope: OwnerComplianceScope, force = false) {
+    const cachedPages = getCachedCompliancePages(scope.key);
+    if (!force && cachedPages) {
+        return cachedPages;
     }
 
-    if (!force && compliancePagesRequest) {
-        return compliancePagesRequest;
+    const currentRequest = compliancePagesRequests.get(scope.key);
+    if (!force && currentRequest) {
+        return currentRequest;
     }
 
-    compliancePagesRequest = fetch('/api/compliance', AUTH_BROWSER_REQUEST_POLICY)
+    const request = fetch('/api/compliance', AUTH_BROWSER_REQUEST_POLICY)
         .then(async (response) => {
             if (!response.ok) {
                 logBusinessSettingsFailure(
@@ -186,11 +197,20 @@ async function loadCompliancePages(force = false) {
             }
             const data = await readMobileComplianceLoadResponseJson(response);
             if (!data) return null;
-            const pages = normalizeCompliancePages(data);
-            publishCompliancePages(pages);
+            const pages = normalizeOwnerComplianceLoadResponse(data, scope);
+            if (!pages) {
+                logBusinessSettingsFailure(
+                    'mobile_compliance_pages_load_scope_invalid',
+                    createMobileComplianceStatusError('mobile_compliance_pages_load_scope_invalid', response.status),
+                    getBoundedBusinessSettingsStringContext('complianceSurface', 'mobile'),
+                );
+                return null;
+            }
+            if (compliancePagesRequests.get(scope.key) !== request) return null;
+            publishCompliancePages(scope.key, pages);
             return pages;
         })
-        .catch((error) => {
+        .catch((error): null => {
             logBusinessSettingsFailure(
                 'mobile_compliance_pages_load_failed',
                 error,
@@ -199,16 +219,28 @@ async function loadCompliancePages(force = false) {
             return null;
         })
         .finally(() => {
-            compliancePagesRequest = null;
+            if (compliancePagesRequests.get(scope.key) === request) {
+                compliancePagesRequests.delete(scope.key);
+            }
         });
 
-    return compliancePagesRequest;
+    compliancePagesRequests.set(scope.key, request);
+    return request;
 }
 
-export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: MobileCompliancePagesEditorProps) {
+export default function MobileCompliancePagesEditor({
+    baseUrl,
+    compact,
+    storeId,
+    tenantId,
+    type,
+}: MobileCompliancePagesEditorProps) {
     const { token } = theme.useToken();
-    const [pages, setPages] = useState<CompliancePagesState>(compliancePagesCache || EMPTY_COMPLIANCE_PAGES);
-    const [loading, setLoading] = useState(!compliancePagesCache);
+    const scope = useMemo(() => getOwnerComplianceScope(tenantId, storeId), [storeId, tenantId]);
+    const currentScopeKeyRef = useRef(scope?.key);
+    currentScopeKeyRef.current = scope?.key;
+    const [pages, setPages] = useState<OwnerCompliancePagesState>(EMPTY_COMPLIANCE_PAGES);
+    const [loading, setLoading] = useState(Boolean(scope));
     const [saving, setSaving] = useState(false);
     const [resetting, setResetting] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
@@ -242,23 +274,31 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
         }
     };
 
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-            const nextPages = await loadCompliancePages();
-            if (nextPages) setPages(nextPages);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        compliancePagesListeners.add(setPages);
-        void fetchData();
+        let active = true;
+        if (!scope) {
+            setPages(EMPTY_COMPLIANCE_PAGES);
+            setLoading(false);
+            return () => {
+                active = false;
+            };
+        }
+
+        const cachedPages = getCachedCompliancePages(scope.key);
+        setPages(cachedPages || EMPTY_COMPLIANCE_PAGES);
+        setLoading(!cachedPages);
+        const listeners = compliancePagesListeners.get(scope.key) || new Set();
+        listeners.add(setPages);
+        compliancePagesListeners.set(scope.key, listeners);
+        void loadCompliancePages(scope).then(() => {
+            if (active) setLoading(false);
+        });
         return () => {
-            compliancePagesListeners.delete(setPages);
+            active = false;
+            listeners.delete(setPages);
+            if (listeners.size === 0) compliancePagesListeners.delete(scope.key);
         };
-    }, []);
+    }, [scope]);
 
     const openSheet = () => {
         setCustomText(currentData?.customContent || '');
@@ -268,6 +308,10 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
     };
 
     const handleSave = async () => {
+        if (!scope) {
+            Toast.show({ content: 'Failed to save.', duration: 1500 });
+            return;
+        }
         if (!customText.trim() || customText.trim().length < 100) {
             Toast.show({ content: 'Content must be at least 100 characters.', duration: 1500 });
             return;
@@ -295,7 +339,7 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                 Toast.show({ content: 'Failed to save.', duration: 1500 });
                 return;
             }
-            if (!isSuccessfulComplianceMutationResponse(result, type, 'save')) {
+            if (!isSuccessfulComplianceMutationResponse(result, type, 'save', scope)) {
                 logBusinessSettingsFailure(
                     'mobile_compliance_page_response_invalid',
                     createMobileComplianceStatusError('mobile_compliance_page_save_response_invalid', response.status),
@@ -304,7 +348,8 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                 Toast.show({ content: 'Failed to save.', duration: 1500 });
                 return;
             }
-            await loadCompliancePages(true);
+            const refreshedPages = await loadCompliancePages(scope, true);
+            if (!refreshedPages || currentScopeKeyRef.current !== scope.key) return;
             setIsEditing(false);
             Toast.show({ content: `${pageLabel} updated.`, duration: 1200 });
         } catch (error) {
@@ -320,6 +365,10 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
     };
 
     const handleReset = async () => {
+        if (!scope) {
+            Toast.show({ content: 'Failed to reset.', duration: 1500 });
+            return;
+        }
         try {
             setResetting(true);
             const response = await fetch('/api/compliance', {
@@ -341,7 +390,7 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                 Toast.show({ content: 'Failed to reset.', duration: 1500 });
                 return;
             }
-            if (!isSuccessfulComplianceMutationResponse(result, type, 'reset')) {
+            if (!isSuccessfulComplianceMutationResponse(result, type, 'reset', scope)) {
                 logBusinessSettingsFailure(
                     'mobile_compliance_page_response_invalid',
                     createMobileComplianceStatusError('mobile_compliance_page_reset_response_invalid', response.status),
@@ -350,7 +399,8 @@ export default function MobileCompliancePagesEditor({ baseUrl, compact, type }: 
                 Toast.show({ content: 'Failed to reset.', duration: 1500 });
                 return;
             }
-            await loadCompliancePages(true);
+            const refreshedPages = await loadCompliancePages(scope, true);
+            if (!refreshedPages || currentScopeKeyRef.current !== scope.key) return;
             setCustomText('');
             setIsEditing(false);
             Toast.show({ content: `${pageLabel} reset to default.`, duration: 1200 });

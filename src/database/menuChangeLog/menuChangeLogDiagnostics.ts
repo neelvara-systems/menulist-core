@@ -1,6 +1,7 @@
 import { secureError, secureLog } from '@lib/security/secureLogger';
 import { MENU_CHANGE_ACTORS, MENU_CHANGE_TYPES } from '@type/menuObservation';
 import {
+    getBoundedLogValueContext,
     getBoundedErrorCode,
     getBoundedErrorStatus,
     getBoundedErrorName,
@@ -12,20 +13,7 @@ export const getBoundedMenuChangeLogStringContext = (
     label: string,
     value: unknown,
 ): MenuChangeLogContext => {
-    let normalized = '';
-    try {
-        normalized = value === undefined || value === null ? '' : String(value);
-    } catch {
-        return {
-            [`${label}Present`]: value !== undefined && value !== null,
-            [`${label}Length`]: null,
-        };
-    }
-
-    return {
-        [`${label}Present`]: normalized.length > 0,
-        [`${label}Length`]: normalized.length,
-    };
+    return getBoundedLogValueContext(label, value);
 };
 
 export const getMenuChangeLogEntryContext = (

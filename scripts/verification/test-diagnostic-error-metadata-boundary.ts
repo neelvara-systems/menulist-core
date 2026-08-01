@@ -26,6 +26,7 @@ import {
 import {
     getBoundedFunctionsErrorContext as getSignalDeskFunctionsErrorContext,
 } from '../../functions-signaldesk/src/utils/boundedErrorContext';
+import { normalizeRuntimeDiagnosticUrl } from '../../src/lib/runtime/runtimeDiagnostics';
 
 const throwingError = new Error('original failure');
 Object.defineProperties(throwingError, {
@@ -137,6 +138,29 @@ assert.deepEqual(getImageProviderRequestLogContext({
     queryPresent: false,
 });
 assert.equal(imagePageCoercionAttempted, false);
+
+assert.equal(
+    normalizeRuntimeDiagnosticUrl(
+        'https://menulist.ai/client/acme?token=secret#private',
+        'https://menulist.ai',
+    ),
+    'https://menulist.ai/client/acme',
+);
+assert.equal(
+    normalizeRuntimeDiagnosticUrl(
+        'https://private.example.com/customer/acme?email=owner@example.com',
+        'https://menulist.ai',
+    ),
+    'https://private.example.com',
+);
+assert.equal(
+    normalizeRuntimeDiagnosticUrl('https://user:secret@example.com/path', 'https://menulist.ai'),
+    undefined,
+);
+assert.equal(
+    normalizeRuntimeDiagnosticUrl('javascript:alert(1)', 'https://menulist.ai'),
+    undefined,
+);
 
 const sourceFiles: string[] = [];
 const visit = (directory: string): void => {

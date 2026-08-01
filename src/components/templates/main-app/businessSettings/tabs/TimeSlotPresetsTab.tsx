@@ -13,7 +13,7 @@ import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } f
 const { Title, Text } = Typography;
 
 interface TimeSlotPresetsTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     tenantId: number;
     storeId: number;
     presets: TimeSlotPreset[];

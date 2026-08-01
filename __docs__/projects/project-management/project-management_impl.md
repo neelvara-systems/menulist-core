@@ -1,8 +1,8 @@
 # Project Management - Implementation
 
 **Feature:** Project CRUD and Menu Builder Lifecycle
-**Status:** Production implementation exists; audited July 16, 2026
-**Last Updated:** July 16, 2026
+**Status:** Production implementation exists; audited July 29, 2026
+**Last Updated:** July 29, 2026
 
 ## Architecture
 
@@ -58,7 +58,11 @@ Current audited read-only callers:
 - Menu Card Export / print/export surfaces
 - Business Health project selector
 - Transactions
+- Business Copy optional menu-context preparation
 
+Read-only callers that can outlive a store switch pass an
+`expectedScope` tenant/store pair. The DAL compares it with the current active
+session before constructing the summary reference and fails closed on drift.
 ## Write Flow
 
 ### Create

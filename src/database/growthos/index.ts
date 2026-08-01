@@ -8,6 +8,9 @@ import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { getGrowthOSBoundedStringContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import {
     getGrowthOSClientScope,
+    projectGrowthOSExportResult,
+    projectGrowthOSKitForScope,
+    projectGrowthOSReviewGuardResult,
     projectGrowthOSSummaryForScope,
     type GrowthOSClientScope,
 } from "@lib/growthos/clientContracts";
@@ -22,7 +25,7 @@ import type {
     GrowthOSSummaryDocument,
 } from "@type/growthos";
 
-const getGrowthOSSummaryDocRef = (session: any) => (
+const getGrowthOSSummaryDocRef = (session: { sId: string | number }) => (
     doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `${GROWTHOS_SUMMARY_DOC_PREFIX}_${session.sId}`)
 );
 
@@ -63,6 +66,7 @@ async function parseResponse<T = unknown>(
     response: Response,
     fallbackMessage: string,
     operation: string,
+    project: (value: unknown) => T | null,
 ): Promise<T> {
     let payload: unknown = null;
     try {
@@ -84,7 +88,8 @@ async function parseResponse<T = unknown>(
         throw new Error(fallbackMessage);
     }
 
-    if (!payload || typeof payload !== "object") {
+    const projected = project(payload);
+    if (projected === null) {
         logGrowthOSApiFailure("[GrowthOS Client] Response invalid", "growthos_client_response_invalid", undefined, {
             ...getGrowthOSBoundedStringContext("operation", operation),
             responseStatus: response.status,
@@ -92,8 +97,31 @@ async function parseResponse<T = unknown>(
         throw new Error(fallbackMessage);
     }
 
-    return payload as T;
+    return projected;
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> => (
+    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+);
+
+const projectDataEnvelope = <T>(
+    value: unknown,
+    projectData: (data: unknown) => T | null,
+): GrowthOSDataResponse<T> | null => {
+    if (!isRecord(value) || !Object.prototype.hasOwnProperty.call(value, "data")) return null;
+    const data = projectData(value.data);
+    return data === null ? null : { data };
+};
+
+const requireCurrentGrowthOSScope = async (): Promise<GrowthOSClientScope> => {
+    const session = await getActiveSession();
+    const scope = getGrowthOSClientScope({
+        storeId: session?.sId,
+        tenantId: session?.tId,
+    });
+    if (!scope) throw new Error("GrowthOS active scope unavailable");
+    return scope;
+};
 
 export const getGrowthOSSummary = async (
     expectedScope: GrowthOSClientScope,
@@ -113,7 +141,9 @@ export const getGrowthOSSummary = async (
             ) {
                 throw new Error("GrowthOS active scope changed");
             }
-            const snap = await getDoc(getGrowthOSSummaryDocRef(session));
+            const snap = await getDoc(getGrowthOSSummaryDocRef({
+                sId: activeScope.sId,
+            }));
             if (!snap.exists()) return null;
             const summary = projectGrowthOSSummaryForScope(snap.data(), expectedScope);
             if (!summary) {
@@ -130,19 +160,26 @@ export const refreshGrowthOSActions = async (
     projectId: string,
     forceRefresh = false,
 ): Promise<GrowthOSDataResponse<GrowthOSSummaryDocument>> => {
+    const scope = await requireCurrentGrowthOSScope();
     const response = await fetch("/api/growthos/actions/refresh", {
         ...GROWTHOS_CLIENT_REQUEST_POLICY,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId, forceRefresh }),
     });
-    return parseResponse<GrowthOSDataResponse<GrowthOSSummaryDocument>>(response, "Failed to refresh Growth Kits", "refresh_actions");
+    return parseResponse(
+        response,
+        "Failed to refresh Growth Kits",
+        "refresh_actions",
+        (value) => projectDataEnvelope(value, (data) => projectGrowthOSSummaryForScope(data, scope)),
+    );
 };
 
 export const generateGrowthOSKit = async (params: {
     actionId?: string;
     projectId: string;
 }): Promise<GrowthOSGenerateResponse> => {
+    const scope = await requireCurrentGrowthOSScope();
     const operationId = globalThis.crypto.randomUUID();
     const response = await fetchGrowthOSIdempotentMutation("/api/growthos/kits/generate", {
         ...GROWTHOS_CLIENT_REQUEST_POLICY,
@@ -153,7 +190,17 @@ export const generateGrowthOSKit = async (params: {
             operationId,
         }),
     });
-    return parseResponse<GrowthOSGenerateResponse>(response, "Failed to create Growth Kit", "generate_kit");
+    return parseResponse(
+        response,
+        "Failed to create Growth Kit",
+        "generate_kit",
+        (value) => projectDataEnvelope(value, (data) => {
+            if (!isRecord(data)) return null;
+            const kit = projectGrowthOSKitForScope(data.kit, scope);
+            const summary = projectGrowthOSSummaryForScope(data.summary, scope);
+            return kit && summary ? { kit, summary } : null;
+        }),
+    );
 };
 
 export const recordGrowthOSExport = async (params: {
@@ -172,7 +219,12 @@ export const recordGrowthOSExport = async (params: {
             operationId,
         }),
     });
-    return parseResponse<GrowthOSExportResponse>(response, "Failed to record Growth Kit use", "record_export");
+    return parseResponse(
+        response,
+        "Failed to record Growth Kit use",
+        "record_export",
+        (value) => projectDataEnvelope(value, projectGrowthOSExportResult),
+    );
 };
 
 export const suggestGrowthOSReviewReply = async (params: {
@@ -186,5 +238,14 @@ export const suggestGrowthOSReviewReply = async (params: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
     });
-    return parseResponse<{ result: GrowthOSReviewGuardResult }>(response, "Failed to prepare review reply", "suggest_review_reply");
+    return parseResponse(
+        response,
+        "Failed to prepare review reply",
+        "suggest_review_reply",
+        (value) => {
+            if (!isRecord(value)) return null;
+            const result = projectGrowthOSReviewGuardResult(value.result);
+            return result ? { result } : null;
+        },
+    );
 };

@@ -484,7 +484,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ) {
                     throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
                 }
-                const permissionError = requireAnyStorePermissionForStoreData(
+                const permissionError = await requireAnyStorePermissionForStoreData(
                     request,
                     session,
                     storeData,

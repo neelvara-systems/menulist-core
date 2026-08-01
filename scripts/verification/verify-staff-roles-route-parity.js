@@ -36,10 +36,13 @@ function verifyStaffRolesRouteParity() {
   const staffClient = read('src/lib/staffManagement/client.ts');
   const staffServer = read('src/lib/staffManagement/server.ts');
   const staffConcurrencyBoundary = read('src/lib/staffManagement/concurrencyBoundary.ts');
+  const staffFormMappingBoundary = read('src/lib/staffManagement/formMappingBoundary.ts');
   const staffScopeBoundary = read('src/lib/staffManagement/scopeBoundary.ts');
   const desktopUsersScreen = read('src/components/templates/main-app/users/usersList/index.tsx');
   const desktopUsersTable = read('src/components/templates/main-app/users/usersList/usersListTable.tsx');
   const desktopUserDetails = read('src/components/templates/main-app/users/usersList/userDetailsModal.tsx');
+  const desktopRoleDetails = read('src/components/templates/main-app/users/permissions/roleDetailsModal.tsx');
+  const desktopRolesScreen = read('src/components/templates/main-app/users/permissions/index.tsx');
   const platformUsers = read('src/components/templates/platform/users/index.tsx');
   const accessStatusRoute = read('src/app/api/auth/access-status/route.ts');
   const mobileSupportDoc = read('__docs__/roles-permissions/roles-permissions_mobile-support.md');
@@ -269,8 +272,30 @@ function verifyStaffRolesRouteParity() {
   ].forEach((token) => {
     assertIncludes(desktopUsersScreen, token, 'Desktop owner-target UI boundary');
   });
-  assertIncludes(desktopUsersTable, 'disabled={!targetCanBeManaged}', 'Desktop owner-target table actions');
-  assertIncludes(desktopUserDetails, 'disabled={!canEdit}', 'Desktop owner-target detail edit action');
+  assertIncludes(desktopUsersTable, 'disabled={!targetCanBeManaged || mutationPending}', 'Desktop owner-target table actions');
+  assertIncludes(desktopUserDetails, 'disabled={!canEdit || !modalData.data}', 'Desktop owner-target detail edit action');
+  [
+    'mergeLoadedStaffStoreForCurrentTenant',
+    'mergeStaffRolesForCurrentStore',
+    'currentStore.roles === sourceRoles',
+    "role: ''",
+  ].forEach((token) => {
+    assertIncludes(staffFormMappingBoundary, token, 'Desktop staff context-settlement boundary');
+  });
+  [
+    'mergeStaffRolesForCurrentStore(',
+    'const sourceRoles = storeDetails.roles;',
+    'setStoreDetails((currentStore)',
+  ].forEach((token) => {
+    assertIncludes(desktopRoleDetails, token, 'Desktop role-save context settlement');
+    assertIncludes(desktopRolesScreen, token, 'Desktop role-deactivation context settlement');
+  });
+  [
+    'permissions: normalizeRolePermissions(',
+    'Object.values(role.permissions).every',
+  ].forEach((token, index) => {
+    assertIncludes(index === 0 ? staffServer : staffClient, token, 'Staff store role-permission DTO boundary');
+  });
   [
     'return invalidAccess(request, session, "TENANT_DELETED"',
     'return invalidAccess(request, session, "TENANT_INACTIVE"',

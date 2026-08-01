@@ -27,18 +27,22 @@ import {
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 
 /** Master-controlled fields propagated from master to outlets when overrides are locked. */
-export function hasMasterStorePropagationFields(updatedFields: Record<string, any>): boolean {
+export function hasMasterStorePropagationFields(updatedFields: Record<string, unknown>): boolean {
     return MASTER_STORE_PROPAGATED_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(updatedFields, field));
 }
+
+export type MasterStorePropagationChanges = Partial<
+    Record<MasterStorePropagatedField, unknown>
+>;
 
 /**
  * Extract master-controlled outlet propagation changes from a store update payload.
  * Returns null if no propagated fields changed.
  */
 export function extractMasterStorePropagationChanges(
-    updatedFields: Record<string, any>,
-): Record<MasterStorePropagatedField, any> | null {
-    const propagationChanges: Partial<Record<MasterStorePropagatedField, any>> = {};
+    updatedFields: Record<string, unknown>,
+): MasterStorePropagationChanges | null {
+    const propagationChanges: MasterStorePropagationChanges = {};
     let hasPropagationChanges = false;
 
     for (const field of MASTER_STORE_PROPAGATED_FIELDS) {
@@ -51,13 +55,19 @@ export function extractMasterStorePropagationChanges(
     if (!hasPropagationChanges) return null;
 
     if ('businessType' in propagationChanges || 'businessCategory' in propagationChanges) {
-        propagationChanges.businessCategory = resolveStoreBusinessCategory(
-            propagationChanges.businessType,
-            propagationChanges.businessCategory,
-        );
+        const businessType = propagationChanges.businessType;
+        const businessCategory = propagationChanges.businessCategory;
+        const hasValidBusinessType = businessType == null || typeof businessType === 'string';
+        const hasValidBusinessCategory = businessCategory == null || typeof businessCategory === 'string';
+        if (hasValidBusinessType && hasValidBusinessCategory) {
+            propagationChanges.businessCategory = resolveStoreBusinessCategory(
+                typeof businessType === 'string' ? businessType : undefined,
+                typeof businessCategory === 'string' ? businessCategory : undefined,
+            );
+        }
     }
 
-    return propagationChanges as Record<MasterStorePropagatedField, any>;
+    return propagationChanges;
 }
 
 export const extractBrandChanges = extractMasterStorePropagationChanges;
@@ -73,12 +83,15 @@ export const extractBrandChanges = extractMasterStorePropagationChanges;
 export async function propagateMasterStoreChangesToOutlets(
     tenantId: number,
     masterStoreId: number,
-    propagatedChanges: Record<string, any>,
+    propagatedChanges: MasterStorePropagationChanges,
 ): Promise<BrandPropagationResult> {
-    const fields = normalizeMasterStorePropagationFields(Object.keys(propagatedChanges || {}));
-    if (fields.length === 0) return { failed: 0, propagated: 0, skipped: 0, success: true };
-
+    let propagatedFieldCount = 0;
     try {
+        const fields = normalizeMasterStorePropagationFields(Object.keys(propagatedChanges));
+        propagatedFieldCount = fields.length;
+        if (fields.length === 0) {
+            return { failed: 0, propagated: 0, skipped: 0, success: true };
+        }
         const response = await fetch('/api/outlets/brand-propagation', {
             ...MULTI_OUTLET_ACTION_REQUEST_POLICY,
             method: 'POST',
@@ -99,7 +112,7 @@ export async function propagateMasterStoreChangesToOutlets(
     } catch (e) {
         logMultiOutletFailure('multi_outlet_brand_propagation_failed', e, {
             ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
-            propagatedFieldCount: Object.keys(propagatedChanges).length,
+            propagatedFieldCount,
         });
         throw e;
     }

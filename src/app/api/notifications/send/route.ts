@@ -97,7 +97,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 storeId: parsed.data.sId,
             },
         );
-        if (permission.response || !permission.access) return permission.response;
+        if (permission.response) return permission.response;
+        if (!permission.access) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         const ticketSnapshot = await answerlatticeFirestoreAdmin
             .collection(DB_COLLECTIONS.SUPPORT_TICKETS)

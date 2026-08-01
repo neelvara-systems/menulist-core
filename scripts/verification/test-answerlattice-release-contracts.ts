@@ -6,12 +6,14 @@ import {
     ANSWERLATTICE_RELEASE_MAX_ENTITY_CHANGES,
     AnswerlatticeReleaseActionResultSchema,
     AnswerlatticeStoredReleaseSchema,
+    buildAnswerlatticeReleaseDirectDependencyCoverage,
     normalizeAnswerlatticeVersionLabel,
     parseAnswerlatticeReleaseAction,
 } from '../../src/lib/answerlattice/releaseContracts';
 import {
     denormalizeVersion,
     normalizeVersion,
+    type AnswerlatticeRelease,
 } from '../../src/types/answerlattice';
 
 const validCreate = {
@@ -96,6 +98,16 @@ assert.deepEqual(parseAnswerlatticeReleaseAction({
 });
 
 const timestamp = Timestamp.fromMillis(1_700_000_000_000);
+const releaseTypeContract: Pick<AnswerlatticeRelease, 'impactFingerprint' | 'activation'> = {
+    impactFingerprint: 'b'.repeat(64),
+    activation: {
+        requestId: 'activate_12345',
+        impactFingerprint: 'b'.repeat(64),
+        startedAt: timestamp,
+        leaseExpiresAt: timestamp,
+    },
+};
+assert.equal(releaseTypeContract.activation?.impactFingerprint, releaseTypeContract.impactFingerprint);
 const stored = {
     pId: 'AL',
     tId: 1,
@@ -153,6 +165,14 @@ const validImpactPreview = {
         criticalFailureCount: 0,
         lastRunAt: null,
     },
+    directDependencyCoverage: buildAnswerlatticeReleaseDirectDependencyCoverage({
+        activeLinkedTestCount: 1,
+        answerEntityIds: ['billing'],
+        changedEntityIds: ['billing', 'invoices', 'refunds'],
+        directActiveAnswerCount: 1,
+        testEntityIds: ['invoices'],
+        testLinkEvidence: 'available',
+    }),
     scope: validCreate.scope,
 };
 assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse(validImpactPreview).success, true);
@@ -164,6 +184,27 @@ assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
     ...validImpactPreview,
     reviewRequiredCount: 0,
 }).success, false, 'preview review totals must be derived from the bounded projection');
+assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
+    ...validImpactPreview,
+    directDependencyCoverage: {
+        ...validImpactPreview.directDependencyCoverage,
+        entityIdsWithoutVisibleDirectLinks: [],
+    },
+}).success, false, 'preview dependency evidence must disclose every changed entity without a visible direct link');
+assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
+    ...validImpactPreview,
+    directDependencyCoverage: {
+        ...validImpactPreview.directDependencyCoverage,
+        directActiveAnswerCount: 0,
+    },
+}).success, false, 'preview direct answer counts must agree with linked changed entities');
+assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
+    ...validImpactPreview,
+    directDependencyCoverage: {
+        ...validImpactPreview.directDependencyCoverage,
+        activeLinkedTestCount: 0,
+    },
+}).success, false, 'preview direct Answer Test counts must agree with linked changed entities');
 assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse({
     success: true,
     action: 'create',

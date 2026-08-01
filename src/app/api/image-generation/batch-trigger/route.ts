@@ -42,7 +42,8 @@ type BatchImageRouteLogContext = Record<string, boolean | number | string | null
 function isFailedTaskResult(result: PromiseSettledResult<unknown>) {
     return result.status === 'rejected'
         || (result.status === 'fulfilled'
-            && Boolean(result.value)
+            && result.value !== null
+            && result.value !== undefined
             && typeof result.value === 'object'
             && 'error' in result.value);
 }

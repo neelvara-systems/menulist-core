@@ -188,19 +188,27 @@ export function computeMasterUpdateDiff(
             });
         }
 
-        // Active state change
-        if (currentItem.active !== snapItem.active) {
+        // Active state change. Legacy extracted items may omit `active`; the
+        // persisted snapshot normalizes that default to true.
+        const currentActive = currentItem.active !== false;
+        const itemActiveOverride = itemOverride?.active;
+        if (currentActive !== snapItem.active) {
             changes.push({
-                type: currentItem.active ? "ITEM_ENABLED" : "ITEM_DISABLED",
+                type: currentActive ? "ITEM_ENABLED" : "ITEM_DISABLED",
                 entityId: id,
                 entityName: currentName,
                 oldValue: String(snapItem.active),
-                newValue: String(currentItem.active),
+                newValue: String(currentActive),
                 outletContext: {
-                    hasOverride: Boolean(itemOverride?.active !== undefined),
-                    impactNote: currentItem.active
-                        ? "Item is now visible in your menu"
-                        : "Item is now hidden from your menu",
+                    hasOverride: itemActiveOverride !== undefined,
+                    ...(itemActiveOverride !== undefined
+                        ? { overrideValue: itemActiveOverride ? "Visible" : "Hidden" }
+                        : {}),
+                    impactNote: itemActiveOverride !== undefined
+                        ? `Your outlet visibility setting (${itemActiveOverride ? "visible" : "hidden"}) is unaffected`
+                        : currentActive
+                            ? "Item is now visible in your menu"
+                            : "Item is now hidden from your menu",
                 },
             });
         }
@@ -224,6 +232,7 @@ export function computeMasterUpdateDiff(
         const currentAvailable = currentItem.available ?? true;
         const snapAvailable = snapItem.available ?? true;
         if (currentAvailable !== snapAvailable) {
+            const itemAvailableOverride = itemOverride?.available;
             changes.push({
                 type: "ITEM_AVAILABILITY_CHANGED",
                 entityId: id,
@@ -231,10 +240,15 @@ export function computeMasterUpdateDiff(
                 oldValue: snapAvailable ? "Available" : "Sold out",
                 newValue: currentAvailable ? "Available" : "Sold out",
                 outletContext: {
-                    hasOverride: Boolean(itemOverride?.available !== undefined),
-                    impactNote: currentAvailable
-                        ? "Item is back in stock from master"
-                        : "Item marked as sold out by master",
+                    hasOverride: itemAvailableOverride !== undefined,
+                    ...(itemAvailableOverride !== undefined
+                        ? { overrideValue: itemAvailableOverride ? "Available" : "Sold out" }
+                        : {}),
+                    impactNote: itemAvailableOverride !== undefined
+                        ? `Your outlet availability setting (${itemAvailableOverride ? "available" : "sold out"}) is unaffected`
+                        : currentAvailable
+                            ? "Item is back in stock from master"
+                            : "Item marked as sold out by master",
                 },
             });
         }
@@ -243,6 +257,7 @@ export function computeMasterUpdateDiff(
         const currentBestseller = currentItem.isBestSeller ?? false;
         const snapBestseller = snapItem.isBestSeller ?? false;
         if (currentBestseller !== snapBestseller) {
+            const itemBestsellerOverride = itemOverride?.isBestSeller;
             changes.push({
                 type: "ITEM_BESTSELLER_CHANGED",
                 entityId: id,
@@ -250,16 +265,22 @@ export function computeMasterUpdateDiff(
                 oldValue: snapBestseller ? "Bestseller" : "Regular",
                 newValue: currentBestseller ? "Bestseller" : "Regular",
                 outletContext: {
-                    hasOverride: Boolean(itemOverride?.isBestSeller !== undefined),
-                    impactNote: currentBestseller
-                        ? "Item is now marked as a bestseller"
-                        : "Item is no longer marked as a bestseller",
+                    hasOverride: itemBestsellerOverride !== undefined,
+                    ...(itemBestsellerOverride !== undefined
+                        ? { overrideValue: itemBestsellerOverride ? "Bestseller" : "Regular" }
+                        : {}),
+                    impactNote: itemBestsellerOverride !== undefined
+                        ? `Your outlet bestseller setting (${itemBestsellerOverride ? "bestseller" : "regular"}) is unaffected`
+                        : currentBestseller
+                            ? "Item is now marked as a bestseller"
+                            : "Item is no longer marked as a bestseller",
                 },
             });
         }
 
         // Duration (prep time) change
         if ((currentItem.duration ?? 0) !== (snapItem.duration ?? 0)) {
+            const itemDurationOverride = itemOverride?.duration;
             changes.push({
                 type: "ITEM_DURATION_CHANGED",
                 entityId: id,
@@ -267,9 +288,12 @@ export function computeMasterUpdateDiff(
                 oldValue: snapItem.duration ? `${snapItem.duration} min` : "Not set",
                 newValue: currentItem.duration ? `${currentItem.duration} min` : "Not set",
                 outletContext: {
-                    hasOverride: Boolean(itemOverride?.duration !== undefined),
-                    impactNote: itemOverride?.duration
-                        ? `Your outlet prep time (${itemOverride.duration} min) is unaffected`
+                    hasOverride: itemDurationOverride !== undefined,
+                    ...(itemDurationOverride !== undefined
+                        ? { overrideValue: `${itemDurationOverride} min` }
+                        : {}),
+                    impactNote: itemDurationOverride !== undefined
+                        ? `Your outlet prep time (${itemDurationOverride} min) is unaffected`
                         : "Prep time updated from master",
                 },
             });
@@ -346,19 +370,27 @@ export function computeMasterUpdateDiff(
                 });
             }
 
-            // Variant active state change
-            if (currentAttr.active !== snapAttr.active) {
+            // Variant active state change. Match snapshot defaulting for
+            // legacy variants that omit `active`.
+            const currentAttrActive = currentAttr.active !== false;
+            const attrActiveOverride = attrOverride?.active;
+            if (currentAttrActive !== snapAttr.active) {
                 changes.push({
-                    type: currentAttr.active ? "ATTRIBUTE_ENABLED" : "ATTRIBUTE_DISABLED",
+                    type: currentAttrActive ? "ATTRIBUTE_ENABLED" : "ATTRIBUTE_DISABLED",
                     entityId: currentAttr.id,
                     entityName: attrDisplayName,
                     oldValue: String(snapAttr.active),
-                    newValue: String(currentAttr.active),
+                    newValue: String(currentAttrActive),
                     outletContext: {
-                        hasOverride: Boolean(attrOverride?.active !== undefined),
-                        impactNote: currentAttr.active
-                            ? "Variant is now visible in your menu"
-                            : "Variant is now hidden from your menu",
+                        hasOverride: attrActiveOverride !== undefined,
+                        ...(attrActiveOverride !== undefined
+                            ? { overrideValue: attrActiveOverride ? "Visible" : "Hidden" }
+                            : {}),
+                        impactNote: attrActiveOverride !== undefined
+                            ? `Your outlet variant visibility setting (${attrActiveOverride ? "visible" : "hidden"}) is unaffected`
+                            : currentAttrActive
+                                ? "Variant is now visible in your menu"
+                                : "Variant is now hidden from your menu",
                     },
                 });
             }
@@ -405,18 +437,25 @@ export function computeMasterUpdateDiff(
         const snapCat = snapshotCatMap.get(id);
         if (!snapCat) return;
 
-        if (currentCat.active !== snapCat.active) {
+        const currentCategoryActive = currentCat.active !== false;
+        const categoryActiveOverride = overrides.categories[id]?.active;
+        if (currentCategoryActive !== snapCat.active) {
             changes.push({
-                type: currentCat.active ? "CATEGORY_ENABLED" : "CATEGORY_DISABLED",
+                type: currentCategoryActive ? "CATEGORY_ENABLED" : "CATEGORY_DISABLED",
                 entityId: id,
                 entityName: getCategoryPrimaryName(currentCat),
                 oldValue: String(snapCat.active),
-                newValue: String(currentCat.active),
+                newValue: String(currentCategoryActive),
                 outletContext: {
-                    hasOverride: Boolean(overrides.categories[id]?.active !== undefined),
-                    impactNote: currentCat.active
-                        ? "Category is now visible in your menu"
-                        : "Category is now hidden from your menu",
+                    hasOverride: categoryActiveOverride !== undefined,
+                    ...(categoryActiveOverride !== undefined
+                        ? { overrideValue: categoryActiveOverride ? "Visible" : "Hidden" }
+                        : {}),
+                    impactNote: categoryActiveOverride !== undefined
+                        ? `Your outlet category visibility setting (${categoryActiveOverride ? "visible" : "hidden"}) is unaffected`
+                        : currentCategoryActive
+                            ? "Category is now visible in your menu"
+                            : "Category is now hidden from your menu",
                 },
             });
         }

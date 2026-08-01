@@ -124,7 +124,7 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
         const nextPath = targetLocale === WEBSITE_RESOURCE_DEFAULT_LOCALE
             ? buildWebsiteResourcePath(slug, WEBSITE_RESOURCE_DEFAULT_LOCALE)
             : buildWebsiteResourcePath(slug, targetLocale);
-        const queryString = searchParams.toString();
+        const queryString = searchParams?.toString() ?? '';
 
         const aliasedNextPath = withWebsiteBasePath(nextPath, basePath);
         return queryString ? `${aliasedNextPath}?${queryString}` : aliasedNextPath;

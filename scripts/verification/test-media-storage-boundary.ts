@@ -5,8 +5,11 @@ import {
     normalizeMediaStoragePathSegment,
 } from '../../src/lib/media/mediaStorage';
 import {
+    assertMediaBlobMatchesDataUrl,
     assertMediaUploadBlobCandidate,
     cleanupUploadedMediaUrls,
+    getMediaBlobChecksum,
+    getMediaTextChecksum,
     normalizeMediaUploadMimeType,
     resolvePreparedMediaIdentity,
 } from '../../src/lib/media/mediaUploadBoundary';
@@ -98,6 +101,7 @@ assert.throws(() => resolvePreparedMediaIdentity({
 assert.deepEqual(resolvePreparedMediaIdentity({
     blobFingerprint: 'differentblob123',
     preparedChecksum: 'abcdef12',
+    preparedDataUrlChecksum: 'abcdef12',
     preparedMediaId: 'menuItem_abcdef12',
     profile: 'menuItem',
 }), {
@@ -108,6 +112,7 @@ assert.throws(() => resolvePreparedMediaIdentity({
     blobFingerprint: 'differentblob123',
     mediaChecksum: '11111111',
     preparedChecksum: 'abcdef12',
+    preparedDataUrlChecksum: 'abcdef12',
     preparedMediaId: 'menuItem_abcdef12',
     profile: 'menuItem',
 }), /prepared_media_checksum_mismatch/);
@@ -115,9 +120,17 @@ assert.throws(() => resolvePreparedMediaIdentity({
     blobFingerprint: 'differentblob123',
     mediaId: 'menuItem_11111111',
     preparedChecksum: 'abcdef12',
+    preparedDataUrlChecksum: 'abcdef12',
     preparedMediaId: 'menuItem_abcdef12',
     profile: 'menuItem',
 }), /prepared_media_identity_mismatch/);
+assert.throws(() => resolvePreparedMediaIdentity({
+    blobFingerprint: 'differentblob123',
+    preparedChecksum: 'abcdef12',
+    preparedDataUrlChecksum: '11111111',
+    preparedMediaId: 'menuItem_abcdef12',
+    profile: 'menuItem',
+}), /prepared_media_checksum_mismatch/);
 
 const immutableBlob = new Blob(['same'], { type: 'image/webp' });
 assert.equal(storageObjectMatchesUpload({
@@ -218,7 +231,19 @@ async function testCleanupRetries(): Promise<void> {
     assert.equal(attempts.get('second'), 2);
 }
 
-testCleanupRetries()
+async function testMediaHashIntegrity(): Promise<void> {
+    const dataUrl = 'data:image/webp;base64,c2FtZQ==';
+    const blob = new Blob(['same'], { type: 'image/webp' });
+    assert.equal((await getMediaBlobChecksum(blob)).length, 64);
+    assert.equal((await getMediaTextChecksum(dataUrl)).length, 64);
+    await assert.doesNotReject(() => assertMediaBlobMatchesDataUrl(blob, dataUrl));
+    await assert.rejects(
+        () => assertMediaBlobMatchesDataUrl(new Blob(['other'], { type: 'image/webp' }), dataUrl),
+        /prepared_media_blob_data_url_mismatch/,
+    );
+}
+
+Promise.all([testCleanupRetries(), testMediaHashIntegrity()])
     .then(() => console.log('Media storage boundary tests passed.'))
     .catch((error) => {
         console.error(error);

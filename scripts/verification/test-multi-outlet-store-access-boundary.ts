@@ -7,6 +7,9 @@ import {
     removeCompensatedStoreFromMappings,
     removeCompensatedStoreId,
 } from '../../src/lib/onboarding/compensatedStoreMappings';
+import { isMultiOutletTenantStoreListEntryInScope } from '../../src/lib/multiOutlet/projectIdBoundary';
+import { normalizePersistedOutletPolicy } from '../../src/lib/multiOutlet/outletPolicyBoundary';
+import { DEFAULT_OUTLET_POLICY } from '../../src/types/multiOutlet.types';
 
 for (const value of ['user-1', 'oauth_abc123', 42]) {
     assert.equal(normalizeUserStoreAccessDocumentId(value), String(value));
@@ -48,5 +51,46 @@ assert.deepEqual(removeCompensatedStoreFromMappings([
     { storeId: '02', name: 'Leading zero' },
     { storeId: '2e0', name: 'Exponent' },
 ]);
+
+assert.equal(isMultiOutletTenantStoreListEntryInScope(
+    { active: true, isMaster: false, storeId: '22' },
+    { isMaster: false, storeId: 22 },
+), true);
+assert.equal(isMultiOutletTenantStoreListEntryInScope(
+    { active: false, isMaster: false, storeId: '22' },
+    { isMaster: false, storeId: 22 },
+), false);
+assert.equal(isMultiOutletTenantStoreListEntryInScope(
+    { active: false, isMaster: false, storeId: '22' },
+    { allowInactive: true, isMaster: false, storeId: 22 },
+), true);
+for (const entry of [
+    { active: true, isMaster: false, storeId: '022' },
+    { active: true, isMaster: false, storeId: '2.2e1' },
+    { active: 'true', isMaster: false, storeId: 22 },
+    { active: true, isMaster: 'false', storeId: 22 },
+]) {
+    assert.equal(
+        isMultiOutletTenantStoreListEntryInScope(entry, { isMaster: false, storeId: 22 }),
+        false,
+        'malformed persisted tenant membership must fail closed',
+    );
+}
+
+assert.deepEqual(normalizePersistedOutletPolicy(undefined), DEFAULT_OUTLET_POLICY);
+assert.deepEqual(normalizePersistedOutletPolicy({ imageOverride: true }), {
+    ...DEFAULT_OUTLET_POLICY,
+    imageOverride: true,
+});
+assert.equal(normalizePersistedOutletPolicy({ imageOverride: 'false' }), null);
+assert.equal(normalizePersistedOutletPolicy([]), null);
+const hostilePolicy = Object.create(null);
+Object.defineProperty(hostilePolicy, 'imageOverride', {
+    enumerable: true,
+    get: () => {
+        throw new Error('hostile accessor');
+    },
+});
+assert.equal(normalizePersistedOutletPolicy(hostilePolicy), null);
 
 console.log('Multi-outlet store access boundary tests passed.');

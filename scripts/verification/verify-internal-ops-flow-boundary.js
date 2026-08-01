@@ -104,14 +104,19 @@ includes(schedulerDal, [
 includes(extractionDal, [
   'await assertCurrentPlatformAccess();',
   'const normalizedJobId = normalizeMenuExtractionJobId(jobId);',
+  ".filter((op) => op.action === 'IMAGE_PROCESSING' && getExtractionDateMs(op.createdAt) >= todayStartMs);",
   "throw new Error('extraction_dashboard_snapshot_unavailable')",
   "throw new Error('extraction_cost_metrics_unavailable')",
 ], 'Extraction monitor snapshot');
+assert(
+  !extractionDal.includes('.slice(0, 50);'),
+  'Extraction cost metrics must account for every row returned by the bounded Firestore read',
+);
 includes(schedulerResponse, [
   'normalizeSchedulerRecoveryResponse',
   'normalizeSchedulerRecoveryRunLogId',
-  "value.success !== (status !== 'failed')",
-  'value.totalStores !== 1',
+  "success !== (status !== 'failed')",
+  'totalStores !== 1',
 ], 'Scheduler recovery response');
 
 for (const source of [appFlags, functionFlags]) {

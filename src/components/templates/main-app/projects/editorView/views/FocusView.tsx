@@ -33,7 +33,7 @@ interface FocusViewProps {
     onImageUpload: (
         selectedItem: ItemForDropdown,
         imagesToUpload: UserUploadedFileType[],
-    ) => void;
+    ) => Promise<void>;
     // Multi-outlet props
     itemStates?: Record<string, InheritanceState>;
     isMasterLinked?: boolean;
@@ -96,12 +96,12 @@ export const FocusView = ({
                                             setUpdatedFileData={(newData: ProjectFileType) => {
                                                 setProjectData((prev) => ({
                                                     ...prev,
-                                                    files: prev.files.map((f) =>
+                                                    files: (prev.files ?? []).map((f) =>
                                                         f.uid === newData.uid ? newData : f,
                                                     ),
                                                 }));
                                             }}
-                                            selectedLanguages={projectData.languages}
+                                            selectedLanguages={projectData.languages ?? []}
                                             projectData={projectData}
                                             onImageUpload={onImageUpload}
                                             searchTerm={searchTerm}

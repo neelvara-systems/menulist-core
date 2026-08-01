@@ -11,7 +11,14 @@ import {
     normalizeAnswerlatticeScopeClarification,
 } from '@lib/answerlattice/publicAnswerContracts';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
-import type { ChatMessage, ChatReference, ChatSession } from '@type/chatSession';
+import type {
+    ChatInternalNote,
+    ChatInternalNoteContent,
+    ChatMessage,
+    ChatReference,
+    ChatSession,
+} from '@type/chatSession';
+import type { JSONContent } from '@tiptap/core';
 import { Timestamp } from 'firebase/firestore';
 import { z } from 'zod';
 
@@ -241,6 +248,96 @@ export const normalizeAnswerlatticeChatMessagesForStorage = (value: unknown): Ch
     return [normalized[0], ...normalized.slice(-(ANSWERLATTICE_CHAT_SESSION_MESSAGE_LIMIT - 1))];
 };
 
+const normalizeTiptapJsonContent = (value: unknown): JSONContent | null => {
+    if (!isRecord(value)) return null;
+    const type = value.type === undefined ? undefined : cleanString(value.type, 120);
+    const text = value.text === undefined ? undefined : cleanString(value.text, 12_000);
+    const attrs = value.attrs === undefined
+        ? undefined
+        : (isRecord(value.attrs) ? value.attrs : null);
+    const content = value.content === undefined
+        ? undefined
+        : (Array.isArray(value.content)
+            ? value.content.map(normalizeTiptapJsonContent)
+            : null);
+    const marks = value.marks === undefined
+        ? undefined
+        : (Array.isArray(value.marks)
+            ? value.marks.map((mark) => {
+                if (!isRecord(mark)) return null;
+                const markType = cleanString(mark.type, 120);
+                const markAttrs = mark.attrs === undefined
+                    ? undefined
+                    : (isRecord(mark.attrs) ? mark.attrs : null);
+                return markType && markAttrs !== null
+                    ? { type: markType, ...(markAttrs ? { attrs: markAttrs } : {}) }
+                    : null;
+            })
+            : null);
+    if (
+        (!type && !text)
+        || attrs === null
+        || content === null
+        || marks === null
+        || content?.some((item) => item === null)
+        || marks?.some((item) => item === null)
+    ) return null;
+    return {
+        ...(type ? { type } : {}),
+        ...(attrs ? { attrs } : {}),
+        ...(content ? { content: content.filter((item): item is JSONContent => Boolean(item)) } : {}),
+        ...(marks ? {
+            marks: marks.filter((item): item is { type: string; attrs?: Record<string, unknown> } => Boolean(item)),
+        } : {}),
+        ...(text ? { text } : {}),
+    };
+};
+
+const normalizeStoredInternalNotes = (
+    value: unknown,
+): ChatInternalNote[] | undefined | null => {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value) || value.length > 1) return null;
+    const notes: ChatInternalNote[] = [];
+    for (const rawNote of value) {
+        if (!isRecord(rawNote)) return null;
+        let content: ChatInternalNoteContent;
+        try {
+            content = normalizeAnswerlatticeInternalNote(rawNote.content);
+        } catch {
+            return null;
+        }
+        const timestamps = {
+            createdOn: rawNote.createdOn,
+            modifiedOn: rawNote.modifiedOn,
+        };
+        if (Object.values(timestamps).some(
+            (timestamp) => timestamp !== undefined && !(timestamp instanceof Timestamp),
+        )) return null;
+        const strings = {
+            id: rawNote.id === undefined ? undefined : cleanString(rawNote.id, 180),
+            createdBy: rawNote.createdBy === undefined ? undefined : cleanString(rawNote.createdBy, 180),
+            createdByName: rawNote.createdByName === undefined ? undefined : cleanString(rawNote.createdByName, 300),
+            modifiedBy: rawNote.modifiedBy === undefined ? undefined : cleanString(rawNote.modifiedBy, 180),
+            modifiedByName: rawNote.modifiedByName === undefined ? undefined : cleanString(rawNote.modifiedByName, 300),
+        };
+        if (Object.entries(strings).some(
+            ([key, normalized]) => rawNote[key] !== undefined && normalized === undefined,
+        )) return null;
+        notes.push({
+            content,
+            ...(strings.id ? { id: strings.id } : {}),
+            ...(strings.createdBy ? { createdBy: strings.createdBy } : {}),
+            ...(strings.createdByName ? { createdByName: strings.createdByName } : {}),
+            ...(timestamps.createdOn instanceof Timestamp ? { createdOn: timestamps.createdOn } : {}),
+            ...(strings.modifiedBy ? { modifiedBy: strings.modifiedBy } : {}),
+            ...(strings.modifiedByName ? { modifiedByName: strings.modifiedByName } : {}),
+            ...(timestamps.modifiedOn instanceof Timestamp ? { modifiedOn: timestamps.modifiedOn } : {}),
+        });
+    }
+    return notes;
+};
+
 export const parseAnswerlatticeChatMetadataMutation = (value: unknown) => {
     const input = isRecord(value) ? value : {};
     const projected: Record<string, unknown> = {};
@@ -278,6 +375,8 @@ export const parseAnswerlatticeChatSessionDocument = (params: {
         || (params.value.modifiedOn !== undefined && !(params.value.modifiedOn instanceof Timestamp))
         || (params.value.lastAdminView !== undefined && !(params.value.lastAdminView instanceof Timestamp))
     ) return null;
+    const internalNotes = normalizeStoredInternalNotes(params.value.internalNotes);
+    if (internalNotes === null) return null;
     try {
         return {
             ...params.value,
@@ -285,18 +384,39 @@ export const parseAnswerlatticeChatSessionDocument = (params: {
             tId: params.scope.tId,
             sId: params.scope.sId,
             messages: normalizeAnswerlatticeChatMessagesForStorage(params.value.messages),
+            ...(internalNotes !== undefined ? { internalNotes } : {}),
         } as ChatSession;
     } catch {
         return null;
     }
 };
 
-export const normalizeAnswerlatticeInternalNote = (value: unknown): unknown => {
+export const normalizeAnswerlatticeInternalNote = (value: unknown): ChatInternalNoteContent => {
     const copied = copyBoundedJson(value, ANSWERLATTICE_CHAT_SESSION_NOTE_MAX_BYTES);
-    if (
-        !copied
-        || (typeof copied !== 'string' && !isRecord(copied))
-        || (typeof copied === 'string' && !copied.trim())
-    ) throw new Error('answerlattice_chat_internal_note_invalid');
-    return copied;
+    if (typeof copied === 'string') {
+        if (!copied.trim()) throw new Error('answerlattice_chat_internal_note_invalid');
+        return copied;
+    }
+    const json = normalizeTiptapJsonContent(copied);
+    if (!json || json.type !== 'doc') throw new Error('answerlattice_chat_internal_note_invalid');
+    return json;
+};
+
+export const getAnswerlatticeInternalNotePlainText = (
+    value: ChatInternalNoteContent,
+): string => {
+    if (typeof value === 'string') return value;
+    const fragments: string[] = [];
+    const visit = (node: JSONContent): void => {
+        if (node.text) fragments.push(node.text);
+        node.content?.forEach(visit);
+        if (
+            node.type === 'paragraph'
+            || node.type === 'heading'
+            || node.type === 'listItem'
+            || node.type === 'blockquote'
+        ) fragments.push('\n');
+    };
+    visit(value);
+    return fragments.join('').replace(/\n{3,}/g, '\n\n').trim();
 };

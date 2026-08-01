@@ -125,9 +125,28 @@ When an authorized owner saves or removes `publicPresence.googleMapsUrl`, the sh
 
 The root single/multi-outlet decision and brand outlet selector each query canonical active stores with `.limit(FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1)`. The extra row detects legacy overflow without allowing an unbounded tenant read; current product policy permits at most 30 outlets.
 
+The brand selector includes the active master store at the canonical `/menu`
+compatibility route. Non-master locations remain routable only when their
+stored `outletSlug` passes `normalizePublicOutletSlug()`. The same bounded
+canonical outlet projection generates the brand root's Organization JSON-LD
+and its visible LocalBusiness location links; one outlet's address or hours is
+never projected as brand-wide truth.
+
 Desktop and mobile public-output failures use the same bounded boundary. `OBPLinkCard` logs `obp_link_card_default_project_load_failed`, `obp_link_card_copy_failed`, `obp_link_card_copy_message_failed`, `obp_link_card_whatsapp_open_failed`, `obp_link_card_open_failed`, `obp_link_card_qr_download_failed`, and `obp_link_card_share_tracking_failed` with store/tenant, OBP/menu URL presence-length metadata, QR type, message lengths, fixed share method values, and clipboard/fallback support booleans only. Its Copy Link and Copy Message success feedback plus `copy_link`/`copy_message` share tracking run only after Clipboard API success or acknowledged textarea fallback success, so failed browser handoffs do not record false owner share actions. `GoogleListingGuide` logs `google_listing_guide_link_copy_failed`, `google_listing_guide_profile_kit_copy_failed`, and `google_listing_guide_open_failed` with subdomain/custom-domain/OBP URL presence-length metadata, profile-kit line count, owner-text presence booleans, and clipboard/fallback support booleans only; link and profile-kit copy success feedback waits for Clipboard API success or acknowledged textarea fallback success. The legacy Custom Domain tab logs `desktop_custom_domain_open_failed`, `desktop_custom_domain_link_copy_failed`, and `desktop_custom_domain_dns_copy_failed` with bounded domain, copy URL, DNS record metadata, and clipboard/fallback support booleans only; active-domain and DNS copied feedback waits for Clipboard API success or acknowledged textarea fallback success. Business Settings marks the Google listing as updated only after `updateStore()` acknowledgement; rejected writes use `desktop_official_page_google_link_store_update_rejected` and route through `desktop_official_page_google_link_update_failed`. The embedded Business Settings Presence Monitor logs `business_settings_presence_screen_links_load_failed` with bounded store, tenant, subdomain/custom-domain, OBP URL, and menu-presence metadata only; official-link copy is owned by the shared Presence Monitor instead of an embedded direct-copy fallback. Owner Dashboard official-link cards use the same store diagnostic boundary: `GoogleListingCard` logs `owner_dashboard_google_listing_copy_failed`, `owner_dashboard_google_listing_open_failed`, and `owner_dashboard_google_listing_mark_done_failed`, waits for acknowledged official-link copy before copied feedback, and requires `owner_dashboard_google_listing_store_update_rejected` acknowledgement before local updated state or save success copy. Official-link adoption guidance is embedded in existing Dashboard and Share surfaces; there is no separate nudge card, dismissal storage, or associated diagnostic path. These desktop paths must not log raw generated public URLs, owner-entered business text, generated share messages, DNS/domain values, analytics payloads, store IDs, tenant IDs, or browser exception text.
 
-July 5, 2026 server fallback hardening: `src/app/client/obp/OBPContent.tsx` still uses the same 60-second `client-stores` cache and still falls back to a safe non-menu or single-store render when public summary reads fail. OBP server fallback diagnostics log `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed` through bounded runtime diagnostics with store, tenant, tenant-type, active-special-menu, and operation presence-length metadata plus normalized source error metadata only. Raw store IDs, tenant IDs, special menu IDs, public domains, menu names, project slugs, provider payloads, and exception text are not logged. Source gates: `npm run verify:official-business-page-boundary` and `npm run verify:public-business-truth`.
+July 30, 2026 server failure-truth hardening: `src/app/client/obp/OBPContent.tsx` retains the same 60-second public cache tags, retry policy, and bounded diagnostics, but exhausted menu-summary or active-store-count reads now throw into `src/app/client/error.tsx`. An infrastructure failure must not become an authoritative "menu coming soon" state or a false single-location render. OBP server fallback diagnostics log `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed` through bounded runtime diagnostics. Diagnostics remain bounded to store, tenant, tenant-type, active-special-menu, and operation presence-length metadata plus normalized source error metadata; raw IDs, public domains, menu names, project slugs, provider payloads, and exception text are not logged. Source gates: `npm run verify:official-business-page-boundary` and `npm run verify:public-business-truth`.
+
+July 30, 2026 public media and density hardening:
+`OBPPublicImage` handles both normal `error` events and failures completed before
+React hydration. Broken covers disappear; failed brand/outlet logos become
+owner-accent initials; failed menu artwork becomes the same centered menu
+fallback used when no image was configured; failed gallery images leave the
+strip and viewer. Five or more active menus automatically use equal compact
+mobile rows so Call, WhatsApp, Feedback, and Location remain reachable without
+an excessive card wall. One to four menus and desktop layouts keep the existing
+image-led cards. Public language choices use 44px mobile targets. These
+presentation rules add no owner setting, database operation, cache path, or
+provider call.
 
 OBP resolved surface fallback diagnostics: `OBPResolvedSurface` keeps public rendering usable when timezone/day-key resolution, Google Maps embed URL parsing, or modified-on freshness timestamp parsing fails. Those fallback paths now log `public_obp_today_day_key_timezone_failed`, `public_obp_google_maps_embed_url_parse_failed`, and `public_obp_freshness_timestamp_parse_failed` with time-zone, Google Maps URL, and modified-on value-type presence-length metadata only. It adds no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement. Source gate: `npm run verify:public-business-truth`.
 
@@ -367,7 +386,10 @@ This reuses the same logic from `ENABLE_HOURS_STATUS_DISPLAY` feature.
 - OBP language switch links remain URL-based for SEO/AEO and preserve `entry_source` plus intentional `utm_source`, `utm_medium`, and `utm_campaign` parameters. Legacy `src` / `source` query parameters are not preserved or consumed by analytics.
 - Language usage analytics are shown only for multi-language OBPs. Page opens carry the active language on the existing OBP view write, and a language adoption is counted only after the switched language remains active for the dwell window. De-dupe is scoped to the store-local analytics day.
 - Brand OBP and outlet OBP use the same resolver and selector behavior.
-- OBP metadata and JSON-LD resolve localized business copy using the same language.
+- Outlet OBP metadata and LocalBusiness JSON-LD resolve localized business copy
+  using the same language. Multi-location brand roots emit a localized
+  Organization graph whose locations come from the same visible canonical
+  selector projection.
 - Fixed OBP chrome, hours/status labels, photo controls, menu CTA, feedback/compliance links, attribution, starter/error recovery, and shared image viewer use the same resolved language and direction.
 - The 52 static UI packs provide 337 fixed public-customer messages. Owner content can use the separate 80-language public content registry; when a content language has no UI pack, the owner content remains selected and only fixed chrome falls back to `en-US`.
 - This reuse adds no store/project reread, Firebase write, listener, runtime provider call, or separate public-language setting.
@@ -426,7 +448,7 @@ Mobile Official Page failure boundary: `MobileOfficialPageScreen` uses `updateSt
 
 ## 11. Schema.org Structured Data
 
-**Updated June 2, 2026** — Schema remains focused on visible public business facts. OBP uses shared utilities from `src/lib/schema/index.ts`, resolves `businessCategory` from `src/data/shared/businessTypes.ts`, and only emits a public catalog link when OBP has an active published project. OBP runtime no longer emits generated hidden FAQPage JSON-LD; FAQ schema is reserved for pages where FAQ content is visibly rendered and reviewed as useful content.
+**Updated July 30, 2026** — Schema remains focused on visible public business facts. Outlet OBP uses shared utilities from `src/lib/schema/index.ts`, resolves `businessCategory` from `src/data/shared/businessTypes.ts`, and only emits a public catalog link when OBP has an active published project. Multi-location brand roots emit Organization JSON-LD with only the locations visible in the canonical selector. Account/login email is not a public business-contact source and is excluded from OBP and menu schema. OBP runtime does not emit generated hidden FAQPage JSON-LD; FAQ schema is reserved for pages where FAQ content is visibly rendered and reviewed as useful content.
 
 ```typescript
 // src/app/client/obp/schema.ts — uses shared utilities

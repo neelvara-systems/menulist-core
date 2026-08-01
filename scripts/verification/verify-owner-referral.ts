@@ -328,6 +328,7 @@ const verifyOwnerReferral = (): void => {
         "normalizeRequestAuthority(request.headers.get('host'))",
         'const requestHostOrigin = getRequestHostOrigin(request);',
         "failClosedOnProviderError: process.env.NODE_ENV === 'production'",
+        "const status = rateLimit.reason === 'provider_unavailable' ? 503 : 429;",
         'readBoundedJsonBody(request, OWNER_REFERRAL_CAPTURE_MAX_BODY_BYTES',
         'OwnerReferralCaptureSchema.safeParse',
         "z.discriminatedUnion('action'",

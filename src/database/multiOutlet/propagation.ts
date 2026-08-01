@@ -143,12 +143,12 @@ export async function propagateNewProjectToOutlets(
     }
 
     for (const outletStoreId of plan.outletStoreIds) {
-        let outletProjectId = buildDeterministicOutletProjectId({
+        const deterministicOutletProjectId = buildDeterministicOutletProjectId({
             masterProjectId,
             outletStoreId,
             tenantId: String(tenantId),
         });
-        if (!outletProjectId) {
+        if (!deterministicOutletProjectId) {
             logMultiOutletFailure("multi_outlet_project_propagation_target_identity_invalid", new Error("PROJECT_PROPAGATION_TARGET_IDENTITY_INVALID"), {
                 ...getMultiOutletProjectLogContext(masterProjectId),
                 ...getBoundedMultiOutletStringContext("outletStoreId", outletStoreId),
@@ -156,6 +156,7 @@ export async function propagateNewProjectToOutlets(
             failed++;
             continue;
         }
+        let outletProjectId = deterministicOutletProjectId;
         try {
             const summaryRef = doc(
                 firebaseClient,
@@ -186,7 +187,7 @@ export async function propagateNewProjectToOutlets(
                         .map(([projectId]) => projectId)
                     : [];
                 if (existingLinkedIds.length > 1) throw new Error("project_propagation_duplicate_summary_links");
-                const effectiveProjectId = existingLinkedIds[0] || outletProjectId;
+                const effectiveProjectId = existingLinkedIds[0] || deterministicOutletProjectId;
                 const effectiveScope = normalizeMultiOutletProjectId(effectiveProjectId);
                 if (
                     !effectiveScope

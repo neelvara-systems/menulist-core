@@ -150,6 +150,7 @@ function verifyManageRoute(route) {
     'isValidFirestoreDocumentId',
     "profileId: z.string().min(1).max(128).refine((value) => value === value.trim() && isValidFirestoreDocumentId(value), 'Invalid profile ID')",
     'assertResellerUniqueness(',
+    "catch((error: unknown): null => {",
     'createResellerProfile({',
     'updateResellerProfile({',
     'getResellerProfileAdmissionConflict(error)',
@@ -210,6 +211,7 @@ function verifyManageRoute(route) {
 
 function verifyManagementProfileBoundary(
   resellerServer,
+  resellerProfileRecord,
   managementProfile,
   managementProfileTest,
 ) {
@@ -218,6 +220,22 @@ function verifyManagementProfileBoundary(
     '.filter((doc) => doc.data()?.deleted !== true)',
     'ResellerProfileDocument[]',
   ].forEach((token) => assertIncludes(resellerServer, token, 'Reseller management query boundary'));
+  [
+    'projectResellerProfileRecord(docSnap.id, docSnap.data())',
+    'Promise<ResellerProfileRecord | null>',
+  ].forEach((token) => assertIncludes(resellerServer, token, 'Reseller profile persisted record boundary'));
+  [
+    'export const projectResellerProfileRecord =',
+    "typeof value.active !== 'boolean'",
+    'isNonNegativeSafeInteger(value[field])',
+    'isTimestampValue(fieldValue)',
+    'value.deleted === true',
+  ].forEach((token) => assertIncludes(resellerProfileRecord, token, 'Reseller profile persisted record boundary'));
+  assertNotIncludes(
+    resellerServer,
+    'return { ...data, id: docSnap.id } as ResellerProfile;',
+    'Reseller profile persisted record boundary',
+  );
 
   [
     'export type ResellerManagementProfile',
@@ -250,9 +268,10 @@ function verifyProfileAdmissionTransaction(resellerServer, profileAdmissionEmula
   [
     'export class ResellerProfileAdmissionError extends Error',
     'claimedProfileId?: string | null',
-    '.limit(2)',
-    'profile.authUserId === userId',
-    'profile.id === normalizedClaim',
+    '.doc(normalizedClaim)',
+    '.where("authUserId", "==", userId)',
+    'claimedProfile?.email.toLowerCase().trim() === normalizedEmail',
+    'profile.email.toLowerCase().trim() === normalizedEmail',
     'return matchingProfiles.length === 1 ? matchingProfiles[0] : null;',
     'createResellerProfileServer',
     'updateResellerProfileServer',
@@ -275,6 +294,7 @@ function verifyProfileAdmissionTransaction(resellerServer, profileAdmissionEmula
     'getResellerProfileServer(`${prefix}-unknown`, legacyEmail)',
     'deletedDirectProfile',
     'await getResellerProfileServer(`${prefix}-actor-b`, legacyEmail, legacyProfileB)',
+    'same-email legacy rows must not starve the exact authenticated reseller lookup',
   ].forEach((token) => assertIncludes(
     profileAdmissionEmulatorTest,
     token,
@@ -338,6 +358,8 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'prepareOwnerAuthUser({',
     'result = await db.runTransaction(async (transaction) => {',
     'readResellerOwnerClaimInTransaction({',
+    'data: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData>',
+    'transaction.update(ownerClaim.ref, removeUndefinedFields({',
     'createTenantStoreInTransaction(transaction, db, {',
     "onboardingSource: 'RESELLER_ONBOARDING'",
     'await authAdmin.deleteUser(authAccount.uid);',
@@ -348,6 +370,8 @@ function verifyOnboardRoute(route, ownerClaim, resellerServer, resellerLedger, o
     'getOrCreateRazorpayPlan({',
     'razorpayClient.subscriptions.create({',
     'getFirebaseAuthErrorCode(error)',
+    "catch((error: unknown): null => {",
+    '.catch((): null => null)',
     'await compensateResellerOnboardingFailure({',
     'createResellerOnboardingBilling({',
     'getResellerOnboardingOperationFingerprint({',
@@ -1278,6 +1302,7 @@ const files = {
   onboardRoute: read('src/app/api/reseller/onboard/route.ts'),
   ownerClaim: read('src/lib/reseller/resellerOwnerClaim.ts'),
   resellerServer: read('src/database/reseller/server.ts'),
+  resellerProfileRecord: read('src/lib/reseller/resellerProfileRecord.ts'),
   managementProfile: read('src/lib/reseller/resellerManagementProfile.ts'),
   managementProfileTest: read('scripts/verification/test-reseller-management-profile.ts'),
   resellerLedger: read('src/lib/reseller/resellerLedger.ts'),
@@ -1337,6 +1362,7 @@ verifyManageRoute(files.manageRoute);
 verifyProfileAdmissionTransaction(files.resellerServer, files.profileAdmissionEmulatorTest);
 verifyManagementProfileBoundary(
   files.resellerServer,
+  files.resellerProfileRecord,
   files.managementProfile,
   files.managementProfileTest,
 );

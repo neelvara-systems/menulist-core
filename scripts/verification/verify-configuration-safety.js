@@ -11,6 +11,13 @@ const assert = (condition, message) => {
 const includes = (content, token, label) => {
   assert(content.includes(token), `${label} must include ${token}`);
 };
+const environmentKeys = (content) => new Set(
+  content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#') && line.includes('='))
+    .map((line) => line.slice(0, line.indexOf('='))),
+);
 
 const appFlags = read('src/config/features.ts');
 const functionFlags = read('functions/src/constants/features.ts');
@@ -42,6 +49,7 @@ includes(modelRegistry, 'rolloutBucket < entry.rolloutPercent', 'CampaignCue par
 includes(envValidation, 'CAMPAIGNCUE_BOOLEAN_VARS', 'runtime boolean configuration validation');
 includes(envValidation, 'CAMPAIGNCUE_ROLLOUT_VARS', 'runtime rollout configuration validation');
 includes(envValidation, 'Deployment stage configuration is invalid', 'runtime stage validation');
+includes(envValidation, "throw new Error('Required production environment variables are missing.')", 'non-Vercel production required-variable fail-fast');
 includes(instrumentation, 'runEnvValidation()', 'server-start environment validation wiring');
 for (const token of [
   'INVALID_PUBLIC_DEPLOYMENT_STAGE',
@@ -70,6 +78,11 @@ for (const [label, template, stage] of [
     `${label} must not expose private credentials through NEXT_PUBLIC variables`,
   );
 }
+assert(
+  JSON.stringify([...environmentKeys(stagingTemplate)].sort())
+    === JSON.stringify([...environmentKeys(productionTemplate)].sort()),
+  'staging and production env templates must declare the same configuration keys',
+);
 
 includes(setupGuide, '`NEXT_PUBLIC_VERCEL_ENV`', 'deployment setup runtime identity');
 includes(environmentGuide, 'source-controlled build/runtime constants', 'feature flag deployment truth');

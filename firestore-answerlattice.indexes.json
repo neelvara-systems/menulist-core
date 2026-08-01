@@ -2080,6 +2080,61 @@
       "collectionGroup": "supportTickets",
       "fieldPath": "logs",
       "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "graph",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "interactionRules",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "topFrictionEntities",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "emergingTopics",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "topFailingEntities",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "cases",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "runs",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "reservations",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "steps",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "launchProof",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "content.surfaceReadiness",
+      "indexes": []
     }
   ]
 }

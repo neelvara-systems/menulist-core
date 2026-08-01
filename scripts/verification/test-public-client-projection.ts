@@ -14,7 +14,11 @@ const store = {
     currencySymbol: '₹',
     businessType: 'restaurant',
     businessCategory: 'restaurant',
+    activePlanType: ' Premium ',
     workingHours: { mon: '09:00-18:00' },
+    specialHours: {
+        '2026-12-25': { hours: '', label: 'Christmas Day' },
+    },
     feedbackEnabled: true,
     publicPresence: {
         showCall: true,
@@ -54,6 +58,10 @@ const publicStore = projectPublicClientStore(store) as Record<string, any>;
 assert.equal(publicStore.storeId, 42);
 assert.equal(publicStore.tenantId, 7);
 assert.equal(publicStore.phoneNumber, '9999999999');
+assert.equal(publicStore.activePlanType, 'premium');
+assert.deepEqual(publicStore.specialHours, {
+    '2026-12-25': { hours: '', label: 'Christmas Day' },
+});
 assert.equal(publicStore.publicPresence.showCall, true);
 assert.equal(publicStore.analytics.googleAnalyticsId, 'G-TEST123');
 assert.equal(publicStore.pwaSettings.pwaShortName, 'Example');
@@ -81,6 +89,91 @@ assert.equal(projectPublicClientStore({
         expiresAt: new Date(Date.now() - 1_000).toISOString(),
     },
 })?.tempStatus, undefined);
+assert.equal(projectPublicClientStore({
+    ...store,
+    activePlanType: { providerSecret: 'must-not-cross-public-boundary' },
+})?.activePlanType, undefined);
+assert.equal(projectPublicClientStore({
+    ...store,
+    activePlanType: 'x'.repeat(161),
+})?.activePlanType, undefined);
+const malformedScalarStore = projectPublicClientStore({
+    ...store,
+    analytics: {
+        googleAnalyticsId: { providerSecret: 'must-not-cross-public-boundary' },
+        trackMenuViews: 'true',
+    },
+    pwaSettings: {
+        enableInstallableApp: 'true',
+        pwaShortName: { en: 'Safe name', private: { secret: true } },
+    },
+    publicPresence: {
+        googleMapsUrl: { providerSecret: 'must-not-cross-public-boundary' },
+        customAttributes: [{
+            id: 'wifi',
+            label: 'Wi-Fi',
+            active: true,
+            privateWorkflowState: 'must-not-cross-public-boundary',
+        }],
+    },
+    tenantName: { ownerEmail: 'must-not-cross-public-boundary' },
+    workingHours: { mon: { internal: 'must-not-cross-public-boundary' } },
+    specialHours: {
+        'not-a-date': { hours: '', label: 'must-not-cross-public-boundary' },
+    },
+});
+assert.ok(malformedScalarStore);
+assert.equal(malformedScalarStore.tenantName, undefined);
+assert.equal(malformedScalarStore.workingHours, undefined);
+assert.equal(malformedScalarStore.specialHours, undefined);
+assert.equal(malformedScalarStore.analytics?.googleAnalyticsId, undefined);
+assert.equal(malformedScalarStore.analytics?.trackMenuViews, undefined);
+assert.equal(malformedScalarStore.pwaSettings?.enableInstallableApp, undefined);
+assert.equal(malformedScalarStore.pwaSettings?.pwaShortName, undefined);
+assert.equal(malformedScalarStore.publicPresence?.googleMapsUrl, undefined);
+assert.deepEqual(malformedScalarStore.publicPresence?.customAttributes, [{
+    id: 'wifi',
+    label: 'Wi-Fi',
+    active: true,
+}]);
+const boundedPublicPresenceStore = projectPublicClientStore({
+    ...store,
+    publicPresence: {
+        establishedYear: 1900,
+        googleRating: 5,
+    },
+});
+assert.equal(boundedPublicPresenceStore?.publicPresence?.establishedYear, 1900);
+assert.equal(boundedPublicPresenceStore?.publicPresence?.googleRating, 5);
+[
+    { establishedYear: 1899 },
+    { establishedYear: new Date().getFullYear() + 1 },
+    { establishedYear: 2020.5 },
+    { googleRating: 0 },
+    { googleRating: 5.1 },
+    { googleRating: Number.NaN },
+].forEach((publicPresence) => {
+    const projected = projectPublicClientStore({
+        ...store,
+        publicPresence,
+    });
+    assert.ok(projected);
+    assert.equal(projected.publicPresence?.establishedYear, undefined);
+    assert.equal(projected.publicPresence?.googleRating, undefined);
+});
+let rootGetterCalled = false;
+const accessorStore = Object.defineProperty({
+    storeId: 42,
+    tenantId: 7,
+}, 'name', {
+    enumerable: true,
+    get: () => {
+        rootGetterCalled = true;
+        return 'must not execute';
+    },
+});
+assert.equal(projectPublicClientStore(accessorStore), null);
+assert.equal(rootGetterCalled, false);
 
 const project = {
     projectId: '7-project-42',
@@ -111,11 +204,28 @@ const project = {
         extractedData: {
             processingMessages: [{ type: 'internal' }],
             data: {
-                languages: [{ name: 'English', code: 'en', isPrimary: true }],
+                languages: [{
+                    name: 'English',
+                    code: 'en',
+                    isPrimary: true,
+                    futurePrivateLanguageField: 'must-not-cross-client-boundary',
+                }],
                 extractedBusinessProfile: { name: 'internal extraction profile' },
                 businessAttributeSuggestions: [{ key: 'wifi', value: true }],
                 categories: [
-                    { id: 'active-cat', active: true, name: { en: 'Food' } },
+                    {
+                        id: 'active-cat',
+                        active: true,
+                        name: { en: 'Food' },
+                        timeSlots: [{
+                            presetId: 'lunch',
+                            startTime: '12:00',
+                            endTime: '15:00',
+                            days: [1],
+                            futurePrivateSlotField: 'must-not-cross-client-boundary',
+                        }],
+                        futurePrivateCategoryField: 'must-not-cross-client-boundary',
+                    },
                     { id: 'inactive-cat', active: false, name: { en: 'Hidden' } },
                 ],
                 items: [
@@ -129,10 +239,28 @@ const project = {
                         descriptionSource: 'ai',
                         sourceFileIndex: 0,
                         decisionFacts: {
-                            calories: { value: 500, source: 'ai', confirmed: false, updatedAt: 'private' },
+                            calories: {
+                                value: {
+                                    calories: 500,
+                                    privateFactValue: 'must-not-cross-client-boundary',
+                                },
+                                source: 'ai',
+                                confirmed: false,
+                                updatedAt: 'private',
+                            },
+                        },
+                        nutritionInfo: {
+                            calories: 500,
+                            futurePrivateNutritionField: 'must-not-cross-client-boundary',
                         },
                         attributes: [
-                            { id: 'small', name: { en: 'Small' }, price: '100', active: true },
+                            {
+                                id: 'small',
+                                name: { en: 'Small' },
+                                price: '100',
+                                active: true,
+                                futurePrivateAttributeField: 'must-not-cross-client-boundary',
+                            },
                             { id: 'hidden', name: { en: 'Hidden' }, price: '200', active: false },
                         ],
                         images: [{
@@ -141,6 +269,7 @@ const project = {
                             mediaChecksum: 'private-checksum',
                             preparedMedia: { private: true },
                         }],
+                        futurePrivateItemField: 'must-not-cross-client-boundary',
                     },
                     { id: 'inactive-item', active: false, category: 'active-cat', name: { en: 'Hidden' } },
                 ],
@@ -167,14 +296,29 @@ assert.equal(publicProject.files[0].extractedData.data.extractedBusinessProfile,
 assert.equal(publicProject.files[0].extractedData.data.businessAttributeSuggestions, undefined);
 assert.equal(publicProject.files[0].extractedData.data.categories.length, 1);
 assert.equal(publicProject.files[0].extractedData.data.items.length, 1);
+assert.equal(
+    publicProject.files[0].extractedData.data.languages[0].futurePrivateLanguageField,
+    undefined,
+);
+assert.equal(
+    publicProject.files[0].extractedData.data.categories[0].futurePrivateCategoryField,
+    undefined,
+);
+assert.equal(
+    publicProject.files[0].extractedData.data.categories[0].timeSlots[0].futurePrivateSlotField,
+    undefined,
+);
 
 const publicItem = publicProject.files[0].extractedData.data.items[0];
 assert.equal(publicItem.ownerBoost, undefined);
 assert.equal(publicItem.qualityReview, undefined);
 assert.equal(publicItem.descriptionSource, undefined);
 assert.equal(publicItem.sourceFileIndex, undefined);
-assert.deepEqual(publicItem.decisionFacts, { calories: { value: 500 } });
+assert.equal(publicItem.futurePrivateItemField, undefined);
+assert.deepEqual(publicItem.decisionFacts, { calories: { value: { calories: 500 } } });
+assert.deepEqual(publicItem.nutritionInfo, { calories: 500 });
 assert.equal(publicItem.attributes.length, 1);
+assert.equal(publicItem.attributes[0].futurePrivateAttributeField, undefined);
 assert.deepEqual(publicItem.images, [{
     url: 'https://cdn.example/pizza.jpg',
     variants: { medium: 'https://cdn.example/pizza-medium.jpg' },

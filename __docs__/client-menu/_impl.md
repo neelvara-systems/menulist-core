@@ -3,7 +3,7 @@
 **Feature Name:** Client Menu (Customer-Facing Digital Menu)
 **Document Type:** Technical Implementation Plan
 **Status:** Historical implementation evidence; not current launch certification
-**Last Updated:** May 8, 2026
+**Last Updated:** July 31, 2026
 **Audience:** Engineers, Technical Leads
 
 ---
@@ -450,7 +450,7 @@ async function getProjectBySlugOrDefault(
 
 Public menu project document-ID boundary: `src/app/client/[[...slug]]/page.tsx` resolves the public menu project through `normalizePublicMenuProjectDocumentScope` before reading `projects/{tId}/{sId}/{projectId}`. The guard keeps valid immutable project IDs, reads tenant scope from the first segment and store scope from the final segment, and requires both scope segments to be exact positive numeric Firestore document IDs. Whitespace-mutated, path-shaped, reserved, malformed, zero, negative, unsafe, or nonnumeric project scope fails closed as menu not found before Admin SDK project refs are built.
 
-Public browser projection boundary: canonical project and store documents remain server-side. Before `ClientMenuRenderer` receives props, `sanitizeForClient()` allowlists customer render fields and removes source-upload metadata, extraction diagnostics/business suggestions, owner ranking/review state, inactive items/categories/attributes, and non-value decision-fact provenance. Item/category images are reduced to public URL/variant references. `projectPublicClientStore()` separately allowlists identity, locale, currency, public contact/actions, public analytics IDs/toggles, PWA, hours, feedback, and temporary-status fields. Roles, licence/billing data, contact-person fields, API/widget credentials, POS secrets, notification settings, integration state, and future unknown store fields remain excluded by default.
+Public browser projection boundary: canonical project and store documents remain server-side. Before `ClientMenuRenderer` receives props, `sanitizeForClient()` allowlists customer render fields and removes source-upload metadata, extraction diagnostics/business suggestions, owner ranking/review state, inactive items/categories/attributes, and non-value decision-fact provenance. Item/category images are reduced to public URL/variant references. `projectPublicClientStore()` separately allowlists runtime-projected identity, locale, currency, public contact/actions, public analytics IDs/toggles, PWA, hours, feedback, and temporary-status fields. Strings, booleans, finite numbers, bounded lists/maps, localized text and custom attributes must match their exact public value contracts; accessor-backed records fail closed without execution. Its denormalized `activePlanType` crosses only as a bounded normalized string; malformed maps/arrays/scalars are omitted and keep attribution visible. Roles, licence/billing data, contact-person fields, API/widget credentials, POS secrets, notification settings, integration state, and future unknown store fields remain excluded by default.
 
 Supplied-slug resolution boundary: a current slug, legacy name slug, or `previousSlugs[]` match resolves normally. A miss returns the not-available recovery surface. Literal `/menu` alone may use the explicit `isDefault: true` Layer 2 alias; it does not fall through to the first active project. The no-slug first-project compatibility path remains only behind the OBP emergency rollback branch.
 
@@ -1011,6 +1011,30 @@ Registry policy fields:
 
 ## Current Launch Boundary
 
+### July 31, 2026 public menu hardening
+
+- `MenuPageNew` derives active catalog categories first, then evaluates their
+  time slots against one store-timezone timestamp at each wall-clock minute
+  boundary and when the document becomes visible. Invalid or missing timezone
+  data falls back deterministically to UTC. The same visible category map
+  admits item cards, filter chips, Featured choices, canonical item query
+  links, and legacy item paths.
+- When all catalog categories are scheduled for later, the empty surface lists
+  the localized category name and next opening day/time using existing public
+  customer messages. A genuinely empty catalog retains `No items yet`.
+- A sold-out shared item remains inspectable with its unavailable state.
+  Removed, inactive, uncategorized, or currently hidden shared items are
+  rejected, the stale URL is replaced with the canonical menu URL, and an
+  already-open item closes if its category leaves its service window.
+- `src/lib/pricing/publicCurrency.ts` is the shared read-time boundary for menu
+  currency code and symbol. The server JSON-LD and client renderer therefore
+  cannot disagree when a legacy store omits currency fields.
+- `resolvePublicMenuAccentColor()` applies project override, OBP public color,
+  then caller fallback. `getMoodWithBrandColor()` still enforces contrast.
+- `PDPModal` owns initial focus, Tab containment, Escape handling and focus
+  restoration. Structured badges render only from an explicit boolean
+  condition, preventing numeric empty-state output.
+
 This implementation note is customer-facing menu-output implementation evidence; it is not current production certification. Client-menu launch approval requires the active production-readiness audit, External Certification Runbook evidence, Digital Menu Output Constitution checks, physical/mobile browser QA, low-bandwidth/offline/back-button tests, public cache and deploy evidence, and target production smoke.
 
 ---
@@ -1029,4 +1053,4 @@ This implementation note is customer-facing menu-output implementation evidence;
 ---
 
 _Document Status: Historical implementation evidence - not current launch certification_
-_Last Updated: May 7, 2026_
+_Last Updated: July 31, 2026_

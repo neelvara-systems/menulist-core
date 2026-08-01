@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { sanitizeMenuForPrint } from '@lib/menu-card-export/source/sanitizeMenuForPrint';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import {
+    DEFAULT_PUBLIC_MENU_CURRENCY_CODE,
+    resolvePublicMenuCurrencyCode,
+    resolvePublicMenuCurrencySymbol,
+} from '@lib/pricing/publicCurrency';
 import { normalizeExtractedMenuPriceTruth, normalizeProjectPriceTruth } from '@lib/pricing/projectPriceTruth';
 import { hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
 import {
@@ -80,6 +85,15 @@ assert.equal(
 );
 
 assert.equal(formatMenuPrice('199–249', '₹'), '₹199–249');
+assert.equal(resolvePublicMenuCurrencyCode(' usd '), 'USD');
+assert.equal(resolvePublicMenuCurrencyCode(''), DEFAULT_PUBLIC_MENU_CURRENCY_CODE);
+assert.equal(resolvePublicMenuCurrencyCode('US'), DEFAULT_PUBLIC_MENU_CURRENCY_CODE);
+assert.equal(resolvePublicMenuCurrencySymbol('$', 'USD'), '$');
+assert.equal(resolvePublicMenuCurrencySymbol('', 'USD'), '$');
+assert.equal(resolvePublicMenuCurrencySymbol(undefined, 'INR'), '₹');
+assert.equal(resolvePublicMenuCurrencySymbol('x'.repeat(9), 'EUR'), '€');
+assert.equal(resolvePublicMenuCurrencySymbol('$', undefined), '₹');
+assert.equal(resolvePublicMenuCurrencySymbol(`$\u202e`, 'USD'), '$');
 assert.equal(hasPublicItemDisplayPrice({ price: 'Market Price' }), true);
 assert.equal(hasPublicItemDisplayPrice({ price: '', attributes: [{ active: true, price: '149' }] }), true);
 assert.equal(hasPublicItemDisplayPrice({ price: '', attributes: [{ active: false, price: '149' }] }), false);

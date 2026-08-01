@@ -230,16 +230,19 @@ function verifyClient(client) {
     '...PLATFORM_ENTITY_BLOCK_REQUEST_POLICY',
     'value.success !== true',
     'return parsePlatformEntityBlockAcknowledgement(value.entity, expected);',
+    'platform_entity_block_request_failed',
     'platform_entity_block_response_parse_failed',
     'platform_entity_block_response_rejected',
     'platform_entity_block_response_invalid',
     'getBoundedRuntimeStringContext(\'entityId\', entityId)',
     'error.code = code.slice(0, 64)',
     'error.status = response.status',
+    'getPlatformEntityBlockRequestContext(responseContext)',
   ].forEach((token) => assertIncludes(client, token, 'Platform entity-block client'));
 
   assertOrder(client, [
-    "const response = await fetch('/api/platform/entity-blocks'",
+    "response = await fetch('/api/platform/entity-blocks'",
+    'platform_entity_block_request_failed',
     'const payload = await readPlatformEntityBlockResponseJson(response, responseContext);',
     'if (!response.ok) {',
     'const entity = parsePlatformEntityBlockResponse(payload, responseContext);',
@@ -323,7 +326,18 @@ function verifyPlatformUserScopeReader(usersDal) {
     'if (users.size > PLATFORM_USER_SCOPE_QUERY_LIMIT) throw new Error("PLATFORM_USER_SCOPE_LIMIT_EXCEEDED");',
     'users.set(userDoc.id, {',
     'throw new Error("INVALID_PLATFORM_USER_DOCUMENT_ID");',
+    'delete data.imageToUpdate;',
+    'delete data.imageType;',
+    'throw new Error("INVALID_PLATFORM_USER_PROFILE_IMAGE");',
   ].forEach((token) => assertIncludes(usersDal, token, 'Platform user scope reader'));
+  assertOrder(usersDal, [
+    'const imageToUpdate = data.imageToUpdate;',
+    'delete data.imageToUpdate;',
+    'delete data.imageType;',
+    'if (imageToUpdate) {',
+    'if (!isDataUrl(imageToUpdate)) {',
+    'await updateDoc(getDocRef(data.id), data);',
+  ], 'Platform user transient image fields must be stripped and validated before persistence');
   assertNotIncludes(usersDal, 'users.set(userDoc.id, { ...data', 'Platform user scope reader private-field projection');
   assertNotIncludes(usersDal, 'where("tenantId", "==", tenantId)', 'Platform user numeric/string compatibility reader');
   ['export const addPlatformUser', 'export const addStoreToUser', 'export const getAllPlatformUsers', 'export const getUsersByStoreId']

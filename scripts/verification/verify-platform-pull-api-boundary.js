@@ -34,6 +34,12 @@ function requireOccurrenceAtLeast(source, token, count, label) {
   }
 }
 
+function requirePattern(source, pattern, label) {
+  if (!pattern.test(source)) {
+    failures.push(`${label} missing pattern: ${pattern}`);
+  }
+}
+
 function requireOrder(source, tokens, label) {
   let previousIndex = -1;
   for (const token of tokens) {
@@ -149,8 +155,11 @@ requireToken(features, 'ENABLE_PUBLIC_API: true', 'Platform Pull API feature fla
 ].forEach((token) => requireToken(targetEligibility, token, 'Platform Pull API entity eligibility compatibility boundary'));
 [
   'export function isMenuListPublicEntityEligible(value: unknown): boolean',
-  'entity.active !== false',
-  'entity.deleted !== true',
+  'hasValidLifecycleShape(entity)',
+  'isOptionalBoolean(active.value)',
+  'isOptionalBoolean(deleted.value)',
+  'isOptionalBoolean(blocked.value)',
+  'isOptionalBoolean(tenantBlocked.value)',
   '!isPlatformEntityBlocked(entity)',
 ].forEach((token) => requireToken(publicTruthEligibility, token, 'Shared public truth entity eligibility boundary'));
 [
@@ -227,11 +236,15 @@ requireOccurrenceAtLeast(publicApiAuth, 'snapshot.docs.length !== 1', 1, 'Public
   'const [hashedSnapshot, legacyRawSnapshot] = await Promise.all([',
   'const publicCredentialDocumentPaths = new Set([',
   '...hashedSnapshot.docs.map((doc) => doc.ref.path)',
-  '...(legacyRawSnapshot?.docs.map((doc) => doc.ref.path) || [])',
   'if (publicCredentialDocumentPaths.size > 1)',
   "secureLog('[Public API] Ambiguous cross-representation API key rejected')",
   'snapshot = !hashedSnapshot.empty ? hashedSnapshot : legacyRawSnapshot;',
 ].forEach((token) => requireToken(publicApiAuth, token, 'Public API cross-representation credential uniqueness boundary'));
+requirePattern(
+  publicApiAuth,
+  /\.\.\.\(legacyRawSnapshot\?\.docs\.map\(\(doc(?:\s*:\s*FirebaseFirestore\.QueryDocumentSnapshot)?\)\s*=>\s*doc\.ref\.path\)\s*\|\|\s*\[\]\)/,
+  'Public API legacy credential document-path union',
+);
 requireOccurrenceAtLeast(publicApiAuth, 'const storeDocumentId = normalizePublicApiDocumentId(doc.id);', 2, 'Public API auth helper store document-ID validation');
 requireOccurrenceAtLeast(publicApiAuth, 'storeId: storeDocumentId', 2, 'Public API auth helper normalized validation result store ID');
 forbidToken(publicApiAuth, 'secureLog(`[Public API] ${endpoint}`', 'Public API auth helper raw dynamic log event');
@@ -360,9 +373,18 @@ forbidToken(menuRoute, 'projectData as any', 'Public menu pull project cast');
   'tempStatus: activeTempStatus',
   'const publicBusinessAttributes = FEATURE_FLAGS.ENABLE_BUSINESS_ATTRIBUTES',
   'normalizePublicBusinessAttributes(storeData.businessAttributes)',
+  'normalizePublicBusinessWorkingHours(storeData.workingHours)',
+  'normalizePublicBusinessStringRecord(storeData.socialMedia)',
+  'normalizePublicBusinessGeo(storeData.geo)',
+  'normalizePublicBusinessLastModified(storeData.modifiedOn)',
 ].forEach((token) => requireToken(businessRoute, token, 'Public business pull active status boundary'));
 [
   'export function normalizePublicBusinessAttributes(value: unknown)',
+  'export function normalizePublicBusinessText(',
+  'export function normalizePublicBusinessWorkingHours(value: unknown)',
+  'export function normalizePublicBusinessStringRecord(value: unknown)',
+  'export function normalizePublicBusinessGeo(value: unknown)',
+  'export function normalizePublicBusinessLastModified(value: unknown)',
   'const normalized = normalizeBusinessAttributes(value);',
   "import { getActiveTempStatus, type ActiveTempStatus } from '@lib/tempStatus/statusBoundary';",
   'export type PublicTempStatus = ActiveTempStatus;',

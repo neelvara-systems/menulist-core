@@ -1,4 +1,4 @@
-import { OutletPolicy } from '@type/multiOutlet.types';
+import { DEFAULT_OUTLET_POLICY, OutletPolicy } from '@type/multiOutlet.types';
 
 export const MULTI_OUTLET_ACTION_REQUEST_POLICY = {
     cache: 'no-store' as RequestCache,
@@ -49,17 +49,35 @@ export const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const isFiniteNumber = (value: unknown): value is number => (
-    typeof value === 'number' && Number.isFinite(value)
+const isPositiveSafeInteger = (value: unknown): value is number => (
+    typeof value === 'number'
+    && Number.isSafeInteger(value)
+    && value > 0
 );
 
 const isNonEmptyString = (value: unknown): value is string => (
     typeof value === 'string' && value.trim().length > 0
 );
 
+const isOutletSlug = (value: unknown): value is string => (
+    typeof value === 'string'
+    && value.length >= 1
+    && value.length <= 60
+    && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)
+);
+
+const isOutletDocumentId = (value: unknown): value is string => (
+    typeof value === 'string'
+    && /^(?:[1-9]\d*)$/.test(value)
+    && Number.isSafeInteger(Number(value))
+);
+
 const isNullableOutletPolicy = (value: unknown): value is OutletPolicy | null => (
     value === null
-    || isRecord(value)
+    || (
+        isRecord(value)
+        && Object.keys(DEFAULT_OUTLET_POLICY).every((key) => typeof value[key] === 'boolean')
+    )
 );
 
 export const isOutletPaymentRequiredResponse = (data: unknown): boolean => (
@@ -73,28 +91,48 @@ export const isOutletPaymentRequiredResponse = (data: unknown): boolean => (
 export const isOutletCreateResponse = (data: unknown): data is OutletCreateResponse => (
     isRecord(data)
     && data.success === true
-    && isFiniteNumber(data.storeId)
-    && isNonEmptyString(data.outletSlug)
+    && isPositiveSafeInteger(data.storeId)
+    && isOutletSlug(data.outletSlug)
     && isNonEmptyString(data.outletName)
     && typeof data.masterPromoted === 'boolean'
     && isNullableOutletPolicy(data.outletPolicy)
-    && typeof data.tenantName === 'string'
-    && (data.quantity === null || isFiniteNumber(data.quantity))
+    && isNonEmptyString(data.tenantName)
+    && (data.quantity === null || isPositiveSafeInteger(data.quantity))
 );
 
-export const isOutletRenameResponse = (data: unknown): data is OutletRenameResponse => (
+export const isOutletRenameResponse = (
+    data: unknown,
+    expectedOutletStoreId?: string | number,
+    expectedOutletSlug?: string,
+): data is OutletRenameResponse => (
     isRecord(data)
     && data.success === true
-    && isNonEmptyString(data.outletStoreId)
-    && isNonEmptyString(data.outletSlug)
+    && isOutletDocumentId(data.outletStoreId)
+    && isOutletSlug(data.outletSlug)
+    && (
+        expectedOutletStoreId === undefined
+        || data.outletStoreId === String(expectedOutletStoreId)
+    )
+    && (
+        expectedOutletSlug === undefined
+        || data.outletSlug === expectedOutletSlug
+    )
     && Array.isArray(data.previousOutletSlugs)
-    && data.previousOutletSlugs.every((slug) => typeof slug === 'string')
+    && data.previousOutletSlugs.length <= 20
+    && data.previousOutletSlugs.every(isOutletSlug)
 );
 
-export const isOutletDeactivateResponse = (data: unknown): data is OutletDeactivateResponse => (
+export const isOutletDeactivateResponse = (
+    data: unknown,
+    expectedOutletStoreId?: string | number,
+): data is OutletDeactivateResponse => (
     isRecord(data)
     && data.success === true
-    && isFiniteNumber(data.outletStoreId)
+    && isPositiveSafeInteger(data.outletStoreId)
+    && (
+        expectedOutletStoreId === undefined
+        || data.outletStoreId === Number(expectedOutletStoreId)
+    )
     && typeof data.billingReduced === 'boolean'
     && (data.alreadyInactive === undefined || typeof data.alreadyInactive === 'boolean')
     && (data.billingReductionPending === undefined || typeof data.billingReductionPending === 'boolean')

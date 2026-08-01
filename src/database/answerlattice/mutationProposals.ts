@@ -16,7 +16,7 @@
 
 import { DB_COLLECTIONS } from "@constant/database";
 import { PRODUCT_IDS } from '@constant/product';
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, Timestamp, where, writeBatch } from "@firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, Timestamp, where, writeBatch } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { runAnswerlatticeGovernanceAction } from '@lib/answerlattice/governanceClient';
 import { AnswerlatticeStoredMutationProposalSchema } from '@lib/answerlattice/governanceContracts';
@@ -245,7 +245,7 @@ export const regenerateMutationProposalDraft = async (proposalId: string) => {
 /**
  * Create a new mutation proposal
  */
-export const addMutationProposal = async (data: Omit<AnswerlatticeMutationProposal, 'id'>) => {
+export const addMutationProposal = async (data: Omit<AnswerlatticeMutationProposal, 'id' | 'pId'>) => {
     return await apiCallComposer(
         async () => {
             const submitData = await answerlatticeRequestBodyComposer({
@@ -268,7 +268,6 @@ export const addMutationProposal = async (data: Omit<AnswerlatticeMutationPropos
                 DB_COLLECTIONS.ANSWERLATTICE_AUDIT_LOGS,
                 `manual_created_${proposalRef.id}`,
             );
-            const now = submitData.createdOn || Timestamp.now();
             const batch = writeBatch(answerlatticeFirebaseClient);
             batch.set(proposalRef, submitData);
             batch.set(auditRef, {
@@ -284,8 +283,9 @@ export const addMutationProposal = async (data: Omit<AnswerlatticeMutationPropos
                     relatedEntityIds: submitData.relatedEntityIds,
                     source: submitData.suggestedChange?.draftSource || 'manual_authoring',
                 },
-                performedBy: submitData.createdBy || submitData.uId || 'answerlattice_owner',
-                timestamp: now,
+                uId: submitData.uId,
+                performedBy: String(submitData.uId),
+                timestamp: serverTimestamp(),
             });
             try {
                 await batch.commit();

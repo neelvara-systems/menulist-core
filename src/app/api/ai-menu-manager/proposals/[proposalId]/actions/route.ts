@@ -83,7 +83,7 @@ export const POST = withAuth(async (
         return NextResponse.json({ error: 'Proposal no longer matches the selected action' }, { status: 409 });
     }
 
-    const userId = scope.userId || session?.user?.id || 'unknown';
+    const userId = scope.userId;
     const getProposalActionLogContext = () => ({
         ...getBoundedRuntimeStringContext('proposalId', proposalId),
         ...getBoundedRuntimeStringContext('projectId', parsed.data.projectId),

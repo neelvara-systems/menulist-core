@@ -35,7 +35,10 @@ import {
 } from '../sharedData/ownerNotificationDeliveryBoundary';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import { resolveStoreBusinessCategory } from '../sharedData/businessTypes';
-import { normalizePlatformStoreSummaryIdentity } from '../sharedData/storeSummaryBoundary';
+import {
+    normalizePlatformStoreSummaryIdentity,
+    parsePlatformStoreSummary,
+} from '../sharedData/storeSummaryBoundary';
 import { resolveBusinessDayEndTime } from '../utils/businessDay';
 import { computeSchedulerHour } from '../utils/schedulerHour';
 import { getBoundedFunctionsErrorContext } from '../utils/boundedErrorContext';
@@ -45,14 +48,33 @@ function getRequesterRole(request: { auth?: { token?: Record<string, any> } }): 
     return String(request.auth?.token?.platformRole || request.auth?.token?.role || '');
 }
 
-function assertPlatformOwner(request: { auth?: { token?: Record<string, any> } }, action: string) {
+export async function assertCurrentOperationsPlatformOwner(
+    request: { auth?: { token?: Record<string, any> } },
+    action: string,
+): Promise<string> {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', `Must be authenticated to ${action}.`);
     }
 
-    if (getRequesterRole(request) !== ECOMSAI_PLATFORM_USER_ROLE) {
+    const userId = normalizeOwnerNotificationDocumentId(request.auth.token?.uId);
+    if (!userId || getRequesterRole(request) !== ECOMSAI_PLATFORM_USER_ROLE) {
         throw new HttpsError('permission-denied', `Only platform owners can ${action}.`);
     }
+
+    const userSnapshot = await db.collection(DB_COLLECTIONS.USERS).doc(userId).get();
+    const userData = userSnapshot.exists ? userSnapshot.data() : undefined;
+    const currentRole = String(userData?.platformRole || userData?.role || '');
+    if (
+        currentRole !== ECOMSAI_PLATFORM_USER_ROLE
+        || userData?.active === false
+        || userData?.deleted === true
+        || userData?.authDisabled === true
+        || userData?.blocked === true
+        || userData?.isVerified === false
+    ) {
+        throw new HttpsError('permission-denied', `Only active platform owners can ${action}.`);
+    }
+    return userId;
 }
 
 function isSecretMatch(provided: unknown, expected: string): boolean {
@@ -95,6 +117,97 @@ const FORCE_REPUBLISH_FAILED_MESSAGE = 'Force republish could not be completed.'
 const BACKFILL_STORES_SUMMARY_FAILED_MESSAGE = 'Stores summary backfill could not be completed.';
 const STORES_SUMMARY_BACKFILL_MAX_STORES = 1_500;
 const STORES_SUMMARY_BACKFILL_MAX_PAYLOAD_BYTES = 850_000;
+
+export function buildBackfillStoreSummaryEntry(
+    storeDocumentId: string,
+    data: Record<string, unknown>,
+    existingEntry: Record<string, unknown> | undefined,
+): { storeId: string; entry: Record<string, unknown> } | null {
+    const identity = normalizePlatformStoreSummaryIdentity(storeDocumentId, data);
+    if (!identity) return null;
+
+    const businessType = typeof data.businessType === 'string' && data.businessType.trim()
+        ? data.businessType
+        : 'unknown';
+    const configuredBusinessCategory = typeof data.businessCategory === 'string'
+        ? data.businessCategory
+        : undefined;
+    const businessCategory = resolveStoreBusinessCategory(businessType, configuredBusinessCategory);
+    const timeZone = typeof data.timeZone === 'string' && data.timeZone.trim()
+        ? data.timeZone
+        : null;
+    const configuredDayEnd = typeof data.businessDayEndTime === 'string'
+        ? data.businessDayEndTime
+        : undefined;
+    const businessDayEndTime = resolveBusinessDayEndTime(businessType, configuredDayEnd, businessCategory);
+    const schedulerHour = typeof data.schedulerHour === 'number'
+        && Number.isInteger(data.schedulerHour)
+        && data.schedulerHour >= 0
+        && data.schedulerHour <= 23
+        ? data.schedulerHour
+        : computeSchedulerHour(timeZone || undefined, businessDayEndTime);
+    const preservedEntry = existingEntry?.storeId === identity.storeId
+        && existingEntry.tId === identity.tId
+        ? existingEntry
+        : undefined;
+
+    return {
+        storeId: identity.storeId,
+        entry: {
+            ...(preservedEntry || {}),
+            storeId: identity.storeId,
+            tId: identity.tId,
+            businessType,
+            businessCategory,
+            active: typeof data.active === 'boolean' ? data.active : true,
+            blocked: data.blocked === true,
+            tenantBlocked: data.tenantBlocked === true,
+            name: typeof data.name === 'string' ? data.name : '',
+            tenantName: typeof data.tenantName === 'string' ? data.tenantName : '',
+            subdomain: typeof data.subdomain === 'string' ? data.subdomain : '',
+            isMaster: data.isMaster === true,
+            outletSlug: typeof data.outletSlug === 'string' ? data.outletSlug : '',
+            city: typeof data.city === 'string' ? data.city : '',
+            addressLine: typeof data.addressLine === 'string' ? data.addressLine : '',
+            logo: typeof data.logo === 'string' ? data.logo : '',
+            timeZone,
+            businessDayEndTime,
+            schedulerHour,
+            activePlanType: typeof data.activePlanType === 'string' ? data.activePlanType : null,
+            ...(data.modifiedOn !== undefined ? { modifiedOn: data.modifiedOn } : {}),
+        },
+    };
+}
+
+export async function replaceStoresSummaryIfUnchanged(
+    stores: Record<string, Record<string, unknown>>,
+    expectedUpdateTime: FirebaseFirestore.Timestamp | null,
+): Promise<void> {
+    const summaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
+    await db.runTransaction(async (transaction) => {
+        const currentSnapshot = await transaction.get(summaryRef);
+        const currentUpdateTime = currentSnapshot.updateTime ?? null;
+        const versionMatches = currentUpdateTime === null
+            ? expectedUpdateTime === null
+            : expectedUpdateTime !== null && currentUpdateTime.isEqual(expectedUpdateTime);
+        if (!versionMatches) {
+            throw new HttpsError(
+                'aborted',
+                'Stores summary changed while the backfill was running. Retry the backfill.',
+            );
+        }
+
+        const replacement = {
+            lastUpdated: FieldValue.serverTimestamp(),
+            stores,
+        };
+        if (currentSnapshot.exists) {
+            transaction.update(summaryRef, replacement);
+        } else {
+            transaction.create(summaryRef, replacement);
+        }
+    });
+}
 const VERIFY_MENU_PUBLISH_MAX_URL_LENGTH = 2_048;
 
 function getBoundedOperationsStringContext(label: string, value: unknown): Record<string, boolean | number> {
@@ -417,18 +530,16 @@ export const forceRepublish = onCall(
     },
     async (request) => {
         const logger = functions.logger;
-        assertPlatformOwner(request, 'force republish stores');
+        const userId = await assertCurrentOperationsPlatformOwner(request, 'force republish stores');
 
         const input = request.data && typeof request.data === 'object' && !Array.isArray(request.data)
             ? request.data as Record<string, unknown>
             : {};
         const storeScope = normalizeOwnerNotificationNumericScopeDocumentId(input.storeId);
         const tenantScope = normalizeOwnerNotificationNumericScopeDocumentId(input.tenantId);
-        const userId = normalizeOwnerNotificationDocumentId(request.auth?.token?.uId);
         if (!storeScope || !tenantScope) {
             throw new HttpsError('invalid-argument', 'Invalid store or tenant.');
         }
-        if (!userId) throw new HttpsError('permission-denied', 'You do not have access to this store.');
         const storeId = storeScope.documentId;
         const tenantId = tenantScope.documentId;
         const leaseOwner = `force_republish_${request.auth?.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -596,13 +707,19 @@ export const backfillStoresSummary = onCall({
 }, async (request) => {
     const logger = functions.logger;
 
-    assertPlatformOwner(request, 'run stores summary backfill');
+    await assertCurrentOperationsPlatformOwner(request, 'run stores summary backfill');
 
     logger.info('[backfillStoresSummary] Started', getOperationsCallLogContext({
         requesterUid: request.auth?.uid,
     }));
 
     try {
+        const storesSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary');
+        const baselineSummarySnapshot = await storesSummaryRef.get();
+        const expectedSummaryUpdateTime = baselineSummarySnapshot.updateTime ?? null;
+        const existingStoresSummary = parsePlatformStoreSummary(
+            baselineSummarySnapshot.exists ? baselineSummarySnapshot.data() : undefined,
+        );
         const storesSnapshot = await db.collection(DB_COLLECTIONS.STORES)
             .orderBy(FieldPath.documentId())
             .limit(STORES_SUMMARY_BACKFILL_MAX_STORES + 1)
@@ -616,54 +733,16 @@ export const backfillStoresSummary = onCall({
 
         for (const doc of storesSnapshot.docs) {
             const data = doc.data();
-            const identity = normalizePlatformStoreSummaryIdentity(doc.id, data);
-            if (!identity) {
+            const projection = buildBackfillStoreSummaryEntry(
+                doc.id,
+                data,
+                existingStoresSummary[doc.id],
+            );
+            if (!projection) {
                 invalidIdentityCount++;
                 continue;
             }
-            const businessType = typeof data.businessType === 'string' && data.businessType.trim()
-                ? data.businessType
-                : 'unknown';
-            const configuredBusinessCategory = typeof data.businessCategory === 'string'
-                ? data.businessCategory
-                : undefined;
-            const businessCategory = resolveStoreBusinessCategory(businessType, configuredBusinessCategory);
-            const timeZone = typeof data.timeZone === 'string' && data.timeZone.trim()
-                ? data.timeZone
-                : null;
-            const configuredDayEnd = typeof data.businessDayEndTime === 'string'
-                ? data.businessDayEndTime
-                : undefined;
-            const businessDayEndTime = resolveBusinessDayEndTime(businessType, configuredDayEnd, businessCategory);
-            const schedulerHour = typeof data.schedulerHour === 'number'
-                && Number.isInteger(data.schedulerHour)
-                && data.schedulerHour >= 0
-                && data.schedulerHour <= 23
-                ? data.schedulerHour
-                : computeSchedulerHour(timeZone || undefined, businessDayEndTime);
-
-            summary[identity.storeId] = {
-                storeId: identity.storeId,
-                tId: identity.tId,
-                businessType,
-                businessCategory,
-                active: typeof data.active === 'boolean' ? data.active : true,
-                blocked: data.blocked === true,
-                tenantBlocked: data.tenantBlocked === true,
-                name: typeof data.name === 'string' ? data.name : '',
-                tenantName: typeof data.tenantName === 'string' ? data.tenantName : '',
-                subdomain: typeof data.subdomain === 'string' ? data.subdomain : '',
-                isMaster: data.isMaster === true,
-                outletSlug: typeof data.outletSlug === 'string' ? data.outletSlug : '',
-                city: typeof data.city === 'string' ? data.city : '',
-                addressLine: typeof data.addressLine === 'string' ? data.addressLine : '',
-                logo: typeof data.logo === 'string' ? data.logo : '',
-                timeZone,
-                businessDayEndTime,
-                schedulerHour,
-                activePlanType: typeof data.activePlanType === 'string' ? data.activePlanType : null,
-                ...(data.modifiedOn !== undefined ? { modifiedOn: data.modifiedOn } : {}),
-            };
+            summary[projection.storeId] = projection.entry;
         }
 
         if (invalidIdentityCount > 0) {
@@ -675,10 +754,7 @@ export const backfillStoresSummary = onCall({
             throw new HttpsError('resource-exhausted', 'Stores summary payload exceeds the bounded write limit.');
         }
 
-        await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').set({
-            lastUpdated: FieldValue.serverTimestamp(),
-            stores: summary,
-        }, { merge: true });
+        await replaceStoresSummaryIfUnchanged(summary, expectedSummaryUpdateTime);
 
         logger.info('[backfillStoresSummary] Completed', {
             payloadBytes,

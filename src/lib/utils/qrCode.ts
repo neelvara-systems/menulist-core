@@ -31,16 +31,55 @@ export interface BrandedQrCodeOptions extends QrCodeOptions {
     title?: string;
 }
 
+const QR_PAYLOAD_MAX_LENGTH = 2_048;
+const QR_WIDTH_MIN = 128;
+const QR_WIDTH_MAX = 4_096;
+const QR_MARGIN_MAX = 16;
+const QR_COLOR_PATTERN = /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/i;
+
+function requireQrPayload(value: unknown): string {
+    if (
+        typeof value !== 'string'
+        || !value.trim()
+        || value.length > QR_PAYLOAD_MAX_LENGTH
+    ) throw new Error('Invalid QR payload');
+    return value;
+}
+
+function normalizeQrInteger(
+    value: unknown,
+    fallback: number,
+    min: number,
+    max: number,
+): number {
+    return typeof value === 'number' && Number.isFinite(value)
+        ? Math.min(max, Math.max(min, Math.round(value)))
+        : fallback;
+}
+
+function normalizeQrColor(value: unknown, fallback: string): string {
+    return typeof value === 'string' && QR_COLOR_PATTERN.test(value)
+        ? value
+        : fallback;
+}
+
+function boundedQrText(value: unknown, fallback: string, maxLength: number): string {
+    return typeof value === 'string' && value.trim()
+        ? value.trim().slice(0, maxLength)
+        : fallback;
+}
+
 export async function generateQrCodeDataUrl(
     value: string,
     options?: QrCodeOptions
 ): Promise<string> {
-    return await QRCode.toDataURL(value, {
-        width: options?.width || 1024,
-        margin: options?.margin ?? 4,
+    const payload = requireQrPayload(value);
+    return await QRCode.toDataURL(payload, {
+        width: normalizeQrInteger(options?.width, 1024, QR_WIDTH_MIN, QR_WIDTH_MAX),
+        margin: normalizeQrInteger(options?.margin, 4, 0, QR_MARGIN_MAX),
         color: {
-            dark: options?.darkColor || '#000000',
-            light: options?.lightColor || '#FFFFFF',
+            dark: normalizeQrColor(options?.darkColor, '#000000'),
+            light: normalizeQrColor(options?.lightColor, '#FFFFFF'),
         },
         errorCorrectionLevel: 'H',
     });
@@ -424,22 +463,23 @@ export async function generateBrandedQrCodeDataUrl(
     value: string,
     options?: BrandedQrCodeOptions,
 ): Promise<string> {
+    const payload = requireQrPayload(value);
     if (typeof document === 'undefined') {
-        return generateQrCodeDataUrl(value, options);
+        return generateQrCodeDataUrl(payload, options);
     }
 
     const templateFamilyId = normalizePrintableTemplateFamilyId(options?.templateFamilyId);
     const brand = resolvePrintableTemplateBrandTokens(options?.brandColor, templateFamilyId);
-    const width = options?.width || 1200;
+    const width = normalizeQrInteger(options?.width, 1200, QR_WIDTH_MIN, QR_WIDTH_MAX);
     const height = Math.round(width * 1.5);
     const margin = Math.round(width * 0.06);
     const qrSize = Math.round(width * 0.48);
     const qrPanel = qrSize + Math.round(width * 0.07);
     const centerX = width / 2;
     const fontBase = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    const title = options?.title || 'Scan to open';
-    const subtitle = options?.subtitle || 'Open camera and point at the QR';
-    const footer = options?.footer || value.replace(/^https?:\/\//, '');
+    const title = boundedQrText(options?.title, 'Scan to open', 120);
+    const subtitle = boundedQrText(options?.subtitle, 'Open camera and point at the QR', 240);
+    const footer = boundedQrText(options?.footer, payload.replace(/^https?:\/\//, ''), 300);
     const nameParts = splitStoreName(options?.storeName);
     const hasOuterBand = templateFamilyId === 'brand-banner';
     let logo: Awaited<ReturnType<typeof loadLogo>> = null;
@@ -539,12 +579,12 @@ export async function generateBrandedQrCodeDataUrl(
     strokeRoundedRect(ctx, qrX, qrY, qrPanel, qrPanel, Math.round(width * 0.018), '#d7dde3', Math.max(2, Math.round(width * 0.002)));
 
     const qrCanvas = document.createElement('canvas');
-    await QRCode.toCanvas(qrCanvas, value, {
+    await QRCode.toCanvas(qrCanvas, payload, {
         width: qrSize,
-        margin: options?.margin ?? 4,
+        margin: normalizeQrInteger(options?.margin, 4, 0, QR_MARGIN_MAX),
         color: {
-            dark: options?.darkColor || brand.qrDark,
-            light: options?.lightColor || brand.qrLight,
+            dark: normalizeQrColor(options?.darkColor, brand.qrDark),
+            light: normalizeQrColor(options?.lightColor, brand.qrLight),
         },
         errorCorrectionLevel: 'H',
     });
@@ -584,8 +624,11 @@ export async function generateBrandedQrCodeDataUrl(
 }
 
 export function downloadQrCode(dataUrl: string, filename: string): void {
+    if (!/^data:image\/png;base64,[a-z0-9+/=]+$/i.test(dataUrl)) {
+        throw new Error('Invalid QR image data');
+    }
     const link = document.createElement('a');
-    link.download = `${filename}.png`;
+    link.download = `${buildQrCodeFilename(filename.replace(/\.png$/i, ''), '').replace(/-+$/, '')}.png`;
     link.href = dataUrl;
     document.body.appendChild(link);
     link.click();
@@ -598,5 +641,9 @@ export function buildQrCodeFilename(label: string, suffix = 'qr'): string {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-    return `${sanitized || 'menu'}-${suffix}`;
+    const safeSuffix = suffix
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    return safeSuffix ? `${sanitized || 'menu'}-${safeSuffix}` : sanitized || 'menu';
 }

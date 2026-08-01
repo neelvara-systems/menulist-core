@@ -468,7 +468,7 @@ export const POST = withAuth(async (request, session) => {
         // transaction. A retry sees the same movement ID, so a projection
         // success followed by a credit-write failure remains safe to replay.
         await recordFounderTopupRevenue(
-            resolveRazorpayRevenueOccurredAtMillis((capturedPayment as any).created_at),
+            resolveRazorpayRevenueOccurredAtMillis((capturedPayment as any).created_at) ?? Date.now(),
         );
 
         // Step F: --- ATOMIC UPDATE ---
@@ -676,6 +676,9 @@ export const POST = withAuth(async (request, session) => {
         }
 
         if (transactionResult.alreadyVerified) {
+            if (!transactionResult.subscription) {
+                return NextResponse.json({ error: 'Top-up requires billing reconciliation.' }, { status: 409 });
+            }
             if (isAnswerlatticeProduct) {
                 try {
                     await mirrorAnswerlatticeCreditSummary(

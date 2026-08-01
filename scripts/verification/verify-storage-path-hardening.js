@@ -134,11 +134,13 @@ const projectsDal = read('src/database/projects/index.ts');
 const staticAssetsDal = read('src/database/static/static.ts');
 const fontPresetsDal = read('src/database/static/fontPresets.ts');
 const platformFontPresets = read('src/components/templates/platform/fontPresets/index.tsx');
+const fontFamilySelector = read('src/components/atoms/fontFamily/index.tsx');
 const base64StorageHelper = read('src/database/storage/uploadBase64ToStorage.ts');
 const base64UploadBoundary = read('src/lib/storage/base64UploadBoundary.ts');
 const blobStorageHelper = read('src/database/storage/uploadBlobToStorage.ts');
 const preparedMediaUpload = read('src/database/storage/uploadPreparedMediaImage.ts');
 const mediaUploadBoundary = read('src/lib/media/mediaUploadBoundary.ts');
+const firestoreRules = read('firestore.rules');
 const adminImmutableObject = read('src/lib/storage/adminImmutableObject.ts');
 const adminMediaUpload = read('src/database/storage/uploadBase64MediaImageAdmin.ts');
 const imagePromptCache = read('src/lib/ai/imageGenerationPromptCache.ts');
@@ -183,9 +185,20 @@ verifyMenuListBrowserSurfacesDoNotMutateStorageDirectly();
 ].forEach((token) => {
   assert(blobStorageHelper.includes(token), `immutable prepared-media upload helper preserves create-or-reuse token ${token}`);
 });
+assert(
+  fontFamilySelector.includes('[...(fontsList || [])]') && fontFamilySelector.includes('.sort((a, b) => a.index - b.index)'),
+  'font selector must sort a copied font-preset list instead of mutating shared context state',
+);
+assert(
+  !fontFamilySelector.includes('fontsList?.sort('),
+  'font selector must not sort shared context state in place',
+);
 [
   'createOrReuseBlobInStorage({',
   'resolvePreparedMediaIdentity({',
+  'preparedDataUrlChecksum',
+  'assertMediaBlobMatchesDataUrl(prepared.blob, prepared.dataUrl)',
+  'assertMediaBlobMatchesDataUrl(entry.blob, entry.dataUrl)',
   'const selectedPreparedVariant = preparedVariants.find(',
   'variantUrls: [primaryUrl]',
 ].forEach((token) => {
@@ -197,11 +210,19 @@ assert(
 );
 [
   'export function resolvePreparedMediaIdentity({',
+  'export async function getMediaBlobChecksum(',
+  'export async function getMediaTextChecksum(',
+  'export async function assertMediaBlobMatchesDataUrl(',
+  "throw new Error('prepared_media_hash_unavailable');",
   "throw new Error('prepared_media_checksum_mismatch');",
   "throw new Error('prepared_media_identity_mismatch');",
 ].forEach((token) => {
   assert(mediaUploadBoundary.includes(token), `prepared-media identity boundary includes ${token}`);
 });
+assert(
+  !preparedMediaUpload.includes('Math.imul(hash'),
+  'prepared-media upload must not use a collision-prone fallback for immutable object identity',
+);
 [
   'cleanupUploadedMediaUrls(',
   'prepared_media_partial_variant_cleanup_failed',
@@ -266,6 +287,14 @@ assert(
 assert(
   obpPhotoStorage.includes('filterUnreferencedObpMediaUrls(photoUrls, retainedPhotoUrls)'),
   'OBP Storage deletion filters references retained by committed public presence',
+);
+assert(
+  obpPhotoStorage.includes("normalizeStorageDeleteErrorCode(error) === 'storage/object-not-found'"),
+  'OBP Storage deletion must use the exception-contained provider error-code projector',
+);
+assert(
+  !obpPhotoStorage.includes('catch (error: any)'),
+  'OBP Storage deletion must not restore an any-typed provider failure',
 );
 [
   "prepareMediaImage(file, 'galleryImage')",
@@ -345,11 +374,18 @@ assert(
   'firestoreLimit(MAX_ASSET_DOCUMENTS + 1)',
   'if (querySnapshot.size > MAX_ASSET_DOCUMENTS)',
   "'static_asset_document_limit_exceeded'",
+  "'static_asset_persisted_child_invalid'",
+  "'static_asset_child_limit_exceeded'",
+  'normalizePersistedAssetCategory(entry, undefined, depth)',
   'const result = await persist(prepared.data);',
   '[prepared.previousPreview]',
 ].forEach((token) => {
   assert(staticAssetsDal.includes(token), `static asset preview replacement uses ordered bucket-neutral compensation token ${token}`);
 });
+assert(
+  (staticAssetsDal.match(/if \(.*length >= MAX_ASSET_CHILDREN\)/g) || []).length >= 3,
+  'static asset category and item add paths must enforce the persisted child ceiling before mutation',
+);
 
 assert(
   !staticAssetsDal.includes('if (isFirebaseStorageReference(data.preview)) await deleteFileByUrl(data.preview);'),
@@ -369,6 +405,30 @@ assert(
 assert(
   !platformAssetDetails.includes('isSvg() ? selectedFile.textContent : selectedFile.src'),
   'platform asset editor must pass its canonical data URL instead of raw SVG XML',
+);
+[
+  'beforeUpload={(file) => {',
+  'void readSelectedFile(file);',
+  'return false;',
+  'const fileReadEpochRef = useRef(0);',
+  'if (fileReadEpochRef.current !== readEpoch) return;',
+  'const mutationInFlightRef = useRef(false);',
+  'if (mutationInFlightRef.current || fileReadInFlight) return;',
+  'assertPlatformAssetRemoteImageMimeType(mimeType);',
+  'if (file.size > PLATFORM_ASSET_REMOTE_IMAGE_MAX_BYTES)',
+].forEach((token) => {
+  assert(
+    platformAssetDetails.includes(token),
+    `platform asset local-upload ownership includes ${token}`,
+  );
+});
+assert(
+  !platformAssetDetails.includes('onChange={handleFileChange}'),
+  'platform asset local selection must not rely on a network-upload completion event',
+);
+assert(
+  !platformAssetDetails.includes('const changedData: any = activeDetails'),
+  'platform asset mutations must not alias and mutate React state',
 );
 [
   [platformAssets, '.splice(scId, 1)'],
@@ -421,6 +481,7 @@ assert(
   'await deleteDoc(fontRef);',
   'deferPersistedFontFileCleanup(current?.fileUrl, fontId);',
   'font_preset_sort_set_mismatch',
+  'if (!Array.isArray(updatedList) || updatedList.length > MAX_FONT_PRESETS)',
   'const MAX_FONT_PRESETS = 500;',
   'firestoreLimit(MAX_FONT_PRESETS + 1)',
   "'font_preset_document_limit_exceeded'",
@@ -536,6 +597,10 @@ assert(
 assert(
   storageRules.includes('match /blogs/profileImages/{fileId}'),
   'Storage rules authorize platform-managed versioned blog images',
+);
+assert(
+  /match \/blogs\/\{docId\}\s*\{[\s\S]*?allow read, write: if isAuthenticated\(\) && isPlatformAdmin\(\);[\s\S]*?\}/.test(firestoreRules),
+  'dormant blog documents remain platform-only until an allowlisted public projection exists',
 );
 
 [
@@ -686,8 +751,12 @@ assert(
 );
 
 assert(
-  packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js && npm run test:storage-path-boundary && npm run test:storage-delete-boundary && npm run test:legacy-storage-upload-boundary && npm run test:storage-replacement-boundary && npm run test:storage-cleanup-results && npm run test:base64-upload-boundary && npm run test:admin-immutable-object-boundary && npm run test:ticket-attachment-boundary && npm run test:obp-media-reference-boundary && npm run test:menulist-media-storage-rules',
+  packageJson.scripts?.['verify:storage-paths'] === 'node scripts/verification/verify-storage-path-hardening.js && npm run test:font-preset-sort-boundary && npm run test:storage-path-boundary && npm run test:storage-delete-boundary && npm run test:legacy-storage-upload-boundary && npm run test:storage-replacement-boundary && npm run test:storage-cleanup-results && npm run test:base64-upload-boundary && npm run test:media-storage-boundary && npm run test:media-image-source-boundary && npm run test:admin-immutable-object-boundary && npm run test:ticket-attachment-boundary && npm run test:obp-media-reference-boundary && npm run test:menulist-media-storage-rules',
   'package.json exposes verify:storage-paths',
+);
+assert(
+  packageJson.scripts?.['test:font-preset-sort-boundary']?.includes('scripts/verification/test-font-preset-sort-boundary.ts'),
+  'package.json exposes the non-mutating font-preset sort regression',
 );
 assert(
   packageJson.scripts?.['test:storage-path-boundary'] === 'ts-node --compiler-options \'{"module":"CommonJS"}\' -r tsconfig-paths/register scripts/verification/test-storage-path-boundary.ts',
@@ -708,6 +777,10 @@ assert(
 assert(
   packageJson.scripts?.['test:base64-upload-boundary']?.includes('scripts/verification/test-base64-upload-boundary.ts'),
   'package.json exposes the base64 upload runtime regression',
+);
+assert(
+  packageJson.scripts?.['test:media-storage-boundary']?.includes('scripts/verification/test-media-storage-boundary.ts'),
+  'package.json exposes the prepared-media immutable identity regression',
 );
 assert(
   packageJson.scripts?.['test:admin-immutable-object-boundary']?.includes('scripts/verification/test-admin-immutable-object-boundary.ts'),

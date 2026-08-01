@@ -65,6 +65,13 @@ export function generateImageEditingPrompt(
             return getGenericTwoImagePrompt(prompt);
 
         default:
+            if (!feature) {
+                logImageEditingPromptFailure("image_editing_feature_missing", undefined, {
+                    businessType,
+                    hasItemName: Boolean(safeItemDetails.name),
+                });
+                return null;
+            }
             try {
                 return getBusinessSpecificPrompt(businessType, feature, safeItemDetails);
             } catch (error) {

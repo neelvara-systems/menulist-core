@@ -77,6 +77,48 @@ const cleanText = (value: unknown, maxChars: number): string | undefined => {
     return cleaned ? cleaned.slice(0, maxChars) : undefined;
 };
 
+const normalizeEntityDebug = (
+    value: CanonicalRetrievalResult['entityDebug'] | unknown,
+): EscalationContext['entityDebug'] | undefined => {
+    if (!value || typeof value !== 'object') return undefined;
+
+    const candidate = value as Partial<NonNullable<CanonicalRetrievalResult['entityDebug']>>;
+    if (!Array.isArray(candidate.queryTokens) || !Array.isArray(candidate.candidates)) {
+        return undefined;
+    }
+
+    const candidates = candidate.candidates
+        .slice(0, ESCALATION_ENTITY_CANDIDATE_LIMIT)
+        .flatMap((entityCandidate) => {
+            const entityId = cleanText(entityCandidate?.entityId, ESCALATION_DOCUMENT_ID_MAX_CHARS);
+            const score = entityCandidate?.score;
+            if (!entityId || typeof score !== 'number' || !Number.isFinite(score)) return [];
+            return [{
+                entityId,
+                entityName: cleanText(entityCandidate.entityName, ESCALATION_CONTEXT_VALUE_MAX_CHARS),
+                score: Math.round(score * 1000) / 1000,
+            }];
+        });
+
+    const confidence = candidate.confidence;
+    return {
+        queryTokens: Array.from(new Set(
+            candidate.queryTokens
+                .slice(0, ESCALATION_ENTITY_TOKEN_LIMIT)
+                .map((token) => cleanText(token, ESCALATION_CONTEXT_VALUE_MAX_CHARS))
+                .filter((token): token is string => Boolean(token)),
+        )).slice(0, ESCALATION_ENTITY_TOKEN_LIMIT),
+        candidates,
+        resolvedEntityId: cleanText(
+            candidate.resolvedEntityId,
+            ESCALATION_DOCUMENT_ID_MAX_CHARS,
+        ),
+        confidence: typeof confidence === 'number' && Number.isFinite(confidence)
+            ? Math.max(0, Math.min(1, confidence))
+            : 0,
+    };
+};
+
 const normalizeEscalationInput = (input: EscalationEvaluatorInput): NormalizedEscalationInput | null => {
     if (
         !input
@@ -258,19 +300,7 @@ function buildEscalationContext(
         plan: cleanContextValue(input.productContext.plan),
         userRole: cleanContextValue(input.productContext.userRole),
     } : undefined;
-    const entityDebug = input.canonicalResult.entityDebug;
-    const candidates = entityDebug?.candidates
-        .slice(0, ESCALATION_ENTITY_CANDIDATE_LIMIT)
-        .flatMap((candidate) => {
-            const entityId = cleanText(candidate.entityId, ESCALATION_DOCUMENT_ID_MAX_CHARS);
-            const score = Number(candidate.score);
-            if (!entityId || !Number.isFinite(score)) return [];
-            return [{
-                entityId,
-                entityName: cleanText(candidate.entityName, ESCALATION_CONTEXT_VALUE_MAX_CHARS),
-                score: Math.round(score * 1000) / 1000,
-            }];
-        });
+    const entityDebug = normalizeEntityDebug(input.canonicalResult.entityDebug);
 
     return {
         triggerTypes: triggers,
@@ -291,22 +321,7 @@ function buildEscalationContext(
             effectiveQuery: input.effectiveQuery,
         },
         ...(entityDebug ? {
-            entityDebug: {
-                queryTokens: Array.from(new Set(
-                    entityDebug.queryTokens
-                        .slice(0, ESCALATION_ENTITY_TOKEN_LIMIT)
-                        .map((token) => cleanText(token, ESCALATION_CONTEXT_VALUE_MAX_CHARS))
-                        .filter((token): token is string => Boolean(token)),
-                )).slice(0, ESCALATION_ENTITY_TOKEN_LIMIT),
-                candidates: candidates || [],
-                resolvedEntityId: cleanText(
-                    entityDebug.resolvedEntityId,
-                    ESCALATION_DOCUMENT_ID_MAX_CHARS,
-                ),
-                confidence: Number.isFinite(Number(entityDebug.confidence))
-                    ? Math.max(0, Math.min(1, Number(entityDebug.confidence)))
-                    : 0,
-            },
+            entityDebug,
         } : {}),
         escalatedAt: new Date().toISOString(),
     };

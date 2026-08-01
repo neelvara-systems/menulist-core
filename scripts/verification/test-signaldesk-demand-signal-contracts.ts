@@ -54,6 +54,27 @@ const summary = parseSignalDeskDemandSignalSummaryDocument(summaryFixture(validT
 parseSignalDeskDemandSignalClaimDocument(claimFixture(validTimestamp));
 assert.equal(getSignalDeskDemandSignalEventDay(event), "2026-07-28");
 assert.doesNotThrow(() => assertSignalDeskDemandSignalSummaryMatchesEvent(summary, event));
+assertContractError(
+    "DEMAND_SIGNAL_EVENT_INVALID",
+    () => parseSignalDeskDemandSignalEventDocument({
+        ...eventFixture(validTimestamp),
+        targetId: "targets/target_001",
+    }, eventId),
+);
+assertContractError(
+    "DEMAND_SIGNAL_SUMMARY_INVALID",
+    () => parseSignalDeskDemandSignalSummaryDocument({
+        ...summaryFixture(validTimestamp),
+        targetId: " target_001",
+    }, summaryId),
+);
+assertContractError(
+    "DEMAND_SIGNAL_CLAIM_INVALID",
+    () => parseSignalDeskDemandSignalClaimDocument({
+        ...claimFixture(validTimestamp),
+        actorId: " founder_admin",
+    }),
+);
 
 const invalidTimestamps: readonly unknown[] = [
     null,

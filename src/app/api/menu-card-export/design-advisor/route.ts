@@ -364,7 +364,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
         const processingTime = Date.now() - startTime;
 
-        let recommendation;
+        let recommendation: MenuCardDesignAdvisorRecommendation;
         let responseText = '';
         try {
             responseText = getResponseText(response);

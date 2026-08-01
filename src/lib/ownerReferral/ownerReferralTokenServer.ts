@@ -20,17 +20,24 @@ const OWNER_REFERRAL_AUTH_TAG_BYTES = 16;
 const OWNER_REFERRAL_TOKEN_ID_BYTES = 16;
 
 const normalizePositiveInteger = (value: unknown): number | null => {
-    const parsed = Number(value);
-    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+        ? value
+        : null;
+};
+
+const decodeCanonicalBase64Url = (value: string): Buffer | null => {
+    if (!/^[A-Za-z0-9_-]+$/.test(value)) return null;
+    const decoded = Buffer.from(value, 'base64url');
+    return decoded.toString('base64url') === value ? decoded : null;
 };
 
 const getOwnerReferralTokenKey = (): Buffer | null => {
     const encoded = String(process.env.MENULIST_OWNER_REFERRAL_TOKEN_SECRET || '').trim();
-    if (!encoded || encoded.includes('=')) return null;
+    if (!encoded) return null;
 
     try {
-        const source = Buffer.from(encoded, 'base64url');
-        if (source.length !== 32 || source.toString('base64url') !== encoded) return null;
+        const source = decodeCanonicalBase64Url(encoded);
+        if (!source || source.length !== 32) return null;
         return Buffer.from(hkdfSync(
             'sha256',
             source,
@@ -94,11 +101,14 @@ export const validateOwnerReferralToken = (value: unknown): OwnerReferralTokenPa
     if (parts.length !== 4 || parts[0] !== OWNER_REFERRAL_TOKEN_PREFIX) return null;
 
     try {
-        const iv = Buffer.from(parts[1], 'base64url');
-        const encrypted = Buffer.from(parts[2], 'base64url');
-        const tag = Buffer.from(parts[3], 'base64url');
+        const iv = decodeCanonicalBase64Url(parts[1]);
+        const encrypted = decodeCanonicalBase64Url(parts[2]);
+        const tag = decodeCanonicalBase64Url(parts[3]);
         if (
-            iv.length !== OWNER_REFERRAL_IV_BYTES
+            !iv
+            || !encrypted
+            || !tag
+            || iv.length !== OWNER_REFERRAL_IV_BYTES
             || tag.length !== OWNER_REFERRAL_AUTH_TAG_BYTES
             || encrypted.length === 0
         ) {
@@ -128,8 +138,7 @@ export const validateOwnerReferralToken = (value: unknown): OwnerReferralTokenPa
             || issuedAt > now + 300
             || expiresAt - issuedAt !== OWNER_REFERRAL_TOKEN_TTL_DAYS * 24 * 60 * 60
             || typeof decoded.tokenId !== 'string'
-            || decoded.tokenId.length < 16
-            || decoded.tokenId.length > 64
+            || decodeCanonicalBase64Url(decoded.tokenId)?.length !== OWNER_REFERRAL_TOKEN_ID_BYTES
         ) {
             return null;
         }

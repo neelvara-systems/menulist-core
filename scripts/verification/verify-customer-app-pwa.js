@@ -28,6 +28,10 @@ function assertIncludes(content, needle, label) {
   assert(content.includes(needle), `${label} must include ${needle}`);
 }
 
+function assertMatches(content, pattern, label) {
+  assert(pattern.test(content), `${label} must match ${pattern}`);
+}
+
 function assertOrder(content, orderedTokens, label) {
   let previousIndex = -1;
   for (const token of orderedTokens) {
@@ -217,6 +221,12 @@ function verifyCustomerServiceWorkerPolicy() {
   assertIncludes(sw, 'FROZEN: Offline page only. NEVER cached menu fallback.', 'customer service worker');
   assertIncludes(sw, "const OFFLINE_URL = '/offline';", 'customer service worker');
   assertIncludes(sw, "const OFFLINE_CACHE = 'customer-app-offline-v1';", 'customer service worker');
+  assertIncludes(sw, 'isRetiredMenuListCache(key)', 'customer service worker owned legacy-cache cleanup');
+  assertNotIncludes(
+    executableSw,
+    ".filter((key) => key !== OFFLINE_CACHE)",
+    'customer service worker broad cross-origin cache cleanup',
+  );
   assertNotIncludes(executableSw, '/_client', 'customer service worker executable code');
   assertNotIncludes(executableSw, 'firestore.googleapis.com', 'customer service worker executable code');
   assertNotIncludes(executableSw, 'cache.put', 'customer service worker executable code');
@@ -660,6 +670,7 @@ function verifyCustomerAppAssets() {
   const mobileSettings = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
   const desktopSettings = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
   const pwaDal = read('src/database/pwa/index.ts');
+  const pwaIconCommitBoundary = read('src/lib/pwa/pwaIconCommitBoundary.ts');
   const pwaIconStorageBoundary = read('src/lib/pwa/pwaIconStorageBoundary.ts');
   const publicStoreLookup = read('src/lib/firestore/clientStoreLookup.ts');
   const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
@@ -682,6 +693,8 @@ function verifyCustomerAppAssets() {
   assertIncludes(appIconRoute, "getBoundedRuntimeStringContext('storeId', storeId)", 'customer app icon route bounded store context');
   assertIncludes(appIconRoute, 'const ipHash = hashPublicRateLimitValue(getClientIp(request));', 'customer app icon route hashed rate-limit IP key');
   assertIncludes(appIconRoute, 'key: `public-dynamic-asset:icon:${ipHash}`', 'customer app icon route must not store raw IP rate-limit keys');
+  assertIncludes(appIconRoute, 'failClosedOnProviderError: true', 'customer app icon route limiter outage boundary');
+  assertIncludes(appIconRoute, "headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL }", 'customer app icon transient fallback cache boundary');
   assertIncludes(appIconRoute, 'const STORE_ID_PATTERN = /^\\d{1,20}$/;', 'customer app icon route store-id shape guard');
   assertIncludes(appIconRoute, 'if (!STORE_ID_PATTERN.test(storeId)) return true;', 'customer app icon route invalid store fallback');
   assertOrder(
@@ -707,6 +720,8 @@ function verifyCustomerAppAssets() {
   assertIncludes(appSplashRoute, "getBoundedRuntimeStringContext('storeId', storeId)", 'customer app splash route bounded store context');
   assertIncludes(appSplashRoute, 'const ipHash = hashPublicRateLimitValue(getClientIp(request));', 'customer app splash route hashed rate-limit IP key');
   assertIncludes(appSplashRoute, 'key: `public-dynamic-asset:splash:${ipHash}`', 'customer app splash route must not store raw IP rate-limit keys');
+  assertIncludes(appSplashRoute, 'failClosedOnProviderError: true', 'customer app splash route limiter outage boundary');
+  assertIncludes(appSplashRoute, "headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL }", 'customer app splash transient fallback cache boundary');
   assertIncludes(appSplashRoute, 'const STORE_ID_PATTERN = /^\\d{1,20}$/;', 'customer app splash route store-id shape guard');
   assertIncludes(appSplashRoute, 'if (!STORE_ID_PATTERN.test(storeId)) return true;', 'customer app splash route invalid store fallback');
   assertOrder(
@@ -728,6 +743,8 @@ function verifyCustomerAppAssets() {
   assertIncludes(appScreenshotRoute, "getBoundedRuntimeStringContext('storeId', storeId)", 'customer app screenshot route bounded store context');
   assertIncludes(appScreenshotRoute, 'const ipHash = hashPublicRateLimitValue(getClientIp(request));', 'customer app screenshot route hashed rate-limit IP key');
   assertIncludes(appScreenshotRoute, 'key: `public-dynamic-asset:screenshot:${ipHash}`', 'customer app screenshot route must not store raw IP rate-limit keys');
+  assertIncludes(appScreenshotRoute, 'failClosedOnProviderError: true', 'customer app screenshot route limiter outage boundary');
+  assertIncludes(appScreenshotRoute, "headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL }", 'customer app screenshot transient fallback cache boundary');
   assertIncludes(appScreenshotRoute, 'const STORE_ID_PATTERN = /^\\d{1,20}$/;', 'customer app screenshot route store-id shape guard');
   assertIncludes(appScreenshotRoute, 'if (!STORE_ID_PATTERN.test(storeId)) return true;', 'customer app screenshot route invalid store fallback');
   assertIncludes(appScreenshotRoute, 'function parseFormFactor(raw: string): FormFactor | null', 'customer app screenshot route strict form-factor parser');
@@ -761,6 +778,13 @@ function verifyCustomerAppAssets() {
   assertIncludes(assetHelpers, 'getCustomerAppIconVersion', 'customer app asset helpers');
   assertIncludes(assetHelpers, 'getStaticCustomerAppleStartupImages', 'customer app asset helpers');
   assertIncludes(assetHelpers, "mode === 'generated'", 'customer app asset helpers');
+  assertIncludes(assetHelpers, "'firebasestorage.googleapis.com'", 'customer app asset helpers trusted image host');
+  assertIncludes(assetHelpers, "'storage.googleapis.com'", 'customer app asset helpers trusted image host');
+  assertIncludes(assetHelpers, 'normalizeCustomerAppRenderableImageUrl', 'customer app asset helpers server-rendered image URL boundary');
+  assertIncludes(assetHelpers, 'process.env.NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET', 'customer app asset helpers configured bucket boundary');
+  assertIncludes(assetHelpers, 'getCustomerAppStorageBucketFromUrl(url) !== configuredBucket', 'customer app asset helpers exact bucket admission');
+  assertIncludes(assetHelpers, "CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL = 'private, no-store, max-age=0'", 'customer app transient fallback shared-cache boundary');
+  assertIncludes(assetHelpers, 'normalizeCustomerAppDisplayName', 'customer app rendered display-name boundary');
   assertIncludes(assetHelpers, "objectFit: 'contain'", 'customer app asset helpers');
   assertIncludes(clientPage, 'deriveCustomerAppShortName(storeName, pwaShortName)', 'client metadata app title');
   assertIncludes(clientPage, 'getCustomerAppIconUrl(storeData.id, 180, pwaIconVersion)', 'client metadata app icon version');
@@ -782,9 +806,20 @@ function verifyCustomerAppAssets() {
   assertIncludes(pwaDal, "await cleanupPWAIconOverrideUrls([uploadedUrl], 'replace', scope);", 'PWA icon failed-write upload compensation');
   assertIncludes(pwaDal, 'readCommittedPWAIconOverride(', 'PWA icon ambiguous write read-back boundary');
   assertIncludes(pwaDal, 'getDocFromServer(getDocRef(scope.storeId))', 'PWA icon read-back must not trust locally pending Firestore state');
+  assertIncludes(pwaDal, 'data.storeId !== scope.storeId', 'PWA icon read-back exact persisted store identity');
+  assertIncludes(pwaIconCommitBoundary, 'storeData.tenantId !== scope.tenantId', 'PWA icon committed read-back exact persisted tenant identity');
   assertIncludes(pwaDal, 'pwa_icon_override_write_outcome_ambiguous', 'PWA icon ambiguous write diagnostic');
-  assertIncludes(pwaDal, 'cleanupSupersededPWAIconUrl', 'PWA icon current-reference cleanup guard');
-  assertIncludes(pwaDal, 'pwa_icon_superseded_cleanup_guard_failed', 'PWA icon guarded cleanup diagnostic');
+  assertIncludes(pwaDal, 'deferSupersededPWAIconUrlCleanup', 'PWA icon persisted-reference cleanup deferral');
+  assertIncludes(pwaDal, 'pwa_icon_persisted_cleanup_deferred_shared_reference', 'PWA icon persisted-reference retention diagnostic');
+  const persistedIconCleanupSection = pwaDal.slice(
+    pwaDal.indexOf('const deferSupersededPWAIconUrlCleanup'),
+    pwaDal.indexOf('export const replacePWAIconOverride'),
+  );
+  assertNotIncludes(
+    persistedIconCleanupSection,
+    'cleanupPWAIconOverrideUrls(',
+    'PWA icon persisted prior URL must not be deleted from a non-atomic Firestore read guard',
+  );
   const pwaIconReplacementSection = pwaDal.slice(pwaDal.indexOf('export const replacePWAIconOverride'));
   assertOrder(
     pwaIconReplacementSection,
@@ -1322,7 +1357,9 @@ function verifyDigitalScreenDiagnostics() {
   assertIncludes(campaignDal, 'digital_screen_slide_upload_update_rejected', 'campaign screen upload slide acknowledgement rejection code');
   assertNotIncludes(campaignDal, 'export const getScreenDataByToken', 'campaign DAL does not expose the removed client public-token resolver');
   assertNotIncludes(campaignDal, 'export const getMenuItemsForScreen', 'campaign DAL does not expose the removed client public-menu resolver');
-  assertIncludes(campaignDal, 'projectIdLength: String(projectId || "").length', 'campaign history bounded project context');
+  assertIncludes(campaignDal, '{ limitCount, projectId: projectId || null }', 'campaign history bounded composer context');
+  assertIncludes(campaignDal, '"getCampaignHistory"', 'campaign history stable composer operation name');
+  assertNotIncludes(campaignDal, 'projectIdLength: String(projectId || "").length', 'campaign history retired duplicate error logger');
   assertIncludes(screenPage, 'getScreenDataByTokenServer', 'public screen route uses the server token resolver');
   assertIncludes(screenPage, 'getMenuItemsForScreenServer', 'public screen route uses the server menu resolver');
   assertIncludes(serverScreenDal, 'logServerScreenFailure', 'server screen secure logging');
@@ -1457,9 +1494,9 @@ function verifyDigitalScreenDiagnostics() {
     assertIncludes(screenDisplay, failureCode, `highlights screen display failure code ${failureCode}`);
   });
   assertIncludes(screenDisplay, 'SCREEN_SEEN_REQUEST_POLICY', 'highlights screen display seen-signal request policy');
-  assertIncludes(screenDisplay, "cache: 'no-store'", 'highlights screen display seen-signal request bypasses browser cache');
-  assertIncludes(screenDisplay, "credentials: 'same-origin'", 'highlights screen display seen-signal request keeps credentials same-origin');
-  assertIncludes(screenDisplay, "redirect: 'manual'", 'highlights screen display seen-signal request does not follow redirects');
+  assertMatches(screenDisplay, /cache:\s*["']no-store["']/, 'highlights screen display seen-signal request bypasses browser cache');
+  assertMatches(screenDisplay, /credentials:\s*["']same-origin["']/, 'highlights screen display seen-signal request keeps credentials same-origin');
+  assertMatches(screenDisplay, /redirect:\s*["']manual["']/, 'highlights screen display seen-signal request does not follow redirects');
   assertIncludes(screenDisplay, '...SCREEN_SEEN_REQUEST_POLICY', 'highlights screen display uses seen-signal request policy');
   [
     'digital_screen_menuboard_cache_read_failed',
@@ -1471,9 +1508,9 @@ function verifyDigitalScreenDiagnostics() {
     assertIncludes(menuBoardDisplay, failureCode, `menu board screen display failure code ${failureCode}`);
   });
   assertIncludes(menuBoardDisplay, 'SCREEN_SEEN_REQUEST_POLICY', 'menu board screen display seen-signal request policy');
-  assertIncludes(menuBoardDisplay, "cache: 'no-store'", 'menu board screen display seen-signal request bypasses browser cache');
-  assertIncludes(menuBoardDisplay, "credentials: 'same-origin'", 'menu board screen display seen-signal request keeps credentials same-origin');
-  assertIncludes(menuBoardDisplay, "redirect: 'manual'", 'menu board screen display seen-signal request does not follow redirects');
+  assertMatches(menuBoardDisplay, /cache:\s*["']no-store["']/, 'menu board screen display seen-signal request bypasses browser cache');
+  assertMatches(menuBoardDisplay, /credentials:\s*["']same-origin["']/, 'menu board screen display seen-signal request keeps credentials same-origin');
+  assertMatches(menuBoardDisplay, /redirect:\s*["']manual["']/, 'menu board screen display seen-signal request does not follow redirects');
   assertIncludes(menuBoardDisplay, '...SCREEN_SEEN_REQUEST_POLICY', 'menu board screen display uses seen-signal request policy');
   [
     [screenDisplay, '[Screen] Cache read failed:'],

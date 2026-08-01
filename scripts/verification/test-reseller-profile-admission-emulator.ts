@@ -104,12 +104,23 @@ async function run(): Promise<void> {
             email: legacyEmail,
             id: legacyProfileB,
         }),
+        ...Array.from({ length: 3 }, (_, index) => profiles.doc(`${prefix}-legacy-decoy-${index}`).set({
+            active: true,
+            authUserId: `${prefix}-decoy-actor-${index}`,
+            email: legacyEmail,
+            id: `${prefix}-legacy-decoy-${index}`,
+        })),
     ]);
     assert.equal(
         (await getResellerProfileServer(`${prefix}-actor-b`, legacyEmail, legacyProfileB))?.id,
         legacyProfileB,
     );
     assert.equal(await getResellerProfileServer(`${prefix}-unknown`, legacyEmail), null);
+    assert.equal(
+        (await getResellerProfileServer(`${prefix}-actor-b`, legacyEmail))?.id,
+        legacyProfileB,
+        'same-email legacy rows must not starve the exact authenticated reseller lookup',
+    );
     await profiles.doc(legacyProfileB).set({ deleted: true }, { merge: true });
     assert.equal(
         await getResellerProfileServer(`${prefix}-actor-b`, legacyEmail, legacyProfileB),
@@ -134,6 +145,9 @@ async function run(): Promise<void> {
         profiles.doc(legacyProfileA).delete(),
         profiles.doc(legacyProfileB).delete(),
         profiles.doc(deletedDirectProfile).delete(),
+        ...Array.from({ length: 3 }, (_, index) => (
+            profiles.doc(`${prefix}-legacy-decoy-${index}`).delete()
+        )),
     ]);
 
     const loginProfileId = `${prefix}-login`;

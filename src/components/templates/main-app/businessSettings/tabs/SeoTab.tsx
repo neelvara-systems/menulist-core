@@ -17,7 +17,7 @@ const { TextArea } = Input;
 const { Text, Title } = Typography;
 
 interface SeoTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     storeDetails?: any;
 }
 

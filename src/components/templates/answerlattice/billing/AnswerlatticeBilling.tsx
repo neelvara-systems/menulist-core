@@ -313,7 +313,7 @@ export default function AnswerlatticeBilling() {
             <PricingPlansModal
                 action={isPricingModalOpen.action}
                 handleConfirmUpgrade={handleConfirmUpgrade}
-                activeSubscription={activeSubscription}
+                activeSubscription={activeSubscription ?? undefined}
                 isOpen={isPricingModalOpen.active}
                 onClose={() => setIsPricingModalOpen({ action: 'upgrade', active: false })}
                 plansOverride={plans}
@@ -349,7 +349,7 @@ export default function AnswerlatticeBilling() {
 
             <CreditsPackModal
                 isOpen={isCreditsModalOpen}
-                activeSubscription={activeSubscription}
+                activeSubscription={activeSubscription ?? undefined}
                 handleCreditsPurchase={handleCreditsPurchase}
                 onClose={() => setIsCreditsModalOpen(false)}
                 packs={packs}

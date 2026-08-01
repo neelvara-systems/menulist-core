@@ -9,10 +9,17 @@ import {
     logAnswerlatticeDiagnostic,
     logAnswerlatticeFailure,
 } from '@lib/answerlattice/diagnostics';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
 import { resolveAnswerlatticePublicContentScope } from '@lib/answerlattice/publicContentScope';
-import { canUseAnswerlatticeManagement } from '@lib/answerlattice/sessionScope';
+import {
+    canUseAnswerlatticeManagement,
+    normalizeAnswerlatticeScopeDocumentId,
+} from '@lib/answerlattice/sessionScope';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { checkRateLimit } from '@lib/rateLimit';
+import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { NextRequest, NextResponse } from 'next/server';
+import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 import { z } from 'zod';
 import { withAuth } from '../../../../middleware/auth';
 
@@ -23,6 +30,7 @@ const revalidateRequestSchema = z.object({
     sId: z.union([z.string(), z.number()]).optional(),
 }).optional();
 const ANSWERLATTICE_REVALIDATE_MAX_BODY_BYTES = 4 * 1024;
+const ANSWERLATTICE_REVALIDATE_RATE_LIMIT_KEY = 'answerlattice-cache-revalidate';
 
 function getAnswerlatticeRevalidationLogContext(
     scope: { tId?: unknown; sId?: unknown } | null,
@@ -42,6 +50,27 @@ function getAnswerlatticeRevalidationLogContext(
 export const POST = withAuth(async (request: NextRequest, session) => {
     if (!canUseAnswerlatticeManagement(session)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const actorId = resolveCurrentSessionUserDocumentId(session);
+    if (!actorId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
+    const rateLimit = await checkRateLimit({
+        key: `${ANSWERLATTICE_REVALIDATE_RATE_LIMIT_KEY}:${hashPublicRateLimitValue(actorId)}`,
+        ...rateLimitConfig,
+        failClosedOnProviderError: true,
+    });
+    if (!rateLimit.allowed) {
+        return NextResponse.json(
+            {
+                error: rateLimit.reason === 'provider_unavailable'
+                    ? 'Answerlattice cache revalidation is temporarily unavailable'
+                    : 'Too many requests',
+            },
+            { status: rateLimit.reason === 'provider_unavailable' ? 503 : 429 },
+        );
     }
 
     const bodyResult = await readOptionalBoundedJsonBody(request, ANSWERLATTICE_REVALIDATE_MAX_BODY_BYTES, {
@@ -65,8 +94,15 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: 'Answerlattice workspace is not available' }, { status: 400 });
     }
 
-    const requestedTId = parsed.data?.tId !== undefined ? Number(parsed.data.tId) : scope.tId;
-    const requestedSId = parsed.data?.sId !== undefined ? Number(parsed.data.sId) : scope.sId;
+    const requestedTId = parsed.data?.tId !== undefined
+        ? normalizeAnswerlatticeScopeDocumentId(parsed.data.tId)
+        : scope.tId;
+    const requestedSId = parsed.data?.sId !== undefined
+        ? normalizeAnswerlatticeScopeDocumentId(parsed.data.sId)
+        : scope.sId;
+    if (!requestedTId || !requestedSId) {
+        return NextResponse.json({ error: 'Invalid Answerlattice cache revalidation request' }, { status: 400 });
+    }
     if (requestedTId !== scope.tId || requestedSId !== scope.sId) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

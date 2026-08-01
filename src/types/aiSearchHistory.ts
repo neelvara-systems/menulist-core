@@ -56,10 +56,6 @@ export interface AiSearchHistory {
     confidence?: 'high' | 'medium' | 'low' | 'none';
     sourceVersions?: AnswerlatticeCacheSourceVersions; // Source freshness manifest captured when cached
     mountContext?: 'help_center' | 'widget' | 'api'; // Surface that initiated the search
-    contextKey?: string; // Compact Answerlattice product surface key, not the full transient context payload
-    surfaceFeature?: string;
-    surfacePage?: string;
-    surfaceWorkflow?: string;
     visitorId?: string;
     visitorName?: string;
     visitorEmail?: string;

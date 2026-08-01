@@ -290,8 +290,8 @@ export default function MobileShell() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const searchParamKey = searchParams.toString();
-    const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseInitialMobileRoute(pathname, window.location.hash, window.location.search);
+    const searchParamKey = searchParams?.toString() ?? '';
+    const initialRoute = typeof window === 'undefined' ? { tab: 'today' as MobileTab, todayScreen: 'main' as const, moreScreen: 'main' as MoreSubScreen } : parseInitialMobileRoute(pathname ?? '', window.location.hash, window.location.search);
     const [activeTab, setActiveTab] = useState<MobileTab>(initialRoute.tab);
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
@@ -375,7 +375,7 @@ export default function MobileShell() {
             return;
         }
 
-        const nextRoute = parseMobileRoutePathname(pathname, searchParamKey);
+        const nextRoute = parseMobileRoutePathname(pathname ?? '', searchParamKey);
         if (!nextRoute) {
             return;
         }

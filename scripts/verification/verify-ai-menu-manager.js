@@ -45,6 +45,7 @@ const requiredFiles = [
   'scripts/verification/test-ai-menu-manager-session-integrity.ts',
   'scripts/verification/test-ai-menu-manager-proposal-integrity.ts',
   'scripts/verification/test-ai-menu-manager-project-integrity.ts',
+  'scripts/verification/test-ai-menu-manager-domain-conversation.ts',
 ];
 
 const requiredActionTypes = [
@@ -193,7 +194,8 @@ const actionTypeBlock = (actionTypes.match(/export const AI_MENU_MANAGER_ACTION_
 const declaredActionValues = [...actionTypeBlock.matchAll(/:\s*'([a-z0-9_]+)'/g)]
   .map((entry) => entry[1])
   .filter((value) => value.includes('_'));
-const definitionsBlock = actionTypes.split('export const AI_MENU_MANAGER_ACTION_DEFINITIONS')[1] || '';
+const definitionsBlock = (actionTypes.split('const aiMenuManagerActionDefinitions')[1] || '')
+  .split('export const AI_MENU_MANAGER_ACTION_DEFINITIONS')[0] || '';
 for (const actionType of declaredActionValues) {
   assert(definitionsBlock.includes(`'${actionType}'`) || definitionsBlock.includes(`.${actionType.toUpperCase()}`), `Action type has no registry definition: ${actionType}`);
 }
@@ -232,6 +234,13 @@ for (const forbiddenTool of ['updateProject', 'writeFirestore', 'publishMenuDire
 }
 assert(modelRouter.includes('AI_MENU_MANAGER_SAFE_MODEL_TOOLS') && modelRouter.includes('prepare_price_update_card') && modelRouter.includes('prepare_unsupported_card'), 'AMM model router must expose prepare/read-only tool names only');
 assert(modelRouter.includes('if (!FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER)'), 'AMM model router providers must stay disabled when the main AMM flag is off');
+assert(modelRouter.includes('result.safety.mutatesTruth !== isPreparedAction'), 'AMM model route safety must correlate mutation state to prepare_action');
+assert(modelRouter.includes('result.safety.requiresApproval !== isPreparedAction'), 'AMM model route safety must correlate approval state to prepare_action');
+assert(modelRouter.includes('Boolean(result.actionType) !== isPreparedAction'), 'AMM model route safety must correlate action type to prepare_action');
+
+const modelSchemas = read('src/lib/ai-menu-manager/schemas.ts');
+assert(modelSchemas.includes('AiMenuManagerPlannerResponseSchema'), 'AMM planner client response must have a runtime schema');
+assert(modelSchemas.includes('Model route safety fields do not match its outcome'), 'AMM planner client response schema must correlate prepared-action safety fields');
 
 const plannerRoute = read('src/app/api/ai-menu-manager/plan/route.ts');
 assert(plannerRoute.includes('withAuth'), 'AMM planner route must use withAuth');
@@ -276,6 +285,10 @@ assert(commandRoute.includes('getStoreFromSession') && commandRoute.includes('ne
 assert(commandRoute.includes('resolveDailySessionId({') && commandRoute.includes("'command-session'"), 'Command fallback must reject non-deterministic session IDs before session persistence');
 
 const apiGuards = read('src/lib/ai-menu-manager/apiGuards.ts');
+assert(apiGuards.includes('if (!tId || !sId || !userId)'), 'AMM selected-store scope must fail closed when canonical actor identity is missing or contradictory');
+const proposalActionRoute = read('src/app/api/ai-menu-manager/proposals/[proposalId]/actions/route.ts');
+assert(proposalActionRoute.includes('const userId = scope.userId;'), 'AMM proposal actions must persist the canonical guarded actor identity');
+assert(!proposalActionRoute.includes("|| 'unknown'"), 'AMM proposal actions must not persist an unknown actor fallback');
 assert(apiGuards.includes('getBoundedSecurityRouteContext'), 'AMM API guards must use bounded route security context');
 assert(apiGuards.includes("getBoundedSecurityStringContext('attemptedStoreId', selectedStoreId)"), 'AMM API guards must bound selected-store violation IDs');
 assert(apiGuards.includes('key: `${params.keyPrefix}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`'), 'AMM API guards must use hashed rate-limit key material');
@@ -305,6 +318,14 @@ assert(idempotency.includes('normalizeAiMenuManagerScopeDocumentId(params.tId)')
 assert(idempotency.includes('catch {') && idempotency.includes('return false;'), 'AMM persisted session identity checks must fail closed rather than throw on corrupt stored scope');
 
 const clientDal = read('src/database/aiMenuManager/index.ts');
+assert(clientDal.includes("readApiResponse<unknown>(response, 'plan')"), 'AMM planner client must not generic-cast response JSON into a trusted route');
+assert(clientDal.includes('isAiMenuManagerPlannerResponse(payload)'), 'AMM planner client must runtime-validate response JSON before use');
+assert(clientDal.includes("readApiResponse<unknown>(response, 'command')") && clientDal.includes('normalizeAiMenuManagerCommandResponse(payload'), 'AMM command client must runtime-normalize untrusted server response JSON');
+assert(clientDal.includes("readApiResponse<unknown>(response, 'inbox')") && clientDal.includes('normalizeAiMenuManagerInboxResponse(inboxResponse.payload'), 'AMM inbox client must runtime-normalize untrusted server response JSON');
+assert(clientDal.includes("readApiResponse<unknown>(response, 'proposal_action')") && clientDal.includes('normalizeAiMenuManagerProposalActionResponse(payload'), 'AMM proposal-action client must runtime-normalize untrusted directive/status JSON');
+assert(clientDal.includes("readApiResponse<unknown>(response, 'proposal_complete')") && clientDal.includes('normalizeAiMenuManagerProposalCompleteResponse(payload'), 'AMM proposal-completion client must runtime-normalize untrusted terminal receipt JSON');
+assert(!clientDal.includes("readApiResponse<AiMenuManagerCommandResponse>(response, 'command')"), 'AMM command client must not generic-cast response JSON into trusted cards');
+assert(!clientDal.includes("readApiResponse<AiMenuManagerInboxResponse & { sessionId: string }>(response, 'inbox')"), 'AMM inbox client must not generic-cast response JSON into trusted session state');
 const pendingOperationIntegrity = read('src/lib/ai-menu-manager/pendingOperationIntegrity.ts');
 const projectMutationVersion = read('src/lib/menu/projectMutationVersion.ts');
 const projectDal = read('src/database/projects/index.ts');
@@ -316,7 +337,7 @@ assert(sessionIntegrity.includes('isDailySessionIdForScope({'), 'AMM compact-ses
 assert(sessionIntegrity.includes('operationCounts.get(operation.operationId) === 1'), 'AMM compact-session normalizer must discard every copy of duplicate operation IDs');
 assert(sessionIntegrity.includes('MAX_COUNTER_VALUE = 1_000_000_000'), 'AMM compact-session counters must be finite bounded integers');
 assert(sessionIntegrity.includes('AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES = 700 * 1024'), 'AMM compact sessions must keep a conservative byte budget below the Firestore document limit');
-assert(sessionIntegrity.includes('prepareAiMenuManagerSessionWrite') && sessionIntegrity.includes('next.artifactRefs.pop()') && sessionIntegrity.includes('next.compactMessages.shift()'), 'AMM size preparation must trim expendable history before rejecting new pending work');
+assert(sessionIntegrity.includes('prepareAiMenuManagerSessionWrite') && sessionIntegrity.includes('next.artifactRefs.pop()') && sessionIntegrity.includes('compactMessages.shift()'), 'AMM size preparation must trim expendable history before rejecting new pending work');
 assert(clientDal.includes('normalizeAiMenuManagerSessionSnapshot'), 'AMM client DAL must normalize untrusted compact-session snapshots before use');
 assert(!clientDal.includes('sessionSnap.data() as AiMenuManagerSessionDoc'), 'AMM client DAL must not cast Firestore compact sessions directly into trusted runtime truth');
 assert(receiptBuilder.includes("boundedText(params.title, 160") && receiptBuilder.includes("boundedText(params.message, 500"), 'AMM receipt persistence must bound owner-visible text centrally');
@@ -356,6 +377,7 @@ assert(clientDal.includes('sendAiMenuManagerServerBackedCommand'), 'AMM client D
 assert(clientDal.includes('getAiMenuManagerServerInbox'), 'AMM client inbox must fall back to the guarded server inbox route when compact session reads are denied');
 assert(clientDal.includes('if (!session) {') && clientDal.includes('return buildClientInboxFromServer({ inbox, projectId: params.projectId, scope });'), 'AMM client inbox must use bounded server recovery when the current-day compact session does not exist');
 assert(clientDal.includes('const directOperations = normalizeOperations(session, params.projectId)') && clientDal.includes('operations: [...directOperations, ...serverOperations]'), 'AMM server inbox hydration must retain direct compact operations while adding server-backed proposal cards');
+assert(clientDal.includes('params.cards.map<AiMenuManagerPendingOperation>'), 'AMM server-backed card projection must retain the exact pending-operation contract');
 assert(sendCommandBlock.includes('reusableSession?.hasPendingOperations') && sendCommandBlock.includes('reusableSession.sessionDate'), 'AMM commands must continue a recovered unresolved session until its pending work is cleared');
 assert(clientDal.includes("executionMode: 'existing_server_api'"), 'Server-backed fallback cards must be represented with the existing_server_api execution mode');
 assert(clientDal.includes('const body: AiMenuManagerCommandRequest') && !clientDal.includes('body: JSON.stringify({\n            ...request'), 'AMM server fallback command must send only API fields, not the loaded project JSON');
@@ -393,6 +415,10 @@ assert(clientDal.includes('appendCompactReceipt'), 'AMM completion must append t
 assert(clientDal.includes('buildAiMenuManagerClientExecutionDirective'), 'AMM client DAL must build execution directives from stored pending operations');
 assert(clientDal.includes('buildAiMenuManagerContextBaseHash(context)'), 'AMM client approvals must check stale selected-project context');
 assert(clientDal.includes('assertAiMenuManagerPatchAllowedForAction'), 'AMM client approvals must validate patch shape against registered action type');
+const patchPolicy = read('src/lib/ai-menu-manager/patchPolicy.ts');
+assert(patchPolicy.includes('TOP_LEVEL_FIELDS_BY_KIND'), 'AMM patch policy must reject undeclared top-level patch fields');
+assert(patchPolicy.includes('hasValidTargetIds'), 'AMM patch policy must require canonical unique bounded target IDs');
+assert(patchPolicy.includes('itemUpdateTargetsMatch'), 'AMM patch policy must correlate per-item update keys to declared targets');
 assert(projectMutationVersion.includes('projectMutationVersionMillis') && projectMutationVersion.includes('projectMutationVersionIso'), 'AMM project versions must normalize browser and Admin timestamp shapes through one boundary');
 assert(read('src/lib/ai-menu-manager/contextPacket.ts').includes('projectMutationVersionIso('), 'AMM context hashes must use one canonical project mutation version');
 assert(read('src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx').includes('expectedModifiedOn: batch.directives[0].baseProjectUpdatedAt') && read('src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx').includes('expectedModifiedOn: directive.baseProjectUpdatedAt'), 'Desktop AMM grouped and single approvals must pass the prepared project version into the save transaction');
@@ -465,7 +491,6 @@ assert(projectPatches.includes('normalizeAiMenuManagerProjectSnapshot'), 'Projec
 assert(projectPatches.includes('expectedProjectId?: string'), 'Project already-applied verification must accept authoritative operation identity');
 assert(projectPatches.includes("patch.kind === 'category_update'"), 'Category project patch support missing');
 assert(projectPatches.includes("patch.kind === 'attribute_update'"), 'Attribute project patch support missing');
-const patchPolicy = read('src/lib/ai-menu-manager/patchPolicy.ts');
 assert(patchPolicy.includes('PATCH_POLICIES'), 'AMM patch policy must declare action-scoped patch policies');
 assert(patchPolicy.includes('item_price_update') && patchPolicy.includes("itemFields: ['price']"), 'Price action patch policy must allow only price item fields');
 assert(patchPolicy.includes('menu_design_color_update') && patchPolicy.includes("brandFields: ['accentColor']"), 'Design color patch policy must allow only brand accent color');
@@ -518,9 +543,35 @@ const { resolveAiMenuManagerCommand } = require(path.join(root, 'src/lib/ai-menu
 const { resolveAiMenuManagerCompoundCommand } = require(path.join(root, 'src/lib/ai-menu-manager/compoundCommand'));
 const { buildAiMenuManagerModelRouteCard } = require(path.join(root, 'src/lib/ai-menu-manager/modelRouter/modelRouteCard'));
 const {
+  AI_MENU_MANAGER_ACTION_DEFINITION_BY_TYPE,
   AI_MENU_MANAGER_ACTION_DEFINITIONS,
   AI_MENU_MANAGER_EXECUTABLE_ACTIONS,
 } = require(path.join(root, 'src/lib/ai-menu-manager/actionTypes'));
+const {
+  listAiMenuManagerActionDefinitions,
+  listAiMenuManagerExecutableActions,
+} = require(path.join(root, 'src/lib/ai-menu-manager/actionRegistry'));
+assert(Object.isFrozen(AI_MENU_MANAGER_ACTION_DEFINITIONS), 'AMM action definitions must be immutable at runtime');
+assert(Object.isFrozen(AI_MENU_MANAGER_EXECUTABLE_ACTIONS), 'AMM executable action list must be immutable at runtime');
+assert(Object.isFrozen(AI_MENU_MANAGER_ACTION_DEFINITION_BY_TYPE), 'AMM action registry must be immutable at runtime');
+assert(
+  AI_MENU_MANAGER_ACTION_DEFINITIONS.every((definition) => (
+    Object.isFrozen(definition)
+    && Object.isFrozen(definition.sourceEvidence)
+    && (!definition.requiredFlags || Object.isFrozen(definition.requiredFlags))
+    && AI_MENU_MANAGER_ACTION_DEFINITION_BY_TYPE[definition.actionType] === definition
+  )),
+  'AMM action definitions must be deeply immutable and map one-to-one into the registry',
+);
+assert(
+  Object.keys(AI_MENU_MANAGER_ACTION_DEFINITION_BY_TYPE).length === AI_MENU_MANAGER_ACTION_DEFINITIONS.length,
+  'AMM action registry must contain exactly one entry per definition',
+);
+assert(
+  listAiMenuManagerActionDefinitions() !== AI_MENU_MANAGER_ACTION_DEFINITIONS
+    && listAiMenuManagerExecutableActions() !== AI_MENU_MANAGER_EXECUTABLE_ACTIONS,
+  'AMM registry list accessors must return defensive copies',
+);
 const {
   buildAiMenuManagerPlannerActionContracts,
   buildAiMenuManagerPlannerResponseSchema,
@@ -864,6 +915,8 @@ const resolverFixtures = [
   ['Download official page QR', 'public_presence_qr_download', 'manual_task'],
   ['Change working hours', 'system_clarification_request', 'clarification'],
   ['Change working hours for today', 'store_working_hours_update', 'manual_task'],
+  ['Set special hours for a date', 'store_working_hours_update', 'manual_task'],
+  ['Update holiday hours', 'store_working_hours_update', 'manual_task'],
   ['Set temporary status', 'system_clarification_request', 'clarification'],
   ['Set temporary status: closed today', 'menu_temp_status_set', 'manual_task'],
   ['Clear temporary status', 'menu_temp_status_clear', 'manual_task'],
@@ -1224,6 +1277,11 @@ assert(sessionRoute.includes('normalizeAiMenuManagerSessionId(params?.sessionId)
 assert(sessionRoute.includes("normalizeAiMenuManagerProjectId(request.nextUrl.searchParams.get('projectId'))"), 'Session route must normalize selected project ID before reads');
 assert(sessionRoute.indexOf('normalizeAiMenuManagerSessionId(params?.sessionId)') < sessionRoute.indexOf('getAiMenuManagerInbox({'), 'Session route must reject malformed session IDs before Firestore inbox reads');
 assert(sessionRoute.indexOf("normalizeAiMenuManagerProjectId(request.nextUrl.searchParams.get('projectId'))") < sessionRoute.indexOf('getAiMenuManagerInbox({'), 'Session route must reject malformed selected project IDs before Firestore inbox reads');
+const inboxRoute = read('src/app/api/ai-menu-manager/inbox/route.ts');
+for (const [routeSource, routeLabel] of [[inboxRoute, 'Inbox route'], [sessionRoute, 'Session route']]) {
+  assert(routeSource.includes('serializeAiMenuManagerInboxForJson'), `${routeLabel} must use the shared typed inbox JSON boundary`);
+  assert(!routeSource.includes('function serializeForJson'), `${routeLabel} must not retain the duplicate untyped recursive serializer`);
+}
 
 const ownerRoute = read('src/app/(main)/menu-manager/page.tsx');
 assert(ownerRoute.includes('AiMenuManagerRoute'), 'AMM owner route must be mounted at /menu-manager');
@@ -1507,11 +1565,16 @@ const promptGroupsFixture = getAiMenuManagerProjectPromptGroups({
   languages: ['en'],
   files: [
     {
+      uid: 'file-1',
       extractedData: {
         data: {
+          categories: [
+            { id: 'cat-drinks', active: true, name: { en: 'Drinks' } },
+          ],
           items: [
             {
               id: 'item-1',
+              category: 'cat-drinks',
               active: true,
               available: true,
               name: { en: 'Chocolate milk shake' },
@@ -1522,6 +1585,7 @@ const promptGroupsFixture = getAiMenuManagerProjectPromptGroups({
             },
             {
               id: 'item-2',
+              category: 'cat-drinks',
               active: true,
               available: true,
               name: { en: 'Fruit and nut smoothie' },
@@ -1560,6 +1624,7 @@ const attentionFixtureTexts = getAiMenuManagerAttentionSuggestions({
   languages: ['en'],
   files: [
     {
+      uid: 'file-attention',
       extractedData: {
         data: {
           categories: [
@@ -1595,12 +1660,34 @@ const attentionFixtureTexts = getAiMenuManagerAttentionSuggestions({
 assert(attentionFixtureTexts.includes('Show Desserts category'), 'AMM attention suggestions must surface hidden categories from loaded project context');
 assert(attentionFixtureTexts.includes('Make Fresh Lime Soda available'), 'AMM attention suggestions must surface unavailable loaded-context items before generic prompts');
 assert(attentionFixtureTexts.length <= 3, 'AMM attention suggestions must stay compact for the first screen');
+const hostilePromptProject = new Proxy({}, {
+  get() {
+    throw new Error('hostile persisted project');
+  },
+});
+const hostilePromptGroups = getAiMenuManagerProjectPromptGroups(hostilePromptProject);
+assert(
+  !hostilePromptGroups.some((group) => group.groupId === 'quick-fixes'),
+  'AMM prompt groups must contain malformed persisted project access without contextual quick fixes',
+);
+assert(
+  JSON.stringify(getAiMenuManagerAttentionSuggestions(hostilePromptProject)) === '[]',
+  'AMM attention suggestions must contain malformed persisted project access',
+);
+assert(
+  !getAiMenuManagerProjectPromptGroups({
+    projectId: 'oversized-project',
+    files: Array.from({ length: 101 }, (_, index) => ({ uid: `file-${index}` })),
+  }).some((group) => group.groupId === 'quick-fixes'),
+  'AMM prompt groups must reject contextual rows from project file sets beyond the canonical project cap',
+);
 for (const childPrompt of [
   'Set menu tone to Premium & Minimal',
   'Use grid layout',
   'Set theme color to Gold',
   'Show item prices',
   'Change working hours for today',
+  'Set special hours for a date',
   'Set temporary status: closed today',
   'Copy customer app install link',
   'Copy digital screen link',

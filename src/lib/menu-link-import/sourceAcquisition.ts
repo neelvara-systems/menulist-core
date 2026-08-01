@@ -397,9 +397,14 @@ function isUnsafeIpv4(address: string): boolean {
 
 function isUnsafeIpv6(address: string): boolean {
     const lower = address.toLowerCase();
+    const firstHextet = Number.parseInt(lower.split(':', 1)[0] || '0', 16);
     if (lower === '::' || lower === '::1') return true;
     if (lower.startsWith('fc') || lower.startsWith('fd')) return true;
-    if (lower.startsWith('fe80:')) return true;
+    // IPv6 link-local addresses occupy fe80::/10 (fe80:: through febf::), not
+    // only the textual fe80: prefix.
+    if (Number.isFinite(firstHextet) && (firstHextet & 0xffc0) === 0xfe80) return true;
+    // Deprecated site-local space remains non-public and must not be fetched.
+    if (Number.isFinite(firstHextet) && (firstHextet & 0xffc0) === 0xfec0) return true;
     if (lower.startsWith('ff')) return true;
     if (lower === '2001:db8::' || lower.startsWith('2001:db8:')) return true;
     if (lower.startsWith('2002:')) return true;

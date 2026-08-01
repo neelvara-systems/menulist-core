@@ -209,7 +209,6 @@ export default function EntityManagementDashboard() {
             const values = await relationForm.validateFields();
             setSaving(true);
             const added = await addRelation({
-                pId: 'AL',
                 tId,
                 sId,
                 fromEntityId: selectedEntity.id,

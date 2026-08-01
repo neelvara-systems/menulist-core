@@ -1,6 +1,7 @@
 import type { MenuCardExportSettings } from '../models/exportTypes';
 import type { MenuCardPrintSource } from '../models/printModel';
 import type { MenuCardExportWarning } from '../models/warningTypes';
+import { normalizeMenuCardQrDestination } from '../source/buildQrDestination';
 
 export function checkQrSafety(source: MenuCardPrintSource, settings: MenuCardExportSettings): MenuCardExportWarning[] {
     if (!settings.includeQr) return [];
@@ -8,7 +9,7 @@ export function checkQrSafety(source: MenuCardPrintSource, settings: MenuCardExp
     const warnings: MenuCardExportWarning[] = [];
     const urlLength = source.qr.destinationUrl.length;
 
-    if (!/^https?:\/\//i.test(source.qr.destinationUrl)) {
+    if (!normalizeMenuCardQrDestination(source.qr.destinationUrl)) {
         warnings.push({
             code: 'qr_too_dense',
             severity: 'blocker',

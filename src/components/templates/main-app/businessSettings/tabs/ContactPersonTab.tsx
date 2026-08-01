@@ -5,7 +5,7 @@ import { LuMail, LuPhone, LuUser } from 'react-icons/lu';
 const { Title } = Typography;
 
 interface ContactPersonTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const ContactPersonTab: React.FC<ContactPersonTabProps> = ({ scrollRef }) => {

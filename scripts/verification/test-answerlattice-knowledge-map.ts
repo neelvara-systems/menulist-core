@@ -278,6 +278,53 @@ assert.match(rendered.safeHtml, /<h2 id="topic-connect-slack-2">/);
 assert.ok(rendered.safeHtml.includes('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;'));
 assert.equal(rendered.safeHtml.includes('javascript:'), false);
 
+const publicUrlBoundaryArticle = {
+    type: 'doc',
+    content: [
+        {
+            type: 'paragraph',
+            content: [
+                {
+                    type: 'text',
+                    text: 'Internal help',
+                    marks: [{ type: 'link', attrs: { href: '/help/getting-started' } }],
+                },
+                {
+                    type: 'text',
+                    text: 'External help',
+                    marks: [{ type: 'link', attrs: { href: 'https://docs.example.com/article' } }],
+                },
+                {
+                    type: 'text',
+                    text: 'Backslash escape',
+                    marks: [{ type: 'link', attrs: { href: '/\\attacker.example/link' } }],
+                },
+                {
+                    type: 'text',
+                    text: 'Credential leak',
+                    marks: [{ type: 'link', attrs: { href: 'https://user:secret@example.com/link' } }],
+                },
+            ],
+        },
+        { type: 'image', attrs: { src: '/images/help.png', alt: 'Internal image' } },
+        { type: 'image', attrs: { src: '/\\attacker.example/image.png', alt: 'Escaped image' } },
+        {
+            type: 'image',
+            attrs: {
+                src: 'https://user:secret@example.com/image.png',
+                alt: 'Credential image',
+            },
+        },
+    ],
+};
+const publicUrlBoundaryHtml = renderPublicTiptapArticle(publicUrlBoundaryArticle).safeHtml;
+assert.match(publicUrlBoundaryHtml, /href="\/help\/getting-started"/);
+assert.match(publicUrlBoundaryHtml, /href="https:\/\/docs\.example\.com\/article"/);
+assert.match(publicUrlBoundaryHtml, /src="\/images\/help\.png"/);
+assert.equal(publicUrlBoundaryHtml.includes('attacker.example'), false);
+assert.equal(publicUrlBoundaryHtml.includes('user:secret'), false);
+assert.equal(publicUrlBoundaryHtml.includes('href="//'), false);
+
 const bounded = buildAnswerlatticePublicArticleOutline({
     type: 'doc',
     content: Array.from({ length: 60 }, (_, index) => ({

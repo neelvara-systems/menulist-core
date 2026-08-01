@@ -123,7 +123,7 @@ const normalizeFontPreset = (value: unknown, documentId?: string): FontPresetsTy
         size: font.size,
         type: font.type,
         fileUrl: font.fileUrl,
-        index: font.index,
+        index: Number(font.index),
         ...(fontSize !== undefined ? { fontSize } : {}),
         ...(width !== undefined ? { width } : {}),
         ...(height !== undefined ? { height } : {}),
@@ -255,6 +255,9 @@ export const updateFontPreset = async (fontDetails: FontPresetsType) => {
 export const sortFontsPresets = async (updatedList: FontPresetsType[]) => {
     return await apiCallComposer(
         async () => {
+            if (!Array.isArray(updatedList) || updatedList.length > MAX_FONT_PRESETS) {
+                throw new Error('font_preset_document_limit_exceeded');
+            }
             const desiredIndexes = new Map<string, number>();
             updatedList.forEach((font, index) => {
                 const fontId = String(font.id || '').trim();
@@ -264,7 +267,13 @@ export const sortFontsPresets = async (updatedList: FontPresetsType[]) => {
                 desiredIndexes.set(fontId, index);
             });
 
-            const querySnapshot = await getDocs(getCollectionRef());
+            const querySnapshot = await getDocs(firestoreQuery(
+                getCollectionRef(),
+                firestoreLimit(MAX_FONT_PRESETS + 1),
+            ));
+            if (querySnapshot.size > MAX_FONT_PRESETS) {
+                throw new Error('font_preset_document_limit_exceeded');
+            }
             if (querySnapshot.size !== desiredIndexes.size) {
                 throw new Error('font_preset_sort_set_mismatch');
             }

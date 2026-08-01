@@ -1191,7 +1191,7 @@ export const createAnswerlatticeStaffUser = async (request: NextRequest, session
         access.scope.tenantId,
         access.scope.storeId,
     );
-    if (isAnswerlatticeManagedStaffIdentityCollision({
+    if (existingAnswerlatticeUser && isAnswerlatticeManagedStaffIdentityCollision({
         existingRequestId: existingAnswerlatticeUser?.data?.creationRequestId,
         existingUser: Boolean(existingAnswerlatticeUser),
         hasEmail,

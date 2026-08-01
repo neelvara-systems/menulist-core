@@ -207,7 +207,7 @@ const CatalogCard = ({
                     </div>
                 )}
 
-                {projectStatus !== 'active' && (
+                {projectStatus !== 'active' && statusPresentation && (
                     <Tag
                         color={statusPresentation.color}
                         style={{

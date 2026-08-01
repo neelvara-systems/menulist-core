@@ -19,7 +19,11 @@ export function toRepoPath(fullPath: string): string {
 }
 
 export function fromRepoPath(repoPath: string): string {
-  return path.join(REPO_ROOT, repoPath);
+  const fullPath = path.resolve(REPO_ROOT, repoPath);
+  if (fullPath !== REPO_ROOT && !fullPath.startsWith(`${REPO_ROOT}${path.sep}`)) {
+    throw new Error(`Asset Factory path must stay inside the repository: ${repoPath}`);
+  }
+  return fullPath;
 }
 
 export function fileExists(repoPath: string): boolean {
@@ -82,6 +86,17 @@ export function getBrandContextPath(brand: AssetSlot['brand']): string {
 
 export function getSlotDeclarationPath(brand: AssetSlot['brand']): string {
   return `packages/asset-factory/slots/${brand}.asset-slots.ts`;
+}
+
+export function getAssetBriefPath(slotId: string, declaredPath?: string): string {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(slotId)) {
+    throw new Error(`Asset slot ID is not path-safe: ${slotId}`);
+  }
+  const expectedPath = `packages/asset-factory/briefs/${slotId}.md`;
+  if (declaredPath && declaredPath !== expectedPath) {
+    throw new Error(`Asset brief path must match its slot ID: ${slotId}`);
+  }
+  return expectedPath;
 }
 
 export function hashFile(repoPath: string): string | null {

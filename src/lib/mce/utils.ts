@@ -63,27 +63,58 @@ export function sanitizeForClient(projectData: any): any {
                         data.items = data.items
                             .filter((item: any) => item.active !== false)
                             .map((item: any) => {
-                                const cleanItem = { ...item };
-                                delete cleanItem.sourceFileIndex;
-                                delete cleanItem.descriptionSource; // Internal editor metadata — not for customers
-                                delete cleanItem.ownerBoost; // Owner ranking control — internal editor state
-                                delete cleanItem.qualityReview; // Price-review workflow metadata — internal only
+                                const cleanItem = projectDefinedFields(item, [
+                                    'id',
+                                    'extractionIdAliases',
+                                    'attributes',
+                                    'category',
+                                    'name',
+                                    'description',
+                                    'price',
+                                    'images',
+                                    'tags',
+                                    'active',
+                                    'available',
+                                    'isBestSeller',
+                                    'decisionFacts',
+                                    'allergens',
+                                    'dietaryTags',
+                                    'spiceLevel',
+                                    'nutritionInfo',
+                                    'skillLevel',
+                                    'targetAudience',
+                                    'materials',
+                                    'warranty',
+                                    'duration',
+                                    'orderIndex',
+                                    '_isSpecialSection',
+                                ]);
 
-                                if (cleanItem.decisionFacts && typeof cleanItem.decisionFacts === 'object') {
-                                    cleanItem.decisionFacts = Object.fromEntries(
-                                        Object.entries(cleanItem.decisionFacts)
-                                            .flatMap(([key, fact]: [string, any]) => (
-                                                fact && typeof fact === 'object' && fact.value !== undefined
-                                                    ? [[key, { value: fact.value }]]
-                                                    : []
-                                            )),
-                                    );
+                                const decisionFacts = sanitizePublicDecisionFacts(cleanItem.decisionFacts);
+                                if (decisionFacts) {
+                                    cleanItem.decisionFacts = decisionFacts;
+                                } else {
+                                    delete cleanItem.decisionFacts;
                                 }
 
                                 if (Array.isArray(cleanItem.attributes)) {
-                                    cleanItem.attributes = cleanItem.attributes.filter(
-                                        (attribute: any) => attribute?.active !== false,
-                                    );
+                                    cleanItem.attributes = cleanItem.attributes
+                                        .filter((attribute: any) => attribute?.active !== false)
+                                        .map((attribute: unknown) => projectDefinedFields(attribute, [
+                                            'id',
+                                            'name',
+                                            'price',
+                                            'active',
+                                            'orderIndex',
+                                        ]));
+                                } else {
+                                    delete cleanItem.attributes;
+                                }
+
+                                if (cleanItem.nutritionInfo !== undefined) {
+                                    const nutritionInfo = sanitizePublicNutritionInfo(cleanItem.nutritionInfo);
+                                    if (nutritionInfo) cleanItem.nutritionInfo = nutritionInfo;
+                                    else delete cleanItem.nutritionInfo;
                                 }
 
                                 if (cleanItem.images !== undefined) {
@@ -97,19 +128,49 @@ export function sanitizeForClient(projectData: any): any {
                     if (data.categories && Array.isArray(data.categories)) {
                         data.categories = data.categories
                             .filter((cat: any) => cat.active !== false)
-                            .map((category: any) => ({
-                                ...category,
-                                ...(category?.images !== undefined
-                                    ? { images: sanitizePublicImages(category.images) }
-                                    : {}),
-                            }));
+                            .map((category: any) => {
+                                const cleanCategory = projectDefinedFields(category, [
+                                    'id',
+                                    'active',
+                                    'name',
+                                    'description',
+                                    'extractionIdAliases',
+                                    'icon',
+                                    'images',
+                                    'timeSlots',
+                                    'orderIndex',
+                                    '_isSpecialSection',
+                                ]);
+                                if (cleanCategory.images !== undefined) {
+                                    cleanCategory.images = sanitizePublicImages(cleanCategory.images);
+                                }
+                                if (Array.isArray(cleanCategory.timeSlots)) {
+                                    cleanCategory.timeSlots = cleanCategory.timeSlots.map((slot: unknown) => (
+                                        projectDefinedFields(slot, [
+                                            'presetId',
+                                            'startTime',
+                                            'endTime',
+                                            'days',
+                                        ])
+                                    ));
+                                } else {
+                                    delete cleanCategory.timeSlots;
+                                }
+                                return cleanCategory;
+                            });
                     }
 
                     cleanFile.extractedData = {
                         data: {
                             categories: Array.isArray(data.categories) ? data.categories : [],
                             items: Array.isArray(data.items) ? data.items : [],
-                            languages: Array.isArray(data.languages) ? data.languages : [],
+                            languages: Array.isArray(data.languages)
+                                ? data.languages.map((language: unknown) => projectDefinedFields(language, [
+                                    'name',
+                                    'code',
+                                    'isPrimary',
+                                ]))
+                                : [],
                         },
                     };
                 }
@@ -153,6 +214,77 @@ export function sanitizeForClient(projectData: any): any {
     }
 
     return publicProject;
+}
+
+function projectDefinedFields(
+    value: unknown,
+    fields: readonly string[],
+): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const source = value as Record<string, unknown>;
+    return Object.fromEntries(fields.flatMap((field) => (
+        source[field] !== undefined ? [[field, source[field]]] : []
+    )));
+}
+
+function sanitizePublicNutritionInfo(value: unknown): Record<string, unknown> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const nutrition = projectDefinedFields(value, [
+        'calories',
+        'protein',
+        'carbs',
+        'fat',
+        'servingSize',
+    ]);
+    const normalized = Object.fromEntries(Object.entries(nutrition).filter(([key, candidate]) => (
+        key === 'servingSize'
+            ? typeof candidate === 'string'
+            : typeof candidate === 'number' && Number.isFinite(candidate)
+    )));
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function sanitizePublicDecisionFactValue(value: unknown): unknown {
+    if (
+        typeof value === 'string'
+        || typeof value === 'boolean'
+        || (typeof value === 'number' && Number.isFinite(value))
+    ) {
+        return value;
+    }
+    if (Array.isArray(value)) {
+        const entries = value.filter((entry) => (
+            typeof entry === 'string'
+            || typeof entry === 'boolean'
+            || (typeof entry === 'number' && Number.isFinite(entry))
+        ));
+        return entries.length > 0 ? entries : undefined;
+    }
+    return sanitizePublicNutritionInfo(value);
+}
+
+function sanitizePublicDecisionFacts(value: unknown): Record<string, { value: unknown }> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    const facts = Object.entries(value as Record<string, unknown>).flatMap(([key, fact]) => {
+        if (
+            !key
+            || key === '__proto__'
+            || key === 'constructor'
+            || key === 'prototype'
+            || !fact
+            || typeof fact !== 'object'
+            || Array.isArray(fact)
+        ) {
+            return [];
+        }
+        const normalizedValue = sanitizePublicDecisionFactValue(
+            (fact as Record<string, unknown>).value,
+        );
+        return normalizedValue === undefined
+            ? []
+            : [[key, { value: normalizedValue }] as const];
+    });
+    return facts.length > 0 ? Object.fromEntries(facts) : undefined;
 }
 
 function sanitizePublicImages(value: unknown): Array<Record<string, unknown>> {

@@ -1,17 +1,15 @@
 
-import { match as matchLocale } from '@formatjs/intl-localematcher';
 import {
     APP_LOCALE_COOKIES_KEY,
     APP_TIMEZONE_COOKIES_KEY,
-    AppSupportedLocales,
     defaultLocale,
     defaultTimezone,
     Locale,
     normalizeLocalePreference,
+    parseAcceptLanguageLocales,
     normalizeTimeZone,
 } from '@lib/localization/config';
-import Negotiator from 'negotiator';
-import { IntlErrorCode } from 'next-intl';
+import { IntlErrorCode, type AbstractIntlMessages } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
 import { cookies, headers } from 'next/headers';
 import { getBoundedErrorStringField } from '@lib/monitoring/boundedLogContext';
@@ -69,7 +67,7 @@ import zhCN from '../../public/locales/menulist.ai/zh-CN.json';
 import zhTW from '../../public/locales/menulist.ai/zh-TW.json';
 import { getBoundedI18nStringContext, logI18nDiagnostic, logI18nFailure } from './diagnostics';
 
-const localeMessages: Record<string, Record<string, any>> = {
+const localeMessages: Record<string, AbstractIntlMessages> = {
     'ar-SA': arSA,
     'as-IN': asIN,
     'bn-IN': bnIN,
@@ -125,14 +123,26 @@ const localeMessages: Record<string, Record<string, any>> = {
 };
 
 // Deep merge: target values overwrite source, but missing keys fall back to source
-function deepMerge(source: Record<string, any>, target: Record<string, any>): Record<string, any> {
+const UNSAFE_MESSAGE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function deepMerge(
+    source: AbstractIntlMessages,
+    target: AbstractIntlMessages,
+): AbstractIntlMessages {
     const result = { ...source };
     for (const key of Object.keys(target)) {
-        if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])
-            && source[key] && typeof source[key] === 'object') {
-            result[key] = deepMerge(source[key], target[key]);
+        if (UNSAFE_MESSAGE_KEYS.has(key)) continue;
+        const targetValue = target[key];
+        const sourceValue = source[key];
+        if (
+            targetValue
+            && typeof targetValue === 'object'
+            && sourceValue
+            && typeof sourceValue === 'object'
+        ) {
+            result[key] = deepMerge(sourceValue, targetValue);
         } else {
-            result[key] = target[key];
+            result[key] = targetValue;
         }
     }
     return result;
@@ -160,16 +170,8 @@ export default getRequestConfig(async () => {
 
         //3. get user browser locale if user accessing app first time or not selected any locale
         if (!localLocale) {
-            const headersList = await headers()
-            const negotiatorHeaders: Record<string, string> = {}
-            headersList.forEach((value, key) => (negotiatorHeaders[key] = value))
-            const languages = new Negotiator({ headers: negotiatorHeaders }).languages()
-                .map((language) => normalizeLocalePreference(language))
-                .filter(Boolean) as Locale[];
-            const availableLocales: string[] = AppSupportedLocales;
-            locale = languages.length
-                ? matchLocale(languages, availableLocales, defaultLocale) as Locale
-                : defaultLocale;
+            const languages = parseAcceptLanguageLocales((await headers()).get('accept-language'));
+            locale = languages[0] || defaultLocale;
         } else {
             locale = localLocale;
         }

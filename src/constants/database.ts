@@ -1,6 +1,7 @@
 import { ANSWERLATTICE_DB_COLLECTIONS } from './answerlattice/database';
 
 export const DB_COLLECTIONS = {
+    ...ANSWERLATTICE_DB_COLLECTIONS,
     PLATFORM_SUMMARY: "platformSummary",
     LANDING_PAGE_ENQUIRIES: "landingPageEnquiries",
 
@@ -198,8 +199,6 @@ export const DB_COLLECTIONS = {
     // DAL files use answerlatticeFirebaseClient, not firebaseClient.
     // @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md
     // ═══════════════════════════════════════════════════════════════
-    ...ANSWERLATTICE_DB_COLLECTIONS,
-
     // ═══════════════════════════════════════════════════════════════
     // INFRASTRUCTURE LAYER (AI Discovery & Machine Readability)
     // Cross-business discovery index — contains ONLY public business data.

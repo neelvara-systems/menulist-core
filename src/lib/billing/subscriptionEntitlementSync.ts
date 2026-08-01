@@ -37,12 +37,23 @@ export interface SubscriptionEntitlementSyncInput {
     status?: PaymentStatus | string | null;
 }
 
-export interface SubscriptionEntitlementState {
-    activePlanType: string | null;
-    status: string | null;
-    syncedAt?: any;
-    source?: string;
-}
+const SUBSCRIPTION_ENTITLEMENT_AUDIT_STATUSES = new Set<PaymentStatus>([
+    'pending',
+    'active',
+    'cancelled',
+    'expired',
+    'paid',
+    'failed',
+    'past_due',
+    'paused',
+    'completed',
+]);
+
+const projectSubscriptionEntitlementAuditStatus = (value: unknown): PaymentStatus | null => (
+    typeof value === 'string' && SUBSCRIPTION_ENTITLEMENT_AUDIT_STATUSES.has(value as PaymentStatus)
+        ? value as PaymentStatus
+        : null
+);
 
 const getSubscriptionEntitlementLogContext = (
     subscription: SubscriptionEntitlementSyncInput,
@@ -55,14 +66,6 @@ const getSubscriptionEntitlementLogContext = (
     ...getBoundedRazorpayStringContext('status', subscription.status),
     ...getBoundedRazorpayStringContext('source', source),
 });
-
-export function isSubscriptionEntitlementSynced(
-    subscription: Partial<FirestoreSubscriptionDoc>,
-    desiredActivePlanType: string | null,
-): boolean {
-    const syncedPlanType = (subscription as any)?.analyticsEntitlement?.activePlanType ?? null;
-    return syncedPlanType === desiredActivePlanType;
-}
 
 export async function syncStorePlanEntitlementFromSubscription(
     subscription: SubscriptionEntitlementSyncInput,
@@ -166,7 +169,7 @@ export async function syncStorePlanEntitlementFromSubscription(
         transaction.set(subscriptionRef, {
             analyticsEntitlement: {
                 activePlanType,
-                status: current.status || null,
+                status: projectSubscriptionEntitlementAuditStatus(current.status),
                 syncedAt,
                 source,
             },

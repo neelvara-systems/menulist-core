@@ -39,12 +39,14 @@ const actions = read('src/lib/localization/index.ts');
 
 const requestConfig = read('src/i18n/request.ts');
 assertIncludes(requestConfig, 'normalizeLocalePreference', 'request localization boundary');
+assertIncludes(requestConfig, "parseAcceptLanguageLocales((await headers()).get('accept-language'))", 'bounded Accept-Language request boundary');
+assert(!requestConfig.includes("from 'negotiator'"), 'request localization must not import an undeclared transitive parser');
+assert(!requestConfig.includes("from '@formatjs/intl-localematcher'"), 'request localization must not import an undeclared transitive matcher');
 assertIncludes(requestConfig, 'normalizeTimeZone', 'request timezone boundary');
-
-const legacyRequestConfig = read('src/i18n-old.ts');
-assertIncludes(legacyRequestConfig, 'normalizeLocalePreference', 'legacy request localization boundary');
-assertIncludes(legacyRequestConfig, 'normalizeTimeZone', 'legacy request timezone boundary');
-assert(!legacyRequestConfig.includes('locale.includes("en")'), 'legacy request config must not use broad English substring matching');
+assertIncludes(requestConfig, 'Record<string, AbstractIntlMessages>', 'request message registry type boundary');
+assertIncludes(requestConfig, "const UNSAFE_MESSAGE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);", 'request message merge unsafe-key boundary');
+assertIncludes(requestConfig, 'if (UNSAFE_MESSAGE_KEYS.has(key)) continue;', 'request message merge unsafe-key rejection');
+assert(!requestConfig.includes('Record<string, Record<string, any>>'), 'request message registry must not use broad any values');
 
 const clientProvider = read('src/providers/IntlClientWrapper.tsx');
 assertIncludes(clientProvider, 'document.documentElement.lang = safeLocale;', 'document language boundary');

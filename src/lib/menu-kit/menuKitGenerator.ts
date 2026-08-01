@@ -22,7 +22,16 @@ import { generatePrintMenuTableTent, generatePrintMenuTableTentImage } from '../
 import { generateTakeawayCard } from './templates/takeawayCardTemplate';
 import { generateWhatsappStatus } from './templates/whatsappStatusTemplate';
 import { getOfferingLabels } from './businessTypeLabels';
-import { buildMenuKitUrl, buildPrintInstructions, MENU_KIT_UTM_SOURCES, MenuKitAsset, MenuKitInput, MenuKitResult, validateMenuUrl } from './types';
+import {
+    buildMenuKitUrl,
+    buildPrintInstructions,
+    MENU_KIT_UTM_SOURCES,
+    MenuKitAsset,
+    MenuKitInput,
+    MenuKitResult,
+    normalizeMenuKitInput,
+    validateMenuUrl,
+} from './types';
 
 export const MENU_KIT_ASSET_KEYS = [
     'table_tent',
@@ -176,21 +185,28 @@ async function prepareMenuKitInput(input: MenuKitInput): Promise<{
     logo: PreloadedLogo | null;
     safeName: string;
 }> {
-    const validatedUrl = validateMenuUrl(input.menuUrl);
+    const normalizedInput = normalizeMenuKitInput(input);
+    if (!normalizedInput) {
+        if (!validateMenuUrl(input?.menuUrl)) {
+            throw new Error('Invalid menu URL: must use HTTPS without embedded credentials');
+        }
+        throw new Error('Invalid Menu Kit input');
+    }
+    const validatedUrl = normalizedInput.menuUrl;
     if (!validatedUrl) {
         throw new Error('Invalid menu URL: must use HTTPS without embedded credentials');
     }
 
-    const safeName = buildMenuKitSafeName(input.storeName);
+    const safeName = buildMenuKitSafeName(normalizedInput.storeName);
 
     // Pre-load logo image once, share across selected template(s).
     let logo: PreloadedLogo | null = null;
-    if (input.logoUrl) {
-        logo = await loadLogo(input.logoUrl);
+    if (normalizedInput.logoUrl) {
+        logo = await loadLogo(normalizedInput.logoUrl);
     }
 
     return {
-        enrichedInput: { ...input, _logo: logo },
+        enrichedInput: { ...normalizedInput, menuUrl: validatedUrl, _logo: logo },
         logo,
         safeName,
     };
@@ -249,7 +265,10 @@ export async function generateMenuKitAsset(
  */
 export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResult> {
     const prepared = await prepareMenuKitInput(input);
-    const labels = getOfferingLabels(input.businessType, input.businessCategory);
+    const labels = getOfferingLabels(
+        prepared.enrichedInput.businessType,
+        prepared.enrichedInput.businessCategory,
+    );
     const assets = await Promise.all(
         MENU_KIT_ASSET_DEFINITIONS.map((definition) => renderMenuKitAsset(definition, prepared)),
     );
@@ -260,10 +279,18 @@ export async function generateMenuKit(input: MenuKitInput): Promise<MenuKitResul
         zip.file(asset.filename, await asset.blob.arrayBuffer());
     }
     // Add print instructions text file for print shops
-    zip.file('PRINT_INSTRUCTIONS.txt', buildPrintInstructions(input.storeName, labels));
+    zip.file('PRINT_INSTRUCTIONS.txt', buildPrintInstructions(prepared.enrichedInput.storeName, labels));
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
-    return { assets, staffScript: labels.staffScript, zipBlob, zipFilename: buildMenuKitZipFilename(input.storeName, input.templateFamilyId) };
+    return {
+        assets,
+        staffScript: labels.staffScript,
+        zipBlob,
+        zipFilename: buildMenuKitZipFilename(
+            prepared.enrichedInput.storeName,
+            prepared.enrichedInput.templateFamilyId,
+        ),
+    };
 }
 
 /**

@@ -55,7 +55,8 @@
 - Reserved slug namespace (`menu`, `reviews`, `feedback`, etc.)
 - Auto-generated `outletSlug` on outlet stores
 - CDN cache headers on public pages (`s-maxage=60, stale-while-revalidate=300`)
-- `ENABLE_STORED_SLUGS` feature flag (default: ON)
+- Stored-slug permanence is an always-on routing invariant; no flag may disable
+  redirects or reserved-namespace enforcement.
 
 ### In-Scope (Canonical Routing — Implemented Feb 19, 2026)
 

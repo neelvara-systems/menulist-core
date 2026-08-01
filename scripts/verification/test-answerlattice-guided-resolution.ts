@@ -251,6 +251,8 @@ assert.ok(loader.includes('!guidanceOverlay || !isGuidanceTargetVisible(activeGu
 assert.ok(loader.includes("pointerEvents: 'none'"));
 assert.ok(loader.includes("e.source !== iframe.contentWindow"));
 assert.ok(loader.includes('resetGuidanceFromHost'));
+assert.ok(loader.includes('var stepOrder = step ? step.stepOrder : 0;'));
+assert.ok(!loader.includes('var stepOrder = step ? Number(step.stepOrder) : 0;'));
 assert.ok(!loader.includes('activeGuidanceTarget.click('));
 assert.ok(!loader.includes('eval('));
 assert.ok(widgetClient.includes("type === 'answerlattice-guidance-host-reset'"));

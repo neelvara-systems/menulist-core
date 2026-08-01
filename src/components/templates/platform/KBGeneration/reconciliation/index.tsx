@@ -61,21 +61,31 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
     };
 
     const onDiscardArticle = async () => {
-        const updatedCategoriesMap = JSON.parse(JSON.stringify(job.categories || {}));
+        if (!job || !selectedArticle) {
+            throw new Error('kb_generation_reconciliation_context_missing');
+        }
+        const updatedCategoriesMap: NonNullable<IngestionJob['categories']> = {
+            ...(job.categories || {}),
+        };
 
         if (selectedArticle.categoryId && updatedCategoriesMap[selectedArticle.categoryId]) {
             const category = updatedCategoriesMap[selectedArticle.categoryId];
-
-            if (selectedArticle.sectionId && category.sections) {
-                // Article is in a section
-                const sectionIndex = category.sections.findIndex(sec => sec.id === selectedArticle.sectionId);
-                if (sectionIndex > -1 && category.sections[sectionIndex].articles) {
-                    category.sections[sectionIndex].articles = category.sections[sectionIndex].articles.filter(art => art.id !== selectedArticle.id);
+            updatedCategoriesMap[selectedArticle.categoryId] = selectedArticle.sectionId
+                ? {
+                    ...category,
+                    sections: category.sections?.map((section) => (
+                        section.id === selectedArticle.sectionId
+                            ? {
+                                ...section,
+                                articles: section.articles?.filter((article) => article.id !== selectedArticle.id),
+                            }
+                            : section
+                    )),
                 }
-            } else if (category.articles) {
-                // Article is directly under a category
-                category.articles = category.articles.filter(art => art.id !== selectedArticle.id);
-            }
+                : {
+                    ...category,
+                    articles: category.articles?.filter((article) => article.id !== selectedArticle.id),
+                };
         }
 
         const updatedJobdata = {
@@ -92,13 +102,18 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
     }
 
     const onReplaceArticle = async () => {
+        if (!job || !selectedArticle) {
+            throw new Error('kb_generation_reconciliation_context_missing');
+        }
         // 2. Update articlesToReview
-        const articlesToReviewCopy = JSON.parse(JSON.stringify(articlesToReview));
-        articlesToReviewCopy.forEach(article => {
-            if (article.id === selectedArticle.id) {
-                article.status = ARTICLE_RECONCILIATION_STATUS.REPLACE;//this action handle in publishApprovedJob function
-            }
-        });
+        const articlesToReviewCopy: NonNullable<IngestionJob['articlesToReview']> = (articlesToReview || []).map(
+            (article) => article.id === selectedArticle.id
+                ? {
+                    ...article,
+                    status: ARTICLE_RECONCILIATION_STATUS.REPLACE,
+                }
+                : article,
+        );
 
         //for deleting other articles we need to do this logic on publishApprove frunction becuase it will contains articles from production
         const updateResult = await updateJob(job.id, { articlesToReview: articlesToReviewCopy });
@@ -113,6 +128,9 @@ const ReconciliationModal = ({ open, job, onClose, articlesToReview }: Reconcili
         dispatch(startLoader('Resolving article...'));
 
         try {
+            if (!job || !selectedArticle) {
+                throw new Error('kb_generation_reconciliation_context_missing');
+            }
             if (resolution === 'discard') {
                 await onDiscardArticle();
             } else if (resolution === 'replace') {

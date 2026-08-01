@@ -2,7 +2,7 @@
 
 > **Feature:** Public marketing website for AnswerLattice product
 > **Status:** ✅ LOCAL SOURCE COMPLETE — approved-answers-first positioning, connected owner-decision proof, deterministic governance proof, plan/currency-accurate onboarding, factual trust disclosures, self-service AnswerLattice, accessible public navigation/forms, agent-readable discovery, and consent-gated website analytics
-> **Date:** 2026-07-29
+> **Date:** 2026-07-31
 > **Domain:** answerlattice.com (production) | answerlattice.menulist.online (Vercel Preview / QA) | localhost:3000/__answerlattice (dev)
 > **Feature Flag:** None required (static marketing site)
 > **Route Group:** `src/app/sites/answerlattice/`
@@ -39,9 +39,18 @@ The deterministic demo has no network/provider path. Get Started uses native for
 - Public copy distinguishes the private governed Knowledge Map from public article topic maps, keeps weighted friction as prioritization evidence rather than root cause, and states that tests and release previews do not mutate support truth.
 - The update is static website source. It adds no Firestore read, write, listener, scheduled task, model call, dependency, public data contract, or Firebase deployment requirement.
 
+## July 31, 2026 Progressive Adoption Guidance
+
+- Solo technical founders remain the primary first-use audience and the homepage remains optimized for their immediate support problem.
+- The public Operating Guide documents one product with three optional operating depths: Start for one accountable owner, Coordinate for shared support ownership, and Govern for a bounded product/support/engineering group.
+- The three depths are guidance only. They do not create product editions, workspace modes, maturity scores, automatic progression, or new runtime state.
+- Larger-company fit is determined by the operating group and required controls, not employee count. Public copy must not imply unverified SAML, SCIM, contractual service levels, certifications, workforce management, or contact-center capability.
+- The guide, navigation link, use-case alignment, and Founder Launch Kit handoff are bundled static content with no Firebase or provider work.
+
 ## Related Strategy
 
-- `../self-sellable-product-strategy.md` — AnswerLattice's non-enterprise ICP, AI-built SaaS founder positioning, pricing direction, website message bank, and sellable-launch task list. Use this before changing public AnswerLattice website copy.
+- `../self-sellable-product-strategy.md` — AnswerLattice's self-serve ICP, AI-built SaaS founder positioning, broader bounded-team fit, pricing direction, website message bank, and sellable-launch task list. Use this before changing public AnswerLattice website copy.
+- `../progressive-adoption-operating-guide.md` — Maintained Start, Coordinate, and Govern operating contract. Use this before making advanced controls mandatory or adding audience-specific modes.
 
 ---
 
@@ -95,6 +104,7 @@ The deterministic demo has no network/provider path. Get Started uses native for
 | `/pricing` | Pricing | INR and USD Starter/Growth/Studio packaging, paid setup, and support-credit top-up explanation |
 | `/resources` | Resources | AnswerLattice learning hub for pre-onboarding, product evaluation, setup, feedback review, widget install, governance, and safety |
 | `/resources/founder-launch-kit` | Founder Launch Kit | Seven-step source, first-ten question, approval, test, install, outcome, and weekly-review workflow for founders and studios |
+| `/resources/answerlattice-operating-guide` | Operating Guide | Progressive manual for starting with one owner, adding team coordination when ownership spreads, and introducing deeper governance when answer risk grows |
 | `/resources/launch-support-checklist` | Resource Article | Launch setup checklist for page-aware support, approved answers, fallback, and support-gap review |
 | `/resources/pre-onboarding-source-package` | Resource Article | Source-preparation guide for repo, website, docs, owner notes, policies, screenshots, and product exclusions |
 | `/resources/safe-page-context` | Resource Article | Public explanation of safe widget context and blocked private data |
@@ -131,7 +141,7 @@ The deterministic demo has no network/provider path. Get Started uses native for
 | `src/app/layout.tsx` | Root app layout that imports scoped AnswerLattice CSS so clean-cache public routes receive theme-aware styling and Tailwind utilities from `app/layout.css` |
 | `src/app/sites/answerlattice/layout.tsx` | AnswerLattice route layout with metadata, OG tags, SEO, OS-aware theme-color metadata, pre-hydration theme bootstrap, analytics, reveal, and theme provider islands |
 | `src/app/sites/answerlattice/theme.ts` | AnswerLattice public-site theme contract: Verdigris Answer Layer dark/light colors, theme storage key, primary accent, status colors, and browser theme colors |
-| `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts` | Screen-asset registry for image-backed generated/final website product scenes with fixed 1440 x 1200 dimensions |
+| `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts` | Screen-asset registry for image-backed generated/final website product scenes with fixed 1440 x 1200 dimensions across PNG and WebP proof assets |
 | `src/content/answerlatticePublic/visualAssets.ts` | Maintained inventory for current generated assets, future animation slots, must-show notes, and must-avoid guardrails |
 | `src/app/sites/answerlattice/styles.css` | Root-loaded Tailwind directives, scoped AnswerLattice CSS variables, dark/light compatibility rules, diagram theming, and page/section rhythm |
 | `src/app/sites/answerlattice/scroll-reveal.css` | Root-loaded AnswerLattice viewport reveal motion for public website sections, cards, CTAs, and footer groups |
@@ -231,8 +241,9 @@ The deterministic demo has no network/provider path. Get Started uses native for
 | `public/answerlattice-splash/apple-splash-*.png` | AnswerLattice iOS startup image family rendered on the PWA startup background with the transparent logo mark composited on top |
 | `public/answerlattice.webmanifest` | AnswerLattice web app manifest |
 | `public/answerlattice-website-assets/dummy/*.png` | Public 1440 x 1200 generated product-scene PNG slots used by homepage, product preview, product-area, feature, widget, and demo screens; the directory name is retained for compatibility |
+| `public/answerlattice-{owner-decision-system,knowledge-map,release-assurance,article-topic-map}.webp` | AssetOS-governed 1440 x 1200 owner-decision proof assets used by the homepage, Knowledge Governance, and Knowledge Base feature page |
 | `packages/asset-factory/answerlattice-website-assets/dummy-sources/` | Internal source SVGs and manifest for regenerating website product-scene assets; not referenced by public pages |
-| `scripts/website-assets/generate-answerlattice-website-dummy-assets.js` | Deterministic generator for AnswerLattice website product-scene PNG assets, with zero npm dependencies |
+| `scripts/website-assets/generate-answerlattice-website-dummy-assets.js` | Deterministic generator for AnswerLattice website product-scene PNG and WebP assets, using the existing root image runtime without adding a dependency |
 | `src/lib/answerlattice/pwaAssets.ts` | AnswerLattice PWA startup image helper that keeps splash metadata out of root app defaults |
 | `src/app/sites/answerlattice/components/Header.tsx` | Shared header with Product, Demo, Install, Use Cases, Resources, Pricing, compact Product/Resources dropdowns, and right-side mobile drawer |
 | `src/app/sites/answerlattice/components/Footer.tsx` | Shared footer with broad public-route link columns and bottom theme control |
@@ -300,7 +311,7 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 7. **Contact boundary** — `/contact` posts to an AnswerLattice-owned API route and AnswerLattice Firestore collection. It does not reuse another product's public enquiry storage, and public contact/onboarding/widget browser errors use fixed failure copy instead of API response text or exception messages.
 8. **Viewport reveal motion** — A single AnswerLattice-specific client island adds restrained section/card/CTA reveal effects across public pages with reduced-motion support. Motion stays product-site polish, not decorative animation.
 9. **Diagram motion** — AnswerLattice diagrams use one soft logo-centered ripple without an inner static strip. Cross-diagram pulses start from the logo together, run to the visible guide-line endpoints, and fade at the endpoint instead of disappearing abruptly.
-10. **Screen assets** — Website product-screen sample scenes render from 1440 x 1200 PNG slots instead of HTML/CSS mockup screens. Production screenshots or GIFs can replace the same named slots later so layout, crop, and page rhythm stay stable.
+10. **Screen assets** — Website product-screen sample scenes render from 1440 x 1200 PNG and WebP slots instead of HTML/CSS mockup screens. The four owner-decision proof assets are governed through AssetOS; production captures can replace the same named slots later so layout, crop, and page rhythm stay stable.
 11. **Non-home hero treatment** — `styles.css` keeps non-home route heroes aligned through `.al-page-flow` and `.al-page-hero`: centered eyebrows, titles, descriptions, actions, and proof strips use one type scale and color system, while the homepage keeps its own larger first-viewport treatment.
 
 ---
@@ -309,7 +320,10 @@ See `src/constants/productDomains.ts` for the full multi-product domain registry
 
 | Date | Change |
 |------|--------|
+| 2026-07-29 | Minimized consented website analytics context: removed raw external referrer host/path fields, reduced known referrers to allowlisted groups, rejected arbitrary UTM query text, reduced external links to origin, and admitted Plausible script overrides only from relative or credential-free HTTPS sources |
+| 2026-07-29 | Added four deterministic, AssetOS-governed WebP proof assets for the Owner Decision System, Knowledge Map, Release Impact with Answer Tests, and public Article Topic Map; wired them to the matching homepage, Knowledge Governance, and Knowledge Base stories without runtime or Firebase work |
 | 2026-07-29 | Connected Daily Brief, Knowledge Map, Product Friction Evidence, release impact, Answer Tests, and article topic maps across the compressed homepage and deeper product routes without adding website Firebase cost |
+| 2026-07-31 | Added the static AnswerLattice Operating Guide and progressive Start, Coordinate, Govern public path while preserving the solo-founder homepage, one product model, and explicit larger-company non-claims |
 | 2026-07-19 | Aligned public support-credit copy with operation-level accounting, moved the category to governed support layer, sourced retention wording from shared constants, added AI-provider data-use non-claims, expanded the product terms summary without inventing legal clauses, and moved root mail delivery to the compatible Nodemailer 9 runtime alias |
 | 2026-07-13 | Hardened AnswerLattice Product and Resources dropdowns with hover-bridge, Escape close, and viewport scroll containment; upgraded the phone drawer to full-width mobile presentation with higher overlay stacking, internal scroll isolation, and safe-area CTA behavior |
 | 2026-07-11 | Replaced the static demo switcher with a deterministic governance event, exposed INR/USD plan selection through Pricing and Get Started, added factual Trust and Data Handling disclosures, and updated privacy-provider/retention wording without claiming certification or contractual terms |

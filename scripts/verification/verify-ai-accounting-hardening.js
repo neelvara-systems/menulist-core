@@ -51,6 +51,12 @@ const billableRoutes = [
   'src/app/api/translations/route.ts',
 ];
 
+const imageViewTypeRegistry = read('src/components/templates/main-app/projects/editorView/AiImageGenerator/imageViewType.ts');
+assert(imageViewTypeRegistry.includes('export type ImageViewType = (typeof imageViewTypesData)[number];'), 'image view registry derives its exact static JSON contract');
+assert(imageViewTypeRegistry.includes('export const IMAGE_VIEW_TYPES: readonly ImageViewType[] = imageViewTypesData;'), 'image view registry exports an exact readonly collection');
+assert(imageViewTypeRegistry.includes('): ImageViewType {'), 'image view registry fallback resolver returns the exact registry row');
+assert(!imageViewTypeRegistry.includes('IMAGE_VIEW_TYPES: any[]'), 'image view registry must not erase its static data contract');
+
 for (const route of billableRoutes) {
   const source = read(route);
   assert(source.includes('finalizeAiOperationAccounting'), `${route} uses shared AI accounting finalizer`);
@@ -1765,6 +1771,7 @@ for (const route of billableRoutes) {
 	  assert(!businessCopyRoute.includes("logger.info('Business copy generation completed', {"), 'business copy route must not log raw completion context');
 
 	  const descriptionRoute = read('src/app/api/descriptions/route.ts');
+	  assert(descriptionRoute.includes('const getPendingAiTransactionId = (): string | null => null;'), 'description route types the unsettled accounting transaction sentinel');
 	  assert(descriptionRoute.includes('parseDescriptionProviderResponse(response.text'), 'description route parses provider response through bounded parser');
 	  assert(descriptionRoute.includes("logger.warn('Description generation returned incomplete response', getAIRouteLogContext"), 'description route bounds incomplete-response warning context');
 	  assert(descriptionRoute.includes("logger.info('Description generation completed', getAIRouteLogContext"), 'description route bounds completion diagnostics');
@@ -1822,6 +1829,7 @@ for (const route of billableRoutes) {
 	    });
 
 	  const newItemMetadataRoute = read('src/app/api/new-item-metadata/route.ts');
+	  assert(newItemMetadataRoute.includes('const getPendingAiTransactionId = (): string | null => null;'), 'new item metadata route types the unsettled accounting transaction sentinel');
 	  assert(newItemMetadataRoute.includes("logger.info('New item metadata completed', getAIRouteLogContext"), 'new item metadata route bounds completion diagnostics');
 	  assert(!newItemMetadataRoute.includes("logger.info('New item metadata completed', {"), 'new item metadata route must not log raw completion context');
 
@@ -1831,6 +1839,7 @@ for (const route of billableRoutes) {
 	  assert(!seoRoute.includes("logger.info('SEO generation completed', {"), 'SEO route must not log raw completion context');
 
 	  const translationRoute = read('src/app/api/translations/route.ts');
+	  assert(translationRoute.includes('const getPendingAiTransactionId = (): string | null => null;'), 'translation route types the unsettled accounting transaction sentinel');
 	  assert(translationRoute.includes('parseTranslationProviderResponse(response.text'), 'translation route parses initial provider response through bounded parser');
 	  assert(translationRoute.includes('parseTranslationProviderResponse(retryResponse.text'), 'translation route parses retry provider response through bounded parser');
 	  assert(!translationRoute.includes("logger.warn('Translation returned invalid JSON, retrying once'"), 'translation route must not use ad hoc invalid-JSON retry warnings');
@@ -2283,6 +2292,8 @@ for (const route of billableRoutes) {
   assert(batchWorker.includes('referenceImageStorageScope: { sId, tId }'), 'batch image worker scopes reference images to project tenant/store');
 
 	  const imageEditingRoute = read('src/app/api/image-editing/route.ts');
+	  assert(imageEditingRoute.includes('const getPendingAiTransactionId = (): string | null => null;'), 'image editing route types the unsettled accounting transaction sentinel');
+	  assert(imageEditingRoute.includes('const getEmptyAiClientResponse = (): unknown => null;'), 'image editing route types the intentionally empty operation response');
 	  assert(imageEditingRoute.includes('type ImageFetchStorageScope'), 'image editing route imports the reference image scope type');
 	  assert(imageEditingRoute.includes('storageScope: referenceImageStorageScope'), 'image editing route passes scope into source and prompt image reads');
 	  assert(imageEditingRoute.includes('sId: session.sId'), 'image editing route scopes reference images to session store');
@@ -3070,6 +3081,10 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
     'itemsExpiresAt',
     'expiresAt',
     'IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES',
+    'type ImageBatchItemAttemptFailureResult = {',
+    'runTransaction<ImageBatchItemAttemptFailureResult>',
+    'const finalData: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {',
+    'transaction.update(jobRef, finalData);',
     "import { sanitizeForFirestore } from \"@lib/firestore/sanitizeForFirestore\";",
     "return sanitizeForFirestore(value, { undefinedObjectValue: 'omit' });",
     'Timestamp.fromMillis(now + IMAGE_BATCH_JOB_RETENTION_DAYS * DAY_MS)',
@@ -3077,6 +3092,10 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   ].forEach((token) => {
     assert(source.includes(token), `${route} includes server batch job retention token ${token}`);
   });
+  assert(
+    !source.includes('transaction.set(jobRef, finalData, { merge: true });'),
+    `${route} must not recreate a missing batch job during an update`,
+  );
   assert(!source.includes('const [tId, , sId] = projectId.split("-")'), `${route} must not split image batch project IDs directly`);
 }
 
@@ -3179,7 +3198,10 @@ for (const { route, cap, validation, gate, reader } of boundedBillableBodyRoutes
   assert(batchConfig.includes('Use Recommended Defaults'), 'batch image configuration exposes plain recommended-default copy');
 
   const mobileMenu = read('src/components/mobile/screens/MobileMenuScreen.tsx');
-  assert(mobileMenu.includes("openImageUploadModal(editingItem.id, 'item', 'generate')"), 'mobile Generate image opens the generation tab');
+  assert(
+    mobileMenu.includes("openImageUploadModal(editingItem.id, 'item', 'generate', [], editingItem.fileId)"),
+    'mobile Generate image opens the generation tab with the exact source-file identity',
+  );
   assert(mobileMenu.includes('FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && filters.hasImage === false'), 'mobile missing-image batch entry respects the master flag');
 
   const uploadedImages = read('src/components/templates/main-app/projects/editorView/uploadedImagesList.tsx');

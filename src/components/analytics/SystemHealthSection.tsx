@@ -152,7 +152,7 @@ export const SystemHealthSection: React.FC<SystemHealthSectionProps> = ({
                   percent={getPercentage(metric.value, metric.threshold)}
                   strokeColor={getProgressColor(metric.status)}
                   showInfo={false}
-                  size={[null, 8]}
+                  size={['100%', 8]}
                 />
 
                 {/* Status Message */}

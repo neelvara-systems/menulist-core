@@ -80,31 +80,44 @@ function formatScheduleRange(startsAt: string, endsAt: string, formatter: IntlFo
     return formatDateTimeRange(startsAt, endsAt, formatter, '');
 }
 
-function toInputValue(iso: string | null | undefined, allowTimeScheduling: boolean): string {
+function toInputValue(
+    iso: string | null | undefined,
+    allowTimeScheduling: boolean,
+    timeZone?: string,
+): string {
     if (!iso) return '';
-    return allowTimeScheduling ? toNativeDateTimeInputValue(iso) : toNativeDateInputValue(iso);
-}
-
-function toIsoValue(rawValue: string, allowTimeScheduling: boolean): string {
     return allowTimeScheduling
-        ? fromNativeDateTimeInputValue(rawValue)
-        : fromNativeDateInputValue(rawValue);
+        ? toNativeDateTimeInputValue(iso, timeZone)
+        : toNativeDateInputValue(iso, timeZone);
 }
 
-function getScheduledStartsAtValue(allowTimeScheduling: boolean): string {
+function toIsoValue(rawValue: string, allowTimeScheduling: boolean, timeZone?: string): string {
+    return allowTimeScheduling
+        ? fromNativeDateTimeInputValue(rawValue, timeZone)
+        : fromNativeDateInputValue(rawValue, timeZone);
+}
+
+function getScheduledStartsAtValue(allowTimeScheduling: boolean, timeZone?: string): string {
     const date = new Date();
     date.setTime(date.getTime() + (allowTimeScheduling ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
-    return toInputValue(date.toISOString(), allowTimeScheduling);
+    return toInputValue(date.toISOString(), allowTimeScheduling, timeZone);
 }
 
-function getDefaultScheduledEndsAtValue(): string {
+function getDefaultScheduledEndsAtValue(
+    allowTimeScheduling: boolean,
+    timeZone?: string,
+): string {
     const date = new Date();
     date.setTime(date.getTime() + 24 * 60 * 60 * 1000);
-    return toInputValue(date.toISOString(), true);
+    return toInputValue(date.toISOString(), allowTimeScheduling, timeZone);
 }
 
-function getNativeDateTimeMs(value: string): number {
-    const iso = toIsoValue(value, true);
+function getNativeScheduleMs(
+    value: string,
+    allowTimeScheduling: boolean,
+    timeZone?: string,
+): number {
+    const iso = toIsoValue(value, allowTimeScheduling, timeZone);
     const date = new Date(iso);
     return date.getTime();
 }
@@ -169,7 +182,6 @@ function CreateSpecialMenuSheet({
     onResolveOverlap?: (payload: SpecialMenuConflictCheckParams) => Promise<boolean | null>;
     resolveProjectDetails: (projectId: string) => Promise<any | null>;
     onSubmit: (payload: {
-        allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
         localizedDisplayName?: Record<string, string>;
@@ -192,8 +204,15 @@ function CreateSpecialMenuSheet({
     const [selectedLanguage, setSelectedLanguage] = useState<string>(storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE);
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({});
     const [mode, setMode] = useState<'replace' | 'overlay'>(capabilities.availableModes[0] || 'overlay');
-    const [startsAt, setStartsAt] = useState(() => toInputValue(new Date().toISOString(), true));
-    const [endsAt, setEndsAt] = useState(getDefaultScheduledEndsAtValue);
+    const [startsAt, setStartsAt] = useState(() => toInputValue(
+        new Date().toISOString(),
+        capabilities.allowTimeScheduling,
+        storeDetails?.timeZone,
+    ));
+    const [endsAt, setEndsAt] = useState(() => getDefaultScheduledEndsAtValue(
+        capabilities.allowTimeScheduling,
+        storeDetails?.timeZone,
+    ));
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
     const isMountedRef = useRef(true);
@@ -209,7 +228,7 @@ function CreateSpecialMenuSheet({
         && currentScopeRef.current?.sId === expectedScope.sId
     );
     const isActiveToggleOn = startsAt
-        ? getNativeDateTimeMs(startsAt) <= Date.now()
+        ? getNativeScheduleMs(startsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone) <= Date.now()
         : false;
 
     const resetForm = () => {
@@ -219,9 +238,29 @@ function CreateSpecialMenuSheet({
         setSelectedLanguage(defaultLanguage);
         setDisplayNameDrafts({ [defaultLanguage]: '' });
         setMode(capabilities.availableModes[0] || 'overlay');
-        setStartsAt(toInputValue(new Date().toISOString(), true));
-        setEndsAt(getDefaultScheduledEndsAtValue());
+        setStartsAt(toInputValue(
+            new Date().toISOString(),
+            capabilities.allowTimeScheduling,
+            storeDetails?.timeZone,
+        ));
+        setEndsAt(getDefaultScheduledEndsAtValue(
+            capabilities.allowTimeScheduling,
+            storeDetails?.timeZone,
+        ));
     };
+
+    useEffect(() => {
+        if (!open) return;
+        setStartsAt(toInputValue(
+            new Date().toISOString(),
+            capabilities.allowTimeScheduling,
+            storeDetails?.timeZone,
+        ));
+        setEndsAt(getDefaultScheduledEndsAtValue(
+            capabilities.allowTimeScheduling,
+            storeDetails?.timeZone,
+        ));
+    }, [capabilities.allowTimeScheduling, open, storeDetails?.timeZone]);
 
     useEffect(() => {
         if (!open || !baseProjectId) return;
@@ -272,10 +311,14 @@ function CreateSpecialMenuSheet({
             return;
         }
 
-        const startsAtIso = toIsoValue(startsAt, true);
-        const endsAtIso = toIsoValue(endsAt, true);
+        const startsAtIso = toIsoValue(startsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone);
+        const endsAtIso = toIsoValue(endsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone);
 
-        if (new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()) {
+        if (
+            !startsAtIso
+            || !endsAtIso
+            || new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()
+        ) {
             Toast.show({ content: t('endAfterStart'), duration: 2000 });
             return;
         }
@@ -293,7 +336,6 @@ function CreateSpecialMenuSheet({
             }) ?? null;
             if (!isExpectedScope(expectedScope) || overlapResolution === false) return;
             await onSubmit({
-                allowOverlap: overlapResolution === true,
                 baseProjectId: submittedBaseProjectId,
                 displayName: trimmedName,
                 localizedDisplayName,
@@ -379,11 +421,15 @@ function CreateSpecialMenuSheet({
 
     const handleLifecycleToggle = (nextValue: boolean) => {
         if (nextValue) {
-            setStartsAt(toInputValue(new Date().toISOString(), true));
+            setStartsAt(toInputValue(
+                new Date().toISOString(),
+                capabilities.allowTimeScheduling,
+                storeDetails?.timeZone,
+            ));
             return;
         }
 
-        setStartsAt(getScheduledStartsAtValue(true));
+        setStartsAt(getScheduledStartsAtValue(capabilities.allowTimeScheduling, storeDetails?.timeZone));
     };
 
     return (
@@ -453,7 +499,11 @@ function CreateSpecialMenuSheet({
                                         This controls what customers see when the special menu is live: replace the regular menu completely, or show it as an extra section alongside the regular menu.
                                     </Text>
                                     <Select
-                                        onChange={(value) => setMode(value as 'replace' | 'overlay')}
+                                        onChange={(value: string) => {
+                                            if (value === 'replace' || value === 'overlay') {
+                                                setMode(value);
+                                            }
+                                        }}
                                         options={capabilities.availableModes.map((value) => ({
                                             label: value === 'replace' ? t('replaceOption') : t('overlayOption'),
                                             value,
@@ -491,24 +541,27 @@ function CreateSpecialMenuSheet({
                             </Card>
 
                             <Flex gap={4} vertical>
-                                <Text strong>{`${t('startsLabel')} Date & Time`}</Text>
+                                <Text strong>{`${t('startsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">Choose when this special menu should start appearing.</Text>
                                 <Input
                                     onChange={setStartsAt}
-                                    type="datetime-local"
+                                    type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                     value={startsAt}
                                 />
                             </Flex>
 
                             <Flex gap={4} vertical>
-                                <Text strong>{`${t('endsLabel')} Date & Time`}</Text>
+                                <Text strong>{`${t('endsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">Choose when this special menu should stop appearing automatically.</Text>
                                 <Input
                                     onChange={setEndsAt}
-                                    type="datetime-local"
+                                    type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                     value={endsAt}
                                 />
                             </Flex>
+                            {storeDetails?.timeZone ? (
+                                <Text type="secondary">{`Schedule uses ${storeDetails.timeZone}.`}</Text>
+                            ) : null}
                         </Flex>
                     </Card>
 
@@ -551,7 +604,6 @@ function EditSpecialMenuSheet({
     onResolveOverlap?: (payload: SpecialMenuConflictCheckParams) => Promise<boolean | null>;
     resolveProjectDetails: (projectId: string) => Promise<any | null>;
     onSubmit: (payload: {
-        allowOverlap?: boolean;
         projectId: string;
         description?: string;
         displayName: string;
@@ -567,6 +619,10 @@ function EditSpecialMenuSheet({
     const tSettings = useTranslations('Settings');
     const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const canTranslatePublicContent = userPermissions?.canGenerateDescriptions === true;
+    const capabilities = useMemo(
+        () => getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessType, storeDetails?.businessCategory],
+    );
     const { token } = theme.useToken();
     const [managedLanguages, setManagedLanguages] = useState<string[]>(['en']);
     const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
@@ -634,14 +690,14 @@ function EditSpecialMenuSheet({
             setDescriptionDrafts(nextDescriptionDrafts);
             setInitialDisplayNameDrafts(nextDisplayNameDrafts);
             setInitialDescriptionDrafts(nextDescriptionDrafts);
-            setStartsAt(toInputValue(item?.startsAt, true));
-            setEndsAt(toInputValue(item?.endsAt, true));
+            setStartsAt(toInputValue(item?.startsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone));
+            setEndsAt(toInputValue(item?.endsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone));
         });
 
         return () => {
             cancelled = true;
         };
-    }, [item, resolveProjectDetails]);
+    }, [capabilities.allowTimeScheduling, item, resolveProjectDetails, storeDetails?.timeZone]);
 
     useEffect(() => () => {
         isMountedRef.current = false;
@@ -651,19 +707,19 @@ function EditSpecialMenuSheet({
         setDisplayNameDrafts(initialDisplayNameDrafts);
         setDescriptionDrafts(initialDescriptionDrafts);
         setSelectedLanguage(getProjectPreferredLanguage({ languages: managedLanguages }));
-        setStartsAt(toInputValue(item?.startsAt, true));
-        setEndsAt(toInputValue(item?.endsAt, true));
+        setStartsAt(toInputValue(item?.startsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone));
+        setEndsAt(toInputValue(item?.endsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone));
     };
 
     const initialName = initialDisplayNameDrafts[selectedLanguage] || '';
     const initialDescription = initialDescriptionDrafts[selectedLanguage] || '';
     const displayName = displayNameDrafts[selectedLanguage] || '';
     const description = descriptionDrafts[selectedLanguage] || '';
-    const initialStartsAt = toInputValue(item?.startsAt, true);
-    const initialEndsAt = toInputValue(item?.endsAt, true);
+    const initialStartsAt = toInputValue(item?.startsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone);
+    const initialEndsAt = toInputValue(item?.endsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone);
     const referenceLanguage = getProjectPreferredLanguage({ languages: managedLanguages });
     const isActiveToggleOn = startsAt
-        ? getNativeDateTimeMs(startsAt) <= Date.now()
+        ? getNativeScheduleMs(startsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone) <= Date.now()
         : false;
     const hasChanges = JSON.stringify(displayNameDrafts) !== JSON.stringify(initialDisplayNameDrafts)
         || JSON.stringify(descriptionDrafts) !== JSON.stringify(initialDescriptionDrafts)
@@ -694,10 +750,14 @@ function EditSpecialMenuSheet({
             return;
         }
 
-        const startsAtIso = toIsoValue(startsAt, true);
-        const endsAtIso = toIsoValue(endsAt, true);
+        const startsAtIso = toIsoValue(startsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone);
+        const endsAtIso = toIsoValue(endsAt, capabilities.allowTimeScheduling, storeDetails?.timeZone);
 
-        if (new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()) {
+        if (
+            !startsAtIso
+            || !endsAtIso
+            || new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()
+        ) {
             Toast.show({ content: t('endAfterStart'), duration: 2000 });
             return;
         }
@@ -722,7 +782,6 @@ function EditSpecialMenuSheet({
                 || overlapResolution === false
             ) return;
             await onSubmit({
-                allowOverlap: overlapResolution === true,
                 projectId: submittedItem.projectId,
                 description: trimmedDescription || undefined,
                 displayName: trimmedName,
@@ -798,9 +857,9 @@ function EditSpecialMenuSheet({
                             specialNote: translated.specialNote,
                         },
                     } : {}),
-                    ...(translated.specialMenuDisplayName ? {
+                    ...(translated.specialMenuDisplayName && projectDetails?._specialMenu ? {
                         _specialMenu: {
-                            ...(projectDetails?._specialMenu || {}),
+                            ...projectDetails._specialMenu,
                             displayName: translated.specialMenuDisplayName,
                         },
                     } : {}),
@@ -855,11 +914,15 @@ function EditSpecialMenuSheet({
 
     const handleLifecycleToggle = (nextValue: boolean) => {
         if (nextValue) {
-            setStartsAt(toInputValue(new Date().toISOString(), true));
+            setStartsAt(toInputValue(
+                new Date().toISOString(),
+                capabilities.allowTimeScheduling,
+                storeDetails?.timeZone,
+            ));
             return;
         }
 
-        setStartsAt(getScheduledStartsAtValue(true));
+        setStartsAt(getScheduledStartsAtValue(capabilities.allowTimeScheduling, storeDetails?.timeZone));
     };
 
     if (!item) return null;
@@ -976,21 +1039,21 @@ function EditSpecialMenuSheet({
                             </Card>
 
                             <Flex gap={4} vertical>
-                                <Text strong>{`${t('startsLabel')} Date & Time`}</Text>
+                                <Text strong>{`${t('startsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">This controls when customers first see the special menu.</Text>
                                 <Input
                                     onChange={setStartsAt}
-                                    type="datetime-local"
+                                    type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                     value={startsAt}
                                 />
                             </Flex>
 
                             <Flex gap={4} vertical>
-                                <Text strong>{`${t('endsLabel')} Date & Time`}</Text>
+                                <Text strong>{`${t('endsLabel')} ${capabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                 <Text type="secondary">This controls when the special menu automatically stops showing.</Text>
                                 <Input
                                     onChange={setEndsAt}
-                                    type="datetime-local"
+                                    type={capabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                     value={endsAt}
                                 />
                             </Flex>
@@ -1323,7 +1386,6 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
     }, [isExpectedScope, projectsById, projectsList, upsertCachedProject]);
 
     const handleCreateSpecialMenu = async (payload: {
-        allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
         localizedDisplayName?: Record<string, string>;
@@ -1351,7 +1413,6 @@ function MobileSpecialMenuScreenContent({ onBack, onOpenMenuTab }: MobileSpecial
     };
 
     const handleUpdateSpecialMenu = async (payload: {
-        allowOverlap?: boolean;
         projectId: string;
         description?: string;
         displayName: string;

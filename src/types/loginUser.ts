@@ -8,16 +8,14 @@ export type AuthSessionStoreMapping = {
 
 export type AuthSessionProductAccount = {
     active?: boolean;
+    accessRevision?: number;
     authDisabled?: boolean;
     deleted?: boolean;
     platformRole?: string;
     role?: string;
-    sId?: number | string;
-    storeId?: number | string;
-    storeIds?: Array<number | string>;
-    tId?: number | string;
-    tenantId?: number | string;
-    [key: string]: unknown;
+    storeId?: number | null;
+    storeIds?: number[];
+    tenantId?: number | null;
 };
 
 /**

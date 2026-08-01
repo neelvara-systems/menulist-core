@@ -144,9 +144,9 @@ export default function CanonicalAnswerEditor() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const routeContextQuery = searchParams.toString();
-    const requestedEntityId = normalizeAnswerlatticeEntityId(searchParams.get('entity')) || '';
-    const requestedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(searchParams.get('answer')) || '';
+    const routeContextQuery = searchParams?.toString() ?? '';
+    const requestedEntityId = normalizeAnswerlatticeEntityId(searchParams?.get('entity')) || '';
+    const requestedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(searchParams?.get('answer')) || '';
     const isMobile = screens.md !== true;
     const tId = session?.tId || 0;
     const sId = session?.sId || 0;

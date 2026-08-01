@@ -25,6 +25,7 @@ import {
 } from "@lib/answerlattice/diagnostics";
 import { buildAnswerlatticeEntityPrefixTokens } from "@lib/answerlattice/entitySearchTokens";
 import { answerlatticeTokenize } from "@lib/answerlattice/tokenizer";
+import { getTextFromTiptapJson } from "@lib/tiptap";
 import { ANSWERLATTICE_ENTITY_TYPES, AnswerlatticeEntityCandidate, AnswerlatticeEntityType } from "@type/answerlattice";
 
 // ═══════════════════════════════════════════════════════════════
@@ -140,6 +141,8 @@ const REJECTED_PATTERNS = [
     /create|update|delete|add|remove|edit/i,
     /^(dashboard|settings|account|profile|home)$/i,
 ];
+const ENTITY_DEDUPE_DISALLOWED_PATTERN = new RegExp('[^\\p{L}\\p{M}\\p{N}]', 'gu');
+const ENTITY_EXTRACTION_TEXT_MAX_LENGTH = 20_000;
 
 /**
  * Validate extracted entity against strict rules
@@ -183,7 +186,10 @@ function deduplicateEntities(entities: ExtractedEntityRaw[]): ExtractedEntityRaw
     const seen = new Map<string, ExtractedEntityRaw>();
 
     for (const entity of entities) {
-        const key = entity.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const key = entity.name
+            .normalize('NFKC')
+            .toLocaleLowerCase()
+            .replace(ENTITY_DEDUPE_DISALLOWED_PATTERN, '');
         const existing = seen.get(key);
 
         if (!existing || entity.confidence > existing.confidence) {
@@ -229,7 +235,7 @@ export async function extractEntitiesFromArticles(
     sId: number,
     callGemini: (systemPrompt: string, userPrompt: string) => Promise<string | null>,
     existingEntities?: ExistingEntityContext[],
-    persistCandidate: (candidate: Omit<AnswerlatticeEntityCandidate, 'id'>) => Promise<unknown> = addEntityCandidate,
+    persistCandidate: (candidate: Omit<AnswerlatticeEntityCandidate, 'id' | 'pId'>) => Promise<unknown> = addEntityCandidate,
     options: { persistCandidates?: boolean } = {},
 ): Promise<ExtractionResult> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY) {
@@ -313,7 +319,7 @@ export async function extractEntitiesFromArticles(
                     },
                     description: entity.description,
                     status: 'pending',
-                } as Omit<AnswerlatticeEntityCandidate, 'id'>);
+                } as Omit<AnswerlatticeEntityCandidate, 'id' | 'pId'>);
             } catch (error) {
                 logAnswerlatticeFailure('answerlattice_entity_candidate_store_failed', error, {
                     ...getAnswerlatticeScopeLogContext({ sId, tId }),
@@ -406,20 +412,17 @@ function shouldExtractForArticle(articleId: string): boolean {
 
 /**
  * Extract plain text from TipTap JSON content for entity extraction.
- * Traverses the TipTap node tree and concatenates text content.
+ * Reuses the shared bounded TipTap projector and caps provider-bound text.
  */
-export function extractPlainTextFromTipTap(content: any): string {
-    if (!content) return '';
-    if (typeof content === 'string') return content;
-
-    let text = '';
-    if (content.text) text += content.text + ' ';
-    if (content.content && Array.isArray(content.content)) {
-        for (const node of content.content) {
-            text += extractPlainTextFromTipTap(node);
-        }
+export function extractPlainTextFromTipTap(content: unknown): string {
+    try {
+        const text = typeof content === 'string'
+            ? content
+            : getTextFromTiptapJson(content);
+        return text.trim().slice(0, ENTITY_EXTRACTION_TEXT_MAX_LENGTH);
+    } catch {
+        return '';
     }
-    return text.trim();
 }
 
 /**
@@ -432,7 +435,7 @@ export function extractPlainTextFromTipTap(content: any): string {
  * Feature-flagged: ENABLE_ANSWERLATTICE_ONTOLOGY
  */
 export async function extractEntitiesForArticle(
-    article: { id: string; title: string; content: any; categoryTitle?: string },
+    article: { id: string; title: string; content: unknown; categoryTitle?: string },
     tId: number,
     sId: number,
     callGemini: (systemPrompt: string, userPrompt: string) => Promise<string | null>
@@ -461,7 +464,9 @@ export async function extractEntitiesForArticle(
             tId,
             sId,
             callGemini,
-            existingContext
+            existingContext,
+            async () => undefined,
+            { persistCandidates: false },
         );
 
         return {

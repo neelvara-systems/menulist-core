@@ -122,12 +122,13 @@ export const saveAnswerlatticeWorkspaceProfileAdmin = async (params: {
             : manifestData
                 ? normalizeCompiledSourceVersions(manifestData.sourceVersions)
                 : normalizeCompiledSourceVersions({});
-        if (currentSourceVersions.workspaceProfile >= Number.MAX_SAFE_INTEGER) {
+        const currentWorkspaceProfileVersion = currentSourceVersions.workspaceProfile ?? 0;
+        if (currentWorkspaceProfileVersion >= Number.MAX_SAFE_INTEGER) {
             throw new Error('Answerlattice workspace profile source version is exhausted.');
         }
         const nextSourceVersions = {
             ...currentSourceVersions,
-            workspaceProfile: currentSourceVersions.workspaceProfile + 1,
+            workspaceProfile: currentWorkspaceProfileVersion + 1,
         };
 
         const revision = currentRevision + 1;

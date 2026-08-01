@@ -153,7 +153,7 @@ export default function LocationsPage() {
                         ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
                         ...getBoundedMultiOutletStringContext('masterStoreId', masterStoreId),
                     });
-                    if (!isOutletDeactivateResponse(data)) {
+                    if (!isOutletDeactivateResponse(data, outletStoreId)) {
                         const invalidResponseError = createMultiOutletStatusError('desktop_location_deactivate_response_invalid', res.status);
                         logMultiOutletFailure('desktop_location_deactivate_response_invalid', invalidResponseError, {
                             responseOk: res.ok,

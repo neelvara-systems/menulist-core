@@ -36,7 +36,7 @@ function BillingPage() {
     const t = useTranslations('Billing');
     const searchParams = useSearchParams();
     const router = useRouter();
-    const sessionId = searchParams.get('session_id');
+    const sessionId = searchParams?.get('session_id');
     const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
     const { data: session } = useSession();
     const {
@@ -220,7 +220,9 @@ function BillingPage() {
         }
         try {
             dispatch(startLoader("Upgrading Plan"));
-            const paymentResponse = Boolean(activeSubscription) ? await onUpgradePlan(activeSubscription, newPlan, currency) : await onClickPaymentCard(newPlan, currency, () => { })
+            const paymentResponse = activeSubscription
+                ? await onUpgradePlan(activeSubscription, newPlan, currency)
+                : await onClickPaymentCard(newPlan, currency, () => { })
             message.success(t('upgradeSuccess'));
             refetchActiveSubscription();
             setIsSuccessModalOpen({ active: true, paymentDetails: { paymentResponse, ...newPlan } });
@@ -454,7 +456,7 @@ function BillingPage() {
             <PricingPlansModal
                 action={isPricingModalOpen.action}
                 handleConfirmUpgrade={handleConfirmUpgrade}
-                activeSubscription={activeSubscription}
+                activeSubscription={activeSubscription ?? undefined}
                 isOpen={isPricingModalOpen.active}
                 onClose={() => setIsPricingModalOpen({ action: "upgrade", active: false })}
             />
@@ -467,7 +469,7 @@ function BillingPage() {
 
             <CreditsPackModal
                 isOpen={isCreditsModalOpen}
-                activeSubscription={activeSubscription}
+                activeSubscription={activeSubscription ?? undefined}
                 handleCreditsPurchase={handleCreditsPurchase}
                 onClose={() => setIsCreditsModalOpen(false)}
             />

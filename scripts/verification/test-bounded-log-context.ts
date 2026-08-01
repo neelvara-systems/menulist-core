@@ -48,7 +48,11 @@ const collectSourceFiles = (directory: string): void => {
 };
 collectSourceFiles(path.join(repoRoot, "src"));
 
-const unsafeUnknownCoercion = /const normalized = (?:value === undefined \|\| value === null \? ["']{2} : String\(value\)|String\(value \?\? ["']{2}\)\.trim\(\));[\s\S]{0,200}\[`\$\{label\}Present`\]/;
+const unsafeUnknownCoercion = /getBounded\w*StringContext\s*=\s*\([\s\S]{0,180}?value:\s*unknown[\s\S]{0,500}?String\(value(?:\s*\?\?\s*["']{2})?\)/;
+assert.match(
+    "const getBoundedExampleStringContext = (label: string, value: unknown) => { let normalized = ''; normalized = value === undefined || value === null ? '' : String(value); return { [label]: normalized.length }; };",
+    unsafeUnknownCoercion,
+);
 sourceFiles.forEach((file) => {
     const source = fs.readFileSync(file, "utf8");
     assert.equal(

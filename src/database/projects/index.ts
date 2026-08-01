@@ -1,6 +1,10 @@
 import { FEATURE_FLAGS } from "@config/features";
+import { getSpecialMenuCapabilities } from "@config/specialMenuConfig";
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
-import { resolveNextSpecialMenuTransitionAt } from "@data/shared/specialMenuSchedule";
+import {
+    normalizeSpecialMenuScheduleRange,
+    resolveNextSpecialMenuTransitionAt,
+} from "@data/shared/specialMenuSchedule";
 import {
     addMenuDriftSummaryContribution,
     readMenuDriftContributions,
@@ -64,9 +68,10 @@ import {
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { apiCallComposerClientWithoutLoader } from "@lib/apiHelper/apiCallComposerClientWithoutLoader";
 import { mapWithConcurrency } from "@lib/async/boundedConcurrency";
-import getActiveSession from "@lib/auth/getActiveSession";
+import getOptionalActiveSession from "@lib/auth/getActiveSession";
 import { firebaseClient, firebaseStorage } from "@lib/firebase/firebaseClient";
 import { logMCEValidationFailure, logMCEValidationResult } from "@lib/mce/diagnostics";
+import { resolveLiveSpecialMenuProject } from "@lib/menu/specialMenuRuntime";
 import {
     getLocalizedText,
     getPrimaryLocalizedLanguage,
@@ -163,11 +168,38 @@ import {
     SpecialMenuStatus,
 } from "@template/main-app/projects/types";
 import { UserUploadedFileType } from "@type/common";
+import type LoginUserType from "@type/loginUser";
 import type { MenuChangeLogInput } from "@type/menuObservation";
 import { TimeSlotPreset } from "@type/platform/store";
 
 const DATA_COLLECTION = DB_COLLECTIONS.PROJECTS;
 const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
+
+type ProjectSession = LoginUserType & {
+    sId: number;
+    tId: number;
+    uId: string;
+};
+
+const isProjectSession = (session: LoginUserType | null): session is ProjectSession => (
+    Boolean(session)
+    && typeof session?.tId === "number"
+    && Number.isSafeInteger(session.tId)
+    && session.tId > 0
+    && typeof session.sId === "number"
+    && Number.isSafeInteger(session.sId)
+    && session.sId > 0
+    && typeof session.uId === "string"
+    && session.uId.trim().length > 0
+);
+
+const getActiveSession = async (): Promise<ProjectSession> => {
+    const session = await getOptionalActiveSession();
+    if (!isProjectSession(session)) {
+        throw new Error("Project session scope is not available");
+    }
+    return session;
+};
 
 type ProjectDefaultHandoffOptions = {
     unsetProjectId?: string | number | null;
@@ -1121,12 +1153,24 @@ export const uploadProjectFile = async (
 export const addProject = async (data: Partial<ProjectMetadata> & {
     businessCategory?: string;
     businessType?: string;
-}, options: { defaultHandoff?: ProjectDefaultHandoffOptions | null } = {}) => {
+}, options: {
+    defaultHandoff?: ProjectDefaultHandoffOptions | null;
+    expectedScope?: ProjectExpectedScope;
+} = {}) => {
     return await apiCallComposer(
         async () => {
             const operationSession = await getActiveSession();
             const operationScope = normalizeMenuChangeLogScope(operationSession);
             if (!operationScope) throw new Error('Invalid project creation scope');
+            if (
+                options.expectedScope
+                && (
+                    operationScope.tId !== options.expectedScope.tId
+                    || operationScope.sId !== options.expectedScope.sId
+                )
+            ) {
+                throw new Error('Project creation scope changed');
+            }
             const projectCollectionRef = collection(
                 firebaseClient,
                 DATA_COLLECTION,
@@ -1256,7 +1300,7 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
 
                 // Firestore rejects undefined values, so optional summary fields are omitted.
                 // Existing summary truth wins for idempotent deterministic-ID recovery.
-                const summaryData: ProjectSummaryData = {
+                const requestedSummaryData: ProjectSummaryData = {
                     name: localizedName || { [CANONICAL_SOURCE_LANGUAGE]: "Untitled" },
                     ...(localizedDescription != null ? { description: localizedDescription } : {}),
                     ...(data.projectImage !== undefined ? { projectImage: data.projectImage } : {}),
@@ -1265,8 +1309,10 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
                     active: isActive,
                     isDefault: data.isDefault ?? false,
                     slug: availableSlug,
-                    ...(existingSummary || {}),
                 };
+                const summaryData: ProjectSummaryData = existingSummary
+                    ? { ...requestedSummaryData, ...existingSummary }
+                    : requestedSummaryData;
                 const summaryMutation = buildProjectSummaryMutation(projectId, summaryData, summaryOptions);
                 if (!existingProjectDoc?.exists()) {
                     transaction.set(projectDocRef, projectData, { merge: false });
@@ -1323,6 +1369,7 @@ export const updateProjectMetadata = async (
     data: Partial<ProjectSummaryData>,
     options: {
         defaultHandoff?: ProjectDefaultHandoffOptions | null;
+        expectedScope?: ProjectExpectedScope;
         preserveExistingProjectImage?: boolean;
     } = {},
 ) => {
@@ -1333,6 +1380,13 @@ export const updateProjectMetadata = async (
             const projectScope = normalizeMultiOutletProjectId(projectId);
             if (
                 !operationScope
+                || (
+                    options.expectedScope
+                    && (
+                        operationScope.tId !== options.expectedScope.tId
+                        || operationScope.sId !== options.expectedScope.sId
+                    )
+                )
                 || !projectScope
                 || projectScope.tId !== operationScope.tId
                 || projectScope.sId !== operationScope.sId
@@ -2132,11 +2186,16 @@ export const updateProjectWithoutLoader = async (
  * Toggle project active status
  * Updates both projects collection and projectsSummary
  */
-export const setProjectActive = async (projectId: string, active: boolean) => {
+export const setProjectActive = async (
+    projectId: string,
+    active: boolean,
+    expectedScope?: ProjectExpectedScope,
+) => {
     return await apiCallComposer(
         async () => {
             if (typeof active !== 'boolean') throw new Error('Invalid project active state');
             const session = await getActiveSession();
+            resolveExpectedProjectScope(session, expectedScope, "project_active_scope_changed");
             const scope = normalizeProjectDocumentScope({ tId: session.tId, sId: session.sId, projectId });
             if (!scope) throw new Error('Invalid project active scope');
             const projectDocRef = doc(
@@ -2727,7 +2786,7 @@ export const publishProject = async (
  * Returns projects from platformSummary/projects_{sId}
  */
 const resolveExpectedProjectScope = (
-    session: unknown,
+    session: Readonly<{ tId?: unknown; sId?: unknown }> | null | undefined,
     expectedScope: ProjectExpectedScope | undefined,
     rejectionCode: string,
 ) => {
@@ -2806,14 +2865,18 @@ const getProjectsListCore = async (
  * The legacy project-list helper creates a default project when none exist, which is
  * correct for editor/onboarding flows but would add write cost to read-only routes.
  */
-const getExistingProjectsListCore = async (includeInactive = false) => {
+const getExistingProjectsListCore = async (
+    includeInactive = false,
+    expectedScope?: ProjectExpectedScope,
+) => {
     const session = await getActiveSession();
-    const summaryDocRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${session.sId}`);
+    const scope = resolveExpectedProjectScope(session, expectedScope, "existing_projects_list_scope_changed");
+    const summaryDocRef = doc(firebaseClient, PLATFORM_SUMMARY, `projects_${scope.sId}`);
     const summaryDoc = await getDoc(summaryDocRef);
     const projectsMap = summaryDoc.exists()
         ? filterProjectsSummaryMapForScope(
             extractProjectsSummaryMap(summaryDoc.data() as Record<string, any>),
-            session,
+            scope,
         )
         : {};
 
@@ -2848,10 +2911,13 @@ export const getProjectsListWithoutLoader = async (
     );
 };
 
-export const getExistingProjectsListWithoutLoader = async (includeInactive = false) => {
+export const getExistingProjectsListWithoutLoader = async (
+    includeInactive = false,
+    expectedScope?: ProjectExpectedScope,
+) => {
     return await apiCallComposerClientWithoutLoader(
-        async () => await getExistingProjectsListCore(includeInactive),
-        { includeInactive },
+        async () => await getExistingProjectsListCore(includeInactive, expectedScope),
+        { expectedScope, includeInactive },
         "getExistingProjectsListWithoutLoader",
     );
 };
@@ -2987,6 +3053,11 @@ export const getProjectDataByStore = async (
             if (!scope || String(session.tId) !== scope.tId) {
                 throw new Error('Invalid cross-store project read scope');
             }
+            const canAccessStore = session.platformRole === 'PLATFORM'
+                || session.user.storeIds.some((storeId) => String(storeId) === scope.sId);
+            if (!canAccessStore) {
+                throw new Error('Cross-store project read is not authorized');
+            }
             const docRef = doc(
                 firebaseClient,
                 `${DATA_COLLECTION}/${scope.tId}/${scope.sId}`,
@@ -3070,6 +3141,7 @@ export const getProject = async (projectId: string) => {
 export const uploadFile = async (
     data: UserUploadedFileType,
     from: string = "files",
+    expectedScope?: ProjectExpectedScope,
 ) => {
     let fileUrl: any = "";
     const docId = buildProjectUploadObjectId({
@@ -3085,6 +3157,11 @@ export const uploadFile = async (
 
     if (data.blob || (mediaProfile && isDataUrl(data.url))) {
         const session = await getActiveSession();
+        const operationScope = resolveExpectedProjectScope(
+            session,
+            expectedScope,
+            "project_upload_scope_changed",
+        );
         const preparedMedia = data.preparedMedia || (mediaProfile && isDataUrl(data.url)
             ? await prepareMediaImage(data.url, mediaProfile, { fileName: data.name || data.uid })
             : undefined);
@@ -3098,8 +3175,8 @@ export const uploadFile = async (
             mediaId: preparedMedia?.mediaId || data.mediaId,
             prepared: preparedMedia,
             profile: mediaProfile || 'menuItem',
-            storeId: session.sId,
-            tenantId: session.tId,
+            storeId: operationScope.sId,
+            tenantId: operationScope.tId,
             variant: data.mediaVariant as MediaImageVariantId | undefined,
         });
     }
@@ -3111,13 +3188,22 @@ export const uploadFile = async (
         dataUrl: data.url,
     });
     const session = await getActiveSession();
+    const operationScope = resolveExpectedProjectScope(
+        session,
+        expectedScope,
+        "project_upload_scope_changed",
+    );
     fileUrl = await uploadBase64ToStorage({
         fileId: docId,
         url: data.url,
         path: generateStoragePath({
             collection: DATA_COLLECTION,
             fileType: from,
-            session,
+            session: {
+                ...session,
+                sId: operationScope.sId,
+                tId: operationScope.tId,
+            },
             fileId: docId,
         }),
         type: validatedPayload.mimeType,
@@ -3175,9 +3261,17 @@ export const deleteProject = async (projectId: string) => {
     return result;
 };
 
-export const restoreProject = async (projectId: string) => {
-    return await apiCallComposer(
-        async () => {
+export type ProjectRestoreResult = {
+    active: true;
+    deleted: false;
+    deletedAt: null;
+    projectId: string;
+    summaryData: ProjectSummaryData;
+};
+
+export const restoreProject = async (projectId: string): Promise<ProjectRestoreResult> => {
+    return await apiCallComposer<ProjectRestoreResult>(
+        async (): Promise<ProjectRestoreResult> => {
             const operationSession = await getActiveSession();
             const operationScope = normalizeMenuChangeLogScope(operationSession);
             const projectScope = normalizeMultiOutletProjectId(projectId);
@@ -3279,6 +3373,7 @@ export const duplicateProject = async (
     newDescription?: string,
     localizedNameInput?: Record<string, string>,
     localizedDescriptionInput?: Record<string, string>,
+    expectedScope?: ProjectExpectedScope,
 ) => {
     return await apiCallComposer(
         async () => {
@@ -3287,6 +3382,13 @@ export const duplicateProject = async (
             const sourceProjectScope = normalizeMultiOutletProjectId(projectId);
             if (
                 !scope
+                || (
+                    expectedScope
+                    && (
+                        scope.tId !== expectedScope.tId
+                        || scope.sId !== expectedScope.sId
+                    )
+                )
                 || !sourceProjectScope
                 || sourceProjectScope.tId !== scope.tId
                 || sourceProjectScope.sId !== scope.sId
@@ -3431,23 +3533,9 @@ export const duplicateProject = async (
 // ═══════════════════════════════════════════════════════════════
 
 const parseSpecialMenuDateRange = (startsAt: string, endsAt: string) => {
-    if (
-        typeof startsAt !== "string"
-        || typeof endsAt !== "string"
-        || startsAt.length > 64
-        || endsAt.length > 64
-    ) {
-        throw new Error("Special menu dates are invalid");
-    }
-    const startTime = Date.parse(startsAt);
-    const endTime = Date.parse(endsAt);
-    if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) {
-        throw new Error("Special menu dates are invalid");
-    }
-    if (endTime <= startTime) {
-        throw new Error("End date must be after start date");
-    }
-    return { startTime, endTime };
+    const schedule = normalizeSpecialMenuScheduleRange(startsAt, endsAt);
+    if (!schedule) throw new Error("Special menu dates are invalid");
+    return schedule;
 };
 
 const normalizeSpecialMenuLocalizedInput = (
@@ -3634,7 +3722,6 @@ export const getSpecialMenus = async (expectedScope?: SpecialMenuExpectedScope):
  * 5. If startsAt is now or past, activate immediately
  */
 export const createSpecialMenuProject = async (params: {
-    allowOverlap?: boolean;
     baseProjectId: string;
     displayName: string;
     localizedDisplayName?: Record<string, string>;
@@ -3644,12 +3731,17 @@ export const createSpecialMenuProject = async (params: {
 }, expectedScope?: SpecialMenuExpectedScope) => {
     return await apiCallComposer(
         async () => {
-            const { allowOverlap, baseProjectId, displayName, localizedDisplayName, mode, startsAt, endsAt } = params;
+            const { baseProjectId, displayName, localizedDisplayName, mode, startsAt, endsAt } = params;
             const trimmedName = typeof displayName === "string" ? displayName.trim() : "";
             if (!trimmedName || trimmedName.length > 100) throw new Error("Special menu name is required");
             if (mode !== "replace" && mode !== "overlay") throw new Error("Special menu mode is invalid");
             const normalizedLocalizedDisplayName = normalizeSpecialMenuLocalizedInput(localizedDisplayName, 100);
-            const { startTime, endTime } = parseSpecialMenuDateRange(startsAt, endsAt);
+            const {
+                endTime,
+                endsAt: normalizedEndsAt,
+                startTime,
+                startsAt: normalizedStartsAt,
+            } = parseSpecialMenuDateRange(startsAt, endsAt);
             const now = new Date();
             if (endTime <= now.getTime()) {
                 throw new Error("End date must be in the future");
@@ -3679,8 +3771,9 @@ export const createSpecialMenuProject = async (params: {
             const transactionResult = await runTransaction(firebaseClient, async (transaction) => {
                 const baseDoc = await transaction.get(baseRef);
                 const summaryDoc = await transaction.get(summaryRef);
-                const storeDoc = activateImmediately ? await transaction.get(storeRef) : null;
+                const storeDoc = await transaction.get(storeRef);
                 if (!baseDoc.exists()) throw new Error("Base project not found");
+                if (!storeDoc.exists()) throw new Error("Store not found");
 
                 const baseData = baseDoc.data() as PersistedProject;
                 if (
@@ -3700,14 +3793,44 @@ export const createSpecialMenuProject = async (params: {
                         scope,
                     )
                     : {};
-                if (!allowOverlap) {
-                    assertNoSpecialMenuScheduleConflict(summaryProjects, startTime, endTime);
+                assertNoSpecialMenuScheduleConflict(summaryProjects, startTime, endTime);
+                const storeData = storeDoc.data();
+                const capabilities = getSpecialMenuCapabilities(
+                    storeData.businessType,
+                    storeData.businessCategory,
+                );
+                if (!capabilities.availableModes.includes(mode)) {
+                    throw new Error("Special menu mode is not available for this business type");
                 }
 
-                const activeMenuId = storeDoc?.exists() && typeof storeDoc.data().activeSpecialMenuId === "string"
-                    ? storeDoc.data().activeSpecialMenuId
+                const activeMenuId = typeof storeData.activeSpecialMenuId === "string"
+                    ? storeData.activeSpecialMenuId
                     : null;
+                let hasLiveCompetingActiveMenu = false;
                 if (activateImmediately && activeMenuId) {
+                    const competingScope = normalizeMultiOutletProjectId(activeMenuId);
+                    if (
+                        competingScope
+                        && competingScope.tId === scope.tId
+                        && competingScope.sId === scope.sId
+                    ) {
+                        const competingProjectDoc = await transaction.get(doc(
+                            firebaseClient,
+                            DATA_COLLECTION,
+                            String(scope.tId),
+                            String(scope.sId),
+                            competingScope.projectId,
+                        ));
+                        hasLiveCompetingActiveMenu = competingProjectDoc.exists()
+                            && Boolean(resolveLiveSpecialMenuProject(competingProjectDoc.data(), {
+                                now,
+                                projectId: competingScope.projectId,
+                                sId: scope.sId,
+                                tId: scope.tId,
+                            }));
+                    }
+                }
+                if (hasLiveCompetingActiveMenu) {
                     throw new Error("Another special menu is currently active. Deactivate it first.");
                 }
 
@@ -3727,8 +3850,8 @@ export const createSpecialMenuProject = async (params: {
                 const specialMenuMetadata: SpecialMenuMetadata = {
                     baseProjectId,
                     mode,
-                    startsAt,
-                    endsAt,
+                    startsAt: normalizedStartsAt,
+                    endsAt: normalizedEndsAt,
                     status,
                     displayName: resolvedLocalizedDisplayName,
                     ...(activateImmediately ? { activatedAt: now.toISOString() } : {}),
@@ -3755,8 +3878,8 @@ export const createSpecialMenuProject = async (params: {
                     isSpecialMenu: true,
                     specialMenuDisplayName: resolvedLocalizedDisplayName,
                     specialMenuStatus: status,
-                    specialMenuStartsAt: startsAt,
-                    specialMenuEndsAt: endsAt,
+                    specialMenuStartsAt: normalizedStartsAt,
+                    specialMenuEndsAt: normalizedEndsAt,
                     specialMenuMode: mode,
                     specialMenuBaseProjectId: baseProjectId,
                 };
@@ -3777,7 +3900,7 @@ export const createSpecialMenuProject = async (params: {
                         storeUpdate.tempStatus = {
                             type: "special_menu",
                             message: trimmedName,
-                            expiresAt: endsAt,
+                            expiresAt: normalizedEndsAt,
                             createdAt: now.toISOString(),
                             sourceProjectId: newProjectId,
                         };
@@ -3797,7 +3920,6 @@ export const createSpecialMenuProject = async (params: {
 };
 
 export const updateSpecialMenuProject = async (params: {
-    allowOverlap?: boolean;
     projectId: string;
     description?: string;
     displayName: string;
@@ -3808,12 +3930,17 @@ export const updateSpecialMenuProject = async (params: {
 }, expectedScope?: SpecialMenuExpectedScope) => {
     return await apiCallComposer(
         async () => {
-            const { allowOverlap, projectId, description, displayName, localizedDescription, localizedDisplayName, startsAt, endsAt } = params;
+            const { projectId, description, displayName, localizedDescription, localizedDisplayName, startsAt, endsAt } = params;
             const trimmedName = typeof displayName === "string" ? displayName.trim() : "";
             const trimmedDescription = typeof description === "string" ? description.trim() : undefined;
             const normalizedLocalizedDisplayName = normalizeSpecialMenuLocalizedInput(localizedDisplayName, 100);
             const normalizedLocalizedDescription = normalizeSpecialMenuLocalizedInput(localizedDescription, 300);
-            const { startTime, endTime } = parseSpecialMenuDateRange(startsAt, endsAt);
+            const {
+                endTime,
+                endsAt: normalizedEndsAt,
+                startTime,
+                startsAt: normalizedStartsAt,
+            } = parseSpecialMenuDateRange(startsAt, endsAt);
             const now = new Date();
 
             if (!trimmedName || trimmedName.length > 100) {
@@ -3864,16 +3991,38 @@ export const updateSpecialMenuProject = async (params: {
                         scope,
                     )
                     : {};
-                if (!allowOverlap) {
-                    assertNoSpecialMenuScheduleConflict(summaryProjects, startTime, endTime, projectId);
-                }
+                assertNoSpecialMenuScheduleConflict(summaryProjects, startTime, endTime, projectId);
 
                 const nextStatus: SpecialMenuStatus = startTime <= now.getTime() ? "active" : "scheduled";
                 const storeData = storeDoc.exists() ? storeDoc.data() : {};
                 const activeMenuId = typeof storeData.activeSpecialMenuId === "string"
                     ? storeData.activeSpecialMenuId
                     : null;
+                let hasLiveCompetingActiveMenu = false;
                 if (nextStatus === "active" && activeMenuId && activeMenuId !== projectId) {
+                    const competingScope = normalizeMultiOutletProjectId(activeMenuId);
+                    if (
+                        competingScope
+                        && competingScope.tId === scope.tId
+                        && competingScope.sId === scope.sId
+                    ) {
+                        const competingProjectDoc = await transaction.get(doc(
+                            firebaseClient,
+                            DATA_COLLECTION,
+                            String(scope.tId),
+                            String(scope.sId),
+                            competingScope.projectId,
+                        ));
+                        hasLiveCompetingActiveMenu = competingProjectDoc.exists()
+                            && Boolean(resolveLiveSpecialMenuProject(competingProjectDoc.data(), {
+                                now,
+                                projectId: competingScope.projectId,
+                                sId: scope.sId,
+                                tId: scope.tId,
+                            }));
+                    }
+                }
+                if (hasLiveCompetingActiveMenu) {
                     throw new Error("Another special menu is currently active. Deactivate it first.");
                 }
                 if (currentStatus === "active" && nextStatus === "scheduled" && activeMenuId && activeMenuId !== projectId) {
@@ -3899,8 +4048,8 @@ export const updateSpecialMenuProject = async (params: {
                 const nextMetadata: SpecialMenuMetadata = {
                     ...stableMetadata,
                     displayName: resolvedLocalizedDisplayName,
-                    endsAt,
-                    startsAt,
+                    endsAt: normalizedEndsAt,
+                    startsAt: normalizedStartsAt,
                     status: nextStatus,
                     ...(nextStatus === "active"
                         ? { activatedAt: currentStatus === "active" && previousActivatedAt ? previousActivatedAt : now.toISOString() }
@@ -3914,8 +4063,8 @@ export const updateSpecialMenuProject = async (params: {
                         deleted: false,
                         isSpecialMenu: true,
                         specialMenuDisplayName: resolvedLocalizedDisplayName,
-                        specialMenuEndsAt: endsAt,
-                        specialMenuStartsAt: startsAt,
+                        specialMenuEndsAt: normalizedEndsAt,
+                        specialMenuStartsAt: normalizedStartsAt,
                         specialMenuStatus: nextStatus,
                     },
                 });
@@ -3933,8 +4082,8 @@ export const updateSpecialMenuProject = async (params: {
                     ...buildSummaryProjectFieldPayload(projectId, "name", resolvedLocalizedDisplayName),
                     ...buildSummaryProjectFieldPayload(projectId, "description", trimmedDescription ? resolvedLocalizedDescription : ""),
                     ...buildSummaryProjectFieldPayload(projectId, "specialMenuDisplayName", resolvedLocalizedDisplayName),
-                    ...buildSummaryProjectFieldPayload(projectId, "specialMenuStartsAt", startsAt),
-                    ...buildSummaryProjectFieldPayload(projectId, "specialMenuEndsAt", endsAt),
+                    ...buildSummaryProjectFieldPayload(projectId, "specialMenuStartsAt", normalizedStartsAt),
+                    ...buildSummaryProjectFieldPayload(projectId, "specialMenuEndsAt", normalizedEndsAt),
                     ...buildSummaryProjectFieldPayload(projectId, "specialMenuStatus", nextStatus),
                 }, { merge: true });
 
@@ -3944,7 +4093,7 @@ export const updateSpecialMenuProject = async (params: {
                         storeUpdate.tempStatus = {
                             type: "special_menu",
                             message: trimmedName,
-                            expiresAt: endsAt,
+                            expiresAt: normalizedEndsAt,
                             createdAt: now.toISOString(),
                             sourceProjectId: projectId,
                         };

@@ -52,6 +52,8 @@ Answerlattice App Entity Candidate ID Boundary: `src/database/answerlattice/enti
 
 Answerlattice App Entity DAL ID Boundary: `src/database/answerlattice/entities.ts` validates persisted entity/relation/search-index rows on scoped reads and normalizes action IDs before protected ontology/governance calls. Entity, relation and search-index mutations are server-owned; the browser DAL performs no direct writes. Invalid IDs fail before action dispatch, while the server transaction owns persisted scope, counters, invalidation and operation replay.
 
+Answerlattice ontology persistence projection: `src/lib/answerlattice/ontologyContracts.ts` parses entity, relation, search-index, and candidate documents into exact allowlisted runtime shapes. Legacy rows without `pId` still normalize to `AL`, but undeclared stored fields are stripped before DAL results, server action results, or operation replay objects can expose them. This projection does not delete unknown fields from existing Firestore documents; ontology mutations continue to use scoped update/merge operations.
+
 ### 1.4 Hooks
 
 | File                                         | Purpose                                           |

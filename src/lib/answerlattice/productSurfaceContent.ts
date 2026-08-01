@@ -228,8 +228,8 @@ export function scoreSurfaceRouteForContextPath(routePatterns: unknown, contextP
         }
         if (!pattern.endsWith('*')) continue;
 
-        const prefix = pattern.slice(0, -1);
-        const basePath = prefix.endsWith('/') && prefix.length > 1 ? prefix.slice(0, -1) : prefix;
+        const prefix: string = pattern.slice(0, -1);
+        const basePath: string = prefix.endsWith('/') && prefix.length > 1 ? prefix.slice(0, -1) : prefix;
         if (path === basePath || path.startsWith(prefix)) {
             bestScore = Math.max(bestScore, 800 + Math.min(prefix.length, 99));
         }

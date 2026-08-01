@@ -130,9 +130,9 @@ const normalizeChangelogMeta = (value: unknown): ChangelogRecentlyViewedMeta | u
     let tags: string[] | undefined;
     if (raw.tags !== undefined) {
         if (!Array.isArray(raw.tags) || raw.tags.length > MAX_TAGS) return null;
-        tags = raw.tags.map(tag => normalizeBoundedString(tag, MAX_META_STRING_LENGTH));
-        if (tags.some(tag => tag === null)) return null;
-        tags = tags as string[];
+        const normalizedTags = raw.tags.map(tag => normalizeBoundedString(tag, MAX_META_STRING_LENGTH));
+        if (normalizedTags.some(tag => tag === null)) return null;
+        tags = normalizedTags.filter((tag): tag is string => tag !== null);
     }
     return {
         ...(version ? { version } : {}),

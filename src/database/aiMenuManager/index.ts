@@ -23,6 +23,13 @@ import {
     todaySessionDate,
 } from '@lib/ai-menu-manager/idempotency';
 import { normalizeAiMenuManagerScopeDocumentId } from '@lib/ai-menu-manager/routeIds';
+import {
+    isAiMenuManagerPlannerResponse,
+    normalizeAiMenuManagerCommandResponse,
+    normalizeAiMenuManagerInboxResponse,
+    normalizeAiMenuManagerProposalActionResponse,
+    normalizeAiMenuManagerProposalCompleteResponse,
+} from '@lib/ai-menu-manager/schemas';
 import { assertAiMenuManagerPatchAllowedForAction } from '@lib/ai-menu-manager/patchPolicy';
 import {
     assertAiMenuManagerPreparedOperationGroup,
@@ -59,6 +66,7 @@ import type {
     AiMenuManagerExecutionDirective,
     AiMenuManagerInboxResponse,
     AiMenuManagerPendingOperation,
+    AiMenuManagerProjectPatch,
     AiMenuManagerProposalActionRequest,
     AiMenuManagerProposalCompleteRequest,
     AiMenuManagerReceipt,
@@ -115,10 +123,6 @@ type AiMenuManagerClientCommandRequest = Omit<AiMenuManagerCommandRequest, 'idem
 type AiMenuManagerServerBackedResponse = AiMenuManagerCommandResponse & {
     operations: AiMenuManagerPendingOperation[];
     session?: undefined;
-};
-
-type AiMenuManagerPlannerResponse = {
-    route: AiMenuManagerModelRouteResult | null;
 };
 
 export type AiMenuManagerClientCommandResponse = AiMenuManagerCommandResponse & {
@@ -350,7 +354,7 @@ function buildAiMenuManagerCommandFingerprint(params: {
         composerContext: params.composerContext
             ? {
                 target: params.composerContext.target,
-                selectedEntityIds: [...params.composerContext.selectedEntityIds].sort(),
+                selectedEntityIds: [...(params.composerContext.selectedEntityIds ?? [])].sort(),
             }
             : null,
         text: params.text.toLowerCase().replace(/\s+/g, ' ').trim(),
@@ -547,6 +551,7 @@ export function createAiMenuManagerIdempotencyKey(prefix = 'amm') {
 
 async function sendAiMenuManagerServerCommand(
     request: Omit<AiMenuManagerCommandRequest, 'idempotencyKey'> & { idempotencyKey?: string },
+    scope: ClientScope,
 ): Promise<AiMenuManagerCommandResponse> {
     const body: AiMenuManagerCommandRequest = {
         storeId: String(request.storeId),
@@ -568,7 +573,26 @@ async function sendAiMenuManagerServerCommand(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
-    return readApiResponse<AiMenuManagerCommandResponse>(response, 'command');
+    const payload = await readApiResponse<unknown>(response, 'command');
+    const normalized = normalizeAiMenuManagerCommandResponse(payload, {
+        tId: String(scope.tId),
+        sId: String(scope.sId),
+        projectId: request.projectId,
+        expectedSessionId: buildSessionId({
+            sessionId: request.sessionId,
+            sessionDate: request.sessionDate,
+            scope,
+            projectId: request.projectId,
+        }),
+    });
+    if (!normalized) {
+        throw createAiMenuManagerApiError({
+            code: 'response_contract_invalid',
+            message: 'Menu Manager response could not be validated',
+            status: response.status,
+        });
+    }
+    return normalized;
 }
 
 async function sendAiMenuManagerPlannerRequest(params: {
@@ -593,7 +617,14 @@ async function sendAiMenuManagerPlannerRequest(params: {
         }),
     });
     if (response.status === 404 || response.status === 503) return null;
-    const payload = await readApiResponse<AiMenuManagerPlannerResponse>(response, 'plan');
+    const payload = await readApiResponse<unknown>(response, 'plan');
+    if (!isAiMenuManagerPlannerResponse(payload)) {
+        throw createAiMenuManagerApiError({
+            code: 'response_contract_invalid',
+            message: 'Menu Manager response could not be validated',
+            status: response.status,
+        });
+    }
     return payload.route;
 }
 
@@ -602,7 +633,7 @@ async function getAiMenuManagerServerInbox(params: {
     sessionDate?: string;
     sessionId?: string;
     storeId: string | number;
-}): Promise<AiMenuManagerInboxResponse & { sessionId: string }> {
+}): Promise<{ payload: unknown; response: Response }> {
     const query = new URLSearchParams({
         projectId: params.projectId,
         storeId: String(params.storeId),
@@ -610,7 +641,8 @@ async function getAiMenuManagerServerInbox(params: {
     if (params.sessionId) query.set('sessionId', params.sessionId);
     if (params.sessionDate) query.set('sessionDate', params.sessionDate);
     const response = await fetch(`/api/ai-menu-manager/inbox?${query.toString()}`, AI_MENU_MANAGER_REQUEST_POLICY);
-    return readApiResponse<AiMenuManagerInboxResponse & { sessionId: string }>(response, 'inbox');
+    const payload = await readApiResponse<unknown>(response, 'inbox');
+    return { response, payload };
 }
 
 function buildServerBackedOperations(params: {
@@ -620,7 +652,7 @@ function buildServerBackedOperations(params: {
     sessionId: string;
 }): AiMenuManagerPendingOperation[] {
     const now = nowIso();
-    return params.cards.map((card) => ({
+    return params.cards.map<AiMenuManagerPendingOperation>((card) => ({
         operationId: card.cardId,
         sessionId: params.sessionId,
         tId: params.scope.tId,
@@ -660,7 +692,7 @@ async function sendAiMenuManagerServerBackedCommand(
     request: AiMenuManagerClientCommandRequest,
     scope: ClientScope,
 ): Promise<AiMenuManagerServerBackedResponse> {
-    const response = await sendAiMenuManagerServerCommand(request);
+    const response = await sendAiMenuManagerServerCommand(request, scope);
     return {
         ...response,
         operations: buildServerBackedOperations({
@@ -678,7 +710,8 @@ export async function sendAiMenuManagerCommand(
     assertAiMenuManagerEnabled();
 
     if (!request.project) {
-        const response = await sendAiMenuManagerServerCommand(request);
+        const scope = await resolveClientScope(request.storeId);
+        const response = await sendAiMenuManagerServerCommand(request, scope);
         return { ...response, operations: [] };
     }
 
@@ -1132,12 +1165,25 @@ export async function getAiMenuManagerClientInbox(params: {
         sessionSnap = await getDoc(getSessionDocRef(sessionId));
     } catch (error) {
         if (isFirestorePermissionDenied(error)) {
-            const inbox = await getAiMenuManagerServerInbox({
+            const inboxResponse = await getAiMenuManagerServerInbox({
                 projectId: params.projectId,
                 sessionDate: params.sessionDate,
                 sessionId,
                 storeId: params.storeId,
             });
+            const inbox = normalizeAiMenuManagerInboxResponse(inboxResponse.payload, {
+                tId: String(scope.tId),
+                sId: String(scope.sId),
+                projectId: params.projectId,
+                expectedSessionId: sessionId,
+            });
+            if (!inbox) {
+                throw createAiMenuManagerApiError({
+                    code: 'response_contract_invalid',
+                    message: 'Menu Manager response could not be validated',
+                    status: inboxResponse.response.status,
+                });
+            }
             return buildClientInboxFromServer({ inbox, projectId: params.projectId, scope });
         }
         throw error;
@@ -1145,12 +1191,25 @@ export async function getAiMenuManagerClientInbox(params: {
     const session = normalizeAiMenuManagerSessionSnapshot(sessionSnap.exists() ? sessionSnap.data() : null);
 
     if (!session) {
-        const inbox = await getAiMenuManagerServerInbox({
+        const inboxResponse = await getAiMenuManagerServerInbox({
             projectId: params.projectId,
             sessionDate: params.sessionDate,
             sessionId,
             storeId: params.storeId,
         });
+        const inbox = normalizeAiMenuManagerInboxResponse(inboxResponse.payload, {
+            tId: String(scope.tId),
+            sId: String(scope.sId),
+            projectId: params.projectId,
+            expectedSessionId: sessionId,
+        });
+        if (!inbox) {
+            throw createAiMenuManagerApiError({
+                code: 'response_contract_invalid',
+                message: 'Menu Manager response could not be validated',
+                status: inboxResponse.response.status,
+            });
+        }
         return buildClientInboxFromServer({ inbox, projectId: params.projectId, scope });
     }
 
@@ -1243,7 +1302,9 @@ export function buildAiMenuManagerClientBatchExecution(params: {
 
     assertAiMenuManagerPreparedOperationGroup(params.operations);
 
-    const patches = params.operations.map((operation) => operation.patch).filter(Boolean);
+    const patches = params.operations
+        .map((operation) => operation.patch)
+        .filter((patch): patch is AiMenuManagerProjectPatch => patch !== undefined);
     if (
         patches.length !== params.operations.length
         || aiMenuManagerPatchesConflict(patches)
@@ -1532,6 +1593,9 @@ export async function submitAiMenuManagerProposalAction(params: {
     action: AiMenuManagerProposalActionRequest['action'];
     idempotencyKey?: string;
 }): Promise<{ data: { directive?: AiMenuManagerExecutionDirective; proposal?: { proposalId: string; actionType: string; status: string }; receipt?: AiMenuManagerReceipt; status?: string } }> {
+    const responseScope = params.action === 'approve'
+        ? await resolveClientScope(params.storeId)
+        : null;
     const response = await fetch(`/api/ai-menu-manager/proposals/${encodeURIComponent(params.proposalId)}/actions`, {
         ...AI_MENU_MANAGER_REQUEST_POLICY,
         method: 'POST',
@@ -1544,7 +1608,23 @@ export async function submitAiMenuManagerProposalAction(params: {
             idempotencyKey: params.idempotencyKey || createAiMenuManagerIdempotencyKey('amm_action'),
         }),
     });
-    return readApiResponse(response, 'proposal_action');
+    const payload = await readApiResponse<unknown>(response, 'proposal_action');
+    const normalized = normalizeAiMenuManagerProposalActionResponse(payload, {
+        action: params.action,
+        actionType: params.actionType,
+        proposalId: params.proposalId,
+        projectId: params.projectId || '',
+        sId: String(responseScope?.sId || params.storeId),
+        tId: String(responseScope?.tId || ''),
+    });
+    if (!normalized) {
+        throw createAiMenuManagerApiError({
+            code: 'response_contract_invalid',
+            message: 'Menu Manager response could not be validated',
+            status: response.status,
+        });
+    }
+    return normalized;
 }
 
 export async function completeAiMenuManagerClientProposal(params: {
@@ -1573,5 +1653,18 @@ export async function completeAiMenuManagerClientProposal(params: {
             idempotencyKey: params.idempotencyKey || createAiMenuManagerIdempotencyKey('amm_complete'),
         }),
     });
-    return readApiResponse(response, 'proposal_complete');
+    const payload = await readApiResponse<unknown>(response, 'proposal_complete');
+    const normalized = normalizeAiMenuManagerProposalCompleteResponse(payload, {
+        actionType: params.actionType,
+        projectId: params.projectId,
+        proposalId: params.proposalId,
+    });
+    if (!normalized) {
+        throw createAiMenuManagerApiError({
+            code: 'response_contract_invalid',
+            message: 'Menu Manager response could not be validated',
+            status: response.status,
+        });
+    }
+    return normalized;
 }

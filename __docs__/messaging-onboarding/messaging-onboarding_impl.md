@@ -1958,6 +1958,18 @@ Pending preview, confirmation, and fix deliveries use token-bound five-minute le
 
 `src/lib/messaging-onboarding/publish.ts` uses bounded runtime diagnostics for best-effort active publish cache revalidation and lifecycle-event writes. After the publish transaction commits, the shared store public-truth runner independently settles the two store tags, both global tags, Digital Screens touch, and project-scoped Owner Business Assistant invalidation, so one rejected effect cannot suppress later refresh work or falsify publication success. Aggregate failures log `messaging_onboarding_publish_cache_revalidation_failed` with tenant/store/project/user presence-length metadata, tag count, failed-effect count, and source error name/code/status only. Lifecycle event write failures log `messaging_onboarding_publish_event_write_failed` with session/provider presence-length metadata, fixed event type/state, metadata key count, and source error name/code/status only; raw IDs and raw exception messages must not be logged.
 
+The active publish transaction also owns publication freshness and exact
+renderer truth. One transaction-local timestamp is written to the store,
+project, project summary and session so Menu Presence, setup progress,
+discovery and public freshness consumers agree that messaging publication is
+live. Admission validates both the normalized aggregate and the exact
+`extractedProjectFiles` graph persisted for public rendering. Persisted LIVE
+results are replayable or deliverable only when the project ID's encoded
+tenant/store matches `publishedResult.tenantId/storeId`; the same check exists
+in the app and Functions consumers. The source fingerprint includes extracted
+address truth so a transaction cannot silently publish a stale corrected
+address.
+
 Preview route failures use bounded runtime diagnostics. `route.ts` logs `messaging_preview_get_route_failed`; `approve/route.ts` logs `messaging_preview_publish_retry_failed` and `messaging_preview_approve_route_failed`; `fix/route.ts` logs `messaging_preview_fix_route_failed`. Best-effort preview event write failures log `messaging_preview_event_write_failed` with fixed event type/state, metadata key count, route/session/provider context, and source error name/code/status only. Context is limited to route, session/provider/request-IP presence-length metadata, state/count booleans or counts, and source error name/code/status. The approve transaction maps expected invalid-token, missing-session, in-progress, not-ready, and expired-session states through typed local error codes instead of raw exception-message matching. `PUBLISH_FAILED` event documents and state-history recovery reasons stay code-only and must not persist raw retry exception messages.
 
 ### 16.6 Feature Flag

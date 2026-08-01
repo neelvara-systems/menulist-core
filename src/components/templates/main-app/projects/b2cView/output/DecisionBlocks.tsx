@@ -297,7 +297,9 @@ function passesGlobalGate(precomputed: PrecomputedDecisionBlocks | null | undefi
  * - Current time is within any of the category's time slots
  */
 function isCategoryWithinTimeSlot(category: ExtractedDataCategory | undefined, storeTimeZone?: string): boolean {
-    if (!category) return true; // No category = always visible
+    // The caller supplies the currently admitted public categories. Missing
+    // category truth means the item is hidden, malformed, or out of time.
+    if (!category) return false;
     return isWithinTimeSlot(category.timeSlots, storeTimeZone);
 }
 

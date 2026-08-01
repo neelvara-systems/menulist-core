@@ -76,12 +76,12 @@ export function LanguageSelector({
                 })}
 
                 {selectedLanguages.length < LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT && (
-                    <Select
+                    <Select<string>
                         style={{ width: 200 }}
                         placeholder={t('addLanguagePlaceholder')}
                         showSearch
                         optionFilterProp="label"
-                        value={null}
+                        value={undefined}
                         suffixIcon={<LuPlus />}
                         onChange={(value) => {
                             const newLanguage = GlobalLanguagesList.find(lang => lang.code === value);

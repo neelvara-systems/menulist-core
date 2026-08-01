@@ -122,7 +122,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
   }
 
   const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsedScope.data.storeId);
-  if ('error' in scope && scope.error) return scope.error;
+  if ('error' in scope) return scope.error;
 
   const permissionError = await requireAnyStorePermissionForStore(
     request,

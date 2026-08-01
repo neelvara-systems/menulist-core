@@ -62,18 +62,18 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
     const { access } = useAnswerlatticeAccess();
     const canUseManagementSurfaces = access?.canUseManagement ?? canUseAnswerlatticeManagement(session);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname);
+    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
     const [expandedParents, setExpandedParents] = useState<Record<string, boolean>>({});
 
     const selectedKey = useMemo(() => {
         const governancePathTab = getAnswerlatticeGovernanceTabFromPathname(normalizedPathname);
-        const legacyQueryTab = normalizedPathname === ANSWERLATTICE_ROUTES.GOVERNANCE ? searchParams.get('tab') : null;
+        const legacyQueryTab = normalizedPathname === ANSWERLATTICE_ROUTES.GOVERNANCE ? searchParams?.get('tab') : null;
         const activeGovernanceTab = governancePathTab || (isAnswerlatticeGovernanceTab(legacyQueryTab) ? legacyQueryTab : null);
         const widgetPathTab = getAnswerlatticeWidgetTabFromPathname(normalizedPathname);
-        const legacyWidgetTab = normalizedPathname === ANSWERLATTICE_ROUTES.WIDGET ? searchParams.get('tab') : null;
+        const legacyWidgetTab = normalizedPathname === ANSWERLATTICE_ROUTES.WIDGET ? searchParams?.get('tab') : null;
         const activeWidgetTab = widgetPathTab || (isAnswerlatticeWidgetTab(legacyWidgetTab) ? legacyWidgetTab : null);
         const teamPathTab = getAnswerlatticeTeamTabFromPathname(normalizedPathname);
-        const legacyTeamTab = normalizedPathname === ANSWERLATTICE_ROUTES.TEAM ? searchParams.get('tab') : null;
+        const legacyTeamTab = normalizedPathname === ANSWERLATTICE_ROUTES.TEAM ? searchParams?.get('tab') : null;
         const activeTeamTab = teamPathTab || (isAnswerlatticeTeamTab(legacyTeamTab) ? legacyTeamTab : null);
 
         if (activeGovernanceTab) {

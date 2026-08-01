@@ -10,6 +10,7 @@ import {
     isRtlLocale,
     normalizeDateFormatPreference,
     normalizeLocalePreference,
+    parseAcceptLanguageLocales,
     normalizeTimeFormatPreference,
     normalizeTimeZone,
 } from '../../src/lib/localization/config';
@@ -20,7 +21,13 @@ import {
     toDate,
 } from '../../src/utils/dateTime';
 import { timeAgo } from '../../src/utils/dateTime/timeAgo';
-import { formatNumber } from '../../src/utils/formatters';
+import {
+    formatCurrency,
+    formatInrAmount,
+    formatInrPaise,
+    formatNumber,
+    formatProcessingTime,
+} from '../../src/utils/formatters';
 import {
     createPublicCustomerTranslator,
     getPublicCustomerLanguageDirection,
@@ -46,6 +53,15 @@ assert.equal(normalizeLocalePreference('pt_BR'), 'pt-BR');
 assert.equal(normalizeLocalePreference('ar'), 'ar-SA');
 assert.equal(normalizeLocalePreference('not-a-locale'), null);
 assert.equal(normalizeLocalePreference('*'), null);
+assert.deepEqual(
+    parseAcceptLanguageLocales('fr-FR;q=0.4, hi-IN;q=0.9, en-US;q=0.8'),
+    ['hi-IN', 'en-US', 'fr-FR'],
+);
+assert.deepEqual(
+    parseAcceptLanguageLocales('*, invalid;q=1, ar;q=0, pt_BR;q=0.7, pt-BR;q=0.6'),
+    ['pt-BR'],
+);
+assert.deepEqual(parseAcceptLanguageLocales('x'.repeat(8_193)), []);
 
 assert.equal(isRtlLocale('ar-SA'), true);
 assert.equal(isRtlLocale('ur-IN'), true);
@@ -68,11 +84,38 @@ assert.equal(fromNativeDateInputValue('2026-02-29', 'UTC'), '');
 assert.equal(fromNativeDateInputValue('2024-02-29', 'UTC'), '2024-02-29T00:00:00.000Z');
 assert.equal(fromNativeDateTimeInputValue('2026-01-01T24:00', 'UTC'), '');
 assert.equal(fromNativeDateTimeInputValue('2026-01-01T23:59', 'UTC'), '2026-01-01T23:59:00.000Z');
+assert.equal(
+    fromNativeDateTimeInputValue('2026-03-08T02:30', 'America/New_York'),
+    '',
+    'nonexistent daylight-saving wall times must not be silently shifted',
+);
 assert.equal(formatClockTime('25:00'), '25:00');
 assert.equal(toDate(0).toISOString(), '1970-01-01T00:00:00.000Z');
+assert.equal(toDate({ seconds: 1, nanoseconds: 500_000_000 }).toISOString(), '1970-01-01T00:00:01.500Z');
+assert.equal(Number.isNaN(toDate({ seconds: 1, nanoseconds: 1_000_000_000 }).getTime()), true);
+assert.equal(Number.isNaN(toDate({ toDate: () => 'not a date' } as never).getTime()), true);
+let timestampGetterExecuted = false;
+assert.equal(Number.isNaN(toDate({
+    get toDate() {
+        timestampGetterExecuted = true;
+        throw new Error('timestamp getter must not execute');
+    },
+} as never).getTime()), true);
+assert.equal(timestampGetterExecuted, false);
+assert.equal(Number.isNaN(toDate(new Proxy({}, {
+    getOwnPropertyDescriptor() {
+        throw new Error('timestamp descriptor lookup must remain contained');
+    },
+}) as never).getTime()), true);
 
 assert.equal(formatNumber(1234567, {}, 'en-US'), '1,234,567');
 assert.equal(formatNumber(1234567, {}, 'hi-IN'), '12,34,567');
+assert.equal(formatCurrency(Number.NaN, 'USD', 'en-US'), '-');
+assert.equal(formatCurrency(Number.POSITIVE_INFINITY, 'USD', 'en-US'), '-');
+assert.equal(formatCurrency(100, 'not-a-currency', 'en-US'), '-');
+assert.equal(formatInrAmount(Number.POSITIVE_INFINITY), '-');
+assert.equal(formatInrPaise(Number.NaN), '-');
+assert.equal(formatProcessingTime(Number.NaN), '-');
 assert.equal(timeAgo(new Date('2026-07-16T12:00:00.000Z'), 'en-US', Date.parse('2026-07-17T12:00:00.000Z')), 'yesterday');
 
 assert.equal(normalizePublicLanguageCode(' AR-sa '), 'ar');

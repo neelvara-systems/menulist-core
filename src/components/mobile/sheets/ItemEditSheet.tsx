@@ -54,7 +54,7 @@ interface ItemEditSheetProps {
     onClose: () => void;
     onGenerateImage?: () => void;
     onManageImages?: () => void;
-    onSave: (updatedItem: Partial<MobileMenuItemType> & { categoryName?: string; image?: string | null; rawItem?: ExtractedDataItem }) => void | Promise<void>;
+    onSave: (updatedItem: Partial<Omit<MobileMenuItemType, 'image'>> & { categoryName?: string; image?: string | null; rawItem?: ExtractedDataItem }) => void | Promise<void>;
     onDelete?: (itemId: string) => void;
     projectData?: Project | null;
     selectedLanguages?: string[];
@@ -489,7 +489,7 @@ export default function ItemEditSheet({
                     ) : null}
                     <Select
                         mode="multiple"
-                        onChange={(value) => updateDecisionFact(field, Array.isArray(value) && value.length ? value : undefined)}
+                        onChange={(value: string | string[]) => updateDecisionFact(field, Array.isArray(value) && value.length ? value : undefined)}
                         options={field.options}
                         placeholder={`Select ${field.label.toLowerCase()}`}
                         value={(getDecisionFactValue(draftItem, field.key) as string[] | undefined) || []}
@@ -506,7 +506,7 @@ export default function ItemEditSheet({
                         <Text type="secondary">{field.confirmationText || 'Only add this if confirmed.'}</Text>
                     ) : null}
                     <Select
-                        onChange={(value) => updateDecisionFact(field, value || undefined)}
+                        onChange={(value: string) => updateDecisionFact(field, value || undefined)}
                         options={field.options}
                         placeholder={`Select ${field.label.toLowerCase()}`}
                         value={getDecisionFactValue(draftItem, field.key) as string | undefined}
@@ -928,7 +928,7 @@ export default function ItemEditSheet({
                                     <Text strong>{t('categoryLabel')}</Text>
                                     <Select
                                         disabled={!canEditMasterFields}
-                                        onChange={(value) => {
+                                        onChange={(value: string) => {
                                             setDraftItem((previous) => ({ ...previous, category: value }));
                                             collapseKeyboard();
                                         }}

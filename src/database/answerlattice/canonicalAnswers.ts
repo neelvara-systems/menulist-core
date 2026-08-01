@@ -22,13 +22,18 @@ import { normalizeAnswerlatticeCanonicalAnswerId, normalizeAnswerlatticeResolved
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { createRuntimeId } from '@lib/runtime/randomId';
+import {
+    acquireAnswerlatticePendingMutation,
+    settleAnswerlatticePendingMutation,
+    type AnswerlatticePendingMutationEntry,
+} from '@lib/answerlattice/pendingMutationRequests';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { AnswerlatticeCanonicalAnswer } from "@type/answerlattice";
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS;
 const MAX_PENDING_GOVERNANCE_RETRY_KEYS = 50;
-const pendingGovernanceRequestIds = new Map<string, string>();
+const pendingGovernanceRequestIds = new Map<string, AnswerlatticePendingMutationEntry>();
 
 const stableSerializeGovernancePayload = (value: unknown): string => {
     if (Array.isArray(value)) return `[${value.map(stableSerializeGovernancePayload).join(',')}]`;
@@ -39,18 +44,6 @@ const stableSerializeGovernancePayload = (value: unknown): string => {
         )).join(',')}}`;
     }
     return JSON.stringify(value) ?? String(value);
-};
-
-const getGovernanceRetryRequestId = (retryKey: string): string => {
-    const existing = pendingGovernanceRequestIds.get(retryKey);
-    if (existing) return existing;
-    if (pendingGovernanceRequestIds.size >= MAX_PENDING_GOVERNANCE_RETRY_KEYS) {
-        const oldestKey = pendingGovernanceRequestIds.keys().next().value;
-        if (oldestKey) pendingGovernanceRequestIds.delete(oldestKey);
-    }
-    const requestId = createRuntimeId('al_gov');
-    pendingGovernanceRequestIds.set(retryKey, requestId);
-    return requestId;
 };
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
@@ -69,7 +62,7 @@ const getDocRef = (docId: string) => {
 };
 
 const toProposalAnswer = (
-    data: Omit<AnswerlatticeCanonicalAnswer, 'id'> | AnswerlatticeCanonicalAnswer,
+    data: Omit<AnswerlatticeCanonicalAnswer, 'id' | 'pId'> | AnswerlatticeCanonicalAnswer,
 ): AnswerlatticeCanonicalProposalAnswer => ({
     title: data.title,
     status: data.status,
@@ -191,10 +184,17 @@ export const getCanonicalAnswerById = async (answerId: string) => {
  * Submit a new canonical answer to the governed mutation queue.
  * Canonical documents are created only by the server after human approval.
  */
-export const proposeCanonicalAnswerCreate = async (data: Omit<AnswerlatticeCanonicalAnswer, 'id'>) => {
+export const proposeCanonicalAnswerCreate = async (data: Omit<AnswerlatticeCanonicalAnswer, 'id' | 'pId'>) => {
     const answer = toProposalAnswer(data);
     const retryKey = `create:${stableSerializeGovernancePayload(answer)}`;
-    const requestId = getGovernanceRetryRequestId(retryKey);
+    const claim = acquireAnswerlatticePendingMutation(
+        pendingGovernanceRequestIds,
+        retryKey,
+        retryKey,
+        () => createRuntimeId('al_gov'),
+        MAX_PENDING_GOVERNANCE_RETRY_KEYS,
+    );
+    const { requestId } = claim;
     return await apiCallComposer(
         async () => {
             const result = await runAnswerlatticeGovernanceAction({
@@ -202,7 +202,7 @@ export const proposeCanonicalAnswerCreate = async (data: Omit<AnswerlatticeCanon
                 requestId,
                 answer,
             });
-            pendingGovernanceRequestIds.delete(retryKey);
+            settleAnswerlatticePendingMutation(pendingGovernanceRequestIds, retryKey, claim);
             return result;
         },
         data,
@@ -216,7 +216,14 @@ export const proposeCanonicalAnswerCreate = async (data: Omit<AnswerlatticeCanon
 export const proposeCanonicalAnswerUpdate = async (data: AnswerlatticeCanonicalAnswer) => {
     const answer = toProposalAnswer(data);
     const retryKey = `update:${data.id}:${stableSerializeGovernancePayload(answer)}`;
-    const requestId = getGovernanceRetryRequestId(retryKey);
+    const claim = acquireAnswerlatticePendingMutation(
+        pendingGovernanceRequestIds,
+        retryKey,
+        retryKey,
+        () => createRuntimeId('al_gov'),
+        MAX_PENDING_GOVERNANCE_RETRY_KEYS,
+    );
+    const { requestId } = claim;
     return await apiCallComposer(
         async () => {
             const normalizedAnswerId = normalizeAnswerlatticeCanonicalAnswerId(data.id);
@@ -227,7 +234,7 @@ export const proposeCanonicalAnswerUpdate = async (data: AnswerlatticeCanonicalA
                 answerId: normalizedAnswerId,
                 answer,
             });
-            pendingGovernanceRequestIds.delete(retryKey);
+            settleAnswerlatticePendingMutation(pendingGovernanceRequestIds, retryKey, claim);
             return result;
         },
         data,

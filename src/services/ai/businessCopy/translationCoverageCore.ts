@@ -1,7 +1,7 @@
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { BusinessCopyLocalizedFieldKey } from './fieldConfig';
 
-export type BusinessCopyFieldValue = Record<string, string> | string | null | undefined;
+export type BusinessCopyFieldValue = unknown;
 
 export type BusinessCopyCoverageCoreField = {
     key: BusinessCopyLocalizedFieldKey;
@@ -15,24 +15,41 @@ export type BusinessCopyCoverageCoreInputField = {
     value: BusinessCopyFieldValue;
 };
 
-function isLocalizedText(value: unknown): value is Record<string, string> {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-    return Object.values(value as Record<string, unknown>).every(
-        (entry) => entry == null || typeof entry === 'string',
-    );
+type LocalizedTextEntry = readonly [languageCode: string, value: string | null | undefined];
+
+function getLocalizedTextEntries(value: unknown): LocalizedTextEntry[] | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+
+    try {
+        const entries: LocalizedTextEntry[] = [];
+        for (const [languageCode, descriptor] of Object.entries(
+            Object.getOwnPropertyDescriptors(value),
+        )) {
+            if (!descriptor.enumerable) continue;
+            if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+            if (descriptor.value != null && typeof descriptor.value !== 'string') return null;
+            entries.push([languageCode, descriptor.value]);
+        }
+        return entries;
+    } catch {
+        return null;
+    }
 }
 
 function getPrimaryLocalizedLanguage(
     value: BusinessCopyFieldValue,
     fallbackLanguage: string,
 ): string {
-    if (isLocalizedText(value)) {
-        const canonicalEntry = value[CANONICAL_SOURCE_LANGUAGE];
+    const localizedEntries = getLocalizedTextEntries(value);
+    if (localizedEntries) {
+        const canonicalEntry = localizedEntries.find(
+            ([languageCode]) => languageCode === CANONICAL_SOURCE_LANGUAGE,
+        )?.[1];
         if (typeof canonicalEntry === 'string' && canonicalEntry.trim().length > 0) {
             return CANONICAL_SOURCE_LANGUAGE;
         }
 
-        const firstNonEmpty = Object.entries(value).find(
+        const firstNonEmpty = localizedEntries.find(
             ([, entry]) => typeof entry === 'string' && entry.trim().length > 0,
         )?.[0];
         if (firstNonEmpty) return firstNonEmpty;
@@ -66,16 +83,19 @@ function getLocalizedText(
     fallback: string = '',
 ): string {
     if (typeof value === 'string') return value.trim() || fallback;
-    if (!isLocalizedText(value)) return fallback;
+    const localizedEntries = getLocalizedTextEntries(value);
+    if (!localizedEntries) return fallback;
 
     for (const candidate of getLocalizedLanguageCandidates(language, primaryLanguage)) {
-        const localized = value[candidate];
+        const localized = localizedEntries.find(
+            ([languageCode]) => languageCode === candidate,
+        )?.[1];
         if (typeof localized === 'string' && localized.trim()) {
             return localized.trim();
         }
     }
 
-    for (const localized of Object.values(value)) {
+    for (const [, localized] of localizedEntries) {
         if (typeof localized === 'string' && localized.trim()) {
             return localized.trim();
         }
@@ -92,8 +112,12 @@ function getExactLocalizedValue(
     if (typeof value === 'string') {
         return languageCode === referenceLanguage ? value.trim() : '';
     }
-    if (!isLocalizedText(value)) return '';
-    return typeof value[languageCode] === 'string' ? value[languageCode].trim() : '';
+    const localizedEntries = getLocalizedTextEntries(value);
+    if (!localizedEntries) return '';
+    const localized = localizedEntries.find(
+        ([candidate]) => candidate === languageCode,
+    )?.[1];
+    return typeof localized === 'string' ? localized.trim() : '';
 }
 
 export function computeBusinessCopyCoverageCore({

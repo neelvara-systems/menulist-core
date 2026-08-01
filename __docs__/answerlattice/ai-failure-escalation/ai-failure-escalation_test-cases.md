@@ -29,9 +29,10 @@
 10. Query/context/entity/retrieval evidence is bounded before projection and the stored context must pass the strict schema.
 11. Blank queries, malformed canonical evidence, NaN scores, and scores outside 0..1 return no automatic suggestion.
 12. Browser-owned `sessionFailureCount` and `repeated_failure` contracts do not exist.
-13. Browser-created tickets cannot set server-owned escalation fields under the DAL or either Firestore rule set.
-14. Before enabling the evaluator, test correct suggestion, false suggestion, abstention, citation, unsupported claim, context-complete handoff, and founder-workload outcomes.
-15. Activation is blocked until authenticated Help Chat uses a server-authoritative, explicitly confirmed, deterministic/idempotent ticket handoff.
+13. Malformed optional entity-debug tokens/candidates are omitted while a valid empty/refusal outcome still produces its hard escalation decision.
+14. Browser-created tickets cannot set server-owned escalation fields under the DAL or either Firestore rule set.
+15. Before enabling the evaluator, test correct suggestion, false suggestion, abstention, citation, unsupported claim, context-complete handoff, and founder-workload outcomes.
+16. Activation is blocked until authenticated Help Chat uses a server-authoritative, explicitly confirmed, deterministic/idempotent ticket handoff.
 
 ## Commands
 

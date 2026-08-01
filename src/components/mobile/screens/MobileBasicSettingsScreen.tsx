@@ -5,6 +5,7 @@ import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { assertTenantUpdateSucceeded, updateTenant } from '@database/tenants';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import type { UserUploadedFileType } from '@type/common';
+import type { StoreDataType } from '@type/platform/store';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
@@ -38,7 +39,53 @@ const BUSINESS_TYPE_OPTIONS = BUSINESS_TYPES.map((businessType) => ({
     value: businessType.value,
 }));
 
-function getInitialFormData(storeDetails: any, tenantDetails?: any) {
+const MOBILE_BASIC_STORE_UPDATE_KEYS = [
+    'addressLine',
+    'area',
+    'businessCategory',
+    'businessType',
+    'city',
+    'contactPersonEmail',
+    'contactPersonName',
+    'contactPersonNumber',
+    'country',
+    'countryCode',
+    'dialCode',
+    'district',
+    'email',
+    'geo',
+    'gstn',
+    'name',
+    'phone',
+    'phoneNumber',
+    'postalCode',
+    'state',
+    'tenantId',
+    'tenantName',
+] as const satisfies readonly (keyof StoreDataType)[];
+
+type MobileBasicStoreUpdate = Partial<Pick<
+    StoreDataType,
+    (typeof MOBILE_BASIC_STORE_UPDATE_KEYS)[number]
+>>;
+
+type MobileBasicStoreMutation = MobileBasicStoreUpdate & {
+    imageToUpdate?: string;
+    imageType?: string;
+    preparedMedia?: AdjustableUploadedFile['preparedMedia'];
+};
+
+function ownsMobileBasicOptimisticValues(
+    storeDetails: StoreDataType | null,
+    updates: MobileBasicStoreUpdate,
+): boolean {
+    return MOBILE_BASIC_STORE_UPDATE_KEYS.every((key) => (
+        !Object.prototype.hasOwnProperty.call(updates, key)
+        || storeDetails?.[key] === updates[key]
+    ));
+}
+
+function getInitialFormData(storeDetails: StoreDataType | null, tenantDetails?: { name?: string } | null) {
     return {
         addressLine: storeDetails?.addressLine || storeDetails?.address || '',
         area: storeDetails?.area || '',
@@ -133,7 +180,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
             dialCode: formData.dialCode,
             phoneNumber: formData.phoneNumber,
         });
-        const updates: Record<string, any> = {
+        const updates: MobileBasicStoreMutation = {
             addressLine: formData.addressLine,
             area: formData.area,
             businessCategory,
@@ -170,7 +217,9 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
         delete optimisticUpdates.imageType;
         delete optimisticUpdates.preparedMedia;
         const previousOptimisticValues = Object.fromEntries(
-            Object.keys(optimisticUpdates).map((key) => [key, storeDetails[key]]),
+            MOBILE_BASIC_STORE_UPDATE_KEYS
+                .filter((key) => Object.prototype.hasOwnProperty.call(optimisticUpdates, key))
+                .map((key) => [key, storeDetails[key]]),
         );
         setStoreDetails((previous: any) => (
             previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId
@@ -205,7 +254,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                 const stillOwnsOptimisticState = (
                     previous?.storeId === expectedStoreId
                     && previous?.tenantId === expectedTenantId
-                    && Object.entries(optimisticUpdates).every(([key, value]) => previous?.[key] === value)
+                    && ownsMobileBasicOptimisticValues(previous, optimisticUpdates)
                 );
                 return stillOwnsOptimisticState
                     ? { ...previous, ...previousOptimisticValues }
@@ -246,13 +295,11 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
         const currentStoreOwnsAttempt = (
             currentStoreDetailsRef.current?.storeId === expectedStoreId
             && currentStoreDetailsRef.current?.tenantId === expectedTenantId
-            && Object.entries(optimisticUpdates).every(
-                ([key, value]) => currentStoreDetailsRef.current?.[key] === value,
-            )
+            && ownsMobileBasicOptimisticValues(currentStoreDetailsRef.current, optimisticUpdates)
         );
         setStoreDetails((previous: any) => (
             previous?.storeId === expectedStoreId && previous?.tenantId === expectedTenantId
-            && Object.entries(optimisticUpdates).every(([key, value]) => previous?.[key] === value)
+            && ownsMobileBasicOptimisticValues(previous, optimisticUpdates)
                 ? {
                     ...previous,
                     businessCategory: savedStore?.businessCategory ?? optimisticUpdates.businessCategory ?? previous.businessCategory,
@@ -423,7 +470,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             <Text type="secondary">{tBusiness('businessType')}</Text>
                         </Flex>
                         <Select
-                            onChange={(value) => setFormData((previous) => ({ ...previous, businessType: value }))}
+                            onChange={(value: string) => setFormData((previous) => ({ ...previous, businessType: value }))}
                             options={BUSINESS_TYPE_OPTIONS}
                             placeholder={tBusiness('selectBusinessType')}
                             value={formData.businessType || undefined}
@@ -448,7 +495,7 @@ function MobileBasicSettingsScreenContent({ onBack }: MobileBasicSettingsScreenP
                             <Text type="secondary">{tBusiness('phoneNumber')}</Text>
                         </Flex>
                         <Select
-                            onChange={(value) => setFormData((previous) => ({
+                            onChange={(value: string) => setFormData((previous) => ({
                                 ...previous,
                                 countryCode: value,
                                 dialCode: getDialCodeForCountry(value),

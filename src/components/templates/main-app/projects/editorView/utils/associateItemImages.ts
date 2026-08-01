@@ -1,24 +1,29 @@
 import { uploadFile } from '@database/projects';
 import type { ItemForDropdown, Project } from '../../types';
 import type { UserUploadedFileType } from '@type/common';
+import {
+    appendItemImagesToProject,
+    toPersistedItemImage,
+} from '@lib/media/itemImageAssociationBoundary';
 import { isDataUrl } from '@lib/media/mediaStorage';
-import { removeObjRef } from '@util/utils';
-
-function normalizeItemImages(images: unknown): UserUploadedFileType[] {
-    return Array.isArray(images) ? images : [];
-}
 
 export async function associateItemImagesWithProject(
     projectData: Project,
     selectedItem: ItemForDropdown,
     imagesToUpload: UserUploadedFileType[],
 ): Promise<Project | null> {
-    const updatedProjectData: Project = removeObjRef(projectData);
-    let itemUpdated = false;
+    // Reject an ambiguous/missing target and an over-limit result before any
+    // immutable Storage object is created.
+    if (!appendItemImagesToProject(projectData, selectedItem, imagesToUpload)) {
+        return null;
+    }
+
+    const uploadedImages: UserUploadedFileType[] = [];
 
     for (const imageData of imagesToUpload) {
+        let uploadedUrl = imageData.url || '';
         if (isDataUrl(imageData.url)) {
-            const uploadedUrl = await uploadFile(
+            uploadedUrl = await uploadFile(
                 {
                     blob: imageData.blob,
                     mediaChecksum: imageData.mediaChecksum,
@@ -33,26 +38,11 @@ export async function associateItemImagesWithProject(
                 },
                 'itemImages',
             );
-            imageData.url = uploadedUrl;
         }
+        const persistedImage = toPersistedItemImage(imageData, uploadedUrl);
+        if (!persistedImage) return null;
+        uploadedImages.push(persistedImage);
     }
 
-    if (updatedProjectData?.files) {
-        for (const file of updatedProjectData.files) {
-            const itemsList = file.extractedData?.data?.items || [];
-            if (!itemsList.length) continue;
-
-            for (const item of itemsList) {
-                if (item.id === selectedItem.id) {
-                    item.images = [...normalizeItemImages(item.images), ...imagesToUpload];
-                    itemUpdated = true;
-                    break;
-                }
-            }
-
-            if (itemUpdated) break;
-        }
-    }
-
-    return itemUpdated ? updatedProjectData : null;
+    return appendItemImagesToProject(projectData, selectedItem, uploadedImages);
 }

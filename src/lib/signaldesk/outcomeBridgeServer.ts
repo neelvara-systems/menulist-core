@@ -3,6 +3,7 @@ import { SIGNALDESK_COLLECTIONS } from "@constant/signaldesk/database";
 import { SIGNALDESK_INTEGRATION_ENV } from "@constant/signaldesk/integrations";
 import { signaldeskFirestoreAdmin } from "@lib/firebase/signaldeskFirebaseAdmin";
 import { isSignalDeskFirebaseConfigured } from "@lib/firebase/signaldeskConfig";
+import { normalizeSignalDeskDocumentId } from "@lib/signaldesk/documentIdBoundary";
 import { parseSignalDeskRouteTokenDocument } from "@lib/signaldesk/outcomeContracts";
 import { recordSignalDeskOutcomeServer } from "@lib/signaldesk/workflowServer";
 import type { SignalDeskAccessContext } from "@type/signaldesk";
@@ -19,7 +20,10 @@ const outcomeBridgePayloadSchema = z.object({
     ownerReviewedAt: z.string().datetime({ offset: true }).optional(),
     routeToken: z.string().trim().min(32).max(256),
     surfaces: z.array(surfaceSchema).max(7).default([]),
-    targetId: z.string().trim().min(3).max(160),
+    targetId: z.string().min(3).max(160).refine(
+        (value) => normalizeSignalDeskDocumentId(value, 160) !== null,
+        "Target ID is invalid",
+    ),
 }).strict().superRefine((value, context) => {
     if (value.outcomeType !== "two_surface_activation") return;
     if (!value.ownerReviewedAt) context.addIssue({ code: z.ZodIssueCode.custom, message: "Owner review is required", path: ["ownerReviewedAt"] });

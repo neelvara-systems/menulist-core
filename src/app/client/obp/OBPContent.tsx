@@ -26,6 +26,7 @@ import {
 } from "@lib/firestore/parseSummaryProjects";
 import { resolveStorePublicLanguage } from "@lib/localization/publicRenderLanguage";
 import { normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
+import { hasOBPPublicStoreIdentity } from "@lib/obp/publicStoreIdentity";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
@@ -34,7 +35,10 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/
 import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import BrandOBPContent from "./BrandOBPContent";
-import OBPResolvedSurface, { type ObpMenuInfo } from "./OBPResolvedSurface";
+import OBPResolvedSurface, {
+    type ObpMenuInfo,
+    type OBPPublicStore,
+} from "./OBPResolvedSurface";
 import StarterActivationHoldingPage from "@/components/customer/StarterActivationHoldingPage";
 
 type ObpServerFailureContext = {
@@ -60,12 +64,18 @@ function logObpServerResolutionFailure(
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number = 5000): Promise<T> {
-    return Promise.race([
-        promise,
-        new Promise<T>((_, reject) =>
-            setTimeout(() => reject(new Error(`OBP: Firestore read timed out after ${ms}ms`)), ms)
-        ),
-    ]);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(
+            () => reject(new Error(`OBP: Firestore read timed out after ${ms}ms`)),
+            ms,
+        );
+    });
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
+    }
 }
 
 async function withRetry<T>(
@@ -168,7 +178,7 @@ const getObpMenuInfo = unstable_cache(
                 activeSpecialMenuId,
                 operation: 'menu_info_lookup',
             });
-            return empty;
+            throw error;
         }
     },
     ['obp-menu-info'],
@@ -190,7 +200,7 @@ const countActiveStoresForTenant = unstable_cache(
                 tenantId,
                 operation: 'store_count_lookup',
             });
-            return 1;
+            throw error;
         }
     },
     ['obp-tenant-store-count'],
@@ -206,7 +216,7 @@ interface OBPContentProps {
      * When set, render the given outlet's OBP instead of resolving store from
      * host headers. MenuContent uses this for `/{outletSlug}`.
      */
-    storeOverride?: any;
+    storeOverride?: OBPPublicStore;
     /** Origin context for outlet renders; outlets inherit master origin. */
     masterSubdomain?: string;
     masterCustomDomain?: string;
@@ -224,18 +234,19 @@ export default async function OBPContent({
 }: OBPContentProps = {}) {
     const { subdomain, customDomain, tenantType } = await getTenantFromHeaders();
 
-    let storeData: any = storeOverride ?? null;
-    if (!storeData) {
+    let resolvedStore: unknown = storeOverride ?? null;
+    if (!resolvedStore) {
         if (tenantType === "subdomain" && subdomain) {
-            storeData = await withRetry(() => withTimeout(getStoreBySubdomain(subdomain)));
+            resolvedStore = await withRetry(() => withTimeout(getStoreBySubdomain(subdomain)));
         } else if (tenantType === "custom" && customDomain) {
-            storeData = await withRetry(() => withTimeout(getStoreByCustomDomain(customDomain)));
+            resolvedStore = await withRetry(() => withTimeout(getStoreByCustomDomain(customDomain)));
         }
     }
 
-    if (!storeData) {
+    if (!hasOBPPublicStoreIdentity(resolvedStore)) {
         notFound();
     }
+    const storeData: OBPPublicStore = resolvedStore;
 
     const contentLanguage = resolveStorePublicLanguage(storeData, requestedLanguage);
     if (isStarterPublicSurfaceExpired(storeData)) {
@@ -243,13 +254,15 @@ export default async function OBPContent({
             <StarterActivationHoldingPage
                 activePlanType={storeData?.activePlanType || null}
                 activeLanguage={contentLanguage}
-                storeName={storeData?.name || storeData?.businessName || null}
+                storeName={storeData.name || null}
             />
         );
     }
 
     if (!storeOverride && storeData.isMaster) {
-        const outletCount = await withTimeout(countActiveStoresForTenant(storeData.tenantId));
+        const outletCount = await withRetry(
+            () => withTimeout(countActiveStoresForTenant(storeData.tenantId)),
+        );
         if (outletCount > 1) {
             const baseUrl = customDomain
                 ? `https://${customDomain}`
@@ -264,12 +277,14 @@ export default async function OBPContent({
         }
     }
 
-    const menuInfo = await withTimeout(getObpMenuInfo(
-        storeData.tenantId,
-        storeData.storeId,
-        storeData.activeSpecialMenuId,
-    ))
-        .catch((error) => {
+    let menuInfo: ObpMenuInfo;
+    try {
+        menuInfo = await withRetry(() => withTimeout(getObpMenuInfo(
+            storeData.tenantId,
+            storeData.storeId,
+            storeData.activeSpecialMenuId,
+        )));
+    } catch (error) {
             logObpServerResolutionFailure('public_obp_menu_info_resolution_failed', error, {
                 storeId: storeData.storeId,
                 tenantId: storeData.tenantId,
@@ -277,8 +292,8 @@ export default async function OBPContent({
                 activeSpecialMenuId: storeData.activeSpecialMenuId,
                 operation: 'menu_info_resolution',
             });
-            return { hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo;
-        });
+            throw error;
+    }
 
     return (
         <OBPResolvedSurface

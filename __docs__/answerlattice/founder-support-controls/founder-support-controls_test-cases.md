@@ -66,6 +66,10 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 45. A failed result with a valid answer ID opens the existing Canonical Answer
     Editor focused on that answer; missing or invalid IDs cannot open a
     different record.
+46. A case that simultaneously fails every admitted assertion still emits at
+    most 20 failure strings of at most 240 characters, non-finite or negative
+    duration becomes zero, and the complete evaluator result parses through
+    `AnswerlatticeAnswerTestCaseResultSchema`.
 
 ## Release Safety
 
@@ -79,6 +83,16 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 8. Deleting, rebinding, or changing scope/ownership of the answer or selected audit during proposal creation causes the transaction to retry against current truth or fail without a proposal/audit write.
 9. A procedure rollback requires a complete strict saved procedure; malformed or missing procedure content cannot create a partial rollback proposal.
 10. The browser accepts only the strict proposal ID, created flag, and known governance status acknowledgement.
+11. Release impact returns every changed entity in exactly one direct-link
+    state: answer-linked, test-linked, linked by both, or without a visible
+    direct answer/test link.
+12. The response rejects duplicate, foreign, hidden-unmapped, zero-count with
+    linked entities, positive-count without linked entities, or other
+    contradictory direct-link evidence and keeps affected-answer/test counts
+    aligned with the existing projections.
+13. The owner modal labels the disclosure as direct entity mapping only and
+    never presents it as complete article, FAQ, workflow, product-surface,
+    factual, or resolution coverage.
 
 ## Proposal Impact Preview
 
@@ -96,6 +110,9 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 12. A projected critical failure returns `blocked`, but preview status never approves, rejects, publishes, rolls back, or changes a release.
 13. Approval independently revalidates entity existence, deprecated state, active answer overlap, version/scope conflict, transaction state, audit, and cache invalidation.
 14. The browser validates the bounded response schema, aborts the complete request and response read after 30 seconds, and never renders an unvalidated server payload.
+15. The response schema rejects evaluated/classification counts, truncation
+    state, linked/evaluated ordering, or current/proposed proof status that
+    contradicts the admitted comparisons.
 
 ## Known Issues
 
@@ -129,6 +146,45 @@ The runtime verifier source-gates these cases in addition to browser/API tests:
 2. HTTP, credential-bearing, non-allowlisted, oversized, duplicate, and malformed URLs are dropped.
 3. Links are never fetched by the server and never included in public widget responses.
 4. Owner links open in a new tab with safe browser flags.
+
+## Answer Trace
+
+1. The route authenticates, fail-closed rate-limits, and requires
+   `MANAGE_SUPPORT` before a history read.
+2. Exact lookup accepts one normalized Firestore document ID and returns only
+   an `AL` record in the authenticated numeric tenant/workspace scope.
+3. Expired, malformed, wrong-product, wrong-scope, missing, or invalid trace
+   records return no owner trace.
+4. Recent review loads are owner-triggered, scan at most 30 existing indexed
+   rows, return at most 12 review candidates, and disclose when the source
+   window hit its cap.
+5. The strict response includes bounded question/answer text, route/type,
+   governed IDs, public citations, fallback/confidence/clarification evidence,
+   source versions, feedback, escalation identity, and unique review signals.
+6. The response excludes visitor identity, origin/path, user-agent family, raw
+   cache keys, debug evidence URLs, source bodies, and arbitrary metadata.
+7. A recent-list response with no review signal, duplicate IDs/signals,
+   malformed citation URL, result count above scanned count, incorrect capped
+   window state, or contradictory exact-mode count fails browser admission.
+8. Trust Metrics performs no trace read until **Load review traces** is chosen.
+9. An escalated widget ticket can open its exact trace; ordinary tickets with
+   no linked search-history ID do not show a misleading action.
+10. Opening or closing a trace performs no write, signal, proposal, test,
+    provider call, or automatic root-cause classification.
+11. Desktop and mobile use the same API and drawer; ticket support staff do not
+    receive unauthorized governance actions.
+12. Switching workspace or ticket invalidates the in-flight request and
+    discards a late response from the previous owner context.
+13. One owner surface cannot start a second trace request while its first
+    request is in flight.
+14. The browser aborts after 15 seconds and rejects a response larger than the
+    1 MiB ceiling. An executable maximum multibyte 12-trace payload stays below
+    that shared limit.
+15. Recent reads use an explicit Firestore field mask and retain the existing
+    30-document billing cap.
+16. The Firestore emulator proves exact and recent projected reads, numeric
+    workspace isolation, expiry rejection before TTL deletion, private-field
+    omission, and zero repair signals for cached canonical answers.
 
 ## Export
 

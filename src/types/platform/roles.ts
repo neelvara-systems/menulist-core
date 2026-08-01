@@ -6,6 +6,8 @@
  * Based on industry standards (Square, Toast, Lightspeed) and multi-chain requirements.
  */
 
+import type { OutletPolicy } from '@type/multiOutlet.types';
+
 // All available permissions as simple boolean flags
 export type RolePermissions = {
     // 💰 Billing & Subscription
@@ -58,6 +60,10 @@ export type RolePermissions = {
 
     // 📺 Digital Screens
     canManageDigitalScreens?: boolean; // Configure TV/menu-board screens
+};
+
+export type EffectiveRolePermissions = RolePermissions & {
+    outletPolicy?: OutletPolicy;
 };
 
 // NOTE: Permission keys and categories moved to src/constants/permissions.ts

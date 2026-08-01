@@ -142,7 +142,7 @@ export function useChatHandlers({
 
     // Handler: Create New Chat
     const handleNewChat = () => {
-        setChatSessions(prev => prev.filter(session => session.id !== null));
+        setChatSessions(prev => prev.filter(session => session.id != null));
         setActiveSessionId(undefined);
         setSearchQuery('');
         setCurrentMode('qna');
@@ -217,7 +217,7 @@ export function useChatHandlers({
                     role: 'user',
                     content,
                     createdOn: Timestamp.now(),
-                    image: uploadedImage || null
+                    image: uploadedImage || undefined
                 };
 
                 // Add user message immediately
@@ -237,7 +237,6 @@ export function useChatHandlers({
                     // Truncate title to 150 chars (industry standard, prevents DB bloat from long pastes)
                     // Future: Replace with AI-generated title after first exchange
                     const tempSession: ChatSession = {
-                        id: null,
                         title: content.slice(0, 150) + (content.length > 150 ? '...' : ''),
                         mode: effectiveMode, // ✅ Use effectiveMode instead of currentMode
                         messages: [newUserMessage],
@@ -363,7 +362,7 @@ export function useChatHandlers({
                             );
                             if (isCurrentActorScope(initiatingActorScope)) {
                                 setChatSessions(prev => {
-                                    const withoutTemp = prev.filter(s => s.id !== null || s.messages.length > 1);
+                                    const withoutTemp = prev.filter(s => s.id != null || s.messages.length > 1);
                                     return [savedSession, ...withoutTemp];
                                 });
                                 setActiveSessionId(savedSession.id);
@@ -372,7 +371,7 @@ export function useChatHandlers({
                             if (isCurrentActorScope(initiatingActorScope)) {
                                 antMessage.error('Failed to save chat session');
                                 setChatSessions(prev => prev.map((session, index) =>
-                                    index === 0 && session.id === null
+                                    index === 0 && session.id == null
                                         ? { ...session, messages: [newUserMessage, aiMessage] }
                                         : session
                                 ));
@@ -601,10 +600,11 @@ export function useChatHandlers({
 
     // Handler: Regenerate Response
     const handleRegenerate = (messageId: string) => {
-        const message = activeSession?.messages.find(m => m.id === messageId);
-        if (message && message.role === 'assistant') {
-            const messageIndex = activeSession.messages.findIndex(m => m.id === messageId);
-            const previousUserMessage = activeSession.messages
+        const session = activeSession;
+        const message = session?.messages.find(m => m.id === messageId);
+        if (session && message && message.role === 'assistant') {
+            const messageIndex = session.messages.findIndex(m => m.id === messageId);
+            const previousUserMessage = session.messages
                 .slice(0, messageIndex)
                 .reverse()
                 .find(m => m.role === 'user');
@@ -612,7 +612,7 @@ export function useChatHandlers({
             if (previousUserMessage) {
                 // Don't remove message here - let onRetry handle it to avoid race condition
                 // Just pass the messageId so onRetry can filter it out atomically
-                onRetry(previousUserMessage.content, previousUserMessage.image, 'regenerate', messageId);
+                onRetry(previousUserMessage.content || '', previousUserMessage.image, 'regenerate', messageId);
             }
         }
     };
@@ -921,7 +921,9 @@ export function useChatHandlers({
             if (!isCurrentActorScope(initiatingActorScope)) return;
             const deletedIds = new Set(result.deletedSessionIds);
             setChatSessions((currentSessions) => (
-                currentSessions.filter((chatSession) => !deletedIds.has(chatSession.id))
+                currentSessions.filter(
+                    (chatSession) => !chatSession.id || !deletedIds.has(chatSession.id),
+                )
             ));
             if (activeSessionId && deletedIds.has(activeSessionId)) {
                 setActiveSessionId(undefined);

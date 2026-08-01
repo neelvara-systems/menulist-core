@@ -306,7 +306,7 @@ export const answerlatticeAssetSlots: AssetSlot[] = [
     mobile: {
       required: true,
       maxKb: 220,
-      notes: 'The same 6:5 proof must retain readable headings and status labels on narrow screens.',
+      notes: 'The bounded brief-to-decision composition must remain recognizable; surrounding page copy carries the detailed decision labels on narrow screens.',
     },
   },
   {
@@ -343,7 +343,7 @@ export const answerlatticeAssetSlots: AssetSlot[] = [
     mobile: {
       required: true,
       maxKb: 220,
-      notes: 'Primary hierarchy and selected-node decision detail must remain legible without horizontal canvas interaction.',
+      notes: 'The curated hierarchy and selected-node pattern must remain recognizable without horizontal canvas interaction; surrounding copy carries exact states.',
     },
   },
   {
@@ -381,7 +381,7 @@ export const answerlatticeAssetSlots: AssetSlot[] = [
     mobile: {
       required: true,
       maxKb: 220,
-      notes: 'Release change, affected answers, and test outcomes must remain readable as one bounded assurance story.',
+      notes: 'Release change, affected answers, and test outcomes must remain recognizable as one bounded assurance story; surrounding copy carries detail.',
     },
   },
   {
@@ -389,7 +389,7 @@ export const answerlatticeAssetSlots: AssetSlot[] = [
     brand: 'answerlattice',
     productBoundary: 'internal-product-architecture',
     page: 'Knowledge Base product feature page',
-    route: '/features/knowledge-base',
+    route: '/product/knowledge-base',
     placement: 'public article topic-map proof',
     type: 'static-image',
     required: true,
@@ -418,7 +418,7 @@ export const answerlatticeAssetSlots: AssetSlot[] = [
     mobile: {
       required: true,
       maxKb: 200,
-      notes: 'The visual must support the same mobile drill-down mental model without requiring zoom or pan.',
+      notes: 'The visual must communicate the mobile drill-down mental model without requiring zoom or pan; surrounding copy carries the published-topic detail.',
     },
   },
 ];

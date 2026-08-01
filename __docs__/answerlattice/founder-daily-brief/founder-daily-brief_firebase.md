@@ -25,9 +25,14 @@ The feature reuses the existing Support Assistant summary packet:
 | `platformSummary/knowledgeIntakeSummary_{tId}_{sId}` | Review items |
 | `platformSummary/activation_{tId}_{sId}` | Factual launch verification and next blocker |
 
-Worst case: 6 reads per uncached brief request.
+Worst case: 6 reads for one uncached workspace packet load.
 
 Cache hit: 0 Firestore reads for 60 seconds inside the server process.
+
+Same-workspace concurrent cold requests share one in-flight packet load. The
+request that owns that load reports the six reads; requests joining it add zero
+incremental Firestore reads and use the same validated packet. Cleanup is
+exact-promise-owned so an older completion cannot remove newer in-flight work.
 
 Source-health classification, deterministic ranking, permission filtering, and strict browser validation are CPU-only. They add no Firestore operation.
 
@@ -81,7 +86,7 @@ The daily brief uses the existing six-document Support Assistant packet, includi
 
 Scheduled summary timestamps older than 48 hours are exposed as stale. A five-minute future tolerance avoids small clock skew while rejecting implausible future evidence. These checks do not refresh or rewrite a source.
 
-Removing generic release and cost cards, admitting the quiet state, projecting `highPriorityCards`, and tightening friction qualification are CPU-only changes. The Firebase cost remains six cold reads or zero reads on a valid 60-second process-cache hit.
+Removing generic release and cost cards, admitting the quiet state, projecting `highPriorityCards`, and tightening friction qualification are CPU-only changes. The Firebase cost remains six reads for one cold workspace load, zero incremental reads for same-workspace requests joining that load, or zero reads on a valid 60-second process-cache hit.
 
 Entity-focused friction links and canonical-answer coverage links carry only a
 validated URL parameter. They add zero reads or writes while Daily Brief is

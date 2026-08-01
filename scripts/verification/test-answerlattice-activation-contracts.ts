@@ -194,7 +194,47 @@ const stringAmountSubscription = buildSubscriptionActivationSummary({
     status: 'active',
     amount: '4900',
 });
-assert.equal(stringAmountSubscription.subscription?.amount, null, 'numeric-string amount must not become owner billing truth');
+assert.equal(stringAmountSubscription.subscription, null, 'numeric-string amount must not become owner billing truth');
+assert.equal(getLicenseStatus(stringAmountSubscription), 'pending');
+
+const expiredActiveSubscription = buildSubscriptionActivationSummary({
+    ...exactSubscriptionScope,
+    id: 'expired_active_subscription',
+    status: 'active',
+    cycleEndDate: { seconds: Math.floor((nowMillis - 60_000) / 1_000), nanoseconds: 0 },
+});
+assert.equal(getLicenseStatus(expiredActiveSubscription), 'pending', 'an elapsed active subscription must not complete license readiness');
+assert.equal(expiredActiveSubscription.subscription?.status, 'expired', 'owner activation truth must expose elapsed active state as expired');
+
+const currentFallbackAfterExpiredEmbedded = buildSubscriptionActivationSummary(
+    {
+        ...exactSubscriptionScope,
+        id: 'expired_embedded_subscription',
+        status: 'active',
+        cycleEndDate: { seconds: Math.floor((nowMillis - 60_000) / 1_000), nanoseconds: 0 },
+    },
+    {
+        ...exactSubscriptionScope,
+        id: 'current_fallback_subscription',
+        status: 'active',
+        cycleEndDate: { seconds: Math.floor((nowMillis + 60_000) / 1_000), nanoseconds: 0 },
+    },
+);
+assert.equal(
+    getLicenseStatus(currentFallbackAfterExpiredEmbedded),
+    'complete',
+    'an elapsed embedded summary must not suppress an exact current fallback',
+);
+assert.equal(currentFallbackAfterExpiredEmbedded.subscription?.id, 'current_fallback_subscription');
+
+const coerciveEndDateSubscription = buildSubscriptionActivationSummary({
+    ...exactSubscriptionScope,
+    id: 'string_end_subscription',
+    status: 'active',
+    cycleEndDate: new Date(nowMillis + 60_000).toISOString(),
+});
+assert.equal(coerciveEndDateSubscription.subscription, null, 'string-like lifecycle dates must not enter owner activation truth');
+assert.equal(getLicenseStatus(coerciveEndDateSubscription), 'pending');
 
 const stringWidgetCountSummary = buildAnswerlatticeActivationSummary({
     tId: 7,

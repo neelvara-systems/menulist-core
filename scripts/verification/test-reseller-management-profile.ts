@@ -3,6 +3,8 @@ import {
     isResellerManagementProfilesResponse,
     projectResellerManagementProfile,
 } from "../../src/lib/reseller/resellerManagementProfile";
+import { projectResellerProfileRecord } from "../../src/lib/reseller/resellerProfileRecord";
+import { Timestamp } from 'firebase/firestore';
 
 const persisted = {
     active: true,
@@ -36,6 +38,35 @@ assert.equal(isResellerManagementProfilesResponse({
     isPartial: false,
     profiles: [projected],
 }), true);
+
+const runtimeProfile = projectResellerProfileRecord('profile-1', {
+    ...persisted,
+    activatedAt: Timestamp.now(),
+    createdOn: Timestamp.now(),
+    modifiedOn: Timestamp.now(),
+});
+assert(runtimeProfile);
+assert.equal(runtimeProfile.id, 'profile-1');
+assert.equal(runtimeProfile.authUserId, 'private-auth-user');
+assert.equal('password' in runtimeProfile, false, 'legacy password fields must not enter authority records');
+assert.equal(projectResellerProfileRecord('../profile-1', persisted), null);
+assert.equal(projectResellerProfileRecord('profile-1', { ...persisted, active: 'true' }), null);
+assert.equal(projectResellerProfileRecord('profile-1', { ...persisted, totalTransactions: -1 }), null);
+assert.equal(projectResellerProfileRecord('profile-1', { ...persisted, deleted: true }), null);
+assert.equal(projectResellerProfileRecord('profile-1', {
+    ...persisted,
+    modifiedOn: { seconds: 1 },
+}), null);
+assert.deepEqual(projectResellerProfileRecord('legacy-profile', {
+    active: true,
+    authUserId: 'legacy-actor',
+    email: 'legacy@example.test',
+}), {
+    active: true,
+    authUserId: 'legacy-actor',
+    email: 'legacy@example.test',
+    id: 'legacy-profile',
+}, 'legacy authority rows may omit non-authority display and counter fields');
 assert.equal(isResellerManagementProfilesResponse({
     invalidProfileCount: 1,
     isCapped: false,

@@ -19,19 +19,19 @@ export interface GrowthOSServerContext {
     actions: GrowthOSActionSummary[];
     entitlement: Awaited<ReturnType<typeof evaluateGrowthOSServerEntitlement>>;
     facts?: GrowthOSSourceFacts;
-    projectData?: any;
+    projectData?: Record<string, unknown> | null;
     readiness?: GrowthOSPreflightResult;
     sourceFactsHash?: string;
-    storeData?: any;
+    storeData?: Record<string, unknown> | null;
     summary?: GrowthOSSummaryDocument | null;
 }
 
 export interface GrowthOSSourceSnapshot {
     facts?: GrowthOSSourceFacts;
-    projectData?: any;
+    projectData?: Record<string, unknown> | null;
     readiness?: GrowthOSPreflightResult;
     sourceFactsHash?: string;
-    storeData?: any;
+    storeData?: Record<string, unknown> | null;
 }
 
 const requireGrowthOSSessionScope = (session: unknown) => {
@@ -44,8 +44,8 @@ const requireGrowthOSSessionScope = (session: unknown) => {
 
 export async function loadGrowthOSSourceSnapshot(params: {
     projectId: string;
-    session: any;
-    storeData?: any;
+    session: unknown;
+    storeData?: Record<string, unknown> | null;
 }): Promise<GrowthOSSourceSnapshot> {
     const scope = requireGrowthOSSessionScope(params.session);
     const storeData = params.storeData ?? await readGrowthOSStoreDataServer(scope.storeScope.documentId);
@@ -80,7 +80,7 @@ export async function loadGrowthOSSourceSnapshot(params: {
 
 export async function loadGrowthOSServerContext(params: {
     projectId: string;
-    session: any;
+    session: unknown;
 }): Promise<GrowthOSServerContext> {
     const scope = requireGrowthOSSessionScope(params.session);
     const storeData = await readGrowthOSStoreDataServer(scope.storeScope.documentId);
@@ -133,7 +133,7 @@ export async function loadGrowthOSServerContext(params: {
 
 export function buildGrowthOSEmptySummary(params: {
     reason: GrowthOSSummaryDocument["reason"];
-    session: any;
+    session: unknown;
     sourceFactsHash?: string;
     readiness?: GrowthOSPreflightResult;
 }): GrowthOSSummaryDocument {

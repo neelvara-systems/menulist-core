@@ -3,8 +3,29 @@ import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 
 type TempStatusMutationEntity = Record<string, unknown>;
 
+const isOptionalBoolean = (value: unknown): boolean => (
+    value === undefined || typeof value === 'boolean'
+);
+
+const hasValidLifecycleState = (entity: TempStatusMutationEntity): boolean => {
+    if (
+        !isOptionalBoolean(entity.active)
+        || !isOptionalBoolean(entity.deleted)
+        || !isOptionalBoolean(entity.blocked)
+        || !isOptionalBoolean(entity.tenantBlocked)
+    ) {
+        return false;
+    }
+    if (entity.blockDetails === undefined) return true;
+    if (!entity.blockDetails || typeof entity.blockDetails !== 'object' || Array.isArray(entity.blockDetails)) {
+        return false;
+    }
+    return isOptionalBoolean((entity.blockDetails as Record<string, unknown>).blocked);
+};
+
 const isUnavailableEntity = (entity: TempStatusMutationEntity): boolean => (
-    entity.active === false
+    !hasValidLifecycleState(entity)
+    || entity.active === false
     || entity.deleted === true
     || isPlatformEntityBlocked(entity)
 );

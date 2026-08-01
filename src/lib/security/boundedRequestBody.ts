@@ -90,7 +90,7 @@ export async function readBoundedTextBody(
 
         totalBytes += value.byteLength;
         if (totalBytes > maxBytes) {
-            await reader.cancel().catch(() => undefined);
+            await reader.cancel().catch((): undefined => undefined);
             return {
                 ok: false,
                 response: NextResponse.json({ error: messages.tooLargeMessage }, { status: 413 }),
@@ -132,7 +132,7 @@ export async function readBoundedArrayBufferBody(
 
         totalBytes += value.byteLength;
         if (totalBytes > maxBytes) {
-            await reader.cancel().catch(() => undefined);
+            await reader.cancel().catch((): undefined => undefined);
             return {
                 ok: false,
                 response: NextResponse.json({ error: messages.tooLargeMessage }, { status: 413 }),

@@ -6,6 +6,11 @@ import {
 } from '@lib/answerlattice/contentFeedbackContracts';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
+import {
+    acquireAnswerlatticePendingMutation,
+    settleAnswerlatticePendingMutation,
+    type AnswerlatticePendingMutationEntry,
+} from '@lib/answerlattice/pendingMutationRequests';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
@@ -23,7 +28,7 @@ type ContentType = 'changelog' | 'article' | 'faq' | 'workflow';
 type ContentFeedbackAction = 'added' | 'removed';
 const CONTENT_FEEDBACK_RESPONSE_MAX_BYTES = 64 * 1024;
 const MAX_PENDING_CONTENT_FEEDBACK_REQUESTS = 200;
-const pendingContentFeedbackRequests = new Map<string, { fingerprint: string; requestId: string }>();
+const pendingContentFeedbackRequests = new Map<string, AnswerlatticePendingMutationEntry>();
 
 export type ContentFeedbackItem = {
     requestId?: string;
@@ -53,18 +58,6 @@ const normalizeContentFeedbackDocumentId = (value: unknown): string | null => {
     return documentId && documentId.length <= 180 && isValidFirestoreDocumentId(documentId)
         ? documentId
         : null;
-};
-
-const getContentFeedbackRequestId = (key: string, fingerprint: string) => {
-    const pending = pendingContentFeedbackRequests.get(key);
-    if (pending?.fingerprint === fingerprint) return pending.requestId;
-    if (pendingContentFeedbackRequests.size >= MAX_PENDING_CONTENT_FEEDBACK_REQUESTS) {
-        const oldest = pendingContentFeedbackRequests.keys().next().value;
-        if (oldest) pendingContentFeedbackRequests.delete(oldest);
-    }
-    const requestId = createRuntimeId('content_feedback');
-    pendingContentFeedbackRequests.set(key, { fingerprint, requestId });
-    return requestId;
 };
 
 const normalizePositiveContentFeedbackScopeId = (value: unknown): number | null => {
@@ -213,9 +206,15 @@ export const updateContentFeedbackWithAudit = async (
         input.increment === false ? 'remove' : 'add',
     ].join(':');
     const requestFingerprint = JSON.stringify({ action, comment: input.comment || '' });
-    const requestId = getContentFeedbackRequestId(requestKey, requestFingerprint);
+    const requestClaim = acquireAnswerlatticePendingMutation(
+        pendingContentFeedbackRequests,
+        requestKey,
+        requestFingerprint,
+        () => createRuntimeId('content_feedback'),
+        MAX_PENDING_CONTENT_FEEDBACK_REQUESTS,
+    );
     const request = parseAnswerlatticeContentFeedbackRequest({
-        requestId,
+        requestId: requestClaim.requestId,
         type: input.type,
         contentId,
         ...(pageId ? { pageId } : {}),
@@ -235,11 +234,15 @@ export const updateContentFeedbackWithAudit = async (
         body: JSON.stringify(request),
     });
     const payload = await readJsonResponseWithLimit<unknown>(response, CONTENT_FEEDBACK_RESPONSE_MAX_BYTES)
-        .catch(() => null);
+        .catch((): null => null);
     if (!response.ok) throw new Error('Content feedback could not be saved');
     const parsed = AnswerlatticeContentFeedbackResultSchema.safeParse(payload);
     if (!parsed.success) throw new Error('Content feedback returned an invalid response');
-    pendingContentFeedbackRequests.delete(requestKey);
+    settleAnswerlatticePendingMutation(
+        pendingContentFeedbackRequests,
+        requestKey,
+        requestClaim,
+    );
     return parsed.data;
 };
 

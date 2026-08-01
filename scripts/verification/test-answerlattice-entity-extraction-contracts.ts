@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { extractEntitiesFromArticles } from '../../src/lib/answerlattice/entityExtraction';
+import {
+    extractEntitiesFromArticles,
+    extractPlainTextFromTipTap,
+} from '../../src/lib/answerlattice/entityExtraction';
 
 const article = {
     title: 'Webhook retries',
@@ -131,9 +134,59 @@ async function run() {
     assert.deepEqual(ambiguous.matchedEntityIds, []);
     assert.equal(ambiguous.candidateDrafts?.length, 1, 'ambiguous aliases must become review work instead of an arbitrary link');
 
+    const multilingual = await extractEntitiesFromArticles(
+        [article],
+        scope.tId,
+        scope.sId,
+        async () => JSON.stringify({
+            entities: [
+                {
+                    name: 'إدارة الفواتير',
+                    type: 'feature',
+                    confidence: 0.91,
+                    description: 'تدير الفواتير وحالات الدفع.',
+                    source: 'new',
+                },
+                {
+                    name: 'سجل الإصدارات',
+                    type: 'feature',
+                    confidence: 0.9,
+                    description: 'يمثل سجل إصدارات المنتج.',
+                    source: 'new',
+                },
+            ],
+        }),
+        [],
+        persistCandidate,
+        { persistCandidates: false },
+    );
+    assert.equal(multilingual.candidateDrafts?.length, 2, 'distinct non-Latin entities must not collapse during deduplication');
+
+    const cyclicContent: Record<string, unknown> = { type: 'doc', content: [] };
+    (cyclicContent.content as unknown[]).push(cyclicContent);
+    assert.doesNotThrow(() => extractPlainTextFromTipTap(cyclicContent));
+    assert.ok(extractPlainTextFromTipTap('x'.repeat(30_000)).length <= 20_000);
+    assert.equal(extractPlainTextFromTipTap(new Proxy({}, {
+        get() {
+            throw new Error('hostile rich-text access');
+        },
+    })), '');
+
     const routeSource = fs.readFileSync(
         path.resolve(__dirname, '../../src/app/api/answerlattice/articles/extract-entities/route.ts'),
         'utf8',
+    );
+    const extractionSource = fs.readFileSync(
+        path.resolve(__dirname, '../../src/lib/answerlattice/entityExtraction.ts'),
+        'utf8',
+    );
+    const standaloneHelperSource = extractionSource.slice(
+        extractionSource.indexOf('export async function extractEntitiesForArticle('),
+    );
+    assert.match(
+        standaloneHelperSource,
+        /existingContext,\s*async \(\) => undefined,\s*\{ persistCandidates: false \}/,
+        'The standalone non-persisting helper must not invoke the disabled browser candidate writer',
     );
     assert.match(routeSource, /buildArticleSourceFingerprint\(currentArticle\) !== sourceFingerprint/);
     assert.match(routeSource, /\{ persistCandidates: false \}/);

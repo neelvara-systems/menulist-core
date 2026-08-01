@@ -2,7 +2,9 @@ import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import imageViewTypesData from './imageViewTypes.json';
 import platformEditingFeaturesData from './platformEditingFeatures.json';
 
-export const IMAGE_VIEW_TYPES: any[] = imageViewTypesData as any[];
+export type ImageViewType = (typeof imageViewTypesData)[number];
+
+export const IMAGE_VIEW_TYPES: readonly ImageViewType[] = imageViewTypesData;
 
 const CATEGORY_IMAGE_VIEW_FALLBACKS: Record<string, string> = {
     creative: 'Photography Studio',
@@ -14,7 +16,10 @@ const CATEGORY_IMAGE_VIEW_FALLBACKS: Record<string, string> = {
     specialty: 'Car Dealership',
 };
 
-export function getImageViewTypeForBusiness(businessType?: string | null, businessCategory?: string | null): any {
+export function getImageViewTypeForBusiness(
+    businessType?: string | null,
+    businessCategory?: string | null,
+): ImageViewType {
     const normalizedBusinessType = businessType?.trim().toLowerCase();
     const exact = normalizedBusinessType
         ? IMAGE_VIEW_TYPES.find((type) => type.businessType?.trim().toLowerCase() === normalizedBusinessType)

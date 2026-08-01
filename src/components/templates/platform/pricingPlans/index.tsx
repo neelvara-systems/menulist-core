@@ -5,6 +5,8 @@ import { PricingPlan } from '@data/common';
 import { addPricingPlan, deactivatePricingPlan, getAllPricingPlans, PricingPlanMutationInput, updatePricingPlan } from '@database/pricingPlans';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Card, Col, Divider, Drawer, Form, Input, InputNumber, Modal, Radio, Row, Space, Switch, Table, Tag, Typography, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import type { Key } from 'react';
 import { useEffect, useState } from 'react';
 
 const { Title, Text } = Typography;
@@ -116,7 +118,7 @@ function PricingPlans() {
         });
     };
 
-    const columns = [
+    const columns: ColumnsType<PricingPlan> = [
         {
             title: 'Name',
             dataIndex: 'name',
@@ -159,7 +161,7 @@ function PricingPlans() {
                 { text: 'INR', value: 'INR' },
                 { text: 'USD', value: 'USD' },
             ],
-            onFilter: (value: string, record: PricingPlan) => record.currency === value,
+            onFilter: (value: boolean | Key, record: PricingPlan) => record.currency === value,
             render: (currency: string) => (
                 <Tag color={currency === 'INR' ? 'purple' : 'cyan'}>
                     {currency === 'INR' ? 'Indian Rupee' : 'US Dollar'}
@@ -175,7 +177,7 @@ function PricingPlans() {
                 { text: 'B2C', value: 'B2C' },
                 { text: 'B2B', value: 'B2B' },
             ],
-            onFilter: (value: string, record: PricingPlan) => record.planType === value,
+            onFilter: (value: boolean | Key, record: PricingPlan) => record.planType === value,
             render: (planType: string) => (
                 <Tag color={planType === 'B2C' ? 'green' : 'blue'}>
                     {planType}
@@ -191,7 +193,7 @@ function PricingPlans() {
                 { text: 'Monthly', value: 'MONTH' },
                 { text: 'Yearly', value: 'YEAR' },
             ],
-            onFilter: (value: string, record: PricingPlan) => record.periodicity === value,
+            onFilter: (value: boolean | Key, record: PricingPlan) => record.periodicity === value,
             render: (periodicity: string) => periodicity.charAt(0) + periodicity.slice(1).toLowerCase(),
         },
         // {

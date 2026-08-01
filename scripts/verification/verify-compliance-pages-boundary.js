@@ -293,6 +293,7 @@ function verifyOwnerEditorsBoundary() {
   const customDomain = read('src/components/templates/main-app/businessSettings/tabs/CustomDomainTab.tsx');
   const mobile = read('src/components/mobile/components/MobileCompliancePagesEditor.tsx');
   const mobileOfficial = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
+  const ownerResponseBoundary = read('src/lib/compliance/ownerComplianceResponseBoundary.ts');
   const browserPolicy = read('src/lib/auth/browserRequestPolicy.ts');
 
   assertIncludes(browserPolicy, "cache: 'no-store' as RequestCache", 'Auth browser request policy cache boundary');
@@ -315,6 +316,9 @@ function verifyOwnerEditorsBoundary() {
     assertIncludes(content, 'getBoundedBusinessSettingsStringContext', `${label} bounded diagnostics`);
     assertIncludes(content, "notification.error({ message: 'Failed to save.' });", `${label} fixed save failure copy`);
     assertIncludes(content, "notification.error({ message: 'Failed to reset.' });", `${label} fixed reset failure copy`);
+    assertIncludes(content, 'normalizeOwnerComplianceLoadResponse(data, expectedScope)', `${label} exact tenant/store response admission`);
+    assertIncludes(content, 'currentScopeKeyRef.current !== expectedScope.key', `${label} stale tenant settlement guard`);
+    assertIncludes(content, 'isOwnerComplianceMutationScopeAcknowledged(value, expectedScope)', `${label} mutation scope acknowledgement`);
   });
 
   assertOccurrenceAtLeast(standalone, "...AUTH_BROWSER_REQUEST_POLICY", 2, 'standalone desktop compliance mutations spread shared request policy');
@@ -333,6 +337,16 @@ function verifyOwnerEditorsBoundary() {
   assertIncludes(mobile, "Toast.show({ content: 'Failed to save.'", 'Mobile compliance fixed save failure copy');
   assertIncludes(mobile, "Toast.show({ content: 'Failed to reset.'", 'Mobile compliance fixed reset failure copy');
   assertOccurrenceAtLeast(mobile, "...AUTH_BROWSER_REQUEST_POLICY", 2, 'mobile compliance mutations spread shared request policy');
+  assertIncludes(mobile, 'normalizeOwnerComplianceLoadResponse(data, scope)', 'Mobile compliance load response exact scope admission');
+  assertIncludes(mobile, 'compliancePagesRequests.get(scope.key) === request', 'Mobile compliance in-flight request ownership cleanup');
+  assertIncludes(mobile, 'compliancePagesRequests.get(scope.key) !== request', 'Mobile compliance stale same-scope response settlement guard');
+  assertIncludes(mobile, 'getCachedCompliancePages(scope.key)', 'Mobile compliance exact scope cache lookup');
+  assertIncludes(mobile, 'isOwnerComplianceMutationScopeAcknowledged(value, expectedScope)', 'Mobile compliance mutation scope acknowledgement');
+  assertIncludes(ownerResponseBoundary, 'key: JSON.stringify([normalizedTenantId, normalizedStoreId])', 'Owner compliance collision-safe tenant/store cache key');
+  assertIncludes(ownerResponseBoundary, 'normalizeExactDocumentId(record.tenantId) !== expectedScope.tenantId', 'Owner compliance tenant response match');
+  assertIncludes(ownerResponseBoundary, 'normalizeExactDocumentId(record.storeId) !== expectedScope.storeId', 'Owner compliance store response match');
+  assertOccurrenceAtLeast(mobileOfficial, 'tenantId={storeDetails?.tenantId}', 3, 'Mobile Official Page compliance tenant scope');
+  assertOccurrenceAtLeast(mobileOfficial, 'storeId={storeDetails?.storeId}', 3, 'Mobile Official Page compliance store scope');
 
   assertIncludes(mobileOfficial, 'MobileCompliancePagesEditor', 'Mobile Official Page mounts compliance editor');
   assertIncludes(mobileOfficial, 'type="privacy"', 'Mobile Official Page privacy compliance card');

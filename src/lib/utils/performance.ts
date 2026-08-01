@@ -31,32 +31,43 @@ export function measureRenderTime(componentName: string): () => void {
 /**
  * Debounce function calls
  */
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+const MAX_IMPORT_RETRIES = 10;
 
-  return (...args: Parameters<T>) => {
+function normalizeTimerDelay(value: number): number {
+  return Number.isFinite(value)
+    ? Math.min(MAX_TIMER_DELAY_MS, Math.max(0, Math.floor(value)))
+    : 0;
+}
+
+export function debounce<TArgs extends unknown[]>(
+  func: (...args: TArgs) => unknown,
+  wait: number
+): (...args: TArgs) => void {
+  let timeout: NodeJS.Timeout | null = null;
+  const delay = normalizeTimerDelay(wait);
+
+  return (...args: TArgs) => {
     if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
+    timeout = setTimeout(() => func(...args), delay);
   };
 }
 
 /**
  * Throttle function calls
  */
-export function throttle<T extends (...args: any[]) => any>(
-  func: T,
+export function throttle<TArgs extends unknown[]>(
+  func: (...args: TArgs) => unknown,
   limit: number
-): (...args: Parameters<T>) => void {
-  let inThrottle: boolean;
+): (...args: TArgs) => void {
+  let inThrottle = false;
+  const delay = normalizeTimerDelay(limit);
 
-  return (...args: Parameters<T>) => {
+  return (...args: TArgs) => {
     if (!inThrottle) {
-      func(...args);
       inThrottle = true;
-      setTimeout(() => (inThrottle = false), limit);
+      setTimeout(() => (inThrottle = false), delay);
+      func(...args);
     }
   };
 }
@@ -68,10 +79,13 @@ export function throttle<T extends (...args: any[]) => any>(
 /**
  * Lazy load component with retry logic
  */
-export function lazyWithRetry<T extends React.ComponentType<any>>(
+export function lazyWithRetry<T>(
   componentImport: () => Promise<{ default: T }>,
   retries = 3
 ): Promise<{ default: T }> {
+  const retryCount = Number.isSafeInteger(retries)
+    ? Math.min(MAX_IMPORT_RETRIES, Math.max(0, retries))
+    : 0;
   return new Promise((resolve, reject) => {
     const attemptImport = (retriesLeft: number) => {
       componentImport()
@@ -89,7 +103,7 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
         });
     };
 
-    attemptImport(retries);
+    attemptImport(retryCount);
   });
 }
 
@@ -104,9 +118,13 @@ export class MemoryCache<T> {
   private cache = new Map<string, { value: T; expires: number }>();
 
   set(key: string, value: T, ttl: number): void {
+    if (!Number.isFinite(ttl) || ttl <= 0) {
+      this.cache.delete(key);
+      return;
+    }
     this.cache.set(key, {
       value,
-      expires: Date.now() + ttl,
+      expires: Date.now() + Math.min(MAX_TIMER_DELAY_MS, Math.floor(ttl)),
     });
   }
 
@@ -115,7 +133,7 @@ export class MemoryCache<T> {
 
     if (!item) return null;
 
-    if (Date.now() > item.expires) {
+    if (Date.now() >= item.expires) {
       this.cache.delete(key);
       return null;
     }

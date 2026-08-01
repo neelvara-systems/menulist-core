@@ -165,7 +165,13 @@ export const writeAuthLogEntry = async (logFileName: string, userId: string) => 
     });
 }
 
-export const writeMissingParamsLogEntry = async (logFileName: string, userId: string, projectId: string, fileId: string, data: any) => {
+export const writeMissingParamsLogEntry = async (
+    logFileName: string,
+    userId: string,
+    projectId: string | undefined,
+    fileId: string | undefined,
+    data: unknown,
+) => {
     return writeLogEntry({
         logFileName,
         userId,

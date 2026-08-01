@@ -100,7 +100,7 @@ const getQualityRank = (node: AnswerlatticeEntityGraphNode) => (
 export default function KnowledgeMapDashboard({ tId, sId }: KnowledgeMapDashboardProps) {
     const { token } = theme.useToken();
     const searchParams = useSearchParams();
-    const requestedEntityId = normalizeAnswerlatticeEntityId(searchParams.get('entity')) || '';
+    const requestedEntityId = normalizeAnswerlatticeEntityId(searchParams?.get('entity')) || '';
     const [data, setData] = useState<AnswerlatticeKnowledgeMapData | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);

@@ -84,7 +84,8 @@ the destination pays only its existing cost when the owner explicitly opens it.
 | 11  | `deployment/answerlattice-qa-deployment-runbook.md`   | Developers/Ops  | QA deployment evidence, commands, secret handling, and production checklist |
 | 12  | `product-surface-contexts/`                      | Product/Ops/Dev | Route/page/workflow context model for related KB, changelog, ticket, and widget answers |
 | 13  | `system-inventory/`                              | Product/Dev/Ops  | Codebase-first Answerlattice feature map, route map, Firebase map, file inventory, and website truth |
-| 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Answerlattice self-serve positioning, non-enterprise ICP, pricing direction, and execution task list |
+| 14  | `self-sellable-product-strategy.md`              | Product/Sales/Dev | Answerlattice self-serve positioning, founder-first ICP, bounded team fit, pricing direction, and execution task list |
+| 14A | `progressive-adoption-operating-guide.md`         | Product/Ops/Sales | One-product Start, Coordinate, and Govern manual for solo founders, small teams, and bounded product groups |
 | 15  | `faq-management/`                                | Product/Ops/Dev | Owner-reviewed short answers linked to articles and product surfaces |
 | 16  | `developer-install-pack/`                        | Product/Sales/Dev | Agent install packet, v1 script quickstarts, install verifier, starter surfaces, import starters, ROI, proof, and ops one-pager |
 | 17  | `staff-access-control/`                          | Product/Ops/Dev | Answerlattice team members, workspace roles, permission claims, and rule-level access control |

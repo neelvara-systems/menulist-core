@@ -1,4 +1,5 @@
 import type { PlatformCostPostureApiResponse, PlatformCostPostureData } from '@lib/ops/costPostureTypes';
+import { getBoundedErrorStringField } from '@lib/monitoring/boundedLogContext';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 
@@ -6,6 +7,7 @@ const PLATFORM_COST_POSTURE_LOAD_FAILED = 'Failed to load platform cost posture'
 const PLATFORM_COST_POSTURE_RESPONSE_PARSE_FAILED = 'platform_cost_posture_response_parse_failed';
 const PLATFORM_COST_POSTURE_RESPONSE_INVALID = 'platform_cost_posture_response_invalid';
 const PLATFORM_COST_POSTURE_RESPONSE_REJECTED = 'platform_cost_posture_response_rejected';
+const PLATFORM_COST_POSTURE_REQUEST_FAILED = 'platform_cost_posture_request_failed';
 export const PLATFORM_COST_POSTURE_RESPONSE_JSON_MAX_BYTES = 256 * 1024;
 
 const COST_POSTURE_STATUSES = ['healthy', 'watch', 'action_required', 'setup_required'];
@@ -165,6 +167,13 @@ function getPlatformCostPostureResponseContext(response: Response, days: number)
   };
 }
 
+function getPlatformCostPostureRequestContext(days: number) {
+  return {
+    days,
+    maxBytes: PLATFORM_COST_POSTURE_RESPONSE_JSON_MAX_BYTES,
+  };
+}
+
 async function readPlatformCostPostureResponseJson(
   response: Response,
   days: number,
@@ -193,12 +202,23 @@ export async function getPlatformCostPosture(
   }
 
   const params = new URLSearchParams({ days: String(days) });
-  const response = await fetch(`/api/platform/cost-posture?${params.toString()}`, {
-    cache: 'no-store',
-    credentials: 'same-origin',
-    redirect: 'manual',
-    signal: options.signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`/api/platform/cost-posture?${params.toString()}`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      redirect: 'manual',
+      signal: options.signal,
+    });
+  } catch (error) {
+    if (getBoundedErrorStringField(error, 'name', 128) === 'AbortError') throw error;
+    logRuntimeFailure(
+      PLATFORM_COST_POSTURE_REQUEST_FAILED,
+      error,
+      getPlatformCostPostureRequestContext(days),
+    );
+    throw createPlatformCostPostureLoadError();
+  }
   const payload = await readPlatformCostPostureResponseJson(response, days);
 
   if (!response.ok) {

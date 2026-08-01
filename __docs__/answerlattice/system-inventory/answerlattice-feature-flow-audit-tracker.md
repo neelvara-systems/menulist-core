@@ -323,6 +323,8 @@ These contracts are audited across every relevant feature and receive a final sy
 **Hardening completed:**
 
 - made extraction use persisted article truth only, fingerprint it across provider latency, revalidate matched active entities, and reject stale/deleted/cross-scope state before changing article links;
+- routed rich-text extraction through the shared bounded TipTap projector, capped provider-bound article text, and contained cyclic, accessor-backed, proxy-backed, malformed, and oversized content;
+- made candidate-name deduplication Unicode-aware so distinct non-Latin product concepts remain separate review candidates instead of collapsing to an empty ASCII key;
 - committed changed article `entityIds`, KB cache version, compiled source version, and bundle-stale state in one Firestore transaction, while candidate writes remain human-reviewed signals after source validation;
 - prevented ambiguous name/slug/alias matches from silently linking to whichever entity Firestore returned first;
 - made deprecation fail closed while active canonical answers, KB articles, FAQs, product surfaces, incoming relations, or outgoing relations still depend on the entity;

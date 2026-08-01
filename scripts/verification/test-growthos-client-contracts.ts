@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import {
     getGrowthOSClientScope,
     getGrowthOSSummaryCacheKey,
+    projectGrowthOSExportForScope,
+    projectGrowthOSExportResult,
+    projectGrowthOSKitForScope,
     projectGrowthOSSummaryForScope,
 } from "../../src/lib/growthos/clientContracts";
 import { getGrowthOSRateLimitFailureDecision } from "../../src/lib/growthos/rateLimitPolicy";
@@ -36,6 +39,70 @@ assert.equal(projectGrowthOSSummaryForScope({
         expiresAt: { get toMillis() { throw new Error("hostile"); } },
     },
 }, scopeA!), null);
+const timestamp = { toMillis: () => Date.parse("2026-07-26T12:00:00.000Z") };
+const output = {
+    id: "output-1",
+    destination: "staff_brief" as const,
+    label: "Brief",
+    text: "Text",
+    preflight: { status: "ready" as const, blocks: [], warnings: [] },
+};
+const kit = {
+    id: "kit-1",
+    actionType: "staff_push" as const,
+    title: "Pack",
+    outputs: [output],
+    sourceFactsHash: "hash",
+    status: "draft" as const,
+    createdAt: timestamp,
+    expiresAt: timestamp,
+    tId: "11",
+    sId: "22",
+    projectId: "project-1",
+    actionId: "action-1",
+    operationId: "operation-1",
+    destinationSet: ["staff_brief" as const],
+    sourceFactsSummary: {
+        businessName: "Cafe",
+        projectName: "Menu",
+        itemCount: 1,
+        availableItemCount: 1,
+        unavailableItemNames: [],
+        isOpenToday: true,
+    },
+    updatedAt: timestamp,
+    privateField: "must-not-survive",
+};
+const projectedKit = projectGrowthOSKitForScope(kit, scopeA!);
+assert.equal(projectedKit?.createdAt, "2026-07-26T12:00:00.000Z");
+assert.equal(projectedKit?.expiresAt, "2026-07-26T12:00:00.000Z");
+assert.equal(projectedKit?.updatedAt, "2026-07-26T12:00:00.000Z");
+assert.equal(Object.prototype.hasOwnProperty.call(projectedKit || {}, "privateField"), false);
+assert.equal(projectGrowthOSKitForScope({ ...kit, tId: "12" }, scopeA!), null);
+assert.equal(projectGrowthOSKitForScope({ ...kit, outputs: [{ ...output, text: 42 }] }, scopeA!), null);
+
+const projectedExport = projectGrowthOSExportForScope({
+    id: "export-1",
+    tId: "11",
+    sId: "22",
+    kitId: "kit-1",
+    destination: "staff_brief",
+    method: "copy",
+    operationId: "operation-2",
+    outputId: "output-1",
+    status: "copied",
+    isStale: false,
+    uId: "owner-1",
+    exportedAt: timestamp,
+    secret: "must-not-survive",
+}, scopeA!);
+assert.equal(projectedExport?.exportedAt, "2026-07-26T12:00:00.000Z");
+assert.equal(Object.prototype.hasOwnProperty.call(projectedExport || {}, "secret"), false);
+assert.equal(projectGrowthOSExportForScope({ ...projectedExport, sId: "23" }, scopeA!), null);
+assert.deepEqual(
+    projectGrowthOSExportResult({ exportId: "export-1", isStale: false, status: "copied", extra: true }),
+    { exportId: "export-1", isStale: false, status: "copied" },
+);
 
 const now = 1_000_000;
 assert.deepEqual(

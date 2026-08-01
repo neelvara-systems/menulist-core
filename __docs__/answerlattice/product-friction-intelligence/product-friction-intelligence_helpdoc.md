@@ -18,6 +18,23 @@ governed product concept and its answer coverage. The link preserves only the
 entity identity. The map does not copy the friction metric and does not change
 product or support truth.
 
+Use **Prepare evidence brief** when the same factual summary needs to move into
+a product, engineering, or knowledge review:
+
+1. Open the ranked product area.
+2. Choose the owner review path: investigate, support knowledge, product
+   behavior, known limitation, plan or permission explanation, watch, or no
+   action.
+3. Read the completed windows, evidence mix, trend, and limitation statement.
+4. Select **Copy brief** or **Download Markdown**.
+
+The review path is included only in the copied or downloaded packet. It is not
+saved in Answerlattice, sent to an issue tracker, or treated as a confirmed
+root cause. Choosing **Review known limitation** still requires the owner to
+verify that the constraint is intentional and approved. The brief does not
+include raw conversations, ticket bodies, customer identities, or unsupported
+affected-user counts.
+
 Answerlattice does not automatically know that a high-evidence area is a
 product bug, confusing interface, policy problem, or missing document. Confirm
 the cause from the product, release, approved knowledge, and customer evidence

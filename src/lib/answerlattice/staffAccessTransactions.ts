@@ -260,7 +260,7 @@ export const createAnswerlatticeStaffMembershipTransaction = async (params: {
         preferredStoreId: primaryMembership?.storeId,
         tenantId: params.tenantId,
     });
-    const writeData = {
+    const writeData: FirebaseFirestore.DocumentData = {
         ...params.baseData,
         ...accessFields,
         countryCode: currentData.countryCode || params.baseData.countryCode,

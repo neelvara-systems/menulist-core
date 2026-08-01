@@ -7,12 +7,15 @@ import {
     getPrivateScreenControlDocId,
     type PrivateScreenControlDocument,
 } from "./privateScreenControl";
-import type {
-    DigitalScreenManagementMutation,
-    DigitalScreenOwnerSlideTransport,
-    DigitalScreenOwnerStateTransport,
+import {
+    FIRESTORE_TIMESTAMP_MAX_MILLISECONDS,
+    type DigitalScreenManagementMutation,
+    type DigitalScreenOwnerSlideTransport,
+    type DigitalScreenOwnerStateTransport,
 } from "./screenManagementContracts";
 import { getPublicScreenStateDocId } from "./publicScreenState";
+import { isCurrentScreenSeenPublicScope } from "./screenSeenScope";
+import { screenTimestampToMillis } from "./screenTimestamp";
 import { isValidScreenToken } from "./utils";
 import type { DigitalScreenState, ScreenSlide } from "@type/campaigns";
 
@@ -25,11 +28,8 @@ interface ScreenManagementScope {
 }
 
 function timestampToMillis(value: unknown): number | null {
-    if (!value || typeof value !== "object") return null;
-    const toMillis = (value as { toMillis?: unknown }).toMillis;
-    if (typeof toMillis !== "function") return null;
-    const millis = Number(toMillis.call(value));
-    return Number.isFinite(millis) && millis > 0 ? millis : null;
+    const millis = screenTimestampToMillis(value);
+    return millis !== null && millis > 0 ? millis : null;
 }
 
 function isActiveOwnerSlide(value: unknown, nowMs = Date.now()): value is ScreenSlide {
@@ -153,6 +153,7 @@ function buildOwnerSlide(slide: DigitalScreenOwnerSlideTransport): ScreenSlide {
         || !imageUrl
         || !Number.isFinite(validUntilMs)
         || validUntilMs <= Date.now()
+        || validUntilMs > FIRESTORE_TIMESTAMP_MAX_MILLISECONDS
     ) {
         throw new Error("digital_screen_slide_invalid");
     }
@@ -183,12 +184,28 @@ export async function mutateDigitalScreenOwnerStateServer(
     const publicRef = firestoreAdmin
         .collection(PLATFORM_SUMMARY)
         .doc(getPublicScreenStateDocId(scope.storeId));
+    const storeRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.STORES)
+        .doc(scope.storeId);
+    const tenantRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.TENANTS)
+        .doc(scope.tenantId);
 
     return firestoreAdmin.runTransaction(async (transaction) => {
-        const [summarySnap, controlSnap] = await Promise.all([
+        const [summarySnap, controlSnap, storeSnap, tenantSnap] = await Promise.all([
             transaction.get(summaryRef),
             transaction.get(controlRef),
+            transaction.get(storeRef),
+            transaction.get(tenantRef),
         ]);
+        if (!isCurrentScreenSeenPublicScope({
+            storeData: storeSnap.exists ? storeSnap.data() : undefined,
+            storeDocumentId: storeSnap.id,
+            tenantData: tenantSnap.exists ? tenantSnap.data() : undefined,
+            tenantDocumentId: tenantSnap.id,
+        })) {
+            throw new Error("digital_screen_scope_changed");
+        }
         const currentRaw = summarySnap.exists ? summarySnap.data()?.screen : null;
         const current = normalizeExistingScreen(currentRaw);
         if (currentRaw && !current) {
@@ -210,8 +227,8 @@ export async function mutateDigitalScreenOwnerStateServer(
             controlSnap.exists
             && (
                 !isValidScreenToken(existingToken)
-                || String(control?.storeId || "") !== scope.storeId
-                || String(control?.tenantId || "") !== scope.tenantId
+                || control?.storeId !== scope.storeId
+                || control?.tenantId !== scope.tenantId
             )
         ) {
             throw new Error("digital_screen_control_scope_invalid");
@@ -262,7 +279,15 @@ export async function mutateDigitalScreenOwnerStateServer(
         } else if (mutation?.action === "add_slide") {
             const slide = buildOwnerSlide(mutation.slide);
             const existing = nextScreen.pinnedSlides.find((candidate) => candidate.id === slide.id);
-            if (!existing) {
+            if (existing) {
+                if (
+                    existing.imageUrl !== slide.imageUrl
+                    || (existing.caption || "") !== (slide.caption || "")
+                    || timestampToMillis(existing.validUntil) !== timestampToMillis(slide.validUntil)
+                ) {
+                    throw new Error("digital_screen_slide_id_conflict");
+                }
+            } else {
                 if (nextScreen.pinnedSlides.length >= MAX_UPLOADS) {
                     throw new Error("digital_screen_slide_limit_reached");
                 }

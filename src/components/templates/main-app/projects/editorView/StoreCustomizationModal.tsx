@@ -160,16 +160,18 @@ export default function StoreCustomizationModal({
             const shouldWriteOverride = inheritanceState === 'inherited' || inheritanceState === 'overridden';
             const updatedFiles = prev.files?.map((file: ProjectFileType) => {
                 if (file.uid !== fileUid) return file;
-                const updatedItems = file.extractedData?.data?.items?.map((item: ExtractedDataItem) => {
+                const extractedData = file.extractedData;
+                if (!extractedData?.data?.items) return file;
+                const updatedItems = extractedData.data.items.map((item: ExtractedDataItem) => {
                     if (item.id !== itemId) return item;
                     return { ...item, [field]: value };
                 });
                 return {
                     ...file,
                     extractedData: {
-                        ...file.extractedData!,
+                        ...extractedData,
                         data: {
-                            ...file.extractedData!.data!,
+                            ...extractedData.data,
                             items: updatedItems,
                         },
                     },
@@ -206,16 +208,18 @@ export default function StoreCustomizationModal({
             const shouldWriteOverride = inheritanceState === 'inherited' || inheritanceState === 'overridden';
             const updatedFiles = prev.files?.map((file: ProjectFileType) => {
                 if (file.uid !== fileUid) return file;
-                const updatedCategories = file.extractedData?.data?.categories?.map((cat: ExtractedDataCategory) => {
+                const extractedData = file.extractedData;
+                if (!extractedData?.data?.categories) return file;
+                const updatedCategories = extractedData.data.categories.map((cat: ExtractedDataCategory) => {
                     if (cat.id !== categoryId) return cat;
                     return { ...cat, [field]: value };
                 });
                 return {
                     ...file,
                     extractedData: {
-                        ...file.extractedData!,
+                        ...extractedData,
                         data: {
-                            ...file.extractedData!.data!,
+                            ...extractedData.data,
                             categories: updatedCategories,
                         },
                     },

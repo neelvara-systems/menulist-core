@@ -7,15 +7,30 @@ export interface SubscriptionPlanEntitlementInput {
 export const PLAN_ENTITLED_SUBSCRIPTION_STATUSES = ['active', 'cancelled', 'paused'] as const;
 
 export function toSubscriptionCycleEndMillis(value: unknown): number {
-    if (!value || typeof value !== 'object') return 0;
+    if (value === undefined || value === null) return 0;
     try {
-        const toMillis = (value as { toMillis?: unknown }).toMillis;
-        if (typeof toMillis === 'function') {
-            const millis = Number(toMillis.call(value));
-            return Number.isFinite(millis) ? millis : 0;
+        if (value instanceof Date) {
+            const millis = Date.prototype.getTime.call(value);
+            return Number.isFinite(millis) && millis >= 0 ? millis : 0;
         }
-        const seconds = Number((value as { seconds?: unknown }).seconds);
-        return Number.isFinite(seconds) ? seconds * 1000 : 0;
+        if (typeof value !== 'object' || Array.isArray(value)) return 0;
+        const descriptors = Object.getOwnPropertyDescriptors(value);
+        if (Object.values(descriptors).some((descriptor) => descriptor.get || descriptor.set)) return 0;
+        const seconds = descriptors.seconds?.value ?? descriptors._seconds?.value;
+        const nanoseconds = descriptors.nanoseconds?.value
+            ?? descriptors._nanoseconds?.value
+            ?? 0;
+        if (
+            typeof seconds !== 'number'
+            || !Number.isSafeInteger(seconds)
+            || seconds < 0
+            || typeof nanoseconds !== 'number'
+            || !Number.isSafeInteger(nanoseconds)
+            || nanoseconds < 0
+            || nanoseconds >= 1_000_000_000
+        ) return 0;
+        const millis = (seconds * 1_000) + Math.floor(nanoseconds / 1_000_000);
+        return Number.isSafeInteger(millis) ? millis : 0;
     } catch {
         return 0;
     }
@@ -32,11 +47,13 @@ export function hasCurrentSubscriptionPlanEntitlement(
     subscription: SubscriptionPlanEntitlementInput,
     nowMs = Date.now(),
 ): boolean {
-    if (subscription.status === 'active') return true;
-    if (subscription.status !== 'cancelled' && subscription.status !== 'paused') return false;
-
+    if (!Number.isFinite(nowMs) || nowMs < 0) return false;
+    if (!PLAN_ENTITLED_SUBSCRIPTION_STATUSES.includes(
+        subscription.status as typeof PLAN_ENTITLED_SUBSCRIPTION_STATUSES[number],
+    )) return false;
+    if (subscription.cycleEndDate === undefined || subscription.cycleEndDate === null) return false;
     const cycleEndMs = toSubscriptionCycleEndMillis(subscription.cycleEndDate);
-    return Number.isFinite(nowMs) && cycleEndMs >= nowMs;
+    return cycleEndMs > 0 && cycleEndMs >= nowMs;
 }
 
 export function getActivePlanTypeForSubscription(
@@ -44,6 +61,7 @@ export function getActivePlanTypeForSubscription(
     nowMs = Date.now(),
 ): string | null {
     if (!hasCurrentSubscriptionPlanEntitlement(subscription, nowMs)) return null;
-    const normalized = String(subscription.planId || '').trim().toLowerCase();
+    if (typeof subscription.planId !== 'string' || subscription.planId.length > 160) return null;
+    const normalized = subscription.planId.trim().toLowerCase();
     return normalized || null;
 }

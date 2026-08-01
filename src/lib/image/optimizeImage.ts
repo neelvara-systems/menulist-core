@@ -135,9 +135,29 @@ export async function optimizeImage(
     options: OptimizeImageOptions = {}
 ): Promise<OptimizedImage> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
+    if (
+        !Number.isSafeInteger(opts.maxDimension)
+        || opts.maxDimension < 1
+        || opts.maxDimension > 8192
+        || !Number.isFinite(opts.quality)
+        || opts.quality < 0
+        || opts.quality > 1
+    ) {
+        throw new Error('image_optimization_options_invalid');
+    }
 
     // Load the image
     const img = await loadImage(source);
+    if (
+        !Number.isSafeInteger(img.naturalWidth)
+        || !Number.isSafeInteger(img.naturalHeight)
+        || img.naturalWidth < 1
+        || img.naturalHeight < 1
+        || img.naturalWidth > 32768
+        || img.naturalHeight > 32768
+    ) {
+        throw new Error('image_dimensions_invalid');
+    }
 
     // Calculate original size
     let originalSize = 0;
@@ -229,6 +249,27 @@ export async function optimizeImageToBudget(
     const dimensionStep = options.dimensionStep ?? 0.85;
     const format = options.format ?? DEFAULT_OPTIONS.format;
     const startingQuality = options.quality ?? DEFAULT_OPTIONS.quality;
+    if (
+        !Number.isFinite(options.maxSizeKB ?? 800)
+        || (options.maxSizeKB ?? 800) <= 0
+        || !Number.isSafeInteger(startingDimension)
+        || !Number.isSafeInteger(minDimension)
+        || startingDimension < minDimension
+        || minDimension < 1
+        || !Number.isFinite(startingQuality)
+        || !Number.isFinite(minQuality)
+        || startingQuality < minQuality
+        || startingQuality > 1
+        || minQuality < 0
+        || !Number.isFinite(qualityStep)
+        || qualityStep <= 0
+        || qualityStep > 1
+        || !Number.isFinite(dimensionStep)
+        || dimensionStep <= 0
+        || dimensionStep >= 1
+    ) {
+        throw new Error('image_optimization_budget_invalid');
+    }
 
     let dimension = startingDimension;
     let bestResult: OptimizedImage | null = null;
@@ -268,6 +309,16 @@ export function needsOptimization(
     height: number,
     maxDimension: number = DEFAULT_OPTIONS.maxDimension
 ): boolean {
+    if (
+        !Number.isFinite(width)
+        || !Number.isFinite(height)
+        || !Number.isFinite(maxDimension)
+        || width < 0
+        || height < 0
+        || maxDimension <= 0
+    ) {
+        return true;
+    }
     return width > maxDimension || height > maxDimension;
 }
 
@@ -275,9 +326,12 @@ export function needsOptimization(
  * Convert a data URL to a Blob
  */
 export function dataUrlToBlob(dataUrl: string): Blob {
-    const arr = dataUrl.split(',');
-    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
-    const bstr = atob(arr[1]);
+    const match = /^data:(image\/(?:jpeg|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
+    if (!match || match[2].length % 4 !== 0) {
+        throw new Error('image_data_url_invalid');
+    }
+    const mime = match[1];
+    const bstr = atob(match[2]);
     let n = bstr.length;
     const u8arr = new Uint8Array(n);
     while (n--) {

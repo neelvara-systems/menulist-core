@@ -82,7 +82,7 @@ const isWidgetSecurityResponse = (value: unknown): value is WidgetSecurityRespon
         && response.evidenceAllowedHosts.every(isCanonicalEvidenceHost)
         && new Set(response.evidenceAllowedHosts).size === response.evidenceAllowedHosts.length
         && (response.verifiedContext === null || (
-            Boolean(verifiedContext)
+            verifiedContext !== null
             && typeof verifiedContext === 'object'
             && verifiedContext.enabled === true
             && verifiedContext.algorithm === 'Ed25519'

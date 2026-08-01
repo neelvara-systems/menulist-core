@@ -20,6 +20,7 @@ import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaI
 import { collection, getDocs, query, where } from "@firebase/firestore";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
 import { normalizeWorkingHoursValue, WORKING_HOURS_DAY_KEYS } from "@lib/hours/hoursEngine";
+import { normalizeSpecialHours } from "@lib/hours/specialHours";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { AUTH_BROWSER_REQUEST_POLICY } from "@lib/auth/browserRequestPolicy";
@@ -89,7 +90,7 @@ const CUSTOM_DOMAIN_AVAILABILITY_RESPONSE_MAX_BYTES = 8 * 1024;
 
 type StoreMutationData = Omit<
     Partial<StoreDataType>,
-    'analytics' | 'businessAttributes' | 'externalLocationIdentity' | 'posSync' | 'publicPresence' | 'workingHours'
+    'analytics' | 'businessAttributes' | 'externalLocationIdentity' | 'posSync' | 'publicPresence' | 'specialHours' | 'workingHours'
 > & {
     [key: string]: unknown;
     analytics?: Record<string, unknown>;
@@ -101,9 +102,17 @@ type StoreMutationData = Omit<
     posSync?: Record<string, unknown>;
     preparedMedia?: PreparedMediaImage;
     publicPresence?: Record<string, unknown>;
+    specialHours?: unknown;
     storeId?: number;
     tenantId?: number;
     workingHours?: unknown;
+};
+
+const normalizeSpecialHoursUpdate = (value: unknown): unknown => {
+    if (value === null) return null;
+    const normalized = normalizeSpecialHours(value);
+    if (!normalized) throw new Error('store_special_hours_invalid');
+    return normalized;
 };
 
 const normalizeWorkingHoursUpdate = (value: unknown, allowDeleteMarkers: boolean): unknown => {
@@ -256,6 +265,12 @@ const getCollectionRef = () => {
 
 const hasDigitalScreenStoreOutputFieldChanges = (data: Record<string, any>): boolean => (
     DIGITAL_SCREEN_STORE_OUTPUT_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(data, field))
+    || (
+        data.publicPresence
+        && typeof data.publicPresence === 'object'
+        && !Array.isArray(data.publicPresence)
+        && Object.prototype.hasOwnProperty.call(data.publicPresence, 'accentColor')
+    )
 );
 
 const getDocRef = (docId: string | number) => {
@@ -390,7 +405,8 @@ export const checkCustomDomainAvailability = async (
                 CUSTOM_DOMAIN_AVAILABILITY_RESPONSE_MAX_BYTES,
             );
             if (
-                !payload
+                !response.ok
+                || !payload
                 || typeof payload !== 'object'
                 || Array.isArray(payload)
                 || typeof (payload as { available?: unknown }).available !== 'boolean'
@@ -416,20 +432,28 @@ const updateLogoImage = async (data: StoreMutationData): Promise<string> => {
     const imageType = data.imageType;
     const imageToUpdate = data.imageToUpdate;
     const preparedMedia = data.preparedMedia;
-    const docId = data.storeId//which is storeId
-
     if (imageToUpdate) {
         if (isDataUrl(imageToUpdate)) {
             const session = await getActiveSession();
             if (!session) throw new Error('store_logo_session_missing');
+            const storeId = data.storeId ?? session.sId;
+            const tenantId = data.tenantId ?? session.tId;
+            if (
+                !Number.isSafeInteger(storeId)
+                || Number(storeId) <= 0
+                || !Number.isSafeInteger(tenantId)
+                || Number(tenantId) <= 0
+            ) {
+                throw new Error('store_logo_scope_invalid');
+            }
             return await uploadPreparedMediaImage({
                 contentType: imageType,
                 dataUrl: imageToUpdate,
-                entityId: String(docId),
+                entityId: String(storeId),
                 prepared: preparedMedia,
                 profile: 'businessLogo',
-                storeId: docId || session.sId,
-                tenantId: data.tenantId || session.tId,
+                storeId: Number(storeId),
+                tenantId: Number(tenantId),
                 variant: 'full',
             });
         }
@@ -451,6 +475,9 @@ export const addStore = async (data: StoreMutationData, from: string = "") => {
             if (data.workingHours !== undefined) {
                 data.workingHours = normalizeWorkingHoursUpdate(data.workingHours, false);
             }
+            if (data.specialHours !== undefined) {
+                data.specialHours = normalizeSpecialHoursUpdate(data.specialHours);
+            }
 
             data.id = data.storeId
             if (data.imageToUpdate) {
@@ -462,6 +489,13 @@ export const addStore = async (data: StoreMutationData, from: string = "") => {
 
             const businessCategory = resolveStoreBusinessCategory(data.businessType || '', data.businessCategory);
             data.businessCategory = businessCategory;
+            const storeId = Number(data.storeId);
+            const tenantId = Number(data.tenantId);
+            if (!Number.isSafeInteger(storeId) || storeId <= 0 || !Number.isSafeInteger(tenantId) || tenantId <= 0) {
+                throw new Error('store_create_scope_invalid');
+            }
+            data.storeId = storeId;
+            data.tenantId = tenantId;
 
             // Assign default time slot presets based on business type
             if (!data.timeSlotPresets && data.businessType && data.tenantId && data.storeId) {
@@ -486,11 +520,6 @@ export const addStore = async (data: StoreMutationData, from: string = "") => {
             const schedulerHour = data.schedulerHour ?? computeSchedulerHour(data.timeZone, data.businessDayEndTime);
             data.schedulerHour = schedulerHour;
 
-            const storeId = Number(data.storeId);
-            const tenantId = Number(data.tenantId);
-            if (!Number.isSafeInteger(storeId) || storeId <= 0 || !Number.isSafeInteger(tenantId) || tenantId <= 0) {
-                throw new Error('store_create_scope_invalid');
-            }
             const storeRef = getDocRef(storeId);
             const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
             const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, 'storesSummary');
@@ -527,10 +556,16 @@ export const addStore = async (data: StoreMutationData, from: string = "") => {
 export const updateStore = async (data: StoreMutationData) => {
     return await apiCallComposer(
         async () => {
+            const storeId = Number(data.storeId);
+            if (!Number.isSafeInteger(storeId) || storeId <= 0) {
+                throw new Error('store_update_scope_invalid');
+            }
+            data.storeId = storeId;
+            data.id = storeId;
             let currentStoreData: any | null = null;
             const getCurrentStoreData = async () => {
                 if (!currentStoreData) {
-                    const currentSnap = await getDoc(getDocRef(data.id));
+                    const currentSnap = await getDoc(getDocRef(storeId));
                     currentStoreData = currentSnap.exists() ? currentSnap.data() : {};
                 }
                 return currentStoreData || {};
@@ -549,9 +584,11 @@ export const updateStore = async (data: StoreMutationData) => {
             if (data.workingHours !== undefined) {
                 data.workingHours = normalizeWorkingHoursUpdate(data.workingHours, true);
             }
+            if (data.specialHours !== undefined) {
+                data.specialHours = normalizeSpecialHoursUpdate(data.specialHours);
+            }
             mirrorOwnerGoogleMapsLinkIdentity(data);
 
-            data.id = data.storeId
             if (data.imageToUpdate) {
                 const newUrl = await updateLogoImage(data)
                 data.logo = newUrl;
@@ -791,7 +828,7 @@ export const updateStore = async (data: StoreMutationData) => {
                 ).map(materializeStoreNestedEntry);
                 if (!firstDirectEntry) throw new Error('store_update_empty');
                 await updateDoc(
-                    getDocRef(data.id),
+                    getDocRef(storeId),
                     firstDirectEntry.fieldPath,
                     firstDirectEntry.value,
                     ...remainingDirectEntries.flatMap((entry) => [entry.fieldPath, entry.value]),
@@ -1350,7 +1387,7 @@ export const updateMenuPresence = async (
                     throw new Error('menu_presence_store_unavailable');
                 }
 
-                const storeUpdate: Record<string, unknown> = confirmed
+                const storeUpdate: Record<string, string | ReturnType<typeof deleteField>> = confirmed
                     ? {
                         [`menuPresence.${surface}`]: now,
                     }

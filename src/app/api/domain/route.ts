@@ -72,6 +72,35 @@ const DOMAIN_PROVIDER_FAILURE_MESSAGE = "Failed to add domain to Vercel";
 const DOMAIN_STATUS_PROVIDER_FAILURE_MESSAGE = "Failed to check domain status with Vercel";
 const DOMAIN_REMOVE_PROVIDER_FAILURE_MESSAGE = "Failed to remove domain from Vercel";
 
+type DomainReservationTransactionResult = {
+    permissionError: NextResponse | null;
+    reservation: CustomDomainReservation | null;
+    storeAlreadyUsesDomain: boolean;
+};
+
+type DomainFinalizeTransactionResult = {
+    domainVerified: boolean;
+    legacyCleanupSkipped: boolean;
+    oldReservation: CustomDomainReservation | null;
+    permissionError: NextResponse | null;
+    verifiedAt: unknown;
+};
+
+type DomainInitialState = {
+    domain: string | null;
+    domainVerified: boolean;
+    domainVerifiedAt: unknown;
+    permissionError: NextResponse | null;
+};
+
+type DomainRemovalState = {
+    domain: string | null;
+    legacyCleanupSkipped: boolean;
+    permissionError: NextResponse | null;
+    reservation: CustomDomainReservation | null;
+    shouldRemoveProvider: boolean;
+};
+
 class CustomDomainLegacyConflictError extends Error {
     readonly code = 'CUSTOM_DOMAIN_LEGACY_CONFLICT';
 
@@ -239,7 +268,7 @@ async function readAuthorizedDomainStateInTransaction(params: {
         };
     }
 
-    const permissionError = requireAnyStorePermissionForStoreData(
+    const permissionError = await requireAnyStorePermissionForStoreData(
         params.request,
         params.session,
         storeData,
@@ -248,7 +277,7 @@ async function readAuthorizedDomainStateInTransaction(params: {
         params.scope.storeId,
         params.scope.tenantId,
     );
-    return { permissionError, storeData: permissionError ? null : storeData };
+    return { permissionError, storeData: permissionError ? null : (storeData ?? null) };
 }
 
 function claimMatchesReservation(
@@ -422,7 +451,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     let finalized = false;
     try {
         const reservationNow = admin.firestore.Timestamp.now();
-        const reservationResult = await db.runTransaction(async (transaction) => {
+        const reservationResult = await db.runTransaction<DomainReservationTransactionResult>(async (transaction) => {
             const authorizedState = await readAuthorizedDomainStateInTransaction({
                 db,
                 request,
@@ -527,7 +556,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             && isVercelDomainExplicitlyMisconfigured(configResult.data);
         const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);
         const finalizedAt = admin.firestore.Timestamp.now();
-        const finalizeResult = await db.runTransaction(async (transaction) => {
+        const finalizeResult = await db.runTransaction<DomainFinalizeTransactionResult>(async (transaction) => {
             const authorizedState = await readAuthorizedDomainStateInTransaction({
                 db,
                 request,
@@ -823,15 +852,10 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (rateLimitResponse) return rateLimitResponse;
 
     const db = admin.firestore();
-    let initialState: {
-        domain: string | null;
-        domainVerified: boolean;
-        domainVerifiedAt: unknown;
-        permissionError: NextResponse | null;
-    };
+    let initialState: DomainInitialState;
     try {
         const claimNow = admin.firestore.Timestamp.now();
-        initialState = await db.runTransaction(async (transaction) => {
+        initialState = await db.runTransaction<DomainInitialState>(async (transaction) => {
             const authorizedState = await readAuthorizedDomainStateInTransaction({
                 db,
                 request,
@@ -1058,16 +1082,10 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
 
     const db = admin.firestore();
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);
-    let removalState: {
-        domain: string | null;
-        legacyCleanupSkipped: boolean;
-        permissionError: NextResponse | null;
-        reservation: CustomDomainReservation | null;
-        shouldRemoveProvider: boolean;
-    };
+    let removalState: DomainRemovalState;
     try {
         const removalStartedAt = admin.firestore.Timestamp.now();
-        removalState = await db.runTransaction(async (transaction) => {
+        removalState = await db.runTransaction<DomainRemovalState>(async (transaction) => {
             const authorizedState = await readAuthorizedDomainStateInTransaction({
                 db,
                 request,

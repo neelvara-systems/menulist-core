@@ -48,6 +48,15 @@
 6. Confirm transient config failure uses bounded retry and does not bypass restricted-origin runtime authorization.
 7. Confirm config and predictive session-storage keys contain the complete widget credential and two credentials sharing a prefix cannot reuse state.
 8. Confirm oversized/malformed config responses, string/fractional versions or expiries, non-boolean capabilities, and capability/bundle disagreement fail before browser state/cache mutation.
+9. Confirm an invalid first loader script does not claim the singleton marker and a later valid `al_*` installation can initialize.
+10. Confirm numeric attributes reject partially numeric and unsafe-integer strings before clamping.
+11. Confirm a detached `page()` call delegates successfully and public context/visitor getters and events cannot mutate retained loader state.
+12. Confirm guided-step order accepts only an exact integer number from 1 through 12 and rejects stringified values.
+13. Confirm a legacy dynamic-key transition remounts the complete client and cannot retain another key's messages, context, visitor, tokens, image, or mutation state.
+14. Confirm feedback and support requests reject rapid duplicate admission before React state commits.
+15. Confirm clearing or unmounting a conversation prevents late feedback/support completions from changing the replacement UI.
+16. Confirm replacing, removing, or clearing a screenshot aborts/rejects an obsolete `FileReader` completion.
+17. Confirm context, visitor, evidence and search request bodies use exact local contracts without broad any-valued records.
 
 ## Access And Presentation
 

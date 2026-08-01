@@ -73,6 +73,7 @@ function requireNamedImport(source, moduleSpecifier, names, label) {
 const packageJson = read('package.json');
 const projectsRoute = read('src/app/(main)/projects/page.tsx');
 const projectsPage = read('src/components/templates/main-app/projects/index.tsx');
+const pdfViewer = read('src/components/templates/main-app/projects/PdfViewer.tsx');
 const projectsDataProvider = read('src/providers/projectsDataProvider.tsx');
 const editor = read('src/components/templates/main-app/projects/editorView/Editor.tsx');
 const editorWelcomeBanner = read('src/components/templates/main-app/projects/editorView/EditorWelcomeBanner.tsx');
@@ -86,6 +87,7 @@ const projectDeleteRoute = read('src/app/api/projects/delete/route.ts');
 const projectSlugOwnership = read('src/lib/menu/projectSlugOwnership.ts');
 const projectDocumentScope = read('src/lib/menu/projectDocumentScope.ts');
 const projectMutationAuthority = read('src/lib/menu/projectMutationAuthority.ts');
+const projectOwnerScope = read('src/lib/menu/projectOwnerScope.ts');
 const projectUploadIdentity = read('src/lib/menu/projectUploadIdentity.ts');
 const projectUploadPayload = read('src/lib/menu/projectUploadPayload.ts');
 const projectUpdateProjection = read('src/lib/menu/projectUpdateProjection.ts');
@@ -111,13 +113,20 @@ const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,
-  '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js && npm run test:project-partial-update-projection && npm run test:project-slug-ownership && npm run test:project-document-scope && npm run test:project-mutation-authority && npm run test:project-upload-identity && npm run test:project-upload-payload && npm run test:time-slot-data-flow"',
+  '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js && npm run test:project-partial-update-projection && npm run test:project-slug-ownership && npm run test:project-document-scope && npm run test:project-owner-scope && npm run test:project-mutation-authority && npm run test:project-upload-identity && npm run test:project-upload-payload && npm run test:time-slot-data-flow"',
   'package scripts',
 );
 
 ['import ProjectsPage from "@template/main-app/projects"', '<ProjectsPage />'].forEach((token) => {
   requireToken(projectsRoute, token, 'projects route');
 });
+
+[
+  'open={pdfPagesCount !== null || Boolean(pdfFiles?.images?.length)}',
+  'disabled={Boolean(isStillLoading)}',
+  '{Boolean(isStillLoading) && <Card',
+  'setPdfFiles((previous) => previous',
+].forEach((token) => requireToken(pdfViewer, token, 'PDF conversion review boundary'));
 
 [
   'setActiveProject: (project: Project) => void;',
@@ -136,11 +145,9 @@ requireNamedImport(projectsPage, '@database/projects', [
   'assertProjectUpdateSucceeded',
   'deleteProject',
   'duplicateProject',
-  'getMetadataProjectsList',
-  'getProjectData',
   'getProjectDataWithoutLoader',
+  'getProjectsListWithoutLoader',
   'setProjectActive',
-  'updateProject',
   'updateProjectMetadata',
   'updateProjectWithoutLoader',
   'uploadFile',
@@ -155,10 +162,34 @@ requireNamedImport(projectsPage, '@database/projects', [
   'projects_page_duplicate_project_update_rejected',
   'projects_page_reset_project_update_rejected',
   'projects_page_public_content_translation_project_update_rejected',
-  'projects_page_public_content_translation_metadata_update_rejected',
   'projects_page_upload_create_project_update_rejected',
+  'const [projectFormScope, setProjectFormScope] = useState<ProjectExpectedScope | null>(null);',
+  "const mutationToken = beginProjectMutation('save', operationScope);",
+  "expectedScope: operationScope,",
+  'syncPublicSummary: true,',
+  "uploadFile({ url: file.url, type: file.type, uid: file.uid }, 'files', operationScope)",
+  "throw new Error('menu_upload_project_scope_changed');",
   'logProjectPageFailure',
 ].forEach((token) => requireToken(projectsPage, token, 'desktop projects page'));
+forbidToken(
+  projectsPage,
+  'projects_page_public_content_translation_metadata_update_rejected',
+  'desktop projects page atomic public translation',
+);
+
+[
+  "throw new Error('Project creation scope changed');",
+  '"project_upload_scope_changed"',
+  '"project_active_scope_changed"',
+  'expectedScope?: ProjectExpectedScope;',
+].forEach((token) => requireToken(projectDal, token, 'project DAL expected-scope boundary'));
+
+[
+  'normalizeProjectOwnerScope',
+  'getProjectOwnerScopeFromProjectId',
+  'projectOwnerScopesMatch',
+  'getProjectOwnerScopeKey',
+].forEach((token) => requireToken(projectOwnerScope, token, 'shared project owner scope'));
 
 requireNamedImport(editor, '@database/projects', [
   'appendImageBatchProjectSelections',
@@ -348,7 +379,9 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   "const { projectImage: _ignoredProjectImage, ...preservedPatch } = patch;",
 ].forEach((token) => requireToken(projectUpdateProjection, token, 'project update projection'));
 [
-  '{ preserveExistingProjectImage: true }',
+  'expectedScope: params.expectedScope,',
+  'preserveExistingProjectImage: true,',
+  "} as any, 'project-images', params.expectedScope);",
   'if (metadataResult.projectImage !== imageUrl) {',
   "return { skippedReason: 'existing-image' };",
 ].forEach((token) => requireToken(projectImageGeneration, token, 'generated project image persistence'));
@@ -367,10 +400,17 @@ forbidToken(projectDal, 'FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.projectId && 
 forbidToken(projectDal, "where('deleted', '==', true),\n            limit(50)", 'project DAL arbitrary deleted-project slug scan');
 forbidToken(projectDal, 'console.error(', 'project DAL direct error logging');
 forbidToken(projectDal, 'console.warn(', 'project DAL direct warn logging');
+[
+  'export type ProjectRestoreResult = {',
+  'apiCallComposer<ProjectRestoreResult>',
+  'async (): Promise<ProjectRestoreResult> => {',
+].forEach((token) => requireToken(projectDal, token, 'project restore result contract'));
 
 [
   'export const isProjectSlugClaimed = (',
-  'summary.previousSlugs.some(',
+  'const previousClaim = previousSlugsClaim(previousSlugs.value, normalized);',
+  'return !previousClaim.ok || previousClaim.claimed;',
+  'const entries = Object.entries(projects);',
   'export const isRecentlyDeletedProjectSlugReservation = (',
   'deletedAtMillis === null || deletedAtMillis < cutoffMillis',
   'export const resolveAvailableProjectSlug = (',
@@ -523,8 +563,18 @@ requireNamedImport(mobileProjectSelector, '@database/projects', [
   'mobile_project_selector_active_project_update_rejected',
   'mobile_project_selector_delete_project_rejected',
   'mobile_project_public_content_translation_project_update_rejected',
+  'const [formScope, setFormScope] = useState<ProjectOwnerScope | null>(null);',
+  "const mutationToken = beginMutation('save', operationScope);",
+  "} as any, 'project-images', operationScope);",
+  'expectedScope: operationScope,',
+  'syncPublicSummary: true,',
   'logMobileProjectFailure',
 ].forEach((token) => requireToken(mobileProjectSelector, token, 'mobile project selector'));
+forbidToken(
+  mobileProjectSelector,
+  'mobile_project_public_content_translation_metadata_update_rejected',
+  'mobile project selector atomic public translation',
+);
 
 requireNamedImport(bulkActionsSheet, '@database/projects', [
   'assertProjectUpdateSucceeded',

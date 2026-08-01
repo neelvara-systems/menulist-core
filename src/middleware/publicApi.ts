@@ -92,6 +92,7 @@ export async function checkPublicRateLimit(
             key: `public:${feature}:${ipHash}`,
             limit: config.limit,
             window: config.window,
+            failClosedOnProviderError: options.failClosed,
         });
     } catch (error) {
         secureError(
@@ -119,6 +120,19 @@ export async function checkPublicRateLimit(
     if (!result.allowed) {
         const waitSeconds = Math.ceil((result.resetAt - Date.now()) / 1000);
 
+        if (result.reason === 'provider_unavailable') {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Service temporarily unavailable. Please try again.',
+                },
+                {
+                    status: 503,
+                    headers: { 'Retry-After': String(Math.max(waitSeconds, 1)) },
+                },
+            );
+        }
+
         return NextResponse.json(
             {
                 success: false,
@@ -127,7 +141,7 @@ export async function checkPublicRateLimit(
             {
                 status: 429,
                 headers: {
-                    'Retry-After': String(waitSeconds),
+                    'Retry-After': String(Math.max(waitSeconds, 1)),
                     'X-RateLimit-Limit': String(config.limit),
                     'X-RateLimit-Remaining': '0',
                     'X-RateLimit-Reset': String(result.resetAt),

@@ -1,6 +1,6 @@
 'use client';
 
-import { type KeyboardEvent, useMemo, useState } from 'react';
+import { type KeyboardEvent, useMemo, useRef, useState } from 'react';
 import type { IconType } from 'react-icons';
 import {
     LuCheck,
@@ -116,6 +116,7 @@ function CardVisual({ visual }: { visual: PrimaryCard['visual'] }) {
 
 export default function BentoReferenceSection() {
     const [activeKey, setActiveKey] = useState<BentoTabKey>('company');
+    const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const activeCard = useMemo(
         () => PRIMARY_CARDS.find((card) => card.key === activeKey) || PRIMARY_CARDS[0],
         [activeKey],
@@ -126,6 +127,7 @@ export default function BentoReferenceSection() {
         const currentIndex = PRIMARY_CARDS.findIndex((card) => card.key === activeKey);
         const nextIndex = (currentIndex + direction + PRIMARY_CARDS.length) % PRIMARY_CARDS.length;
         setActiveKey(PRIMARY_CARDS[nextIndex].key);
+        tabRefs.current[nextIndex]?.focus();
     };
 
     const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -153,7 +155,7 @@ export default function BentoReferenceSection() {
                     </h2>
                 </div>
                 <div className="nv-segmented" role="tablist" aria-label="Reference areas">
-                    {PRIMARY_CARDS.map((card) => {
+                    {PRIMARY_CARDS.map((card, index) => {
                         const active = card.key === activeKey;
 
                         return (
@@ -165,6 +167,9 @@ export default function BentoReferenceSection() {
                                 key={card.key}
                                 onClick={() => setActiveKey(card.key)}
                                 onKeyDown={handleTabKeyDown}
+                                ref={(element) => {
+                                    tabRefs.current[index] = element;
+                                }}
                                 role="tab"
                                 tabIndex={active ? 0 : -1}
                                 type="button"

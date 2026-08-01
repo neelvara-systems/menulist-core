@@ -167,7 +167,7 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const legacyRequestedTab = searchParams.get('tab');
+    const legacyRequestedTab = searchParams?.get('tab');
     const requestedTab = (
         isAnswerlatticeGovernanceTab(initialTab)
             ? initialTab
@@ -178,7 +178,7 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname);
+    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
 
     // Load branding config if white-label is enabled
     useEffect(() => {

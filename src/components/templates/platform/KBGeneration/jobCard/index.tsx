@@ -32,6 +32,8 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
       return acc + categoryArticles + sectionArticles;
     }, 0)
     : 0;
+  const articlesToEmbedTotal = Math.max(0, Number(articlesToEmbedCount) || 0);
+  const articlesEmbeddedTotal = Math.max(0, Number(articlesEmbeddedCount) || 0);
 
   const dispatch = useAppDispatch();
   const { token } = theme.useToken();
@@ -54,8 +56,8 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = async (e?: React.MouseEvent<HTMLElement>) => {
+    e?.stopPropagation();
     dispatch(startLoader('Deleting job...'));
     try {
       const result = await deleteIngestionJob(id);
@@ -68,8 +70,8 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
     }
   };
 
-  const handleRetry = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleRetry = async (e?: React.MouseEvent<HTMLElement>) => {
+    e?.stopPropagation();
     dispatch(startLoader('Retrying job...'));
     try {
       const result = await retryJob(id);
@@ -82,8 +84,8 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
     }
   };
 
-  const handleCancel = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCancel = async (e?: React.MouseEvent<HTMLElement>) => {
+    e?.stopPropagation();
     dispatch(startLoader('Cancelling job...'));
     try {
       const result = await cancelJob(id);
@@ -129,11 +131,11 @@ const JobCard: React.FC<JobCardProps> = ({ job, onReviewClick }) => {
         </Flex>
 
         {status === INGESTION_JOB_STATUS.PROCESSING && totalArticlesCount > 0 && (
-          <JobProcessingProgress job={job} totalArticlesCount={articlesToEmbedCount} status={status} />
+          <JobProcessingProgress job={job} totalArticlesCount={articlesToEmbedTotal} status={status} />
         )}
 
-        {status === INGESTION_JOB_STATUS.PUBLISHING && articlesToEmbedCount && articlesToEmbedCount > 0 && (
-          <JobPublishingProgress status={status} articlesToEmbedCount={articlesToEmbedCount} articlesEmbeddedCount={articlesEmbeddedCount} />
+        {status === INGESTION_JOB_STATUS.PUBLISHING && articlesToEmbedTotal > 0 && (
+          <JobPublishingProgress status={status} articlesToEmbedCount={articlesToEmbedTotal} articlesEmbeddedCount={articlesEmbeddedTotal} />
         )}
 
         <Flex gap={16}>

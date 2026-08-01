@@ -7,6 +7,8 @@ import { isGrowthOSKitExpired } from "@lib/growthos/readiness";
 import { buildGrowthOSSourceFacts, hashGrowthOSSourceFacts } from "@lib/growthos/sourceFacts";
 import {
     getGrowthOSClientScope,
+    projectGrowthOSExportForScope,
+    projectGrowthOSKitForScope,
     projectGrowthOSSummaryForScope,
 } from "@lib/growthos/clientContracts";
 import type {
@@ -58,7 +60,7 @@ function requireGrowthOSScopeDocumentId(value: unknown, label: string): string {
     return documentId;
 }
 
-const sanitizeForAdminFirestore = (value: any): any => {
+const sanitizeForAdminFirestore = (value: Record<string, unknown>): Record<string, unknown> => {
     return sanitizeForFirestore(value, {
         dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
         atomicTransform: (atomicValue) => (
@@ -73,26 +75,28 @@ const sanitizeForAdminFirestore = (value: any): any => {
 
 export const toGrowthOSAdminTimestamp = (date: Date) => admin.firestore.Timestamp.fromDate(date);
 
-export async function readGrowthOSStoreDataServer(storeId: string | number): Promise<any | null> {
+export async function readGrowthOSStoreDataServer(
+    storeId: string | number,
+): Promise<Record<string, unknown> | null> {
     const storeDocumentId = normalizeGrowthOSScopeDocumentId(storeId);
     if (!storeDocumentId) return null;
 
     const snap = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId).get();
     if (!snap.exists) return null;
-    return snap.data();
+    return snap.data() ?? null;
 }
 
 function legacyProjectBelongsToSession(params: {
-    projectData: any;
+    projectData: Record<string, unknown>;
     projectId: string;
     sId: string | number;
     tId: string | number;
 }): boolean {
     const expectedTenantId = String(params.tId);
     const expectedStoreId = String(params.sId);
-    const tenantAliases = [params.projectData?.tId, params.projectData?.tenantId]
+    const tenantAliases = [params.projectData.tId, params.projectData.tenantId]
         .filter((value) => value !== undefined && value !== null);
-    const storeAliases = [params.projectData?.sId, params.projectData?.storeId]
+    const storeAliases = [params.projectData.sId, params.projectData.storeId]
         .filter((value) => value !== undefined && value !== null);
     const projectTenantScope = normalizeGrowthOSScopeAliases(tenantAliases);
     const projectStoreScope = normalizeGrowthOSScopeAliases(storeAliases);
@@ -101,7 +105,7 @@ function legacyProjectBelongsToSession(params: {
     if (storeAliases.length > 0 && projectStoreScope !== expectedStoreId) return false;
     if (projectTenantScope && projectStoreScope) return true;
 
-    const projectId = String(params.projectData?.projectId || params.projectId);
+    const projectId = String(params.projectData.projectId || params.projectId);
     return projectId === `${expectedTenantId}-default-${expectedStoreId}`
         || (projectId.startsWith(`${expectedTenantId}-`) && projectId.endsWith(`-${expectedStoreId}`));
 }
@@ -123,15 +127,19 @@ async function getGrowthOSSourceFactsHashInTransaction(params: {
         params.transaction.get(scopedProjectRef),
         params.transaction.get(legacyProjectRef),
     ]);
-    const projectData = scopedProjectSnap.exists
-        ? scopedProjectSnap.data()
-        : legacyProjectSnap.exists && legacyProjectBelongsToSession({
-            projectData: legacyProjectSnap.data(),
-            projectId,
-            sId: params.storeDocumentId,
-            tId: params.tenantDocumentId,
-        })
-            ? legacyProjectSnap.data()
+    const scopedProjectData = scopedProjectSnap.data();
+    const legacyProjectData = legacyProjectSnap.data();
+    const projectData = scopedProjectSnap.exists && scopedProjectData
+        ? scopedProjectData
+        : legacyProjectSnap.exists
+            && legacyProjectData
+            && legacyProjectBelongsToSession({
+                projectData: legacyProjectData,
+                projectId,
+                sId: params.storeDocumentId,
+                tId: params.tenantDocumentId,
+            })
+            ? legacyProjectData
             : null;
     if (!projectData) return null;
     const facts = buildGrowthOSSourceFacts({
@@ -148,7 +156,7 @@ export async function readGrowthOSProjectDataServer(params: {
     projectId: string;
     tId: string | number;
     sId: string | number;
-}): Promise<any | null> {
+}): Promise<Record<string, unknown> | null> {
     const projectId = normalizeGrowthOSDocumentId(params.projectId);
     if (!projectId) return null;
     const tenantDocumentId = normalizeGrowthOSScopeDocumentId(params.tId);
@@ -159,11 +167,13 @@ export async function readGrowthOSProjectDataServer(params: {
         .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantDocumentId}/${storeDocumentId}`)
         .doc(projectId)
         .get();
-    if (scopedSnap.exists) return scopedSnap.data();
+    const scopedProjectData = scopedSnap.data();
+    if (scopedSnap.exists && scopedProjectData) return scopedProjectData;
 
     const legacySnap = await firestoreAdmin.collection(DB_COLLECTIONS.PROJECTS).doc(projectId).get();
     if (!legacySnap.exists) return null;
     const projectData = legacySnap.data();
+    if (!projectData) return null;
     return legacyProjectBelongsToSession({
         projectData,
         projectId,
@@ -226,7 +236,15 @@ export async function writeGrowthOSRefreshedSummaryServer(
         if ((proposed.sourceFactsHash || null) !== currentSourceFactsHash) {
             throw new Error(GROWTHOS_SOURCE_FACTS_CHANGED);
         }
-        const current = snap.exists ? snap.data() as GrowthOSSummaryDocument : null;
+        const current = snap.exists
+            ? projectGrowthOSSummaryForScope(snap.data(), {
+                tId: tenantDocumentId,
+                sId: storeDocumentId,
+            })
+            : null;
+        if (snap.exists && !current) {
+            throw new Error("GrowthOS current summary contract invalid");
+        }
         if (
             current
             && (current.tId !== tenantDocumentId || current.sId !== storeDocumentId)
@@ -293,7 +311,13 @@ export async function writeGrowthOSKitAndSummaryServer(
             transaction.get(summaryRef),
         ]);
         if (existingKitSnap.exists) {
-            const existingKit = existingKitSnap.data() as GrowthOSKit;
+            const existingKit = projectGrowthOSKitForScope(existingKitSnap.data(), {
+                tId: tenantDocumentId,
+                sId: storeDocumentId,
+            });
+            if (!existingKit) {
+                throw new Error("GrowthOS generation kit contract invalid");
+            }
             if (
                 existingKit.id !== kitId
                 || existingKit.tId !== tenantDocumentId
@@ -305,7 +329,10 @@ export async function writeGrowthOSKitAndSummaryServer(
                 throw new Error("GrowthOS generation operation conflict");
             }
             const existingSummary = existingSummarySnap.exists
-                ? existingSummarySnap.data() as GrowthOSSummaryDocument
+                ? projectGrowthOSSummaryForScope(existingSummarySnap.data(), {
+                    tId: tenantDocumentId,
+                    sId: storeDocumentId,
+                })
                 : null;
             if (
                 !existingSummary
@@ -356,7 +383,12 @@ export async function readGrowthOSKitServer(params: {
         .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${tenantDocumentId}/${storeDocumentId}`)
         .doc(kitId)
         .get();
-    return snap.exists ? snap.data() as GrowthOSKit : null;
+    return snap.exists
+        ? projectGrowthOSKitForScope(snap.data(), {
+            tId: tenantDocumentId,
+            sId: storeDocumentId,
+        })
+        : null;
 }
 
 function statusForExportMethod(method: GrowthOSExportMethod): GrowthOSKitStatus | null {
@@ -415,7 +447,13 @@ export async function recordGrowthOSExportServer(params: {
             transaction.get(summaryRef),
         ]);
         if (existingExportSnap.exists) {
-            const existing = existingExportSnap.data() as Partial<GrowthOSExport>;
+            const existing = projectGrowthOSExportForScope(existingExportSnap.data(), {
+                tId: tenantDocumentId,
+                sId: storeDocumentId,
+            });
+            if (!existing) {
+                throw new Error("GrowthOS export contract invalid");
+            }
             if (
                 existing.operationId !== operationId
                 || existing.tId !== params.kit.tId
@@ -435,15 +473,19 @@ export async function recordGrowthOSExportServer(params: {
             };
         }
         if (!currentKitSnap.exists) throw new Error("GrowthOS kit no longer exists");
-        const currentKit = currentKitSnap.data() as Partial<GrowthOSKit>;
+        const currentKit = projectGrowthOSKitForScope(currentKitSnap.data(), {
+            tId: tenantDocumentId,
+            sId: storeDocumentId,
+        });
         if (
-            currentKit.id !== kitId
+            !currentKit
+            || currentKit.id !== kitId
             || currentKit.tId !== params.kit.tId
             || currentKit.sId !== params.kit.sId
             || !Array.isArray(currentKit.outputs)
             || !findGrowthOSKitOutput({
                 destination: params.destination,
-                kit: currentKit as GrowthOSKit,
+                kit: currentKit,
                 outputId: params.outputId,
             })
         ) {
@@ -480,9 +522,13 @@ export async function recordGrowthOSExportServer(params: {
             }), { merge: true });
         }
         if (summarySnap.exists) {
-            const summary = summarySnap.data() as Partial<GrowthOSSummaryDocument>;
+            const summary = projectGrowthOSSummaryForScope(summarySnap.data(), {
+                tId: tenantDocumentId,
+                sId: storeDocumentId,
+            });
             if (
-                summary.tId === params.kit.tId
+                summary
+                && summary.tId === params.kit.tId
                 && summary.sId === params.kit.sId
                 && summary.latestKit?.id === kitId
             ) {
@@ -520,9 +566,13 @@ export async function readGrowthOSExportReplayServer(params: {
         .doc(`growthos_export_${operationId}`);
     const snap = await exportRef.get();
     if (!snap.exists) return null;
-    const existing = snap.data() as Partial<GrowthOSExport>;
+    const existing = projectGrowthOSExportForScope(snap.data(), {
+        tId: tenantDocumentId,
+        sId: storeDocumentId,
+    });
     if (
-        existing.operationId !== operationId
+        !existing
+        || existing.operationId !== operationId
         || existing.tId !== tenantDocumentId
         || existing.sId !== storeDocumentId
         || existing.kitId !== kitId

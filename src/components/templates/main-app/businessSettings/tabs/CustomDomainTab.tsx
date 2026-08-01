@@ -3,18 +3,26 @@ import { FEATURE_FLAGS } from '@config/features';
 import { normalizeBaseUrl } from '@constant/urls';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import {
+    getOwnerComplianceScope,
+    isOwnerComplianceMutationScopeAcknowledged,
+    normalizeOwnerComplianceLoadResponse,
+    type OwnerCompliancePageData,
+    type OwnerCompliancePagesState,
+    type OwnerComplianceScope,
+} from '@lib/compliance/ownerComplianceResponseBoundary';
 import { normalizeVercelDomainDnsRecords, type VercelDomainDnsRecord } from '@lib/domains/vercelDnsRecords';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getBoundedErrorNumberAtPath } from '@lib/monitoring/boundedLogContext';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
 import { Alert, Button, Card, Col, Divider, Input, Row, Space, Steps, Tag, Typography, notification, theme } from 'antd';
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuFileText, LuGlobe, LuLoader, LuRefreshCw, LuRotateCcw, LuTrash2 } from 'react-icons/lu';
 
 const { Text, Title, Paragraph } = Typography;
 
 interface CustomDomainTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     storeDetails?: any;
     onStoreUpdate?: (updates: any) => void;
 }
@@ -24,16 +32,15 @@ type DomainStatus = 'none' | 'adding' | 'pending' | 'verified' | 'error';
 type DnsRecord = VercelDomainDnsRecord;
 
 type ComplianceTab = 'privacy' | 'terms' | 'refund';
-type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
-type CompliancePagesState = Record<ComplianceTab, CompliancePageData>;
 type ComplianceMutationAction = 'save' | 'reset';
 type ComplianceApiMutationAction = 'override' | 'reset';
 type ComplianceMutationResponse = {
     action?: unknown;
+    storeId?: unknown;
     success?: boolean;
+    tenantId?: unknown;
     type?: unknown;
 };
-type ComplianceLoadResponse = Partial<CompliancePagesState>;
 type DesktopCustomDomainResponsePhase = 'add' | 'status' | 'remove';
 type DesktopCustomDomainAddResponse = {
     success?: unknown;
@@ -219,6 +226,7 @@ function isSuccessfulComplianceMutationResponse(
     value: ComplianceMutationResponse | null,
     type: ComplianceTab,
     action: ComplianceMutationAction,
+    expectedScope: OwnerComplianceScope,
 ): value is ComplianceMutationResponse & {
     action: ComplianceApiMutationAction;
     success: true;
@@ -228,7 +236,8 @@ function isSuccessfulComplianceMutationResponse(
         value
         && value.success === true
         && value.type === type
-        && value.action === getExpectedComplianceApiMutationAction(action),
+        && value.action === getExpectedComplianceApiMutationAction(action)
+        && isOwnerComplianceMutationScopeAcknowledged(value, expectedScope)
     );
 }
 
@@ -243,14 +252,6 @@ function buildComplianceMutationResponseLogContext(
         hasExpectedAction: result?.action === getExpectedComplianceApiMutationAction(action),
         hasExpectedType: result?.type === type,
         success: result?.success === true,
-    };
-}
-
-function normalizeCompliancePages(data: ComplianceLoadResponse): CompliancePagesState {
-    return {
-        privacy: data.privacy || null,
-        refund: data.refund || null,
-        terms: data.terms || null,
     };
 }
 
@@ -285,7 +286,7 @@ async function readDesktopComplianceLoadResponseJson(
     type: ComplianceTab,
     domain?: string,
     pageUrl?: string,
-): Promise<ComplianceLoadResponse | null> {
+): Promise<unknown | null> {
     try {
         const payload = await readJsonResponseWithLimit<unknown>(
             response,
@@ -304,7 +305,7 @@ async function readDesktopComplianceLoadResponseJson(
             );
             return null;
         }
-        return payload as ComplianceLoadResponse;
+        return payload;
     } catch (error) {
         logBusinessSettingsFailure(
             'desktop_compliance_pages_load_response_parse_failed',
@@ -776,7 +777,11 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
             {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && (status === 'verified' || status === 'pending' || storeDetails?.customDomain) && (
                 <>
                     <Divider style={{ margin: '24px 0 16px' }} />
-                    <CompliancePagesSection domain={storeDetails?.customDomain} />
+                    <CompliancePagesSection
+                        domain={storeDetails?.customDomain}
+                        storeId={storeDetails?.storeId}
+                        tenantId={storeDetails?.tenantId}
+                    />
                 </>
             )}
         </Card>
@@ -788,12 +793,23 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
 // @see __docs__/compliance-pages/compliance-pages_impl.md
 // ═══════════════════════════════════════════════════════════════
 
-function CompliancePagesSection({ domain }: { domain?: string }) {
+function CompliancePagesSection({
+    domain,
+    storeId,
+    tenantId,
+}: {
+    domain?: string;
+    storeId?: unknown;
+    tenantId?: unknown;
+}) {
     const { token } = theme.useToken();
+    const scope = useMemo(() => getOwnerComplianceScope(tenantId, storeId), [storeId, tenantId]);
+    const currentScopeKeyRef = useRef(scope?.key);
+    currentScopeKeyRef.current = scope?.key;
     const [activeTab, setActiveTab] = useState<ComplianceTab>('privacy');
-    const [privacyData, setPrivacyData] = useState<CompliancePageData>(null);
-    const [termsData, setTermsData] = useState<CompliancePageData>(null);
-    const [refundData, setRefundData] = useState<CompliancePageData>(null);
+    const [privacyData, setPrivacyData] = useState<OwnerCompliancePageData>(null);
+    const [termsData, setTermsData] = useState<OwnerCompliancePageData>(null);
+    const [refundData, setRefundData] = useState<OwnerCompliancePageData>(null);
     const [customText, setCustomText] = useState('');
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -806,13 +822,16 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
     const pageLabel = labelMap[activeTab];
     const pageUrl = domain ? `https://${domain}/${activeTab}` : null;
 
-    const applyCompliancePages = (pages: CompliancePagesState) => {
+    const applyCompliancePages = (pages: OwnerCompliancePagesState) => {
         setPrivacyData(pages.privacy);
         setTermsData(pages.terms);
         setRefundData(pages.refund);
     };
 
-    const loadCompliancePages = async (): Promise<CompliancePagesState | null> => {
+    const loadCompliancePages = async (
+        expectedScope: OwnerComplianceScope | null,
+    ): Promise<OwnerCompliancePagesState | null> => {
+        if (!expectedScope) return null;
         try {
             const response = await fetch('/api/compliance', AUTH_BROWSER_REQUEST_POLICY);
             if (!response.ok) {
@@ -825,7 +844,8 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
             }
             const data = await readDesktopComplianceLoadResponseJson(response, activeTab, domain, pageUrl || undefined);
             if (!data) return null;
-            const pages = normalizeCompliancePages(data);
+            const pages = normalizeOwnerComplianceLoadResponse(data, expectedScope);
+            if (!pages || currentScopeKeyRef.current !== expectedScope.key) return null;
             applyCompliancePages(pages);
             return pages;
         } catch (error) {
@@ -840,12 +860,20 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
 
     // Fetch compliance data
     useEffect(() => {
+        let active = true;
+        setPrivacyData(null);
+        setTermsData(null);
+        setRefundData(null);
+        setLoadingData(Boolean(scope));
         const fetchData = async () => {
-            await loadCompliancePages();
-            setLoadingData(false);
+            await loadCompliancePages(scope);
+            if (active) setLoadingData(false);
         };
         void fetchData();
-    }, []);
+        return () => {
+            active = false;
+        };
+    }, [scope]);
 
     const handleOpenPage = () => {
         if (!pageUrl) return;
@@ -872,6 +900,11 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
 
     // Save custom override
     const handleSave = async () => {
+        const expectedScope = scope;
+        if (!expectedScope) {
+            notification.error({ message: 'Failed to save.' });
+            return;
+        }
         if (!customText || customText.trim().length < 100) {
             notification.error({ message: 'Content must be at least 100 characters.' });
             return;
@@ -898,7 +931,7 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
                 notification.error({ message: 'Failed to save.' });
                 return;
             }
-            if (!isSuccessfulComplianceMutationResponse(result, activeTab, 'save')) {
+            if (!isSuccessfulComplianceMutationResponse(result, activeTab, 'save', expectedScope)) {
                 logBusinessSettingsFailure(
                     'desktop_compliance_page_response_invalid',
                     createStatusError('desktop_compliance_page_save_response_invalid', response.status),
@@ -907,7 +940,7 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
                 notification.error({ message: 'Failed to save.' });
                 return;
             }
-            const refreshed = await loadCompliancePages();
+            const refreshed = await loadCompliancePages(expectedScope);
             if (!refreshed) {
                 notification.error({ message: 'Failed to save.' });
                 return;
@@ -928,6 +961,11 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
 
     // Reset to system default
     const handleReset = async () => {
+        const expectedScope = scope;
+        if (!expectedScope) {
+            notification.error({ message: 'Failed to reset.' });
+            return;
+        }
         setResetting(true);
         try {
             const response = await fetch('/api/compliance', {
@@ -949,7 +987,7 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
                 notification.error({ message: 'Failed to reset.' });
                 return;
             }
-            if (!isSuccessfulComplianceMutationResponse(result, activeTab, 'reset')) {
+            if (!isSuccessfulComplianceMutationResponse(result, activeTab, 'reset', expectedScope)) {
                 logBusinessSettingsFailure(
                     'desktop_compliance_page_response_invalid',
                     createStatusError('desktop_compliance_page_reset_response_invalid', response.status),
@@ -958,7 +996,7 @@ function CompliancePagesSection({ domain }: { domain?: string }) {
                 notification.error({ message: 'Failed to reset.' });
                 return;
             }
-            const refreshed = await loadCompliancePages();
+            const refreshed = await loadCompliancePages(expectedScope);
             if (!refreshed) {
                 notification.error({ message: 'Failed to reset.' });
                 return;

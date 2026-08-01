@@ -1,7 +1,7 @@
-export type GrowthOSTimestampLike = string | {
-    toDate(): Date;
-    toMillis(): number;
-};
+export type GrowthOSTimestampLike =
+    | string
+    | { toDate(): Date }
+    | { toMillis(): number };
 
 export type GrowthOSAccessMode = "disabled" | "pilot" | "paid";
 

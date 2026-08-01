@@ -4,7 +4,7 @@
  * Feature #3: Time-Based Categories
  * 
  * Handles time-based visibility logic for menu categories.
- * Uses store timezone when provided, falling back to browser timezone.
+ * Uses store timezone when provided, falling back deterministically to UTC.
  * 
  * FORMAT: timeSlots?: CategoryTimeSlot[] with presetId support
  * 
@@ -28,9 +28,13 @@ import { useEffect, useMemo, useState } from 'react';
  * @param time - Time in "HH:mm" format
  * @returns Formatted time string (e.g., "6:00 AM" or "06:00")
  */
-export function formatTimeForDisplay(time: string): string {
+export function formatTimeForDisplay(
+    time: string,
+    timeFormat?: string,
+    locale?: string,
+): string {
     if (!time) return '';
-    return formatClockTime(time);
+    return formatClockTime(time, timeFormat, locale);
 }
 
 /**
@@ -139,7 +143,10 @@ function getCurrentTimePartsForTimeZone(timeZone?: string, now = new Date()): Cu
         }
     }
 
-    return { day: now.getDay(), minutes: now.getHours() * 60 + now.getMinutes() };
+    return {
+        day: now.getUTCDay(),
+        minutes: now.getUTCHours() * 60 + now.getUTCMinutes(),
+    };
 }
 
 /**
@@ -171,35 +178,55 @@ export function isWithinTimeSlot(
 /**
  * Get the next time slot start time (for "starts at X" message)
  */
-export function getNextSlotStart(
+export type NextCategorySlotOccurrence = {
+    dayOffset: number;
+    startTime: string;
+    weekday: number;
+};
+
+export function getNextSlotOccurrence(
     category: ExtractedDataCategory,
     timeZone?: string,
-): string | null {
-    // Try new format first
+    now = new Date(),
+): NextCategorySlotOccurrence | null {
     if (category.timeSlots?.length) {
-        const current = getCurrentTimePartsForTimeZone(timeZone);
+        const current = getCurrentTimePartsForTimeZone(timeZone, now);
 
-        let nextStart: string | null = null;
+        let nextOccurrence: NextCategorySlotOccurrence | null = null;
         let minFutureMinutes = Infinity;
 
         for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
             const candidateDay = (current.day + dayOffset) % 7;
             for (const slot of category.timeSlots) {
                 if (slot.days?.length && !slot.days.includes(candidateDay)) continue;
-                const startMinutes = parseClockMinutes(slot.startTime);
-                if (startMinutes === null || !isValidClockRange(slot.startTime, slot.endTime)) continue;
+                const startTime = slot.startTime;
+                if (typeof startTime !== 'string') continue;
+                const startMinutes = parseClockMinutes(startTime);
+                if (startMinutes === null || !isValidClockRange(startTime, slot.endTime)) continue;
                 const futureMinutes = dayOffset * 24 * 60 + startMinutes - current.minutes;
                 if (futureMinutes > 0 && futureMinutes < minFutureMinutes) {
                     minFutureMinutes = futureMinutes;
-                    nextStart = slot.startTime;
+                    nextOccurrence = {
+                        dayOffset,
+                        startTime,
+                        weekday: candidateDay,
+                    };
                 }
             }
         }
 
-        return nextStart;
+        return nextOccurrence;
     }
 
     return null;
+}
+
+export function getNextSlotStart(
+    category: ExtractedDataCategory,
+    timeZone?: string,
+    now = new Date(),
+): string | null {
+    return getNextSlotOccurrence(category, timeZone, now)?.startTime || null;
 }
 
 /**
@@ -208,9 +235,10 @@ export function getNextSlotStart(
 export function isCategoryVisibleByTime(
     category: ExtractedDataCategory,
     timeZone?: string,
+    now = new Date(),
 ): boolean {
     if (!category.timeSlots?.length) return true; // No restriction = always visible
-    return isWithinTimeSlot(category.timeSlots, timeZone);
+    return isWithinTimeSlot(category.timeSlots, timeZone, now);
 }
 
 /**
@@ -232,17 +260,17 @@ export function useTimedCategories(categories: ExtractedDataCategory[], timeZone
     // Filter categories based on time visibility
     const visibleCategories = useMemo(() => {
         return categories.filter(category => {
-            if (!category.active) return false;
-            return isCategoryVisibleByTime(category, timeZone);
+            if (category.active === false) return false;
+            return isCategoryVisibleByTime(category, timeZone, currentTime);
         });
     }, [categories, currentTime, timeZone]);
 
     // Get hidden categories (for showing "starts at X" messages)
     const hiddenByTimeCategories = useMemo(() => {
         return categories.filter(category => {
-            if (!category.active) return false;
+            if (category.active === false) return false;
             if (!category.timeSlots?.length) return false;
-            return !isCategoryVisibleByTime(category, timeZone);
+            return !isCategoryVisibleByTime(category, timeZone, currentTime);
         });
     }, [categories, currentTime, timeZone]);
 
@@ -263,11 +291,12 @@ export function getHiddenCategoryMessage(
     category: ExtractedDataCategory,
     lang: string,
     timeZone?: string,
+    now = new Date(),
 ): string | null {
     if (!category.timeSlots?.length) return null;
 
     const categoryName = category.name?.[lang] || 'Menu';
-    const nextStart = getNextSlotStart(category, timeZone);
+    const nextStart = getNextSlotStart(category, timeZone, now);
 
     if (!nextStart) return null;
 

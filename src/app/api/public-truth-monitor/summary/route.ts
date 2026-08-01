@@ -49,8 +49,8 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         let authorized: Awaited<ReturnType<typeof readAuthorizedPublicTruthMonitorSummaryServer>>;
         try {
             authorized = await readAuthorizedPublicTruthMonitorSummaryServer({
-                authorizeStore: (storeData) => {
-                    permissionError = requireAnyStorePermissionForStoreData(
+                authorizeStore: async (storeData) => {
+                    permissionError = await requireAnyStorePermissionForStoreData(
                         request,
                         session,
                         storeData,

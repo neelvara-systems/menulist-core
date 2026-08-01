@@ -326,7 +326,7 @@ function buildLifecycleExpiryUpdate(
   state: MessagingOnboardingState,
   now: Timestamp,
   reason: string,
-): Record<string, unknown> {
+) {
   const interrupted = state === "VALIDATING_ASSETS"
     || state === "PROCESSING_MENU"
     || state === "PUBLISHING";

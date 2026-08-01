@@ -2,6 +2,7 @@ import { COUNTER_STICKER_TEMPLATES, CounterStickerTemplate } from "@type/campaig
 import { resolveMenuKitBrandTokens } from "@lib/menu-kit/brandTokens";
 import { loadLogo } from "@lib/menu-kit/imageLoader";
 import { drawMenuListAttribution } from "@lib/menu-kit/platformAttribution";
+import { normalizePhysicalSurfaceQrUrl } from "./outputBoundary";
 import QRCode from "qrcode";
 
 interface StickerOptions {
@@ -23,6 +24,10 @@ export async function generateStickerPNG(
     options: StickerOptions
 ): Promise<Blob> {
     const { brandColor, brandName, itemName, logoUrl, templateId, qrUrl } = options;
+    const normalizedQrUrl = normalizePhysicalSurfaceQrUrl(qrUrl);
+    if (!normalizedQrUrl) {
+        throw new Error("Sticker QR URL must be a valid HTTPS URL");
+    }
     const brand = resolveMenuKitBrandTokens(brandColor);
     const logo = logoUrl ? await loadLogo(logoUrl, 180) : null;
 
@@ -91,7 +96,7 @@ export async function generateStickerPNG(
 
     // QR Code
     const qrCanvas = document.createElement("canvas");
-    await QRCode.toCanvas(qrCanvas, qrUrl, {
+    await QRCode.toCanvas(qrCanvas, normalizedQrUrl, {
         width: 300,
         margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },
@@ -128,7 +133,13 @@ export async function generateStickerPNG(
         y: SIZE - 22,
     });
 
-    return new Promise((resolve) => {
-        canvas.toBlob((blob) => resolve(blob!), "image/png");
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (blob) {
+                resolve(blob);
+                return;
+            }
+            reject(new Error("Failed to encode counter sticker PNG"));
+        }, "image/png");
     });
 }

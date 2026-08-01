@@ -71,7 +71,10 @@ Output:
 ## Runtime Flow
 
 1. `mapsPlaceCheck` callable receives the request.
-2. Authentication and tenant/store access are checked in the trigger.
+2. Signed authentication and tenant/store claims are checked in the trigger,
+   then exact current tenant, store, and user documents re-prove active
+   MenuList authority. Current platform operators may target a valid store;
+   current owners must retain exact tenant/store membership.
 3. `ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK` must be enabled in Functions.
 4. SAFE_MODE is checked before the provider call.
 5. Upstash-backed Function rate limiting runs before the provider call.

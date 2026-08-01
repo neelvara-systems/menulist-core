@@ -16,7 +16,8 @@ import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getTenantStoreStorageKey } from '@lib/browserStorage/tenantStoreKey';
 import { getHoursConfidenceState } from '@lib/outputControl';
-import { getStoreDayKey, getStoreStatus, parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
+import { getStoreDayKey, getStoreLocalDateKey, getStoreStatus, parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
+import { getSpecialHoursEntry, normalizeSpecialHours } from '@lib/hours/specialHours';
 import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { getBoundedCampaignStringContext, logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
@@ -128,6 +129,8 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     const [isUpdating, setIsUpdating] = useState(false);
     const [hoursNow, setHoursNow] = useState(() => new Date());
     const todayKey = getStoreDayKey(storeDetails?.timeZone, hoursNow);
+    const todayDateKey = getStoreLocalDateKey(storeDetails?.timeZone, hoursNow);
+    const todaySpecialHours = getSpecialHoursEntry(storeDetails?.specialHours, todayDateKey);
     const todayLabel = DAY_LABELS[todayKey] || 'today';
     const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
     const [isCampaignProcessing, setIsCampaignProcessing] = useState(false);
@@ -198,24 +201,41 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
     }, [storeDetails?.storeId, storeDetails?.tenantId, (storeDetails as any)?.tId]);
 
     useEffect(() => {
-        const todayRange = getTodayTimeRange(storeDetails?.workingHours?.[todayKey]);
+        const todayRange = getTodayTimeRange(todaySpecialHours?.hours ?? storeDetails?.workingHours?.[todayKey]);
         setTodayOpenTime(todayRange.openTime);
         setTodayCloseTime(todayRange.closeTime);
-    }, [storeDetails?.workingHours, todayKey]);
+    }, [storeDetails?.workingHours, todayKey, todaySpecialHours?.hours]);
 
     const todayStatus = useMemo((): TodayStatus => {
         if (isTempActive && TEMP_CLOSED_TYPES.has(String(currentTempStatus?.type))) {
             return 'closed_today';
         }
 
-        const status = getStoreStatus(storeDetails?.workingHours, storeDetails?.timeZone, undefined, hoursNow);
+        const status = getStoreStatus(
+            storeDetails?.workingHours,
+            storeDetails?.timeZone,
+            undefined,
+            hoursNow,
+            storeDetails?.specialHours,
+        );
         if (status.isOpen) return 'open';
 
-        const hasTodayHours = parseWorkingHoursRanges(storeDetails?.workingHours?.[todayKey]).length > 0;
+        const hasTodayHours = parseWorkingHoursRanges(
+            todaySpecialHours?.hours ?? storeDetails?.workingHours?.[todayKey],
+        ).length > 0;
         return hasTodayHours && !status.nextChange?.startsWith('Opens at ')
             ? 'closed_after_hours'
             : 'closed_today';
-    }, [currentTempStatus?.type, hoursNow, isTempActive, storeDetails?.timeZone, storeDetails?.workingHours, todayKey]);
+    }, [
+        currentTempStatus?.type,
+        hoursNow,
+        isTempActive,
+        storeDetails?.specialHours,
+        storeDetails?.timeZone,
+        storeDetails?.workingHours,
+        todayKey,
+        todaySpecialHours?.hours,
+    ]);
 
     const inactiveItemsReminder = useMemo(
         () => getInactiveItemsReminder(selectedProject as any),
@@ -352,7 +372,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
         }
     };
 
-    const todayRange = getTodayTimeRange(storeDetails?.workingHours?.[todayKey]);
+    const todayRange = getTodayTimeRange(todaySpecialHours?.hours ?? storeDetails?.workingHours?.[todayKey]);
     const todayTimingsLabel = todayRange.isClosed
         ? t('closedToday')
         : `${todayRange.openTime} - ${todayRange.closeTime}`;
@@ -422,12 +442,13 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
             ? { color: token.colorError, icon: <LuPowerOff color={token.colorError} size={18} />, label: t('closedToday'), sublabel: 'Today’s serving time is over. Update timings if you are still open.' }
         : { color: token.colorError, icon: <LuPowerOff color={token.colorError} size={18} />, label: t('closedToday'), sublabel: t('customersSee') };
     const closeTodayCtaLabel = 'Mark Closed for Today';
-    const editRegularHoursCtaLabel = `Edit ${todayLabel} Hours`;
+    const editRegularHoursCtaLabel = todaySpecialHours ? 'Edit Today’s Special Hours' : `Edit ${todayLabel} Hours`;
     const isTemporaryClosedToday = Boolean(isTempActive && TEMP_CLOSED_TYPES.has(String(currentTempStatus?.type)));
 
     const hoursConfidence = FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL
         ? getHoursConfidenceState({
             workingHours: storeDetails.workingHours,
+            specialHours: storeDetails.specialHours,
             hoursLastUpdatedAt: (storeDetails as any).hoursLastUpdatedAt || (storeDetails as any).modifiedOn,
             timeZone: storeDetails.timeZone,
         })
@@ -522,14 +543,23 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
         const expectedTodayKey = todayKey;
         const expectedTodayLabel = todayLabel;
         const previousHours = { ...(storeDetails.workingHours || {}) };
+        const previousSpecialHours = normalizeSpecialHours(storeDetails.specialHours) || {};
         const previousHoursLastUpdatedAt = (storeDetails as any).hoursLastUpdatedAt;
         const nextRange = `${todayOpenTime}-${todayCloseTime}`;
         const nextHours = { ...previousHours, [expectedTodayKey]: nextRange };
+        const nextSpecialHours = todaySpecialHours
+            ? {
+                ...previousSpecialHours,
+                [todayDateKey]: { ...todaySpecialHours, hours: nextRange },
+            }
+            : previousSpecialHours;
         const hoursLastUpdatedAt = new Date().toISOString();
         setStoreDetails((previous: any) => (
             String(previous?.tenantId ?? '') === String(expectedTenantId)
             && String(previous?.storeId ?? '') === String(expectedStoreId)
-                ? { ...previous, hoursLastUpdatedAt, workingHours: nextHours }
+                ? todaySpecialHours
+                    ? { ...previous, hoursLastUpdatedAt, specialHours: nextSpecialHours }
+                    : { ...previous, hoursLastUpdatedAt, workingHours: nextHours }
                 : previous
         ));
 
@@ -538,7 +568,9 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 hoursLastUpdatedAt,
                 storeId: expectedStoreId,
                 tenantId: expectedTenantId,
-                workingHours: { [expectedTodayKey]: nextRange },
+                ...(todaySpecialHours
+                    ? { specialHours: nextSpecialHours }
+                    : { workingHours: { [expectedTodayKey]: nextRange } }),
             });
             assertStoreUpdateSucceeded(
                 writeResult,
@@ -555,6 +587,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                 hasPreviousHours: Object.keys(previousHours).length > 0,
                 hasNextHours: Object.keys(nextHours).length > 0,
                 hasPreviousHoursLastUpdatedAt: Boolean(previousHoursLastUpdatedAt),
+                updatesSpecialHours: Boolean(todaySpecialHours),
             });
             setStoreDetails((previous: any) => (
                 String(previous?.tenantId ?? '') === String(expectedTenantId)
@@ -563,7 +596,9 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                     ? {
                         ...previous,
                         hoursLastUpdatedAt: previousHoursLastUpdatedAt,
-                        workingHours: previousHours,
+                        ...(todaySpecialHours
+                            ? { specialHours: previousSpecialHours }
+                            : { workingHours: previousHours }),
                     }
                     : previous
             ));
@@ -587,9 +622,11 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
         void Dialog.confirm({
             cancelText: 'Cancel',
             confirmText: 'Publish hours',
-            content: `Customers will see ${todayOpenTime} - ${todayCloseTime} every ${todayLabel} from now on. Use Temporary Status for a one-day change.`,
+            content: todaySpecialHours
+                ? `Customers will see ${todayOpenTime} - ${todayCloseTime} on ${todayDateKey}. Regular ${todayLabel} hours stay unchanged.`
+                : `Customers will see ${todayOpenTime} - ${todayCloseTime} every ${todayLabel} from now on. Use Special hours for a one-day change.`,
             onConfirm: saveTodayHours,
-            title: `Publish regular ${todayLabel} hours?`,
+            title: todaySpecialHours ? 'Publish today’s special hours?' : `Publish regular ${todayLabel} hours?`,
         });
     };
 
@@ -887,7 +924,9 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                         </Button>
                     )}
                     <Text style={{ color: token.colorTextTertiary, fontSize: 12 }}>
-                        Closing uses Temporary Status. Editing hours changes your regular {todayLabel} schedule.
+                        {todaySpecialHours
+                            ? `Special hours apply on ${todayDateKey}${todaySpecialHours.label ? ` for ${todaySpecialHours.label}` : ''}.`
+                            : `Closing uses Temporary Status. Editing hours changes your regular ${todayLabel} schedule.`}
                     </Text>
                 </Flex>
             </Card>
@@ -912,7 +951,7 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                             padding: '12px 14px',
                         }}
                     >
-                        <Text strong>{`Edit Regular ${todayLabel} Hours`}</Text>
+                        <Text strong>{todaySpecialHours ? 'Edit Today’s Special Hours' : `Edit Regular ${todayLabel} Hours`}</Text>
                         <Button
                             fill="none"
                             onClick={() => {
@@ -928,7 +967,11 @@ function MobileHoursScreenContent({ onOpenDashboard, onOpenHistory, onOpenMenuTa
                         </Button>
                     </Flex>
                     <Flex gap={12} style={{ overflowY: 'auto', padding: 14 }} vertical>
-                        <Text type="secondary">{`Set the opening and closing time used every ${todayLabel}.`}</Text>
+                        <Text type="secondary">
+                            {todaySpecialHours
+                                ? `Set the opening and closing time for ${todayDateKey} only.`
+                                : `Set the opening and closing time used every ${todayLabel}.`}
+                        </Text>
                         <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                             <Flex gap={4} vertical>
                                 <Text strong>Customer preview</Text>

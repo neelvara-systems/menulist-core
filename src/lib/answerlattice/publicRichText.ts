@@ -7,21 +7,59 @@ const escapeHtml = (value: unknown) => String(value ?? '')
 
 const escapeAttribute = (value: unknown) => escapeHtml(value).replace(/`/g, '&#96;');
 
+const PUBLIC_CONTENT_BASE_URL = 'https://answerlattice.invalid';
+const UNSAFE_URL_CHARACTERS = /[\u0000-\u001f\u007f\\]/;
+const PUBLIC_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:']);
+const PUBLIC_IMAGE_PROTOCOLS = new Set(['http:', 'https:']);
+
+const isSafeRootRelativeUrl = (value: string): boolean => {
+    if (!value.startsWith('/') || value.startsWith('//') || UNSAFE_URL_CHARACTERS.test(value)) {
+        return false;
+    }
+
+    try {
+        return new URL(value, PUBLIC_CONTENT_BASE_URL).origin === PUBLIC_CONTENT_BASE_URL;
+    } catch {
+        return false;
+    }
+};
+
+const parseCredentialFreeAbsoluteUrl = (
+    value: string,
+    allowedProtocols: ReadonlySet<string>,
+): URL | null => {
+    if (UNSAFE_URL_CHARACTERS.test(value)) return null;
+
+    try {
+        const parsed = new URL(value);
+        if (
+            !allowedProtocols.has(parsed.protocol)
+            || parsed.username
+            || parsed.password
+        ) {
+            return null;
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
 const safeHref = (value: unknown) => {
     const href = String(value || '').trim();
     if (!href) return '';
-    if (href.startsWith('//')) return '';
-    if (href.startsWith('/') || href.startsWith('#')) return href;
-    if (/^(https?:|mailto:|tel:)/i.test(href)) return href;
-    return '';
+    if (href.startsWith('#') && !UNSAFE_URL_CHARACTERS.test(href)) return href;
+    if (isSafeRootRelativeUrl(href)) return href;
+
+    return parseCredentialFreeAbsoluteUrl(href, PUBLIC_LINK_PROTOCOLS)?.href || '';
 };
 
 const safeImageSrc = (value: unknown) => {
     const src = String(value || '').trim();
-    if (!src || src.startsWith('//')) return '';
-    if (src.startsWith('/')) return src;
-    if (/^https?:/i.test(src)) return src;
-    return '';
+    if (!src) return '';
+    if (isSafeRootRelativeUrl(src)) return src;
+
+    return parseCredentialFreeAbsoluteUrl(src, PUBLIC_IMAGE_PROTOCOLS)?.href || '';
 };
 
 const safeTextAlign = (value: unknown) => {

@@ -1,7 +1,7 @@
 # Special Menu Switching — Validation Report
 
 **Status:** ✅ LOCAL SOURCE COMPLETE — Firebase deployment and deployed QA smoke remain pending
-**Validated:** July 16, 2026
+**Validated:** July 30, 2026
 **Feature Flag:** `ENABLE_SPECIAL_MENU_SWITCHING: true` in frontend and Functions
 
 ---
@@ -43,6 +43,9 @@
 | `src/components/templates/main-app/projects/SpecialMenuCard.tsx`        | Dashboard card with management actions   | ~220 |
 | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | Mobile management screen                 | ~230 |
 | `src/data/shared/specialMenuSchedule.ts`                                | Canonical next-transition calculation    | Small |
+| `src/lib/menu/specialMenuRuntime.ts`                                    | Shared canonical public/screen validator | Small |
+| `src/components/templates/main-app/projects/EditSpecialMenuScheduleModal.tsx` | Desktop store-local schedule editor | Small |
+| `scripts/verification/test-special-menu-runtime.ts`                     | Runtime eligibility and timezone regression | Small |
 
 ## Files Modified
 
@@ -68,6 +71,13 @@
 | Bug                                                   | Impact                                                        | Fix                                                                              | File                                       |
 | ----------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
 | Special menu projects visible in normal slug matching | Customer could navigate to a raw special menu project via URL | Normal slug matching excludes special-menu summary rows | `src/app/client/[[...slug]]/page.tsx` |
+| Configured screens required a nonexistent full-project `isSpecialMenu` marker | Screens silently stayed on the regular menu while web customers saw the special menu | Screen runtime now validates canonical `_specialMenu` metadata shared with public menu rendering | `src/database/campaigns/serverScreen.ts`, `src/lib/menu/specialMenuRuntime.ts` |
+| Public pointer resolution did not fully validate project/base scope | A malformed or unrelated pointed project could become public output | Shared fail-closed runtime validator plus exact `baseProjectId` match | public route + runtime helper |
+| Owner scheduling used browser/device timezone in several paths | A travelling owner could publish at the wrong local business time | Desktop/mobile create/edit convert through `stores.timeZone` | owner modals and mobile screens |
+| Date-only mobile categories rendered date-time controls | Controls could be blank and persistence could parse the wrong shape | Capability-aware date/date-time controls and conversions across both mobile editors | mobile special-menu screens |
+| Mobile create draft could predate store capability/timezone hydration | The first opened sheet could retain a date shape under a date-time control | Opening/context changes reinitialize schedule values from the hydrated store contract | mobile special-menu screen |
+| Desktop lacked schedule editing and hid times | Owners could not efficiently verify or correct a live window | Full schedule range plus desktop edit modal | `SpecialMenuCard.tsx` |
+| Immediate create/edit trusted stale store pointers | Owners could remain blocked after interrupted lifecycle cleanup | Exact pointed-project validation repairs stale state transactionally | project DAL |
 
 ---
 
@@ -141,6 +151,34 @@
 
 The July 16, 2026 scoped QA deploy for `menulistMaintenanceScheduler` and `computeDecisionBlocksScores` passed predeploy lint/build, then stopped before upload because Cloud Resource Manager returned HTTP 403 for `menulist-qa`. No Functions runtime changed.
 
+### July 30 End-to-End Audit Verification
+
+Passed:
+
+- `npm run verify:special-menu-lifecycle`
+- `npm run test:special-menu-lifecycle:rules`
+- `npm run test:special-menu-lifecycle:emulator`
+- `npm run verify:digital-screens-boundary`
+- `npm run verify:public-business-truth`
+- Focused ESLint over all changed special-menu owner, DAL, public, screen, and
+  verifier files with zero warnings
+- Functions TypeScript build as part of the lifecycle emulator suite
+- `npm run docs:check-links` (zero broken links; 62 existing naming warnings
+  outside this feature)
+
+Static re-trace covered owner desktop/mobile creation, schedule edit, menu
+content edit, translate, activate/end/cancel, summary projection, public cache
+invalidation, due scheduler, nightly repair, public menu/OBP route resolution,
+configured digital-screen projection, QR links, generic delete/deactivate
+guards, tenant/store scope, empty replacement, overlay identity isolation, and
+unsupported PDF/POS boundaries.
+
+Full repository TypeScript passes. Authenticated owner visual certification was
+blocked by the repository-wide local Turbopack Firebase Admin client-bundling
+error. The unauthenticated tenant public route was reachable. No
+Vercel/Firebase deployment or full production build was run in this bounded
+audit.
+
 ---
 
-**Last Updated:** July 16, 2026
+**Last Updated:** July 30, 2026

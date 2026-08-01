@@ -140,7 +140,7 @@ const ShareFeedbackView = () => {
                 </Row>
             </Form>
 
-            {Boolean(latestFeedback?.createdOn) && (
+            {latestFeedback?.createdOn && (
                 <Alert
                     style={{ marginTop: 44 }}
                     message={<>

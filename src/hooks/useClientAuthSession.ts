@@ -18,7 +18,7 @@ export function useClientAuthSession() {
 
     return getClientSessionScopeForCurrentStore(
         session,
-        pathname,
+        pathname ?? '',
         window.location.hostname,
     );
 }

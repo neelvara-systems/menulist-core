@@ -1,32 +1,46 @@
 import { sortFontsPresets } from '@database/static/fontPresets';
-import { DndContext, DragEndEvent, DragOverlay, rectIntersection, useDroppable } from '@dnd-kit/core';
-import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable";
+import { DndContext, DragEndEvent, DragOverlay, type Active, rectIntersection, useDroppable } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
+import {
+    createSortableFontPresetList,
+    removeSortableFontPresetUids,
+    reorderSortableFontPresetList,
+    type SortableFontPreset,
+} from '@lib/platform/fontPresetSortBoundary';
 import { getUID } from '@util/utils';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { Button, Flex, Modal, theme } from 'antd';
-import { Fragment, useEffect, useState } from 'react';
+import { type Dispatch, Fragment, type SetStateAction, useEffect, useState } from 'react';
 import { LuX } from 'react-icons/lu';
+import type { FontPresetsType } from '@type/assets';
 import SortableItem from './SortableItem';
 
-function SortFontModal({ showSortModal, setShowSortModal, setFontsList }) {
+type SortFontModalState = {
+    active: boolean;
+    data: FontPresetsType[];
+};
 
-    const [fontsList, setFonts] = useState(showSortModal.data)
+type SortFontModalProps = {
+    setFontsList: Dispatch<SetStateAction<FontPresetsType[]>>;
+    setShowSortModal: Dispatch<SetStateAction<SortFontModalState>>;
+    showSortModal: SortFontModalState;
+};
+
+function SortFontModal({ showSortModal, setShowSortModal, setFontsList }: SortFontModalProps) {
+    const [fontsList, setFonts] = useState<SortableFontPreset[]>([])
     const { setNodeRef, isOver } = useDroppable({ id: "layers", })
-    const [draggingItem, setDraggingItem] = useState<any>(null)
+    const [draggingItem, setDraggingItem] = useState<Active | null>(null)
     const { token } = theme.useToken();
 
     useEffect(() => {
-        const list = showSortModal.data
-        list.map((l) => {
-            l.uid = getUID()
-        })
-        setFonts(list)
-    }, [showSortModal])
+        setFonts(createSortableFontPresetList(showSortModal.data, getUID));
+    }, [showSortModal.data])
 
     const onSubmit = async () => {
         try {
-            await sortFontsPresets(fontsList);
-            setFontsList(fontsList)
+            const persistedFonts = removeSortableFontPresetUids(fontsList);
+            await sortFontsPresets(persistedFonts);
+            setFontsList(persistedFonts)
             setShowSortModal({ active: false, data: [] })
         } catch (error) {
             logRuntimeFailure('platform_font_presets_sort_failed', error, {
@@ -35,20 +49,15 @@ function SortFontModal({ showSortModal, setShowSortModal, setFontsList }) {
         }
     }
 
-    const handleOnDragEnd = ({ active, over }: DragEndEvent, currentState: any) => {
+    const handleOnDragEnd = ({ active, over }: DragEndEvent) => {
         if (over?.id && active?.id) {
-            const active_indx = currentState.findIndex(x => x.uid === active.id);
-            const over_indx = currentState.findIndex(x => x.uid === over.id);
-            //reorder
-            if ((active_indx !== -1) && over_indx !== -1) {
-                if (active_indx === over_indx) return;
-                const newList: any = arrayMove(currentState, active_indx, over_indx)
-                newList.map((l, i) => {
-                    l.index = i;
-                })
-                setFonts(newList)
-            }
+            setFonts((currentState) => reorderSortableFontPresetList(
+                currentState,
+                String(active.id),
+                String(over.id),
+            ));
         }
+        setDraggingItem(null);
     }
 
     return (
@@ -72,15 +81,15 @@ function SortFontModal({ showSortModal, setShowSortModal, setFontsList }) {
                         setDraggingItem(active)
                     }}
                     onDragCancel={() => setDraggingItem(null)}
-                    onDragEnd={(event: DragEndEvent) => handleOnDragEnd(event, fontsList)}
+                    onDragEnd={handleOnDragEnd}
                     collisionDetection={rectIntersection}
                 >
                     <SortableContext
                         items={fontsList?.map((item) => item.uid)}
                         strategy={rectSortingStrategy}>
                         <div style={{ width: "100%", flexDirection: "column", display: "flex", justifyContent: "center", alignItems: "center", gap: 10 }} ref={setNodeRef} >
-                            {fontsList?.map((fontData, index) => {
-                                return <Fragment key={index}>
+                            {fontsList.map((fontData) => {
+                                return <Fragment key={fontData.uid}>
                                     <SortableItem fontData={fontData} />
                                 </Fragment>
                             })}

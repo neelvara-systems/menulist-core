@@ -190,7 +190,8 @@ export function getColorFromPalette(
 ): string {
   const colors = CHART_PALETTES[palette];
   if (Array.isArray(colors)) {
-    return colors[index % colors.length];
+    if (!Number.isSafeInteger(index)) return colors[0];
+    return colors[((index % colors.length) + colors.length) % colors.length];
   }
   return '#1890ff'; // Fallback
 }
@@ -218,6 +219,7 @@ export function formatChartLabel(
   value: number,
   type: 'number' | 'percentage' | 'currency' = 'number'
 ): string {
+  if (!Number.isFinite(value)) return '—';
   switch (type) {
     case 'percentage':
       return `${value}%`;
@@ -237,6 +239,7 @@ export function formatChartDate(
   format: 'short' | 'medium' | 'long' = 'short'
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (!(d instanceof Date) || !Number.isFinite(d.getTime())) return '—';
   
   switch (format) {
     case 'long':
@@ -266,15 +269,17 @@ export function getResponsiveDimensions(
   windowWidth: number,
   baseHeight: number = 300
 ): { width: string; height: number } {
-  if (windowWidth < 576) {
+  const safeWindowWidth = Number.isFinite(windowWidth) && windowWidth >= 0 ? windowWidth : 0;
+  const safeBaseHeight = Number.isFinite(baseHeight) && baseHeight > 0 ? baseHeight : 300;
+  if (safeWindowWidth < 576) {
     // Mobile
-    return { width: '100%', height: Math.max(150, baseHeight * 0.5) };
-  } else if (windowWidth < 992) {
+    return { width: '100%', height: Math.max(150, safeBaseHeight * 0.5) };
+  } else if (safeWindowWidth < 992) {
     // Tablet
-    return { width: '100%', height: Math.max(200, baseHeight * 0.7) };
+    return { width: '100%', height: Math.max(200, safeBaseHeight * 0.7) };
   } else {
     // Desktop
-    return { width: '100%', height: baseHeight };
+    return { width: '100%', height: safeBaseHeight };
   }
 }
 

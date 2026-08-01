@@ -23,7 +23,10 @@ export interface FeedbackReplyTemplate {
 export function buildFeedbackReplyTemplates(input: FeedbackReplyTemplateInput): FeedbackReplyTemplate[] {
     const greeting = buildFeedbackReplyGreeting(input.customerName);
     const signoff = buildFeedbackReplySignoff(input.storeName);
-    const needsAttention = Number.isFinite(Number(input.rating)) && Number(input.rating) <= 3;
+    const needsAttention = typeof input.rating === 'number'
+        && Number.isFinite(input.rating)
+        && input.rating >= 1
+        && input.rating <= 3;
 
     const primaryLine = needsAttention
         ? 'We have noted this and will handle it with the team.'
@@ -64,13 +67,22 @@ export function buildFeedbackReplyTemplates(input: FeedbackReplyTemplateInput): 
 }
 
 function buildFeedbackReplyGreeting(customerName?: string): string {
-    const trimmedCustomerName = customerName?.trim();
+    const trimmedCustomerName = normalizeFeedbackReplyLine(customerName);
     return trimmedCustomerName ? `Hi ${trimmedCustomerName}` : 'Hi';
 }
 
 function buildFeedbackReplySignoff(storeName?: string): string | null {
-    const trimmedStoreName = storeName?.trim();
+    const trimmedStoreName = normalizeFeedbackReplyLine(storeName);
     return trimmedStoreName ? `- ${trimmedStoreName}` : null;
+}
+
+function normalizeFeedbackReplyLine(value: unknown): string {
+    if (typeof value !== 'string') return '';
+    return value
+        .replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 160);
 }
 
 function buildFeedbackReplyMessage(lines: Array<string | null>): string {

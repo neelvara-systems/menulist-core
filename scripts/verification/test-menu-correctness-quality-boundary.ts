@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { getTrustSignalFreshnessText } from '../../src/lib/menu/trustSignalFreshness';
 import {
     computeQualitySignals,
+    isPriceOutlierReviewed,
+    normalizePriceForReview,
 } from '../../src/lib/mce/qualitySignals';
 import { mceValidate } from '../../src/lib/mce';
 import {
@@ -150,6 +152,41 @@ const signals = computeQualitySignals(multilingualFiles, ['en', 'hi']);
 assert.equal(signals.find((signal) => signal.id === 'descriptions')?.count, 0);
 assert.equal(signals.find((signal) => signal.id === 'translations')?.count, 1);
 assert.equal(signals.some((signal) => signal.id === 'priceOutliers'), false);
+
+assert.deepEqual(computeQualitySignals('malformed-files'), [], 'non-array persisted files must fail closed');
+assert.deepEqual(
+    computeQualitySignals([{ extractedData: { data: { items: { invalid: true } } } }]),
+    [],
+    'malformed persisted item collections must fail closed',
+);
+assert.equal(normalizePriceForReview({ amount: 100 }), '', 'non-string persisted prices must not be coerced');
+assert.equal(
+    isPriceOutlierReviewed({ price: '100', qualityReview: { priceOutlierReviewedPrice: true } }),
+    false,
+    'malformed review markers must not crash or suppress an outlier',
+);
+
+let hostileQualityGetterCalls = 0;
+const hostileQualityItem = {
+    active: true,
+    category: 'category-1',
+    id: 'hostile-quality-item',
+    name: { en: 'Hostile item' },
+    price: '100',
+    get description() {
+        hostileQualityGetterCalls += 1;
+        throw new Error('persisted accessor must not execute');
+    },
+    get qualityReview() {
+        hostileQualityGetterCalls += 1;
+        throw new Error('persisted accessor must not execute');
+    },
+};
+assert.doesNotThrow(
+    () => computeQualitySignals([file([hostileQualityItem])], ['en']),
+    'persisted accessors must be contained by the quality read boundary',
+);
+assert.equal(hostileQualityGetterCalls, 0, 'quality projection must not invoke persisted item accessors');
 
 const now = new Date('2026-07-16T12:00:00.000Z');
 assert.equal(getTrustSignalFreshnessText('2026-07-16T11:00:00.000Z', now), 'Updated today');

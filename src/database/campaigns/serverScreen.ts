@@ -10,10 +10,16 @@ import {
     withAuthoritativeSummaryProjectId,
 } from "@lib/firestore/parseSummaryProjects";
 import { getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
+import { normalizePublicAccentColor } from "@lib/obp/accentColor";
 import { normalizePublicProjectSlug } from "@lib/publicRouting/pathSegments";
 import { normalizeMenuListPublicEntityIdentityAliases } from "@lib/publicTruth/entityEligibility";
 import { mergeSpecialMenuOverlayProjects } from "@lib/menu/specialMenuOverlay";
-import { extractScreenMenuItemsFromProject, resolveScreenNumberLocale } from "@lib/screen/screenContent";
+import { resolveLiveSpecialMenuProject } from "@lib/menu/specialMenuRuntime";
+import {
+    extractScreenMenuItemsFromProject,
+    normalizeCachedScreenMenuItems,
+    resolveScreenNumberLocale,
+} from "@lib/screen/screenContent";
 import { getPrivateScreenControlDocId } from "@lib/screen/privateScreenControl";
 import { isValidScreenToken } from "@lib/screen/utils";
 import { secureError } from "@lib/security/secureLogger";
@@ -53,17 +59,15 @@ const getUsableScreenProjectionContext = (
         contentVersion?: number | null;
     },
 ): { baseProjectId: string; selectedProjectSlug: string } | null => {
-    if (!projection || !Array.isArray(projection.items) || projection.items.length === 0) {
+    if (!projection || !isValidFirestoreDocumentId(projection.baseProjectId)) {
+        return null;
+    }
+    const normalizedItems = normalizeCachedScreenMenuItems(projection.items);
+    if (normalizedItems.length === 0) {
         return null;
     }
 
-    if (!projection.baseProjectId) {
-        return null;
-    }
-
-    const selectedProjectSlug = typeof projection.baseProjectSlug === "string" && projection.baseProjectSlug.trim()
-        ? projection.baseProjectSlug.trim()
-        : null;
+    const selectedProjectSlug = normalizePublicProjectSlug(projection.baseProjectSlug);
     if (!selectedProjectSlug) {
         return null;
     }
@@ -73,8 +77,14 @@ const getUsableScreenProjectionContext = (
         return null;
     }
 
-    const expectedVersion = Number(params.contentVersion || 0);
-    if (!expectedVersion || Number(projection.contentVersion || 0) !== expectedVersion) {
+    const expectedVersion = params.contentVersion;
+    if (
+        typeof expectedVersion !== "number"
+        || !Number.isSafeInteger(expectedVersion)
+        || expectedVersion <= 0
+        || !Number.isSafeInteger(projection.contentVersion)
+        || projection.contentVersion !== expectedVersion
+    ) {
         return null;
     }
 
@@ -212,6 +222,7 @@ export const getScreenDataByTokenServer = async (token: string): Promise<{
             currencyCode,
             currencySymbol: storeData?.currencySymbol || "₹",
             locale: resolveScreenNumberLocale(currencyCode, storeData?.defaultLanguage),
+            accentColor: normalizePublicAccentColor(storeData?.publicPresence?.accentColor) || undefined,
             activePlanType: storeData?.activePlanType || null,
         };
 
@@ -244,12 +255,16 @@ export const getUsableScreenMenuProjection = (
         contentVersion?: number | null;
     },
 ) => {
-    if (!projection || !Array.isArray(projection.items) || projection.items.length === 0) {
+    if (!projection) {
         return null;
     }
 
-    const expectedBaseProjectId = String(params.baseProjectId || "");
-    if (!expectedBaseProjectId || projection.baseProjectId !== expectedBaseProjectId) {
+    const expectedBaseProjectId = params.baseProjectId;
+    if (
+        typeof expectedBaseProjectId !== "string"
+        || !isValidFirestoreDocumentId(expectedBaseProjectId)
+        || projection.baseProjectId !== expectedBaseProjectId
+    ) {
         return null;
     }
 
@@ -258,12 +273,19 @@ export const getUsableScreenMenuProjection = (
         return null;
     }
 
-    const expectedVersion = Number(params.contentVersion || 0);
-    if (!expectedVersion || Number(projection.contentVersion || 0) !== expectedVersion) {
+    const expectedVersion = params.contentVersion;
+    if (
+        typeof expectedVersion !== "number"
+        || !Number.isSafeInteger(expectedVersion)
+        || expectedVersion <= 0
+        || !Number.isSafeInteger(projection.contentVersion)
+        || projection.contentVersion !== expectedVersion
+    ) {
         return null;
     }
 
-    return projection.items;
+    const normalizedItems = normalizeCachedScreenMenuItems(projection.items);
+    return normalizedItems.length > 0 ? normalizedItems : null;
 };
 
 export const getMenuItemsForScreenServer = async (
@@ -328,36 +350,41 @@ export const getMenuItemsForScreenServer = async (
         };
 
         const orderedProjectIds = baseProjectId ? [baseProjectId] : await loadOrderedProjectIds();
+        const effectiveBaseProjectId = baseProjectId || orderedProjectIds[0] || null;
 
         if (activeSpecialMenuId) {
             const specialDoc = await getProjectDoc(activeSpecialMenuId);
             const specialProject = specialDoc?.data();
-            const specialEndsAt = specialProject?._specialMenu?.endsAt
-                ? new Date(specialProject._specialMenu.endsAt).getTime()
-                : null;
+            const liveSpecialMenu = resolveLiveSpecialMenuProject(specialProject, {
+                projectId: activeSpecialMenuId,
+                sId: storeId,
+                tId: tenantId,
+            });
 
             if (
-                specialProject?.active !== false
-                && specialProject?.deleted !== true
-                && specialProject?.isSpecialMenu === true
-                && specialProject?._specialMenu?.status === "active"
-                && specialEndsAt != null
-                && Number.isFinite(specialEndsAt)
-                && specialEndsAt > Date.now()
+                liveSpecialMenu
+                && effectiveBaseProjectId
+                && liveSpecialMenu.metadata.baseProjectId === effectiveBaseProjectId
             ) {
-                if (specialProject._specialMenu.mode === "replace") {
-                    const specialItems = extractMenuItemsFromProject(specialProject);
-                    if (specialItems.length > 0) return specialItems;
+                if (liveSpecialMenu.metadata.mode === "replace") {
+                    // Replace mode is authoritative even when the owner has
+                    // intentionally published an empty special menu.
+                    return extractMenuItemsFromProject(liveSpecialMenu.project);
                 }
 
-                if (specialProject._specialMenu.mode === "overlay") {
-                    const baseProjectId = specialProject._specialMenu.baseProjectId || orderedProjectIds[0];
-                    if (baseProjectId) {
-                        const baseDoc = await getProjectDoc(baseProjectId);
+                if (liveSpecialMenu.metadata.mode === "overlay") {
+                    const overlayBaseProjectId = liveSpecialMenu.metadata.baseProjectId;
+                    if (overlayBaseProjectId) {
+                        const baseDoc = await getProjectDoc(overlayBaseProjectId);
                         const baseProject = baseDoc?.data();
-                        if (baseProject) {
+                        if (
+                            baseProject
+                            && baseProject.active !== false
+                            && baseProject.deleted !== true
+                            && baseProject._specialMenu === undefined
+                        ) {
                             const mergedItems = extractMenuItemsFromProject(
-                                mergeSpecialMenuOverlayProjects(baseProject, specialProject),
+                                mergeSpecialMenuOverlayProjects(baseProject, liveSpecialMenu.project),
                             );
                             if (mergedItems.length > 0) return mergedItems;
                         }
@@ -371,7 +398,12 @@ export const getMenuItemsForScreenServer = async (
             if (!projectDoc) continue;
 
             const projectData = projectDoc.data();
-            if (projectData?.active === false || projectData?.deleted === true || projectData?.isSpecialMenu === true) {
+            if (
+                projectData?.active === false
+                || projectData?.deleted === true
+                || projectData?._specialMenu !== undefined
+                || projectData?.isSpecialMenu === true
+            ) {
                 continue;
             }
 
@@ -386,7 +418,12 @@ export const getMenuItemsForScreenServer = async (
                 if (!projectDoc) continue;
 
                 const projectData = projectDoc.data();
-                if (projectData?.active === false || projectData?.deleted === true || projectData?.isSpecialMenu === true) {
+                if (
+                    projectData?.active === false
+                    || projectData?.deleted === true
+                    || projectData?._specialMenu !== undefined
+                    || projectData?.isSpecialMenu === true
+                ) {
                     continue;
                 }
 

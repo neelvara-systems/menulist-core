@@ -14,6 +14,7 @@ import TextStyle from '@tiptap/extension-text-style';
 import Typography from '@tiptap/extension-typography';
 import Underline from '@tiptap/extension-underline';
 import StarterKit from '@tiptap/starter-kit';
+import type { Extensions } from '@tiptap/core';
 
 import { SlashCommandsExtension } from '../components/atoms/TiptapEditor/SlashCommandsExtension';
 
@@ -25,7 +26,7 @@ interface ExtensionOptions {
 export const getTiptapExtensions = (options: ExtensionOptions = {}) => {
     const { isEditable = true, placeholder = 'Start typing...' } = options;
 
-    const extensions = [
+    const extensions: Extensions = [
         StarterKit.configure({
             heading: {
                 levels: isEditable ? [1, 2, 3] : [1, 2, 3, 4, 5, 6],

@@ -34,6 +34,9 @@ for (const [label, content, code] of [
   assert(!content.includes('error.message}'), `${label} must not render raw error text`);
 }
 
+includes(globalError, "getBoundedErrorStringField(error, 'digest')", 'global error descriptor-safe digest admission');
+assert(!globalError.includes('error?.digest'), 'global error boundary must not invoke an error digest getter');
+
 includes(globalPagesError, 'onClick={() => reset()}>Try Again</Button>', 'global-pages in-place retry');
 includes(globalPagesError, 'onClick={() => window.location.reload()}>Refresh Page</Button>', 'global-pages explicit hard refresh');
 includes(globalPagesError, 'href={HELP_ROUTE}>Get Help</Button>', 'global-pages Help handoff');
@@ -47,6 +50,14 @@ assert(!layoutProvider.includes('fallback={<SimpleLayout>{children}</SimpleLayou
 
 includes(errorReport, "setStatus(nextReportId ? 'sent' : 'copy_ready')", 'diagnostic delivery acknowledgement');
 includes(errorReport, 'Automatic reporting is unavailable. Copy the details for support.', 'diagnostic no-backend truth');
+includes(errorReport, 'normalizeRuntimeDiagnosticUrl(window.location.href, window.location.origin)', 'diagnostic current URL minimization');
+includes(errorReport, 'normalizeRuntimeDiagnosticUrl(document.referrer, window.location.origin)', 'diagnostic referrer minimization');
+includes(errorReport, "getBoundedErrorStringField(error, 'digest')", 'diagnostic digest descriptor-safe admission');
+includes(errorReport, 'getBoundedErrorName(error)', 'diagnostic error-name descriptor-safe admission');
+assert(!errorReport.includes('location: window.location.href'), 'diagnostics must not retain raw query-bearing current URLs');
+assert(!errorReport.includes('referrer: document.referrer'), 'diagnostics must not retain raw referrer paths or queries');
+assert(!errorReport.includes('digest: error?.digest'), 'diagnostics must not invoke an error digest getter');
+assert(!errorReport.includes('errorName: error?.name'), 'diagnostics must not invoke an error name getter');
 assert(!errorReport.includes('Report queued.'), 'diagnostics must not claim an unconfirmed queue');
 
 includes(localLogs, "event: 'window_error'", 'bounded browser error capture');

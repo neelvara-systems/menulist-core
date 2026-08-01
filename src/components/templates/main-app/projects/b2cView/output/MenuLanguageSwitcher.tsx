@@ -73,7 +73,7 @@ function MenuLanguageSwitcher({
     const [anchorPosition, setAnchorPosition] = useState({ top: 64, right: 12 });
     const triggerRef = useRef<HTMLButtonElement | null>(null);
     const restoredStorageKeyRef = useRef<string | null>(null);
-    const hasMultipleLanguages = projectData.languages?.length > 1;
+    const hasMultipleLanguages = (projectData.languages?.length ?? 0) > 1;
     const currentLangCode = activeLanguage?.toUpperCase().slice(0, 2) || 'EN';
     const languageStorageKey = useMemo(() => {
         return getPublicMenuLanguageStorageKey(projectData?.projectId);

@@ -129,6 +129,12 @@ All owner-facing image profile surfaces should use `MediaImageCard` for the visu
 
 `ENABLE_MEDIA_IMAGE_SYSTEM` is a runtime kill switch for the media preparation layer. When disabled, upload surfaces keep their existing shell, manual adjust is hidden, and `prepareMediaImage` returns validated raw image data without profile crop/resize/compression.
 
+Validation is identical for `File`, `Blob`, and generated/adjusted data-URL
+inputs. Every path requires an allowed profile MIME, a positive decoded size
+within the profile cap, matching declared and actual size, and matching image
+magic bytes. String inputs are data URLs only; arbitrary remote URLs are not a
+media-preparation input contract.
+
 The kill switch is an emergency compatibility fallback, not a privacy mode. Production public-media upload paths should keep the media image system enabled so prepared outputs remain compressed, profile-safe, immutable, and metadata-normalized.
 
 ### Storage cleanup

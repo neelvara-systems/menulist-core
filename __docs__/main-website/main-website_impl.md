@@ -30,7 +30,17 @@ The latest analytics pass adds consent-gated Plausible Cloud support for the Men
 
 Google Analytics page views strip query strings and hash fragments from `page_location`, and the GA script fails closed unless `NEXT_PUBLIC_GA_MEASUREMENT_ID` matches the GA4 `G-...` measurement-id shape. Public utility-route query strings, report hash payloads, and success-page URLs should not enter default GA page-view URLs.
 
-Resource GA4 custom-event payloads are bounded through `trackGoogleMarketingEvent`: resource page, CTA, AI/referrer, create-menu/pricing, and checklist-copy event strings strip control characters and cap URL/referrer/UTM-style values before GA4 receives them. Resource Plausible events remain property-free.
+Resource GA4 page-view, link-click, checklist-copy, and delegated website-click
+payloads are bounded through `trackGoogleMarketingEvent` and the shared public
+analytics context: same-site page/entry/target URLs exclude query and fragment,
+external links retain origin only, known referrers become allowlisted groups,
+and UTM values must be compact attribution tokens rather than arbitrary query
+text. The central event projector drops raw `referrer`/`referrer_host` keys and
+semantically normalizes URL, path, and attribution fields even if a caller
+regresses. Caller-provided event properties cannot override the reserved safe
+resource-link fields. Resource Plausible events remain property-free.
+Plausible script overrides require a relative same-site path or a
+credential-free HTTPS URL.
 
 The public contact write boundary is `POST /api/public/contact`. It applies the `MENULIST_CONTACT_FORM` limiter with fail-closed behavior for limiter infrastructure errors, rejects JSON above 8KB, validates the exact form/report-summary DTO, ignores honeypot submissions, and verifies Turnstile before the single Admin SDK write. Turnstile delivery uses a fixed endpoint, manual redirect handling, an 8-second abort deadline, bounded JSON response parsing, and `finally` timer cleanup. Persisted `sourcePath` and `referrer` retain only path/origin-path identity, never query strings or fragments; optional numeric report values use nullish preservation so zero remains zero. `npm run verify:public-contact-boundary`, `npm run test:public-contact-boundary`, and `npm run test:public-turnstile-boundary` guard these contracts.
 

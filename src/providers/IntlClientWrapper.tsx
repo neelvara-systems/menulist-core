@@ -2,7 +2,7 @@
 
 import { getBoundedI18nStringContext, logI18nDiagnostic, logI18nFailure } from '@/i18n/diagnostics';
 import { defaultLocale, getLocaleDirection, normalizeLocalePreference } from '@lib/localization/config';
-import type { Formats } from 'next-intl';
+import type { AbstractIntlMessages, Formats } from 'next-intl';
 import { IntlErrorCode, NextIntlClientProvider } from 'next-intl';
 import { useEffect } from 'react';
 
@@ -11,7 +11,7 @@ type Props = {
     locale?: string;
     timeZone?: string;
     formats?: Formats;
-    messages?: Record<string, unknown>;
+    messages?: AbstractIntlMessages;
 };
 
 export default function IntlClientWrapper({ children, locale, timeZone, formats, messages }: Props) {
@@ -27,7 +27,7 @@ export default function IntlClientWrapper({ children, locale, timeZone, formats,
             locale={safeLocale}
             timeZone={timeZone}
             formats={formats}
-            messages={messages as any}
+            messages={messages}
             onError={(error) => {
                 if (error.code === IntlErrorCode.MISSING_MESSAGE) {
                     if (process.env.NODE_ENV === 'development') {

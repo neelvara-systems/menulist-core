@@ -1,26 +1,37 @@
 import { IMAGE_COMPRESSION_LIMIT } from "@constant/common";
 import type { MediaImageType } from "@lib/media/imageProfiles";
 import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
+import { buildLegacyImageValidationInput } from "@lib/media/legacyImageUploadBoundary";
 import { getBoundedErrorName } from '@lib/monitoring/boundedLogContext';
 import { prepareMediaImage, toPreparedUploadName } from "@lib/media/prepareMediaImage";
 import { validateImageFile } from "@lib/security/magicBytesValidator";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { getBoundedSecurityStringContext, logSecurityDiagnostic } from "@lib/security/securityDiagnostics";
 import { getBase64, getBase64Length, getCompressedImage } from "@util/utils";
+import type { UserUploadedFileType } from "@type/common";
 import { message } from "antd";
-import { useState } from "react";
+import { useState, type ChangeEvent, type RefObject } from "react";
 
 const IMAGE_PREPARE_FAILED_MESSAGE = 'Could not prepare image.';
 const IMAGE_INVALID_TYPE_MESSAGE = 'Use a JPG, PNG, WebP, or GIF image.';
 const IMAGE_INVALID_FILE_MESSAGE = 'Use a valid image file.';
 
-type PropsType = {
-    onUploadFile: Function
-    fileInputRef: any
+interface UploadedImageFile extends UserUploadedFileType {
+    compressed?: {
+        size: number;
+        url: string;
+    };
+    crop?: unknown;
+    sourceDataUrl?: string;
+    sourceName?: string;
+}
+
+interface BaseProps {
+    fileInputRef: RefObject<HTMLInputElement | null>;
     compression?: boolean
     cropperConfiguarations?: {
         cropBoxResizable: boolean;
-        ratio: any;
+        ratio: number;
         active: boolean;
     };
     maxSizeMB?: number; // Maximum file size in MB (default: 10MB)
@@ -29,26 +40,42 @@ type PropsType = {
     onUploadProgress?: (progress: { current: number; total: number; fileName: string }) => void;
     onUploadCancel?: () => void;
 }
-function ImageUploadInput({
-    onUploadFile,
+
+type PropsType = BaseProps & (
+    | {
+        multiple: true;
+        onUploadFile: (files: UploadedImageFile[]) => Promise<void> | void;
+    }
+    | {
+        multiple?: false;
+        onUploadFile: (file: UploadedImageFile) => Promise<void> | void;
+    }
+);
+
+function ImageUploadInput(props: PropsType) {
+    const {
     fileInputRef,
     compression = true,
     maxSizeMB = 10,
     mediaImageType,
-    multiple = false,
     onUploadProgress,
     onUploadCancel,
     cropperConfiguarations = {
         active: false,
         ratio: 1,
         cropBoxResizable: false
-    } }: PropsType) {
+    } } = props;
+    const multiple = props.multiple === true;
 
-    const [showCropperModal, setShowCropperModal] = useState<{ active: boolean, url: string, data: any }>({ active: false, url: null, data: null })
+    const [showCropperModal, setShowCropperModal] = useState<{
+        active: boolean;
+        data: UploadedImageFile | null;
+        url: string | null;
+    }>({ active: false, url: null, data: null })
     const [abortController, setAbortController] = useState<AbortController | null>(null)
     const [isUploading, setIsUploading] = useState(false)
 
-    const handleFileChange = async (event: any) => {
+    const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(event.target.files || []) as File[];
 
         if (files.length === 0) return;
@@ -59,7 +86,7 @@ function ImageUploadInput({
         setIsUploading(true);
 
         try {
-            const validatedFiles = [];
+            const validatedFiles: UploadedImageFile[] = [];
 
             // Process each file
             for (let i = 0; i < files.length; i++) {
@@ -91,10 +118,10 @@ function ImageUploadInput({
             if (validatedFiles.length > 0) {
                 if (multiple) {
                     // For multiple uploads, pass array
-                    onUploadFile(validatedFiles);
+                    await props.onUploadFile(validatedFiles);
                 } else {
                     // For single upload, pass first file
-                    onUploadFile(validatedFiles[0]);
+                    await props.onUploadFile(validatedFiles[0]);
                 }
                 message.success(`${validatedFiles.length} file(s) uploaded successfully`);
             }
@@ -128,7 +155,7 @@ function ImageUploadInput({
         cropperConfiguarations: any,
         signal: AbortSignal,
         mediaImageType?: MediaImageType
-    ) => {
+    ): Promise<UploadedImageFile | null> => {
 
         // Check for cancellation
         if (signal.aborted) {
@@ -182,12 +209,15 @@ function ImageUploadInput({
             if (signal.aborted) {
                 throw new DOMException('Upload cancelled', 'AbortError');
             }
-            let base64: any = null;
-            let compressed: {};
+            let base64: string | null = null;
+            let compressed: UploadedImageFile['compressed'];
 
             // Compress if needed
             if (compression && file.size > IMAGE_COMPRESSION_LIMIT) {
                 base64 = await getCompressedImage(file, 0.4);
+                if (!base64) {
+                    throw new Error('Image compression did not return image data');
+                }
                 compressed = {
                     size: getBase64Length(base64),
                     url: base64,
@@ -201,6 +231,8 @@ function ImageUploadInput({
                 return null;
             }
 
+            const validationInput = buildLegacyImageValidationInput(base64, file.type);
+
             // Check for cancellation after compression
             if (signal.aborted) {
                 throw new DOMException('Upload cancelled', 'AbortError');
@@ -209,9 +241,7 @@ function ImageUploadInput({
             // 3️⃣ CRITICAL SECURITY: Magic Bytes Validation
             // This validates the ACTUAL file content, not just the MIME type
             const validation = await validateImageFile({
-                base64: base64,
-                mimeType: file.type,
-                size: file.size,
+                ...validationInput,
                 maxSizeMB: maxSizeMB
             });
 
@@ -228,11 +258,14 @@ function ImageUploadInput({
 
             // ✅ All validations passed
             const data = {
-                name: file.name,
-                size: file.size,
-                type: file.type,
+                name: validationInput.mimeType === file.type
+                    || (file.type === 'image/jpg' && validationInput.mimeType === 'image/jpeg')
+                    ? file.name
+                    : toPreparedUploadName(file.name, validationInput.mimeType, file.name),
+                size: validationInput.size,
+                type: validationInput.mimeType,
                 url: base64,
-                compressed,
+                ...(compressed ? { compressed } : {}),
             };
 
             return data;
@@ -261,8 +294,10 @@ function ImageUploadInput({
         }
     };
 
-    const onCropImage = (cropedImage) => {
-        onUploadFile({ ...showCropperModal.data, url: cropedImage })
+    const onCropImage = async (croppedImage: string) => {
+        if (!showCropperModal.data) return;
+        if (props.multiple === true) return;
+        await props.onUploadFile({ ...showCropperModal.data, url: croppedImage })
         setShowCropperModal({ active: false, url: null, data: null })
     }
 

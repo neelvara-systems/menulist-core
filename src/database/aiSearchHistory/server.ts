@@ -8,6 +8,16 @@ import {
 } from '@lib/answerlattice/publicAnswerContracts';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
+import {
+    ANSWERLATTICE_CACHE_SOURCES,
+    type AnswerlatticeCacheSourceVersions,
+    normalizeCacheVersion,
+} from '@lib/answerlattice/cacheVersionManifest';
+import {
+    normalizeAnswerlatticeCanonicalAnswerId,
+    normalizeAnswerlatticeResolvedEntityIds,
+} from '@lib/answerlattice/governanceIdBoundary';
+import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
 import { answerlatticeFirestoreAdmin as firestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
@@ -22,6 +32,8 @@ const MAX_REFERENCE_COUNT = 8;
 const MAX_CITATION_COUNT = 8;
 const MAX_SUGGESTED_QUESTION_COUNT = 3;
 const MAX_SUGGESTED_QUESTION_CHARS = 240;
+const MAX_FALLBACK_REASON_CHARS = 240;
+const MAX_MATCHED_ENTITY_COUNT = 50;
 const RESPONSE_CACHE_VERSION = 2 as const;
 const ANSWER_SOURCES = new Set(['canonical', 'faq', 'rag', 'cache', 'empty']);
 const ANSWER_TYPES = new Set(['explanation', 'navigation', 'procedure', 'faq']);
@@ -70,6 +82,51 @@ const truncateString = (value: unknown, maxLength: number): unknown => {
 const hashSearchCacheKey = (value: unknown): string => (
     createHash('sha256').update(String(value || '')).digest('hex')
 );
+
+const normalizeCacheSourceVersions = (value: unknown): AnswerlatticeCacheSourceVersions | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const source = value as Record<string, unknown>;
+    const allowedKeys = new Set<string>(Object.values(ANSWERLATTICE_CACHE_SOURCES));
+    if (Object.keys(source).some(key => !allowedKeys.has(key))) return null;
+
+    const normalized: AnswerlatticeCacheSourceVersions = {};
+    for (const sourceKey of Object.values(ANSWERLATTICE_CACHE_SOURCES)) {
+        if (source[sourceKey] === undefined) continue;
+        const version = normalizeCacheVersion(source[sourceKey]);
+        if (!version || source[sourceKey] !== version) return null;
+        normalized[sourceKey] = version;
+    }
+    return normalized;
+};
+
+const normalizeMatchedEntityIds = (value: unknown): string[] | null => {
+    if (!Array.isArray(value) || value.length > MAX_MATCHED_ENTITY_COUNT) return null;
+    const normalized = normalizeAnswerlatticeResolvedEntityIds(value, MAX_MATCHED_ENTITY_COUNT);
+    return normalized.length === value.length
+        && normalized.every((entityId, index) => entityId === value[index])
+        ? normalized
+        : null;
+};
+
+const normalizeFallbackReason = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    return normalized && normalized.length <= MAX_FALLBACK_REASON_CHARS ? normalized : null;
+};
+
+const isCanonicalScopeClarification = (
+    value: unknown,
+    normalized: AiSearchHistory['clarification'] | null,
+): boolean => {
+    if (!normalized || !value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const source = value as Record<string, unknown>;
+    const requiredContext = source.requiredContext;
+    return Object.keys(source).length === 2
+        && source.type === normalized.type
+        && Array.isArray(requiredContext)
+        && requiredContext.length === normalized.requiredContext.length
+        && normalized.requiredContext.every((context, index) => requiredContext[index] === context);
+};
 
 const compactSearchReference = (value: unknown): AiSearchHistoryReference | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -120,6 +177,14 @@ const compactAiSearchHistoryPayload = (
         ...(typeof imageUrl === 'string' ? { imageUrl } : {}),
     };
 
+    delete payload.canonicalAnswerId;
+    const canonicalAnswerId = normalizeAnswerlatticeCanonicalAnswerId(data.canonicalAnswerId);
+    if (canonicalAnswerId) payload.canonicalAnswerId = canonicalAnswerId;
+
+    delete payload.faqAnswerId;
+    const faqAnswerId = normalizeAnswerlatticeFaqId(data.faqAnswerId);
+    if (faqAnswerId) payload.faqAnswerId = faqAnswerId;
+
     delete payload.guidedProcedure;
     if (data.guidedProcedure !== undefined) {
         const guidedProcedure = AnswerlatticeProcedureSchema.safeParse(data.guidedProcedure);
@@ -137,14 +202,24 @@ const compactAiSearchHistoryPayload = (
         payload.citations = normalizeAnswerlatticePublicCitations(data.citations);
     }
 
+    delete payload.clarification;
     const clarification = normalizeAnswerlatticeScopeClarification(data.clarification);
     if (clarification) payload.clarification = clarification;
 
-    if (Array.isArray(data.matchedEntityIds)) {
-        payload.matchedEntityIds = data.matchedEntityIds
-            .filter((id: unknown): id is string => typeof id === 'string' && Boolean(id.trim()))
-            .slice(0, 50);
-    }
+    delete payload.matchedEntityIds;
+    const matchedEntityIds = normalizeAnswerlatticeResolvedEntityIds(
+        data.matchedEntityIds,
+        MAX_MATCHED_ENTITY_COUNT,
+    );
+    if (matchedEntityIds.length > 0) payload.matchedEntityIds = matchedEntityIds;
+
+    delete payload.fallbackReason;
+    const fallbackReason = normalizeFallbackReason(data.fallbackReason);
+    if (fallbackReason) payload.fallbackReason = fallbackReason;
+
+    delete payload.sourceVersions;
+    const sourceVersions = normalizeCacheSourceVersions(data.sourceVersions);
+    if (sourceVersions) payload.sourceVersions = sourceVersions;
 
     return payload;
 };
@@ -214,6 +289,11 @@ export const findCachedSearchByCacheKeyServer = async (
         : [];
     const citations = normalizeAnswerlatticePublicCitations(data.citations);
     const clarification = normalizeAnswerlatticeScopeClarification(data.clarification);
+    const canonicalAnswerId = normalizeAnswerlatticeCanonicalAnswerId(data.canonicalAnswerId);
+    const faqAnswerId = normalizeAnswerlatticeFaqId(data.faqAnswerId);
+    const fallbackReason = normalizeFallbackReason(data.fallbackReason);
+    const matchedEntityIds = normalizeMatchedEntityIds(data.matchedEntityIds);
+    const sourceVersions = normalizeCacheSourceVersions(data.sourceVersions);
     const guidedProcedure = AnswerlatticeProcedureSchema.safeParse(data.guidedProcedure);
     const suggestedQuestions = Array.isArray(data.suggestedQuestions)
         ? data.suggestedQuestions.filter((question: unknown): question is string => (
@@ -246,9 +326,9 @@ export const findCachedSearchByCacheKeyServer = async (
     if (
         data.pId !== PRODUCT_IDS.ANSWERLATTICE
         || data.responseCacheVersion !== RESPONSE_CACHE_VERSION
-        || Number(data.tId) !== scope.tId
-        || Number(data.sId) !== scope.sId
-        || !query
+        || data.tId !== scope.tId
+        || data.sId !== scope.sId
+        || !query.trim()
         || query.length > MAX_QUERY_CHARS
         || !/^[a-f0-9]{64}$/.test(storedCacheKey)
         || typeof data.craftedAnswer !== 'string'
@@ -270,6 +350,13 @@ export const findCachedSearchByCacheKeyServer = async (
         || (data.confidence !== undefined && confidence === undefined)
         || (data.mountContext !== undefined && mountContext === undefined)
         || (data.drifted !== undefined && typeof data.drifted !== 'boolean')
+        || (data.canonical !== undefined && typeof data.canonical !== 'boolean')
+        || (data.canonicalAnswerId !== undefined && canonicalAnswerId !== data.canonicalAnswerId)
+        || (data.faqAnswerId !== undefined && faqAnswerId !== data.faqAnswerId)
+        || (data.fallbackReason !== undefined && fallbackReason !== data.fallbackReason)
+        || (data.clarification !== undefined && !isCanonicalScopeClarification(data.clarification, clarification))
+        || (data.matchedEntityIds !== undefined && !matchedEntityIds)
+        || (data.sourceVersions !== undefined && !sourceVersions)
         || (data.guidedProcedure !== undefined && !guidedProcedure.success)
         || (answerType === 'procedure' && !guidedProcedure.success)
     ) {
@@ -291,23 +378,19 @@ export const findCachedSearchByCacheKeyServer = async (
         ...(data.createdOn ? { createdOn: data.createdOn } : {}),
         ...(data.modifiedOn ? { modifiedOn: data.modifiedOn } : {}),
         ...(typeof data.canonical === 'boolean' ? { canonical: data.canonical } : {}),
-        ...(typeof data.canonicalAnswerId === 'string' ? { canonicalAnswerId: data.canonicalAnswerId } : {}),
+        ...(canonicalAnswerId ? { canonicalAnswerId } : {}),
         ...(guidedProcedure.success
             ? { guidedProcedure: guidedProcedure.data }
             : {}),
-        ...(typeof data.faqAnswerId === 'string' ? { faqAnswerId: data.faqAnswerId } : {}),
+        ...(faqAnswerId ? { faqAnswerId } : {}),
         ...(answerSource ? { answerSource } : {}),
         ...(answerType ? { answerType } : {}),
         ...(typeof data.drifted === 'boolean' ? { drifted: data.drifted } : {}),
-        ...(typeof data.fallbackReason === 'string' ? { fallbackReason: data.fallbackReason } : {}),
+        ...(fallbackReason ? { fallbackReason } : {}),
         ...(clarification ? { clarification } : {}),
         ...(confidence ? { confidence } : {}),
-        ...(Array.isArray(data.matchedEntityIds)
-            ? { matchedEntityIds: data.matchedEntityIds.filter((id: unknown): id is string => typeof id === 'string').slice(0, 50) }
-            : {}),
-        ...(data.sourceVersions && typeof data.sourceVersions === 'object' && !Array.isArray(data.sourceVersions)
-            ? { sourceVersions: data.sourceVersions }
-            : {}),
+        ...(matchedEntityIds ? { matchedEntityIds } : {}),
+        ...(sourceVersions ? { sourceVersions } : {}),
         ...(mountContext ? { mountContext } : {}),
     };
 };

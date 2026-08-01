@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { doc, getDoc, runTransaction } from "@firebase/firestore";
+import { doc, getDoc, runTransaction, type DocumentData, type UpdateData } from "@firebase/firestore";
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
@@ -165,7 +165,7 @@ const mutateCategoriesWithArticleTitlePropagation = async (
     invalidation: { reason: string; sourceId?: string },
     resolveArticleIds: (current: KnowledgeBaseCategoriesType['categories']) => string[],
     mutate: (current: KnowledgeBaseCategoriesType['categories']) => KnowledgeBaseCategoriesType['categories'],
-    articleUpdate: Record<string, unknown>,
+    articleUpdate: UpdateData<DocumentData>,
     articleMatches: (article: KnowledgeBaseArticleType) => boolean,
 ): Promise<KnowledgeBaseCategoriesType> => {
     return runTransaction(answerlatticeFirebaseClient, async (transaction) => {

@@ -17,7 +17,7 @@ src/lib/analytics/
 ├── browserState.ts                   # Exact session-storage DTOs
 ├── eventPayload.ts                   # Event authority, enums, and count contracts
 ├── ga4Boundary.ts                    # Exact GA4 external projection
-├── queueBoundary.ts                  # Persisted queue admission and snapshot drain
+├── queueBoundary.ts                  # Persisted queue and active-delivery admission
 ├── writePolicy.ts                    # Firestore field/value/semantic-key policy
 └── trackBeforeNavigate.ts            # Non-blocking final-action navigation tracking
 
@@ -314,7 +314,18 @@ export async function trackAnalyticsEvent(
 - OBP aggregation map-key boundary: `functions/src/analytics/obpAnalyticsAggregation.ts` normalizes recovered daily and cached dashboard map keys before late-correction rollups build dotted Firestore update paths for lifetime OBP maps. Legacy dotted/raw map keys are folded into the same lowercase `[a-z0-9_-]` key shape used by live analytics writes, duplicate normalized keys are summed, and empty normalized keys are skipped. This changes late-correction aggregation only; live customer-page writes keep the same write count.
 - `src/database/analytics/index.ts` uses the same bounded diagnostics for queue flush, browser-local queue persistence, persisted queue recovery, missing identity, enqueue, and summary update failures. Queue persistence failures log only phase, queue counts, serialized-payload presence/length, and normalized source error metadata; raw queued analytics payloads are not logged.
 - Persisted queue entries are treated as untrusted input. Restore recomputes the queue key from exact positive tenant/store IDs, a canonical project ID, and a current-or-previous business date; applies the shared write policy; rejects empty, over-wide, stale, future, duplicate, expired, or malformed entries; and caps restored entries, retry count, age, and serialized storage size.
-- Queue flushes snapshot the counters being sent. A successful response subtracts only that snapshot, preserving events merged while the request was in flight. Retryable failures use bounded exponential backoff; permanent 4xx failures, expired queues, and exhausted retries are dropped instead of creating an infinite request loop.
+- Before network delivery, queue flushes move the exact counters, event count,
+  and delivery ID into a persisted `activeDelivery` snapshot, clear the pending
+  counters, and rotate the pending delivery ID. Events arriving while the
+  request is in flight therefore accumulate under the new ID. A lost
+  acknowledgement retries only the exact active snapshot; a receipt-backed
+  duplicate response clears that snapshot without consuming newer pending
+  events. Retryable failures use bounded exponential backoff; permanent 4xx
+  failures, expired queues, and exhausted retries are dropped instead of
+  creating an infinite request loop.
+- Live pending merges use the same 100-field cap as persisted restoration and
+  the public route schema. An event that would exceed the cap is refused
+  without mutating the existing queue or consuming session milestone state.
 - Internal session IDs and arbitrary `TrackingData` properties do not enter GA4 default events. `ga4Boundary.ts` projects exact bounded primitive parameters and validates commerce item rows before external serialization. Server-side callers no longer attempt browser-only GA4 delivery for the subdomain-lock signal; the existing bounded store diagnostic remains the operational record.
 - Convenience trackers merge caller context through `buildAuthoritativeAnalyticsPayload()`: explicit item, action, search, store, and reserved `projectId='obp'` arguments always win. Caller-supplied `additionalData` cannot replace event identity or move an OBP event to another project.
 - Fixed dimensions are runtime-validated before projection and validated again by `writePolicy.ts`. Unknown action, Decision Block, source, open-hours, PWA, OBP surface/link/share, shortcut, hour, language, or filter values cannot create arbitrary Firestore map fields through the public route. Dynamic item/category/location/UTM/search dimensions retain dedicated bounded grammars.

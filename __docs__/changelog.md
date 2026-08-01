@@ -1,13 +1,1328 @@
 # MenuList — Changelog
 
+## July 31, 2026 - SignalDesk Firestore Identity Boundary
+
+- Protected SignalDesk actions now reject whitespace-mutated, path-shaped,
+  reserved, and overlong caller-supplied document IDs before Firestore
+  reference construction.
+- The signed outcome bridge, exported workflow entry points and workflow server
+  independently revalidate the same IDs, covering content sources, offers,
+  experiments, revenue, partner, approval, outbound, outcome, demand and
+  route-token paths even if a caller bypasses the HTTP schema.
+- Persisted target/research DTOs, replay pointers and workspace projectors now
+  reject malformed identity references without trimming them into different
+  Firestore authority.
+- Focused boundary tests and full local SignalDesk emulator coverage protect
+  valid exact IDs, malformed caller/persisted IDs, idempotent retries, signed
+  outcome attribution and raw-family browser denial.
+
+## July 31, 2026 - AnswerLattice Progressive Adoption Guide
+
+- Solo technical founders remain the default first-use audience while small
+  teams and bounded product/support/engineering groups can adopt deeper
+  existing controls through one Start, Coordinate, Govern manual.
+- The public Operating Guide, resource navigation, Founder Launch Kit, and
+  relevant use-case copy now explain when team access, notifications, Support
+  Board, release review, Answer Tests, exports, and audit evidence become useful.
+- The operating depths are guidance only. No product mode, maturity score,
+  Firestore state, feature flag, provider call, or Firebase deployment was
+  added, and unverified enterprise capabilities remain explicit non-claims.
+- The public mobile navigation trigger no longer waits for a client viewport
+  effect before rendering; CSS owns desktop visibility and desktop resize still
+  closes an open drawer.
+
+## July 31, 2026 - Answerlattice Contact Location-Metadata Minimization
+
+- The Answerlattice public contact route now stores only normalized same-origin
+  source pathnames and HTTP(S) referrer origin/pathname values.
+- Query strings, fragments, off-origin source paths, encoded backslash path
+  confusion, and non-HTTP referrers are excluded before Firestore persistence.
+- Focused contract and source-boundary regression coverage protects the
+  365-day contact-enquiry retention path.
+
+## July 31, 2026 - Public Menu Truth and Accessibility Hardening
+
+- Time-slotted category truth now applies to normal items, Featured choices,
+  filter chips, canonical item query links, and legacy item paths. Admission
+  refreshes on the wall-clock minute and page resume, with deterministic UTC
+  fallback instead of customer-device time. Menus whose categories all open
+  later show the localized opening day and time instead of a false empty state.
+- Sold-out shared items remain inspectable as unavailable; removed, inactive,
+  uncategorized, hidden, and empty-catalog item links settle to the canonical
+  menu URL with truthful feedback.
+- Visible prices, analytics and structured data share one normalized currency
+  boundary; project menu color falls back to the OBP business accent.
+- Item details no longer render a stray zero when metadata is empty and now
+  contain keyboard focus, support Escape, and restore focus after close.
+- Supporting mobile text meets the menu readability floor. Focused menu,
+  pricing, accent, time-slot, routing, localization, PWA, type and lint
+  contracts cover the changes.
+- No database shape, Firestore rule/index, cache key, Function, dependency or
+  deployment behavior changed.
+
+## July 30, 2026 - Public OBP Truth and Presentation Audit
+
+- Public OBP menu/outlet read failures now reach the honest localized error
+  boundary instead of rendering false "menu coming soon" or single-location
+  truth.
+- Multi-location brand roots include the canonical master location at `/menu`
+  and emit an Organization JSON-LD graph for the visible location selector.
+- OBP and menu structured data no longer expose the account email as a public
+  contact field.
+- Failed cover, logo, menu, and gallery media now degrade to deliberate branded
+  fallbacks; failures that complete before hydration are also recovered.
+- Mobile language controls meet the 44px touch target, and 5+ menu sets use
+  compact equal rows on mobile while retaining image-led desktop cards.
+- Desktop/mobile browser dry runs passed without horizontal overflow. The live
+  QA tenant still has legacy Storage URLs returning HTTP 402 and requires an
+  owner re-upload or bucket restoration; no tenant data was mutated.
+
+## July 30, 2026 - Answerlattice General Feedback Identity
+
+- General and feature feedback now bind retry IDs to the canonical session
+  actor and settle only the exact owning in-flight attempt.
+- Feedback surface assignment now rejects malformed persisted tenant/workspace
+  aliases instead of coercing them numerically.
+- Feedback boundary/emulator, shared settlement behavior, exact TypeScript, and
+  focused lint pass. No rule, index, collection shape, Function, or deployment
+  behavior changed.
+
+## July 30, 2026 - Answerlattice Content Feedback Retry Ownership
+
+- Article, FAQ, and changelog feedback now retain an idempotency request until
+  the exact owning in-flight attempt acknowledges it.
+- An older response can no longer clear a newer feedback payload's request ID,
+  and identical concurrent attempts continue sharing one request identity.
+- Feedback boundary/contracts, shared concurrency behavior, exact TypeScript,
+  and focused lint pass. No rule, index, collection shape, Function, or
+  deployment behavior changed.
+
+## July 30, 2026 - Answerlattice Release Fingerprint Type Parity
+
+- The shared release domain type now includes the top-level activation impact
+  fingerprint and the fingerprint owned by an in-progress activation lease,
+  matching the authoritative stored-release schema and server state machine.
+- Compile-time release-contract coverage pins both fields. Runtime persistence,
+  activation ordering, legacy pending rows, rules, indexes, and deployment
+  behavior are unchanged.
+
+## July 30, 2026 - POS Secret Rate-Budget Isolation
+
+- POS secret read, ensure, and rotation limits are now partitioned by the
+  exact session actor, tenant, store, and action.
+- A store member without integration-management permission can no longer
+  consume the authorized owner's protected secret-management budget; exact
+  transaction-current scope and permission checks remain in place.
+- POS boundary, tenant-safety, exact TypeScript, and focused lint gates pass.
+  No secret shape, rule, index, Function, provider, or deployment behavior
+  changed.
+
+## July 30, 2026 - Public Route CORS Request Typing
+
+- The shared CORS wrapper now preserves each route's concrete Next.js request
+  type while retaining the same origin validation, preflight handling, and
+  response headers.
+- Answerlattice contact persistence now checks the dedicated Admin app
+  directly instead of erasing the database handle through `any`.
+- Public website/contact and auth/security suites pass; no route admission,
+  collection, rule, index, cache, Function, or deployment behavior changed.
+
+## July 30, 2026 - Answerlattice Root Embedding Vector Validation
+
+- Root Answerlattice embedding calls now reject any non-finite, non-numeric,
+  wrong-dimension, or all-zero provider vector before constructing Firestore
+  vector truth.
+- The focused vector suite pins the root boundary alongside both Functions
+  implementations. Valid embedding model, purpose, dimensionality, cache, and
+  persistence behavior is unchanged.
+
+## July 30, 2026 - Answerlattice Product Surface Ticket Isolation
+
+- Product Surface summaries now query shared support tickets with exact
+  Answerlattice product, tenant, and workspace scope.
+- Tickets pass the authoritative persisted-document projector before
+  aggregation, and oversized source sets fail instead of silently truncating
+  support truth.
+- The real Admin emulator proves a same-scope MenuList ticket remains outside
+  Answerlattice counts. No rule, index, Function, billing, provider, or
+  deployment configuration changed.
+
+## July 30, 2026 - Answerlattice Mutation Retry Ownership
+
+- An older ontology mutation response can no longer clear the idempotency token
+  owned by a newer action using the same editor retry key, and one canonical
+  proposal acknowledgement cannot retire another identical in-flight attempt.
+- A concurrent-response regression proves acknowledgement loss reuses the
+  newer request ID instead of repeating the mutation under a fresh ID.
+- Ontology client/contracts, exact TypeScript and focused lint pass. No rule,
+  index, Function, billing, cache, provider, or deployment behavior changed.
+
+## July 30, 2026 - Answerlattice Entity Lookup Partition
+
+- Both the prefix and legacy fallback entity-index queries now enforce exact
+  Answerlattice product, tenant, and workspace scope before Firestore reads.
+- The lookup module retains typed Admin snapshots instead of erasing document
+  contracts through `any`.
+- The ontology contract suite now pins both product predicates. No rule,
+  index, Function, cache, provider, billing, or deployment behavior changed.
+
+## July 30, 2026 - Compact Login Session Projection
+
+- Browser sessions now project only the exact authorization fields from
+  product-account bridges instead of copying arbitrary persisted account
+  metadata.
+- Canonical and legacy tenant/store aliases must agree, malformed lifecycle
+  fields fail closed, and hostile unknown session objects cannot escape the
+  runtime boundary.
+- Focused auth-session tests, exact TypeScript and scoped lint pass. No auth
+  provider, Firestore rule/index, Function, token-minting or deployment
+  behavior changed.
+
+## July 30, 2026 - Store-Local Special Hours
+
+- Owners can add an exact date as closed or set different hours without
+  changing their regular weekly schedule. Desktop and MobileShell manage the
+  same bounded store-document truth.
+- Menu status, Official Business Page hours, owner communication replies,
+  Public Business API, browser-safe projections, and structured data now use
+  the same store-timezone exception evaluator.
+- A current-date exception owns the complete local date and suppresses
+  previous-day overnight carry; malformed dates, ranges, labels, and entry
+  shapes fail before persistence or stay outside public output.
+- Focused hours, public projection, exact TypeScript, and scoped lint gates
+  pass. No collection, index, rule, Function, listener, scheduler, Storage
+  object, provider call, or deployment behavior was added.
+- Previous-date special overnight hours now remain active after midnight with
+  their exact source label, while a current-date override still suppresses
+  prior carry.
+- Public menu action analytics and OBP fallback rendering now consume the
+  same effective schedule. Temporary Status replaces only its own date in
+  structured data and no longer erases other planned special dates.
+- Desktop and mobile special-hours saves use request-owned settlement tokens,
+  so a store switch cannot retain stale loading/error state or accept a late
+  response into a reused editor.
+- AI Menu Manager now sends planned special or holiday hours to Working Hours,
+  while Temporary Status remains the live-interruption path.
+- Upcoming dates appear before historical dates; expired entries remain
+  removable without entering an editor that rejects past dates.
+- Desktop and mobile list dividers now use the active theme border token; the
+  primary action continues to inherit the existing owner theme color.
+- The cross-check passed the full AI Menu Manager suite, 52-locale boundary,
+  tenant/store Firestore emulator assertions, full lint/typecheck, Next.js
+  production build, and isolated deployment-bundle load.
+
+## July 30, 2026 - Store, Ticket, and Answerlattice Persisted Contracts
+
+- The canonical store model now includes its live persistence metadata,
+  scheduler, hours-freshness, tenant-block, legacy distribution-presence, and
+  PWA icon fields. The compact store summary reuses the same presence
+  contract.
+- Persisted support tickets reject malformed client, tag, context, notes, and
+  deletion shapes before UI/export consumers receive them. SLA response
+  detection now recognizes a distinct staff actor when the staff email is
+  unavailable.
+- Persisted Answerlattice document types require exact `AL` product identity,
+  while create/write inputs omit caller-supplied product authority and retain
+  the centralized Answerlattice composer as the sole writer.
+- Focused store, ticket, ontology, governance, release, signal, runtime-truth,
+  lint, and exact TypeScript gates pass. No Firestore rules, indexes,
+  Functions, provider, billing, cache, or deployment behavior changed.
+
+## July 30, 2026 - Campaign Calendar Date Boundary
+
+- Persisted campaign scheduling, Staff Prompt inertia and last-campaign
+  chronology now require real calendar dates instead of accepting any
+  `YYYY-MM-DD`-shaped string.
+- Impossible values such as February 30 fail closed or stay outside the
+  normalized summary while valid existing dates remain unchanged.
+- Campaign client boundary tests, exact TypeScript and scoped lint pass. No
+  campaign writes, cache identity, rules, indexes or deployment behavior
+  changed.
+
+## July 30, 2026 - Analytics Cache and GrowthOS Response Boundaries
+
+- Owner analytics timestamps now use one JSON-safe ISO contract across
+  Firestore reads, browser cache persistence and SWR state. Rehydrated cache
+  data re-enters as `unknown`, is fully projected, and is evicted when its
+  required structure is malformed.
+- GrowthOS summary, kit and export documents now pass exact tenant/store and
+  nested-field projectors before transaction replay or owner responses.
+  Firebase Admin timestamps are converted to ISO strings instead of exposing
+  private `_seconds`/`_nanoseconds` serialization.
+- GrowthOS browser mutations validate their complete response envelopes rather
+  than asserting generic JSON types, preventing malformed/private replay data
+  and invalid expiry values from reaching desktop or mobile owner state.
+- Focused analytics verification, the 251-check GrowthOS gate, client
+  contracts, the real Firestore transaction emulator, exact TypeScript and
+  scoped lint pass. No rules, indexes, Functions or deployment configuration
+  changed.
+
+## July 30, 2026 - Reseller Persisted Profile Boundary
+
+- Reseller profile reads now project exact document identity, lifecycle,
+  actor/display fields, counters, and timestamp values before any private
+  authorization, dashboard, onboarding, renewal, capacity, payment, or
+  management consumer receives them.
+- Legacy minimal authority rows remain supported, while malformed counters,
+  timestamps, deleted rows, passwords, and unknown/private fields fail closed
+  or stay outside the authority record.
+- Focused unit, Firestore-emulator, dashboard source, onboarding-authority,
+  exact TypeScript, and scoped lint gates pass. Billing transactions and
+  deployment configuration are unchanged.
+
+## July 30, 2026 - Answerlattice Internal Note and Notification Scope Contracts
+
+- Stored Answerlattice team notes now pass a bounded string-or-TipTap runtime
+  projection before reaching platform chat UI. Malformed note content,
+  timestamps, or multi-note rows fail closed.
+- Rich team notes export as readable text instead of `[object Object]`, while
+  valid legacy plain-text notes remain supported.
+- Owner-notification store/workspace scope data remains `unknown` until the
+  recipient resolver proves nested settings are records; broad `any` scope
+  contracts were removed.
+- Focused chat-session and owner-notification regressions, exact TypeScript and
+  scoped lint pass. No Firebase rules, indexes, Functions, provider calls, or
+  deployment behavior changed.
+
+## July 30, 2026 - Output Center Timestamp Type
+
+- Output Center now keeps the persisted menu publication timestamp as
+  `unknown` until the existing timestamp normalizer consumes it, matching
+  mobile Share and Printable Asset Templates.
+- The type-authority gate rejects restoration of the former `any` field.
+  Public Business Truth, Printable Asset Templates, exact TypeScript, scoped
+  lint, and diff integrity pass. Runtime data and output are unchanged.
+
+## July 30, 2026 - Retired Type Authorities
+
+- Four unreferenced legacy declarations were removed: the old Axios response,
+  base document, AI feedback, and flattened Razorpay webhook shapes.
+- The Razorpay declaration explicitly differed from the real provider payload
+  and could have become a false billing authority; maintained webhook route
+  boundaries, `src/types/razorpay.ts`, and `src/types/feedback.ts` remain.
+- A source gate prevents those retired contracts from returning. Webhook
+  validation, billing settlement, exact TypeScript, scoped lint, and diff
+  integrity pass. No runtime data, provider call, or deployment changed.
+
+## July 30, 2026 - Redux Persistence and Toast Contracts
+
+- Redux serializability checks are active again. Only the six Redux Persist
+  protocol actions are excluded, so application state/action regressions are
+  no longer hidden globally.
+- The persistence whitelist now contains only the existing theme reducer
+  instead of also naming a nonexistent `auth` slice.
+- Toast reducers accept exact string payloads and the clear action accepts
+  only its explicit null acknowledgement; dead hydration scaffolding was
+  removed.
+- Redux state, browser runtime, scoped lint, and exact TypeScript gates pass.
+  No tenant data, Firestore state, cache, provider, or deployment changed.
+
+## July 30, 2026 - Project Store-Authorization Boundary
+
+- Nested and legacy project reads now require current membership in the
+  project's store rather than accepting tenant membership alone; the explicit
+  platform override remains.
+- Scoped reads fail closed when persisted project, tenant, or store aliases
+  conflict with the document path, and a direct master-project link requires
+  access to the target master store.
+- The browser project DAL applies the same membership check before Firestore
+  access. The rules emulator covers own-store, unassigned same-tenant,
+  mapped multi-store, foreign-tenant, platform, malformed-identity, and direct
+  master-link cases.
+- Exact TypeScript, scoped lint, project-editor, pricing, tenant-safety,
+  multi-location, rules-emulator, and diff-integrity gates pass. The scoped QA
+  Firestore-rules deployment stopped before upload because Firebase CLI
+  authentication is unavailable, so the hosted QA boundary remains pending.
+
+## July 30, 2026 - Answerlattice Friction Evidence Handoff
+
+- Each ranked Product Friction Evidence area can now prepare a deterministic
+  owner brief from the already-loaded completed-window summary.
+- The owner selects an explicit review path, then copies or downloads a bounded
+  Markdown packet containing the mapped entity, evidence mix, trend,
+  comparison, and permanent non-causality boundary.
+- The review paths now include a non-confirming known-limitation review, which
+  requires the owner to verify that a constraint is intentional and approved
+  before treating it as product or support truth.
+- Browser-local Markdown download now removes its temporary element and object
+  URL after both successful and failed click attempts; contract coverage also
+  pins the responsive drawer width, stacked mobile actions, and 44px targets.
+- The handoff does not infer root cause, count unique affected users, create an
+  engineering issue, persist a product problem or owner decision, or send a
+  customer message.
+- Focused support-metrics contracts, scoped lint, Answerlattice typecheck, root
+  typecheck, dependency freeze, Firebase cost closeout, and the full
+  Answerlattice runtime-truth suite pass. The change adds no Firestore read,
+  write, delete, listener, Storage object, Function, scheduler, provider, or
+  integration call, so no Firebase or Vercel deployment ran.
+
+## July 29, 2026 - MyCodex Reader Lifecycle and Persistence Integrity
+
+- Scroll persistence now prunes to the 200 most recently updated documents on
+  every write, matching its load-time bound and preventing whole-record loss
+  after unbounded growth.
+- Favorite/queue audio preparation is abort- and generation-owned across
+  replacement, stop, navigation, and unmount. Late reads cannot start an old
+  document on the current page.
+- Wake-lock acquisition rejects and releases stale completions, screenshot
+  export has an immediate single-flight guard, and the legacy clipboard
+  fallback reports success only when the browser confirms it.
+- Optional document response source paths are bounded, and Markdown render
+  transforms now use exact ReactMarkdown/React-node types instead of `any`.
+- The MyCodex PWA/auth aggregate, exact TypeScript, scoped lint, and diff
+  integrity pass. MyCodex remains static/private with no Firebase or billing
+  persistence, and no deployment ran.
+
+## July 29, 2026 - Answerlattice Embedded Widget State Isolation
+
+- The legacy dynamic-key route now remounts the complete widget client on an
+  exact credential change, preventing a prior workspace's rendered
+  conversation/context from surviving beneath another key.
+- Feedback and support requests use immediate single-flight locks, and late
+  completions cannot repopulate a cleared or unmounted conversation.
+- Screenshot reads are cancelled and generation-checked across replacement,
+  removal, clear, and unmount, so an older file cannot silently become the
+  latest preview or request image.
+- Context, visitor, evidence-link, conversation and search-request shapes now
+  have exact local TypeScript contracts instead of broad any-valued records.
+- Widget answer/escalation, guidance, configuration and runtime-truth gates,
+  exact TypeScript, scoped lint, and diff integrity pass. No Firebase rules,
+  indexes, Functions, or deployment behavior changed.
+
+## July 29, 2026 - Answerlattice Host Widget Loader Integrity
+
+- An invalid first loader script no longer claims the page singleton and blocks
+  a later corrected `al_*` installation.
+- Numeric script attributes require exact safe-integer syntax before clamping,
+  and the public `page()` alias works when passed as a detached callback.
+- Public context/visitor getters and emitted events now return copies, including
+  copied entity hints, so host callbacks cannot mutate retained post-validation
+  state.
+- Guided-step messages require an exact integer `stepOrder` rather than
+  accepting string or other coercible values.
+- Widget-config, guided-resolution and runtime-truth gates, exact TypeScript,
+  scoped lint, and diff integrity pass. No Firebase rules, indexes, Functions,
+  or deployment behavior changed.
+
+## July 29, 2026 - Answerlattice Onboarding Acknowledgement Integrity
+
+- The get-started client now projects successful setup responses through exact
+  current monthly-plan, smallest-currency-unit amount, one-time `al_*` widget
+  key, provider subscription, and canonical Razorpay checkout contracts before
+  displaying workspace/payment success.
+- A positive but wrong amount, drifted plan name, malformed key or subscription
+  identity, and unsafe checkout host now invalidate the complete
+  acknowledgement instead of becoming billing or credential truth.
+- Workspace creation is single-flight in the browser before the POST begins.
+  Session refresh is bounded and cleanup-owned; a refresh outage after the
+  durable route success is logged but no longer turns a created paid workspace
+  into an owner-visible creation failure.
+- Focused onboarding behavior, Answerlattice runtime-truth source evidence,
+  exact TypeScript, scoped lint, and diff integrity pass. No Firebase rules,
+  indexes, Functions, or deployment behavior changed.
+
+## July 29, 2026 - Public Create-Menu Preview Response and Request Integrity
+
+- Preview polling now re-projects every browser response through the canonical
+  extracted-menu and extracted-business-profile normalizers before React state
+  or rendering. Malformed arrays, localized maps, colors, profile suggestions,
+  and unknown statuses fail closed instead of crashing or becoming trusted
+  preview truth.
+- A completed status must produce a coherent full extracted menu; a malformed
+  completed response becomes the existing load-failed state.
+- Poll requests are abort-owned across retry, session, and draft lifecycle
+  changes, so a late response cannot overwrite the current preview.
+- Claim submission has an immediate ref-backed single-flight guard, and its
+  session-refresh timeout is cleared when refresh settles early.
+- Public Menu Entry behavior/source gates, the broader extraction and
+  data-flow regression aggregates, exact TypeScript, scoped lint, and diff
+  integrity pass. No Firebase persistence, rules, indexes, Functions, cache,
+  or deployment behavior changed.
+
+## July 29, 2026 - Public Create-Menu Success Handoff Integrity
+
+- Success-page menu and official-page URLs now require the active MenuList
+  platform root or an exact tenant subdomain; arbitrary/lookalike HTTPS hosts
+  can no longer be presented, copied, or shared as MenuList publication truth.
+- Starter activation acknowledgements are scoped to exact tenant/store/signal,
+  and a known current-session mismatch evicts the stale tab handoff without
+  attempting a store write.
+- Copy feedback and dashboard refresh timers are cleanup-owned, dashboard
+  handoff rejects duplicate clicks, and bounded error diagnostics no longer
+  execute unknown `.name` or `.code` accessors.
+- Public Menu Entry behavior/source gates, exact TypeScript, scoped lint, and
+  diff integrity pass. No Firebase persistence, rules, indexes, Functions,
+  cache, or deployment behavior changed.
+
+## July 29, 2026 - Public Highlights Display Lifecycle Integrity
+
+- Highlights rotation now keeps a valid zero index when its slide list becomes
+  empty, preventing a queued interval callback from producing `NaN` and leaving
+  a later non-empty public screen blank.
+- Highlights and Menu Board offline caches now project real arrays and bounded
+  public fields at runtime; malformed entries fail closed and expired cached
+  owner posters cannot return while offline.
+- A first Highlights mount preserves an admitted offline snapshot, while later
+  server-prop changes remain authoritative. Menu Board now also reconciles
+  later server props and queued pagination ticks use the current page count.
+- Missing/disabled public mirror documents force a cleanup-owned guarded retry.
+  Jittered version reloads also retry after guard suppression instead of
+  acknowledging a revision that the TV never loaded.
+- Both modes own and clear fullscreen hide/reload timers across browser events,
+  recovery taps, token changes, and component cleanup. Browsers that block
+  local storage no longer let the optional daily seen marker read escape either
+  display effect.
+- The Digital Screens and public-truth gates, exact TypeScript, scoped lint,
+  and diff integrity pass. No persistence, cache, Firebase infrastructure, or
+  deployment behavior changed.
+
+## July 29, 2026 - Shared Runtime Utility Data Integrity
+
+- The shared deep clone now rejects prototype-control keys, preserves `Date`
+  values, deep-clones sets and arrays, and safely retains cyclic reference
+  structure.
+- Deep-path updates reject empty and prototype-control segments; custom index
+  selection now uses the requested key and ignores malformed numeric values.
+- Empty JSON responses now produce an object and parsing/read failures reject
+  normally instead of leaving an unresolved wrapper promise.
+- Blob conversion rejects FileReader failures, compression settles those
+  failures through its existing bounded diagnostic path, and data-URL byte
+  counts now support exact MIME-independent base64 and encoded-text payloads.
+- First-visit theme selection now checks `matchMedia().matches` instead of the
+  truthiness of the MediaQueryList object. Focused runtime contracts, exact
+  TypeScript, scoped lint, and diff integrity pass.
+- Tightening the clone type exposed and repaired downstream drift: translation
+  paths no longer manufacture partial `_specialMenu` objects, new extracted
+  languages always persist `isPrimary: false`, and closed role/tenant editors
+  ignore late field events instead of creating empty invalid drafts.
+
+## July 29, 2026 - Initial Breadcrumb Language Integrity
+
+- Public menu, feedback, and outlet Official Business Page breadcrumbs now
+  receive the server-resolved content language explicitly.
+- Localized breadcrumb destinations therefore contain the correct `lang`
+  query in the initial server-rendered Link contract instead of waiting for a
+  post-hydration browser URL effect.
+- The browser URL fallback remains available for legacy callers. Public truth,
+  exact TypeScript, scoped lint, and diff-integrity checks pass; no persistence,
+  cache, Firebase infrastructure, or deployment behavior changed.
+
+## July 29, 2026 - Official Page Timeout Cleanup
+
+- Official Business Page Firestore timeout races now clear their timer as soon
+  as the read settles, whether by success, failure, or timeout.
+- Fast public reads no longer leave a five-second timer pending for every OBP
+  request.
+- Public-business-truth, exact TypeScript, scoped lint, and diff integrity
+  checks pass. Read sources, retries, cache tags, public output, Firebase
+  infrastructure, and deployment behavior are unchanged.
+
+## July 29, 2026 - Next Build Output Path Containment
+
+- `NEXT_DIST_DIR` now accepts only a non-empty relative path contained by the
+  repository and rejects absolute, parent-traversal, and existing external
+  symlink destinations.
+- Concurrent local/release audits can still use contained outputs such as
+  `.next-audit-safe`, while a misconfigured build can no longer write mutable
+  Next artifacts outside the worktree.
+- Next compatibility, Answerlattice readiness, config syntax, scoped lint, and
+  diff integrity pass. No production build or deployment was run.
+
+## July 29, 2026 - SecurityOS Registry Path Containment
+
+- SecurityOS registry paths now reject empty, absolute, parent-traversal, and
+  existing symlink targets outside the enclosing repository before filesystem
+  reads.
+- A malformed internal surface/evidence registry can no longer make the
+  read-only audit inspect arbitrary host files.
+- SecurityOS source/registry suites, exact TypeScript, scoped lint, and diff
+  integrity pass. No production verifier execution, Firebase infrastructure,
+  customer data, or deployment changed.
+
+## July 29, 2026 - Future-Cycle Proration Estimate Boundary
+
+- Informational outlet proration now caps remaining days at the subscription's
+  total cycle length.
+- A clock before a future cycle start can no longer show an estimated prorated
+  amount above the full-cycle amount.
+- Billing settlement/entitlement tests, exact TypeScript, scoped lint, and diff
+  integrity pass. Provider settlement, persisted billing data, Firebase
+  infrastructure, and deployment behavior are unchanged.
+
+## July 29, 2026 - Localization Message Merge Contract
+
+- The server request-locale registry now uses the actual
+  `AbstractIntlMessages` contract instead of nested broad `any` records.
+- Locale fallback merging rejects `__proto__`, `constructor`, and `prototype`
+  keys before assignment, preventing malformed translation input from changing
+  the merge result's object prototype.
+- The complete localization aggregate, exact TypeScript, scoped lint, and diff
+  integrity pass. No locale selection, translated copy, persisted preference,
+  Firebase infrastructure, or deployment changed.
+
+## July 29, 2026 - Tenant Sitemap Freshness Integrity
+
+- Tenant and outlet sitemap entries now publish `lastModified` only when the
+  persisted modification value converts to a valid date.
+- Missing, malformed, or invalid timestamp values are omitted instead of being
+  replaced with the current build/request time and falsely signaling fresh
+  public truth.
+- The public-business-truth aggregate, exact TypeScript, scoped lint, and diff
+  integrity pass. No Firestore infrastructure, persisted record, tenant access,
+  cache policy, or deployment changed.
+
+## July 29, 2026 - Tenant Context Transition Isolation
+
+- The shared owner-platform context now exposes the current session-scoped
+  tenant/store value directly instead of copying it through an effect-delayed
+  local-state mirror.
+- A tenant or store transition can no longer render descendants for one frame
+  with the previous context, and POS delivery registration follows the same
+  direct current-scope value.
+- Context setters and cached structures now carry their actual React/domain
+  types instead of broad `any` contracts.
+- POS-sync, staff/roles, exact TypeScript, scoped lint, and diff-integrity
+  checks pass. No Firestore rules, indexes, Functions, persisted records,
+  billing mutation, or deployment changed.
+
+## July 29, 2026 - Public Navigation and Legacy Owner Guard Closeout
+
+- Public menu breadcrumb links now carry the active `lang` query in the actual
+  Next.js `Link` destination, so client navigation cannot discard the selected
+  menu language.
+- CampaignCue's mobile dialog now moves focus inside, traps keyboard focus,
+  supports Escape, and restores focus to its trigger; Neelvara's roving tabs
+  now move DOM focus with Arrow-key selection.
+- The unused session-only `src/app/(main)/layout-old.tsx` owner-layout copy was
+  removed and its absence is protected by the authentication verifier.
+- Public-business-truth, CampaignCue, Neelvara, authentication, website-resource
+  locale, exact TypeScript, scoped lint, and diff-integrity checks pass. No
+  Firebase infrastructure, persisted data, billing, cache, or deployment
+  behavior changed.
+
+## July 29, 2026 - AnswerLattice Public Planning and Navigation Integrity
+
+- The static ROI calculator now preserves a negative value-after-plan estimate
+  instead of presenting a plan-cost shortfall as zero.
+- The public mobile drawer acquires its body scroll lock only while mounted and
+  restores the exact previous inline overflow value on cleanup.
+- Product-area capability pages now accept only actual public asset-registry
+  keys, removing an unchecked string assertion and making misspelled future
+  callers fail at compile time.
+- Focused ROI behavior, the AnswerLattice public website aggregate, exact
+  TypeScript, scoped lint, and diff integrity pass. No Firebase infrastructure,
+  datastore, cache, billing mutation, deployment, or tenant behavior changed.
+
+## July 29, 2026 - Answerlattice Related Resource Type Boundary
+
+- Related public-resource lookup now uses an explicit TypeScript predicate
+  instead of forcing `filter(Boolean)` through an array assertion.
+- Missing or retired related slugs are safely omitted while valid articles
+  retain catalog order and a fully narrowed public-resource contract.
+- The focused public-resource regression and complete Answerlattice public
+  website gate pass. No Firebase infrastructure, customer data, cache, or
+  deployment changed.
+
+## July 29, 2026 - Creative Editor Export Layer Filtering
+
+- SVG and PNG export now omit layers marked `excludeFromExport` or
+  `editorGuide`, in addition to hidden layers.
+- Internal guides and print dividers can no longer leak into customer-facing
+  creative or printable assets through the shared serializer.
+- The complete Creative Editor smoke/Fabric/export aggregate, exact TypeScript,
+  and scoped lint pass. No Firebase infrastructure, stored design, cache, or
+  deployment changed.
+
+## July 29, 2026 - Keyboard Shortcut Matcher Parity
+
+- The exported keyboard utility now uses the same canonical modifier matcher
+  as the runtime hook.
+- Explicit Command/Meta shortcuts can no longer be displayed while remaining
+  impossible to trigger through the utility path.
+- Browser-runtime behavior, exact TypeScript, and scoped lint pass. No data,
+  Firebase infrastructure, public output, or deployment changed.
+
+## July 29, 2026 - Financial Display Input Integrity
+
+- Shared currency, INR/paise, and processing-time formatters now reject
+  non-finite values; invalid currency codes fail to the established missing
+  marker instead of breaking render.
+- Malformed `NaN` paise can no longer appear as a real zero amount in reseller,
+  billing, transaction, or operator views.
+- The complete Global Localization aggregate, exact TypeScript, and scoped
+  lint pass. No settlement, stored billing data, Firebase infrastructure,
+  cache, or deployment changed.
+
+## July 29, 2026 - Date and Timezone Input Integrity
+
+- Shared date conversion now contains hostile timestamp access, accepts only a
+  valid `Date` result, and validates serialized Firestore seconds/nanoseconds.
+- Owner date-time inputs that fall into a daylight-saving gap now fail closed
+  instead of silently persisting a different wall time.
+- The complete Global Localization aggregate and exact TypeScript pass. No
+  Firebase infrastructure, stored customer data, cache, or deployment changed.
+
+## July 29, 2026 - Asset Factory Filesystem Containment
+
+- Internal Asset Factory paths now fail closed when they resolve outside the
+  repository, and brief generation accepts only the exact slot-derived brief
+  destination.
+- A malformed manifest can no longer redirect `assets:brief` over runtime
+  source or use parent traversal to read outside the repository.
+- The focused traversal regression and complete Asset Factory audit/review
+  aggregate pass. Thirteen reviewed fingerprints were refreshed individually;
+  no asset binary, Firebase infrastructure, customer data, or deployment
+  changed.
+
+## July 29, 2026 - Answerlattice Initial Install Context Delivery
+
+- Published Next.js, React, and Vue install snippets now replay the current
+  page context when the asynchronous widget script acknowledges load.
+- Route-change context updates remain active, while first-page context no
+  longer depends on the user navigating after installation.
+- Agent-readiness and scoped lint gates pass. No Firebase infrastructure or
+  customer workspace data changed.
+
+## July 29, 2026 - Guided Workflow Instrumentation Isolation
+
+- Optional Answerlattice workflow-event emission now contains missing, hostile,
+  or throwing browser widget runtimes and returns `false`.
+- MenuList import, publish, share, and verification success/error control flow
+  can no longer be changed by a telemetry callback failure.
+- The reference-client regression and scoped lint pass. No data, Firebase
+  infrastructure, or product authority boundary changed.
+
+## July 29, 2026 - Answerlattice Ontology Persistence Projection
+
+- Entity, relation, entity-search-index, and candidate normalizers now return
+  only their declared runtime fields instead of forwarding undeclared
+  Firestore properties through owner DAL and protected action results.
+- Legacy ontology rows without `pId` still normalize to `AL`; scoped
+  update/merge writes retain backward-compatible storage behavior.
+- Focused ontology contracts, exact TypeScript, and scoped lint pass. No
+  Firebase infrastructure source or deployed data changed.
+
+## July 29, 2026 - Answerlattice Draft Procedure Contract
+
+- Generated draft procedures now pass the authoritative guided-procedure schema
+  before the parser returns an `AnswerlatticeProcedure`.
+- Invalid/empty entries are omitted, retained steps are resequenced, optional
+  text is trimmed and bounded, and a draft with no usable step keeps its
+  narrative content with `procedure: null`.
+- Focused draft behavior, exact TypeScript, and scoped lint pass. Drafts remain
+  owner-reviewed proposals and cannot publish canonical truth automatically.
+
+## July 29, 2026 - Answerlattice Escalation Debug Isolation
+
+- Automatic failure evaluation no longer lets malformed optional entity-debug
+  telemetry suppress a valid empty/refusal escalation decision.
+- Required canonical/query/RAG evidence still fails closed; invalid optional
+  tokens or candidates are omitted from the bounded internal context.
+- Focused escalation behavior, exact TypeScript, and scoped lint pass. The
+  evaluator remains default-disabled and cannot create a ticket by itself.
+
+## July 29, 2026 - Answerlattice Entity Extraction Input Integrity
+
+- Answerlattice ontology assistance now projects rich-text article content
+  through the shared bounded TipTap reader before sending text to extraction,
+  containing cyclic, accessor-backed, proxy-backed, malformed, and oversized
+  content without changing canonical-answer authority.
+- Candidate deduplication now preserves Unicode letters, marks, and numbers,
+  so distinct Arabic, Hindi, Tamil, and other non-Latin product concepts do
+  not collapse into one empty ASCII key.
+- Focused extraction behavior, the complete Answerlattice runtime-truth gate,
+  exact TypeScript, and scoped lint pass. No Firestore rules, indexes, Storage
+  rules, Cloud Functions, provider configuration, or deployment changed.
+
+## July 29, 2026 - Discovery Taxonomy and Timestamp Test Contracts
+
+- The complete 95-category static taxonomy is now guarded for canonical
+  seven-business-group coverage, unique IDs/sort orders, non-empty fields,
+  alias uniqueness, and copy isolation.
+- The dormant discovery-index timestamp fixture now uses the active
+  descriptor-safe Firestore `seconds`/`nanoseconds` contract; method-only
+  timestamp objects remain rejected.
+- Both discovery behavior suites, exact TypeScript, and scoped lint pass. No
+  runtime persistence, Firebase infrastructure, provider, or deployment
+  changed.
+
+## July 29, 2026 - AI Menu Manager Multilingual Mutation Commands
+
+- **Mutation and read-only command routing now share one Unicode text
+  boundary** - supported non-Latin item/category names are preserved before
+  exact context lookup instead of being stripped by a second ASCII-only
+  normalizer.
+- A command such as `पनीर टिक्का 300` now prepares the same scoped,
+  approval-required price card as an English/Latin item name.
+- Focused behavior, the complete AI Menu Manager aggregate, exact TypeScript,
+  and scoped lint pass. No persistence, cache, Firebase infrastructure,
+  provider, or deployment changed.
+
+## July 29, 2026 - AI Menu Manager Multilingual Entity Matching
+
+- **Read-only owner questions now preserve Unicode menu names** - the
+  conversation router retains letters, combining marks, and numbers from every
+  supported script while normalizing owner text and loaded entity aliases.
+- Hindi, Arabic, Tamil, and other non-Latin item names can be bound to the
+  exact loaded menu item instead of falling back to a generic price/context
+  answer.
+- Entity names now require Unicode-aware phrase boundaries, so a short menu
+  name such as `Tea` cannot match unrelated text such as `instead`.
+- Customer visibility and promotion readiness now include parent-category
+  visibility; an active item inside a hidden category is reported as hidden
+  with that category and is not recommended for promotion or sharing.
+- Focused multilingual behavior, the complete AI Menu Manager aggregate,
+  dependency freeze, exact TypeScript, and scoped lint pass. No persistence,
+  cache, Firebase infrastructure, provider, or deployment changed.
+
+## July 29, 2026 - AI Menu Manager Registry Integrity
+
+- **The action catalog is now immutable and completeness-checked at runtime** -
+  its definition list, executable list, nested evidence/flag arrays, definition
+  objects, and action lookup registry cannot be changed by a consumer.
+- Registry construction rejects duplicate or missing definitions, and public
+  list accessors return defensive copies for existing planner/caller behavior.
+- The complete AI Menu Manager aggregate, exact TypeScript, and scoped lint
+  pass. No persistence, cache, Firebase infrastructure, provider, or
+  deployment changed.
+
+## July 29, 2026 - Legacy Menu PDF Runtime Projection
+
+- **The legacy quick-PDF bridge no longer spreads raw project/store records**
+  - required identity, menu arrays, URLs, booleans, colors, preset/style,
+  project ID, timestamps, and known store/public-presence fields are projected
+  before compatibility composition.
+- Malformed or accessor-backed persisted values cannot be coerced into PDF
+  metadata, QR/logo output, filenames, layout settings, or public print text.
+- Focused legacy behavior, the complete Menu Card Export aggregate, exact
+  TypeScript, and scoped lint pass. No persistence, Firebase infrastructure,
+  provider, or deployment changed.
+
+## July 29, 2026 - Printable Asset Exact Input Projection
+
+- **Every default and edited printable render now starts from one runtime
+  projector** - exact asset/template IDs, canonical HTTPS menu URL, derived
+  short link, bounded business/contact/project values, and safe optional
+  feedback/OBP/logo URLs are established before document, QR, image, canvas,
+  PDF, ZIP, or download effects.
+- Malformed persisted fields, credentialed URLs, caller-supplied stale short
+  links, path-shaped project IDs, invalid asset/template IDs, and HTTP menu
+  destinations fail closed or are omitted according to field optionality.
+- Focused behavior, Printable Asset Templates, exact TypeScript, and scoped
+  lint pass. No persistence, Firebase infrastructure, provider, or deployment
+  changed.
+
+## July 29, 2026 - Printable Editor Document Asset Binding
+
+- **Saved editor documents are now rebound to the selected MenuList asset
+  before rasterization** - the adapter requires the canonical runtime schema,
+  MenuList product context, and exact asset-specific canvas dimensions.
+- Schema-valid oversized or cross-product documents fail before SVG, canvas,
+  PNG, PDF, attribution, or download work. The normalized two-face Business
+  Card compatibility path remains supported.
+- Focused behavioral coverage, the Printable Asset Templates aggregate, exact
+  TypeScript, and scoped lint pass. No persistence, Firebase infrastructure,
+  provider, or deployment changed.
+
+## July 29, 2026 - Menu Card PDF Resource and Pagination Boundaries
+
+- **Persisted logo metadata can no longer drive unbounded PDF raster work** -
+  source and renderer require a bounded credential-free HTTP(S) URL, reject
+  unsafe dimensions before canvas allocation, and cap successful raster cache
+  entries at 16.
+- **Persisted print text and pagination now share exact limits** - category,
+  item, description, attribute, tag, and ID text is bounded before wrapping;
+  height estimation counts the same description and attribute rows that are
+  actually drawn.
+- Focused sanitizer/shared-contract tests, the complete Menu Card Export
+  aggregate, exact TypeScript, and scoped lint pass. No persistence, Firebase
+  infrastructure, provider, or deployment changed.
+
+## July 29, 2026 - Mobile Locale Authority Parity
+
+- **Mobile control copy now uses the canonical locale resolver** - base
+  languages, underscore/case variants, and every registered regional locale
+  resolve consistently with next-intl rather than falling back to English.
+- **A malformed explicit locale no longer masks a valid cookie** - precedence
+  is exact explicit, then persisted, then `en-US`; cookie read failures remain
+  safe and returned dictionaries are mutation-isolated.
+- The focused 52-locale behavior suite, global localization aggregate,
+  dependency freeze, exact TypeScript, and scoped lint pass. No persistence,
+  Firebase infrastructure, provider, or deployment changed.
+
+## July 29, 2026 - Menu Kit Exact Input Admission
+
+- **All ten Menu Kit assets now share one runtime projector** - required store
+  identity and QR URL plus optional brand/business/date/template fields are
+  bounded before logo loading, rendering, print instructions, or ZIP naming.
+- **The displayed short link cannot drift from the QR** - it is derived from
+  the admitted HTTPS destination; caller-supplied stale/malformed values and
+  unknown/accessor-backed fields are omitted.
+- Focused URL/input behavior, Communication Kit, Menu Card Export, exact
+  TypeScript, and scoped lint gates pass. The Entrance Poster renderer was
+  re-read end to end. No persistence, cache, Firebase infrastructure, provider,
+  or deployment changed.
+
+## July 29, 2026 - Owner Analytics Detail Runtime Projection
+
+- **Malformed settled analytics no longer crash detail cards** - desktop and
+  mobile now consume the same exact projector for metrics, sources, campaigns,
+  items, categories, actions, hours, searches, languages, filters, and Smart
+  Picks.
+- **Owner-visible analytics values are bounded** - counts must be finite,
+  non-negative integers, rates stay within 0-100, text/rows are capped, unknown
+  fields are omitted, and persisted accessors are not executed.
+- Focused behavior, Today, localization, Public Business Truth,
+  dependency-freeze, exact TypeScript, and scoped lint gates pass. No analytics
+  write, cache key, Firestore infrastructure, Function, or deployment changed.
+
+## July 29, 2026 - Weekly Growth Pack Runtime Boundary
+
+- **Malformed Today truth no longer reaches owner copy** - campaign subjects,
+  inactive items, counts, timing/status copy, business/project names, and staff
+  prompts are exact runtime-projected and bounded before desktop/mobile output.
+- **Copied menu links must be public HTTPS** - insecure, credential-bearing,
+  local/private, non-string, or malformed values are omitted together with the
+  public-link action.
+- Persisted accessors remain unexecuted, descriptor failures are bounded and
+  observable, and whitespace-only clipboard input fails explicitly. Focused
+  behavior, Today, Public Business Truth, dependency-freeze, exact TypeScript,
+  and scoped lint gates pass. No persistence, cache, Firebase infrastructure,
+  provider, or deployment changed.
+
+## July 29, 2026 - Printable Renderer Strict Admission
+
+- **Unknown print assets now fail closed** - the renderer no longer reuses the
+  catalog's owner-UI Table Tent fallback for an unregistered asset ID.
+- **Output formats are admitted before generation** - callers cannot request
+  PNG/PDF/ZIP output that the selected asset does not support; both single and
+  multi-file adapters share the same boundary.
+- The focused catalog regression, Printable Asset Templates aggregate, Menu
+  Card Export aggregate, exact TypeScript, and scoped lint pass. No persistence,
+  cache, Firebase infrastructure, external generation, or deployment changed.
+
+## July 29, 2026 - Print Asset Catalog Single Source
+
+- **The compatibility catalog now follows the active runtime registry** -
+  owner-facing IDs, descriptions, placement, size, and Menu Kit keys can no
+  longer drift between two hand-maintained arrays.
+- A focused regression pins exact registry parity, unique IDs/groups, complete
+  placement coverage, and guarded Menu Kit ZIP indexes; it is registered in the
+  Menu Card Export aggregate.
+- Menu Card Export, exact TypeScript, scoped lint, and dependency freeze pass.
+  No output generation, persistence, Firebase infrastructure, or deployment
+  behavior changed.
+
+## July 29, 2026 - Menu Design Runtime Projection
+
+- **Public and saved design state is now an exact DTO** - only governed menu
+  fields survive projection; unknown fields are omitted and persisted accessors
+  are never executed.
+- **Preset defaults require canonical business identity** - arbitrary
+  substring text no longer overrides an exact business category when selecting
+  the initial public design.
+- The menu-design presentation verifier, exact TypeScript, and scoped lint
+  pass. Existing canonical presets and legacy tabs remain compatible; no
+  Firestore rule/index, Function, cache operation, or deployment changed.
+
+## July 29, 2026 - Menu Check Persisted-Input Boundary
+
+- **Malformed project truth no longer crashes Menu Check** - files, extracted
+  item/category/language collections, localized fields, prices, and outlier
+  review markers are runtime-projected before quality computation.
+- **Persisted accessors are never executed** - descriptor-safe reads contain
+  hostile or corrupt legacy objects across dashboard, mobile, editor-banner,
+  and publish-intercept consumers.
+- Focused Menu Correctness/quality regression, Public Business Truth, exact
+  TypeScript, and scoped lint pass. This pure read repair changes no write,
+  cache, Firebase infrastructure, or deployment.
+
+## July 29, 2026 - Starter Activation Access Authority
+
+- **The seven-day deadline now fails closed** - missing, malformed, or invalid
+  starter deadlines no longer grant indefinite owner workspace or public-page
+  access.
+- **Paid and activation evidence values are runtime-validated** - arbitrary
+  truthy plan fields cannot bypass expiry, and compact activation counts now
+  require the same valid timestamps as the detailed summary.
+- Firebase seconds/nanoseconds remain compatible without executing methods from
+  persisted objects. Activation, Presence Monitor, exact TypeScript, and scoped
+  lint gates pass; no Firestore rule/index, Function, or deployment changed.
+
+## July 29, 2026 - Project AI Preference Runtime Boundary
+
+- **Persisted AI defaults are now validated before reuse** - description enums, image aspect ratio, prompt text, color values, boolean flags, and preference arrays must satisfy bounded runtime contracts before reaching desktop/mobile defaults or generation requests.
+- **Malformed legacy values fall back safely** - invalid fields use the business-type recommendation, while valid explicit empty lists, `false` flags, colors, and owner selections remain authoritative.
+- Focused regression, project-editor and AI-accounting aggregates, exact TypeScript, and scoped lint pass. Existing project writes and AI operations remain unchanged; no Firebase infrastructure or deployment was added.
+
+## July 29, 2026 - Legacy Menu PDF Optional QR Contract
+
+- **An optional menu URL is now truly optional** - the compatibility PDF bridge disables QR output when the destination is absent or invalid instead of letting auto-design force a renderer failure.
+- **Valid destinations preserve owner/design intent** - explicit `showQrCode` and the auto-design default still apply when the established credential-free HTTP(S) boundary accepts the URL.
+- Focused regression, Menu Card Export aggregate, exact TypeScript, and scoped lint pass. No renderer fork, persistence operation, cache mutation, Firebase infrastructure, or deployment was added.
+
+## July 29, 2026 - Legacy Physical-Surface Output Boundary
+
+- **Printed QR payloads now fail closed** - both legacy table-tent and counter-sticker generators accept only bounded, credential-free absolute HTTPS URLs before QR encoding.
+- **PNG encoding failure is explicit** - a browser `canvas.toBlob()` null result rejects the download instead of resolving a false `Blob`.
+- Focused boundary regression, Menu Card Export aggregate, exact TypeScript, and scoped lint pass. No campaign writer, Firebase operation, cache mutation, rule/index, Function, or deployment was added.
+
+## July 29, 2026 - Naming Standardization Contract
+
+- **Standalone acronym brands retain their exact identity** - single-word all-caps names such as `KFC`, `BBQ`, and `XL` now satisfy the same brand-safe rule already documented for multi-word names.
+- **Activation truth is explicit** - the compatibility flag is on, but repository runtime has no persistence, extraction, or public-rendering caller; the helper therefore does not silently rewrite current menu truth.
+- Focused behavior regression, exact TypeScript, and scoped lint pass. No runtime consumer, persistence operation, cache mutation, Firebase infrastructure, or deployment was added.
+
+## July 29, 2026 - Owner Action Current Readiness Truth
+
+- **Historical publish time no longer makes an inactive or deleted menu live** - the action layer now uses the canonical current-project publication boundary.
+- **Malformed legacy values cannot suppress corrective actions** - placement proof requires valid normalized timestamps, while customer links and working hours require non-empty strings.
+- Focused behavior regression, Owner Action Layer source gate, exact TypeScript, and scoped lint pass. The pure dashboard projection adds no Firestore operation, rule/index, Function, cache mutation, or deployment.
+
+## July 29, 2026 - Menu Intake Business-Type Authority
+
+- **Ambiguous provider descriptions no longer become store/public identity** - extracted business type is accepted only when it exactly matches a canonical value or label after case and whitespace normalization.
+- **Owner choice remains authoritative** - partial values such as `shop`, `service`, `restaurant and cafe`, and `pet grooming` are omitted instead of being persisted as the first substring match.
+- A focused regression, the complete Menu Extraction Pipeline aggregate, exact TypeScript, and scoped lint pass. This is an app-side suggestion-admission repair; it changes no Firestore rule/index, Cloud Function, cache operation, or deployment.
+
+## July 30, 2026 - Answerlattice Deployment-Scope Verifier Stability
+
+- **Runtime Truth now verifies the deployment contract semantically** - the retrieval-quality gate separately pins the dedicated Functions citation projector and the required authenticated deployment, instead of depending on one incidental wording form.
+- Answerlattice Runtime Truth passes. No runtime, Firebase operation, rule, index, Function, cache, provider, or deployment behavior changed.
+
+## July 29, 2026 - Menu Setup Current Publication Truth
+
+- **Historical publish time no longer overrides current lifecycle state** - inactive or soft-deleted projects remain in the publish phase even when they retain `lastPublishedAt`, matching the public renderer.
+- **Malformed objects no longer complete setup steps** - an imported item requires an ID and visible name, and only direct social-link strings count toward Official Business Page link readiness.
+- Menu Setup Progress, Public Business Truth, exact TypeScript, and scoped lint pass. This is a read-only owner projection repair with no Firestore operation, rule, index, Function, cache mutation, or deployment.
+
+## July 29, 2026 - Answerlattice Public Citation IPv6 Boundary
+
+- **Public citations now reject the complete IPv6 link-local range** - app/runtime and dedicated Functions projection block `fe80::/10`, including `fe90`, `fea0`, and `feb0` addresses that the prior textual prefix missed.
+- **Deprecated IPv6 site-local destinations fail closed too** - `fec0::/10` cannot enter customer/owner citation links or compiled context bundles.
+- Retrieval, context-bundle, Answerlattice runtime, Founder Support Controls, Answer Trace emulator, dedicated Functions build, exact TypeScript, and scoped lint pass. No rule, index, collection, read/write count, or provider behavior changed; the narrow QA Functions deployment remains required.
+
+## July 29, 2026 - Public Presence Numeric Truth Bounds
+
+- **Impossible establishment years no longer become public truth** - the browser-safe store DTO admits only safe integer years from 1900 through the current year, matching both active owner forms.
+- **Review ratings stay on the declared five-star scale** - non-finite values and ratings outside 1 through 5 are omitted before OBP display and structured public output.
+- Public Client Projection, Public Customer Delivery, Public Business Truth, exact TypeScript, and scoped lint pass. No persistence, cache key, Firebase infrastructure, Function, or deployment changed.
+
+## July 29, 2026 - Public Store Value Projection
+
+- **Public store fields are validated by value, not only by key** - top-level text, booleans, language lists, hours/social maps, analytics, PWA state, public-presence fields, localized text, ratings/photos, and custom attributes now pass exact bounded runtime projectors.
+- **Nested private data cannot hide under an allowlisted scalar** - malformed maps/arrays are omitted, custom attributes retain only exact public fields, and accessor-backed records fail closed without executing getters.
+- Public Client Projection, Public Customer Delivery, exact TypeScript, and scoped lint pass. The DTO remains read-only and adds no Firestore operation, cache change, rule, index, Function, or deployment.
+
+## July 29, 2026 - Public Plan-Type Scalar Boundary
+
+- **Public store DTOs no longer copy malformed plan objects** - `activePlanType` is removed from the generic allowlist picker and emitted only after bounded string normalization.
+- **Invalid plan state fails safe** - maps, arrays, non-strings, empty values, and strings longer than 160 characters stay server-side and keep MenuList attribution visible; valid plan IDs are trimmed and normalized.
+- Public Client Projection, Public Customer Delivery, Public Business Truth, exact TypeScript, and scoped lint pass. No read/write count, cache key, rule, index, Function, or deployment changed.
+
+## July 29, 2026 - MenuList Entitlement Audit Status Projection
+
+- **Malformed subscription status can no longer enter the compact entitlement mirror** - both app and Functions transaction-current audit writers admit only exact payment-status literals and write `null` for maps, arrays, unknown strings, or other malformed legacy values.
+- **The store plan still comes from exact current entitlement** - a shared-mode Firestore regression proves a separate valid candidate repairs the store mirror while the malformed source audit remains typed.
+- Removed the adjacent unused `any`-based sync probe. The repair changes no rule, index, provider effect, query cap, or public invalidation contract. Functions build and local gates pass; the narrow QA deploy stopped before upload because Firebase CLI authentication is unavailable.
+
+## July 29, 2026 - Answerlattice Entitlement Query Alias Authority
+
+- **Every workspace alias now filters before the active-subscription cap** - Answerlattice entitlement synchronization applies exact `pId`, `productId`, `tenantId`, `storeId`, `tId`, and `sId` predicates before ordering and `limit(10)`, matching the maintained composite index.
+- **Conflicting legacy rows cannot starve valid current entitlement** - a real shared-mode Firestore emulator proves ten later-ending rows with contradictory compact aliases cannot hide the exact active subscription or clear its workspace plan mirror.
+- The repair changes no collection, index manifest, rule, Function, provider effect, public MenuList cache, or valid-path query cap.
+
+## July 29, 2026 - MenuList Paid-Cycle Currentness
+
+- **Elapsed or missing-cycle active rows no longer retain plan mirrors** - active/cancelled/paused entitlement requires an exact nonelapsed browser/Admin timestamp, matching the transaction query; legacy/provider rows missing cycle evidence require reconciliation.
+- **Persisted timestamp methods and scalar coercion are removed from entitlement** - exact components are inspected without invocation, numeric strings fail closed, and plan IDs must be bounded strings in both app and Functions reconciliation.
+- Boundary and Functions next-state tests, Billing Entitlement, Functions build, exact TypeScript, and scoped lint pass. The existing mirror writes, invalidation effects, query caps, and indexes are unchanged. The final narrow `menulistMaintenanceScheduler` QA deploy stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed.
+
+## July 29, 2026 - Product Billing Timestamp Helper Cleanup
+
+- Removed an unused coercive `toMillis(any)` helper from the shared billing server and pinned its absence in the billing verifier.
+- No runtime, payment, Firestore, provider, rule, index, Function, deployment, or cost behavior changed.
+
+## July 29, 2026 - Answerlattice Activation Current-Subscription Fallback
+
+- **Only exact current embedded license truth suppresses fallback** - an elapsed or malformed store mirror now allows the existing capped subscription query.
+- **Current active truth wins deterministically** - the five-row exact-workspace window projects every row and prefers active-current state over terminal rows; an elapsed embedded projection cannot conceal a current fallback.
+- The valid embedded-summary path still adds no fallback read, and the fallback cap remains five. No rule, index, Function, Firebase deployment, or Vercel deployment changed.
+
+## July 29, 2026 - Answerlattice Owner Decision Firebase Cost Boundary
+
+- **Concurrent Daily Brief loads now share one read flight** - same-workspace cold requests join one six-document `platformSummary` `getAll()` instead of multiplying reads; the existing 60-second, 300-workspace cache and summary-only response contract remain unchanged.
+- **Large point-read summaries no longer create unused index entries** - dedicated and shared Firestore manifests exempt Knowledge Map graph data, Product Friction rankings, Answer Tests cases/runs/reservations, and bounded Activation proof arrays from automatic indexing.
+- **Current-proof paths remain intentionally uncached** - release impact, Answer Trace, and Answer Tests execution retain their bounded authoritative reads; no new summary family, external cache, listener, scheduler, Storage artifact, provider call, or analytics event was introduced.
+- Focused owner-feature verifiers, index-manifest checks, exact TypeScript, scoped lint, dependency freeze, and diff integrity pass again on July 30. The Answerlattice QA index deploy retry stopped before any remote change because Firebase CLI authentication is unavailable; no Vercel deployment applies.
+
+## July 29, 2026 - Answerlattice Friction Verifier Line-Wrap Stability
+
+- **The friction cost gate no longer depends on Markdown line wrapping** - its semantic documentation assertion remains paired with structural checks that both index manifests disable the two exact snapshot-array fields.
+- No runtime, Firestore, index-manifest, rule, Function, deployment, or product behavior changed.
+
+## July 29, 2026 - Answerlattice Activation License Currentness
+
+- **Activation no longer treats an elapsed `active` row as a valid license** - the owner launch checklist uses the exact shared subscription projector and the earliest current end boundary at its injected clock.
+- **Malformed lifecycle evidence fails closed** - string dates, malformed financial/history fields, foreign scope, and case-mutated statuses cannot enter the activation subscription DTO or complete launch proof.
+- Focused Activation contracts, Answerlattice Runtime Truth, exact TypeScript, and scoped lint pass. The projection adds no Firestore read/write, rule, index, Function, Firebase deployment, or Vercel deployment.
+
+## July 29, 2026 - Answerlattice Transaction-Current AI Entitlement
+
+- **Paid AI work now re-proves current subscription truth inside its transaction** - monthly reset, direct credit debit, reservation, and idempotent settlement require the exact current Answerlattice row to remain active and unexpired immediately before writes.
+- **Terminal refunds remain safe and available** - refunds use the same exact shape/workspace projector without requiring active status, so valid cancelled subscriptions can recover reserved credits while malformed rows fail closed.
+- The real support-search accounting emulator covers transaction-current expiry with no credit or operation write. Exact TypeScript and scoped lint pass. No Firestore rule, index, Storage rule, Cloud Function, provider call, Firebase deployment, or Vercel deployment changed.
+
+## July 29, 2026 - Answerlattice Subscription Read Authority
+
+- **Financial rows are no longer numerically coerced into entitlement truth** - browser/server active-subscription reads, paid Knowledge Intake, direct-ID reads, and Answerlattice grace-expiry rechecks share one exact runtime projector for product/workspace identity, status, interval, currency, amounts, quantity, credit balances, payment counts, lifecycle timestamps, and bounded history.
+- **Malformed persisted rows fail closed** - numeric strings, accessor-backed records, invalid browser/Admin timestamps, conflicting scope, unknown or legacy `trialing` status, impossible payment counts, malformed payment/status history, and the earliest expired end boundary cannot authorize paid work or reach owner Billing selection.
+- Focused subscription behavior, Billing Entitlement, exact TypeScript, and scoped lint checks pass. No payment/provider mutation, Firestore write, rule, index, Storage rule, Cloud Function, Firebase deployment, or Vercel deployment changed.
+
+## July 29, 2026 - Answer Trace Inventory Parity
+
+- **The active Answerlattice inventory matches runtime defaults** - the enabled app flag list now includes `ENABLE_ANSWERLATTICE_ANSWER_TRACE`, matching the current feature registry and maintained owner/API surfaces.
+- The bidirectional feature-inventory gate protects missing, extra, and wrong-state entries. No source flag, runtime behavior, persistence, Firebase infrastructure, or deployment changed.
+
+## July 29, 2026 - Answerlattice Trailing Publication Invalidation
+
+- **Overlapping KB and FAQ writes cannot disappear behind an older invalidation** - a same-workspace mutation joining an active Answerlattice cache request now guarantees one trailing public-cache refresh.
+- **Failure behavior remains explicit** - best-effort callers remain nonthrowing; strict callers retain their first failure while already queued trailing work is still attempted, and request cleanup is exact-entry-owned.
+- The overlapping-write behavior suite, Answerlattice Runtime Truth, exact TypeScript, and scoped lint checks pass. No Firestore operation, rule, index, Storage rule, Cloud Function, Firebase deployment, or Vercel deployment changed.
+
+## July 29, 2026 - Monotonic Public Screen Revalidation
+
+- **Overlapping public-truth writes preserve Digital Screen refreshes** - a later same-store cache-only request can no longer erase an already queued `touchScreen: true` revalidation while another request is in flight.
+- **Safe same-store coalescing remains** - route-cache tags and screen versions remain store-scoped, equally strong requests retain latest context, and the existing timeout, auth, rate-limit, and server invalidation paths are unchanged.
+- Focused merge behavior, Pricing Integrity, Public Business Truth, exact TypeScript, and scoped lint checks pass. No Firestore rules, indexes, Storage rules, Cloud Functions, provider call, Firebase deployment, or Vercel deployment changed.
+
+## July 29, 2026 - Billing Master-Store Runtime Authority
+
+- **Outlet entitlement fallback uses exact persisted master truth** - client and server subscription DALs now share one runtime boundary for tenant store-list master selection.
+- **Coercive and ambiguous rows fail closed** - leading-zero/boolean IDs, malformed activity/master flags, duplicate store IDs, conflicting nested aliases, and multiple explicit masters cannot select a subscription.
+- **Safe legacy inference remains** - one active unflagged store is accepted only when every row is otherwise exact and the result is unambiguous.
+- Focused master-store tests, Billing Entitlement verification, exact TypeScript, and scoped lint pass. No payment/provider mutation, Firestore write, rules, indexes, Cloud Functions, Firebase deployment, or Vercel deployment changed.
+
+## July 29, 2026 - Logout Raw-Session Cache Invalidation
+
+- **Logout invalidates in-memory identity first** - authenticated browser cleanup now clears the shared raw NextAuth session cache before active-store, SWR, storage, log, or monitoring cleanup.
+- **Pre-logout requests cannot repopulate identity** - session request creators and joiners require the same logout generation and exact promise ownership before returning or caching a session.
+- **Older requests cannot clear newer work** - request cleanup is exact-attempt-owned, preserving a later valid session fetch.
+- Active-session scope and account/tenant lifecycle regressions, exact TypeScript, and focused lint pass. No Firestore/Auth operations, rules, indexes, Storage rules, Cloud Functions, Firebase deploy, or Vercel deployment changed.
+
+## July 29, 2026 - Owner Compliance Tenant and Response Authority
+
+- **Mobile compliance state is tenant/store partitioned** - shared owner-memory cache, requests, and listeners use the exact tenant/store key; a tenant switch cannot reuse another tenant's custom Privacy, Terms, or Refund text.
+- **Overlapping mobile refreshes settle in request order** - a displaced older forced refresh cannot overwrite the same store's newer post-mutation policy state.
+- **Desktop compliance settlement is scope-bound** - Official Page and Custom Domain editors clear old policy state on scope changes and reject stale GET or mutation responses before rendering content or showing success.
+- **Authenticated responses prove their scope** - compliance GET and successful POST envelopes carry the server-derived tenant/store identity, and all owner editors require that identity plus the exact page/action before accepting data.
+- **Malformed owner policy DTOs fail closed** - non-object pages, invalid sources, non-string or oversized policy fields, missing scope, and foreign scope are rejected before React state.
+- The focused behavior test, Compliance Pages boundary, MenuList tenant-safety, Public Business Truth, exact TypeScript, and scoped lint pass. This changes no Firestore reads/writes/deletes for valid requests, rules, indexes, Storage rules, Cloud Functions, Firebase deploy target, or Vercel deployment.
+
+## July 29, 2026 - Business Copy Project-Context Tenant Authority
+
+- **Business Copy menu context is tenant-scoped** - the browser cache now requires and keys the exact tenant/store pair, and both summary and detail reads fail if the active session no longer matches that captured scope.
+- **Preparing AI input no longer creates a menu** - the context loader uses the existing read-only project-summary DAL, so an empty store stays empty instead of receiving a hidden default-project write.
+- **Concurrent cache cleanup is attempt-owned** - an older request cannot clear a newer scope's in-flight promise and trigger duplicate Firestore reads.
+- The new behavior regression proves same-store IDs in different tenants never share keys and malformed or missing scope fails closed. Auth/security, Public Business Truth, Menu Card Export, exact TypeScript, and focused lint pass. No rules, indexes, Storage rules, Cloud Functions, Firebase deploy, or Vercel deploy changed.
+
+## July 29, 2026 - Root Error Digest Containment
+
+- **The last-resort error screen cannot be broken by a digest accessor** - root crash diagnostics now read the optional Next.js digest once through the shared descriptor-safe bounded-field helper.
+- **Direct digest access is regression-gated** - both global-failure observability and the broader auth/security matrix reject `error?.digest` in the root boundary.
+- Focused behavior/source suites, exact TypeScript, and scoped lint pass. No persistence, tenant, cache, provider, Firebase, or deployment behavior changed.
+
+## July 29, 2026 - Exact Nested Localization Messages
+
+- **Localization payloads keep one recursive contract** - the server provider, client wrapper, and localized website fallback merge now use `next-intl`'s exact nested-message type from producer to consumer.
+- **Unsafe provider assertions are removed** - locale messages no longer cross the server/client boundary through `Record<string, unknown>`, `as any`, or nested double assertions.
+- Global localization, website locale resources, public-customer localization, browser runtime boundaries, exact TypeScript, and focused lint pass. No persistence, cache, provider, Firebase, or deployment behavior changed.
+
+## July 29, 2026 - Menu Kit Text-Bounds Integrity
+
+- **Generated labels stay inside their layouts** - Delivery Bag and Takeaway Card store names and short links now use the shared width-aware canvas truncation boundary, including the ellipsis width.
+- **Google Maps cards bound every store name** - names are wrapped to three measured lines, overlong single words and omitted remainder are visibly truncated, and the short-link fallback is width-bounded.
+- **Every QR uses the admitted URL** - the generator now passes the canonical HTTPS URL produced by validation into UTM projection and every template instead of accidentally restoring the pre-validation string.
+- The pure canvas suite covers bounded multi-line wrapping and hostile long words. Menu Card Export verification, exact TypeScript, and focused lint pass. This changes browser-local PNG rendering only; no persistence, cache, provider, Firebase, or deployment behavior changed.
+
+## July 29, 2026 - Stores Summary Replacement Integrity
+
+- **Backfill removes orphaned store entries** - the privileged complete `storesSummary` rebuild now replaces the nested store map instead of recursively merging it, so stores absent from canonical truth cannot survive as scheduler or analytics input.
+- **Concurrent summary work is preserved** - the rebuild captures the summary version before its store scan and commits only through a transaction that rejects any intervening onboarding, billing, scheduler, or operational summary mutation.
+- A real Firestore emulator proves stale-key removal, unrelated top-level metadata preservation, and concurrent-write rejection. Functions build, MenuList tenant-safety, and focused lint pass. The required narrow `menulist-qa` deployment remains blocked before upload by unavailable Firebase CLI authentication.
+
+## July 29, 2026 - Maps Provider Current Authority
+
+- **Stale claims no longer authorize provider work** - Maps Place Check now re-reads the exact current user, tenant, and store before SAFE_MODE, rate-limit, or Gemini Google Maps grounding work; demoted, inactive, disabled, blocked, deleted, unverified, removed, or no-longer-assigned callers fail closed.
+- **Current owner and platform behavior is preserved** - exact current owners retain their store path, while current persisted platform operators retain bounded cross-store support access at three additional Firestore security reads per invocation.
+- Functions build, a real Firestore emulator authority matrix, MenuList tenant-safety, Public Truth Tools, and focused lint pass. The required narrow `menulist-qa` Functions deployment stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed.
+
+## July 29, 2026 - Functions Product and Platform Authority
+
+- **Answerlattice work no longer executes in MenuList Functions** - the legacy MenuList `embedArticleWorker`, `regenerateEmbedding`, and `publishApprovedJobFn` export names remain as data-free migration compatibility handlers; only the isolated Answerlattice Firebase client and `functions-answerlattice/` runtime perform KB embedding and publishing.
+- **Operational platform authority is current** - force republish and stores-summary backfill now re-read the exact current platform user and reject demoted, inactive, disabled, blocked, deleted, unverified, or missing operators before privileged work.
+- Functions build, focused lint, the MenuList tenant-safety gate, a real operations Firestore emulator, and the complete Answerlattice runtime/rules matrix cover these boundaries. The narrow MenuList QA Functions deployment stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed and no Vercel deployment applies.
+
+## July 29, 2026 - Manual Analytics Current Authority
+
+- **Stale platform claims no longer retain aggregation authority** - the manual customer analytics Cloud Function re-reads the exact current user and rejects demoted, inactive, disabled, blocked, deleted, unverified, or missing platform operators before any tenant/store/project work.
+- **Scheduled behavior is unchanged** - valid current platform owners retain the manual backfill path with one additional security read; automated analytics settlement, public event writes, owner reads, and cache behavior are unchanged.
+- Functions build, a real Firestore emulator matrix, analytics boundary verification, the aggregate auth failure matrix, and focused lint pass. The required narrow `menulist-qa` Functions deployment stopped before upload because Firebase CLI authentication is unavailable; no remote revision changed.
+
+## July 29, 2026 - Business Health Analytics Source Authority
+
+- **A deterministic document path is no longer treated as complete authority** - the Business Health analytics index admits a dashboard or daily source only when its embedded tenant, store, project, kind/scope, grain, surface, and requested date identities all agree.
+- **Malformed persisted analytics fail closed** - foreign-store, stale-date, mismatched-date, and wrong-surface rows cannot influence owner metrics, rankings, source references, or cached Business Health context.
+- Canonical current aggregation output retains its behavior and Firestore cost. The Functions build, focused lint, and full Business Health verifier pass. No rules, indexes, Storage rules, cache keys, public output, Firebase deployment, or Vercel deployment changed.
+
+## July 29, 2026 - Multi-Outlet Persisted Authority
+
+- **Tenant location membership is exact** - outlet save, create, policy, rename, and deactivate no longer coerce persisted `storesList` IDs; leading-zero, exponent, malformed activity, and malformed master rows fail closed.
+- **Outlet policy is runtime-validated** - linked menu saves and server-side description/image/translation admission accept only exact boolean policy flags. Invalid persisted policy cannot bypass a restriction or be copied during master promotion.
+- Missing legacy policy fields still inherit the existing conservative defaults, while current canonical tenant/store rows retain their behavior.
+- Focused behavior, multi-location, tenant-safety, public-truth, exact TypeScript, and scoped lint checks pass. No Firestore rules, indexes, Storage rules, Cloud Functions, cache contract, provider call, or deployment changed.
+
+## July 29, 2026 - Authentication and Billing Current Authority
+
+- **Platform billing mutations now require current authority** - a signed `PLATFORM` role no longer bypasses the exact persisted user, lifecycle, revocation, and current-role checks before subscription, top-up, or referral mutations.
+- **Tenant and store block checks fail closed** - an Admin read failure during OAuth, credentials, phone OTP, or JWT refresh cannot be interpreted as an unblocked entity.
+- **OAuth and sign-out failure behavior is deterministic** - profiles without an email are denied before database access, and sign-out reports success only after Firebase Auth and NextAuth teardown both complete.
+- Focused auth/billing regressions, the auth security matrix, MenuList tenant-safety and network-target evidence, exact TypeScript, and scoped lint pass. No Firebase rules, indexes, Storage rules, Cloud Functions, provider call, deployment, or persisted schema changed.
+
+## July 29, 2026 - WhatsApp Action Evidence Integrity
+
+- **Malformed links no longer prove a WhatsApp number** - the number row is present only for an admitted international number or a valid WhatsApp link that contains one.
+- **Order wording no longer invents hours** - words such as today, available, slot, pickup, and delivery need explicit hours, opening, timing, reply, response, or response-time context before the hours-expectation row is present.
+- Focused runtime, source-gate, TypeScript, and lint checks pass. No WhatsApp API, message send, external fetch, persistence, cache, or Firebase behavior changed.
+
+## July 29, 2026 - Booking Response Evidence Separation
+
+- **Generic booking words no longer prove unrelated facts** - Booking/Inquiry Readiness distinguishes the primary action and hours from response, confirmation, fallback, and location evidence.
+- Automatic evidence now requires clear reply/response-time wording, confirmation/finality wording, an alternative/help cue for fallback, and actual location/service-area phrasing; owner checkboxes remain authoritative.
+- The runtime regression, focused feature verifier, exact TypeScript, and lint pass. No booking provider, calendar, payment, message, persistence, cache, or Firebase behavior changed.
+
+## July 29, 2026 - Menu Readability Evidence Separation
+
+- **URL path words no longer prove a customer action** - Menu Readability Check derives order, booking, call, WhatsApp, and other action hints only from pasted source text or the explicit owner selection.
+- The optional public URL remains a local format check only; it is not fetched and cannot act as page evidence. A focused cross-tool regression, the feature source gate, exact TypeScript, and lint cover the correction.
+
+## July 29, 2026 - Public Truth Business Identity Completeness
+
+- **A city alone no longer proves a named business identity** - Google Profile Basics Checklist and One Customer Link Preview now require both a usable business name and city/area before their business-identity row can be present.
+- **Partial identity remains visible without becoming false public truth** - one supplied identity field is reported as unclear; neither public tool fetches an external source or persists the local report.
+- **Invalid destinations stay out of reusable customer copy** - Business Facts, Customer FAQ, and WhatsApp reply packs still report malformed links or contacts as gaps, but no longer interpolate those rejected values into copy, clipboard, download, or share output.
+- Cross-tool runtime regressions, both feature source gates, exact TypeScript, and focused lint cover the correction. Firestore data, rules, indexes, Storage rules, Cloud Functions, caches, Firebase deployment, and Vercel deployment are unchanged.
+
+## July 29, 2026 - Notification Link Credential Safety
+
+- **Owner-facing links reject embedded credentials** - MenuList lifecycle, Functions lifecycle, MenuList owner-notification, and Answerlattice owner-notification templates no longer render HTTP(S) URLs containing a username or password.
+- **Ambiguous host text cannot become a call to action** - values such as `https://menulist.ai@attacker.example/` are omitted, while normal credential-free HTTP(S) links remain unchanged.
+- Focused behavior, owner-notification, exact TypeScript, root/Functions lint, Functions build, dependency-freeze, and diff gates cover the correction. No data shape, Firestore operation, rule/index, Storage rule, or cache behavior changed. The narrow `menulist-qa` Functions deployment remains blocked by unavailable Firebase CLI authentication.
+
+## July 29, 2026 - Nested Public Menu Projection
+
+- **Nested menu rows are now allowlisted** - categories, items, variants, languages, time slots, nutrition facts, decision facts, and image records no longer spread unknown persisted fields into the customer browser.
+- **Future private fields fail closed** - adding a new editor, workflow, extraction, billing, or AI field does not make it public unless the customer contract explicitly admits it.
+- The public-client behavior suite injects unknown fields at each nested record level and proves their omission while retaining supported menu data. Public delivery, public business truth, exact TypeScript, and focused lint pass. Firestore reads/writes, persisted shapes, cache behavior, rules/indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment are unchanged.
+
+## July 29, 2026 - Public Hours Timezone Parity
+
+- **Public menu and OBP now share one fallback** - missing timezone metadata uses the existing deterministic `UTC` localization fallback instead of letting the OBP independently assume `Asia/Kolkata`.
+- **Invalid timezone behavior is runtime-independent** - the hours engine logs the bounded failure and retries with `UTC`; it no longer derives the day or minute from the server/browser local clock.
+- Focused behavior tests prove missing and malformed timezone parity through both the canonical hours engine and OBP adapter. No persisted shape, Firestore operation, cache, rule/index, Storage rule, Cloud Function, Firebase deployment, or Vercel deployment changed.
+
+## July 29, 2026 - Multi-Outlet Master Update Truth
+
+- **Legacy active defaults no longer create false alerts** - master items, categories, and variants that omit `active` are compared as visible, matching the snapshot and render-time default.
+- **Override impact copy reflects effective outlet truth** - visibility, availability, bestseller, prep-time, category, and variant changes now identify admitted outlet overrides as unaffected and show the effective override value, including `false` and zero.
+- **Override helpers cover their full types** - category application retains `orderIndex`, while item-empty detection treats description and image-only overrides as real changes.
+- A focused behavior test is registered as `npm run test:master-update-diff`; the maintained multi-location boundary, exact TypeScript, focused lint, and diff hygiene pass. Firestore shape/cost, rules, indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment are unchanged.
+
+## July 29, 2026 - Business Health Answer Output Integrity
+
+- **The public answer DTO is now exact** - required answer fields, source facts, artifacts, follow-up questions, cache metadata, and route metrics pass one strict runtime projector before API serialization and again before browser state accepts them.
+- **Malformed success responses fail closed** - missing fields, duplicate fact IDs, malformed artifacts, invalid thread IDs, and unknown provider/internal fields cannot reach the owner UI.
+- **Open-ended unused response fields were removed** - Business Health answers no longer advertise arbitrary `cards` or `remainingBalance` payloads that had no active producer or consumer.
+- Focused Business Health behavior, route source contracts, exact TypeScript, and scoped lint cover the correction. Firestore rules, indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment are unchanged.
+
+## July 29, 2026 - Answerlattice Transient Context Privacy
+
+- **Page context remains request-local** - canonical/product-surface retrieval and cache partitioning may use validated context in memory, but search-history writes no longer persist compact context keys, feature, page, or workflow fields.
+- **Escalation does not extend context retention** - explicit widget support requests no longer copy legacy search-history context into support-ticket escalation metadata, ticket classifications, or durable signal metadata.
+- **Legacy rows fail safely** - previously stored context fields may remain until their existing search-history retention expires, but current readers ignore them and no longer propagate them into another collection.
+- **Regression proof covers source and Firestore behavior** - widget answer contracts prohibit the persistence helpers, and the real escalation emulator proves legacy context is absent from the created ticket and signal.
+- This changes Answerlattice application persistence behavior, tests, types, and documentation only. Firestore rules, indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment are unchanged.
+
+## July 29, 2026 - Answerlattice Canonical Governance Contract Integrity
+
+- **Mutation identities are exact** - governance proposal, answer, entity, evidence, processing-run, and idempotency IDs no longer trim surrounding whitespace into another valid identity.
+- **Canonical scope is set-like** - duplicate bound entity, plan, role, or state identifiers fail before a proposal can persist.
+- **Version truth is internally consistent** - validation cannot predate introduction and an applicability window cannot end before it starts.
+- **Runtime and TypeScript contracts remain aligned** - the canonical proposal type now uses the structured procedure schema type instead of broad `unknown`; focused governance and guided-workflow regressions cover the strengthened boundary.
+- This changes application contracts, tests, and documentation only. Firestore rules, indexes, Storage rules, Cloud Functions, Firebase deployment, and Vercel deployment are unchanged.
+
+## July 29, 2026 - Item Photo Association Integrity
+
+- Camera and device-photo preparation is fenced to the selected item revision, so a slow completion cannot attach to a different item or become valid again after switching away and back.
+- Final image association now requires one exact source-file/item pair and fails closed for ambiguous legacy IDs instead of updating the first matching file.
+- Browser-only and internal preparation, fingerprint, capture-source, and selection state is removed after Storage upload; project persistence retains only public-safe image metadata and enforces the shared 20-image ceiling before creating Storage objects.
+- Item-photo removal now targets the exact source-file/item pair immutably and admits one confirmation/write flow at a time, preventing duplicate IDs or rapid taps from deleting/restoring the wrong photo.
+- Existing-photo editing now rebuilds a complete localized prompt DTO from that exact file/item pair instead of passing a raw extracted item with missing category and display fields.
+- Edited-photo upload is now single-flight and awaits project persistence before showing success or closing; rejected saves retain the previews and emit bounded diagnostics with fixed retry copy.
+
+## July 29, 2026 - Operator Notification Classification And Formatting
+
+- Malformed stored platform-alert severity can no longer downgrade a registry-critical alert to warning; invalid product/category metadata also falls back to the authoritative trigger registry, while valid explicit overrides remain supported.
+- Owner-notification locale tags are verified by the server `Intl` runtime before date or money formatting, so an invalid hyphenated legacy setting falls back to `en-IN` instead of aborting rendering or delivery.
+
+## July 29, 2026 - Answerlattice Answer-Test Result Contract
+
+- The deterministic Answer Tests evaluator now bounds combined failure evidence to the authoritative 20-entry/240-character persisted schema and normalizes non-finite or negative duration before persistence.
+- A maximal regression case proves that simultaneous source, authority, identity, confidence, phrase, and citation failures still produce a schema-valid result without changing pass/fail or proof-status behavior.
+- Proposal Impact responses now reject derived counts, truncation flags, linked/evaluated ordering, or proof statuses that contradict their admitted comparison rows before the browser can render them.
+
+## July 29, 2026 - Answerlattice Public Rich-Text URL Admission
+
+- Hosted-help links and images now use parsed URL admission instead of string-prefix checks. Root-relative values must remain on the fixed same-site base, and absolute URLs must use an allowed scheme without embedded credentials.
+- Protocol-relative values, browser-normalized backslash escapes, control characters, unsafe schemes, and credential-bearing URLs fail closed. Focused Knowledge Map behavior and source verifiers pin both link and image boundaries.
+
+## July 29, 2026 - Production Environment Fail-Fast
+
+- Non-Vercel production server startup now throws after its bounded environment diagnostic when required Firebase, Auth, Admin, or model configuration is missing; the prior branch claimed a hard error but continued running.
+- Vercel retains the documented log-only build exception, and configuration-safety behavior tests pin both paths without logging environment values.
+
+## July 29, 2026 - Answerlattice Browser Helper Script Admission
+
+- The internal Answerlattice browser helper now loads only relative same-site widget scripts or credential-free HTTPS script URLs. Protocol-relative, HTTP, `data:`, `javascript:`, and credential-bearing overrides fail closed before a script element is created.
+- Runtime-summary contracts and the Answerlattice source verifier pin the script-source boundary; the helper package build remains dependency-free.
+
+## July 29, 2026 - Public Website Analytics Context Minimization
+
+- MenuList and Answerlattice consented resource events no longer send raw external referrer hosts/paths or query-bearing entry/target URLs. Known referrers become fixed groups, external links retain origin only, and UTM values require compact attribution tokens.
+- MenuList resource link clicks, checklist copies, and delegated website CTA events now use the same minimization. The central Google event projector drops raw referrer fields and revalidates URL/path/attribution dimensions so a future caller cannot restore query-bearing context accidentally.
+- Plausible script-source overrides now fail closed unless they are relative same-site paths or credential-free HTTPS URLs. Consent behavior, property-free Plausible events, valid GA4 delivery, and product analytics remain unchanged.
+- Explicit failure reports now retain same-origin origin/path or external origin only, never URL query/fragment/credentials, and read Error digest/name through descriptor-safe bounded helpers.
+
+## July 29, 2026 - Internal Security Evidence Operating System
+
+- Added an internal-only SecurityOS package that maps portfolio security surfaces to existing repository verifiers and local emulator evidence without adding an external scanner, public runtime, Firebase data, or automatic remediation.
+- MenuList and Answerlattice receive the first detailed evidence maps; CampaignCue, SignalDesk, MyCodex, and Neelvara remain explicitly registered as incomplete rather than silently treated as audited.
+- Added root safe-assessment guidance, private finding rules, external-tool provenance review, a reusable repository skill, and focused registry/source verifiers. A mapped check remains `not-run` until its command is executed and reviewed.
+- Expanded the registry to 39 repo-native evidence entries organized into 7 manually selectable bundles. The new plan-only command shows each selected verifier's execution and network policy but never runs a bundle or changes verification state.
+
 ## July 29, 2026 - Digital Screens Truth and TV Output Hardening
 
 - Screen bearer tokens now live in server-only private controls; permission-checked owner API transactions update canonical state, private control, and the token-free listener mirror together.
 - Direct client screen/mirror writes are denied, legacy tokens have a guarded ordered backfill, and public/seen resolvers reconcile exact store and tenant identity.
 - Screen caches are token/store scoped; online output cannot be replaced by stale local content, and expired owner offers trigger a deadline refresh.
-- Menu Board now adapts page packing for 720p, 1080p, wide, and portrait displays with a shorter bounded rotation; prices use the store locale.
-- Owner artwork is not center-cropped, the adjustment preview marks safe and reserved areas, and store branding no longer overlaps MenuList attribution.
+- Menu Board now uses measured 720p, 1080p, wide, and portrait capacities, balances categories across fitting columns, allows two-line wide-TV names, clears the portrait footer, and keeps a shorter bounded rotation; prices use the store locale.
+- Menu Board and Highlights now use one compiled screen stylesheet instead of runtime styled-jsx; first frames render visibly without waiting for motion hydration, and Highlights wrappers are fixed to the viewport so square owner artwork cannot enlarge or crop the TV canvas.
+- Valid server-rendered screen truth remains visible when the Firebase client/listener is unavailable, with bounded offline status and timed recovery instead of a whole-page failure.
+- Owner artwork is not center-cropped, the adjustment preview marks safe and reserved areas, offline status clears the QR, and store branding no longer overlaps MenuList attribution.
+- Digital Screens now inherit the canonical normalized OBP theme color for restrained header, progress, category-frame, logo-frame, and slide accents; the competing multi-color category palette was removed while semantic menu colors and the high-contrast TV canvas remain stable.
+- OBP accent saves now trigger the existing exact Digital Screen version/cache refresh path, so a connected display receives the new brand accent without waiting for cache expiry.
 - Owner status now says `Link ready`, `Seen recently`, or `Check TV`; duplicate slide UI and the broken setup deep link were removed.
+- The temporary browser-audit fixture was removed after output QA; the production route table no longer admits fixture restaurant content.
 - Source verification includes lifecycle behavior, Firestore rules emulator coverage, private-control migration guards, TypeScript, lint, and TV browser smoke. Firebase/Vercel/physical-device evidence remains an external release gate.
 
 ## July 28, 2026 - Browser Reaction And Color-State Integrity
@@ -29337,3 +30652,357 @@ TEMPLATE FOR NEW ENTRIES:
 - Answerlattice editor text extraction is cycle-, depth-, node- and character-bounded with safe unknown-field access; embedding input correctly falls back from blank/invalid persisted plain text.
 - Dormant route and IE helpers now return truthful, typed results if reused.
 - Focused behavior, exact TypeScript, lint and diff-integrity gates cover these repairs.
+
+## July 29, 2026 — Digital Screens Competitive Presentation Hardening
+
+- Digital Screens now choose the smallest fitting Menu Board column count for the current menu density: moderate 1080p menus use two balanced columns, while dense menus retain three.
+- Exact bounded column assignment prevents category order from creating an unnecessary extra column, and descriptions remain visible only at comfortable wide-screen density.
+- Standard portrait output uses compact rows and two-category pages instead of leaving most of the screen empty or forcing unnecessary rotations.
+- Highlights QR cards now state `Full menu` for the canonical customer menu and `Scan` for a custom slide destination.
+- Brand fallback always presents the business name even when a logo exists.
+- Browser QA covered 1920x1080, 1280x720, 768x1024, item Highlights, owner artwork, and brand fallback with no viewport overflow or QR/status collision.
+- No Firebase operation, dependency, owner setting, signage CMS, deployment, or unrelated feature was added.
+
+## July 29, 2026 — Mobile Item Photo Completion Isolation
+
+- Mobile background item-photo uploads now remain bound to their originating project, file and item, reject superseded or intervening-image completions, and clean up the newly uploaded object when attachment is no longer valid.
+- Linked outlets enforce image-override permission for data-URL photos as well as direct image values, and permitted uploads now reach the existing linked override persistence path.
+- Exact-target behavioral coverage includes duplicate item IDs, immutable replacement and stale image-state rejection. TypeScript, focused lint and the 60-check embedded-owner capability gate pass.
+- No Firestore or Storage rule, index, Cloud Function, dependency or deployment source changed.
+
+## July 29, 2026 — Batch Item Image Target Integrity
+
+- Accepted batch images now require each selected item ID to resolve exactly once in transaction-current standalone, outlet-local, or master menu truth; ambiguous legacy duplicates fail closed before persistence.
+- Selection admission contains unknown getters, Proxies and array traversal and no longer coerces arbitrary image-size objects.
+- Focused adversarial tests, the complete AI-accounting aggregate, multi-location verification, exact TypeScript and lint cover the repair.
+- No Firestore/Storage rule, index, Cloud Function, dependency or deployment source changed.
+
+## July 29, 2026 — Digital Screen Private-Control Migration Scope
+
+- The guarded bearer-token migration now proves exact store and tenant aliases plus current active/unblocked lifecycle before eligibility and again inside its write transaction.
+- Tenant changes and existing private-control identity conflicts fail closed, malformed legacy screen objects are skipped, and a dedicated Admin app remains pinned to the validated confirmed Firebase project.
+- Lifecycle, complete Digital Screens source/rules/Admin-emulator, TypeScript and lint gates cover the repair. No migration or deployment was run.
+
+## July 29, 2026 — Linked Outlet Resolver Structure Authority
+
+- Linked rendering now requires exact master-cache identity, one non-linked master file, at most one outlet file, unique safe entity IDs, valid override maps, and governed `L_I_` / `L_C_` store-only IDs.
+- Malformed legacy structure fails unresolved instead of flattening multiple files, duplicating local items, chaining masters or exposing unprefixed store-only entities as public menu truth.
+- Public Pull API behavior, multi-location, complete public-business-truth, TypeScript and lint gates cover the repair. No Firebase infrastructure or deployment source changed.
+
+## July 29, 2026 — Printable QR Destination Safety
+
+- Menu Card Export now admits only absolute, credential-free HTTP(S) links for
+  QR destinations and display short URLs.
+- Preflight and the final QR raster renderer enforce the same boundary, so
+  legacy compatibility calls cannot encode a credential-bearing, relative,
+  script, FTP or incomplete destination into a public PDF.
+- Focused adversarial coverage, the complete Menu Card Export verifier, exact
+  TypeScript, lint and diff integrity pass. No Firebase infrastructure changed.
+
+## July 29, 2026 — Print Source Identity And Date Integrity
+
+- Menu Card Export now emits canonical string tenant/store provenance only
+  when current and legacy aliases agree; conflicting scope aliases fail closed.
+- Project update dates are exception-contained, finite canonical ISO values.
+  Invalid primary values fall through to valid legacy aliases instead of
+  throwing, suppressing freshness, or rendering `Invalid Date`.
+- Focused boundary coverage, the complete Menu Card Export verifier, exact
+  TypeScript, lint and diff integrity pass. No Firebase infrastructure changed.
+
+## July 29, 2026 — Printable Menu Sanitizer Reliability
+
+- Print menu extraction now contains malformed getters, Proxies and array
+  traversal across categories, items, attributes, localized text and tags.
+- Unknown conversion hooks are never executed; later valid localized text is
+  retained, and unnamed legacy categories receive separate stable fallback
+  identities instead of overwriting each other.
+- Focused adversarial coverage plus Menu Card Export, Pricing Integrity, exact
+  TypeScript, lint and diff integrity pass. No Firebase infrastructure changed.
+
+## July 29, 2026 — AI Menu Manager Route Safety Invariants
+
+- Prepared model routes now require exact agreement between the
+  `prepare_action` outcome, truth-mutation flag, owner-approval flag and
+  registered action-type presence.
+- Read-only outcomes carrying any prepared-action capability fail closed, and
+  the existing model-tool allowlist remains enforced.
+- Focused invariant coverage plus the complete AI Menu Manager verifier, exact
+  TypeScript, lint and diff integrity pass. No provider, credit, persistence or
+  Firebase infrastructure behavior changed.
+
+## July 29, 2026 — AI Planner Browser Response Validation
+
+- The Menu Manager browser client now validates the complete bounded planner
+  response at runtime instead of trusting a generic JSON type argument.
+- Outcome/provider/tool/action enums, owner copy, IDs, values, collections and
+  prepared-action safety correlation are bounded before materialization or
+  owner-card construction; malformed/version-skewed responses use the existing
+  deterministic fallback.
+- Focused schema coverage plus the complete AI Menu Manager verifier, exact
+  TypeScript, lint and diff integrity pass. No provider, credit, persistence or
+  Firebase infrastructure behavior changed.
+
+## July 29, 2026 — AI Menu Manager Patch Target Integrity
+
+- Approval patch policy now requires exact patch-kind fields, unique bounded
+  target IDs, and exact correlation between declared items and per-item update
+  maps.
+- Undeclared top-level/design data, foreign update keys and silent missing
+  per-target updates fail closed before client or server execution directives.
+- Focused adversarial coverage plus the complete AI Menu Manager verifier,
+  exact TypeScript, lint and diff integrity pass. No Firestore schema/rules,
+  Functions, provider or billing behavior changed.
+
+## July 29, 2026 — AI Menu Manager Patch Value Integrity
+
+- Approval patch policy now validates the runtime value shape for every
+  executable mutation action, not only its allowed field names.
+- Malformed prices, booleans, localized content, prep duration, menu notes,
+  decision-block state and design values fail closed before client or server
+  project mutation.
+- Focused adversarial coverage, exact TypeScript and lint pass. No Firestore
+  schema/rules, Functions, provider or billing behavior changed.
+
+## July 29, 2026 — AI Menu Manager Proposal Timestamp Recovery
+
+- Persisted proposal timestamp validation now contains property access and
+  conversion across JavaScript Date, Firestore Timestamp-like and legacy
+  seconds/nanoseconds representations.
+- Throwing getters and Date proxies fail closed instead of aborting proposal
+  approval or completion recovery.
+- Focused proposal integrity, exact TypeScript and lint pass. No Firebase
+  infrastructure changed.
+
+## July 29, 2026 — Localized Project Slug Allocation
+
+- Permanent project-slug allocation now turns an empty slugification result
+  into canonical `menu` and uses the existing stable project-ID suffix when
+  that slug is already owned.
+- Non-Latin-only menu names can no longer create an empty stored slug and lose
+  their unique public address.
+- The menu-project-editor boundary, exact TypeScript and lint pass. Existing
+  legacy documents are not rewritten and no Firebase infrastructure changed.
+
+## July 29, 2026 — Bounded Performance Utilities
+
+- Lazy component retries now accept only zero through ten attempts; malformed
+  retry counts fail once instead of scheduling indefinitely.
+- Debounce/throttle delays and in-memory cache TTLs are finite and bounded,
+  invalid/nonpositive TTLs cannot create immortal entries, and throwing
+  throttled callbacks still establish their throttle window.
+- Focused tests, exact TypeScript, lint and dependency-freeze verification
+  pass. Repository search found no active first-party consumer.
+
+## July 29, 2026 — Article Reading-Time Boundary
+
+- Tiptap reading-time calculation now uses bounded iterative, cycle-aware,
+  own-data-only traversal instead of recursive `any` access.
+- Throwing node getters, hostile child arrays and non-finite minute values fail
+  safely without aborting ArticleView or emitting `NaN min read`.
+- Focused tests, exact TypeScript, lint and dependency-freeze verification
+  pass. No persistence or Firebase infrastructure changed.
+
+## July 29, 2026 — Feedback QR Destination Boundary
+
+- Feedback direct-link and QR generation now validates project IDs with the
+  same boundary as the public feedback page/API.
+- Tenant base overrides are reduced to credential-free HTTP(S) origins, so
+  path/query/fragment data and embedded credentials cannot enter QR targets.
+- Focused coverage, Menu Card Export, exact TypeScript, lint and dependency
+  freeze pass. No Firebase infrastructure changed.
+
+## July 29, 2026 — Shared QR Resource Bounds
+
+- Raw and branded QR generation now bounds payload length, canvas width,
+  quiet-zone margin, colors and visible presentation strings.
+- Browser QR downloads require PNG base64 data, and both label and suffix are
+  sanitized before filename creation.
+- Focused tests, Menu Card Export, exact TypeScript, lint and dependency
+  freeze pass. No Firebase infrastructure changed.
+
+## July 29, 2026 — Campaign Phrase-Guard Log Privacy
+
+- Rejected AI captions no longer copy their first 100 characters into security
+  logs; diagnostics retain only safe matched policy phrases and length/presence
+  metadata.
+- Caller fallbacks are checked by the same forbidden-phrase policy and use the
+  governed default when contaminated.
+- Focused tests, exact TypeScript, lint and dependency freeze pass. No Firebase
+  infrastructure changed.
+
+## July 29, 2026 — Menu Card Shared Contract Boundaries
+
+- Store theme fields now admit only valid string hex colors, fall through
+  malformed legacy candidates, and keep non-finite RGB/mix inputs bounded.
+- The preset registry now covers every declared Menu Card Export preset, so
+  internal and flag-gated jobs retain their requested output contract instead
+  of silently becoming Home Print.
+- Focused regression coverage, Menu Card Export, exact TypeScript and lint
+  pass. No Firebase infrastructure changed.
+
+## July 29, 2026 — Taxonomy Optional-Field Parity
+
+- Static dietary taxonomy records now omit absent Schema.org mappings instead
+  of returning `null` through a contract typed as optional string.
+- Discovery normalization coverage pins unique dietary/offering IDs and rejects
+  null Schema.org values. No persisted documents or Firebase infrastructure
+  changed.
+
+## July 29, 2026 — Print Canvas and Guidance Bounds
+
+- Shared canvas text and MenuList attribution helpers now cap text, font/logo
+  dimensions and fitting work, including non-finite inputs.
+- Owner print readiness and print-shop handoff copy no longer dereference or
+  coerce malformed persisted store fields.
+- Focused regressions, Menu Card Export, exact TypeScript, lint and dependency
+  freeze pass. No Firebase infrastructure changed.
+
+## July 29, 2026 — AI Menu Manager Presentation Boundary
+
+- Desktop/mobile AI Menu Manager status and timeline projection now contains
+  malformed persisted project timestamps, card/message/receipt fields and
+  hostile arrays.
+- Valid Date, ISO, numeric and Firestore Timestamp inputs remain supported;
+  malformed legacy data is omitted instead of aborting the owner surface.
+- Focused regression coverage, the full AI Menu Manager gate, exact TypeScript
+  and lint pass. No Firebase infrastructure changed.
+
+## July 29, 2026 — Persisted Ant Design Theme Projection
+
+- The Ant Design provider now has exact props and projects Redux Persist
+  booleans/colors before selecting direction, algorithm, and primary color.
+- Legacy string booleans and invalid/object theme values fail to governed
+  defaults; locale keys use the shared canonical locale boundary.
+- Focused tests, the global localization aggregate, exact TypeScript, lint and
+  dependency freeze pass. No Firebase infrastructure changed.
+
+## July 30, 2026 — Special Menu End-to-End Truth Audit
+
+- Public menus and configured digital screens now share one canonical
+  full-project eligibility boundary; the screen path no longer requires a
+  summary-only marker absent from created special projects.
+- Special output is tenant/store/base scoped, empty replace menus remain
+  authoritative, and overlay resolution continues through one deterministic
+  namespaced projection.
+- Desktop and mobile schedule creation/editing now use the store timezone and
+  the business category's date-only or date-time capability. Desktop owners can
+  inspect and edit the complete schedule.
+- Create/edit transactions enforce canonical store capabilities, no-overlap,
+  duplicate-submit, and stale active-pointer recovery boundaries.
+- Exact TypeScript, focused lint, lifecycle source/runtime/overlay tests, and
+  Firestore rules/Admin emulator suites pass. No Firebase infrastructure source
+  changed.
+
+## July 29, 2026 — CampaignCue Design Cue Intent Precedence
+
+- Channel-readiness phrases now resolve before generic WhatsApp/contact and
+  print/poster resize keywords.
+- Design Cue context text/list projection no longer coerces unknown values,
+  caps document/context traversal, and contains malformed patch validation.
+- Focused tests plus the full CampaignCue runtime, Firestore and Storage rules
+  aggregate pass. The delivery boundary remains `export_download_only`; no
+  provider, publish, network, or persistence activation was added.
+
+## July 29, 2026 — Menu-Link IPv6 SSRF Boundary
+
+- Menu-link URL admission now blocks the complete IPv6 `fe80::/10` link-local
+  range instead of only the textual `fe80:` prefix.
+- Deprecated `fec0::/10` site-local targets also fail before direct or rendered
+  acquisition.
+- A focused regression suite covers representative link-local/site-local
+  literals and is registered in the Menu Extraction aggregate. Exact
+  TypeScript and scoped lint pass; no Firebase infrastructure changed.
+
+## July 29, 2026 — Media Image Source Admission
+
+- Media preparation now applies the same allowed-MIME, decoded-size and
+  magic-byte checks to File, Blob and generated/adjusted data-URL sources.
+- The emergency raw-output fallback remains available but no longer bypasses
+  source validation; arbitrary remote string URLs fail closed.
+- Focused regression coverage is registered in the Storage aggregate. Exact
+  TypeScript and scoped lint pass; no Firebase infrastructure changed.
+
+## July 29, 2026 — AI Menu Manager Contextual Prompt Safety
+
+- Desktop/mobile contextual prompt hints now validate selected project truth
+  through the canonical AI Menu Manager project-integrity boundary.
+- Malformed, hostile or oversized persisted state suppresses contextual rows
+  while retaining static safe navigation suggestions.
+- The full AI Menu Manager aggregate, exact TypeScript and scoped lint pass.
+## July 29, 2026 — Current Platform Authority for Store Permissions
+
+- Shared store permission guards no longer trust a signed `PLATFORM` session
+  role by itself.
+- Platform override now requires the current persisted user identity, email,
+  lifecycle, revocation state and platform role; stale authority returns 403
+  with bounded critical security logging.
+- Direct transaction and callback consumers await the current-authority
+  decision. Auth, tenant-safety, custom-domain, multi-location, POS,
+  temporary-status, public-menu-entry and Public Truth Monitor gates pass.
+- The custom-domain claim emulator now uses the pinned modular Firebase Admin
+  14 APIs, restoring executable concurrency and lease-recovery coverage.
+- No Firestore rules/indexes, Storage rules or Firebase Function source
+  changed, so no Firebase infrastructure deployment applies.
+## July 29, 2026 — Analytics Acknowledgement-Loss Integrity
+
+- Browser analytics now persists the exact active delivery separately from
+  counters that arrive while its network request is in flight.
+- New counters receive a fresh pending delivery ID before network work, so a
+  receipt-backed retry cannot acknowledge and discard events it never applied.
+- Persisted queue admission validates both active and pending envelopes. The
+  analytics aggregate, Admin transaction emulator and Firestore rules emulator
+  pass; no Firebase infrastructure source changed.
+- Live queue merges now share the route’s 100-field cap instead of accepting
+  an undeliverable 200-field pending payload.
+
+## July 29, 2026 — CampaignCue Runtime Contract Closure
+
+- Design Cue runtime validation now accepts the complete shared editor
+  font-weight contract, including `900`.
+- Pattern Cue persisted-record guards are non-coercive and fail closed for
+  malformed URLs, throwing getters, and hostile values.
+- Workspace pack-template saves reject summary/payload identity and fact-slot
+  drift before Storage or Firestore persistence.
+- Focused Design Cue, Pattern Cue, and pack-template boundary suites pass.
+
+## July 29, 2026 — SignalDesk Source-Policy Reader Containment
+
+- Persisted source-policy parsing now contains hostile document and Firestore
+  timestamp property access behind the stable malformed-policy error contract.
+- Normalized policy output continues to project declared fields only.
+- A focused source-policy contract suite is registered in the full SignalDesk
+  aggregate.
+
+## July 29, 2026 — Environment Template Key Parity
+
+- Staging now declares the owner-referral token-encryption secret already
+  required by production and runtime verification.
+- Configuration Safety compares the complete declared key sets of staging and
+  production templates, preventing silent setup drift while allowing
+  environment-specific values.
+
+## July 29, 2026 — Shared Creative Editor Data Integrity
+
+- Every editor mutation now passes the runtime document schema before changing
+  authoritative state, live Fabric state, history, autosave, or callbacks.
+- Fabric loads and owner-triggered asynchronous operations reject stale
+  completions; legacy Fabric JSON is fully awaited and validated in an isolated
+  canvas before the live design changes.
+- JSON/raster imports are bounded, raster content is magic-byte verified, image
+  replacement keeps its initiating layer/page identity, and allowed local
+  raster data URLs no longer raise false readiness warnings.
+- No Firebase infrastructure source or product-owned persistence path changed.
+
+## July 31, 2026 — Customer App Dynamic Asset Boundary
+
+- Icon, splash, and screenshot routes fail closed before Firestore reads when
+  the anonymous limiter provider is unavailable.
+- Invalid, rate-limited, provider-failure, and render-failure generic assets
+  use `private, no-store`, preventing transient fallbacks from replacing shared
+  branded CDN responses.
+- Server-side icon/splash rendering accepts only bounded HTTPS image URLs on
+  trusted Firebase/Google Storage hosts in the configured MenuList bucket;
+  malformed, credential-bearing, private-host, foreign-bucket,
+  arbitrary-host, and non-image legacy URLs fall back to the deterministic
+  generated mark.
+- Rendered business names and icon size paths are strictly bounded and parsed.

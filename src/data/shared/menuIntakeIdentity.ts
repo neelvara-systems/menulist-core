@@ -406,10 +406,13 @@ export function normalizeMenuIntakeIdentityResult(
 ): Omit<MenuIntakeAnalysisResult, "decision"> {
   const hasExplicitFileIndexes = Array.isArray(raw.valid_menu_files) || Array.isArray(raw.invalid_files);
   const invalidFileIndexes = normalizeIndexList(raw.invalid_files, totalFiles);
+  const invalidFileIndexSet = new Set(invalidFileIndexes);
   const validMenuFileIndexes = Array.isArray(raw.valid_menu_files)
     ? normalizeIndexList(raw.valid_menu_files, totalFiles)
+      .filter((index) => !invalidFileIndexSet.has(index))
     : hasExplicitFileIndexes
-      ? Array.from({ length: totalFiles }, (_, index) => index + 1).filter((index) => !invalidFileIndexes.includes(index))
+      ? Array.from({ length: totalFiles }, (_, index) => index + 1)
+        .filter((index) => !invalidFileIndexSet.has(index))
     : Array.from({ length: totalFiles }, (_, index) => index + 1);
   const identityConfidence = normalizeConfidence(raw.extracted_business_info?.confidence || raw.confidence);
   const confidence = normalizeConfidence(raw.confidence);

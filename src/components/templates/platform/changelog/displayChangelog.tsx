@@ -26,6 +26,18 @@ import ChangelogPreview from './ChangelogPreview';
 
 const { Title, Text } = Typography;
 const { Content, Sider } = Layout;
+const CHANGELOG_GRADIENT_COLOR_BY_TAG: Record<string, string> = {
+    'New Feature': '#1677ff',
+    Improvement: '#13c2c2',
+    'Bug Fix': '#f5222d',
+    Performance: '#722ed1',
+    'UI/UX': '#2f54eb',
+    Security: '#faad14',
+    Deprecated: '#fa8c16',
+    Removed: '#eb2f96',
+    Maintenance: '#fa541c',
+    Documentation: '#52c41a',
+};
 
 const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -422,7 +434,9 @@ function DisplayChangelog({
                                                     flexShrink: 0,
                                                     padding: isNarrow ? '12px 14px' : '16px 24px 16px 0',
                                                     // background: GRADIENTS[index % GRADIENTS.length],
-                                                    background: generateGradientFromHex(token[CHANGELOG_TAG_CONFIG[item.tags[0]]?.color] || token.colorPrimary),
+                                                    background: generateGradientFromHex(
+                                                        CHANGELOG_GRADIENT_COLOR_BY_TAG[item.tags[0]] || token.colorPrimary,
+                                                    ),
                                                     borderRadius: isNarrow ? `${token.borderRadiusLG}px ${token.borderRadiusLG}px 0 0` : `${token.borderRadiusLG}px 0 0 ${token.borderRadiusLG}px`,
                                                     borderRight: isNarrow ? undefined : `1px solid ${token.colorBorderSecondary}`,
                                                     textAlign: isNarrow ? 'left' : 'right',
@@ -435,7 +449,7 @@ function DisplayChangelog({
                                                     <DateTimeDisplay value={item.releasedOn} />
                                                     {item.version && <Text strong>V{item.version}</Text>}
                                                 </Flex>
-                                                {!isNarrow ? <AnimatedVersionNumber version={item.version} /> : null}
+                                                {!isNarrow && item.version ? <AnimatedVersionNumber version={item.version} /> : null}
                                             </Flex>
 
                                             {/* Center Column: Timeline Axis */}

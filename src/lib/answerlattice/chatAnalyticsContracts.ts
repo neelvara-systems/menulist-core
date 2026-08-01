@@ -21,6 +21,11 @@ export type AnswerlatticeAnalyticsQueryWindow = {
     dayCount: number;
 };
 
+export type AnswerlatticeTrailingAnalyticsQueryWindow = AnswerlatticeAnalyticsQueryWindow & {
+    historicalStartDateKey: string | null;
+    todayDateKey: string;
+};
+
 export type AnswerlatticeChatWorkspaceScope = {
     tId: number;
     sId: number;
@@ -150,6 +155,27 @@ export const getAnswerlatticeAnalyticsQueryWindow = (
     };
 };
 
+export const getAnswerlatticeTrailingAnalyticsQueryWindow = (
+    value: unknown,
+    now: Date = new Date(),
+): AnswerlatticeTrailingAnalyticsQueryWindow | null => {
+    if (!Number.isFinite(now.getTime())) return null;
+    const dayCount = normalizeAnswerlatticeAnalyticsDays(value, 30);
+    const todayDateKey = formatUtcDateKey(now);
+    const startDateKey = shiftUtcDateKey(todayDateKey, -(dayCount - 1));
+    const queryWindow = getAnswerlatticeAnalyticsQueryWindow({
+        start: new Date(`${startDateKey}T00:00:00.000Z`),
+        end: new Date(`${todayDateKey}T00:00:00.000Z`),
+    }, now);
+    if (!queryWindow || queryWindow.dayCount !== dayCount || !queryWindow.includesToday) return null;
+
+    return {
+        ...queryWindow,
+        historicalStartDateKey: queryWindow.historicalEndDateKey ? startDateKey : null,
+        todayDateKey,
+    };
+};
+
 export const parseAnswerlatticeChatAnalyticsDay = (params: {
     id: string;
     value: unknown;
@@ -180,10 +206,18 @@ export const parseAnswerlatticeChatAnalyticsDay = (params: {
         'sourceSessionCount',
         'sourceLimit',
     ] as const;
-    const numericValues = Object.fromEntries(numericKeys.map((key) => [
-        key,
-        boundedNonNegativeInteger(params.value[key]),
-    ]));
+    const numericValues: Record<(typeof numericKeys)[number], number | null> = {
+        totalChats: boundedNonNegativeInteger(params.value.totalChats),
+        qnaChats: boundedNonNegativeInteger(params.value.qnaChats),
+        assistantChats: boundedNonNegativeInteger(params.value.assistantChats),
+        totalMessages: boundedNonNegativeInteger(params.value.totalMessages),
+        positiveFeedback: boundedNonNegativeInteger(params.value.positiveFeedback),
+        negativeFeedback: boundedNonNegativeInteger(params.value.negativeFeedback),
+        totalFeedback: boundedNonNegativeInteger(params.value.totalFeedback),
+        totalRegenerations: boundedNonNegativeInteger(params.value.totalRegenerations),
+        sourceSessionCount: boundedNonNegativeInteger(params.value.sourceSessionCount),
+        sourceLimit: boundedNonNegativeInteger(params.value.sourceLimit),
+    };
     if (Object.values(numericValues).some((value) => value === null)) return null;
     if (
         numericValues.qnaChats! + numericValues.assistantChats! !== numericValues.totalChats

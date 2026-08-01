@@ -17,6 +17,7 @@
 | CLP-008 | Owner downloads report | Text file download runs without persistence |
 | CLP-009 | Owner submits follow-up without consent | Form blocks submission |
 | CLP-010 | Tool claims it fetched links, scanned websites/profiles, stored reports, checked rankings, or called AI/search providers | Verification fails |
+| CLP-011 | City is entered and business-name-visible is selected, but business name is blank | Business identity remains unclear |
 
 ## Source Gate
 

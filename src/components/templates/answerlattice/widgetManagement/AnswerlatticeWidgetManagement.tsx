@@ -617,8 +617,8 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
     const isMobile = screens.md !== true;
     const compactActionStyle = isMobile ? { minWidth: 44, minHeight: 44 } : undefined;
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname);
-    const legacyRequestedTab = searchParams.get('tab');
+    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
+    const legacyRequestedTab = searchParams?.get('tab');
     const requestedTab = (
         isAnswerlatticeWidgetTab(initialTab)
             ? initialTab

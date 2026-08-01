@@ -1,7 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { trackWebsiteMarketingEvent } from '@lib/website/plausible';
+import {
+    getPublicAnalyticsPagePath,
+    getPublicAnalyticsUrl,
+} from '@lib/website/publicAnalyticsContext';
 
 const AI_SUMMARY_HOSTS = new Set([
     'chatgpt.com',
@@ -53,7 +57,7 @@ function getMarketingEventName(anchor: HTMLAnchorElement): string | undefined {
     return undefined;
 }
 
-export default function WebsiteMarketingClickTracker() {
+export default function WebsiteMarketingClickTracker(): ReactNode {
     useEffect(() => {
         const handleClick = (event: MouseEvent) => {
             const anchor = event.target instanceof Element
@@ -66,8 +70,8 @@ export default function WebsiteMarketingClickTracker() {
 
             const url = getAnchorUrl(anchor);
             trackWebsiteMarketingEvent(eventName, {
-                link_url: url?.href,
-                page_path: window.location.pathname,
+                link_url: getPublicAnalyticsUrl(url?.href),
+                page_path: getPublicAnalyticsPagePath(),
             });
         };
 

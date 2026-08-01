@@ -33,6 +33,9 @@ Result: passed.
 - ChatGPT's canonical identity, variant, focal point, transparency, static-animation, EXIF normalization, and immutable cache feedback is accepted and now reflected in the media profile contract.
 - Minimum source dimensions are intentionally not an owner-facing rejection rule. Owner photos and downloaded reference images are accepted even when they are smaller than the final target, blurry, or have the wrong orientation; MenuList frames and prepares them internally. Only unsupported, empty, corrupt, or over-safety-cap files are rejected.
 - `prepareMediaImage` now returns `mediaId`, `checksum`, `version`, `status`, primary Blob/data URL compatibility output, named variants, focal point, dominant color, EXIF normalization state, and transparency policy.
+- `File`, `Blob`, and generated/adjusted data-URL sources pass the same MIME,
+  decoded-size, and magic-byte gate before enabled preparation or the
+  feature-disabled raw fallback.
 - The current DAL still persists one selected image URL in existing fields. The upload boundary is Blob-based for profile-aware media saves, and `uploadPreparedMediaImage` writes only that selected immutable variant. Other prepared variants remain local until a real persisted URL-map consumer exists. Local data URLs are preview/form-state only.
 - Root Storage rules enforce create-once prepared-media objects. Repeated same-content uploads reuse the existing object, while a failed Firestore save or sibling upload does not delete a path another concurrent save may reference. The dedicated Storage emulator regression proves overwrite denial, original-byte preservation, public read, tenant isolation, MIME/profile admission, and owner deletion.
 - Direct Storage writes to a prepared-media path reject GIF, preserving the static-image public contract even when the normal UI is bypassed.

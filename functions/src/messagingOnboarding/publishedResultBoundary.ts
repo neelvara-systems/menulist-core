@@ -22,10 +22,28 @@ function safeHttpsUrl(value: unknown): value is string {
   }
 }
 
+function normalizePublishedProjectScope(value: string): { tenantId: number; storeId: number } | null {
+  const parts = value.split("-");
+  if (parts.length < 3) return null;
+  const tenantId = Number(parts[0]);
+  const storeId = Number(parts[parts.length - 1]);
+  return Number.isSafeInteger(tenantId)
+    && tenantId > 0
+    && String(tenantId) === parts[0]
+    && Number.isSafeInteger(storeId)
+    && storeId > 0
+    && String(storeId) === parts[parts.length - 1]
+    ? { tenantId, storeId }
+    : null;
+}
+
 export function normalizeMessagingPublishedResult(value: unknown): PublishedResult | null {
   if (!isRecord(value)) return null;
   const tenantId = value.tenantId;
   const storeId = value.storeId;
+  const projectScope = boundedString(value.projectId, 180)
+    ? normalizePublishedProjectScope(value.projectId)
+    : null;
   if (
     typeof tenantId !== "number"
     || !Number.isSafeInteger(tenantId)
@@ -34,6 +52,9 @@ export function normalizeMessagingPublishedResult(value: unknown): PublishedResu
     || !Number.isSafeInteger(storeId)
     || storeId <= 0
     || !boundedString(value.projectId, 180)
+    || !projectScope
+    || projectScope.tenantId !== tenantId
+    || projectScope.storeId !== storeId
     || !boundedString(value.userId, 180)
     || !safeHttpsUrl(value.publicUrl)
     || !safeHttpsUrl(value.dashboardUrl)

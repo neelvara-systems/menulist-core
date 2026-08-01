@@ -1,16 +1,16 @@
 [
   { "id": "vegetarian", "label": "Vegetarian", "aliases": ["Vegetarian", "Veg", "Pure Veg", "Veggie", "Shakahari"], "schemaOrg": "https://schema.org/VegetarianDiet" },
-  { "id": "non_vegetarian", "label": "Non-Vegetarian", "aliases": ["Non-Vegetarian", "Non Veg", "Non-Veg", "Nonveg", "Meat"], "schemaOrg": null },
+  { "id": "non_vegetarian", "label": "Non-Vegetarian", "aliases": ["Non-Vegetarian", "Non Veg", "Non-Veg", "Nonveg", "Meat"] },
   { "id": "vegan", "label": "Vegan", "aliases": ["Vegan", "Plant Based", "Plant-Based", "100% Vegan"], "schemaOrg": "https://schema.org/VeganDiet" },
   { "id": "halal", "label": "Halal", "aliases": ["Halal", "Halaal"], "schemaOrg": "https://schema.org/HalalDiet" },
   { "id": "kosher", "label": "Kosher", "aliases": ["Kosher"], "schemaOrg": "https://schema.org/KosherDiet" },
   { "id": "gluten_free", "label": "Gluten Free", "aliases": ["Gluten Free", "Gluten-Free", "GF", "No Gluten"], "schemaOrg": "https://schema.org/GlutenFreeDiet" },
-  { "id": "dairy_free", "label": "Dairy Free", "aliases": ["Dairy Free", "Dairy-Free", "No Dairy", "Lactose Free"], "schemaOrg": null },
-  { "id": "nut_free", "label": "Nut Free", "aliases": ["Nut Free", "Nut-Free", "No Nuts", "Peanut Free"], "schemaOrg": null },
-  { "id": "jain", "label": "Jain", "aliases": ["Jain", "Jain Food", "No Onion No Garlic", "NONG"], "schemaOrg": null },
-  { "id": "egg_free", "label": "Egg Free", "aliases": ["Egg Free", "Egg-Free", "No Egg", "Eggless"], "schemaOrg": null },
-  { "id": "spicy", "label": "Spicy", "aliases": ["Spicy", "Hot", "Extra Spicy", "Mild Spicy"], "schemaOrg": null },
+  { "id": "dairy_free", "label": "Dairy Free", "aliases": ["Dairy Free", "Dairy-Free", "No Dairy", "Lactose Free"] },
+  { "id": "nut_free", "label": "Nut Free", "aliases": ["Nut Free", "Nut-Free", "No Nuts", "Peanut Free"] },
+  { "id": "jain", "label": "Jain", "aliases": ["Jain", "Jain Food", "No Onion No Garlic", "NONG"] },
+  { "id": "egg_free", "label": "Egg Free", "aliases": ["Egg Free", "Egg-Free", "No Egg", "Eggless"] },
+  { "id": "spicy", "label": "Spicy", "aliases": ["Spicy", "Hot", "Extra Spicy", "Mild Spicy"] },
   { "id": "sugar_free", "label": "Sugar Free", "aliases": ["Sugar Free", "Sugar-Free", "No Sugar", "Diabetic Friendly"], "schemaOrg": "https://schema.org/DiabeticDiet" },
-  { "id": "organic", "label": "Organic", "aliases": ["Organic", "100% Organic", "Certified Organic"], "schemaOrg": null },
-  { "id": "keto", "label": "Keto Friendly", "aliases": ["Keto", "Keto Friendly", "Keto-Friendly", "Low Carb", "Low-Carb"], "schemaOrg": null }
+  { "id": "organic", "label": "Organic", "aliases": ["Organic", "100% Organic", "Certified Organic"] },
+  { "id": "keto", "label": "Keto Friendly", "aliases": ["Keto", "Keto Friendly", "Keto-Friendly", "Low Carb", "Low-Carb"] }
 ]

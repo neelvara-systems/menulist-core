@@ -181,7 +181,7 @@ function isHoursStructurallyValid(
 export function resolveHoursOutput(
     input: HoursConfidenceInput,
 ): HoursOutputControl {
-    const { workingHours, hoursLastUpdatedAt, timeZone } = input;
+    const { workingHours, specialHours, hoursLastUpdatedAt, timeZone } = input;
 
     // ── Step 1: No hours data ──
     if (!workingHours || Object.keys(workingHours).length === 0) {
@@ -229,7 +229,7 @@ export function resolveHoursOutput(
 
     // ── Step 4: Fresh + valid → TRUSTED ──
     // Delegate to existing hours engine for Open/Closed computation
-    const status = getStoreStatus(workingHours, timeZone);
+    const status = getStoreStatus(workingHours, timeZone, undefined, new Date(), specialHours);
 
     return {
         confidenceState: "TRUSTED",

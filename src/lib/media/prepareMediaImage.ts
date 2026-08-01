@@ -10,7 +10,8 @@ import {
     MediaImageVariantId,
     parseMediaAspectRatio,
 } from './imageProfiles';
-import { getDataUrlBlob, getMediaFileExtension } from './mediaStorage';
+import { getDataUrlBlob, getMediaFileExtension, isDataUrl } from './mediaStorage';
+import { getMediaTextChecksum } from './mediaUploadBoundary';
 
 export type PreparedMediaStatus = 'draft' | 'processing' | 'ready' | 'failed';
 
@@ -87,24 +88,8 @@ function estimateDataUrlSize(dataUrl: string): number {
     return Math.round((base64.length * 3) / 4);
 }
 
-function fallbackHash(input: string): string {
-    let hash = 0x811c9dc5;
-    for (let index = 0; index < input.length; index += 1) {
-        hash ^= input.charCodeAt(index);
-        hash = Math.imul(hash, 0x01000193);
-    }
-    return (hash >>> 0).toString(16).padStart(8, '0');
-}
-
 async function sha256Hex(input: string): Promise<string> {
-    if (typeof crypto !== 'undefined' && crypto.subtle && typeof TextEncoder !== 'undefined') {
-        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
-        return Array.from(new Uint8Array(digest))
-            .map((byte) => byte.toString(16).padStart(2, '0'))
-            .join('');
-    }
-
-    return fallbackHash(input);
+    return getMediaTextChecksum(input);
 }
 
 function buildMediaId(imageType: MediaImageType, checksum: string): string {
@@ -125,6 +110,46 @@ function bytesToMB(bytes: number): string {
 function normalizeMimeType(type?: string): string {
     if (!type) return '';
     return type.toLowerCase() === 'image/jpg' ? 'image/jpeg' : type.toLowerCase();
+}
+
+export async function validateMediaImageDataUrl(
+    dataUrl: string,
+    profile: MediaImageProfile,
+): Promise<string> {
+    if (!isDataUrl(dataUrl)) {
+        throw new Error('Use a valid image file.');
+    }
+
+    const mimeType = normalizeMimeType(getDataUrlMimeType(dataUrl, ''));
+    if (!profile.allowedMimeTypes.includes(mimeType)) {
+        throw new Error('Use a JPG, PNG, or WebP image.');
+    }
+
+    let size: number;
+    try {
+        size = getDataUrlBlob(dataUrl).size;
+    } catch {
+        throw new Error('Use a valid image file.');
+    }
+
+    if (size <= 0) {
+        throw new Error('Use a valid image file.');
+    }
+    if (size > profile.maxSourceBytes) {
+        throw new Error(`${profile.label} must be ${bytesToMB(profile.maxSourceBytes)}MB or smaller.`);
+    }
+
+    const validation = await validateImageFile({
+        base64: dataUrl,
+        maxSizeMB: profile.maxSourceBytes / BYTES_PER_MB,
+        mimeType,
+        size,
+    });
+    if (!validation.valid) {
+        throw new Error('Use a valid image file.');
+    }
+
+    return dataUrl;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -490,19 +515,7 @@ async function validateSourceFile(file: File, profile: MediaImageProfile): Promi
         throw new Error(`${profile.label} must be ${bytesToMB(profile.maxSourceBytes)}MB or smaller.`);
     }
 
-    const dataUrl = await readFileAsDataUrl(file);
-    const validation = await validateImageFile({
-        base64: dataUrl,
-        maxSizeMB: profile.maxSourceBytes / BYTES_PER_MB,
-        mimeType,
-        size: file.size,
-    });
-
-    if (!validation.valid) {
-        throw new Error('Use a valid image file.');
-    }
-
-    return dataUrl;
+    return validateMediaImageDataUrl(await readFileAsDataUrl(file), profile);
 }
 
 async function validateSourceBlob(blob: Blob, profile: MediaImageProfile): Promise<string> {
@@ -520,7 +533,7 @@ async function validateSourceBlob(blob: Blob, profile: MediaImageProfile): Promi
         throw new Error(`${profile.label} must be ${bytesToMB(profile.maxSourceBytes)}MB or smaller.`);
     }
 
-    return readFileAsDataUrl(blob);
+    return validateMediaImageDataUrl(await readFileAsDataUrl(blob), profile);
 }
 
 function buildPreparedVariant(
@@ -646,7 +659,7 @@ async function prepareRawMediaImage(
         ? await validateSourceFile(source, profile)
         : isBlob(source)
             ? await validateSourceBlob(source, profile)
-            : source;
+            : await validateMediaImageDataUrl(source, profile);
     const img = await loadImage(dataUrl);
     const originalSize = typeof source === 'string'
         ? estimateDataUrlSize(source)
@@ -716,7 +729,9 @@ export async function prepareMediaImage(
 
     const validatedSource = isFile(source)
         ? await validateSourceFile(source, profile)
-        : source;
+        : isBlob(source)
+            ? await validateSourceBlob(source, profile)
+            : await validateMediaImageDataUrl(source, profile);
     const sourceDataUrl = typeof validatedSource === 'string' ? validatedSource : undefined;
     const img = await loadImage(validatedSource);
     const originalSize = typeof source === 'string'

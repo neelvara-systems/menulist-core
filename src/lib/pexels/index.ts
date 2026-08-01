@@ -6,6 +6,7 @@ import {
     normalizeImageProviderOrientation,
     normalizeImageProviderPage,
     normalizeImageProviderQuery,
+    normalizeImageProviderResultUrl,
 } from "@lib/imageProviderRequests";
 import { axiosClient } from "../axios/axiosClient";
 
@@ -22,7 +23,46 @@ export const PEXELS_IMAGE_SIZES = {
     "landscape": 'landscape',//21kb webp
     "tiny": 'tiny'//3kb webp
 }
-export const getPexelsImagesBySearchQuery = (searchQuery: any, orientation = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE, page = 1) => {
+
+export interface PexelsImageSearchResult {
+    images: Array<{ src: string; thumb: string }>;
+    total: number;
+    totalPages: number;
+}
+
+export const parsePexelsImageSearchResponse = (value: unknown): PexelsImageSearchResult | null => {
+    try {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        const payload = value as Record<string, unknown>;
+        if (!Number.isSafeInteger(payload.total_results) || (payload.total_results as number) < 0 || !Array.isArray(payload.photos)) return null;
+        if (payload.photos.length > SEARCHED_IMAGES_COUNT_PER_REQUEST_PEXELS) return null;
+        const images = payload.photos.map((item) => {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+            const source = (item as Record<string, unknown>).src;
+            if (!source || typeof source !== 'object' || Array.isArray(source)) return null;
+            const urls = source as Record<string, unknown>;
+            const src = normalizeImageProviderResultUrl(urls.large2x, ['images.pexels.com'])
+                || normalizeImageProviderResultUrl(urls.original, ['images.pexels.com']);
+            const thumb = normalizeImageProviderResultUrl(urls.large, ['images.pexels.com']);
+            return src && thumb ? { src, thumb } : null;
+        });
+        if (images.some((image) => image === null)) return null;
+        const total = payload.total_results as number;
+        return {
+            total,
+            totalPages: Math.ceil(total / SEARCHED_IMAGES_COUNT_PER_REQUEST_PEXELS),
+            images: images as PexelsImageSearchResult['images'],
+        };
+    } catch {
+        return null;
+    }
+};
+
+export const getPexelsImagesBySearchQuery = async (
+    searchQuery: unknown,
+    orientation: unknown = BACKGROUND_IMAGES_ORIENTATIONS.LANDSCAPE,
+    page: unknown = 1,
+): Promise<PexelsImageSearchResult> => {
     const normalizedOrientation = normalizeImageProviderOrientation(orientation);
     const normalizedPage = normalizeImageProviderPage(page);
     const requestUrl = buildImageProviderUrl(SEARCH_API_URL, {
@@ -32,31 +72,27 @@ export const getPexelsImagesBySearchQuery = (searchQuery: any, orientation = BAC
         query: normalizeImageProviderQuery(searchQuery),
     });
 
-    return new Promise((res, rej) => {
-        axiosClient.GET(requestUrl, {
+    try {
+        const response = await axiosClient.GET(requestUrl, {
             headers: {
                 Accept: "application/json",
                 Authorization: process.env.NEXT_PUBLIC_PEXELS_API_CLIENTID || '',
             },
             timeout: IMAGE_PROVIDER_REQUEST_TIMEOUT_MS,
-        }).then((response) => {
-            const data = {
-                total: response.data.total_results,
-                totalPages: (response.data.total_results / SEARCHED_IMAGES_COUNT_PER_REQUEST_PEXELS).toFixed(),
-                images: response.data.photos.map((i: any) => { return { src: i.src.large2x || i.src.original, thumb: i.src.large } })
-            }
-            res(data);
-        }).catch(function (error) {
-            logImageProviderFailure('image_provider_pexels_search_failed', error, getImageProviderRequestLogContext({
-                operation: 'search',
-                orientation: normalizedOrientation,
-                page: normalizedPage,
-                provider: 'pexels',
-                query: searchQuery,
-            }));
-            rej('Error while fetching images');
         });
-    })
+        const parsed = parsePexelsImageSearchResponse(response.data);
+        if (!parsed) throw new Error('IMAGE_PROVIDER_RESPONSE_INVALID');
+        return parsed;
+    } catch (error) {
+        logImageProviderFailure('image_provider_pexels_search_failed', error, getImageProviderRequestLogContext({
+            operation: 'search',
+            orientation: normalizedOrientation,
+            page: normalizedPage,
+            provider: 'pexels',
+            query: searchQuery,
+        }));
+        throw new Error('Error while fetching images');
+    }
 }
 
 // {

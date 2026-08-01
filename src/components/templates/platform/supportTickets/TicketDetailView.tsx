@@ -8,6 +8,8 @@ import { rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/an
 import { assertSupportTicketUpdateSucceeded, updateTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedAnswerlatticeStringContext } from '@lib/answerlattice/diagnostics';
+import { loadAnswerlatticeAnswerTrace } from '@lib/answerlattice/answerTraceClient';
+import type { AnswerlatticeAnswerTrace } from '@lib/answerlattice/answerTraceContracts';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getSupportTicketAttachmentDownloadUrl } from '@lib/answerlattice/supportTicketAttachmentBoundary';
 import { answerlatticeApp } from '@lib/firebase/answerlatticeFirebaseClient';
@@ -24,8 +26,9 @@ import {
 import { Badge, Button, Card, Drawer, Flex, Grid, Image as AntImage, message, Tag, theme, Tooltip, Typography } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { LuBookOpen, LuBug, LuClock, LuFile, LuGitPullRequest, LuMessageSquare, LuPaperclip, LuPen } from 'react-icons/lu';
+import { useEffect, useRef, useState } from 'react';
+import { LuBookOpen, LuBug, LuClock, LuFile, LuGitPullRequest, LuMessageSquare, LuPaperclip, LuPen, LuRouter } from 'react-icons/lu';
+import AnswerTraceDrawer from '../../answerlattice/governance/AnswerTraceDrawer';
 import ConversationTimeline from './ConversationTimeline';
 import TicketActions from './TicketActions';
 import TicketLogsView from './TicketLogsView';
@@ -47,6 +50,10 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
     const { data: session } = useSession();
     const [ticket, setTicket] = useState<SupportTicketType | null>(activeTicket);
     const [isLogsModalVisible, setIsLogsModalVisible] = useState(false);
+    const [answerTrace, setAnswerTrace] = useState<AnswerlatticeAnswerTrace | null>(null);
+    const [answerTraceLoading, setAnswerTraceLoading] = useState(false);
+    const answerTraceRequestRef = useRef(0);
+    const answerTraceInFlightRef = useRef(false);
     const isMobile = !screens.md;
     const isClientView = from === "client";
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
@@ -82,7 +89,15 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
     };
 
     useEffect(() => {
+        answerTraceRequestRef.current += 1;
         setTicket(activeTicket);
+        setAnswerTrace(null);
+        setAnswerTraceLoading(false);
+        answerTraceInFlightRef.current = false;
+        return () => {
+            answerTraceRequestRef.current += 1;
+            answerTraceInFlightRef.current = false;
+        };
     }, [activeTicket, from]);
 
     // Keyboard shortcut: Esc to close modal
@@ -98,7 +113,11 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
     }, [ticket, setSelectedTicket]);
 
     const handleTicketUpdate = async (values: Partial<SupportTicketType>) => {
-        if (!ticket || !session?.user) return;
+        if (!ticket || !activeTicket || !session?.user) return;
+        if (typeof ticket.tId !== 'number' || typeof ticket.sId !== 'number') {
+            message.error('Ticket workspace is unavailable. Refresh and try again.');
+            return;
+        }
 
         const updatePayload = { ...values };
         const statusChanged = Boolean(values.status && values.status !== activeTicket.status);
@@ -204,6 +223,33 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
             getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE),
             currentHostname,
         ));
+    };
+    const openAnswerTrace = async () => {
+        const searchHistoryId = ticket.widgetEscalation?.searchHistoryId;
+        if (!searchHistoryId || answerTraceInFlightRef.current) return;
+        const requestId = answerTraceRequestRef.current + 1;
+        answerTraceRequestRef.current = requestId;
+        answerTraceInFlightRef.current = true;
+        setAnswerTraceLoading(true);
+        try {
+            const trace = await loadAnswerlatticeAnswerTrace(searchHistoryId);
+            if (answerTraceRequestRef.current !== requestId) return;
+            if (!trace) throw new Error('answer_trace_not_available');
+            setAnswerTrace(trace);
+        } catch (error) {
+            if (answerTraceRequestRef.current !== requestId) return;
+            logRuntimeFailure('answerlattice_ticket_answer_trace_load_failed', error, {
+                ...getBoundedRuntimeStringContext('ticketId', ticket.id),
+                ...getBoundedRuntimeStringContext('ticketDisplayId', ticket.displayId),
+                hasSearchHistoryId: true,
+            });
+            message.error('Answer trace is no longer available.');
+        } finally {
+            if (answerTraceRequestRef.current === requestId) {
+                answerTraceInFlightRef.current = false;
+                setAnswerTraceLoading(false);
+            }
+        }
     };
 
     const drawerTitle = isMobile ? (
@@ -484,6 +530,18 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 >
                     Open Signal Queue
                 </Button>
+                {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TRACE
+                    && ticket.widgetEscalation?.searchHistoryId ? (
+                        <Button
+                            block={isMobile}
+                            icon={<LuRouter />}
+                            loading={answerTraceLoading}
+                            onClick={openAnswerTrace}
+                            style={{ minHeight: 44 }}
+                        >
+                            Inspect answer trace
+                        </Button>
+                    ) : null}
             </Flex>
         </Card>
     ) : null;
@@ -615,6 +673,12 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 onClose={() => setIsLogsModalVisible(false)}
                 logs={ticket.logs || []}
                 clientDebugContext={ticket.clientDebugContext}
+            />
+            <AnswerTraceDrawer
+                governanceActions={false}
+                onClose={() => setAnswerTrace(null)}
+                open={Boolean(answerTrace)}
+                trace={answerTrace}
             />
         </Drawer>
     );

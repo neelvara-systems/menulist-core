@@ -416,6 +416,8 @@ function verifyApiSecurityAndActions() {
   }
 
   const actions = read("src/app/api/signaldesk/actions/route.ts");
+  assertIncludes(actions, "const mobileAction = ActionEnvelopeSchema.shape.action.parse(envelope.data.action);", "SignalDesk mobile action class uses an exact schema discriminator");
+  assertIncludes(actions, "SIGNALDESK_MOBILE_ACTION_CLASS[mobileAction]", "SignalDesk mobile action class exact registry lookup");
   const access = read("src/lib/signaldesk/access.ts");
   const accessContracts = read("src/lib/signaldesk/accessContracts.ts");
   const auditContracts = read("src/lib/signaldesk/auditContracts.ts");
@@ -431,6 +433,8 @@ function verifyApiSecurityAndActions() {
   const killSwitches = read("src/app/api/signaldesk/kill-switches/route.ts");
   const types = read("src/types/signaldesk/index.ts");
   const workflow = read("src/lib/signaldesk/workflowServer.ts");
+  const documentIdBoundary = read("src/lib/signaldesk/documentIdBoundary.ts");
+  const targetContracts = read("src/lib/signaldesk/targetContracts.ts");
   const workspaceContracts = read("src/lib/signaldesk/workspaceContracts.ts");
   const overviewServer = read("src/lib/signaldesk/server.ts");
   const overviewHook = read("src/hooks/signaldesk/useSignalDeskOverview.ts");
@@ -730,7 +734,7 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, 'throw new Error("MESSAGE_EXPORT_EMAIL_APPROVAL_REQUIRED")', "Email export requires an email approval and draft");
   assertIncludes(workflow, "assisted-handoff-v1", "Assisted handoff uses deterministic approval/channel identity");
   assertIncludes(workflow, 'throw new Error("Assisted handoff truth is stale")', "Assisted handoff verifies current approval/draft/target coupling");
-  assertIncludes(workflow, "recipient: null,", "Assisted handoff replay redacts recipient data");
+  assertIncludes(workflow, "recipient: NULL_STRING,", "Assisted handoff replay redacts recipient data");
   assertIncludes(workflow, "recipientPreview: normalizeText(priorExport.recipientPreview) || null", "Assisted handoff replay returns only its durable masked recipient preview");
   assertIncludes(workflow, "replay: true,", "Assisted handoff replay marks replay truth");
   assertNotIncludes(workflow, "const loadApprovedMessageContext", "Retired pre-transaction outbound helper is absent");
@@ -846,8 +850,8 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, "readOfferCtas(db, true)", "Daily missions consume only active offers with current nested authority");
   assertIncludes(workflow, "upsertSignalDeskReplyPlaybookServer", "Reply playbook server path");
   assertIncludes(workflow, "createSignalDeskSourceQualitySnapshotServer", "Source quality snapshot server path");
-  assertIncludes(workflow, "const activatedTargetIds = new Set(outcomes", "Source quality counts distinct activated targets");
-  assertIncludes(workflow, "Boolean(outcome.targetId && targetIds.has(outcome.targetId))", "Source quality only attributes outcomes from related targets");
+  assertIncludes(workflow, '.where("sourceRunId", "==", sourceRunId)', "Source quality reads targets through exact source-run authority");
+  assertIncludes(workflow, "relatedTargets.filter(hasVerifiedSignalDeskActivation).length", "Source quality counts distinct durable target activations");
   assertIncludes(e2eLocal, "Source-quality snapshot attributed another source's activation", "Source-quality cross-source attribution has emulator coverage");
   assertIncludes(e2eLocal, "Source-quality snapshot counted repeated outcomes instead of distinct activated targets", "Source-quality repeated-outcome rate has emulator coverage");
   assertIncludes(actions, "Stop playbooks must use the suppression route", "Reply-playbook API enforces suppression-only stop handling");
@@ -911,7 +915,39 @@ function verifyApiSecurityAndActions() {
   assertIncludes(e2eLocal, "Trust-partner deliverable replay did not return the original evidence", "Trust deliverable idempotency has emulator coverage");
   assertIncludes(e2eLocal, "Paused trust-partner niche admission", "Trust rail pause admission has emulator coverage");
   assertIncludes(workflow, "upsertSignalDeskContentSourceServer", "Content source server path");
-  assertIncludes(actions, "defaultMarketPodId: z.string().trim().max(160).nullable().optional(),\n    idempotencyKey: z.string().trim().min(8).max(180),", "Content source API requires bounded retry identity and explicit pod clearing");
+  assertIncludes(actions, "defaultMarketPodId: z.string().refine((value) => normalizeSignalDeskDocumentId(value, 160) !== null).nullable().optional(),\n    idempotencyKey: z.string().trim().min(8).max(180),", "Content source API requires bounded retry identity, canonical document IDs and explicit pod clearing");
+  assertIncludes(documentIdBoundary, "normalized !== value", "SignalDesk document IDs reject whitespace-mutated identity");
+  assertIncludes(documentIdBoundary, "!isValidFirestoreDocumentId(normalized)", "SignalDesk document IDs reject reserved and path-shaped identity");
+  assertIncludes(workflow, 'const explicitContentSourceId = optionalSignalDeskDocumentId(', "Content source server revalidates direct document identity");
+  assertIncludes(workflow, 'requireSignalDeskDocumentId(\n        input.experimentCardId,', "Experiment review server revalidates direct document identity");
+  assertIncludes(workflow, 'optionalSignalDeskDocumentId(input.offerCtaId, "OFFER_CTA_ID_INVALID")', "Offer CTA server revalidates direct document identity");
+  assertIncludes(workflow, 'requireSignalDeskDocumentId(sourcePolicyId, "OPERATING_ENVELOPE_SOURCE_POLICY_ID_INVALID", 160)', "Operating-envelope source-policy arrays are revalidated before Firestore references");
+  assertIncludes(workflow, 'requireSignalDeskDocumentId(templateId, "OPERATING_ENVELOPE_TEMPLATE_ID_INVALID", 160)', "Operating-envelope template arrays are revalidated before Firestore references");
+  assertIncludes(workflow, 'requireSignalDeskDocumentId(partnerId, "TRUST_PARTNER_ID_INVALID")', "Trust-partner arrays are revalidated before Firestore references");
+  assertIncludes(workflow, 'optionalSignalDeskDocumentId(input.teamMemberId, "SIGNALDESK_TEAM_MEMBER_ID_INVALID")', "Team-member aliases cannot bypass the document-ID boundary");
+  assertIncludes(workflow, 'const conversationId = requireSignalDeskDocumentId(input.conversationId, "REPLY_CONVERSATION_ID_INVALID", 200)', "Reply capture revalidates exact conversation identity server-side");
+  assertIncludes(workflow, 'const targetId = requireSignalDeskDocumentId(input.targetId, "OUTBOUND_TARGET_ID_INVALID", 160)', "Route-token admission validates target identity before idempotency reads");
+  assertIncludes(workflow, 'const targetId = requireSignalDeskDocumentId(input.targetId, "OUTCOME_TARGET_REQUIRED", 160)', "Outcome admission validates target identity before idempotency reads");
+  assertIncludes(workflow, '"SOURCE_PROVIDER_REPLAY_TARGET_ID_INVALID"', "Persisted provider replays reject malformed target references");
+  assertIncludes(workflow, '"CONTENT_DRAFT_DEPENDENCY_SHAPE_INVALID"', "Content reconciliation fails closed on malformed persisted asset references");
+  assertIncludes(e2eLocal, "Path-shaped content-source ID", "Content source document-ID rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped content-source pod ID", "Content source authority document-ID rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped persisted source authority reached the workspace", "Persisted content-source references cannot be normalized into workspace authority");
+  assertIncludes(e2eLocal, "Path-shaped offer CTA ID", "Offer CTA document-ID rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped experiment authority ID", "Experiment authority document-ID rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped experiment review ID", "Experiment review document-ID rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped operating-envelope source policy", "Operating-envelope source-policy path rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Whitespace-mutated operating-envelope template", "Operating-envelope template identity normalization rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped trust-partner niche identity", "Trust-partner array identity rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped trust-partner renewal partner", "Trust-partner renewal path rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Whitespace-mutated trust-partner renewal niche", "Trust-partner renewal identity normalization rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped reply conversation identity", "Reply-conversation path rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped route-token target", "Route-token target path rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped route-token source action", "Route-token action path rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Whitespace-mutated route-token CTA", "Route-token CTA identity normalization rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped route-token template", "Route-token template path rejection has emulator coverage");
+  assertIncludes(e2eLocal, "Path-shaped persisted content-asset authority reached the workspace", "Persisted content-asset references cannot be normalized into workspace authority");
+  assertIncludes(e2eLocal, "Math.max(0, humanReviewBeforeContentReview - 1)", "Content-review concurrency regression preserves the queue zero floor");
   assertIncludes(workflow, "CONTENT_SOURCE_IDEMPOTENCY_KEY_REQUIRED", "Content source server requires operation identity");
   assertIncludes(workflow, 'doc(`content_source_${operationHash}`)', "Content source claims actor-bound operation identity");
   assertIncludes(workflow, "legacyContentSourceIdFor", "Content source identity preserves matching legacy documents");
@@ -1036,8 +1072,8 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, "unsupportedClaims?.length", "Approval review blocks unsupported draft claims");
   assertIncludes(workflow, "assertSourcePolicyUsable", "Workflow centralizes source policy active/expiry guard");
   assertIncludes(workflow, "appendSourcePolicyBlockedAudit", "Workflow audits source policy blocks");
-  assertIncludes(workflow, "const requestedSourcePolicyId = normalizeText(input.sourcePolicyId)", "Research runs require one caller-selected source policy");
-  assertIncludes(workflow, 'throw new Error("RESEARCH_SOURCE_POLICY_ID_REQUIRED")', "Research runs fail closed without explicit source-policy identity");
+  assertIncludes(workflow, "const requestedSourcePolicyId = requireSignalDeskDocumentId(", "Research runs require one path-safe caller-selected source policy");
+  assertIncludes(workflow, '"RESEARCH_SOURCE_POLICY_ID_REQUIRED"', "Research runs fail closed without explicit source-policy identity");
   assertNotIncludes(workflow, "SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED", "Research runs do not auto-select policy authority from a bounded scan");
   assertNotIncludes(workflow, '.where("provider", "==", provider)', "Research policy authority is not inferred from provider scans");
   assertIncludes(workflow, "isSourcePolicyExpired", "Workflow checks source policy expiry");
@@ -1117,6 +1153,11 @@ function verifyApiSecurityAndActions() {
   assertIncludes(outcomeBridgeServer, "parseSignalDeskRouteTokenDocument", "Outcome bridge delegates route-token scope validation to the strict authority contract");
   assertIncludes(outcomeBridgeServer, "routeTokenValidation", "Outcome bridge delegates authoritative token validation to the outcome transaction");
   assertNotIncludes(outcomeBridgeServer, "token: payload.routeToken", "Outcome bridge does not persist the raw route token");
+  assertIncludes(outcomeBridgeServer, "normalizeSignalDeskDocumentId(value, 160) !== null", "Outcome bridge rejects path-shaped or whitespace-mutated target identity before persistence");
+  assertIncludes(e2eLocal, "Path-shaped outcome bridge target", "Signed outcome bridge path-shaped target rejection has local E2E coverage");
+  assertIncludes(e2eLocal, "Whitespace-mutated outcome bridge target", "Signed outcome bridge rejects identity normalization before route lookup");
+  assertIncludes(targetContracts, "const nullableDocumentId =", "Persisted SignalDesk references use the canonical document-ID boundary");
+  assertIncludes(targetContracts, "sourcePolicyId: z.string().min(3).max(160).refine(", "Target imports reject path-shaped or whitespace-mutated source-policy identity");
   assertIncludes(outcomeContracts, "parseSignalDeskRouteTokenDocument", "Persisted route tokens use a strict authority contract");
   assertIncludes(outcomeContracts, "parseSignalDeskOutcomeEventDocument", "Persisted outcome events use a strict authority contract");
   assertIncludes(outcomeContracts, "parseSignalDeskOutcomeSummaryDocument", "Persisted outcome summaries use a strict DTO projector");
@@ -1438,7 +1479,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(assistedHandoffWorkflow, "approval.channel !== input.channel || draft.channel !== input.channel", "Assisted handoff cannot reuse approval authority across channels");
   assertIncludes(workspace, "actionDisabled || !canExportMessages || channel !== approval.channel", "Assisted handoff UI enforces export permission and disables cross-channel approval reuse");
   assertIncludes(assistedHandoffWorkflow, "isSignalDeskOutboundReplayAuthorityCurrent(", "Assisted replay revalidates current contact, policy, suppression, pause, and window authority");
-  assertIncludes(assistedHandoffWorkflow, "recipient: null,", "Assisted replay returns a redacted historical acknowledgement");
+  assertIncludes(assistedHandoffWorkflow, "recipient: NULL_STRING,", "Assisted replay returns a redacted historical acknowledgement");
   assertIncludes(assistedHandoffWorkflow, "recipientPreview: normalizeText(priorExport.recipientPreview) || null", "Assisted replay exposes only its durable masked recipient preview");
   assertIncludes(assistedHandoffWorkflow, "replay: true,", "Assisted replay retains durable replay truth");
   assertIncludes(assistedHandoffWorkflow, "canRevealSignalDeskContact(access)", "Assisted handoff requires explicit contact-reveal authority before returning raw identity");
@@ -1548,7 +1589,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(workflow, "approval?.approvalPacketId || `packet_${approval?.approvalId || target.targetId}`", "Approval packet refresh preserves the current packet identity");
   assertIncludes(e2eLocal, "Approval packet refresh repointed the pending approval", "Approval packet refresh identity has E2E coverage");
   assertIncludes(workflow, "assertProviderBudgetState", "Provider budget admission shares one transaction-compatible validator");
-  assertIncludes(actions, "idempotencyKey: z.string().trim().min(8).max(180),\n    targetId: z.string().trim().min(3).max(160),\n    waterfallId:", "Enrichment waterfall API requires bounded retry identity");
+  assertIncludes(actions, "idempotencyKey: z.string().trim().min(8).max(180),\n    targetId: signalDeskDocumentIdSchema(160),\n    waterfallId:", "Enrichment waterfall API requires path-safe target identity and bounded retry identity");
   assertIncludes(workspace, "enrichmentWaterfallRetry?.requestKey === requestKey", "Enrichment waterfall browser retains exact-input retry identity");
   assertIncludes(workflow, 'doc(`enrichment_waterfall_${operationHash}`)', "Enrichment waterfall claims actor-bound operation identity");
   assertIncludes(workflow, 'transaction.get(pauseRef)', "Enrichment waterfall reads current provider pause inside settlement");
@@ -1627,7 +1668,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(e2eLocal, "Concurrent content scheduling did not converge", "Content schedule concurrency has local E2E coverage");
   assertIncludes(e2eLocal, "Paused content scheduling did not persist a conservative hold", "Content pause permits a conservative schedule hold in local E2E");
   assertIncludes(e2eLocal, "Paused content schedule settlement (advancement)", "Content pause blocks schedule advancement in local E2E");
-  assertIncludes(actions, "approvalStatus: z.enum([\"approved\", \"rejected\", \"hold\"]),\n    contentDraftId: z.string().trim().min(3).max(180),\n    idempotencyKey:", "Content review API requires bounded retry identity");
+  assertIncludes(actions, "approvalStatus: z.enum([\"approved\", \"rejected\", \"hold\"]),\n    contentDraftId: signalDeskDocumentIdSchema(180),\n    idempotencyKey:", "Content review API requires path-safe draft identity and bounded retry identity");
   assertIncludes(workspace, "contentReviewRetry?.requestKey === requestKey", "Content review browser retains exact-input retry identity");
   assertIncludes(workflow, 'doc(`content_review_${operationHash}`)', "Content review claims actor-bound operation identity");
   assertIncludes(workflow, 'throw new Error("CONTENT_REVIEW_IDEMPOTENCY_CONFLICT")', "Content review changed-input retries fail closed");
@@ -1636,7 +1677,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(e2eLocal, "Paused content review did not persist a conservative hold", "Content pause permits a conservative draft hold in local E2E");
   assertIncludes(e2eLocal, "Paused content review did not persist a rejection", "Content pause permits draft rejection in local E2E");
   assertIncludes(e2eLocal, "Paused content review settlement (advancement)", "Content pause blocks draft approval advancement in local E2E");
-  assertIncludes(actions, "channels: z.array(ContentChannelSchema).min(1).max(8),\n    contentAssetId: z.string().trim().min(3).max(180),\n    idempotencyKey:", "Content draft generation API requires bounded retry identity");
+  assertIncludes(actions, "channels: z.array(ContentChannelSchema).min(1).max(8),\n    contentAssetId: signalDeskDocumentIdSchema(180),\n    idempotencyKey:", "Content draft generation API requires path-safe asset identity and bounded retry identity");
   assertIncludes(workspace, "contentDraftGenerationRetry?.requestKey === requestKey", "Content draft generation browser retains exact-input retry identity");
   assertIncludes(workflow, 'doc(`content_draft_generation_${operationHash}`)', "Content draft generation claims actor-bound operation identity");
   assertIncludes(workflow, "permissionRef ? transaction.get(permissionRef) : Promise.resolve(null)", "Shared content authority reads current proof permission inside settlement");
@@ -1703,7 +1744,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(e2eLocal, "Historical export replay did not expose noncanonical CTA revocation", "Historical noncanonical preview lineage returns redacted revoked authority in local E2E");
   assertIncludes(e2eLocal, "Reordered trust-brief claims created a duplicate deterministic brief", "Canonical trust claims have local E2E coverage");
   assertIncludes(e2eLocal, "Malformed same-product trust brief reconciliation", "Malformed trust dependency reconciliation has local E2E coverage");
-  assertIncludes(actions, "ctaId: z.string().trim().max(160).optional(),\n    idempotencyKey:", "Content asset API requires bounded retry identity");
+  assertIncludes(actions, "ctaId: signalDeskDocumentIdSchema(160).optional(),\n    idempotencyKey:", "Content asset API requires path-safe CTA identity and bounded retry identity");
   assertIncludes(actions, "const ContentAssetReviewSchema = z.object({", "Content asset lifecycle has a dedicated runtime boundary schema");
   assertIncludes(actions, 'status: z.enum(["ready", "hold", "archived"])', "Content asset lifecycle API exposes only bounded review transitions");
   assertIncludes(actions, 'if (action === "review-content-asset") return "draft.approve"', "Content asset lifecycle requires approval permission");
@@ -2205,6 +2246,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(demandSignalContracts, "demandSignalEventSchema", "Demand-signal events use a strict authority contract");
   assertIncludes(demandSignalContracts, "demandSignalSummarySchema", "Demand-signal summaries use a strict authority contract");
   assertIncludes(demandSignalContracts, "demandSignalClaimSchema", "Demand-signal replay claims use a strict authority contract");
+  assertIncludes(demandSignalContracts, "normalizeSignalDeskDocumentId(value, max) !== null", "Demand-signal persisted references reject path-shaped identity");
   assertIncludes(workflow, "parseSignalDeskDemandSignalClaimDocument(claimSnap.data())", "Demand replay validates its actor-bound claim");
   assertIncludes(workflow, "parseSignalDeskDemandSignalEventDocument(signalSnap.data(), signalSnap.id)", "Demand replay validates its durable event");
   assertIncludes(workflow, "const replaySummaryId = `${eventDay}_${event.signalType}_${event.sourceSurface}_${event.targetId || \"general\"}`;", "Demand replay derives summary identity from the immutable event day");
@@ -2271,7 +2313,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(workspace, "Manual Contact", "Conversations UI exposes manual contact confirmation");
   assertIncludes(workspace, "Choose rejection reason", "Approval UI requires a structured rejection reason");
   assertIncludes(e2eLocal, "assertManualContactGuards", "Local E2E covers manual contact gates");
-  assertIncludes(actions, "conversationId: z.string().trim().min(3).max(200)", "Reply capture accepts exact conversation lineage instead of caller-selected target/channel");
+  assertIncludes(actions, "conversationId: signalDeskDocumentIdSchema(200)", "Reply capture accepts exact path-safe conversation lineage instead of caller-selected target/channel");
   assertNotIncludes(actions, "captureSignalDeskReplyServer(accessResult.access, payload.data as any)", "Reply route does not cast away the validated conversation DTO");
   assertIncludes(workflow, 'if (conversation.state === "new") throw new Error("Reply conversation has no outbound lineage")', "Reply capture requires persisted outbound/contact lineage");
   assertIncludes(workflow, "target.latestConversationId !== conversation.conversationId", "Reply capture requires the target's exact current conversation");
@@ -2736,7 +2778,8 @@ function verifySourcePolicyAndImportContracts() {
   assertIncludes(sourcePolicyContracts, 'parsed.data.sourceType === "provider"', "Persisted source policies recheck provider source semantics");
   assertIncludes(sourcePolicyContracts, 'parsed.data.refreshMethod === "provider-refresh"', "Persisted source policies recheck provider refresh semantics");
   assertIncludes(sourcePolicyContracts, "approved > currentTime + CLOCK_SKEW_MS || reviewed > currentTime + CLOCK_SKEW_MS", "Persisted source policies reject future approval and review authority");
-  assertIncludes(sourcePolicyContracts, 'typeof value.toDate !== "function"', "Persisted source-policy timestamps require Firestore Timestamp values");
+  assertIncludes(sourcePolicyContracts, 'typeof toDate !== "function"', "Persisted source-policy timestamps require Firestore Timestamp values");
+  assertIncludes(sourcePolicyContracts, 'throw new Error("SOURCE_POLICY_SHAPE_INVALID")', "Unexpected persisted source-policy traversal failures use the stable malformed-policy contract");
 
   assertIncludes(targetContracts, "SignalDeskTargetImportSchema", "Target-import runtime contract exists");
   assertIncludes(targetContracts, "SignalDeskManualTargetImportSchema", "Manual-import contract excludes provider-owned lineage fields");
@@ -2809,7 +2852,7 @@ function verifySourcePolicyAndImportContracts() {
   assertIncludes(workflow, "preservedTimestampFields", "Re-import preserves mature lifecycle timestamp authority");
   assertIncludes(workflow, "parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id)", "Target scoring validates persisted target truth before deriving a score");
   assertIncludes(workflow, "parseSignalDeskTargetScoreDocument(priorScoreSnap.data(), priorScoreSnap.id, targetId)", "Target scoring validates durable replay truth");
-  assertIncludes(workflow, "const requestedSourcePolicyId = normalizeText(input.sourcePolicyId)", "Research requires explicit source-policy identity");
+  assertIncludes(workflow, "const requestedSourcePolicyId = requireSignalDeskDocumentId(", "Research requires explicit path-safe source-policy identity");
   assertIncludes(workflow, "admin.firestore.Timestamp.fromMillis(ownerQualifiedMillis)", "Outcome target settlement persists owner qualification as Firestore Timestamp truth");
   assertIncludes(workflow, "persistedOwnerQualifiedAt || timestamp", "Reply capture preserves persisted owner qualification instead of round-tripping the DTO string");
   assertNotIncludes(workflow, "policy.allowedUse.import !== false", "Import authority no longer defaults open");

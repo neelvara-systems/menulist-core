@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import type { Project } from "@template/main-app/projects/types";
-import { isWithinTimeSlot } from "@hook/useTimedCategories";
+import {
+    getNextSlotOccurrence,
+    getNextSlotStart,
+    isCategoryVisibleByTime,
+    isWithinTimeSlot,
+} from "@hook/useTimedCategories";
 import {
     clockRangeAppliesOnDay,
     isMinuteWithinClockRange,
@@ -48,6 +53,25 @@ assert.equal(isWithinTimeSlot([
 assert.equal(isWithinTimeSlot([
     { days: [6], startTime: "22:00", endTime: "02:00" },
 ], "UTC", saturdayAtOneAm), false);
+const fridayDinnerCategory = {
+    id: "friday-dinner",
+    active: true,
+    name: { en: "Friday dinner" },
+    timeSlots: [{ days: [5], startTime: "22:00", endTime: "02:00" }],
+};
+assert.equal(isCategoryVisibleByTime(fridayDinnerCategory, "UTC", fridayAtElevenPm), true);
+assert.equal(isCategoryVisibleByTime(fridayDinnerCategory, "UTC", saturdayAtThreeAm), false);
+assert.equal(isCategoryVisibleByTime(fridayDinnerCategory, undefined, fridayAtElevenPm), true);
+assert.equal(isCategoryVisibleByTime(fridayDinnerCategory, "Invalid/Timezone", fridayAtElevenPm), true);
+assert.equal(getNextSlotStart(fridayDinnerCategory, "UTC", saturdayAtThreeAm), "22:00");
+assert.deepEqual(
+    getNextSlotOccurrence(fridayDinnerCategory, "UTC", saturdayAtThreeAm),
+    { dayOffset: 6, startTime: "22:00", weekday: 5 },
+);
+assert.equal(getNextSlotOccurrence({
+    ...fridayDinnerCategory,
+    timeSlots: [{ days: [5], startTime: "invalid", endTime: "02:00" }],
+}, "UTC", saturdayAtThreeAm), null);
 
 assert.equal(normalizeTimeSlotPresetId(" ts_123 "), "ts_123");
 assert.equal(normalizeTimeSlotPresetId("../ts_123"), null);

@@ -11,57 +11,58 @@ import { SupportTicketType } from '@type/supportTicket';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { registerPosSyncDeliveryConfig, unregisterPosSyncDeliveryConfig } from '@lib/posSync/eventBuilder';
 import type { StaffUserSummary } from '@lib/staffManagement/types';
+import type { EffectiveRolePermissions } from '@type/platform/roles';
 import { Timestamp } from 'firebase/firestore';
-import { createContext, type Dispatch, type SetStateAction, useEffect, useState } from 'react';
+import { createContext, type Dispatch, type ReactNode, type SetStateAction, useEffect } from 'react';
 
 export type PlatformGlobalDataProviderType = {
 
-    tenantDetails: TenantDataType;
-    setTenantDetails: any;
+    tenantDetails: TenantDataType | null;
+    setTenantDetails: Dispatch<SetStateAction<TenantDataType | null>>;
 
-    storeDetails: StoreDataType;
-    setStoreDetails: any;
+    storeDetails: StoreDataType | null;
+    setStoreDetails: Dispatch<SetStateAction<StoreDataType | null>>;
 
-    userPermissions: any;
-    setUserPermissions: any;
+    userPermissions: EffectiveRolePermissions | null;
+    setUserPermissions: Dispatch<SetStateAction<EffectiveRolePermissions | null>>;
 
     usersList: StaffUserSummary[] | null;
     setUsersList: Dispatch<SetStateAction<StaffUserSummary[] | null>>;
 
-    fontsList: FontPresetsType[];
-    setFontsList: any;
+    fontsList: FontPresetsType[] | null;
+    setFontsList: Dispatch<SetStateAction<FontPresetsType[] | null>>;
 
-    assetsList: { images: any[] };
-    setAssetsList: any;
+    assetsList: { images: import('@type/assets').AssetsCategoryType[] };
+    setAssetsList: Dispatch<SetStateAction<{ images: import('@type/assets').AssetsCategoryType[] }>>;
 
     activeSubscription: FirestoreSubscriptionDoc | null;
-    setActiveSubscription: any;
+    setActiveSubscription: Dispatch<SetStateAction<FirestoreSubscriptionDoc | null>>;
     activeSubscriptionLoading: boolean;
-    setActiveSubscriptionLoading: any;
+    setActiveSubscriptionLoading: Dispatch<SetStateAction<boolean>>;
 
     // Multi-Outlet Session Context (Feature #4C — T20/T21)
     isMasterUser: boolean;
     activeStoreContext: number | null;  // Which store user is viewing (null = own store)
     setActiveStoreContext: (storeId: number | null) => void;
 
-    cachedKBCategories: { cachedOn: Timestamp | null, kBCategories: KnowledgeBaseCategoriesType, scopeKey: string | null };
-    setCachedKBCategories: any;
+    cachedKBCategories: { cachedOn: Timestamp | null, kBCategories: KnowledgeBaseCategoriesType | null, scopeKey: string | null };
+    setCachedKBCategories: Dispatch<SetStateAction<PlatformGlobalDataProviderType['cachedKBCategories']>>;
 
-    cachedChangelog: { cachedOn: Timestamp | null, changelog: ChangelogPage, scopeKey: string | null };
-    setCachedChangelog: any;
+    cachedChangelog: { cachedOn: Timestamp | null, changelog: ChangelogPage | null, scopeKey: string | null };
+    setCachedChangelog: Dispatch<SetStateAction<PlatformGlobalDataProviderType['cachedChangelog']>>;
 
     cachedTickets: { cachedOn: Timestamp | null, tickets: SupportTicketType[], scopeKey: string | null };
-    setCachedTickets: any;
+    setCachedTickets: Dispatch<SetStateAction<PlatformGlobalDataProviderType['cachedTickets']>>;
 
     cachedArticles: { cachedOn: Timestamp | null, articles: AnswerlatticeReadableArticle[], scopeKey: string | null };
-    setCachedArticles: any;
+    setCachedArticles: Dispatch<SetStateAction<PlatformGlobalDataProviderType['cachedArticles']>>;
 
     platformStoreSummaryOptions: PlatformStoreSummaryOption[];
-    setPlatformStoreSummaryOptions: any;
+    setPlatformStoreSummaryOptions: Dispatch<SetStateAction<PlatformStoreSummaryOption[]>>;
     platformStoreSummaryLoadedAt: number | null;
-    setPlatformStoreSummaryLoadedAt: any;
+    setPlatformStoreSummaryLoadedAt: Dispatch<SetStateAction<number | null>>;
     platformStoreSummaryLoading: boolean;
-    setPlatformStoreSummaryLoading: any;
+    setPlatformStoreSummaryLoading: Dispatch<SetStateAction<boolean>>;
 }
 
 const InititalState: PlatformGlobalDataProviderType = {
@@ -115,27 +116,21 @@ const InititalState: PlatformGlobalDataProviderType = {
 
 export const PlatformGlobalDataContext = createContext<PlatformGlobalDataProviderType>(InititalState)
 
-function PlatformGlobalDataProvider({ children, contextData }: { children: any, contextData: PlatformGlobalDataProviderType }) {
-    const [contextState, setContextState] = useState(contextData)
-
+function PlatformGlobalDataProvider({ children, contextData }: { children: ReactNode, contextData: PlatformGlobalDataProviderType }) {
     useEffect(() => {
-        setContextState(contextData)
-    }, [contextData])
-
-    useEffect(() => {
-        const storeId = contextState?.storeDetails?.storeId;
-        const tenantId = contextState?.storeDetails?.tenantId;
-        registerPosSyncDeliveryConfig(storeId, tenantId, contextState?.storeDetails?.posSync);
+        const storeId = contextData.storeDetails?.storeId;
+        const tenantId = contextData.storeDetails?.tenantId;
+        registerPosSyncDeliveryConfig(storeId, tenantId, contextData.storeDetails?.posSync);
         return () => unregisterPosSyncDeliveryConfig(storeId, tenantId);
     }, [
-        contextState?.storeDetails?.posSync?.enabled,
-        contextState?.storeDetails?.posSync?.webhookUrl,
-        contextState?.storeDetails?.storeId,
-        contextState?.storeDetails?.tenantId,
+        contextData.storeDetails?.posSync?.enabled,
+        contextData.storeDetails?.posSync?.webhookUrl,
+        contextData.storeDetails?.storeId,
+        contextData.storeDetails?.tenantId,
     ])
 
     return (
-        <PlatformGlobalDataContext.Provider value={contextState} >
+        <PlatformGlobalDataContext.Provider value={contextData} >
             {children}
         </PlatformGlobalDataContext.Provider>
     )

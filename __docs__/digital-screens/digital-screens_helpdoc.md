@@ -160,6 +160,10 @@ Saved changes normally refresh connected screens after public cache invalidation
 2. Wait a few minutes for the screen cache/listener path to settle
 3. If still wrong, refresh the TV browser manually
 
+### "Will my screen use my business color?"
+
+Yes. Digital Screens automatically use the accent color from your Official Business Page for a few brand details such as the header line, category framing, and progress indicator. Menu text, prices, dietary markers, and the dark background stay in fixed high-contrast colors so customers can read them from a distance. There is no separate screen theme to maintain.
+
 ---
 
 ## Troubleshooting

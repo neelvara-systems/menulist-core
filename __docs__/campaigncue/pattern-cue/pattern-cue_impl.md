@@ -27,6 +27,11 @@
 9. Only a pack that actually contains a pattern-backed video or UGC output pins `patternCueSourceInputId` and `patternCueSourceHash`.
 10. Public-use actions compare the pinned hash with the current workspace hash.
 
+Persisted-observation type guards are total and non-coercive. Unknown values,
+hostile property access, and malformed URL values return `false`/`other`
+instead of invoking user-controlled coercion or throwing into an overview or
+campaign read.
+
 ## Feature Flags
 
 - `ENABLE_CAMPAIGNCUE_PATTERN_CUE: true` enables the deterministic workflow.

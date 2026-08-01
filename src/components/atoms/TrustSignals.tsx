@@ -22,6 +22,7 @@ import {
 import { localizePublicHoursText } from '@lib/localization/publicHoursText';
 import { getTrustSignalFreshnessText } from '@lib/menu/trustSignalFreshness';
 import { resolveHoursOutput } from '@lib/outputControl';
+import type { StoreSpecialHours } from '@type/platform/store';
 
 interface TrustSignalsProps {
     activeLanguage?: string;
@@ -31,6 +32,7 @@ interface TrustSignalsProps {
     locationArea?: string | null;
     city?: string | null;
     workingHours?: Record<string, string>;
+    specialHours?: StoreSpecialHours;
     timeZone?: string;
     /** When hours were last updated — used for confidence-gated rendering */
     hoursLastUpdatedAt?: any;
@@ -90,6 +92,7 @@ export default function TrustSignals({
     locationArea,
     city,
     workingHours,
+    specialHours,
     timeZone,
     hoursLastUpdatedAt,
     theme,
@@ -124,6 +127,7 @@ export default function TrustSignals({
         if (FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL) {
             const hoursOutput = resolveHoursOutput({
                 workingHours,
+                specialHours,
                 hoursLastUpdatedAt: hoursLastUpdatedAt,
                 timeZone,
             });
@@ -133,7 +137,7 @@ export default function TrustSignals({
                 : hoursOutput.styleHint === 'closed' ? '#dc2626'
                     : '#94a3b8'; // cautious/muted
         } else {
-            const status = getStoreStatus(workingHours, timeZone);
+            const status = getStoreStatus(workingHours, timeZone, undefined, new Date(), specialHours);
             statusText = localizePublicHoursText(status.statusText, t);
             statusSecondary = localizePublicHoursText(status.nextChange, t);
             statusColor = status.isOpen ? '#16a34a' : '#dc2626';

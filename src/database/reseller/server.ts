@@ -10,7 +10,8 @@ import {
     addNonNegativeSafeIntegers,
     isNonNegativeSafeInteger,
 } from "@lib/reseller/resellerMutationState";
-import { ResellerProfile, ResellerTransaction } from "@type/reseller";
+import { projectResellerProfileRecord } from "@lib/reseller/resellerProfileRecord";
+import type { ResellerProfileRecord, ResellerTransaction } from "@type/reseller";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 
 const TRANSACTIONS_COLLECTION = DB_COLLECTIONS.RESELLER_TRANSACTIONS;
@@ -64,13 +65,15 @@ type TimestampLike = {
 };
 
 const isTimestampLike = (value: unknown): value is TimestampLike => (
-    value
+    Boolean(value)
     && typeof value === "object"
     && typeof (value as Partial<TimestampLike>).toDate === "function"
     && typeof (value as Partial<TimestampLike>).seconds === "number"
 );
 
-const sanitizeForAdminFirestore = <T>(value: T): T => {
+const sanitizeForAdminFirestore = (
+    value: Record<string, unknown>,
+): Record<string, unknown> => {
     return sanitizeForFirestore(value, {
         atomicTransform: (atomicValue) => {
             if (!isTimestampLike(atomicValue)) return { handled: false };
@@ -81,11 +84,9 @@ const sanitizeForAdminFirestore = <T>(value: T): T => {
 
 const toResellerProfile = (
     docSnap: admin.firestore.DocumentSnapshot,
-): ResellerProfile | null => {
-    const { password: _password, ...data } = docSnap.data() || {};
-    if (data.deleted === true) return null;
-    return { ...data, id: docSnap.id } as ResellerProfile;
-};
+): ResellerProfileRecord | null => (
+    projectResellerProfileRecord(docSnap.id, docSnap.data())
+);
 
 export type ResellerProfileDocument = Record<string, unknown> & { id: string };
 
@@ -93,27 +94,39 @@ export const getResellerProfileServer = async (
     userId: string,
     email?: string | null,
     claimedProfileId?: string | null,
-): Promise<ResellerProfile | null> => {
+): Promise<ResellerProfileRecord | null> => {
+    if (!isValidFirestoreDocumentId(userId) || userId !== userId.trim()) return null;
     const directSnap = await firestoreAdmin.collection(PROFILES_COLLECTION).doc(userId).get();
     if (directSnap.exists) return toResellerProfile(directSnap);
 
     const normalizedEmail = email?.toLowerCase()?.trim();
-    if (!normalizedEmail) return null;
-
-    const emailSnapshot = await firestoreAdmin
-        .collection(PROFILES_COLLECTION)
-        .where("email", "==", normalizedEmail)
-        .limit(2)
-        .get();
+    if (!normalizedEmail || normalizedEmail.length > 320) return null;
 
     const normalizedClaim = claimedProfileId?.trim();
-    const matchingProfiles = emailSnapshot.docs
+    if (
+        normalizedClaim
+        && normalizedClaim === claimedProfileId
+        && isValidFirestoreDocumentId(normalizedClaim)
+    ) {
+        const claimedSnapshot = await firestoreAdmin
+            .collection(PROFILES_COLLECTION)
+            .doc(normalizedClaim)
+            .get();
+        const claimedProfile = claimedSnapshot.exists ? toResellerProfile(claimedSnapshot) : null;
+        return claimedProfile?.email.toLowerCase().trim() === normalizedEmail
+            ? claimedProfile
+            : null;
+    }
+
+    const actorSnapshot = await firestoreAdmin
+        .collection(PROFILES_COLLECTION)
+        .where("authUserId", "==", userId)
+        .limit(2)
+        .get();
+    const matchingProfiles = actorSnapshot.docs
         .map(toResellerProfile)
         .filter((profile) => profile !== null)
-        .filter((profile) => (
-            profile.authUserId === userId
-            || (normalizedClaim && profile.id === normalizedClaim)
-        ));
+        .filter((profile) => profile.email.toLowerCase().trim() === normalizedEmail);
     return matchingProfiles.length === 1 ? matchingProfiles[0] : null;
 };
 
@@ -131,7 +144,7 @@ export const getAllResellerProfilesServer = async (): Promise<ResellerProfileDoc
 
 export const getResellerProfileByIdServer = async (
     profileId: string,
-): Promise<ResellerProfile | null> => {
+): Promise<ResellerProfileRecord | null> => {
     const docSnap = await firestoreAdmin.collection(PROFILES_COLLECTION).doc(profileId).get();
     if (!docSnap.exists) return null;
     return toResellerProfile(docSnap);

@@ -136,8 +136,8 @@ function FeedbackAdminTemplate({
                         ? getFeedbackForWorkspace(scope.tId, scope.sId, FEEDBACK_REVIEW_WINDOW)
                         : getAllFeedback(FEEDBACK_REVIEW_WINDOW),
                     scope
-                        ? getProductSurfacesForSession(scope).catch(() => [])
-                        : Promise.resolve([]),
+                        ? getProductSurfacesForSession(scope).catch((): AnswerlatticeProductSurface[] => [])
+                        : Promise.resolve<AnswerlatticeProductSurface[]>([]),
                 ]);
                 setFeedbackList(result || []);
                 setSurfaces(surfaceResult || []);
@@ -309,9 +309,9 @@ function FeedbackAdminTemplate({
                                 {selected.rating && <Descriptions.Item label="Rating"><Rate disabled value={selected.rating} /></Descriptions.Item>}
                                 {selected.comment && <Descriptions.Item label="Comment">{selected.comment}</Descriptions.Item>}
                                 {selected.featureComment && <Descriptions.Item label="Feature Comment">{selected.featureComment}</Descriptions.Item>}
-                                {selected.featureIssues?.length > 0 && <Descriptions.Item label="Feature Issues">{selected.featureIssues.join(', ')}</Descriptions.Item>}
+                                {(selected.featureIssues?.length ?? 0) > 0 && <Descriptions.Item label="Feature Issues">{selected.featureIssues?.join(', ')}</Descriptions.Item>}
                                 {selected.featureRequest && <Descriptions.Item label="Feature Request">{selected.featureRequest}</Descriptions.Item>}
-                                {selected.votedPopularRequests?.length > 0 && <Descriptions.Item label="Voted On">{selected.votedPopularRequests.map(v => `${v.feature} (${v.interested ? 'interested' : 'not interested'})`).join(', ')}</Descriptions.Item>}
+                                {(selected.votedPopularRequests?.length ?? 0) > 0 && <Descriptions.Item label="Voted On">{selected.votedPopularRequests?.map(v => `${v.feature} (${v.interested ? 'interested' : 'not interested'})`).join(', ')}</Descriptions.Item>}
                                 <Descriptions.Item label="Product Surface">{getSurfaceDisplayLabel(selected) || 'Unsorted'}</Descriptions.Item>
                                 <Descriptions.Item label="Submitted"><DateTimeDisplay value={selected.createdOn} mode="datetime" /></Descriptions.Item>
                             </Descriptions>

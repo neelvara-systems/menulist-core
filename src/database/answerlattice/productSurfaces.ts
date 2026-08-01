@@ -1,12 +1,13 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
+import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { collection, doc, getDoc, getDocs, limit, query, runTransaction, where } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { appendAnswerlatticeCompiledContextSourceChange } from '@lib/answerlattice/compiledSourceVersionsClient';
 import { logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticeProductSurfaceId } from '@lib/answerlattice/productSurfaceIdBoundary';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import {
     ANSWERLATTICE_PRODUCT_SURFACE_LIMIT,
     getContextContentSummaryDocId,
@@ -16,10 +17,12 @@ import {
     parseProductSurfaceSaveInput,
 } from '@lib/answerlattice/productSurfaceContent';
 import {
+    answerlatticeProductSurfaceSummaryScopeSchema,
     type AnswerlatticeProductSurfaceSummaryScope,
     isExactAnswerlatticeProductSurfaceSummaryScope,
 } from '@lib/answerlattice/productSurfaceSummaryContracts';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type { AnswerlatticeProductSurface, AnswerlatticeSurfaceContentSummary } from '@type/answerlattice';
@@ -155,28 +158,35 @@ const readProductSurfaceSummaryRebuildResponse = async (
 };
 
 const normalizeProductSurfaceScope = (scope?: unknown) => {
-    const scopeRecord = isRecord(scope) ? scope : null;
-    const tId = normalizeAnswerlatticeScopeDocumentId(scopeRecord?.tId);
-    const sId = normalizeAnswerlatticeScopeDocumentId(scopeRecord?.sId);
-    if (!tId || !sId) return null;
-    return { tId, sId };
+    const parsed = answerlatticeProductSurfaceSummaryScopeSchema.safeParse(scope);
+    return parsed.success ? parsed.data : null;
 };
 
 const requireScope = async (scopeOverride?: unknown) => {
-    if (scopeOverride) {
+    const session = await getActiveSession();
+    const sessionScope = resolveAnswerlatticeSessionScope(session);
+    if (scopeOverride !== undefined) {
         const overrideScope = normalizeProductSurfaceScope(scopeOverride);
         if (!overrideScope) {
             throw new Error('Answerlattice workspace is not available.');
         }
+        const platformRole = resolveExactSessionPlatformRole(session);
+        const hasPlatformScope = platformRole === ECOMSAI_PLATFORM_USER_ROLE
+            || platformRole === ECOMSAI_PLATFORM_SUPPORT_USER_ROLE;
+        if (!hasPlatformScope && (
+            !sessionScope
+            || sessionScope.tenantId !== overrideScope.tId
+            || sessionScope.storeId !== overrideScope.sId
+        )) {
+            throw new Error('Answerlattice workspace scope does not match the current session.');
+        }
         return overrideScope;
     }
 
-    const session = await getActiveSession();
-    const scope = resolveAnswerlatticeSessionScope(session);
-    if (!scope) {
+    if (!sessionScope) {
         throw new Error('Answerlattice workspace is not available.');
     }
-    return { tId: scope.tenantId, sId: scope.storeId };
+    return { tId: sessionScope.tenantId, sId: sessionScope.storeId };
 };
 
 const buildProductSurfaceDocId = (tId: number, sId: number, key: string) =>

@@ -22,6 +22,10 @@ The Developer Install Pack turns Answerlattice's existing widget/runtime, produc
 - Security/ops one-pager: `src/app/sites/answerlattice/security-one-pager/page.tsx`
 - Env-backed install guidance: dashboard Install tab, public Install page, and Quickstarts page
 
+Generated Next.js, React, and Vue quickstarts acknowledge async widget load
+before relying on the initial page-context delivery, then continue updating
+context after client-side navigation.
+
 ## Product Boundary
 
 This pack does not create a second widget, a second ingestion pipeline, a separately versioned npm SDK, a broad public API promise, MCP access, or a separate support product. It packages the existing Answerlattice runtime so buyers can hand one agent packet to their coding agent, install the widget, verify runtime status, seed starter surfaces, and evaluate support knowledge faster.

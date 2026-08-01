@@ -3,7 +3,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Firestore, Timestamp } from 'firebase-admin/firestore';
 import { writeOwnerBusinessHealthDocs } from '../../functions/src/ownerBusinessAssistant/ownerBusinessHealthWriters';
-import { buildOwnerBusinessAnalyticsPeriod } from '../../functions/src/ownerBusinessAssistant/buildOwnerBusinessAnalyticsIndex';
+import {
+  buildOwnerBusinessAnalyticsPeriod,
+  isOwnerBusinessAnalyticsDailyInScope,
+  isOwnerBusinessAnalyticsDashboardInScope,
+} from '../../functions/src/ownerBusinessAssistant/buildOwnerBusinessAnalyticsIndex';
 import {
   getOwnerBusinessFeedbackProjectName,
   projectOwnerBusinessFeedbackFact,
@@ -50,6 +54,9 @@ import {
   projectOwnerBusinessAssistantCurrentResponse,
   projectOwnerBusinessAssistantLocationsResponse,
 } from '@lib/ownerBusinessAssistant/clientResponses';
+import {
+  projectOwnerBusinessAssistantAnswerResponse,
+} from '@lib/ownerBusinessAssistant/answerResponseBoundary';
 
 const repoRoot = process.cwd();
 
@@ -124,6 +131,46 @@ assert.equal(projectOwnerBusinessAssistantAnalyticsResponse({ data: [] }), null)
 assert.deepEqual(projectOwnerBusinessAssistantLocationsResponse({ data: { stores: [] } }), { data: { stores: [] } });
 assert.equal(projectOwnerBusinessAssistantLocationsResponse({ data: { stores: [{}] } }), null);
 
+const validAnswerResponse = {
+  data: {
+    answerId: '12345678-1234-1234-1234-123456789abc',
+    status: 'answered',
+    text: 'No action needed.',
+    freshnessLabel: 'Stable. Uses the latest available MenuList data.',
+    sourceFactIds: ['health_current'],
+    artifacts: [{
+      type: 'metric_row',
+      metrics: [{ label: 'Menu visits', value: '12' }],
+    }],
+    suggestedQuestions: [{
+      id: 'weekly_changes',
+      label: 'Weekly changes',
+      question: 'What changed this week?',
+      intent: 'weekly_changes',
+      domain: 'business_health',
+    }],
+    confidence: 'high',
+    cache: {
+      source: 'fresh_firestore',
+      cacheKey: 'owner-business-assistant:packet:v1:1:2:p:_:profile:owner_question_basic',
+    },
+  },
+};
+assert.deepEqual(projectOwnerBusinessAssistantAnswerResponse(validAnswerResponse), validAnswerResponse);
+assert.equal(projectOwnerBusinessAssistantAnswerResponse({ data: { ...validAnswerResponse.data, text: '' } }), null);
+assert.equal(projectOwnerBusinessAssistantAnswerResponse({
+  data: { ...validAnswerResponse.data, sourceFactIds: ['health_current', 'health_current'] },
+}), null);
+assert.equal(projectOwnerBusinessAssistantAnswerResponse({
+  data: { ...validAnswerResponse.data, internalProviderPayload: { prompt: 'private' } },
+}), null);
+assert.equal(projectOwnerBusinessAssistantAnswerResponse({
+  data: {
+    ...validAnswerResponse.data,
+    artifacts: [{ type: 'metric_row', metrics: [{ label: 'Menu visits', value: Number.NaN }] }],
+  },
+}), null);
+
 const answerKey = buildOwnerBusinessAssistantPacketCacheKey({
   tId: 1,
   sId: 2,
@@ -196,6 +243,53 @@ const projectedAnalytics = parseOwnerBusinessAnalyticsIndexDoc({
 assert.ok(projectedAnalytics);
 assert.equal('kind' in projectedAnalytics, false);
 assert.equal('expiresAt' in projectedAnalytics, false);
+
+const analyticsSourceScope = {
+  tId: '1',
+  sId: '2',
+  projectId: 'menu-project',
+  localDate: '2026-06-08',
+};
+assert.equal(isOwnerBusinessAnalyticsDashboardInScope({
+  ...analyticsSourceScope,
+  kind: 'ownerDashboardSummary',
+  generatedForLocalDate: analyticsSourceScope.localDate,
+}, analyticsSourceScope), true);
+assert.equal(isOwnerBusinessAnalyticsDashboardInScope({
+  ...analyticsSourceScope,
+  sId: '3',
+  kind: 'ownerDashboardSummary',
+  generatedForLocalDate: analyticsSourceScope.localDate,
+}, analyticsSourceScope), false, 'foreign dashboard store scope must fail before owner index projection');
+assert.equal(isOwnerBusinessAnalyticsDashboardInScope({
+  ...analyticsSourceScope,
+  kind: 'ownerDashboardSummary',
+  generatedForLocalDate: '2026-06-07',
+}, analyticsSourceScope), false, 'stale dashboard generation scope must fail before owner index projection');
+assert.equal(isOwnerBusinessAnalyticsDailyInScope({
+  ...analyticsSourceScope,
+  analyticsScope: 'customer',
+  grain: 'daily',
+  surface: 'menu',
+  date: analyticsSourceScope.localDate,
+  localDate: analyticsSourceScope.localDate,
+}, analyticsSourceScope), true);
+assert.equal(isOwnerBusinessAnalyticsDailyInScope({
+  ...analyticsSourceScope,
+  analyticsScope: 'customer',
+  grain: 'daily',
+  surface: 'menu',
+  date: analyticsSourceScope.localDate,
+  localDate: '2026-06-07',
+}, analyticsSourceScope), false, 'mismatched daily date aliases must fail before owner index projection');
+assert.equal(isOwnerBusinessAnalyticsDailyInScope({
+  ...analyticsSourceScope,
+  analyticsScope: 'customer',
+  grain: 'daily',
+  surface: 'obp',
+  date: analyticsSourceScope.localDate,
+  localDate: analyticsSourceScope.localDate,
+}, analyticsSourceScope), false, 'wrong-surface daily rows must fail before owner index projection');
 
 const projectedPersistedPeriod = buildOwnerBusinessAnalyticsPeriod({
   key: 'today',
@@ -729,6 +823,9 @@ const ownerBusinessAssistantValidationDoc = readFileSync(join(repoRoot, '__docs_
 const productionReadinessAudit = readFileSync(join(repoRoot, '__docs__/audits/menulist-production-readiness-audit.md'), 'utf8');
 const changelog = readFileSync(join(repoRoot, '__docs__/changelog.md'), 'utf8');
 
+assert.match(answerHookSource, /projectOwnerBusinessAssistantAnswerResponse\(value\)/);
+assert.doesNotMatch(answerHookSource, /readJsonResponseWithLimit<OwnerBusinessAssistantAnswerPayload>/);
+
 assert.equal(
   OwnerBusinessAssistantAnswerRequestSchema.parse({ question: '  Are my hours current?  ' }).question,
   'Are my hours current?',
@@ -835,6 +932,8 @@ assert.match(answerRoute, /answerEventWritten: true/);
 assert.match(answerRoute, /firestoreWriteCount: \(answer\.metrics\?\.firestoreWriteCount \?\? 0\) \+ 1/);
 assert.match(answerRoute, /owner_business_assistant_thread_persistence_failed/);
 assert.match(answerRoute, /owner_business_assistant_answer_event_logging_failed/);
+assert.match(answerRoute, /projectOwnerBusinessAssistantAnswerResponse\(\{ data: answer \}\)/);
+assert.match(answerRoute, /owner_business_assistant_answer_output_invalid/);
 assert.doesNotMatch(answerRoute, /logger\.warn/);
 assert.doesNotMatch(answerRoute, /error instanceof Error \? error\.message/);
 const feedbackRoute = readFileSync(join(repoRoot, 'src/app/api/owner-business-assistant/feedback/route.ts'), 'utf8');
@@ -847,7 +946,8 @@ assert.match(feedbackRoute, /OwnerBusinessAssistantFeedbackRequestSchema\.safePa
 assert.match(feedbackRoute, /resolveOwnerAssistantSelectedStoreScope\(request, session, parsed\.data\.storeId\)/);
 assert.match(feedbackRoute, /requireAnyStorePermissionForStore/);
 assert.match(feedbackRoute, /import \{ isValidFirestoreDocumentId \} from '@lib\/firebase\/firestoreDocumentId';/);
-assert.match(feedbackRoute, /if \(!isValidFirestoreDocumentId\(docId\)\) \{/);
+assert.match(feedbackRoute, /buildOwnerBusinessAssistantFeedbackDocumentId/);
+assert.match(feedbackRoute, /if \(!docId \|\| !isValidFirestoreDocumentId\(docId\)\) \{/);
 assert.match(feedbackRoute, /OWNER_BUSINESS_ASSISTANT_FEEDBACK/);
 assert.match(clientResponses, /OWNER_BUSINESS_ASSISTANT_MUTATION_RESPONSE_JSON_MAX_BYTES = 16 \* 1024/);
 assert.match(clientResponses, /readOwnerBusinessAssistantFeedbackResponse/);

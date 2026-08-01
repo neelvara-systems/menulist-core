@@ -59,7 +59,7 @@ Answer Test readiness is read from the existing bounded `platformSummary/answerT
 
 Security note: the API must not fall back to the generic MenuList `session.user.tenantId/storeId`. A user needs a real Answerlattice product scope (`productAccounts.AL` or a native Answerlattice session) before any Answerlattice workspace summary is loaded.
 
-Activation management route persisted scope checks fail closed. Activation summary uses `isAnswerlatticeStoreInScope()` for exact store ownership and `isAnswerlatticeSubscriptionInScope()` for both the embedded store summary and legacy billing records. An invalid/foreign embedded summary cannot complete the license step and no longer suppresses the bounded scoped fallback. Subscription status is canonical and case-sensitive; monetary and widget-seen scalars are exact safe integers. Daily Governance, tenant-summary sync, and manual compiled-context rebuild routes use the already-normalized Answerlattice session scope and their maintained exact-scope boundaries. Malformed persisted or body scope returns forbidden/invalid responses instead of passing through loose numeric coercion.
+Activation management route persisted scope checks fail closed. Activation summary uses `isAnswerlatticeStoreInScope()` for exact store ownership and the shared exact subscription read projector for both the embedded store summary and legacy billing records. An invalid/foreign embedded summary cannot complete the license step and no longer suppresses the bounded scoped fallback. Subscription status is canonical and case-sensitive, financial/history fields are noncoercing, and browser/Admin lifecycle timestamps use the same exact boundary as Billing. The earliest elapsed end boundary presents an otherwise `active` row as `expired`, so it cannot complete License or launch proof. Daily Governance, tenant-summary sync, and manual compiled-context rebuild routes use the already-normalized Answerlattice session scope and their maintained exact-scope boundaries. Malformed persisted or body scope returns forbidden/invalid responses instead of passing through loose numeric coercion.
 
 `GET /api/answerlattice/operations/status`:
 
@@ -84,9 +84,9 @@ No user text, search query, answer text, chat transcript, email, or visitor iden
 
 ## Subscription Summary
 
-Onboarding mirrors the created Answerlattice subscription into `stores/{sId}.answerlatticeSubscription`. This lets Activation avoid scanning subscriptions on normal loads.
+Onboarding mirrors the created Answerlattice subscription into `stores/{sId}.answerlatticeSubscription`. This lets Activation avoid scanning subscriptions on normal loads only while the mirror passes the exact active/current lifecycle projector.
 
-If an older workspace does not yet have the store-level subscription mirror, the API uses a bounded legacy fallback query (`limit(5)`) and reports that fallback in the read model. Saving onboarding/settings should remove that fallback for future loads.
+If an older workspace does not yet have a current-valid store-level subscription mirror, the API uses a bounded legacy fallback query (`limit(5)`) and reports that fallback in the read model. Every result is exactly projected; current active truth is selected before terminal rows, then by latest exact end and document ID. Saving onboarding/settings should remove that fallback for future loads.
 
 ## Focused Verification
 

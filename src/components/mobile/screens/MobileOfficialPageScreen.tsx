@@ -31,6 +31,7 @@ import { InputNumber, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
+import type { StoreDataType } from '@type/platform/store';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuArrowRight,
@@ -77,10 +78,10 @@ interface MobileOfficialPageScreenProps {
     embeddedPhotoDeleteResetToken?: number;
     embeddedProjectsList?: any[];
     embeddedSelectedProjectId?: string | null;
-    embeddedStoreDetails?: any;
+    embeddedStoreDetails?: StoreDataType | null;
     onEmbeddedPhotoDeleteQueueChange?: (photoUrls: string[]) => void;
     onEmbeddedLanguageChange?: (language: string) => void;
-    onEmbeddedStoreDetailsChange?: (storeDetails: any) => void;
+    onEmbeddedStoreDetailsChange?: (storeDetails: StoreDataType) => void;
     onBack: () => void;
 }
 
@@ -153,7 +154,7 @@ function getFirstImageFile(fileList?: FileList | null): File | null {
     return Array.from(fileList).find((file) => file.type.startsWith('image/')) || null;
 }
 
-function getInitialPresenceForm(storeDetails: any) {
+function getInitialPresenceForm(storeDetails: StoreDataType | null) {
     const initialPresence = storeDetails?.publicPresence || {};
     return {
         accentColor: initialPresence.accentColor || undefined,
@@ -182,7 +183,7 @@ function getInitialPresenceForm(storeDetails: any) {
     };
 }
 
-function buildLocalizedPresenceDrafts(storeDetails: any, languages: string[]) {
+function buildLocalizedPresenceDrafts(storeDetails: StoreDataType | null, languages: string[]) {
     const initialPresence = storeDetails?.publicPresence || {};
     return Object.fromEntries(
         languages.map((languageCode) => [
@@ -196,7 +197,7 @@ function buildLocalizedPresenceDrafts(storeDetails: any, languages: string[]) {
     );
 }
 
-function buildLocalizedPresence(storeDetails: any, localizedDrafts: LocalizedPresenceDrafts) {
+function buildLocalizedPresence(storeDetails: StoreDataType | null, localizedDrafts: LocalizedPresenceDrafts) {
     return Object.entries(localizedDrafts).reduce((presence, [languageCode, draft]) => ({
         ...presence,
         descriptor: updateLocalizedText(
@@ -224,7 +225,11 @@ function buildLocalizedPresence(storeDetails: any, localizedDrafts: LocalizedPre
     } as any);
 }
 
-function buildPublicPresenceDraft(storeDetails: any, nextPresence: PresenceFormData, localizedDrafts: LocalizedPresenceDrafts) {
+function buildPublicPresenceDraft(
+    storeDetails: StoreDataType | null,
+    nextPresence: PresenceFormData,
+    localizedDrafts: LocalizedPresenceDrafts,
+) {
     const nextLocalizedPresence = buildLocalizedPresence(storeDetails, localizedDrafts);
 
     return {
@@ -1862,6 +1867,8 @@ function MobileOfficialPageScreenContent({
                                         <MobileCompliancePagesEditor
                                             baseUrl={officialPageUrl}
                                             compact={isCompactHandheld}
+                                            storeId={storeDetails?.storeId}
+                                            tenantId={storeDetails?.tenantId}
                                             type="privacy"
                                         />
                                         <Text>{t('showPrivacyLink')}</Text>
@@ -1873,6 +1880,8 @@ function MobileOfficialPageScreenContent({
                                         <MobileCompliancePagesEditor
                                             baseUrl={officialPageUrl}
                                             compact={isCompactHandheld}
+                                            storeId={storeDetails?.storeId}
+                                            tenantId={storeDetails?.tenantId}
                                             type="terms"
                                         />
                                         <Text>{t('showTermsLink')}</Text>
@@ -1884,6 +1893,8 @@ function MobileOfficialPageScreenContent({
                                         <MobileCompliancePagesEditor
                                             baseUrl={officialPageUrl}
                                             compact={isCompactHandheld}
+                                            storeId={storeDetails?.storeId}
+                                            tenantId={storeDetails?.tenantId}
                                             type="refund"
                                         />
                                         <Text>{t('showRefundLink')}</Text>

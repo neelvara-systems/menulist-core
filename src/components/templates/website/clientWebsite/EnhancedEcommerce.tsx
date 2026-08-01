@@ -1,6 +1,6 @@
 'use client'
 import { StoreDataType } from '@type/platform/store';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 interface EnhancedEcommerceProps {
     storeDetails?: StoreDataType;
@@ -15,7 +15,7 @@ interface EnhancedEcommerceProps {
  * Note: All ecommerce tracking events should be handled through the unified analytics
  * system in src/lib/analytics/unified.ts rather than using separate tracking functions.
  */
-const EnhancedEcommerce = ({ storeDetails }: EnhancedEcommerceProps) => {
+const EnhancedEcommerce = ({ storeDetails }: EnhancedEcommerceProps): ReactNode => {
     const isEnabled = storeDetails?.analytics?.enhancedEcommerce && storeDetails?.analytics?.googleAnalyticsId;
 
     useEffect(() => {

@@ -13,6 +13,10 @@ import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { normalizeAnswerlatticeResolvedEntityId } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeSupportBoardCardId } from '@lib/answerlattice/supportBoardCardIdBoundary';
+import {
+    projectAnswerlatticeSupportBoardCard,
+    projectAnswerlatticeSupportBoardSummary,
+} from '@lib/answerlattice/supportBoardReadBoundary';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import {
@@ -24,7 +28,6 @@ import {
     type AnswerlatticeSupportBoardCard,
     type AnswerlatticeSupportBoardNote,
     type AnswerlatticeSupportBoardStatusEntry,
-    type AnswerlatticeSupportBoardSummary,
 } from '@type/answerlattice';
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_SUPPORT_BOARD_CARDS;
@@ -105,6 +108,20 @@ export type UpdateAnswerlatticeSupportBoardCardInput = Partial<Pick<
     statusActorEmail?: string | null;
     statusRemark?: string | null;
 };
+
+type NormalizedSupportBoardCardInput = Omit<
+    AnswerlatticeSupportBoardCard,
+    | 'id'
+    | 'pId'
+    | 'sourceContext'
+    | 'traceId'
+    | 'requestId'
+    | 'createdOn'
+    | 'modifiedOn'
+    | 'createdBy'
+    | 'modifiedBy'
+    | 'uId'
+>;
 
 const makeLocalId = (prefix: string) => {
     return createRuntimeId(prefix);
@@ -242,7 +259,9 @@ const stripUpdateMeta = (patch: UpdateAnswerlatticeSupportBoardCardInput) => {
     };
 };
 
-const normalizeCardInput = (data: CreateAnswerlatticeSupportBoardCardInput) => {
+const normalizeCardInput = (
+    data: CreateAnswerlatticeSupportBoardCardInput,
+): NormalizedSupportBoardCardInput => {
     const { cardData, statusMeta } = stripCreateMeta(data);
     const tId = normalizeScopeId(cardData.tId, 'tenant scope');
     const sId = normalizeScopeId(cardData.sId, 'workspace scope');
@@ -348,10 +367,12 @@ export const listAnswerlatticeSupportBoardCards = async (
             const snapshot = await getDocs(q);
             const cards: AnswerlatticeSupportBoardCard[] = [];
             snapshot.forEach((item) => {
-                const data = item.data();
-                if (data.pId !== 'AL' || data.tId !== normalizedTId || data.sId !== normalizedSId) return;
-                if (typeof data.title !== 'string' || !Object.values(ANSWERLATTICE_SUPPORT_BOARD_STATUS).includes(data.status)) return;
-                cards.push({ ...data, id: item.id } as AnswerlatticeSupportBoardCard);
+                const card = projectAnswerlatticeSupportBoardCard(item.data(), {
+                    id: item.id,
+                    sId: normalizedSId,
+                    tId: normalizedTId,
+                });
+                if (card) cards.push(card);
             });
             return cards;
         },
@@ -371,11 +392,11 @@ export const getAnswerlatticeSupportBoardSummary = async (tId: number, sId: numb
             const normalizedSId = normalizeScopeId(sId, 'workspace scope');
             const snapshot = await getDoc(getSummaryDocRef(normalizedTId, normalizedSId));
             if (!snapshot.exists()) return null;
-            const data = snapshot.data();
-            if (data.pId !== 'AL' || data.tId !== normalizedTId || data.sId !== normalizedSId) return null;
-            const countFields = ['openCards', 'needsAnswerCards', 'highPriorityCards', 'totalRecentCards'] as const;
-            if (countFields.some((field) => !Number.isFinite(data[field]) || data[field] < 0)) return null;
-            return { ...data, id: snapshot.id } as AnswerlatticeSupportBoardSummary;
+            return projectAnswerlatticeSupportBoardSummary(snapshot.data(), {
+                id: snapshot.id,
+                sId: normalizedSId,
+                tId: normalizedTId,
+            });
         },
         { tId, sId },
         'getAnswerlatticeSupportBoardSummary',
@@ -403,16 +424,19 @@ export const createAnswerlatticeSupportBoardCard = async (data: CreateAnswerlatt
             const stored = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const snapshot = await transaction.get(docRef);
                 if (snapshot.exists()) {
-                    const existing = snapshot.data() as AnswerlatticeSupportBoardCard;
+                    const existing = projectAnswerlatticeSupportBoardCard(snapshot.data(), {
+                        id: snapshot.id,
+                        sId: normalized.sId,
+                        tId: normalized.tId,
+                    });
                     if (
-                        existing.tId !== normalized.tId
-                        || existing.sId !== normalized.sId
+                        !existing
                         || existing.sourceType !== normalized.sourceType
                         || existing.sourceId !== normalized.sourceId
                     ) {
                         throw new Error('Support board source identity conflict');
                     }
-                    return { ...existing, id: snapshot.id } as AnswerlatticeSupportBoardCard;
+                    return existing;
                 }
                 transaction.set(docRef, submitData);
                 return { ...submitData, id: docRef.id } as AnswerlatticeSupportBoardCard;
@@ -455,7 +479,7 @@ export const createAnswerlatticeSupportBoardCards = async (cards: CreateAnswerla
                 seenDocumentIds.add(docRef.id);
                 prepared.push({
                     docRef,
-                    sourceId: normalized.sourceId,
+                    sourceId: normalized.sourceId ?? null,
                     sourceType: normalized.sourceType,
                     submitData,
                     tId: normalized.tId,
@@ -471,10 +495,13 @@ export const createAnswerlatticeSupportBoardCards = async (cards: CreateAnswerla
                 prepared.forEach(({ docRef, sourceId, sourceType, submitData, tId, sId }, index) => {
                     const snapshot = snapshots[index];
                     if (snapshot.exists()) {
-                        const existing = snapshot.data() as AnswerlatticeSupportBoardCard;
+                        const existing = projectAnswerlatticeSupportBoardCard(snapshot.data(), {
+                            id: snapshot.id,
+                            sId,
+                            tId,
+                        });
                         if (
-                            existing.tId !== tId
-                            || existing.sId !== sId
+                            !existing
                             || existing.sourceType !== sourceType
                             || existing.sourceId !== sourceId
                         ) {
@@ -508,7 +535,10 @@ export const updateAnswerlatticeSupportBoardCard = async (
                     const snapshot = await transaction.get(cardRef);
                     if (!snapshot.exists()) throw new Error('Support board card not found');
 
-                    const card = snapshot.data() as AnswerlatticeSupportBoardCard;
+                    const card = projectAnswerlatticeSupportBoardCard(snapshot.data(), {
+                        id: snapshot.id,
+                    });
+                    if (!card) throw new Error('Support board card state is invalid');
                     const currentStatuses = Array.isArray(card.statuses) ? card.statuses : [];
                     const statusChanged = card.status !== updatePatch.status;
                     if (statusChanged && currentStatuses.length >= ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_STATUS_HISTORY_PER_CARD) {
@@ -578,7 +608,11 @@ export const addAnswerlatticeSupportBoardNote = async (
                 const snapshot = await transaction.get(cardRef);
                 if (!snapshot.exists()) throw new Error('Support board card not found');
 
-                const card = snapshot.data() as AnswerlatticeSupportBoardCard;
+                const persisted = snapshot.data();
+                const card = projectAnswerlatticeSupportBoardCard(persisted, {
+                    id: snapshot.id,
+                });
+                if (!card) throw new Error('Support board card state is invalid');
                 const currentNotes = Array.isArray(card.notes) ? card.notes : [];
                 if (currentNotes.length >= ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_NOTES_PER_CARD) {
                     throw new Error(`A support board card can hold up to ${ANSWERLATTICE_SUPPORT_BOARD_CONSTRAINTS.MAX_NOTES_PER_CARD} notes`);
@@ -610,7 +644,11 @@ export const redactAnswerlatticeSupportBoardSourceIdentity = async (
             return await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const snapshot = await transaction.get(cardRef);
                 if (!snapshot.exists()) throw new Error('Support board card not found');
-                const card = snapshot.data() as AnswerlatticeSupportBoardCard;
+                const persisted = snapshot.data();
+                const card = projectAnswerlatticeSupportBoardCard(persisted, {
+                    id: snapshot.id,
+                });
+                if (!card) throw new Error('Support board card state is invalid');
                 const hasIdentity = Boolean(
                     card.sourceCustomerName
                     || card.sourceCustomerEmail

@@ -1,9 +1,10 @@
-import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import { getBusinessTypeConfig, resolveBusinessCategory } from '@data/shared/businessTypes';
 import {
     MENU_LAYOUTS,
     MenuLayout,
     MenuMood,
     getCompatibleLayouts,
+    normalizeMenuMood,
 } from '@template/main-app/projects/b2cView/designSystem';
 
 export interface MenuDesignPreset {
@@ -247,22 +248,24 @@ export const getOwnerSelectableMenuLayoutEntries = (mood?: MenuMood) => {
     return layouts.map((layout) => [layout, MENU_LAYOUTS[layout]] as const);
 };
 
-export const getPreferredMenuLayoutForMood = (mood: MenuMood): MenuLayout => (
-    PREFERRED_LAYOUT_BY_MOOD[mood] || MenuLayout.LIST
+export const getPreferredMenuLayoutForMood = (mood: unknown): MenuLayout => (
+    PREFERRED_LAYOUT_BY_MOOD[normalizeMenuMood(mood)] || MenuLayout.LIST
 );
 
 export const getRecommendedMenuDesignPresets = ({
     businessType,
     businessCategory,
 }: {
-    businessType?: string;
-    businessCategory?: string;
+    businessType?: unknown;
+    businessCategory?: unknown;
 } = {}): MenuDesignPreset[] => {
-    const normalizedBusinessType = businessType?.trim().toLowerCase() || '';
+    const safeBusinessType = typeof businessType === 'string' ? businessType.trim() : '';
+    const safeBusinessCategory = typeof businessCategory === 'string' ? businessCategory.trim() : '';
+    const normalizedBusinessType = getBusinessTypeConfig(safeBusinessType)?.value.toLowerCase() || '';
     const typeMatch = BUSINESS_TYPE_PRESET_ORDER.find((entry) => (
         entry.match.some((term) => normalizedBusinessType.includes(term))
     ));
-    const category = resolveBusinessCategory(businessType, businessCategory);
+    const category = resolveBusinessCategory(safeBusinessType, safeBusinessCategory);
     const keys = typeMatch?.presetKeys
         || CATEGORY_PRESET_ORDER[category || '']
         || DEFAULT_PRESET_ORDER;

@@ -13,7 +13,10 @@ import {
     syncAnswerlatticeSubscriptionEntitlementFromSubscription,
     updateProductSubscription,
 } from '../../src/lib/billing/productBillingServer';
-import { composeInitialSubscriptionPayloadServer } from '../../src/database/subscriptions/server';
+import {
+    composeInitialSubscriptionPayloadServer,
+    getDirectActiveSubscriptionForStoreServer,
+} from '../../src/database/subscriptions/server';
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { persistPendingProductTopupSnapshot } from '../../src/lib/billing/topupSettlementServer';
@@ -147,6 +150,88 @@ async function run(): Promise<void> {
     });
     assert.equal(statusResult, null);
     assert.equal((await readSubscription('sub_ConflictingScope123')).status, 'active');
+
+    await writeSubscription('sub_ImmutableScope123', baseSubscription({
+        providerSubscriptionId: 'sub_ImmutableScope123',
+    }));
+    await assert.rejects(
+        updateProductSubscription(PRODUCT_IDS.MENULIST, 'sub_ImmutableScope123', {
+            sId: 303,
+            storeId: 303,
+            tId: 404,
+            tenantId: 404,
+        }),
+        /scope is immutable/,
+        'a generic MenuList update must not move a subscription to another workspace',
+    );
+    const immutableScopeSubscription = await readSubscription('sub_ImmutableScope123');
+    assert.equal(immutableScopeSubscription.tId, 101);
+    assert.equal(immutableScopeSubscription.tenantId, 101);
+    assert.equal(immutableScopeSubscription.sId, 202);
+    assert.equal(immutableScopeSubscription.storeId, 202);
+
+    await writeSubscription('sub_PendingCannotEntitle123', baseSubscription({
+        cycleEndDate: null,
+        providerSubscriptionId: 'sub_PendingCannotEntitle123',
+        status: 'pending',
+    }));
+    assert.equal(
+        await getDirectActiveSubscriptionForStoreServer(101, 202),
+        null,
+        'a pending subscription must not enter paid entitlement truth',
+    );
+    await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('sub_PendingCannotEntitle123').delete();
+
+    await writeSubscription('sub_StalePausedCannotEntitle123', baseSubscription({
+        cycleEndDate: Timestamp.fromMillis(Date.now() - 60_000),
+        providerSubscriptionId: 'sub_StalePausedCannotEntitle123',
+        status: 'paused',
+    }));
+    assert.equal(
+        await getDirectActiveSubscriptionForStoreServer(101, 202),
+        null,
+        'a paused subscription beyond its paid cycle must not enter entitlement truth',
+    );
+    await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('sub_StalePausedCannotEntitle123').delete();
+
+    await writeSubscription('sub_PastDueGrace123', baseSubscription({
+        cycleEndDate: Timestamp.fromMillis(Date.now() - 60_000),
+        pastDueSinceAt: Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000),
+        providerSubscriptionId: 'sub_PastDueGrace123',
+        status: 'past_due',
+    }));
+    assert.equal(
+        (await getDirectActiveSubscriptionForStoreServer(101, 202))?.id,
+        'sub_PastDueGrace123',
+        'a past-due subscription inside payment recovery must remain available after cycle end',
+    );
+    await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('sub_PastDueGrace123').delete();
+
+    await writeSubscription('sub_PastDueMissingMarker123', baseSubscription({
+        cycleEndDate: Timestamp.fromMillis(Date.now() - 60_000),
+        pastDueSinceAt: null,
+        providerSubscriptionId: 'sub_PastDueMissingMarker123',
+        status: 'past_due',
+    }));
+    assert.equal(
+        await getDirectActiveSubscriptionForStoreServer(101, 202),
+        null,
+        'past-due entitlement must fail closed when its recovery start is missing',
+    );
+    await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('sub_PastDueMissingMarker123').delete();
+
+    await writeSubscription('sub_PastDueMalformedMarker123', baseSubscription({
+        cycleEndDate: Timestamp.fromMillis(Date.now() - 60_000),
+        pastDueSinceAt: 'not-a-timestamp',
+        providerSubscriptionId: 'sub_PastDueMalformedMarker123',
+        status: 'past_due',
+    }));
+    assert.equal(
+        await getDirectActiveSubscriptionForStoreServer(101, 202),
+        null,
+        'past-due entitlement must fail closed when its recovery start is malformed',
+    );
+    await firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc('sub_PastDueMalformedMarker123').delete();
     await assert.rejects(
         updateProductSubscription(PRODUCT_IDS.MENULIST, 'sub_ConflictingScope123', { status: 'paused' }),
         /does not match the requested product and scope/,
@@ -212,6 +297,7 @@ async function run(): Promise<void> {
         tId: 101,
         tenantId: 101,
     });
+    const answerlatticeFutureCycleEnd = Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000);
     await createProductInitialSubscription(
         PRODUCT_IDS.ANSWERLATTICE,
         'sub_AnswerlatticeExactScope123',
@@ -219,6 +305,8 @@ async function run(): Promise<void> {
             pId: 'AL',
             productId: 'AL',
             providerSubscriptionId: 'sub_AnswerlatticeExactScope123',
+            cycleEndDate: answerlatticeFutureCycleEnd,
+            planId: 'answerlattice_growth',
         }) as never,
     );
     assert.equal(
@@ -246,6 +334,39 @@ async function run(): Promise<void> {
         (await readSubscription('sub_AnswerlatticeExactScope123')).analyticsEntitlement,
         undefined,
         'a conflicting input subscription alias must not acknowledge entitlement sync',
+    );
+    await Promise.all(Array.from({ length: 10 }, (_, index) => (
+        writeSubscription(
+            `sub_AnswerlatticeAliasConflict${String(index).padStart(2, '0')}`,
+            baseSubscription({
+                cycleEndDate: Timestamp.fromMillis(
+                    answerlatticeFutureCycleEnd.toMillis() + ((index + 1) * 24 * 60 * 60 * 1000),
+                ),
+                pId: 'AL',
+                planId: 'answerlattice_studio',
+                productId: 'AL',
+                providerSubscriptionId: `sub_AnswerlatticeAliasConflict${String(index).padStart(2, '0')}`,
+                sId: 800 + index,
+                tId: 900 + index,
+            }),
+        )
+    )));
+    await syncAnswerlatticeSubscriptionEntitlementFromSubscription(
+        exactAnswerlatticeSubscription,
+        'exact_aliases_must_filter_before_bounded_query',
+    );
+    const answerlatticeStoreAfterBoundedQuery = (
+        await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc('202').get()
+    ).data();
+    assert.equal(
+        answerlatticeStoreAfterBoundedQuery?.activePlanType,
+        'answerlattice_growth',
+        'conflicting duplicate aliases must be excluded before the bounded active-subscription query',
+    );
+    assert.equal(
+        answerlatticeStoreAfterBoundedQuery?.answerlatticeSubscription?.id,
+        'sub_AnswerlatticeExactScope123',
+        'an exact current subscription must remain discoverable behind more than ten conflicting alias rows',
     );
     await assert.rejects(
         createProductInitialSubscription(
@@ -372,6 +493,56 @@ async function run(): Promise<void> {
         (await readSubscription('sub_EntitlementStoreRace123')).analyticsEntitlement,
         undefined,
         'A store-scope mismatch must leave the subscription entitlement retryable',
+    );
+
+    const malformedStatusStoreRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc('303');
+    await malformedStatusStoreRef.set({
+        activePlanType: 'stale-plan',
+        pId: 'ML',
+        productId: 'ML',
+        sId: 303,
+        storeId: 303,
+        tId: 101,
+        tenantId: 101,
+    });
+    await writeSubscription('sub_EntitlementValidCandidate123', baseSubscription({
+        cycleEndDate: futureCycleEnd,
+        planId: 'pro',
+        providerSubscriptionId: 'sub_EntitlementValidCandidate123',
+        sId: 303,
+        storeId: 303,
+    }));
+    await writeSubscription('sub_EntitlementMalformedStatus123', baseSubscription({
+        providerSubscriptionId: 'sub_EntitlementMalformedStatus123',
+        sId: 303,
+        status: { attackerControlled: true },
+        storeId: 303,
+    }));
+    await syncStorePlanEntitlementFromSubscription({
+        id: 'sub_EntitlementMalformedStatus123',
+        planId: 'stale-plan',
+        status: 'active',
+        storeId: 303,
+        tenantId: 101,
+    }, 'emulator:malformed-transaction-current-status');
+    assert.equal(
+        (await malformedStatusStoreRef.get()).data()?.activePlanType,
+        'pro',
+        'an exact current candidate must still repair the store plan mirror',
+    );
+    const malformedStatusAudit = (
+        await readSubscription('sub_EntitlementMalformedStatus123')
+    ).analyticsEntitlement;
+    assert.ok(
+        malformedStatusAudit
+        && typeof malformedStatusAudit === 'object'
+        && !Array.isArray(malformedStatusAudit),
+        'the source subscription must receive a bounded entitlement audit mirror',
+    );
+    assert.equal(
+        (malformedStatusAudit as Record<string, unknown>).status,
+        null,
+        'malformed transaction-current status must not enter the typed entitlement audit mirror',
     );
 
     console.log('Product subscription scope emulator tests passed.');

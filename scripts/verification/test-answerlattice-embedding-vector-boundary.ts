@@ -13,6 +13,7 @@ import {
 import { isValidGeneratedEmbeddingVector as isValidSharedGeneratedEmbeddingVector } from '../../functions/src/logic/embeddingVectorBoundary';
 import { getAnswerlatticeEmbeddingInput } from '../../functions-answerlattice/src/logic/embeddingSourceBoundary';
 import { getAnswerlatticeEmbeddingInput as getSharedAnswerlatticeEmbeddingInput } from '../../functions/src/logic/embeddingSourceBoundary';
+import { isValidEmbeddingVector } from '../../src/lib/vectorEmbeddings/vectorBoundary';
 
 const content = {
     type: 'doc',
@@ -146,5 +147,12 @@ for (const isValid of [isValidGeneratedEmbeddingVector, isValidSharedGeneratedEm
     assert.equal(isValid(['0.1', 1], 2), false);
     assert.equal(isValid([0.1], 2), false);
 }
+
+assert.equal(isValidEmbeddingVector([0.1, -0.2], 2), true);
+assert.equal(isValidEmbeddingVector([0, 0], 2), false);
+assert.equal(isValidEmbeddingVector([Number.NaN, 1], 2), false);
+assert.equal(isValidEmbeddingVector([Number.POSITIVE_INFINITY, 1], 2), false);
+assert.equal(isValidEmbeddingVector(['0.1', 1], 2), false);
+assert.equal(isValidEmbeddingVector([0.1], 2), false);
 
 console.log('Answerlattice embedding vector boundary tests passed');

@@ -6,7 +6,7 @@ export const normalizeExactAnswerlatticeSignalScopeId = (value: unknown): number
         : null
 );
 
-const cleanDeduplicationKey = (value: unknown): string | null => {
+export const normalizeAnswerlatticeSignalDeduplicationKey = (value: unknown): string | null => {
     const normalized = typeof value === 'string'
         ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
         : '';
@@ -20,7 +20,7 @@ export const buildAnswerlatticeSignalMemoryDedupKey = (params: {
 }): string | null => {
     const tId = normalizeExactAnswerlatticeSignalScopeId(params.tId);
     const sId = normalizeExactAnswerlatticeSignalScopeId(params.sId);
-    const deduplicationKey = cleanDeduplicationKey(params.deduplicationKey);
+    const deduplicationKey = normalizeAnswerlatticeSignalDeduplicationKey(params.deduplicationKey);
     if (tId === null || sId === null || !deduplicationKey) return null;
     return `${tId}:${sId}:${deduplicationKey}`;
 };
@@ -93,7 +93,7 @@ export const buildAnswerlatticeSignalDocumentId = (params: {
 }): string | null => {
     const tId = normalizeAnswerlatticeScopeDocumentId(params.tId);
     const sId = normalizeAnswerlatticeScopeDocumentId(params.sId);
-    const deduplicationKey = cleanDeduplicationKey(params.deduplicationKey);
+    const deduplicationKey = normalizeAnswerlatticeSignalDeduplicationKey(params.deduplicationKey);
     if (!tId || !sId || !deduplicationKey) return null;
     return `sig_${hashAnswerlatticeSignalIdentity(`${tId}:${sId}:${deduplicationKey}`)}`;
 };

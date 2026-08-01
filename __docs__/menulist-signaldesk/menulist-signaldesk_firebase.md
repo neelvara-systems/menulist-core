@@ -92,6 +92,19 @@ Control Room note: the base overview point-reads the control, queue and current-
 
 No default screen may subscribe to a raw collection with a real-time listener.
 
+## Document Identity Boundary
+
+Protected SignalDesk actions do not interpolate caller text directly into
+Firestore document references. `normalizeSignalDeskDocumentId()` rejects
+empty, whitespace-mutated, slash/path-shaped, reserved and overlong values.
+The route schema, signed outcome bridge, exported workflow entry points and
+workflow server enforce the check before reference construction. Persisted
+target/research/demand DTOs, idempotent replay pointers and workspace
+projectors apply the same exact rule, so malformed optional references reject
+their containing record rather than being silently trimmed or reused.
+Bounded registries may use a 160-character cap; other direct identities use
+180 characters. Internally derived closed-enum IDs are unaffected.
+
 ## Hot Collections
 
 | Collection | Purpose | Normal UI reads |

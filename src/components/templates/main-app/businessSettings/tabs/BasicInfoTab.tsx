@@ -9,7 +9,7 @@ import { LuBuilding2, LuMail, LuMapPin } from 'react-icons/lu';
 const { Text, Title } = Typography;
 
 interface BasicInfoTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const BasicInfoTab = forwardRef<HTMLDivElement, BasicInfoTabProps>(({ scrollRef }, ref) => {
@@ -61,7 +61,6 @@ const BasicInfoTab = forwardRef<HTMLDivElement, BasicInfoTabProps>(({ scrollRef 
                 shouldUpdate={(previous, current) => (
                     previous.tenantName !== current.tenantName
                     || previous.name !== current.name
-                    || previous.email !== current.email
                     || previous.phoneNumber !== current.phoneNumber
                     || previous.dialCode !== current.dialCode
                 )}
@@ -72,7 +71,6 @@ const BasicInfoTab = forwardRef<HTMLDivElement, BasicInfoTabProps>(({ scrollRef 
                     const dialCode = getFieldValue('dialCode') || '';
                     const phoneNumber = getFieldValue('phoneNumber') || '';
                     const publicPhone = [dialCode, phoneNumber].filter(Boolean).join(' ') || 'Phone not set';
-                    const publicEmail = getFieldValue('email') || 'Email not set';
 
                     return (
                         <div style={{
@@ -87,7 +85,7 @@ const BasicInfoTab = forwardRef<HTMLDivElement, BasicInfoTabProps>(({ scrollRef 
                                 <Text>{brandName} - {locationName}</Text>
                             </div>
                             <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                                Public contact: {publicPhone} - {publicEmail}
+                                Public phone: {publicPhone}
                             </Text>
                         </div>
                     );

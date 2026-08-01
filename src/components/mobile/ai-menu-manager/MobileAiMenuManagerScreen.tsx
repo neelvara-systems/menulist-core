@@ -462,7 +462,7 @@ export default function MobileAiMenuManagerScreen({
                 ...getBoundedRuntimeStringContext('storeId', storeId),
                 ...getBoundedRuntimeStringContext('projectId', selectedProjectId),
                 ...getBoundedRuntimeStringContext('sessionId', getSessionIdForProject(selectedProjectId)),
-                hasComposerContext: (commandContext?.selectedEntityIds.length || 0) > 0 || Boolean(commandContext?.target),
+                hasComposerContext: (commandContext?.selectedEntityIds?.length || 0) > 0 || Boolean(commandContext?.target),
                 inputLength: text.length,
             });
             Toast.show({ content: 'Could not prepare card.' });
@@ -554,7 +554,7 @@ export default function MobileAiMenuManagerScreen({
                     operations: groupOperations,
                     result: 'failed',
                     sessionSnapshot: currentSession,
-                }).catch((completionError) => {
+                }).catch((completionError): null => {
                     logRuntimeFailure('mobile_ai_menu_manager_group_failed_completion_failed', completionError, {
                         ...getBoundedRuntimeStringContext('storeId', storeId),
                         ...getBoundedRuntimeStringContext('projectId', selectedProject.projectId),
@@ -724,7 +724,7 @@ export default function MobileAiMenuManagerScreen({
                     patchedProject.projectId,
                     'mobile_ai_menu_manager_project_update_rejected',
                 );
-            } catch (error: any) {
+            } catch (error: unknown) {
                 logRuntimeFailure('mobile_ai_menu_manager_project_update_failed', error, {
                     ...getBoundedRuntimeStringContext('storeId', storeId),
                     ...getBoundedRuntimeStringContext('projectId', selectedProject?.projectId),
@@ -742,7 +742,7 @@ export default function MobileAiMenuManagerScreen({
                         patchHash: directive.patchHash,
                         result: 'failed',
                         message: 'Project update failed',
-                    }).catch((completionError) => {
+                    }).catch((completionError): null => {
                         logRuntimeFailure('mobile_ai_menu_manager_project_update_failed_proposal_completion_failed', completionError, {
                             ...getBoundedRuntimeStringContext('storeId', storeId),
                             ...getBoundedRuntimeStringContext('projectId', operation.projectId),
@@ -758,7 +758,7 @@ export default function MobileAiMenuManagerScreen({
                         result: 'failed',
                         message: 'Project update failed',
                         sessionSnapshot: currentSession,
-                    }).catch((completionError) => {
+                    }).catch((completionError): null => {
                         logRuntimeFailure('mobile_ai_menu_manager_project_update_failed_operation_completion_failed', completionError, {
                             ...getBoundedRuntimeStringContext('storeId', storeId),
                             ...getBoundedRuntimeStringContext('projectId', operation.projectId),

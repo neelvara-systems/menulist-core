@@ -65,7 +65,12 @@ const isNonNegativeInteger = (value: unknown): value is number => (
 );
 
 const isIsoDate = (value: unknown): value is string => (
-    typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    typeof value === 'string'
+    && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    && (() => {
+        const parsed = new Date(`${value}T00:00:00.000Z`);
+        return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+    })()
 );
 
 export const projectStaffPrompt = (value: unknown): StaffPrompt | undefined => {
@@ -261,7 +266,7 @@ export const projectCampaignRecord = (
         || !isUnitNumber(value.confidence.timingScore)
         || !isUnitNumber(value.confidence.total)
     ) return null;
-    if (typeof value.suggestedFor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.suggestedFor)) return null;
+    if (!isIsoDate(value.suggestedFor)) return null;
     if (!isTimestampLike(value.createdAt) || !isTimestampLike(value.updatedAt)) return null;
     const projectedResolvedAt = resolvedAt === undefined
         ? undefined

@@ -469,7 +469,7 @@ export const discardUnpersistedChatImage = async (
 export const saveChatSession = async (
     data: Omit<ChatSession, 'id'>,
     expectedActorScope: AnswerlatticeChatSessionActorScope,
-) => {
+): Promise<ChatSession | null> => {
     return await apiCallComposerClientWithoutLoader(
         async () => {
             const context = await getRequiredChatMutationContext();
@@ -1151,10 +1151,9 @@ export const getAllChatSessionsForAdmin = async (
                 if (!normalizedLastDocId) throw new Error('answerlattice_chat_cursor_id_invalid');
                 const lastDocRef = getDocRef(normalizedLastDocId);
                 const lastDocSnap = await getDoc(lastDocRef);
-                if (lastDocSnap.exists()) {
-                    requirePersistedChatSession(normalizedLastDocId, lastDocSnap.data(), sessionScope);
-                    q = query(q, startAfter(lastDocSnap));
-                }
+                if (!lastDocSnap.exists()) throw new Error('answerlattice_chat_cursor_not_found');
+                requirePersistedChatSession(normalizedLastDocId, lastDocSnap.data(), sessionScope);
+                q = query(q, startAfter(lastDocSnap));
             }
 
             const querySnapshot = await getDocs(q);

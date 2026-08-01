@@ -36,15 +36,32 @@ export interface CampaignCueDesignCueContext {
 const DEFAULT_BUSINESS_NAME = "this business";
 const DEFAULT_BRAND_COLOR = "#24564d";
 const DEFAULT_LOCALITY = "";
+const MAX_CONTEXT_TEXT_LENGTH = 4_000;
+const MAX_CONTEXT_LIST_ITEMS = 50;
+const MAX_CONTEXT_LIST_TEXT_LENGTH = 240;
 
-export const cleanDesignCueText = (value?: string | null) => (
-    String(value || "").replace(/\s+/g, " ").trim()
+const readDesignCueValue = <T>(reader: () => T, fallback: T): T => {
+    try {
+        return reader();
+    } catch {
+        return fallback;
+    }
+};
+
+export const cleanDesignCueText = (value?: unknown) => (
+    typeof value === "string"
+        ? value.replace(/\s+/g, " ").trim().slice(0, MAX_CONTEXT_TEXT_LENGTH)
+        : ""
 );
 
 export const truncateDesignCueText = (value: string, maxLength: number) => {
     const normalized = cleanDesignCueText(value);
-    if (normalized.length <= maxLength) return normalized;
-    return `${normalized.slice(0, Math.max(0, maxLength - 1)).trim()}...`;
+    const safeMaxLength = Number.isSafeInteger(maxLength)
+        ? Math.max(0, Math.min(MAX_CONTEXT_TEXT_LENGTH, maxLength))
+        : 0;
+    if (normalized.length <= safeMaxLength) return normalized;
+    if (safeMaxLength <= 3) return ".".repeat(safeMaxLength);
+    return `${normalized.slice(0, safeMaxLength - 3).trimEnd()}...`;
 };
 
 const titleizeBusinessType = (value?: string) => (
@@ -52,17 +69,24 @@ const titleizeBusinessType = (value?: string) => (
 );
 
 const getPrimaryItem = (businessBrain?: CampaignCueBusinessBrain) => {
-    const catalog = businessBrain?.catalog;
-    return [...(catalog?.items || []), ...(catalog?.services || [])].find((item) => item.available);
+    try {
+        const catalog = businessBrain?.catalog;
+        return [
+            ...Array.from(catalog?.items || []).slice(0, MAX_CONTEXT_LIST_ITEMS),
+            ...Array.from(catalog?.services || []).slice(0, MAX_CONTEXT_LIST_ITEMS),
+        ].find((item) => item.available === true);
+    } catch {
+        return undefined;
+    }
 };
 
 const getDestination = (businessBrain?: CampaignCueBusinessBrain) => {
-    const contacts = businessBrain?.contacts;
-    return cleanDesignCueText(contacts?.bookingUrl)
-        || cleanDesignCueText(contacts?.publicMenuUrl)
-        || cleanDesignCueText(contacts?.website)
-        || cleanDesignCueText(contacts?.whatsapp)
-        || cleanDesignCueText(contacts?.phone)
+    const contacts = readDesignCueValue(() => businessBrain?.contacts, undefined);
+    return cleanDesignCueText(readDesignCueValue(() => contacts?.bookingUrl, undefined))
+        || cleanDesignCueText(readDesignCueValue(() => contacts?.publicMenuUrl, undefined))
+        || cleanDesignCueText(readDesignCueValue(() => contacts?.website, undefined))
+        || cleanDesignCueText(readDesignCueValue(() => contacts?.whatsapp, undefined))
+        || cleanDesignCueText(readDesignCueValue(() => contacts?.phone, undefined))
         || "Use the best active contact link.";
 };
 
@@ -70,35 +94,46 @@ const getContactLine = (businessBrain?: CampaignCueBusinessBrain): Pick<
     CampaignCueDesignCueContext,
     "contactKind" | "contactLine" | "hasContactLine"
 > => {
-    const contacts = businessBrain?.contacts;
-    const whatsapp = cleanDesignCueText(contacts?.whatsapp);
+    const contacts = readDesignCueValue(() => businessBrain?.contacts, undefined);
+    const whatsapp = cleanDesignCueText(readDesignCueValue(() => contacts?.whatsapp, undefined));
     if (whatsapp) return { contactKind: "whatsapp", contactLine: whatsapp, hasContactLine: true };
-    const phone = cleanDesignCueText(contacts?.phone);
+    const phone = cleanDesignCueText(readDesignCueValue(() => contacts?.phone, undefined));
     if (phone) return { contactKind: "phone", contactLine: phone, hasContactLine: true };
-    const bookingUrl = cleanDesignCueText(contacts?.bookingUrl);
+    const bookingUrl = cleanDesignCueText(readDesignCueValue(() => contacts?.bookingUrl, undefined));
     if (bookingUrl) return { contactKind: "booking_url", contactLine: bookingUrl, hasContactLine: true };
-    const publicMenuUrl = cleanDesignCueText(contacts?.publicMenuUrl);
+    const publicMenuUrl = cleanDesignCueText(readDesignCueValue(() => contacts?.publicMenuUrl, undefined));
     if (publicMenuUrl) return { contactKind: "public_menu", contactLine: publicMenuUrl, hasContactLine: true };
-    const website = cleanDesignCueText(contacts?.website);
+    const website = cleanDesignCueText(readDesignCueValue(() => contacts?.website, undefined));
     if (website) return { contactKind: "website", contactLine: website, hasContactLine: true };
     return { contactKind: "missing", contactLine: "", hasContactLine: false };
 };
 
 export const getDesignCueDocumentText = (documentValue: CreativeEditorDocument) => (
-    documentValue.elements
-        .map((element) => {
-            if (element.type === "text" || element.type === "pathText") return element.text;
-            if (element.type === "qr") return element.value;
+    (() => {
+        try {
+            return Array.from(documentValue.elements)
+                .slice(0, 500)
+                .map((element) => {
+                    if (element.type === "text" || element.type === "pathText") return cleanDesignCueText(element.text);
+                    if (element.type === "qr") return cleanDesignCueText(element.value);
+                    return "";
+                })
+                .filter(Boolean)
+                .join(" ")
+                .slice(0, MAX_CONTEXT_TEXT_LENGTH);
+        } catch {
             return "";
-        })
-        .filter(Boolean)
-        .join(" ")
+        }
+    })()
 );
 
 export const isDesignCueTextElement = (
     element?: CreativeEditorElement | null,
 ): element is Extract<CreativeEditorElement, { type: "pathText" | "text" }> => (
-    Boolean(element && (element.type === "pathText" || element.type === "text"))
+    readDesignCueValue(
+        () => Boolean(element && (element.type === "pathText" || element.type === "text")),
+        false,
+    )
 );
 
 export const buildCampaignCueDesignCueContext = (params: {
@@ -107,19 +142,42 @@ export const buildCampaignCueDesignCueContext = (params: {
     selectedElement?: CreativeEditorElement | null;
     selectedText?: string;
 }): CampaignCueDesignCueContext => {
-    const businessBrain = params.overview?.businessBrain;
-    const brand = params.document.metadata?.brand;
-    const businessNameSource = cleanDesignCueText(businessBrain?.name || brand?.name);
-    const localitySource = cleanDesignCueText(businessBrain?.locality || params.overview?.locations?.[0]?.locality);
+    const businessBrain = readDesignCueValue(() => params.overview?.businessBrain, undefined);
+    const brand = readDesignCueValue(() => params.document.metadata?.brand, undefined);
+    const businessNameSource = cleanDesignCueText(
+        readDesignCueValue(() => businessBrain?.name, undefined)
+        || readDesignCueValue(() => brand?.name, undefined),
+    );
+    const localitySource = cleanDesignCueText(
+        readDesignCueValue(() => businessBrain?.locality, undefined)
+        || readDesignCueValue(() => params.overview?.locations?.[0]?.locality, undefined),
+    );
     const contact = getContactLine(businessBrain);
+    const normalizeContextList = (value: unknown): string[] => {
+        if (!Array.isArray(value)) return [];
+        try {
+            return Array.from(value)
+                .slice(0, MAX_CONTEXT_LIST_ITEMS)
+                .map((entry) => cleanDesignCueText(entry).slice(0, MAX_CONTEXT_LIST_TEXT_LENGTH))
+                .filter(Boolean);
+        } catch {
+            return [];
+        }
+    };
     return {
-        brandColor: cleanDesignCueText(businessBrain?.brandKit?.primaryColor || brand?.primaryColor) || DEFAULT_BRAND_COLOR,
-        brandFeel: businessBrain?.brandKit?.playbook?.brandFeel || [],
-        brandAvoidList: businessBrain?.brandKit?.playbook?.avoidList || [],
-        brandVisualMotifs: businessBrain?.brandKit?.playbook?.visualMotifs || [],
-        brandVoice: cleanDesignCueText(businessBrain?.brandKit?.voice || brand?.voice) || "friendly",
+        brandColor: cleanDesignCueText(
+            readDesignCueValue(() => businessBrain?.brandKit?.primaryColor, undefined)
+            || readDesignCueValue(() => brand?.primaryColor, undefined),
+        ) || DEFAULT_BRAND_COLOR,
+        brandFeel: normalizeContextList(readDesignCueValue(() => businessBrain?.brandKit?.playbook?.brandFeel, undefined)),
+        brandAvoidList: normalizeContextList(readDesignCueValue(() => businessBrain?.brandKit?.playbook?.avoidList, undefined)),
+        brandVisualMotifs: normalizeContextList(readDesignCueValue(() => businessBrain?.brandKit?.playbook?.visualMotifs, undefined)),
+        brandVoice: cleanDesignCueText(
+            readDesignCueValue(() => businessBrain?.brandKit?.voice, undefined)
+            || readDesignCueValue(() => brand?.voice, undefined),
+        ) || "friendly",
         businessName: businessNameSource || DEFAULT_BUSINESS_NAME,
-        businessType: titleizeBusinessType(businessBrain?.businessType),
+        businessType: titleizeBusinessType(readDesignCueValue(() => businessBrain?.businessType, undefined)),
         contactKind: contact.contactKind,
         contactLine: contact.contactLine,
         destination: getDestination(businessBrain),
@@ -127,23 +185,33 @@ export const buildCampaignCueDesignCueContext = (params: {
         hasBusinessName: Boolean(businessNameSource),
         hasContactLine: contact.hasContactLine,
         hasLocality: Boolean(localitySource),
-        latestCampaign: params.overview?.campaigns?.[0],
+        latestCampaign: readDesignCueValue(() => params.overview?.campaigns?.[0], undefined),
         locality: localitySource || DEFAULT_LOCALITY,
         primaryItem: getPrimaryItem(businessBrain),
         selectedElement: params.selectedElement,
         selectedText: cleanDesignCueText(params.selectedText),
-        sourceFacts: params.overview?.sourceFacts || [],
+        sourceFacts: (() => {
+            try {
+                return Array.from(readDesignCueValue(() => params.overview?.sourceFacts, undefined) || [])
+                    .slice(0, MAX_CONTEXT_LIST_ITEMS);
+            } catch {
+                return [];
+            }
+        })(),
     };
 };
 
 export const getCampaignCueDesignCueOfferSubject = (context: CampaignCueDesignCueContext) => (
-    cleanDesignCueText(context.latestCampaign?.title)
-    || cleanDesignCueText(context.primaryItem?.name)
-    || `${context.businessName} update`
+    cleanDesignCueText(readDesignCueValue(() => context.latestCampaign?.title, undefined))
+    || cleanDesignCueText(readDesignCueValue(() => context.primaryItem?.name, undefined))
+    || `${cleanDesignCueText(readDesignCueValue(() => context.businessName, DEFAULT_BUSINESS_NAME)) || DEFAULT_BUSINESS_NAME} update`
 );
 
 export const getCampaignCueDesignCuePrimaryItemLine = (context: CampaignCueDesignCueContext) => {
-    if (!context.primaryItem) return "A fresh update is ready for customers.";
-    const price = context.primaryItem.priceLabel ? ` (${context.primaryItem.priceLabel})` : "";
-    return `${context.primaryItem.name}${price} is ready for customers.`;
+    const primaryItem = readDesignCueValue(() => context.primaryItem, undefined);
+    if (!primaryItem) return "A fresh update is ready for customers.";
+    const itemName = cleanDesignCueText(readDesignCueValue(() => primaryItem.name, undefined));
+    const priceLabel = cleanDesignCueText(readDesignCueValue(() => primaryItem.priceLabel, undefined));
+    const price = priceLabel ? ` (${priceLabel})` : "";
+    return itemName ? `${itemName}${price} is ready for customers.` : "A fresh update is ready for customers.";
 };

@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 
+const fs = require('fs');
 const path = require('path');
 const { withSentryConfig } = require('@sentry/nextjs');
 const createNextIntlPlugin = require('next-intl/plugin');
@@ -43,6 +44,24 @@ const myCodexDocsTraceAssetExcludes = [
     './__docs__/**/*.woff2',
     './__docs__/**/*.zip',
 ];
+
+const resolveNextDistDir = (value) => {
+    const candidate = String(value || '.next').trim();
+    if (!candidate || path.isAbsolute(candidate)) {
+        throw new Error('INVALID_NEXT_DIST_DIR');
+    }
+    const resolved = path.resolve(__dirname, candidate);
+    if (!resolved.startsWith(`${__dirname}${path.sep}`)) {
+        throw new Error('INVALID_NEXT_DIST_DIR');
+    }
+    if (
+        fs.existsSync(resolved)
+        && !fs.realpathSync(resolved).startsWith(`${fs.realpathSync(__dirname)}${path.sep}`)
+    ) {
+        throw new Error('INVALID_NEXT_DIST_DIR');
+    }
+    return candidate;
+};
 
 const normalizeDeploymentStage = (value) => {
     const normalized = String(value || '').trim().toLowerCase();
@@ -98,7 +117,7 @@ const nextConfig = {
     poweredByHeader: false,
     // Allows CI and local release audits to run concurrently without sharing
     // Next's mutable build output. Production keeps the default `.next` path.
-    distDir: process.env.NEXT_DIST_DIR || '.next',
+    distDir: resolveNextDistDir(process.env.NEXT_DIST_DIR),
     outputFileTracingRoot: __dirname,
     env: {
         NEXT_PUBLIC_BUILD_ID: process.env.NEXT_PUBLIC_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA || 'local',

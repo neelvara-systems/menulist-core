@@ -89,6 +89,10 @@ interface OfferingTag {
 | --------------------- | ------------------------------------------------------------------------------------- |
 | Universal (\*)        | popular, new, premium, budget, express, seasonal                                      |
 | Food only             | vegetarian, vegan, halal, kosher, gluten_free, dairy_free, jain, spicy, keto, organic |
+
+Static registry records omit `schemaOrg` when no governed mapping exists.
+They never serialize `null`, matching the `schemaOrg?: string` runtime and
+TypeScript contract.
 | Service/Health/Retail | for_men, for_women, unisex, for_kids, for_seniors                                     |
 | Health/Creative       | beginner, intermediate, advanced                                                      |
 | Service/Health        | appointment_required, walk_in, home_service                                           |
@@ -99,7 +103,7 @@ interface OfferingTag {
 | File                                                     | Purpose                                                          | Lines |
 | -------------------------------------------------------- | ---------------------------------------------------------------- | ----- |
 | `src/lib/infrastructure/taxonomy/types.ts`               | All TypeScript interfaces                                        | ~105  |
-| `src/lib/infrastructure/taxonomy/data/categories.json`   | 95+ standard categories (JSON, not TS — build-safe)              | ~112  |
+| `src/lib/infrastructure/taxonomy/data/categories.json`   | 95 standard categories (JSON, not TS — build-safe)               | ~1,349 |
 | `src/lib/infrastructure/taxonomy/data/dietaryTags.json`  | 14 dietary tags with schema.org mappings                         | ~16   |
 | `src/lib/infrastructure/taxonomy/data/cuisines.json`     | 20 cuisine types with aliases                                    | ~22   |
 | `src/lib/infrastructure/taxonomy/data/offeringTags.json` | 35+ SMB-universal offering tags with scope                       | ~45   |
@@ -107,6 +111,11 @@ interface OfferingTag {
 | `src/lib/infrastructure/taxonomy/matcher.ts`             | Free-text → taxonomy matching (exact + fuzzy + dietary)          | ~185  |
 | `src/lib/infrastructure/taxonomy/adapter.ts`             | Reads existing MenuList project data → produces taxonomy mapping | ~141  |
 | `src/lib/infrastructure/taxonomy/index.ts`               | Barrel exports                                                   | ~47   |
+
+Runtime verification requires the category catalog to cover exactly the seven
+canonical `BUSINESS_CATEGORIES`, use unique IDs globally and unique positive
+sort orders per group, and contain non-empty, case-insensitively unique aliases.
+Registry callers receive copies, so mutation cannot alter later lookups.
 
 ## 5. Integration Points
 

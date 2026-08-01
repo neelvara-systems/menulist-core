@@ -72,7 +72,7 @@ function DesktopMenuCardExportRoute() {
         visiblePresets,
         warnings,
     } = useMenuCardExportController({
-        initialProjectId: searchParams.get('projectId'),
+        initialProjectId: searchParams?.get('projectId'),
         notify,
     });
     const documentLabel = businessProfile?.documentLabel || 'Menu';

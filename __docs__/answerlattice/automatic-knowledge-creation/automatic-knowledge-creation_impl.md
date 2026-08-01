@@ -29,6 +29,10 @@ shared/client emitter.
 - claims supported proposals transactionally with a 15-minute lease;
 - caps successful drafts at 10 per tenant run;
 - loads entity, signal, existing-answer, and target-answer context;
+- bounds required text and normalizes generated procedures through the
+  authoritative procedure schema before returning a typed draft; unusable
+  steps/warnings/prerequisites are omitted and a procedure with no valid step
+  becomes `null`;
 - validates parsed output before storing it;
 - writes draft state and an audit row transactionally;
 - leaves failed proposals available for explicit owner regeneration.

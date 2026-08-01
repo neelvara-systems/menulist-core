@@ -324,7 +324,8 @@ requireOrder(
   'OwnerBusinessAssistantFeedbackRequestSchema.safeParse(bodyResult.data)',
   'resolveOwnerAssistantSelectedStoreScope(request, session, parsed.data.storeId)',
   'requireAnyStorePermissionForStore',
-  'if (!isValidFirestoreDocumentId(docId)) {',
+  'buildOwnerBusinessAssistantFeedbackDocumentId',
+  'if (!docId || !isValidFirestoreDocumentId(docId)) {',
   'OWNER_BUSINESS_ASSISTANT_FEEDBACK',
 ].forEach((token) => requireToken(feedbackRoute, token, 'feedback route'));
 forbidToken(feedbackRoute, 'request.json()', 'feedback route raw request parsing');

@@ -1,5 +1,55 @@
 import assert from 'node:assert/strict';
-import { buildOwnerBusinessAssistantFeedbackRecord } from '../../src/lib/ownerBusinessAssistant/feedbackRecordBoundary';
+import {
+  buildOwnerBusinessAssistantFeedbackDocumentId,
+  buildOwnerBusinessAssistantFeedbackRecord,
+} from '../../src/lib/ownerBusinessAssistant/feedbackRecordBoundary';
+
+const tenantAStoreAId = buildOwnerBusinessAssistantFeedbackDocumentId({
+  answerId: 'answer-1',
+  storeId: 20,
+  tenantId: 10,
+  userId: 'user-1',
+});
+assert.match(tenantAStoreAId || '', /^v2_[a-f0-9]{64}$/);
+assert.equal(
+  buildOwnerBusinessAssistantFeedbackDocumentId({
+    answerId: 'answer-1',
+    storeId: 20,
+    tenantId: 10,
+    userId: 'user-1',
+  }),
+  tenantAStoreAId,
+  'the same scoped actor and answer must replace its current feedback document',
+);
+assert.notEqual(
+  buildOwnerBusinessAssistantFeedbackDocumentId({
+    answerId: 'answer-1',
+    storeId: 21,
+    tenantId: 10,
+    userId: 'user-1',
+  }),
+  tenantAStoreAId,
+  'the same answer and actor in another store must not overwrite this store',
+);
+assert.notEqual(
+  buildOwnerBusinessAssistantFeedbackDocumentId({
+    answerId: 'answer-1',
+    storeId: 20,
+    tenantId: 11,
+    userId: 'user-1',
+  }),
+  tenantAStoreAId,
+  'the same answer and actor in another tenant must not overwrite this tenant',
+);
+assert.equal(
+  buildOwnerBusinessAssistantFeedbackDocumentId({
+    answerId: ' answer-1',
+    storeId: 20,
+    tenantId: 10,
+    userId: 'user-1',
+  }),
+  null,
+);
 
 const complete = buildOwnerBusinessAssistantFeedbackRecord({
   createdAt: 'created',

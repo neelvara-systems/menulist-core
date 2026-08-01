@@ -169,9 +169,8 @@ export function buildMenuReadabilityReport(input: MenuReadabilityInput): MenuRea
   const sourceExists = hasUsefulSource(sourceText);
   const hasPublicUrl = publicUrl.length > 0;
   const validPublicUrl = isValidHttpUrl(publicUrl, 'menu_readability_public_url');
-  const searchableSource = `${sourceText}\n${publicUrl}`;
   const priceHint = hasPriceHint(sourceText);
-  const actionHint = hasActionHint(searchableSource);
+  const actionHint = hasActionHint(sourceText);
 
   const checks: MenuReadabilityItem[] = [
     makeCheck(

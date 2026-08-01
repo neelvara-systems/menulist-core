@@ -511,7 +511,11 @@ qrQuietZoneFiles.forEach((file) => {
   if (/margin:\s*[123]\b/.test(source)) {
     failures.push(`${file} uses a QR quiet zone below four modules`);
   }
-  if (!source.includes('margin: 4') && !source.includes('margin: options?.margin ?? 4')) {
+  if (
+    !source.includes('margin: 4')
+    && !source.includes('margin: options?.margin ?? 4')
+    && !source.includes('normalizeQrInteger(options?.margin, 4, 0, QR_MARGIN_MAX)')
+  ) {
     failures.push(`${file} missing four-module QR quiet zone token`);
   }
 });
@@ -876,10 +880,14 @@ const pdfRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/re
   'doc.setCreationDate(generatedAt)',
   'doc.setProperties(buildPdfDocumentProperties',
   'logoDataUrlCache',
+  'MAX_MENU_CARD_LOGO_CACHE_ENTRIES',
+  'isMenuCardLogoRasterSafe(width, height)',
+  'cacheLogoDataUrl(url, dataUrl)',
+  'normalizeMenuCardLogoUrl(rawUrl)',
   'window.setTimeout(() =>',
   'image.src = \'\';',
   '}, 5000);',
-  'if (dataUrl) logoDataUrlCache.set(url, dataUrl);',
+  'if (dataUrl) cacheLogoDataUrl(url, dataUrl);',
   'imageUrlToPngDataUrl(source.business.logoUrl)',
   'doc.addImage(',
   'source.business.brandTokens.accentColor',
@@ -918,11 +926,21 @@ if (pdfRenderer.includes('doc.text(sourceHash')) {
 }
 
 const legacyMenuPdfGenerator = fs.readFileSync(path.join(root, 'src/lib/export/menuPdfGenerator.ts'), 'utf8');
+const featureRegistry = fs.readFileSync(path.join(root, 'src/config/features.ts'), 'utf8');
+if (featureRegistry.includes('ENABLE_PDF_SURFACE')) {
+  failures.push('The always-on legacy PDF adapter must not advertise a no-op feature flag');
+}
 [
   'Compatibility wrapper for older "Menu PDF" buttons',
   "renderPdf(source, settings)",
   'buildPrintSource({',
   'resolveAutoPrintDesign(initialSource, preset)',
+  'resolveLegacyMenuPdfIncludeQr(',
+  'normalizeMenuCardQrDestination(menuUrl)',
+  'normalizeLegacyMenuPdfOptions',
+  'projectLegacyStoreData',
+  'normalizeMenuCardLogoUrl',
+  "throw new Error('Invalid Menu PDF input')",
   'storeData?: Record<string, any>',
   'projectData?: Record<string, any>',
   'logoUrl?: string',
@@ -933,6 +951,13 @@ const legacyMenuPdfGenerator = fs.readFileSync(path.join(root, 'src/lib/export/m
   'snapshotHash: artifact.sourceHash',
 ].forEach((token) => {
   if (!legacyMenuPdfGenerator.includes(token)) failures.push(`Legacy Menu PDF bridge missing premium-renderer token: ${token}`);
+});
+const legacyMenuPdfQrBoundary = fs.readFileSync(path.join(root, 'scripts/verification/test-legacy-menu-pdf-qr-boundary.ts'), 'utf8');
+[
+  "resolveLegacyMenuPdfIncludeQr('https://menulist.ai/client/store/menu', undefined, true)",
+  "resolveLegacyMenuPdfIncludeQr(invalid, true, true), false",
+].forEach((token) => {
+  if (!legacyMenuPdfQrBoundary.includes(token)) failures.push(`Legacy Menu PDF QR regression missing token: ${token}`);
 });
 [
   'new jsPDF',
@@ -1196,7 +1221,8 @@ const qrCodeUtil = fs.readFileSync(path.join(root, 'src/lib/utils/qrCode.ts'), '
   'fitCanvasText',
   'drawMenuListAttribution',
   'activePlanType',
-  "return `${sanitized || 'menu'}-${suffix}`",
+  "const safeSuffix = suffix",
+  "return safeSuffix ? `${sanitized || 'menu'}-${safeSuffix}` : sanitized || 'menu'",
 ].forEach((token) => {
   if (!qrCodeUtil.includes(token)) failures.push(`Branded QR helper missing token: ${token}`);
 });
@@ -1378,7 +1404,10 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   'renderMenuKitAsset',
   'buildMenuKitSafeName',
   'buildMenuKitZipFilename',
-  'zipFilename: buildMenuKitZipFilename(input.storeName, input.templateFamilyId)',
+  'normalizeMenuKitInput',
+  'enrichedInput: { ...normalizedInput, menuUrl: validatedUrl, _logo: logo }',
+  'prepared.enrichedInput.storeName',
+  'prepared.enrichedInput.templateFamilyId',
   "key: 'table_tent'",
   "key: 'single_table_card'",
   'TableTent_A5_Fold.pdf',
@@ -1389,6 +1418,13 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   'Promise<BrowserFileShareResult>',
 ].forEach((token) => {
   if (!menuKitGenerator.includes(token)) failures.push(`Menu Kit generator missing Print Menu Surfaces token: ${token}`);
+});
+[
+  'enrichedInput: { ...input, menuUrl: validatedUrl, _logo: logo }',
+  'buildPrintInstructions(input.storeName, labels)',
+  'zipFilename: buildMenuKitZipFilename(input.storeName, input.templateFamilyId)',
+].forEach((token) => {
+  if (menuKitGenerator.includes(token)) failures.push(`Menu Kit generator retains unprojected input token: ${token}`);
 });
 
 const browserFileShare = fs.readFileSync(path.join(root, 'src/lib/export/browserFileShare.ts'), 'utf8');
@@ -1441,7 +1477,7 @@ const menuCardHistoryRepository = fs.readFileSync(path.join(root, 'src/lib/menu-
   if (!menuCardHistoryRepository.includes(token)) failures.push(`Menu Card local-history boundary missing token: ${token}`);
 });
 [
-  "input.assetTypeId === 'complete_menu_kit'",
+  "admittedInput.assetTypeId === 'complete_menu_kit'",
   'filename: result.zipFilename',
 ].forEach((token) => {
   if (!printableAssetRenderer.includes(token)) failures.push(`Printable asset renderer missing Menu Kit ZIP filename token: ${token}`);
@@ -1459,6 +1495,29 @@ const menuCardHistoryRepository = fs.readFileSync(path.join(root, 'src/lib/menu-
 ].forEach(({ label, file }) => {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
   ['fillVerticalGradient', 'fitCanvasText', 'stripDecorativeStatusSymbols', 'brand.qrDark'].forEach((token) => {
+    if (!source.includes(token)) failures.push(`${label} missing token: ${token}`);
+  });
+});
+
+[
+  {
+    label: 'Menu Kit delivery bag text bounds',
+    file: 'src/lib/menu-kit/templates/deliveryBagTemplate.ts',
+    tokens: ['truncateCanvasText(ctx, storeName', 'truncateCanvasText(ctx, shortLink'],
+  },
+  {
+    label: 'Menu Kit takeaway card text bounds',
+    file: 'src/lib/menu-kit/templates/takeawayCardTemplate.ts',
+    tokens: ['truncateCanvasText(ctx, storeName', 'truncateCanvasText(ctx, shortLink'],
+  },
+  {
+    label: 'Menu Kit Google Maps text bounds',
+    file: 'src/lib/menu-kit/templates/googleMapsTemplate.ts',
+    tokens: ['wrapCanvasText(ctx, storeName, maxWidth, 3)', 'truncateCanvasText(ctx, shortLink'],
+  },
+].forEach(({ label, file, tokens }) => {
+  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  tokens.forEach((token) => {
     if (!source.includes(token)) failures.push(`${label} missing token: ${token}`);
   });
 });
@@ -1512,12 +1571,12 @@ const menuCardHistoryRepository = fs.readFileSync(path.join(root, 'src/lib/menu-
   {
     label: 'Physical tent card',
     file: 'src/lib/physical-surfaces/tentCardGenerator.ts',
-    tokens: ['createMenuListLogoMarkDataUrl', 'MENU_LIST_ATTRIBUTION_TEXT', 'resolveMenuListAttributionPolicy', 'activePlanType'],
+    tokens: ['createMenuListLogoMarkDataUrl', 'MENU_LIST_ATTRIBUTION_TEXT', 'resolveMenuListAttributionPolicy', 'activePlanType', 'normalizePhysicalSurfaceQrUrl', 'QRCode.toDataURL(normalizedQrUrl'],
   },
   {
     label: 'Physical counter sticker',
     file: 'src/lib/physical-surfaces/stickerGenerator.ts',
-    tokens: ['drawMenuListAttribution', 'activePlanType'],
+    tokens: ['drawMenuListAttribution', 'activePlanType', 'normalizePhysicalSurfaceQrUrl', 'QRCode.toCanvas(qrCanvas, normalizedQrUrl', 'reject(new Error("Failed to encode counter sticker PNG"))'],
   },
 ].forEach(({ label, file, tokens }) => {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
@@ -1620,12 +1679,63 @@ const printSource = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/so
   'printProfile.qrLabel',
   'printProfile.fallbackTitle',
   'store?.publicPresence?.accentColor',
-  'store?.logo',
-  'store?.logoUrl',
+  "readOwnField(store, 'logo')",
+  "readOwnField(store, 'logoUrl')",
   'store?.currencyCode',
   'brandTokens',
+  'resolveStorePermissionScopeDocumentIdAliases',
+  'resolveProjectUpdatedAt(project)',
+  'resolveProjectId(project)',
+  'normalizeMenuCardLogoUrl',
+  "parsed.protocol !== 'https:' && parsed.protocol !== 'http:'",
+  'parsed.username',
+  'parsed.password',
 ].forEach((token) => {
   if (!printSource.includes(token)) failures.push(`Print source missing OBP brand reuse token: ${token}`);
+});
+
+const qrDestination = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/buildQrDestination.ts'), 'utf8');
+[
+  'normalizeMenuCardQrDestination',
+  "parsed.protocol !== 'https:'",
+  "parsed.protocol !== 'http:'",
+  'parsed.username',
+  'parsed.password',
+].forEach((token) => {
+  if (!qrDestination.includes(token)) failures.push(`QR destination boundary missing token: ${token}`);
+});
+
+const qrPreflight = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/preflight/checkQrSafety.ts'), 'utf8');
+if (!qrPreflight.includes('normalizeMenuCardQrDestination(source.qr.destinationUrl)')) {
+  failures.push('QR preflight must use the credential-free HTTP(S) destination boundary');
+}
+
+const qrRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/render/renderQr.ts'), 'utf8');
+[
+  'normalizeMenuCardQrDestination(value)',
+  "throw new Error('Invalid QR destination URL')",
+].forEach((token) => {
+  if (!qrRenderer.includes(token)) failures.push(`QR renderer boundary missing token: ${token}`);
+});
+
+const printSanitizer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/sanitizeMenuForPrint.ts'), 'utf8');
+[
+  'MENU_CARD_PRINT_TEXT_LIMITS',
+  'normalizeBoundedText',
+  'readOwnField',
+  'snapshotArray',
+  'resolveScalarId',
+  '`category-${index}`',
+].forEach((token) => {
+  if (!printSanitizer.includes(token)) failures.push(`Print sanitizer boundary missing token: ${token}`);
+});
+
+[
+  'const maxDescriptionLines =',
+  'Math.min((doc.splitTextToSize(desc, width - 4) as string[]).length, maxDescriptionLines)',
+  'const attributeLines = Math.min(item.attributes.length, 6)',
+].forEach((token) => {
+  if (!pdfRenderer.includes(token)) failures.push(`PDF layout estimate boundary missing token: ${token}`);
 });
 
 const brandTokens = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/source/buildBrandTokens.ts'), 'utf8');
@@ -1792,6 +1902,7 @@ const advisorRoute = fs.readFileSync(path.join(root, 'src/app/api/menu-card-expo
   'MAX_MENU_CARD_DESIGN_ADVISOR_PARSE_DIAGNOSTICS',
   'reportedMenuCardDesignAdvisorParseFailures',
   'logMenuCardDesignAdvisorParseFailure',
+  'let recommendation: MenuCardDesignAdvisorRecommendation;',
   "fallbackPolicy: 'return_layout_suggestion_failed'",
   'candidateLength: context.candidateLength',
   'trimmedTextLength: context.trimmedTextLength',

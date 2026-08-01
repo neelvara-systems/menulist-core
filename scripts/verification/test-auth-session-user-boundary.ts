@@ -79,5 +79,25 @@ assert.doesNotMatch(
     /\.map\(\(storeId\) => Number\(storeId\)\)/,
     'session membership must not coerce exponent, whitespace, decimal or leading-zero IDs',
 );
+assert.match(
+    authSource,
+    /if \(!email\) \{\s+logAuthDiagnostic\('oauth_email_missing'/,
+    'OAuth admission must deny a provider identity that does not supply an email before database access',
+);
+assert.match(
+    authSource,
+    /auth_entity_block_context_fetch_failed[\s\S]*?throw error;/,
+    'tenant/store block-state lookup failures must fail authentication closed',
+);
+assert.doesNotMatch(
+    authSource,
+    /auth_entity_block_context_fetch_failed[\s\S]*?return null;/,
+    'tenant/store block-state lookup failures must not be converted into an unblocked entity',
+);
+assert.match(
+    authSource,
+    /await signOutFirebaseAuth\(\);[\s\S]*?await signOut\(\{ redirect: true, callbackUrl \}\);[\s\S]*?return true;/,
+    'sign-out completion must await both Firebase and NextAuth session teardown',
+);
 
 console.log('Auth session user boundary tests passed.');

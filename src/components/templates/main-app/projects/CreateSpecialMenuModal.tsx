@@ -13,11 +13,15 @@ import { applyLocalizedProjectDraftMap, getProjectLanguageLabel, getProjectPrefe
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import translateProjectPublicContent from "@services/ai/projectPublicContent/translateProjectPublicContent";
 import type { SpecialMenuMode } from "@template/main-app/projects/types";
-import { getClockTimeInputFormat } from "@util/dateTime";
+import {
+    fromNativeDateInputValue,
+    fromNativeDateTimeInputValue,
+    getClockTimeInputFormat,
+} from "@util/dateTime";
 import { Button, DatePicker, Form, Input, Modal, Radio, Select, Typography, message, theme } from "antd";
 import dayjs from "dayjs";
 import { useTranslations } from "next-intl";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 import { LuCalendar, LuInfo } from "react-icons/lu";
 import {
     getBoundedProjectPageStringContext,
@@ -70,20 +74,29 @@ export default function CreateSpecialMenuModal({
     const [selectedLanguage, setSelectedLanguage] = useState(referenceLanguage);
     const [displayNameDrafts, setDisplayNameDrafts] = useState<Record<string, string>>({ [referenceLanguage]: '' });
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
+    const submitInFlightRef = useRef(false);
 
     const capabilities = getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory);
 
     const handleSubmit = async () => {
+        if (submitInFlightRef.current) return;
         try {
             const values = await form.validateFields();
+            if (submitInFlightRef.current) return;
+            submitInFlightRef.current = true;
             setLoading(true);
 
-            const startsAt = values.startsAt.toISOString();
-            const endsAt = values.endsAt.toISOString();
+            const storeTimeZone = storeDetails?.timeZone;
+            const startsAt = capabilities.allowTimeScheduling
+                ? fromNativeDateTimeInputValue(values.startsAt.format("YYYY-MM-DDTHH:mm"), storeTimeZone)
+                : fromNativeDateInputValue(values.startsAt.format("YYYY-MM-DD"), storeTimeZone);
+            const endsAt = capabilities.allowTimeScheduling
+                ? fromNativeDateTimeInputValue(values.endsAt.format("YYYY-MM-DDTHH:mm"), storeTimeZone)
+                : fromNativeDateInputValue(values.endsAt.format("YYYY-MM-DD"), storeTimeZone);
             const localizedDisplayName = applyLocalizedProjectDraftMap(undefined, displayNameDrafts);
             const displayName = (displayNameDrafts[selectedLanguage] || '').trim();
 
-            if (!displayName || !localizedDisplayName) {
+            if (!displayName || !localizedDisplayName || !startsAt || !endsAt) {
                 setLoading(false);
                 return;
             }
@@ -92,7 +105,9 @@ export default function CreateSpecialMenuModal({
                 baseProjectId,
                 displayName,
                 localizedDisplayName,
-                mode: values.mode,
+                mode: capabilities.availableModes.length === 1
+                    ? capabilities.availableModes[0]
+                    : values.mode,
                 startsAt,
                 endsAt,
             });
@@ -122,6 +137,7 @@ export default function CreateSpecialMenuModal({
             });
             message.error("Could not create special menu.");
         } finally {
+            submitInFlightRef.current = false;
             setLoading(false);
         }
     };
@@ -315,6 +331,11 @@ export default function CreateSpecialMenuModal({
                         placeholder="Select start date"
                     />
                 </Form.Item>
+                {storeDetails?.timeZone ? (
+                    <Text type="secondary" style={{ display: "block", fontSize: 12, marginTop: -16, marginBottom: 16 }}>
+                        Schedule uses {storeDetails.timeZone}.
+                    </Text>
+                ) : null}
 
                 <Form.Item
                     name="endsAt"

@@ -336,8 +336,10 @@ const getKnowledgeBaseCacheState = async (
     let canonicalSourceVersion: number | undefined;
     try {
         const [manifestVersion, canonicalVersion] = await Promise.all([
-            getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.KB, tId, sId).catch(() => undefined),
-            getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId).catch((error) => {
+            getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.KB, tId, sId).catch(
+                (): undefined => undefined,
+            ),
+            getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.CANONICAL, tId, sId).catch((error): undefined => {
                 logRuntimeFailure('answerlattice_canonical_cache_version_load_failed', error, {
                     ...getBoundedRuntimeStringContext('storeId', sId),
                     ...getBoundedRuntimeStringContext('tenantId', tId),
@@ -510,22 +512,6 @@ const getSearchTextLogContext = (query: unknown, effectiveQuery?: unknown) => ({
     }),
 });
 
-const buildSearchHistoryContextFields = (productContext: CoreSearchInput['productContext']) => {
-    if (!productContext) return {};
-
-    const contextKey = cleanSearchContextText(productContext.contextKey, 140);
-    const surfaceFeature = cleanSearchContextText(productContext.feature, 120);
-    const surfacePage = cleanSearchContextText(productContext.page, 120);
-    const surfaceWorkflow = cleanSearchContextText(productContext.workflow, 120);
-
-    return {
-        ...(contextKey ? { contextKey } : {}),
-        ...(surfaceFeature ? { surfaceFeature } : {}),
-        ...(surfacePage ? { surfacePage } : {}),
-        ...(surfaceWorkflow ? { surfaceWorkflow } : {}),
-    };
-};
-
 const buildSearchHistoryRequestFields = (requestMetadata: CoreSearchInput['requestMetadata']) => {
     if (!requestMetadata) return {};
 
@@ -537,10 +523,12 @@ const buildSearchHistoryRequestFields = (requestMetadata: CoreSearchInput['reque
     const requestPath = cleanSearchContextText(requestMetadata.requestPath, 180);
     const userAgentFamily = cleanSearchContextText(requestMetadata.userAgentFamily, 40);
     const evidenceLinks = Array.isArray(requestMetadata.evidenceLinks)
-        ? requestMetadata.evidenceLinks.slice(0, 3).map(link => ({
-            url: cleanSearchContextText(link?.url, 1000),
-            label: cleanSearchContextText(link?.label, 80),
-        })).filter(link => Boolean(link.url))
+        ? requestMetadata.evidenceLinks.slice(0, 3).flatMap((link) => {
+            const url = cleanSearchContextText(link?.url, 1000);
+            if (!url) return [];
+            const label = cleanSearchContextText(link?.label, 80);
+            return [{ url, ...(label ? { label } : {}) }];
+        })
         : [];
 
     return {
@@ -922,7 +910,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                             matchedEntityIds: cached.matchedEntityIds,
                             confidence: cached.confidence,
                             sourceVersions: cached.sourceVersions,
-                            ...buildSearchHistoryContextFields(effectiveProductContext),
                             ...buildSearchHistoryRequestFields(requestMetadata),
                         }, { mountContext, tId, sId });
 
@@ -1041,7 +1028,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                     ? { [ANSWERLATTICE_CACHE_SOURCES.CANONICAL]: kbCacheState.canonicalSourceVersion }
                     : {}),
             },
-            ...buildSearchHistoryContextFields(effectiveProductContext),
             ...buildSearchHistoryRequestFields(requestMetadata),
         }, { mountContext, tId, sId });
 
@@ -1196,7 +1182,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 matchedEntityIds: canonicalResult.matchedEntityIds,
                 confidence: canonicalResult.confidence,
                 sourceVersions: canonicalSourceVersions,
-                ...buildSearchHistoryContextFields(effectiveProductContext),
                 ...buildSearchHistoryRequestFields(requestMetadata),
             }, { mountContext, tId, sId });
 
@@ -1361,7 +1346,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             ANSWERLATTICE_CACHE_SOURCES.CANONICAL,
             tId,
             sId,
-        ).catch((error) => {
+        ).catch((error): undefined => {
             logRuntimeFailure('answerlattice_governance_fallback_cache_version_load_failed', error, {
                 ...getBoundedRuntimeStringContext('storeId', sId),
                 ...getBoundedRuntimeStringContext('tenantId', tId),
@@ -1393,7 +1378,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
             clarification: safeFallback.clarification,
             confidence: safeFallback.confidence,
             sourceVersions,
-            ...buildSearchHistoryContextFields(effectiveProductContext),
             ...buildSearchHistoryRequestFields(requestMetadata),
         }, { mountContext, tId, sId });
 
@@ -1579,10 +1563,14 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         return buildPublicKnowledgeBaseReference(doc.id, doc.data(), similarityScore);
     });
 
-    let vectorDocumentsMatched = documentsFound.filter(doc => doc.similarityScore > SIMILARITY_THRESHOLD);
+    let vectorDocumentsMatched = documentsFound.filter(
+        (doc) => (doc.similarityScore ?? 0) > SIMILARITY_THRESHOLD,
+    );
 
     if (documentsFound.length && !vectorDocumentsMatched.length) {
-        vectorDocumentsMatched = documentsFound.filter(doc => doc.similarityScore > SIMILARITY_THRESHOLD_LOW);
+        vectorDocumentsMatched = documentsFound.filter(
+            (doc) => (doc.similarityScore ?? 0) > SIMILARITY_THRESHOLD_LOW,
+        );
     }
 
     const preparedHybridEvidenceQuery = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL
@@ -1820,7 +1808,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 sourceVersions: kbCacheState.sourceVersion
                     ? { [ANSWERLATTICE_CACHE_SOURCES.KB]: kbCacheState.sourceVersion }
                     : undefined,
-                ...buildSearchHistoryContextFields(effectiveProductContext),
                 ...buildSearchHistoryRequestFields(requestMetadata),
             }, { mountContext, tId, sId });
 

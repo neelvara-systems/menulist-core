@@ -24,7 +24,10 @@ import { getBusinessAttributeConfigForType, normalizeCustomBusinessAttributes } 
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
-import { getStoreDayKey, getStoreStatus, normalizeWorkingHoursValue, parseWorkingHoursRanges } from "@lib/hours/hoursEngine";
+import { getStoreDayKey, getStoreLocalDateKey, getStoreStatus, normalizeWorkingHoursValue, parseWorkingHoursRanges } from "@lib/hours/hoursEngine";
+import { getSpecialHoursEntry, getUpcomingSpecialHours } from "@lib/hours/specialHours";
+import { normalizeOBPFreshnessDate } from "@lib/obp/freshnessTimestamp";
+import type { StoreDataType, StoreSpecialHours } from "@type/platform/store";
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl, normalizeOBPReviewUrl, normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from "@lib/obp/publicLinks";
 import { normalizeOBPPublicPhotoUrls } from "@lib/obp/publicPhotos";
 import { buildTelHref, buildWhatsAppPhoneParam } from "@lib/phone/phoneNumber";
@@ -34,7 +37,7 @@ import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding
 import { normalizePublicOutletSlug } from "@lib/publicRouting/pathSegments";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { formatClockTime } from "@util/dateTime";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
     LuBadgeCheck,
     LuBanknote,
@@ -72,7 +75,8 @@ import OBPMenuCTA from "./OBPMenuCTA";
 import type { OBPMenuCTAProjectEntry } from "./OBPMenuCTA";
 import OBPPhotoStrip from "./OBPPhotoStrip";
 import OBPThemeToggle from "./OBPThemeToggle";
-import { getOBPTranslations } from "./i18n";
+import OBPPublicImage from "./OBPPublicImage";
+import { getOBPTranslations, type OBPTranslationValues } from "./i18n";
 import styles from "./obp.module.scss";
 import { generateOBPSchema } from "./schema";
 
@@ -91,6 +95,14 @@ export interface ObpMenuInfo {
     }>;
 }
 
+export type OBPPublicStore = Partial<StoreDataType>
+    & Pick<StoreDataType, 'storeId' | 'tenantId'>
+    & {
+    /** Legacy top-level coordinates retained as a read-only fallback. */
+    latitude?: unknown;
+    longitude?: unknown;
+    };
+
 interface OBPResolvedSurfaceProps {
     includeRuntime?: boolean;
     masterBrandName?: string;
@@ -98,7 +110,7 @@ interface OBPResolvedSurfaceProps {
     masterSubdomain?: string;
     menuInfo: ObpMenuInfo;
     requestedLanguage?: string | string[] | null;
-    store: any;
+    store: OBPPublicStore;
     isOutletSurface?: boolean;
 }
 
@@ -155,14 +167,22 @@ function logOBPResolvedSurfaceFailure(
 }
 
 function getTodayDayKey(timeZone: string | undefined): string {
-    return getStoreDayKey(timeZone || 'Asia/Kolkata');
+    return getStoreDayKey(timeZone);
 }
 
-function getTodayHoursDisplay(workingHours: Record<string, string> | undefined, timeZone: string | undefined, t: (key: string, values?: Record<string, any>) => string): string | null {
-    if (!workingHours) return null;
+function getTodayHoursDisplay(
+    workingHours: Record<string, string> | undefined,
+    specialHours: StoreSpecialHours | undefined,
+    timeZone: string | undefined,
+    t: (key: string, values?: OBPTranslationValues) => string,
+): string | null {
+    if (!workingHours && !specialHours) return null;
 
-    const todayHours = workingHours[getTodayDayKey(timeZone)];
-    const status = getStoreStatus(workingHours, timeZone || 'Asia/Kolkata');
+    const localDate = getStoreLocalDateKey(timeZone);
+    const specialEntry = getSpecialHoursEntry(specialHours, localDate);
+    if (!workingHours && !specialEntry) return t('publicHoursNotAvailable');
+    const todayHours = specialEntry?.hours ?? workingHours?.[getTodayDayKey(timeZone)];
+    const status = getStoreStatus(workingHours, timeZone, undefined, new Date(), specialHours);
     if (status.isOpen && status.currentDayHours) {
         return t('publicOpenToday', { hours: status.currentDayHours });
     }
@@ -223,7 +243,7 @@ function buildGoogleMapsEmbedUrl(params: {
     return `https://www.google.com/maps/embed/v1/place?${searchParams.toString()}`;
 }
 
-function getFullAddress(store: any): string | null {
+function getFullAddress(store: OBPPublicStore): string | null {
     const parts = [
         store?.addressLine,
         store?.area,
@@ -234,32 +254,15 @@ function getFullAddress(store: any): string | null {
 }
 
 function getFreshnessText(
-    modifiedOn: any,
+    modifiedOn: unknown,
     translate: PublicCustomerTranslator,
     locale: string,
     timeZone?: string,
 ): string | null {
     if (!modifiedOn) return null;
 
-    let date: Date;
-    try {
-        if (typeof modifiedOn === 'string') {
-            date = new Date(modifiedOn);
-        } else if (modifiedOn?.toDate) {
-            date = modifiedOn.toDate();
-        } else if (modifiedOn?.seconds) {
-            date = new Date(modifiedOn.seconds * 1000);
-        } else {
-            return null;
-        }
-    } catch (error) {
-        logOBPResolvedSurfaceFailure('public_obp_freshness_timestamp_parse_failed', error, {
-            modifiedOn,
-        });
-        return null;
-    }
-
-    if (!Number.isFinite(date.getTime())) {
+    const date = normalizeOBPFreshnessDate(modifiedOn);
+    if (!date) {
         logOBPResolvedSurfaceFailure('public_obp_freshness_timestamp_parse_failed', new Error('invalid_modified_on'), {
             modifiedOn,
         });
@@ -298,11 +301,48 @@ function getFreshnessText(
     }
 }
 
-function getAllHoursDisplay(workingHours: Record<string, string> | undefined, t: (key: string) => string, todayKey?: string): ReactNode | null {
-    if (!workingHours || Object.keys(workingHours).length === 0) return null;
+function getAllHoursDisplay(
+    workingHours: Record<string, string> | undefined,
+    specialHours: StoreSpecialHours | undefined,
+    timeZone: string | undefined,
+    locale: string,
+    t: (key: string) => string,
+    todayKey?: string,
+): ReactNode | null {
+    if (
+        (!workingHours || Object.keys(workingHours).length === 0)
+        && (!specialHours || Object.keys(specialHours).length === 0)
+    ) return null;
 
-    const rows = DAY_ORDER.map(day => {
-        const hours = workingHours[day];
+    const specialRows = getUpcomingSpecialHours(specialHours, timeZone).map(({ date, entry }) => {
+        const dateLabel = new Intl.DateTimeFormat(locale, {
+            day: 'numeric',
+            month: 'short',
+            timeZone: 'UTC',
+            year: 'numeric',
+        }).format(new Date(`${date}T12:00:00.000Z`));
+        const ranges = parseWorkingHoursRanges(entry.hours);
+        const isClosed = ranges.length === 0;
+        const display = isClosed
+            ? t('publicClosed')
+            : ranges
+                .map((range) => `${formatClockTime(range.startTime)} - ${formatClockTime(range.endTime)}`)
+                .join(', ');
+        return (
+            <div key={`special-${date}`} className={styles.hoursRow}>
+                <span className={styles.hoursDay}>
+                    {entry.label || dateLabel}
+                    {entry.label ? <small style={{ display: 'block', fontWeight: 400 }}>{dateLabel}</small> : null}
+                </span>
+                <span className={`${styles.hoursTime} ${isClosed ? styles.hoursClosed : ''}`}>
+                    {display}
+                </span>
+            </div>
+        );
+    });
+
+    const weeklyRows = DAY_ORDER.map(day => {
+        const hours = workingHours?.[day];
         const isClosed = !hours || (typeof hours === 'string' && hours.toLowerCase() === 'closed');
         const normalized = normalizeWorkingHoursValue(hours);
         const ranges = parseWorkingHoursRanges(hours);
@@ -324,7 +364,7 @@ function getAllHoursDisplay(workingHours: Record<string, string> | undefined, t:
         );
     });
 
-    return <>{rows}</>;
+    return <>{specialRows}{weeklyRows}</>;
 }
 
 function buildServiceModes(attributes?: Record<string, boolean>): string[] {
@@ -517,7 +557,7 @@ function renderIconTile(item: OBPIconItem) {
     );
 }
 
-function localizeStatusText(value: string | undefined, t: (key: string, values?: Record<string, any>) => string): string {
+function localizeStatusText(value: string | undefined, t: (key: string, values?: OBPTranslationValues) => string): string {
     if (!value) return '';
     const normalized = value.trim().toLowerCase();
     if (normalized === 'hours not available') return t('publicHoursNotAvailable');
@@ -526,7 +566,7 @@ function localizeStatusText(value: string | undefined, t: (key: string, values?:
     return value;
 }
 
-function localizeStatusNextChange(value: string | undefined, t: (key: string, values?: Record<string, any>) => string): string {
+function localizeStatusNextChange(value: string | undefined, t: (key: string, values?: OBPTranslationValues) => string): string {
     if (!value) return '';
     const trimmed = value.trim();
     const lower = trimmed.toLowerCase();
@@ -545,9 +585,9 @@ function localizeStatusNextChange(value: string | undefined, t: (key: string, va
 
 function getLocalizedPublicText(value: unknown, language: string, fallback: string = ''): string {
     return getLocalizedText(
-        value as any,
+        value,
         language,
-        getPrimaryLocalizedLanguage(value as any, language),
+        getPrimaryLocalizedLanguage(value, language),
         fallback,
     );
 }
@@ -593,19 +633,20 @@ export default function OBPResolvedSurface({
     const hoursOutput = FEATURE_FLAGS.ENABLE_OUTPUT_CONTROL
         ? resolveHoursOutput({
             workingHours: store?.workingHours,
+            specialHours: store?.specialHours,
             hoursLastUpdatedAt: store?.hoursLastUpdatedAt || store?.modifiedOn,
             timeZone: store?.timeZone,
         })
         : null;
     const status = hoursOutput
         ? { isOpen: hoursOutput.styleHint === "open", statusText: hoursOutput.statusText, nextChange: hoursOutput.secondaryText }
-        : getStoreOpenStatus(store?.workingHours, store?.timeZone);
+        : getStoreOpenStatus(store?.workingHours, store?.timeZone, new Date(), store?.specialHours);
     const showStatusBadge = hoursOutput ? hoursOutput.showStatusBadge : true;
     const openHoursState = showStatusBadge ? (status.isOpen ? 'open' : 'closed') : 'unknown';
     const statusText = localizeStatusText(status.statusText, t);
     const statusNextChange = localizeStatusNextChange(status.nextChange, t);
     const todayDayKey = getTodayDayKey(store?.timeZone);
-    const todayHours = getTodayHoursDisplay(store?.workingHours, store?.timeZone, t);
+    const todayHours = getTodayHoursDisplay(store?.workingHours, store?.specialHours, store?.timeZone, t);
     const fullAddress = getFullAddress(store);
     const originSubdomain = isOutletSurface
         ? masterSubdomain
@@ -721,8 +762,16 @@ export default function OBPResolvedSurface({
     ] : [];
     const hasSocials = !!(instagram || facebook || twitter || linkedin || youtube || socialWhatsApp || website || starterPlaceholderSocials.length);
     const attributeConfig = getBusinessAttributeConfigForType(store?.businessType, store?.businessCategory);
+    const isEnabledBusinessAttribute = (key: string): boolean => {
+        const attributes = store.businessAttributes;
+        return Boolean(
+            attributes
+            && Object.prototype.hasOwnProperty.call(attributes, key)
+            && Reflect.get(attributes, key) === true
+        );
+    };
     const attributeTags = attributeConfig
-        .filter((attribute) => store?.businessAttributes?.[attribute.key] === true)
+        .filter((attribute) => isEnabledBusinessAttribute(attribute.key))
         .map((attribute) => ({
             key: attribute.key,
             Icon: iconVariant === 'icons' ? getBusinessAttributeIcon(attribute.key) : undefined,
@@ -769,7 +818,14 @@ export default function OBPResolvedSurface({
     const googleRating = pp.googleRating;
     const googleReviewCount = pp.googleReviewCount;
     const hasGoogleReview = !!(googleReviewUrl && googleRating);
-    const allHours = getAllHoursDisplay(store?.workingHours, t, todayDayKey);
+    const allHours = getAllHoursDisplay(
+        store?.workingHours,
+        store?.specialHours,
+        store?.timeZone,
+        customerLocale,
+        t,
+        todayDayKey,
+    );
     const serviceModeItems = buildServiceModes(store?.businessAttributes).map((mode) => ({
         key: mode,
         Icon: iconVariant === 'icons' ? getServiceModeIcon(mode) : undefined,
@@ -910,7 +966,7 @@ export default function OBPResolvedSurface({
                 data-obp-page="true"
                 dir={activeLanguageDirection}
                 lang={contentLanguage}
-                style={{ '--obp-accent': accentColor } as any}
+                style={{ '--obp-accent': accentColor } as CSSProperties & { '--obp-accent': string }}
             >
                 <div className={`${styles.shell} ${useStarterCompactLayout ? styles.starterPreviewShell : ''}`}>
                     {showLanguageSwitcher ? (
@@ -924,6 +980,7 @@ export default function OBPResolvedSurface({
 
                     {isOutletSurface && publicOutletSlug && (masterBrandName || store?.name) ? (
                         <MenuBreadcrumb
+                            activeLanguage={contentLanguage}
                             ariaLabel={t('publicBusinessDetailsLabel')}
                             businessName={masterBrandName || brandName}
                             outletName={storeLocationName || undefined}
@@ -940,26 +997,30 @@ export default function OBPResolvedSurface({
                     ) : null}
 
                     {businessCover ? (
-                        <div className={styles.businessCover}>
-                            <img
-                                alt={storeName}
-                                src={businessCover}
-                                loading="eager"
-                            />
-                        </div>
+                        <OBPPublicImage
+                            alt={storeName}
+                            loading="eager"
+                            src={businessCover}
+                            wrapperClassName={styles.businessCover}
+                        />
                     ) : null}
 
                     <div className={styles.desktopLayout}>
                         <section className={styles.identity} aria-label={storeName}>
                             <div className={styles.identityHeader}>
                                 {logo ? (
-                                    <img
+                                    <OBPPublicImage
                                         src={logo}
                                         alt={storeName}
                                         className={styles.logo}
                                         width={72}
                                         height={72}
                                         loading="eager"
+                                        fallback={(
+                                            <div className={styles.logoFallback} style={{ background: accentColor }}>
+                                                {firstLetter}
+                                            </div>
+                                        )}
                                     />
                                 ) : (
                                     <div className={styles.logoFallback} style={{ background: accentColor }}>
@@ -1087,7 +1148,7 @@ export default function OBPResolvedSurface({
                             directionsUrl={directionsUrl}
                             reservationUrl={safeReservationUrl || undefined}
                             orderUrl={safeOrderUrl || undefined}
-                            googleReviewUrl={googleReviewUrl}
+                            googleReviewUrl={googleReviewUrl ?? undefined}
                             feedbackUrl={feedbackUrl}
                             iconVariant={iconVariant}
                             showCall={showCall}
@@ -1313,10 +1374,10 @@ export default function OBPResolvedSurface({
                                 switchToLightLabel={t('publicSwitchToLightTheme')}
                             />
                         </div>
-                        {resolveMenuListAttributionPolicy({ activePlanType: (store as any)?.activePlanType }).showAttribution ? (
+                        {resolveMenuListAttributionPolicy({ activePlanType: store.activePlanType }).showAttribution ? (
                         <div className={`${styles.footerCard} ${styles.footerBrandingCard}`}>
                             <PublicMenuListAttribution
-                                activePlanType={(store as any)?.activePlanType}
+                                activePlanType={store.activePlanType}
                                 ariaLabel={publicCustomerT('common.createOfficialCustomerLink')}
                                 mode="compact"
                                 surfaceLabel={t('publicOfficialPagePoweredBy')}
@@ -1340,7 +1401,7 @@ export default function OBPResolvedSurface({
                     storeTimeZone={store.timeZone}
                     themeColor={accentColor}
                     promoteInstallation={
-                        (store as any)?.pwaSettings?.promoteInstallation !== false
+                        store.pwaSettings?.promoteInstallation !== false
                     }
                     trackingEnabled={runtimeTrackingEnabled}
                 />

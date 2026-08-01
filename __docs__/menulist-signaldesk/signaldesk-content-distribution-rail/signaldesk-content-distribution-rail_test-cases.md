@@ -68,6 +68,9 @@
 | --- | --- |
 | Unauthenticated API call | Blocked by `withAuth()`. |
 | Invalid payload | Returns `Invalid input` and logs validation failure. |
+| Whitespace-mutated, path-shaped, reserved, or overlong document ID | Rejected at the action schema and revalidated by the server before constructing a Firestore document reference. |
+| Persisted content source/asset contains a malformed optional reference | The complete row is omitted from the workspace projection; the reference is never trimmed into another authority record. |
+| Idempotent replay claim points at a malformed content identity | Replay fails closed before constructing the content document reference. |
 | Client Firestore write | Denied by rules. |
 | Feature flag disabled | Route and workspace section return not found, advanced link is absent, and all mutations fail closed. |
 | Draft-only workspace reader | Receives content lists but no target options used for proof grants. |

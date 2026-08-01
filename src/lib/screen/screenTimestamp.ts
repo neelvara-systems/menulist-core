@@ -2,22 +2,28 @@ import type { DigitalScreenState } from "@type/campaigns";
 
 export type DigitalScreenSeenTimestamp = DigitalScreenState["screenLastSeenAt"] | null;
 
-const validDateOrNull = (value: unknown): Date | null => (
-    value instanceof Date && !Number.isNaN(value.getTime()) ? value : null
-);
+const validDateOrNull = (value: unknown): Date | null => {
+    try {
+        if (!(value instanceof Date)) return null;
+        const milliseconds = Date.prototype.getTime.call(value);
+        return Number.isFinite(milliseconds) ? new Date(milliseconds) : null;
+    } catch {
+        return null;
+    }
+};
 
 export function screenTimestampToDate(value: unknown): Date | null {
-    if (value === undefined || value === null) return null;
-    if (value instanceof Date) return validDateOrNull(value);
+    try {
+        if (value === undefined || value === null) return null;
+        if (value instanceof Date) return validDateOrNull(value);
 
-    if (typeof value === "object" && !Array.isArray(value)) {
-        const timestamp = value as {
-            _seconds?: unknown;
-            seconds?: unknown;
-            toDate?: unknown;
-            toMillis?: unknown;
-        };
-        try {
+        if (typeof value === "object" && !Array.isArray(value)) {
+            const timestamp = value as {
+                _seconds?: unknown;
+                seconds?: unknown;
+                toDate?: unknown;
+                toMillis?: unknown;
+            };
             if (typeof timestamp.toDate === "function") {
                 return validDateOrNull(timestamp.toDate());
             }
@@ -27,24 +33,24 @@ export function screenTimestampToDate(value: unknown): Date | null {
                     ? validDateOrNull(new Date(milliseconds))
                     : null;
             }
-        } catch {
-            return null;
+
+            const seconds = timestamp.seconds ?? timestamp._seconds;
+            return typeof seconds === "number" && Number.isFinite(seconds)
+                ? validDateOrNull(new Date(seconds * 1000))
+                : null;
         }
 
-        const seconds = timestamp.seconds ?? timestamp._seconds;
-        return typeof seconds === "number" && Number.isFinite(seconds)
-            ? validDateOrNull(new Date(seconds * 1000))
-            : null;
-    }
+        if (
+            (typeof value === "number" && Number.isFinite(value))
+            || (typeof value === "string" && value.length > 0 && value.trim() === value)
+        ) {
+            return validDateOrNull(new Date(value));
+        }
 
-    if (
-        (typeof value === "number" && Number.isFinite(value))
-        || (typeof value === "string" && value.length > 0 && value.trim() === value)
-    ) {
-        return validDateOrNull(new Date(value));
+        return null;
+    } catch {
+        return null;
     }
-
-    return null;
 }
 
 export const screenTimestampToMillis = (value: unknown): number | null => (

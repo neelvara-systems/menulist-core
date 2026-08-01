@@ -118,13 +118,13 @@ export interface IngestionJobArticleToReview {
 
 export interface IngestionJob {
     id: string;
-    pId?: 'AL';
+    pId: 'AL';
     title?: string;
     status: typeof INGESTION_JOB_STATUS[keyof typeof INGESTION_JOB_STATUS];
     sourceFiles: IngestionJobSourceFile[];
 
     articleIds?: string[];
-    categories?: IngestionJobCategoriesMap; // This will hold the proposed navigation structure
+    categories?: IngestionJobCategoriesMap | null; // null until generation proposes navigation
     articlesToReview?: IngestionJobArticleToReview[]; // Articles need to review
 
     //task queue keys
@@ -153,14 +153,14 @@ export interface IngestionJob {
     };
 
     //runtime fields
-    errorMessage?: string;//set when job fails, used for retry visibility
-    failureStage?: 'generation' | 'publishing_orchestration' | 'embedding';
+    errorMessage?: string | null;//set when job fails, used for retry visibility
+    failureStage?: 'generation' | 'publishing_orchestration' | 'embedding' | null;
     publishedOn?: Timestamp;
     createdOn: Timestamp;//created at runtime via requestBodyComposer 
     modifiedOn: Timestamp;//created at runtime via requestBodyComposer
 
-    sId: string | number;//created at runtime via requestBodyComposer
-    tId: string | number;//created at runtime via requestBodyComposer
+    sId: number;//created at runtime via requestBodyComposer
+    tId: number;//created at runtime via requestBodyComposer
     uId: string | number;//created at runtime via requestBodyComposer
 
     // Founder Onboarding Bootstrap (additive, freeze-compliant)

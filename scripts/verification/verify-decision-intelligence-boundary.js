@@ -10,6 +10,9 @@ const excludes = (source, value, message) => assert.ok(!source.includes(value), 
 const appConfig = read('src/data/shared/decisionBlockConfig.ts');
 const functionsConfig = read('functions/src/sharedData/decisionBlockConfig.ts');
 assert.equal(appConfig, functionsConfig, 'app and Functions Decision Block configuration must be byte-identical');
+const appIntelligencePolicy = read('src/data/shared/menuIntelligencePolicy.ts');
+const functionsIntelligencePolicy = read('functions/src/sharedData/menuIntelligencePolicy.ts');
+assert.equal(appIntelligencePolicy, functionsIntelligencePolicy, 'app and Functions Menu Intelligence policy must be byte-identical');
 
 const scoring = read('functions/src/decisionBlocksScoring.ts');
 includes(scoring, 'extractActiveItems(projectData, analyticsForScoring)', 'Decision Blocks must use the shared catalog-first extractor');
@@ -61,6 +64,10 @@ includes(dashboardAggregation, 'await writeIntelligence7dSnapshot(db, tId, sId, 
 const intelligence = read('functions/src/intelligence/menuIntelligence.ts');
 const computeIntelligence = intelligence.match(/export function computeIntelligenceState\([\s\S]*?\n\}\n\n\/\*\*\n \* Fetch current intelligence state/)?.[0] || '';
 includes(intelligence, 'advanceAnalyticsDay', 'CMI maturity must be driven by distinct settled analytics dates');
+includes(intelligence, "import { MENU_INTELLIGENCE_POLICY } from '../sharedData/menuIntelligencePolicy';", 'CMI must consume the shared threshold and maturity policy');
+excludes(intelligence, 'CONFIDENT: 0.65', 'CMI must not duplicate the shared confident threshold');
+excludes(intelligence, 'CAUTIOUS: 0.35', 'CMI must not duplicate the shared cautious threshold');
+excludes(intelligence, 'const CALIBRATION_LOCK_DAY = 21', 'CMI must not duplicate the shared calibration lock day');
 includes(intelligence, "throw new Error('menu_intelligence_out_of_order_analytics')", 'CMI must reject older analytics before replacing current evidence');
 includes(intelligence, 'lastAnalyticsDate', 'CMI must persist the last progressed analytics date');
 includes(intelligence, 'priorStableDays >= FATIGUE_THRESHOLD_DAYS', 'fatigue must use the stable streak before a falling day');

@@ -10,6 +10,7 @@ import {
 import {
     doc,
     getDoc,
+    serverTimestamp,
     setDoc,
     Timestamp,
     updateDoc,
@@ -82,8 +83,9 @@ const auditLog = (action: string, overrides: Record<string, unknown> = {}) => ({
     action,
     entityType: 'mutationProposal',
     entityId: 'proposal_1',
+    uId: 'owner-1',
     performedBy: 'owner-1',
-    timestamp: NOW,
+    timestamp: serverTimestamp(),
     ...overrides,
 });
 
@@ -213,6 +215,22 @@ async function run(): Promise<void> {
         await assertSucceeds(setDoc(
             doc(ownerDb, 'answerlattice_auditLogs', 'client_note'),
             auditLog('entity_candidate_review_note'),
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_auditLogs', 'forged_actor'),
+            auditLog('entity_candidate_review_note', { performedBy: 'system:forged' }),
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_auditLogs', 'forged_uid'),
+            auditLog('entity_candidate_review_note', { uId: 'owner-2', performedBy: 'owner-2' }),
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_auditLogs', 'backdated'),
+            auditLog('entity_candidate_review_note', { timestamp: NOW }),
+        ));
+        await assertFails(setDoc(
+            doc(ownerDb, 'answerlattice_auditLogs', 'malformed_entity'),
+            auditLog('entity_candidate_review_note', { entityId: { nested: true } }),
         ));
         await assertFails(setDoc(
             doc(ownerDb, 'answerlattice_auditLogs', 'forged_canonical_update'),

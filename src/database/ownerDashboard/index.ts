@@ -2293,7 +2293,7 @@ export async function getOwnerDashboardSettled(
     timeZone?: string,
     businessDayEndTime?: string,
 ): Promise<OwnerDashboardData> {
-    return await apiCallComposer(
+    return await apiCallComposer<OwnerDashboardData>(
         async () => {
             const tenantId = normalizeAnalyticsScopeDocumentId(tId);
             const storeId = normalizeAnalyticsScopeDocumentId(sId);
@@ -2388,7 +2388,7 @@ export async function getOwnerDashboardData(
     timeZone?: string,
     businessDayEndTime?: string,
 ): Promise<OwnerDashboardData> {
-    return await apiCallComposer(
+    return await apiCallComposer<OwnerDashboardData>(
         async () => {
             // Fetch overview (includes wtd, mtd, yesterday, historical weeks) and overall in parallel
             const [overview, overall] = await Promise.all([

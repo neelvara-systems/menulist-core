@@ -42,6 +42,11 @@ export interface B2CViewRef {
     openPreview: () => void;
 }
 
+const requireB2CProject = (project: Project | null): Project => {
+    if (!project) throw new Error('public_page_editor_active_project_missing');
+    return project;
+};
+
 const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHasChanges }, ref) => {
 
     const [activePage, setActivePage] = useState<PageType>(PageType.OBP);
@@ -54,10 +59,12 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
         resolveRenderLanguage(
             null,
             getProjectDefaultLanguage(activeProject, storeDetails),
-            activeProject.languages || ['en'],
+            requireB2CProject(activeProject).languages || ['en'],
         )
     );
-    const [projectData, setProjectData] = useState<Project>(removeObjRef(activeProject));
+    const [projectData, setProjectData] = useState<Project>(() => (
+        removeObjRef(requireB2CProject(activeProject))
+    ));
     const [storeDraft, setStoreDraft] = useState<StoreDataType | null>(storeDetails ? removeObjRef(storeDetails) : null);
     const [lastPublishedStoreDraft, setLastPublishedStoreDraft] = useState<StoreDataType | null>(storeDetails ? removeObjRef(storeDetails) : null);
     const [obpPhotoDeleteQueue, setObpPhotoDeleteQueue] = useState<string[]>([]);
@@ -80,7 +87,12 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
     const hasBusinessCopyPresenceChanges = () => {
         const draftPresence = storeDraft?.publicPresence || {};
         const savedPresence = lastPublishedStoreDraft?.publicPresence || {};
-        return ['descriptor', 'knownFor', 'specialNote'].some((field) => (
+        const localizedPresenceFields = [
+            'descriptor',
+            'knownFor',
+            'specialNote',
+        ] as const satisfies readonly (keyof NonNullable<StoreDataType['publicPresence']>)[];
+        return localizedPresenceFields.some((field) => (
             JSON.stringify(draftPresence[field]) !== JSON.stringify(savedPresence[field])
         ));
     };
@@ -130,13 +142,14 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
 
                 if (hasProjectChanges()) {
                     const projectCopy: Project = removeObjRef(projectData);
-                    if (projectCopy?.config?.design?.menu) {
+                    if (projectCopy.config?.design?.menu) {
                         projectCopy.config.design.menu = resolveMenuDesignConfig(projectCopy.config.design.menu);
                     }
 
-                    const menuBg = projectCopy?.config?.design?.menu?.backgroundImage;
-                    if (isDataUrl(menuBg)) {
-                        projectCopy.config.design.menu.backgroundImage = await uploadFile({ url: menuBg, type: getDataUrlMimeType(menuBg, 'image/jpeg'), uid: projectData.projectId }, 'assets');
+                    const resolvedMenuDesign = projectCopy.config?.design?.menu;
+                    const menuBg = resolvedMenuDesign?.backgroundImage;
+                    if (resolvedMenuDesign && isDataUrl(menuBg)) {
+                        resolvedMenuDesign.backgroundImage = await uploadFile({ url: menuBg, type: getDataUrlMimeType(menuBg, 'image/jpeg'), uid: projectData.projectId }, 'assets');
                     }
 
                     const updatedProject: Project = await publishProject(projectCopy, {
@@ -309,13 +322,16 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
         setObpPhotoDeleteResetToken((token) => token + 1);
     }, [storeDetails?.storeId]);
 
+    const effectiveStoreDetails = storeDraft || storeDetails;
+    if (!effectiveStoreDetails) return null;
+
     return (
         <Flex vertical style={{ width: '100%', position: 'relative' }} gap={10}>
             <Flex style={{ width: '100%' }} gap={16}>
                 <MainContentRenderer
                     activeDeviceType={activeDeviceType}
                     projectData={projectData}
-                    storeDetails={storeDraft || storeDetails}
+                    storeDetails={effectiveStoreDetails}
                     activePage={activePage}
                     setActivePage={setActivePage}
                     activeLanguage={activeLanguage}
@@ -336,7 +352,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                 />
                 <PreviewModal
                     projectData={projectData}
-                    storeDetails={storeDraft || storeDetails}
+                    storeDetails={effectiveStoreDetails}
                     previewModalOpen={previewModalOpen}
                     setPreviewModalOpen={setPreviewModalOpen}
                     editorActivePage={activePage}

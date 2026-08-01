@@ -1,6 +1,22 @@
 import { Select } from 'antd'
+import type { SelectProps } from 'antd'
+import type { CSSProperties } from 'react'
 
-function SelectElement({ value, styles = {}, onChange, options, isBordered = true }) {
+interface SelectElementProps<ValueType> {
+    isBordered?: boolean;
+    onChange?: SelectProps<ValueType>['onChange'];
+    options?: SelectProps<ValueType>['options'];
+    styles?: CSSProperties;
+    value?: ValueType;
+}
+
+function SelectElement<ValueType>({
+    value,
+    styles = {},
+    onChange,
+    options,
+    isBordered = true,
+}: SelectElementProps<ValueType>) {
     return (
         <Select
             defaultValue={value}

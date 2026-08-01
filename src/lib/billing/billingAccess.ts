@@ -5,6 +5,7 @@ import {
     resolveExactSessionPlatformRole,
     resolveExactSessionStoreRole,
 } from "@lib/auth/sessionPlatformRole";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { requireAnswerlatticePermission } from "@lib/answerlattice/accessControl";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
@@ -47,7 +48,16 @@ export const canManageBillingMutation = async (
     endpoint: string,
 ): Promise<boolean> => {
     if (resolveExactSessionPlatformRole(session) === ECOMSAI_PLATFORM_USER_ROLE) {
-        return true;
+        const currentPlatformUser = await getCurrentPlatformUser(session);
+        if (currentPlatformUser) {
+            return true;
+        }
+        logger.security('Billing Mutation Authorization Failed', {
+            ...getBoundedRazorpaySecurityContext(session, request),
+            endpoint,
+            error: 'Current platform authority unavailable for billing mutation',
+        }, 'high');
+        return false;
     }
 
     const sessionScope = resolveSensitiveSessionStoreScope({

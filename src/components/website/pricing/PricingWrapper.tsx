@@ -120,14 +120,14 @@ export default function PricingWrapper() {
                     <p>Billing details could not be loaded. Subscription changes are unavailable until the current account is confirmed.</p>
                     <Button onClick={() => void getSubscription()} style={{ marginTop: 16 }} type="button">Retry</Button>
                 </div>
-            ) : showSubscriptionManagement ? (
+            ) : showSubscriptionManagement && activeSubscription ? (
                 <SubscriptionManagementPage
-                    activeSubscription={activeSubscription!}
+                    activeSubscription={activeSubscription}
                     refetchActiveSubscription={getSubscription}
                 />
             ) : (
                 <PricingPageRenderer
-                    welcomeTenantName={welcomeTenantName}
+                    welcomeTenantName={welcomeTenantName ?? undefined}
                     activeSubscription={activeSubscription ?? undefined}
                 />
             )}

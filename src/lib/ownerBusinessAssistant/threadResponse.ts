@@ -18,7 +18,7 @@ export function serializeOwnerBusinessAssistantThreadValue(value: unknown): unkn
 export function isOwnerBusinessAssistantThreadOwnedByScope(
   value: unknown,
   scope: { sId: string | number; tId: string | number; userId: string | number },
-): boolean {
+): value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const thread = value as Record<string, unknown>;
   return String(thread.tId ?? '') === String(scope.tId)

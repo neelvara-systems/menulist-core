@@ -365,7 +365,9 @@ function verifyFirestoreDalAndRetention() {
   assertIncludes(clientDal, 'assertFeedbackCountLoadSucceeded', 'Guest Feedback count acknowledgement helper');
   assertIncludes(clientDal, 'assertFeedbackStatusUpdateSucceeded', 'Guest Feedback status acknowledgement helper');
   assertIncludes(clientDal, 'expectedFeedbackId === undefined || resultId === expectedFeedbackId', 'Guest Feedback status acknowledgement exact response identity');
-  assertIncludes(clientDal, 'ids.has(item.id)', 'Guest Feedback list acknowledgement duplicate identity rejection');
+  assertIncludes(clientDal, 'const itemId = item.id;', 'Guest Feedback list acknowledgement stable item identity');
+  assertIncludes(clientDal, '!itemId', 'Guest Feedback list acknowledgement missing identity rejection');
+  assertIncludes(clientDal, 'ids.has(itemId)', 'Guest Feedback list acknowledgement duplicate identity rejection');
   assertIncludes(clientDal, 'item.tId !== expectedScope.tenantId', 'Guest Feedback list acknowledgement tenant scope');
   assertIncludes(clientDal, 'item.sId !== expectedScope.storeId', 'Guest Feedback list acknowledgement store scope');
   assertIncludes(clientDal, 'candidate.lastDocId === candidate.items.at(-1)?.id', 'Guest Feedback list acknowledgement cursor coherence');

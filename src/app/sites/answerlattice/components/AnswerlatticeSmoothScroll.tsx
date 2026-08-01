@@ -58,7 +58,7 @@ function addMediaQueryChangeListener(query: MediaQueryList, handler: () => void)
     return () => query.removeListener(handler);
 }
 
-export default function AnswerlatticeSmoothScroll() {
+export default function AnswerlatticeSmoothScroll(): null {
     const pathname = usePathname();
 
     useEffect(() => {

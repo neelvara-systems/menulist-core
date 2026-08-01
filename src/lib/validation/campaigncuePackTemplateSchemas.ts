@@ -148,6 +148,54 @@ export const campaignCueWorkspacePackTemplateSaveSchema = z.object({
         updatedAt: z.number().int().nonnegative().optional(),
     }),
     workspaceId: safeIdSchema,
+}).superRefine((input, ctx) => {
+    if (input.summary.businessCategory !== input.businessCategory) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Template business category must match the save scope",
+            path: ["summary", "businessCategory"],
+        });
+    }
+    if (input.summary.templateId !== input.payload.templateId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Template summary id must match the payload",
+            path: ["summary", "templateId"],
+        });
+    }
+    if (input.summary.schemaVersion !== input.payload.schemaVersion) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Template summary schema version must match the payload",
+            path: ["summary", "schemaVersion"],
+        });
+    }
+    if (input.summary.templateType !== "workspace" || input.summary.qualityTier !== "workspace_saved") {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Saved templates must use workspace scope",
+            path: ["summary", "templateType"],
+        });
+    }
+
+    const summaryRequired = Array.from(new Set(input.summary.requiredFactTypes)).sort();
+    const payloadRequired = Array.from(new Set(
+        input.payload.factSlots.filter((slot) => slot.required).map((slot) => slot.type),
+    )).sort();
+    const summaryOptional = Array.from(new Set(input.summary.optionalFactTypes)).sort();
+    const payloadOptional = Array.from(new Set(
+        input.payload.factSlots.filter((slot) => !slot.required).map((slot) => slot.type),
+    )).sort();
+    if (
+        JSON.stringify(summaryRequired) !== JSON.stringify(payloadRequired)
+        || JSON.stringify(summaryOptional) !== JSON.stringify(payloadOptional)
+    ) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Template summary fact metadata must match the payload",
+            path: ["summary", "requiredFactTypes"],
+        });
+    }
 });
 
 export const campaignCueWorkspacePackTemplateDeleteSchema = z.object({

@@ -45,6 +45,7 @@ async function run(): Promise<void> {
     const billingRef = surfaces.doc(`${SCOPE.tId}_${SCOPE.sId}_billing`);
     const settingsRef = surfaces.doc(`${SCOPE.tId}_${SCOPE.sId}_settings`);
     const duplicateRef = surfaces.doc('legacy_duplicate_billing');
+    const tickets = answerlatticeFirestoreAdmin.collection(DB_COLLECTIONS.SUPPORT_TICKETS);
     const changelogPageRef = answerlatticeFirestoreAdmin
         .collection(DB_COLLECTIONS.CHANGELOG)
         .doc(String(SCOPE.tId))
@@ -55,6 +56,48 @@ async function run(): Promise<void> {
     await Promise.all([
         billingRef.set(makeSurface('billing', 200)),
         settingsRef.set(makeSurface('settings', 100)),
+        tickets.doc('answerlattice-billing-ticket').set({
+            pId: 'AL',
+            ...SCOPE,
+            subject: 'Billing question',
+            status: 'Open',
+            priority: 'Normal',
+            category: 'Billing Inquiry',
+            message: 'Please help.',
+            documents: [],
+            platformNotes: '',
+            platformTags: [],
+            contextKeys: ['billing'],
+            deleted: false,
+            statuses: [],
+            messages: [],
+            createdOn: now,
+            modifiedOn: now,
+            createdBy: 'Owner',
+            modifiedBy: 'Owner',
+            uId: 'owner-1',
+        }),
+        tickets.doc('menulist-colliding-ticket').set({
+            pId: 'ML',
+            ...SCOPE,
+            subject: 'MenuList billing question',
+            status: 'Open',
+            priority: 'Normal',
+            category: 'Billing Inquiry',
+            message: 'Must remain outside Answerlattice.',
+            documents: [],
+            platformNotes: '',
+            platformTags: [],
+            contextKeys: ['billing'],
+            deleted: false,
+            statuses: [],
+            messages: [],
+            createdOn: now,
+            modifiedOn: now,
+            createdBy: 'Owner',
+            modifiedBy: 'Owner',
+            uId: 'owner-2',
+        }),
         changelogPageRef.set({
             pId: 'AL',
             ...SCOPE,
@@ -147,6 +190,8 @@ async function run(): Promise<void> {
     assert.equal(firstSummary.surfaceCount, 2);
     assert.deepEqual(Object.keys(firstSummary.surfaces).sort(), ['billing', 'settings']);
     assert.equal(firstSummary.changelogCount, 2);
+    assert.equal(firstSummary.ticketCount, 1);
+    assert.equal(firstSummary.surfaces.billing.tickets.total, 1);
     assert.deepEqual(
         firstSummary.surfaces.billing.changelogs.map(entry => entry.id).sort(),
         ['linked-entry', 'published-entry'],

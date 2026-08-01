@@ -7,6 +7,7 @@ import {
     addDescription,
     chunkDescriptionItems,
     prepareDescriptionPayload,
+    type DescriptionAction,
     type DescriptionGovernanceOptions,
 } from '@services/ai/description/descriptionUtils';
 import getDescriptionsViaAPI from '@services/ai/description/generateDescriptionViaAPI';
@@ -98,7 +99,7 @@ export function getDescriptionGenerationStats(
 export function getDescriptionGenerationRequestCount(
     projectData: Project,
     sourceFile: ProjectFileType | null | undefined,
-    action: string,
+    action: DescriptionAction,
     governance?: DescriptionGovernanceOptions,
 ): number {
     const sourceLanguageCode = getCanonicalProjectSourceLanguage(projectData.languages);
@@ -125,7 +126,7 @@ export function getDescriptionGenerationRequestCount(
 }
 
 type RunDescriptionGenerationParams = {
-    action: string;
+    action: DescriptionAction;
     contentLength: DescriptionContentLength;
     governance?: DescriptionGovernanceOptions;
     onFileProcessingIdChange?: (id: string | null) => void;
@@ -163,7 +164,7 @@ export async function runDescriptionGeneration({
         : [sourceLanguageCode];
     const targetLanguages = projectLanguageCodes
         .map((lang) => GlobalLanguagesList.find((gl) => gl.code === lang))
-        .filter(Boolean);
+        .filter((language): language is NonNullable<typeof language> => language !== undefined);
     if (!sourceLanguage || targetLanguages.length === 0) {
         throw new Error('Description generation languages are unavailable.');
     }
@@ -184,8 +185,8 @@ export async function runDescriptionGeneration({
             const descriptionResult = await addDescription(
                 nextProject,
                 file,
-                targetLanguages as any,
-                sourceLanguage as any,
+                targetLanguages,
+                sourceLanguage,
                 action,
                 contentLength,
                 tone,
@@ -243,7 +244,7 @@ type RunSingleItemDescriptionGenerationParams = {
 
 type SingleItemDescriptionGenerationResult = {
     action: string;
-    reason?: 'manual_protected' | 'missing_name' | 'missing_languages' | 'no_result';
+    reason?: 'manual_protected' | 'missing_name' | 'missing_languages' | 'missing_project' | 'no_result';
     updatedItem: ExtractedDataItem;
 };
 
@@ -261,12 +262,20 @@ export async function runSingleItemDescriptionGeneration({
         : [sourceLanguageCode];
     const targetLanguages = projectLanguageCodes
         .map((lang) => GlobalLanguagesList.find((gl) => gl.code === lang))
-        .filter(Boolean);
+        .filter((language): language is NonNullable<typeof language> => Boolean(language));
 
     if (!sourceLanguage || targetLanguages.length === 0) {
         return {
             action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
             reason: 'missing_languages',
+            updatedItem: removeObjRef(item),
+        };
+    }
+    const projectId = projectData.projectId?.trim();
+    if (!projectId) {
+        return {
+            action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
+            reason: 'missing_project',
             updatedItem: removeObjRef(item),
         };
     }
@@ -313,9 +322,9 @@ export async function runSingleItemDescriptionGeneration({
         contentLength,
         fileId: sourceFile.uid,
         itemsList: [descriptionItem],
-        projectId: projectData.projectId,
+        projectId,
         sourceLang: sourceLanguage,
-        targetLang: targetLanguages as any,
+        targetLang: targetLanguages,
         tone,
     });
 

@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { getReconciliationEntitlementDecision } from '../../functions/src/billing/reconcileSubscriptions';
+import {
+    getReconciliationEntitlementDecision,
+    projectSubscriptionEntitlementAuditStatus,
+} from '../../functions/src/billing/reconcileSubscriptions';
 import { getExactMenuListSubscriptionScope } from '../../functions/src/billing/subscriptionScope';
 
 const exact = {
@@ -61,6 +64,7 @@ const unchangedActive = getReconciliationEntitlementDecision(
         id: 'sub_stable',
         status: 'active',
         planId: 'Starter',
+        cycleEndDate: { seconds: Math.floor((nowMs + 86_400_000) / 1_000) },
         analyticsEntitlement: { activePlanType: 'starter' },
     },
     {},
@@ -69,5 +73,40 @@ const unchangedActive = getReconciliationEntitlementDecision(
 );
 assert.equal(unchangedActive.desiredActivePlanType, 'starter');
 assert.equal(unchangedActive.shouldSyncEntitlement, false);
+
+const elapsedActive = getReconciliationEntitlementDecision(
+    {
+        id: 'sub_elapsed',
+        status: 'active',
+        planId: 'Starter',
+        cycleEndDate: { seconds: Math.floor((nowMs - 60_000) / 1_000) },
+        analyticsEntitlement: { activePlanType: 'starter' },
+    },
+    {},
+    'sub_elapsed',
+    nowMs,
+);
+assert.equal(elapsedActive.desiredActivePlanType, null);
+assert.equal(elapsedActive.shouldSyncEntitlement, true);
+
+const malformedActive = getReconciliationEntitlementDecision(
+    {
+        id: 'sub_malformed',
+        status: 'active',
+        planId: { toString: () => 'starter' },
+        cycleEndDate: { seconds: String(Math.floor((nowMs + 60_000) / 1_000)) },
+        analyticsEntitlement: { activePlanType: 'starter' },
+    },
+    {},
+    'sub_malformed',
+    nowMs,
+);
+assert.equal(malformedActive.desiredActivePlanType, null);
+assert.equal(malformedActive.shouldSyncEntitlement, true);
+
+assert.equal(projectSubscriptionEntitlementAuditStatus('active'), 'active');
+assert.equal(projectSubscriptionEntitlementAuditStatus('paid'), 'paid');
+assert.equal(projectSubscriptionEntitlementAuditStatus('trialing'), null);
+assert.equal(projectSubscriptionEntitlementAuditStatus({ status: 'active' }), null);
 
 console.log('Functions subscription scope tests passed.');

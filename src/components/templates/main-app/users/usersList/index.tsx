@@ -4,12 +4,11 @@ import TextElement from "@antdComponent/textElement";
 import { fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset } from "@lib/staffManagement/client";
 import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
 import { canManageStaffTarget } from "@lib/staffManagement/scopeBoundary";
-import type { StaffStoreOption } from "@lib/staffManagement/types";
+import type { StaffFormUser, StaffMutationResponse, StaffStoreOption, StaffUserSummary } from "@lib/staffManagement/types";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
-import { removeObjRef } from "@util/utils";
 import { Alert, Button, Card, Flex, Input, Modal, Space, Spin } from "antd";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { LuPlus } from "react-icons/lu";
 import { useAppDispatch } from "src/hooks/useAppDispatch";
 import StaffLoginDetailsContent from "../StaffLoginDetailsContent";
@@ -19,8 +18,11 @@ import UsersListTable from "./usersListTable";
 const { Search } = Input;
 
 type StaffClientLogContext = Record<string, boolean | number | string | undefined>;
+type StaffModalState = { active: boolean; data: StaffUserSummary | null };
 
-const getSafeUsersList = (usersList: unknown) => Array.isArray(usersList) ? usersList : [];
+const getSafeUsersList = (usersList: StaffUserSummary[] | null | undefined): StaffUserSummary[] => (
+    Array.isArray(usersList) ? usersList : []
+);
 const getStaffTargetFailureCopy = (error: unknown, fallback: string) => (
     error && typeof error === 'object' && 'code' in error
         && (error as { code?: unknown }).code === 'OWNER_MANAGEMENT_FORBIDDEN'
@@ -28,7 +30,7 @@ const getStaffTargetFailureCopy = (error: unknown, fallback: string) => (
         : fallback
 );
 
-const userMatchesSearch = (user: any, query: string) => {
+const userMatchesSearch = (user: StaffUserSummary, query: string) => {
     const searchableText = [
         user?.name,
         user?.displayEmail,
@@ -36,7 +38,6 @@ const userMatchesSearch = (user: any, query: string) => {
         user?.staffLoginId,
         user?.loginUsername,
         user?.phoneNumber,
-        user?.phone,
         user?.role,
     ]
         .filter(Boolean)
@@ -46,15 +47,18 @@ const userMatchesSearch = (user: any, query: string) => {
     return searchableText.includes(query);
 }
 
-const userHasCurrentStore = (user: any, storeId: number | string | undefined) => (
+const userHasCurrentStore = (user: StaffUserSummary | undefined, storeId: number | undefined) => (
     Boolean(storeId)
     && (
-        user?.storeIds?.some((id: any) => Number(id) === Number(storeId))
-        || user?.stores?.some((store: any) => Number(store?.storeId) === Number(storeId))
+        user?.storeIds.some((id) => id === storeId)
+        || user?.stores.some((store) => store.storeId === storeId)
     )
 );
 
-const getDesktopStaffLogContext = (storeDetails: any, user?: any) => ({
+const getDesktopStaffLogContext = (
+    storeDetails: PlatformGlobalDataProviderType['storeDetails'],
+    user?: StaffUserSummary,
+) => ({
     ...getBoundedStaffStringContext('storeId', storeDetails?.storeId),
     ...getBoundedStaffStringContext('tenantId', storeDetails?.tenantId),
     ...getBoundedStaffStringContext('userId', user?.id),
@@ -63,11 +67,13 @@ const getDesktopStaffLogContext = (storeDetails: any, user?: any) => ({
 function UsersListPage() {
 
     const [searchQuery, setSearchQuery] = useState('')
-    const [filteredUsersList, setFilterdUsersList] = useState([]);
+    const [filteredUsersList, setFilterdUsersList] = useState<StaffUserSummary[]>([]);
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+    const [pendingStaffUserId, setPendingStaffUserId] = useState<string | null>(null);
+    const pendingStaffActionRef = useRef<string | null>(null);
     const [staffStores, setStaffStores] = useState<StaffStoreOption[]>([]);
-    const [userDetailsModal, setUserDetailsModal] = useState({ active: false, data: null });
-    const [userFormModal, setUserFormModal] = useState({ active: false, data: null });
+    const [userDetailsModal, setUserDetailsModal] = useState<StaffModalState>({ active: false, data: null });
+    const [userFormModal, setUserFormModal] = useState<StaffModalState>({ active: false, data: null });
     const dispatch = useAppDispatch();
     const { storeDetails, userPermissions, usersList, setUsersList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const canManageUsers = userPermissions?.canManageUsers === true;
@@ -77,7 +83,7 @@ function UsersListPage() {
         canManageUsers,
         target: user,
     });
-    const buildDesktopUsersLogContext = (flow: string, user?: any, metadata: StaffClientLogContext = {}): StaffClientLogContext => ({
+    const buildDesktopUsersLogContext = (flow: string, user?: StaffUserSummary, metadata: StaffClientLogContext = {}): StaffClientLogContext => ({
         surface: 'desktop_users',
         flow,
         canAssignRoles,
@@ -89,9 +95,14 @@ function UsersListPage() {
 
     useEffect(() => {
         if (storeDetails?.storeId) {
-            setFilterdUsersList(removeObjRef(getSafeUsersList(usersList)))
+            setFilterdUsersList([...getSafeUsersList(usersList)])
         }
     }, [storeDetails?.storeId, usersList])
+
+    useEffect(() => {
+        setUserDetailsModal({ active: false, data: null });
+        setUserFormModal({ active: false, data: null });
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
 
     useEffect(() => {
         let cancelled = false;
@@ -130,14 +141,12 @@ function UsersListPage() {
     const onChangeSearchQuery = (query: string) => {
         query = query ? query.toLowerCase() : '';
         setSearchQuery(query);
-        const searchListCopy = removeObjRef(getSafeUsersList(usersList));
-        const searchedUsers = searchListCopy.filter((user: any) => userMatchesSearch(user, query));
+        const searchListCopy = [...getSafeUsersList(usersList)];
+        const searchedUsers = searchListCopy.filter((user) => userMatchesSearch(user, query));
         setFilterdUsersList(!query ? searchListCopy : searchedUsers)
     }
 
-    const onClickSearch = () => undefined
-
-    const showStaffPasscode = (data: any) => {
+    const showStaffPasscode = (data: StaffMutationResponse) => {
         if (!data?.temporaryPasscode || !data?.staffLoginId) return;
         Modal.info({
             okText: "Done",
@@ -155,44 +164,46 @@ function UsersListPage() {
         });
     }
 
-    const resetFilters = (updatedUsersList) => {
+    const resetFilters = (updatedUsersList: StaffUserSummary[]) => {
         const safeUpdatedUsersList = getSafeUsersList(updatedUsersList);
         setSearchQuery('');
         setUsersList(safeUpdatedUsersList);
         setFilterdUsersList(safeUpdatedUsersList);
     }
 
-    const onCloseFormModal = (updatedUser = null) => {
-        if (updatedUser) {
-            const usersListCopy = removeObjRef(getSafeUsersList(usersList));
-            const index = usersListCopy.findIndex((u) => u.id == updatedUser.id);
+    const onCloseFormModal = (updatedUser: StaffFormUser | StaffUserSummary | null = null) => {
+        if (updatedUser?.id) {
+            const normalizedUpdatedUser: StaffUserSummary = { ...updatedUser, id: updatedUser.id };
+            const usersListCopy = [...getSafeUsersList(usersList)];
+            const index = usersListCopy.findIndex((user) => user.id === normalizedUpdatedUser.id);
             if (index !== -1) {
-                usersListCopy[index] = updatedUser
+                usersListCopy[index] = normalizedUpdatedUser
             } else {
-                usersListCopy.push(updatedUser)
+                usersListCopy.push(normalizedUpdatedUser)
             }
             resetFilters(usersListCopy)
+            if (userDetailsModal.active) {
+                setUserDetailsModal({ ...userDetailsModal, data: normalizedUpdatedUser })
+            }
         }
         setUserFormModal({ data: null, active: false })
-
-        if (userDetailsModal.active && updatedUser) {
-            setUserDetailsModal({ ...userDetailsModal, data: updatedUser })
-        }
     }
 
     const onCloseDetailsModal = () => {
         setUserDetailsModal({ active: false, data: null })
     }
 
-    const onDeleteUser = async (user) => {
-        if (!canManageTarget(user) || !user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+    const onDeleteUser = async (user: StaffUserSummary) => {
+        if (pendingStaffActionRef.current || !canManageTarget(user) || !user.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        pendingStaffActionRef.current = `remove:${user.id}`;
+        setPendingStaffUserId(user.id);
         try {
             const response = await removeStaffFromStore({
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
                 userId: user.id,
             });
-            const usersListCopy = removeObjRef(getSafeUsersList(usersList));
+            const usersListCopy = [...getSafeUsersList(usersList)];
             const nextUsers = response.user?.deleted
                 || !userHasCurrentStore(response.user, storeDetails.storeId)
                 ? usersListCopy.filter((item) => item.id !== user.id)
@@ -204,11 +215,16 @@ function UsersListPage() {
         } catch (err) {
             logStaffClientFailure('desktop_staff_remove_failed', err, getDesktopStaffLogContext(storeDetails, user));
             dispatch(showErrorToast(getStaffTargetFailureCopy(err, "Could not remove staff member")));
+        } finally {
+            pendingStaffActionRef.current = null;
+            setPendingStaffUserId(null);
         }
     }
 
-    const onResetPassword = async (user) => {
-        if (!canManageTarget(user) || !user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+    const onResetPassword = async (user: StaffUserSummary) => {
+        if (pendingStaffActionRef.current || !canManageTarget(user) || !user.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        pendingStaffActionRef.current = `reset:${user.id}`;
+        setPendingStaffUserId(user.id);
         try {
             const data = await requestStaffPasswordReset({
                 storeId: storeDetails.storeId,
@@ -216,7 +232,7 @@ function UsersListPage() {
                 userId: user.id,
             });
             if (data.user) {
-                const nextUsers = getSafeUsersList(usersList).map((item: any) => item.id === user.id ? data.user : item);
+                const nextUsers = getSafeUsersList(usersList).map((item) => item.id === user.id ? data.user! : item);
                 resetFilters(nextUsers);
                 if (userDetailsModal.active && userDetailsModal.data?.id === user.id) {
                     setUserDetailsModal({ ...userDetailsModal, data: data.user });
@@ -231,11 +247,16 @@ function UsersListPage() {
         } catch (err) {
             logStaffClientFailure('desktop_staff_password_reset_failed', err, getDesktopStaffLogContext(storeDetails, user));
             dispatch(showErrorToast(getStaffTargetFailureCopy(err, "Could not reset staff access")));
+        } finally {
+            pendingStaffActionRef.current = null;
+            setPendingStaffUserId(null);
         }
     }
 
-    const onForceSignOut = async (user) => {
-        if (!canManageTarget(user) || !user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+    const onForceSignOut = async (user: StaffUserSummary) => {
+        if (pendingStaffActionRef.current || !canManageTarget(user) || !user.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        pendingStaffActionRef.current = `signout:${user.id}`;
+        setPendingStaffUserId(user.id);
         try {
             const data = await forceSignOutStaffUser({
                 storeId: storeDetails.storeId,
@@ -243,7 +264,7 @@ function UsersListPage() {
                 userId: user.id,
             });
             if (data.user) {
-                const nextUsers = getSafeUsersList(usersList).map((item: any) => item.id === user.id ? data.user : item);
+                const nextUsers = getSafeUsersList(usersList).map((item) => item.id === user.id ? data.user! : item);
                 resetFilters(nextUsers);
                 if (userDetailsModal.active && userDetailsModal.data?.id === user.id) {
                     setUserDetailsModal({ ...userDetailsModal, data: data.user });
@@ -253,6 +274,9 @@ function UsersListPage() {
         } catch (err) {
             logStaffClientFailure('desktop_staff_force_signout_failed', err, getDesktopStaffLogContext(storeDetails, user));
             dispatch(showErrorToast(getStaffTargetFailureCopy(err, "Could not sign out staff member")));
+        } finally {
+            pendingStaffActionRef.current = null;
+            setPendingStaffUserId(null);
         }
     }
 
@@ -279,7 +303,6 @@ function UsersListPage() {
                         <Search
                             value={searchQuery}
                             onChange={(e) => onChangeSearchQuery(e.target.value)}
-                            onSearch={onClickSearch}
                             placeholder="Search user by name, number, email"
                             enterButton={false}
                             allowClear
@@ -300,6 +323,7 @@ function UsersListPage() {
                             onEditUser={(user) => setUserFormModal({ active: true, data: user })}
                             onForceSignOut={onForceSignOut}
                             onResetPassword={onResetPassword}
+                            pendingStaffUserId={pendingStaffUserId}
                             staffStores={staffStores}
                             usersList={filteredUsersList}
                         />

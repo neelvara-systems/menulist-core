@@ -13,7 +13,23 @@ import {
     projectOwnerNotificationPersistedEvent,
     projectOwnerNotificationRateLimitCount,
 } from '../../src/data/shared/ownerNotificationDeliveryBoundary';
+import {
+    formatOwnerNotificationDate,
+    formatOwnerNotificationMoney,
+    resolveOwnerNotificationFormattingContext,
+} from '../../src/lib/owner-notifications/formatters';
 import { Timestamp } from 'firebase-admin/firestore';
+
+const invalidLocaleContext = resolveOwnerNotificationFormattingContext({
+    defaultLanguage: 'x-y',
+    timeZone: 'Asia/Kolkata',
+});
+assert.equal(invalidLocaleContext.locale, 'en-IN', 'Invalid locale tags must fail back to the safe default');
+assert.doesNotThrow(() => formatOwnerNotificationDate(
+    '2026-07-29T08:00:00.000Z',
+    invalidLocaleContext,
+));
+assert.doesNotThrow(() => formatOwnerNotificationMoney(1250, invalidLocaleContext));
 
 assert.equal(hasOwnerNotificationWhatsAppConsent({ whatsappConsent: true }), true);
 assert.equal(hasOwnerNotificationWhatsAppConsent({ whatsappConsentStatus: 'granted' }), true);

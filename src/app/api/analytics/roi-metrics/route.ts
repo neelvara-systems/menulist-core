@@ -15,6 +15,11 @@ import {
     getAnswerlatticeScopedSession,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
+import {
+    ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
+    requireAnswerlatticePermission,
+} from '@lib/answerlattice/accessControl';
+import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { withAuth } from '../../../../middleware/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { applyAnalyticsReadRateLimit } from '../readRateLimit';
@@ -65,6 +70,13 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         const rateLimitResponse = await applyAnalyticsReadRateLimit(scopedSession, 'roi-metrics');
         if (rateLimitResponse) return rateLimitResponse;
+
+        const permission = await requireAnswerlatticePermission(
+            request,
+            session,
+            ANSWERLATTICE_PERMISSION_KEYS.MANAGE_SUPPORT,
+        );
+        if (permission.response) return permission.response;
 
         // Get date range from query params (default: last 30 days)
         const searchParams = request.nextUrl.searchParams;
@@ -131,7 +143,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                     days
                 }
             }
-        });
+        }, { headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS });
 
     } catch (error) {
         logAnalyticsFailure('analytics_roi_metrics_api_failed', error, {
@@ -142,7 +154,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         });
         return NextResponse.json(
             { error: 'Failed to calculate ROI metrics' },
-            { status: 500 }
+            { status: 500, headers: ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS }
         );
     }
 });

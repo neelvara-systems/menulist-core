@@ -1,4 +1,6 @@
 import { Button, Space, Tooltip } from 'antd';
+import type { ButtonProps } from 'antd';
+import type { CSSProperties, ReactNode } from 'react';
 
 const circle = 'circle' // must be const, no annotation. let or var will not work
 const round = 'round'
@@ -12,19 +14,24 @@ declare const ButtonShapes: readonly ["default", "circle", "round"];
 export type ButtonShape = typeof ButtonShapes[number];
 
 type ButtonElementProps = {
-    icon?: any,
-    onClick?: any,
-    classNames?: any,
+    icon?: ReactNode,
+    onClick?: ButtonProps['onClick'],
+    classNames?: string,
     type?: ButtonType,
     disabled?: boolean,
     text?: string,
     tooltip?: string,
-    styles?: any,
+    styles?: CSSProperties,
     shape?: ButtonShape,
     loading?: boolean
 }
 
-export const WithTooltip = ({ tooltip, children }) => {
+interface WithTooltipProps {
+    children: ReactNode;
+    tooltip?: ReactNode;
+}
+
+export const WithTooltip = ({ tooltip, children }: WithTooltipProps) => {
     return tooltip ? <Tooltip title={tooltip} key='3'>{children}</Tooltip> : <>{children}</>
 }
 

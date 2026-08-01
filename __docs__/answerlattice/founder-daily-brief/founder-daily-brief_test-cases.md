@@ -37,6 +37,7 @@
 | FDB-033 | Only a generic release reminder or credit reminder is available | Zero action cards are returned; `I shipped a change` and cost guidance remain separate controls. |
 | FDB-034 | A qualified top-friction entity is present | The Friction route carries one validated `entity` context value and the destination revalidates it. |
 | FDB-035 | Coverage is low and paired with repair evidence | The action opens Canonical Answers rather than Answer Tests; no new read occurs until the owner opens the destination. |
+| FDB-036 | Two cold requests for the same workspace overlap | One request owns the six-document packet load; the other joins it with zero incremental Firestore reads and cannot clear newer work. |
 
 ## Regression Checks
 

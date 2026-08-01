@@ -64,6 +64,8 @@ An event is emitted only after the relevant local contract acknowledges the tran
 
 No event payload is accepted by the helper. This prevents accidental propagation of menu data, URLs, job IDs, tenant/store IDs, or user data.
 
+Workflow-event emission is optional instrumentation and is isolated from the client product's control flow. A missing widget, missing method, getter failure, or throwing widget callback returns `false`; it cannot turn an already acknowledged MenuList import or publication into a product failure.
+
 ## Intake To Governance
 
 Structured procedures generated from intake remain non-authoritative:

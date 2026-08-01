@@ -102,6 +102,10 @@ type DesignCuePatchSet = {
 
 `SafeLayerPatch` must be an allowlisted subset of `CreativeEditorElement`. It must not allow arbitrary object classes, external script URLs, Fabric JSON, hidden data blobs, or product-authority fields.
 
+The validator and shared editor type use the same explicit font-weight
+allowlist: `normal`, `bold`, `100` through `900`. Runtime validation must not
+reject a value that the durable editor contract accepts.
+
 ## Deterministic Command Matrix
 
 | Owner command | Resolver | Model needed? |
@@ -120,6 +124,12 @@ type DesignCuePatchSet = {
 | Make it premium/simple | Current implementation uses deterministic style patches or review findings. Model may later propose style direction, but patch stays programmatic. | No today; optional later |
 | This looks too busy | Current implementation uses heuristic review findings and does not delete layers automatically. | No today; optional later |
 | Rewrite this more friendly | Current implementation uses deterministic fallback copy on selected text. Model candidate copy remains disabled. | No today; optional later |
+
+Specific channel-readiness phrases are resolved before generic contact or
+resize keywords. For example, “make this WhatsApp ready” remains a readiness
+check rather than Add Contact, and “ready for print” remains a readiness check
+rather than Resize Poster. Context text/list inputs are bounded and
+non-coercive, and malformed document/patch traversal fails closed.
 
 ## Campaign Pack Editor Mode
 

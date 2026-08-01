@@ -16,6 +16,17 @@
 >
 > **July 21, 2026 persistence and async-state hardening:** `masterOperationalState` now has an exact two-field runtime projector and write rule. The awareness hook keeps current same-project snapshots/overrides in a ref without reconnecting the listener, cancels superseded fetches with a request sequence, rechecks project identity after awaits, and clears project-specific refs/UI state on outlet switches. The inline hook listing in section 6.1 is retained as the original design sketch only; `src/hooks/useMasterUpdateAwareness.ts` is the executable authority and includes these later guards.
 
+> **July 29, 2026 legacy/default and override-impact hardening:** the
+> executable diff engine compares item, category, and variant `active` values
+> using the same `value !== false` default used when snapshots are created.
+> Legacy master rows that omit `active` therefore remain visible and do not
+> create false disabled-change notices. For real changes, price, visibility,
+> availability, bestseller, duration, category-visibility, and
+> variant-visibility messages explicitly say that an admitted outlet override
+> is unaffected and include its effective value. The focused
+> `test:master-update-diff` gate covers omitted legacy fields, boolean/zero
+> overrides, and helper-field completeness.
+
 ---
 
 ## 0. Problem Statement

@@ -13,6 +13,10 @@ import { growthOSPrivateJson, withGrowthOSPrivateHeaders } from "@lib/growthos/a
 import { findGrowthOSAction } from "@lib/growthos/actionRanking";
 import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
+import {
+    projectGrowthOSKitForScope,
+    projectGrowthOSSummaryForScope,
+} from "@lib/growthos/clientContracts";
 import { buildGrowthOSKit } from "@lib/growthos/kitBuilder";
 import { loadGrowthOSServerContext } from "@lib/growthos/serverContext";
 import { logger } from "@lib/monitoring/logger";
@@ -161,11 +165,20 @@ export const POST = withAuth(async (request, session) => {
             },
         };
         const persisted = await writeGrowthOSKitAndSummaryServer(kit, summary);
+        const responseScope = {
+            tId: scope.tenantScope.documentId,
+            sId: scope.storeScope.documentId,
+        };
+        const responseKit = projectGrowthOSKitForScope(persisted.kit, responseScope);
+        const responseSummary = projectGrowthOSSummaryForScope(persisted.summary, responseScope);
+        if (!responseKit || !responseSummary) {
+            throw new Error("GrowthOS generation response contract invalid");
+        }
 
         return growthOSPrivateJson({
             data: {
-                kit: persisted.kit,
-                summary: persisted.summary,
+                kit: responseKit,
+                summary: responseSummary,
             },
         }, { status: 200 });
     } catch (error) {

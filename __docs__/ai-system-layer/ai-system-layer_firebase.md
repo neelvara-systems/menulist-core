@@ -2,13 +2,22 @@
 
 **Feature:** Centralized AI Infrastructure for MenuList  
 **Status:** Source-backed code/cost truth — not current launch or deploy certification
-**Last Updated:** July 26, 2026
+**Last Updated:** July 29, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
 ---
 
 ## Summary
+
+Business Copy project-context preparation performs one existing
+`platformSummary/projects_{sId}` read and, when a project exists, one scoped
+full-project read. Both reads are pinned to the exact captured tenant/store.
+An empty summary returns no context and no longer invokes default-project
+creation, so this path adds zero writes, deletes, cache invalidations, rules,
+indexes, Storage operations, Function changes, or deployment requirements.
+The 60-second browser cache and in-flight promise deduplication are partitioned
+by tenant and store.
 
 - **Existing extraction audit ledger:** `MENULIST_AI_OPERATIONS`
 - **Existing billable app-route ledger:** `menulistAiOperations/{tId}/{sId}/{docId}`

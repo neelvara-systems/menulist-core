@@ -9,6 +9,7 @@ import { MENU_PROCESSING_DISMISS_STORAGE_KEY } from '@lib/extraction/menuProcess
 import { clearCapturedLogs } from '@lib/localLogs/localLogsTracker';
 import { writeActiveStoreContextId } from '@lib/multiOutlet/activeStoreContext';
 import { clearUserContext } from '@lib/monitoring/logger';
+import { clearClientSessionCache } from '@lib/auth/getActiveSession';
 
 export const AUTHENTICATED_SESSION_STORAGE_KEYS = [
     DEPLOYMENT_IDENTITY_STORAGE_KEY,
@@ -82,6 +83,7 @@ export function removeAuthenticatedStorageKeys(
  * tenant. Theme, language, consent, install and other device preferences remain.
  */
 export function clearAuthenticatedBrowserState(): void {
+    clearClientSessionCache();
     writeActiveStoreContextId(null);
     clearAllCache();
     clearCapturedLogs();

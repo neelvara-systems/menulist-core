@@ -14,6 +14,12 @@ export const ANALYTICS_QUEUE_MAX_RETRY_COUNT = 12;
 export const ANALYTICS_QUEUE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 export const ANALYTICS_DELIVERY_ID_PATTERN = /^[a-z0-9]{32}$/;
 
+export type AnalyticsDeliverySnapshot = {
+  deliveryId: string;
+  updateData: Record<string, AnalyticsWriteValue>;
+  eventCount: number;
+};
+
 export type NormalizedAnalyticsQueueEntry = {
   queueKey: string;
   tenantId: string;
@@ -25,6 +31,7 @@ export type NormalizedAnalyticsQueueEntry = {
   deliveryId: string;
   updateData: Record<string, AnalyticsWriteValue>;
   eventCount: number;
+  activeDelivery?: AnalyticsDeliverySnapshot;
   retryCount: number;
   createdAt: number;
 };
@@ -58,6 +65,32 @@ export const normalizeAnalyticsDeliveryId = (value: unknown): string | null => (
     : null
 );
 
+const normalizeAnalyticsDeliverySnapshot = (
+  value: unknown,
+): AnalyticsDeliverySnapshot | null => {
+  if (!isRecord(value)) return null;
+  const deliveryId = normalizeAnalyticsDeliveryId(value.deliveryId);
+  const updateData = isRecord(value.updateData)
+    ? filterAnalyticsUpdateData(value.updateData)
+    : {};
+  const eventCount = value.eventCount;
+  if (
+    !deliveryId
+    || Object.keys(updateData).length === 0
+    || Object.keys(updateData).length > ANALYTICS_QUEUE_MAX_FIELDS
+    || !Number.isSafeInteger(eventCount)
+    || Number(eventCount) < 1
+    || Number(eventCount) > 1000
+  ) {
+    return null;
+  }
+  return {
+    deliveryId,
+    updateData,
+    eventCount: Number(eventCount),
+  };
+};
+
 const buildLegacyAnalyticsDeliveryId = (createdAt: number): string => (
   `legacy${createdAt.toString(36).padStart(26, '0')}`
 );
@@ -86,25 +119,14 @@ export function mergeAnalyticsUpdateData(
   });
 }
 
-export function subtractFlushedAnalyticsData(
-  current: Record<string, AnalyticsWriteValue>,
-  flushed: Record<string, AnalyticsWriteValue>,
-): Record<string, AnalyticsWriteValue> {
-  const remaining = { ...current };
-
-  Object.entries(flushed).forEach(([key, flushedValue]) => {
-    const currentValue = remaining[key];
-    if (typeof flushedValue === 'number' && typeof currentValue === 'number') {
-      const next = currentValue - flushedValue;
-      if (Number.isFinite(next) && next > 0) remaining[key] = next;
-      else delete remaining[key];
-      return;
-    }
-
-    if (currentValue === flushedValue) delete remaining[key];
-  });
-
-  return remaining;
+export function canMergeAnalyticsUpdateData(
+  target: Record<string, AnalyticsWriteValue>,
+  source: Record<string, AnalyticsWriteValue>,
+): boolean {
+  return new Set([
+    ...Object.keys(target),
+    ...Object.keys(source),
+  ]).size <= ANALYTICS_QUEUE_MAX_FIELDS;
 }
 
 export function normalizePersistedAnalyticsQueue(
@@ -138,10 +160,21 @@ export function normalizePersistedAnalyticsQueue(
       ? filterAnalyticsUpdateData(queued.updateData)
       : {};
     const fieldCount = Object.keys(updateData).length;
-    if (fieldCount === 0 || fieldCount > ANALYTICS_QUEUE_MAX_FIELDS) continue;
+    if (fieldCount > ANALYTICS_QUEUE_MAX_FIELDS) continue;
 
-    const eventCount = queued.eventCount === undefined ? 1 : queued.eventCount;
-    if (!Number.isSafeInteger(eventCount) || Number(eventCount) < 1 || Number(eventCount) > 1000) continue;
+    const activeDelivery = queued.activeDelivery === undefined
+      ? null
+      : normalizeAnalyticsDeliverySnapshot(queued.activeDelivery);
+    if (queued.activeDelivery !== undefined && !activeDelivery) continue;
+
+    const eventCount = queued.eventCount === undefined ? (fieldCount > 0 ? 1 : 0) : queued.eventCount;
+    if (
+      !Number.isSafeInteger(eventCount)
+      || Number(eventCount) < 0
+      || Number(eventCount) > 1000
+      || (fieldCount === 0) !== (Number(eventCount) === 0)
+      || fieldCount === 0 && !activeDelivery
+    ) continue;
 
     const retryCount = queued.retryCount === undefined ? 0 : queued.retryCount;
     if (!Number.isSafeInteger(retryCount) || Number(retryCount) < 0 || Number(retryCount) >= ANALYTICS_QUEUE_MAX_RETRY_COUNT) continue;
@@ -173,6 +206,7 @@ export function normalizePersistedAnalyticsQueue(
       deliveryId,
       updateData,
       eventCount: Number(eventCount),
+      activeDelivery: activeDelivery || undefined,
       retryCount: Number(retryCount),
       createdAt: Number(createdAt),
     });

@@ -1,9 +1,9 @@
 # Answerlattice - AI Failure Escalation
 
 > **Status:** PARTIALLY ACTIVE - explicit widget support requests are implemented; automatic evaluator-driven suggestions remain disabled by default
-> **Version:** 2.3.0
+> **Version:** 2.3.1
 > **Created:** 2026-03-09
-> **Last Updated:** 2026-07-20
+> **Last Updated:** 2026-07-29
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_AI_ESCALATION` controls automatic failure evaluation only
 
 ## Current Product Truth
@@ -47,7 +47,9 @@ The evaluator now:
 
 - accepts only bounded, finite, normalized evidence;
 - evaluates only references actually used by the final answer, then sorts those references before applying the five-result context cap;
-- returns no escalation when evidence is malformed;
+- returns no escalation when required decision evidence is malformed, while
+  omitting malformed optional entity-debug telemetry without suppressing an
+  otherwise valid empty/refusal escalation;
 - does not trust a browser-supplied repeated-failure count;
 - does not interrupt a useful source-backed RAG answer merely because canonical retrieval missed;
 - treats an empty answer or safe refusal as insufficient evidence;

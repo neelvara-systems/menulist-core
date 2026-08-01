@@ -29,6 +29,15 @@ Every query must be tenant/store scoped and bounded.
 
 The scheduler treats `ownerBusinessHealthCurrent_*`, same-day `ownerBusinessHealthSnapshot_*`, and `ownerBusinessAnalyticsIndex_*` payloads as complete authoritative read models. Each run sanitizes and replaces those documents so an optional teaser, period, project summary, source reference, or legacy field that is no longer produced is removed rather than retained by Firestore merge semantics. `ownerBusinessHealthMultiLocation_*` is intentionally different: it merges only `stores.{sId}` plus current metadata so refreshing one location preserves every sibling location.
 
+The analytics index does not trust deterministic source document paths alone.
+Each admitted dashboard row must contain the exact requested tenant, store,
+project, `ownerDashboardSummary` kind and local generation date. Each admitted
+daily row must contain that exact scope plus `customer`, `daily`, `menu`, and
+matching `date`/`localDate` discriminators. A conflicting or incomplete
+persisted row is omitted before owner metrics and source references are
+constructed. This boundary adds no Firestore operations, indexes or schema
+fields.
+
 Server reads do not cast these persisted documents into response types. `src/lib/ownerBusinessAssistant/readModelBoundary.ts` validates every supported nested structure, requires the stored tenant/store identity to match the requested document scope, and returns a schema-projected DTO. Firestore-only `kind`/`expiresAt` fields and unknown legacy fields are not copied into context packets or JSON responses. An invalid current document emits a bounded diagnostic and falls back to `not_ready`; an invalid analytics document becomes unavailable. Redis context-packet reads apply the same schemas and require packet, health, and cache-key tenant/store/project identity to agree before a cached packet is accepted.
 
 The scheduled guest-feedback input is also a persisted-data boundary. `buildOwnerBusinessFeedbackSummary.ts` admits only records whose tenant/store scope matches the query, document and project IDs are canonical, rating/status/attention/source invariants agree, creator is `guest`, timestamps are valid persisted timestamp values with expiry after creation, optional business dates are valid, and optional messages remain within the writer limit. Invalid or legacy-corrupt rows are omitted before counts, themes, source references, or owner-facing snippets are built, and one bounded `OWNER_BUSINESS_FEEDBACK_INVALID_RECORD` warning records only the invalid count, at most three document IDs, and the expected tenant/store scope. The query remains bounded to 81 reads and at most 80 admitted rows; this hardening adds no Firestore reads, writes, indexes, rules, or Storage operations.
@@ -98,6 +107,13 @@ Browser thread ownership mirrors that server contract. `src/lib/ownerBusinessAss
 Business Health project ID admission is cost-neutral. `/business-health?projectId=...`, `OwnerBusinessAssistantScopeSchema`, and `OwnerBusinessAssistantAnswerRequestSchema` validate selected project IDs through `src/lib/ownerBusinessAssistant/projectIdBoundary.ts` before those values can become current/analytics query scope, answer context-packet scope, browser/server cache keys, or thread message project scope. The schema preserves raw values and does not trim before `normalizeOwnerBusinessAssistantProjectId(value) === value`. Malformed, whitespace-mutated, path-shaped, or reserved IDs stop before scoped Business Health reads, context-packet cache lookups/writes, thread writes, answer-event writes, feedback writes, provider calls, or owner-facing cache keys. This adds no Firestore reads/writes/deletes for valid requests, no Storage operations, no Cloud Functions, no provider calls, no cache invalidations, no rules/indexes/schema-field changes, no owner-facing setting, no Firebase deploy requirement, and no Vercel deploy action.
 
 Business Health feedback answer-ID admission is cost-neutral. Feedback `answerId` values now use the shared Firestore document-ID guard plus an exact raw-value check before the route composes the `ownerBusinessAssistantFeedback` document ID, and the route rechecks the composed doc ID before writing. Malformed, whitespace-mutated, path-shaped, or reserved IDs stop before the feedback write. This adds no Firestore reads/writes/deletes beyond the existing valid feedback write, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
+
+The feedback document identity is `v2_` plus a SHA-256 digest of the exact
+tenant, store, answer, and actor tuple. This retains one replacement write per
+scoped answer/actor while preventing a shared actor and answer ID from
+colliding across stores or tenants. Existing pre-v2 documents are not migrated
+or rewritten; the platform monitor may show them until the maintained 90-day
+TTL cleanup removes them.
 
 Business Health answer-event ID admission is cost-neutral. `src/lib/ownerBusinessAssistant/server/answerEventLogger.ts` rechecks the server-generated answer ID with the shared Firestore document-ID guard plus an exact raw-value check before writing `ownerBusinessAssistantAnswerEvents/{answerId}`. Malformed or whitespace-mutated IDs skip only the optional answer-event write before Firestore access. This adds no Firestore reads/writes/deletes for valid requests, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action.
 

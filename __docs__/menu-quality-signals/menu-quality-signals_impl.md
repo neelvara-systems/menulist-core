@@ -1,7 +1,7 @@
 # Menu Quality Signals — Implementation Plan
 
-> **Version:** 1.4
-> **Last Updated:** July 16, 2026
+> **Version:** 1.5
+> **Last Updated:** July 29, 2026
 > **Audience:** Developers
 > **Status:** ✅ IMPLEMENTED
 
@@ -160,6 +160,11 @@ Algorithm:
 - **Data access:** Reads project data via existing DAL (`getProjectData`)
 - **No API routes** — pure client-side computation
 - **Tenant isolation:** DAL enforces `{tId}/{sId}` scoping
+- **Runtime projection:** Firestore-backed files, extracted collections,
+  localized maps, price/review fields, and nested content are admitted through
+  descriptor-safe own-data reads. Malformed collections or scalar drift are
+  ignored without executing persisted accessors or crashing dashboard, mobile,
+  editor-banner, or publish-intercept consumers.
 
 ---
 
@@ -179,9 +184,12 @@ Algorithm:
 12. **Editor banner routing:** Click an editor banner action → the same `handleQualityActionRoute()` repair/filter/language route is used.
 13. **Primary action:** When repairable and manual issues both exist, the primary action opens Repair Menu first.
 14. **All-clear copy:** Resolve signals → owner sees "No action needed" and "Your public menu is ready."
+15. **Malformed legacy truth:** Non-array files/items, non-string prices/review
+    markers, and accessor-bearing item fields fail closed without a crash or
+    false reviewed-outlier state.
 
 ---
 
 **Document Signature:** Technical Implementation Plan
 **Created:** March 15, 2026
-**Updated:** July 16, 2026 — v1.4 (primary-language description and single-value outlier boundaries)
+**Updated:** July 29, 2026 — v1.5 (persisted quality-input runtime boundary)

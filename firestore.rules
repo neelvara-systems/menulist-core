@@ -35,7 +35,15 @@ service cloud.firestore {
     // Projects Data - Multi-tenant isolated project data
     // Case 72: Multi-Outlet Protection - Outlet cannot write to master-controlled fields
     match /projects/{tId}/{sId}/{projectId} {
-      allow read: if isAuthenticated() && belongsToTenant(tId);
+      allow read: if isAuthenticated()
+        && (
+          isPlatformAdmin()
+          || (
+            belongsToTenant(tId)
+            && belongsToStoreById(sId)
+            && isProjectReadIdentityBounded(resource.data, tId, sId, projectId)
+          )
+        );
 
       // Create: Normal tenant admin check (new projects have no masterProjectId yet)
       allow create: if isTenantAdmin(tId, sId)
@@ -452,6 +460,7 @@ service cloud.firestore {
     match /answerlattice_auditLogs/{docId} {
       allow read: if isAnswerlatticeScopedReadWithPermission('canManageGovernance');
       allow create: if isAnswerlatticeScopedCreateWithPermission('canManageGovernance')
+        && isValidAnswerlatticeClientAuditLog(request.resource.data)
         && !isAnswerlatticeServerReservedAuditAction(request.resource.data);
       allow update, delete: if false;
     }
@@ -961,10 +970,11 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Blogs — Public read
+    // Dormant platform-managed blog records contain request-composer actor and
+    // workspace metadata. Keep browser access platform-only until a dedicated
+    // allowlisted public projection is introduced.
     match /blogs/{docId} {
-      allow read: if true;
-      allow write: if isAuthenticated() && isPlatformAdmin();
+      allow read, write: if isAuthenticated() && isPlatformAdmin();
     }
     
     // Changelog — Public read
@@ -1567,6 +1577,11 @@ service cloud.firestore {
         && (
           string(data.tId) == string(request.auth.token.tenantId)
           || string(data.tenantId) == string(request.auth.token.tenantId)
+        )
+        && (
+          (data.keys().hasAny(['sId']) && belongsToStoreById(data.sId))
+          || (data.keys().hasAny(['storeId']) && belongsToStoreById(data.storeId))
+          || (data.keys().hasAny(['storeID']) && belongsToStoreById(data.storeID))
         );
     }
 
@@ -3977,9 +3992,13 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['surfaceAssignedAt', 'modifiedBy', 'modifiedOn'])
         && (request.resource.data.surfaceAssignedAt == null || request.resource.data.surfaceAssignedAt is timestamp)
         && request.resource.data.modifiedBy is string
-        && request.resource.data.modifiedBy.size() > 0
+        && (
+          request.resource.data.modifiedBy == request.auth.uid
+          || request.resource.data.modifiedBy == request.auth.token.get('uId', '')
+        )
         && request.resource.data.modifiedBy.size() <= 200
         && request.resource.data.modifiedOn is timestamp
+        && request.resource.data.modifiedOn == request.time
         && (
           (
             request.resource.data.contextKey == null
@@ -3990,8 +4009,12 @@ service cloud.firestore {
           )
           || (
             request.resource.data.surfaceAssignedBy is string
-            && request.resource.data.surfaceAssignedBy.size() > 0
+            && (
+              request.resource.data.surfaceAssignedBy == request.auth.uid
+              || request.resource.data.surfaceAssignedBy == request.auth.token.get('uId', '')
+            )
             && request.resource.data.surfaceAssignedAt is timestamp
+            && request.resource.data.surfaceAssignedAt == request.time
           )
         );
     }
@@ -4130,6 +4153,41 @@ service cloud.firestore {
           'public_api_key_revoked',
           'support_truth_export_generated'
         ].toSet().hasAny([data.action]);
+    }
+
+    function isValidAnswerlatticeClientAuditLog(data) {
+      return data.keys().hasAll([
+          'action',
+          'entityType',
+          'entityId',
+          'performedBy',
+          'timestamp',
+          'pId',
+          'tId',
+          'sId',
+          'uId'
+        ])
+        && (
+          string(data.uId) == string(request.auth.uid)
+          || string(data.uId) == string(request.auth.token.get('uId', null))
+        )
+        && data.action is string
+        && data.action.size() > 0
+        && data.action.size() <= 180
+        && data.entityType is string
+        && data.entityType.size() > 0
+        && data.entityType.size() <= 180
+        && data.entityId is string
+        && data.entityId.size() > 0
+        && data.entityId.size() <= 180
+        && data.performedBy is string
+        && data.performedBy == string(data.uId)
+        && data.performedBy.size() > 0
+        && data.performedBy.size() <= 180
+        && data.timestamp is timestamp
+        && data.timestamp == request.time
+        && (!data.keys().hasAny(['previousState']) || data.previousState == null || data.previousState is map)
+        && (!data.keys().hasAny(['newState']) || data.newState == null || data.newState is map);
     }
 
     function isAnswerlatticeTenantMember(data) {
@@ -4500,30 +4558,31 @@ service cloud.firestore {
         && masterStoreId.matches('^[1-9][0-9]*$')
         && masterProjectId.matches('^' + string(tId) + '-.+-' + masterStoreId + '$')
         && string(masterStoreId) != string(sId)
+        && (isPlatformAdmin() || belongsToStoreById(masterStoreId))
         && exists(masterPath)
         && get(masterPath).data.get('active', true) != false
         && get(masterPath).data.get('deleted', false) != true
         && get(masterPath).data.get('masterProjectId', null) == null
-        && (
-          !get(masterPath).data.keys().hasAny(['files'])
-          || (
-            get(masterPath).data.files is list
-            && get(masterPath).data.files.size() <= 1
-          )
-        );
+        && get(masterPath).data.keys().hasAny(['files'])
+        && get(masterPath).data.files is list
+        && get(masterPath).data.files.size() == 1;
     }
 
-    function isValidProjectCreateIdentity(tId, sId, projectId) {
-      let data = request.resource.data;
-      let hasMasterReference = data.keys().hasAny(['masterProjectId'])
-        && data.masterProjectId != null;
+    function isProjectReadIdentityBounded(data, tId, sId, projectId) {
       return (!data.keys().hasAny(['projectId']) || string(data.projectId) == string(projectId))
         && (!data.keys().hasAny(['tId']) || string(data.tId) == string(tId))
         && (!data.keys().hasAny(['tenantId']) || string(data.tenantId) == string(tId))
         && (!data.keys().hasAny(['tenantID']) || string(data.tenantID) == string(tId))
         && (!data.keys().hasAny(['sId']) || string(data.sId) == string(sId))
         && (!data.keys().hasAny(['storeId']) || string(data.storeId) == string(sId))
-        && (!data.keys().hasAny(['storeID']) || string(data.storeID) == string(sId))
+        && (!data.keys().hasAny(['storeID']) || string(data.storeID) == string(sId));
+    }
+
+    function isValidProjectCreateIdentity(tId, sId, projectId) {
+      let data = request.resource.data;
+      let hasMasterReference = data.keys().hasAny(['masterProjectId'])
+        && data.masterProjectId != null;
+      return isProjectReadIdentityBounded(data, tId, sId, projectId)
         && (
           !hasMasterReference
           || (

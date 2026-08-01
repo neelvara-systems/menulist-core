@@ -1,4 +1,37 @@
 {
+  "answerlattice_contactEnquiries": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "Answerlattice-global, pre-tenant private buyer/contact intake. The anonymous public route derives no tenant or store from the caller, admits a strict bounded request after fail-closed rate limiting, honeypot handling and Turnstile verification, and performs the sole Admin write into the dedicated Answerlattice Firebase project. Persisted contact details are not public output and no browser reader or writer is admitted.",
+    "rulesStatus": "Neither Answerlattice ruleset declares an explicit contact-enquiry match, so the root default-deny rule blocks all browser reads and writes. The Admin route is the only active producer. A complete current whole-file rules fingerprint is still required before this collection can be marked reviewed.",
+    "indexStatus": "Writes use generated document IDs. New rows carry a 365-day expiresAt Timestamp covered by matching dedicated/shared TTL field overrides; the optional legacy cleanup performs one bounded createdAt cutoff query only when explicitly enabled. No cache, Redux, SWR, public DTO or active first-party list consumer exists. Remote TTL activation remains operator-controlled and unverified.",
+    "findings": [
+      "AUDIT-AL-CONTACT-LOCATION-METADATA-001"
+    ]
+  },
+  "analytics": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "MenuList tenant/store/project-scoped customer interaction analytics and bounded owner read models. Anonymous browser events enter only through the public analytics route, which derives current active tenant/store/project authority before the sole Admin daily increment; scheduled Admin aggregators create deterministic daily, summary, dashboard, intelligence, OBP, weekly and monthly documents. Owner Business Health now independently validates embedded tenant/store/project and dashboard/daily discriminator/date authority before using exact-ID documents.",
+    "rulesStatus": "Authenticated reads require platform authority, matching resource tenant/store data, or a document ID matching the current tenant/store; all browser creates, updates and deletes are denied. Public event writes and rollups use Admin code. The complete shared firestore.rules review remains incomplete, so this family is not marked reviewed.",
+    "indexStatus": "Exact-ID daily/dashboard/summary reads and bounded tenant/store/project/date aggregation queries are used by Functions and owner consumers. No dedicated analytics composite index was found in the active index file for the exact-ID Business Health reads. The complete shared index file and every large aggregation/query consumer still require current whole-file evidence.",
+    "findings": [
+      "AUDIT-PUBLIC-ANALYTICS-DELIVERY-IDEMPOTENCY-001",
+      "AUDIT-ANALYTICS-INFLIGHT-ACK-LOSS-001",
+      "AUDIT-ANALYTICS-LIVE-QUEUE-FIELD-CAP-001",
+      "AUDIT-OWNER-ANALYTICS-SOURCE-SCOPE-001",
+      "AUDIT-MANUAL-ANALYTICS-STALE-PLATFORM-AUTHORITY-001"
+    ]
+  },
+  "analyticsDeliveryReceipts": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "MenuList global server-only idempotency ledger for anonymous public analytics delivery. The document ID is SHA-256 over exact tenant, store, project, business-date and 32-character delivery identity. One Admin transaction reads the receipt, applies allowlisted increments to the exact daily analytics document and creates the receipt; browser queues retain at most 48 hours while receipts retain 72 hours.",
+    "rulesStatus": "The explicit /analyticsDeliveryReceipts/{receiptId} rule denies every browser read and write for anonymous, owner and platform identities. The public route rate-limits and validates a bounded body, resolves current active tenant/store/project authority, analytics preferences and business date, then calls the sole Admin writer. Full shared firestore.rules review evidence remains incomplete, so the collection is not marked reviewed.",
+    "indexStatus": "Only exact receipt document reads/creates occur; no list query, cache, Redux, SWR or public DTO exists. The native expiresAt TTL override is present with single-field indexing disabled. Remote QA/production TTL activation is operator-controlled and was not verified in this local audit.",
+    "findings": [
+      "AUDIT-PUBLIC-ANALYTICS-DELIVERY-IDEMPOTENCY-001",
+      "AUDIT-ANALYTICS-INFLIGHT-ACK-LOSS-001",
+      "AUDIT-ANALYTICS-LIVE-QUEUE-FIELD-CAP-001"
+    ]
+  },
   "authPhoneOtpChallenges": {
     "reviewStatus": "reviewed",
     "reviewedEvidenceSha256": "30964f28226fecef4d261ea4fee67b8b3d062e4d1bf040c7226da166d2f539e5",
@@ -41,13 +74,14 @@
   },
   "blogs": {
     "reviewStatus": "reviewed",
-    "reviewedEvidenceSha256": "ff0e0f2d292829c2937f8a658abdeefa6cf62f78e5ddb2f09ae580cbd1b794ab",
-    "ownershipModel": "MenuList shared platform-content namespace. Documents are intentionally global public-readable records rather than tenant-private truth; optional storeId is a legacy public filter, while browser create/update authority is restricted to authenticated platform administrators. No active route, component, job or cache consumer currently invokes the dormant DAL.",
-    "rulesStatus": "Firestore rules allow global document reads and require authenticated platform-admin claims for writes. The DAL independently validates document/store identities, caps list queries at 100 admitted rows, projects document IDs, admits only HTTP(S) external image URLs and uses ambiguity-safe immutable Storage upload handling.",
+    "reviewedEvidenceSha256": "768b69d22a9875083127923e80ea83e1f967658c4dae8be5ac908d8c52ca2f8b",
+    "ownershipModel": "Dormant MenuList platform-content namespace. The generic request composer persists actor, role and workspace metadata, so records are platform-private and not public DTOs. Browser read/write authority is restricted to authenticated platform administrators. No active route, component, job or cache consumer invokes the DAL, and MenuList governance does not define a public blog product surface.",
+    "rulesStatus": "Firestore rules deny unauthenticated and ordinary owner reads/writes and require authenticated platform-admin claims for both. A future public blog surface must introduce an allowlisted server projection instead of reopening raw document reads. The DAL independently validates document/store identities, caps list queries at 100 admitted rows, projects document IDs, admits only HTTP(S) image URLs and uses ambiguity-safe immutable Storage upload handling.",
     "indexStatus": "The complete list uses a bounded default collection query. Store filtering is equality-only with a hard 101-row overflow probe and requires only the default single-field storeId index. No pagination cursor, composite index, TTL, active cache, public blog route or deletion lifecycle exists; activation beyond 100 rows requires an explicit pagination and retention contract.",
     "findings": [
       "AUDIT-BLOG-IMAGE-SHARED-REFERENCE-001",
-      "AUDIT-BLOG-DAL-BOUNDARY-001"
+      "AUDIT-BLOG-DAL-BOUNDARY-001",
+      "AUDIT-BLOG-PUBLIC-PRIVATE-FIELD-EXPOSURE-001"
     ]
   },
   "pricingPlans": {
@@ -620,6 +654,20 @@
       "AUDIT-RAZORPAY-WEBHOOK-LEDGER-PERSISTED-BOUNDARY-001"
     ]
   },
+  "feedback": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "Answerlattice private workspace feedback. The authenticated server submission route derives exact active tenant/store/actor scope, validates and transactionally creates one idempotent feedback record, then emits governed support signals. Browser reads are limited to the same feedback actor or workspace members with Support Board authority. Authorized support users may update only surface-assignment metadata, now with canonical authenticated actor and Firestore commit-time provenance. Workspace lifecycle cleanup is the only deletion path. No MenuList public menu, OBP, cache, Redux, SWR, billing or queue consumer exists.",
+    "rulesStatus": "Dedicated and shared rules deny browser create/delete, constrain reads by exact AL workspace plus self/support authority, and allow only the surface-assignment field set for support-authorized actors. Assignment and modification actor IDs must equal the authenticated UID or canonical uId claim; non-null assignment and modification timestamps must equal request.time. Dedicated/shared emulator suites cover self/support/foreign/public reads, forbidden content/scope mutation, forged attribution and stale timestamps.",
+    "indexStatus": "Workspace and actor latest reads are hard-capped at 200/1 and use declared pId/tId/sId/uId/createdOn composites. Submission identity and replay are transaction-owned. Workspace lifecycle cleanup is bounded and reviewed separately. Five catalog evidence files remain non-current in the coverage manifest, so reverse-flow collection closure remains in progress.",
+    "findings": [
+      "AUDIT-AL-FEEDBACK-001",
+      "AUDIT-AL-FEEDBACK-002",
+      "AUDIT-AL-FEEDBACK-003",
+      "AUDIT-ANSWERLATTICE-GENERAL-FEEDBACK-SETTLEMENT-OWNERSHIP-001",
+      "AUDIT-ANSWERLATTICE-GENERAL-FEEDBACK-SCOPE-COERCION-001",
+      "AUDIT-ANSWERLATTICE-FEEDBACK-SURFACE-ATTRIBUTION-001"
+    ]
+  },
   "feedbackEvents": {
     "reviewStatus": "reviewed",
     "reviewedEvidenceSha256": "0bed4c50e94d9408063619f676f5813546977f1a580b1850f489fd9761badc73",
@@ -651,6 +699,13 @@
     "indexStatus": "No active documents or queries exist, so no index or TTL policy is justified; activation requires a new cost/query/retention review rather than treating the reserved path as deployed storage",
     "findings": []
   },
+  "landingPageEnquiries": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "MenuList global private inbound-enquiry ledger. The anonymous public contact route bounds and strictly validates JSON, honeypot and Turnstile admission, normalizes report context and source metadata, hashes the client address and writes only through the Admin SDK. Platform-only operations routes independently require the current durable platform-user role, rate-limit by a hashed operator identity, scan bounded newest rows and serialize an allowlisted contact/report DTO. There is no tenant/store ownership because the record precedes customer onboarding; MenuList source identity separates these records from any adjacent product enquiry family.",
+    "rulesStatus": "Direct browser create/read/update is restricted to authenticated platform administrators and delete is denied. Normal anonymous creation uses the rate-limited, captcha-verified Admin route; operations reads repeat server-side platform authorization rather than relying on Firestore rules. Public consumers receive only a fixed accepted/error response and never a stored row.",
+    "indexStatus": "The general operations route uses the automatic createdOn descending index with a maximum 120-row scan. Report-lead reads use the declared sourceKind plus createdOn descending composite. There is no realtime listener, client cache, Redux/SWR persistence, public cache or automatic deletion path; retention remains an operational policy gap rather than an inferred destructive cleanup.",
+    "findings": []
+  },
   "menuChangeLog": {
     "reviewStatus": "reviewed",
     "reviewedEvidenceSha256": "055aaec8bc90bd7d7edb5ed7d8ea4320d385150321b7d3cf71a1c2007e742e8a",
@@ -667,6 +722,15 @@
       "AUDIT-MOL-EVENT-TIME-AUTHORITY-001",
       "AUDIT-MOL-LEGACY-PROVENANCE-SCOPE-001",
       "AUDIT-MENU-CHANGE-LOG-PERSISTED-SCOPE-001"
+    ]
+  },
+  "publicMenuDrafts": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "MenuList authenticated pre-tenant private draft truth keyed by a deterministic owner-plus-source UUID. The bounded public intake route derives the signed user, validates file signatures or safely acquires a public link, rate-limits by hashed identities, stores one draft-owned source object and atomically create-only couples the draft to its extraction job. Status reads require the exact creator and valid TTL. The worker revalidates every draft/job/source/path/owner/status binding before provider work and writes only normalized public-draft output. Claim revalidates owner, expiry, extracted graph, source object, permissions and transaction-current account/workspace state before atomically creating or attaching tenant/store/project truth.",
+    "rulesStatus": "No direct browser rule path exists; every client read/write falls through to default deny. Intake, status, extraction, claim and cleanup use authenticated/Admin server boundaries that independently validate exact owner, UUID and source bindings. The collection is not tenant-scoped before claim and cannot be selected by a request-supplied tenant.",
+    "indexStatus": "Owner reuse is bounded by createdByUId plus newest createdAt; expiry cleanup uses the automatic expiresAt range index. Large extracted/profile/source/acquisition maps are exempt from automatic indexing. The consolidated maintenance task processes at most 100 expired rows independently of the intake feature flag, deletes unclaimed Storage before its durable retry row, and preserves promoted claimed source objects while removing the receipt.",
+    "findings": [
+      "AUDIT-PUBLIC-MENU-DRAFT-FLAGGED-RETENTION-001"
     ]
   },
   "menuSnapshots": {
@@ -1545,7 +1609,9 @@
     "ownershipModel": "SignalDesk-only market-selection authority at signaldeskMarketPods/{marketPodId}. The protected operating-layer recommendation reads bounded SignalDesk target, outcome and demand summaries, computes a zero-budget hold/activate/expand recommendation and transactionally creates or merges a strict SD-bound pod without changing existing founder review fields. Only a founder-admin with signaldesk.configure may record an approval/hold/rejection, and the review transaction binds the exact actor/idempotency key/fingerprint to a durable result snapshot. No MenuList, Answerlattice, CampaignCue, Canonica, billing, public-output, cache, Redux, SWR or local-storage flow consumes this collection.",
     "rulesStatus": "The separate SignalDesk ruleset permits browser reads only to an authenticated platform identity when the persisted pId is SD and denies all client writes. Admin consumers that can enable execution re-read current pod authority and require active status, approved reviewDecision and approvedBy; operating envelopes additionally re-check in their creation transaction. A founder downgrade from approved establishes a reconciliation token and pending marker transactionally, then holds dependent content assets before clearing that marker. Recommendation refresh preserves founder approval and review ownership.",
     "indexStatus": "Recommendation and review use deterministic document point reads/writes and need no collection index. Exact recommendation replay performs no pod, audit, timeline or cost write; review replay requires the same actor-derived idempotency claim and request fingerprint. Seed migration recognizes only exact legacy defaults and preserves current founder-owned approval. Focused real Firestore emulator runs cover recommendation replay, non-founder denial, concurrent approval replay, seed convergence, exact legacy migration, malformed active rows and approval preservation. The large workflow/E2E sources retain ranged evidence, so the collection is not yet marked reviewed.",
-    "findings": []
+    "findings": [
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
+    ]
   },
   "signaldeskConnectorSettings": {
     "reviewStatus": "in-progress",
@@ -1650,7 +1716,8 @@
     "rulesStatus": "The separate SignalDesk ruleset permits browser reads only to authenticated platform identity for persisted pId=SD resources and denies every browser write. Seed validation requires exact product/document identity, bounded content, outbound channel, status, approved variables and creation/update metadata. Draft/approval consumers use the strict product/document/schema projector and require active email authority; invalid variables, unsupported claims, stale fingerprint or deactivation fail closed.",
     "indexStatus": "The runtime writer uses one deterministic point document in the default-seed transaction; workspace consumers use bounded updatedAt lists and need only the automatic single-field index. Existing valid template content is preserved, but restart 981 compares raw keys with the canonical seed key set and exact-replaces stale shape. Focused seed E2E covers missing-row concurrency, stale-field removal, one repair settlement and clean concurrent replay; draft-control E2E covers non-email templates, invalid variables, exact fingerprint binding and approval after deactivation. Shared workflow/E2E/rule sources retain ranged evidence, so the collection remains in-progress.",
     "findings": [
-      "AUDIT-SD-TEMPLATE-SEED-STALE-FIELDS-001"
+      "AUDIT-SD-TEMPLATE-SEED-STALE-FIELDS-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ]
   },
   "signaldeskIncidents": {
@@ -1735,7 +1802,8 @@
     "indexStatus": "Capture, replay and outcome admission use deterministic point reads only; no collection query or composite index applies. The actor-bound claim makes concurrent exact retries converge and changed-input key reuse fail. Cross-day replay derives summary day from the original stored event rather than the retry clock. The large workflow/E2E sources retain ranged evidence, so the family remains in-progress.",
     "findings": [
       "AUDIT-SD-DEMAND-IDEMPOTENCY-001",
-      "AUDIT-SD-DEMAND-TARGET-IDENTITY-001"
+      "AUDIT-SD-DEMAND-TARGET-IDENTITY-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ]
   },
   "signaldeskDemandSignalSummaries": {
@@ -1744,7 +1812,8 @@
     "rulesStatus": "The separate SignalDesk ruleset permits browser reads only to authenticated platform identity when the persisted row has pId=SD and denies all client writes. Every active Admin writer now validates any existing deterministic row through the strict demand-summary contract before mutation. Wrong-product, malformed, identity-mismatched or incompatible-lineage collisions abort the complete transaction rather than being reclaimed.",
     "indexStatus": "Canonical capture uses deterministic point reads/writes and date-derived identity. Bounded workspace consumers query updatedAt/day/target dimensions through maintained indexes. Trust/content writers freeze one day/ref before their transaction, read current authority with the metric inputs, safe-add the exact count and replace the complete strict row. Focused real-emulator coverage proves wrong-product and malformed collision rollback, concurrent idempotency, product preservation and accumulation. Shared workflow/E2E/rules/index sources retain ranged evidence, so the family remains in-progress.",
     "findings": [
-      "AUDIT-SD-DEMAND-SUMMARY-COLLISION-001"
+      "AUDIT-SD-DEMAND-SUMMARY-COLLISION-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ]
   },
   "signaldeskModelRoutes": {
@@ -1783,7 +1852,8 @@
       "AUDIT-SD-IDEMPOTENCY-CLAIM-AUTHORITY-001",
       "AUDIT-SD-IDEMPOTENCY-LONG-RUNNING-AUTHORITY-001",
       "AUDIT-SD-CONTENT-ASSET-REPLAY-AUTHORITY-001",
-      "AUDIT-SD-CONTENT-DOWNSTREAM-REPLAY-AUTHORITY-001"
+      "AUDIT-SD-CONTENT-DOWNSTREAM-REPLAY-AUTHORITY-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ]
   },
   "signaldeskCostDailySummaries": {
@@ -1869,6 +1939,46 @@
     "indexStatus": "The Audit workspace orders by createdAt descending and document ID descending, returns 50 projected rows and scans at most the shared fixed page ceiling across malformed head rows. Stable cursor parsing binds both timestamp and canonical event ID; the focused emulator proves 55 same-timestamp-aware valid events paginate without duplicates/omissions while a newer foreign row is excluded. The configured actorId/createdAt index is available for actor-filtered operational inspection; browser source/rule checks pass. Shared writer and Functions files retain ranged evidence, so the collection remains in-progress.",
     "findings": []
   },
+  "signaldeskContentSources": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "SignalDesk-global, product-private owned-proof and content-input registry. Protected Admin actions derive the authenticated SignalDesk actor, admit a strict bounded source request, validate optional current market-pod authority, and create or update one exact source with actor-bound idempotency, audit, timeline and cost effects. Content assets and the bounded Content workspace are the internal consumers. No MenuList tenant/store/project, customer/public output, billing, cache, Redux, SWR or local-storage consumer exists.",
+    "rulesStatus": "The separate SignalDesk ruleset allows reads only to authenticated SignalDesk platform access when persisted pId is SD and denies every browser write. Caller-supplied source and pod identities now pass the shared exact-value document-ID boundary in both the protected action schema and workflow server before any reference construction. Current source provenance and market-pod authority are transactionally revalidated before settlement.",
+    "indexStatus": "Writes and replays use exact document references and actor-bound idempotency claims. Workspace reads are bounded and project strict current shapes; the configured status/updatedAt index serves filtered lists. The focused document-ID test and local E2E reject whitespace-mutated, path-shaped, reserved and overlong IDs while preserving exact valid and legacy-compatible source identities. Shared workflow, action route, rules, index and aggregate verifier files retain ranged evidence, so the collection remains in-progress.",
+    "findings": [
+      "AUDIT-SIGNALDESK-DOCUMENT-ID-BOUNDARY-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
+    ]
+  },
+  "signaldeskOfferCtas": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "SignalDesk-global, product-private offer-to-action authority. Protected Admin actions bind the authenticated actor and optional CTA and market-pod authorities before storing one exact offer CTA; experiment, commercial-offer and workspace flows consume the strict internal record. It has no MenuList tenant/store/project selector and no customer/public, billing-settlement, cache, Redux, SWR or local-storage consumer.",
+    "rulesStatus": "The separate SignalDesk ruleset permits product-bound platform reads and denies browser writes. Caller-supplied offer, CTA and market-pod IDs now pass the same exact-value document-ID boundary at the action schema and workflow server, so path-shaped or whitespace-mutated values cannot redirect an Admin reference. Existing downstream authority checks remain unchanged.",
+    "indexStatus": "Mutation and dependency reads use exact document references; bounded workspace queries use status/updatedAt ordering. Focused boundary tests exercise exact IDs, slash paths, reserved values, whitespace mutation and length caps. Shared workflow, action route, rules, index, E2E and aggregate verifier files remain ranged in-progress.",
+    "findings": [
+      "AUDIT-SIGNALDESK-DOCUMENT-ID-BOUNDARY-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
+    ]
+  },
+  "signaldeskExperimentCards": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "SignalDesk-global, product-private experiment authority referencing optional content asset, CTA, market pod and source policy records. Protected Admin create/review actions derive platform identity, persist compact experiment truth and founder decision evidence, and feed Mission workspace decisions. No MenuList tenant/store/project, public customer, billing, cache, Redux, SWR or local-storage consumer exists.",
+    "rulesStatus": "The separate SignalDesk ruleset permits authenticated product-bound platform reads and denies all browser writes. Experiment identity and every optional referenced document ID now pass the shared exact-value boundary in both the action schema and workflow server before Firestore reference construction; review repeats the experiment-card identity check.",
+    "indexStatus": "Create/review use exact document references and bounded workspace queries; status/updatedAt and ownerDecision/updatedAt indexes support the current views. The focused unit boundary and local E2E cover malformed referenced and review IDs plus valid exact persistence. Shared route, workflow, rule/index and aggregate sources remain ranged in-progress.",
+    "findings": [
+      "AUDIT-SIGNALDESK-DOCUMENT-ID-BOUNDARY-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
+    ]
+  },
+  "signaldeskOutcomeEvents": {
+    "reviewStatus": "in-progress",
+    "ownershipModel": "SignalDesk-global, product-private immutable outcome evidence. Manual protected actions, demand-signal attribution and the HMAC-authenticated MenuList bridge converge on one Admin transaction that creates a deterministic event, exact idempotency claim, compact outcome summary and attribution touch while updating target, route-token, audit, control and cost truth. Strict summary readers point-read and couple the latest event before accepting derived outcome truth. No MenuList tenant/store/project, browser cache, Redux, SWR, local-storage or customer/public DTO consumes the raw event.",
+    "rulesStatus": "The raw collection has no explicit match in the separate SignalDesk ruleset and is therefore denied by the root default-deny rule to public users, SignalDesk members and platform administrators; all writes use the product-local Admin SDK after action or signed-bridge authority checks. The rules emulator now seeds a raw event and directly proves both member and platform-admin point/list reads fail, in addition to the static raw-collection contract.",
+    "indexStatus": "The sole writer creates a deterministic outcome_<idempotency-hash-prefix> document in the same transaction as its claim, summary and attribution touch. Every application read is an exact event point-read reached from a strict summary or claim; no collection query, composite index, TTL, cache or public list exists. Focused signed-bridge and complete SignalDesk E2E prove exact concurrent replay, route coupling and atomic derived effects. Shared workflow, outcome contracts, rules, E2E and aggregate verifier files retain ranged evidence, so the family remains in-progress.",
+    "findings": [
+      "AUDIT-SIGNALDESK-RAW-RULE-EXISTING-DOC-COVERAGE-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
+    ]
+  },
   "signaldeskContentAssets": {
     "reviewStatus": "in-progress",
     "ownershipModel": "SignalDesk-only canonical internal content authority. Protected create and founder-review actions derive the authenticated SignalDesk actor, validate closed route inputs, current content pause, optional source/CTA/market-pod/proof-permission authority and strict current asset shape, then atomically update the asset with actor-bound idempotency, audit, timeline, queue and daily-cost effects. Review is the only path from draft to ready. Draft generation and performance/distribution flows consume the strict public asset projection. No MenuList, Answerlattice, CampaignCue, Canonica, customer/public output, billing settlement, cache, Redux, SWR or local-storage consumer exists.",
@@ -1879,7 +1989,8 @@
       "AUDIT-SD-CONTENT-ASSET-IDEMPOTENCY-001",
       "AUDIT-SD-CONTENT-ASSET-AUTHORITY-RACE-001",
       "AUDIT-SD-CONTENT-ASSET-REFERENCE-001",
-      "AUDIT-SD-CONTENT-ASSET-IDENTITY-001"
+      "AUDIT-SD-CONTENT-ASSET-IDENTITY-001",
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
     ]
   },
   "signaldeskContentDistributionDrafts": {
@@ -1988,7 +2099,9 @@
     "ownershipModel": "SignalDesk-only internal trust-partner briefing artifact. The protected closed-schema action requires draft.create plus configure admission and derives the authenticated SignalDesk actor. The Admin transaction requires the trust-partner rail to be enabled, current approved/active partner identity, optional approved same-partner deal authority and one active current CTA. It canonicalizes, deduplicates and sorts bounded approved/banned claim lists, rejects overlap, binds a required disclosure and bounded one-page brief, then creates one deterministic SD-bound artifact with current CTA fingerprint plus audit/timeline/cost evidence. The row is an internal review-ready artifact only; no MenuList, Answerlattice, CampaignCue, Canonica, billing, public output, cache, Redux, SWR or local-storage consumer exists.",
     "rulesStatus": "The separate SignalDesk ruleset permits reads only to authenticated platform identity when persisted pId is SD and denies all browser writes. Workspace reads use the strict projector and log/drop malformed same-product rows. CTA authority changes paginate every brief by exact ctaId and transactionally block valid dependencies while a malformed same-product dependency aborts reconciliation; restoring CTA authority never silently reactivates a blocked brief. Partner/deal approval and CTA activity are re-read inside the create transaction.",
     "indexStatus": "Creation uses a deterministic SHA-256 identity over canonical claims, CTA ID, partner/deal identity, disclosure and brief content. Existing rows replay only when every persisted authority/content field, including current CTA fingerprint, still matches; conflicts fail without mutation. Dependency reconciliation queries ctaId with document-ID ordering in bounded 200-row pages; the current SignalDesk index configuration needs no composite index for that equality-plus-key traversal. Focused real Firestore coverage proves reordered-claim replay, single audit/cost effect, contradictory-claim denial, wrong-product/malformed filtering, malformed-dependency fail-closed behavior, CTA downgrade blocking and no automatic reactivation. The large workflow/E2E sources retain ranged evidence, so the collection is not yet marked reviewed.",
-    "findings": []
+    "findings": [
+      "AUDIT-SIGNALDESK-PERSISTED-DOCUMENT-ID-PROJECTION-001"
+    ]
   },
   "platformAssetTemplates": {
     "reviewStatus": "reviewed",
@@ -2044,7 +2157,9 @@
     "rulesStatus": "MenuList and Answerlattice use separate rulesets and Firebase projects. For Answerlattice, default deny applies; entityGraphIndex is client-readable only to an exact persisted tenant/workspace member with knowledge-control permission, while sourceVersions is available by exact get only to the current workspace and knowledge-control or context-rebuild authority. Browser writes to entityGraphIndex remain denied. Runtime parsing independently requires pId AL, exact numeric tId/sId, bounded timestamp/version/counts, governed entity/relation values and valid graph references before projection. Restart 982 changes no Firestore rule.",
     "indexStatus": "The Knowledge Map uses two deterministic point reads and needs no index, listener, per-node query, browser cache, Redux, SWR or local-storage state. The nightly graph writer uses bounded product/tenant/workspace collection queries guarded by existing Answerlattice indexes, one source-version point read and one existing-summary point read. It now skips a write only when exact envelope keys and both independently hashed stored/new payloads match; otherwise it exact-replaces the summary. The complete 175-source multi-family collection remains in-progress pending direct review of every other summary producer, reader, rule, index and verifier.",
     "findings": [
-      "AUDIT-AL-KNOWLEDGE-MAP-SOURCE-HASH-RECOVERY-001"
+      "AUDIT-AL-KNOWLEDGE-MAP-SOURCE-HASH-RECOVERY-001",
+      "AUDIT-OPERATIONS-STALE-PLATFORM-AUTHORITY-001",
+      "AUDIT-STORES-SUMMARY-BACKFILL-MERGE-RACE-001"
     ]
   },
   "users": {

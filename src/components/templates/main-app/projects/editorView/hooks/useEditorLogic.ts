@@ -218,7 +218,9 @@ export const useEditorLogic = ({
     const handleAddAttribute = useCallback(
         (categoryId: string, itemId: string) => {
             // Deep clone to ensure immutability (handles Timestamps properly)
-            const extractedData = removeObjRef(fileRef.current.extractedData);
+            const sourceExtractedData = fileRef.current.extractedData;
+            if (!sourceExtractedData?.data) return;
+            const extractedData = removeObjRef(sourceExtractedData);
             const item = extractedData.data.items.find(
                 (item: ExtractedDataItem) =>
                     item.category === categoryId && item.id === itemId,

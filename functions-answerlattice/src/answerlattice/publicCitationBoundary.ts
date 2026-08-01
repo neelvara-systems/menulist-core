@@ -37,16 +37,18 @@ const isBlockedHost = (hostname: string): boolean => {
         }
         return isBlockedHost(mappedAddress);
     }
-    if (
-        normalized.includes(':')
-        && (
-            normalized.startsWith('fc')
-            || normalized.startsWith('fd')
-            || normalized.startsWith('fe80:')
-            || normalized.startsWith('ff')
+    if (normalized.includes(':')) {
+        const firstHextet = normalized.split(':', 1)[0];
+        if (!/^[0-9a-f]{1,4}$/i.test(firstHextet)) return true;
+        const first = Number.parseInt(firstHextet, 16);
+        if (
+            (first & 0xfe00) === 0xfc00
+            || (first & 0xffc0) === 0xfe80
+            || (first & 0xffc0) === 0xfec0
+            || (first & 0xff00) === 0xff00
             || normalized.startsWith('2001:db8:')
-        )
-    ) return true;
+        ) return true;
+    }
 
     const ipv4 = normalized.match(IPV4_PATTERN);
     if (!ipv4) return false;

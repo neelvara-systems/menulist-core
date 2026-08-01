@@ -75,7 +75,7 @@ export default function AnswerlatticeSupportTruthExport() {
                 const payload = await readJsonResponseWithLimit<unknown>(
                     response,
                     EXPORT_ERROR_RESPONSE_MAX_BYTES,
-                ).catch(() => null);
+                ).catch((): null => null);
                 throw new Error(getExportErrorMessage(payload));
             }
 

@@ -54,6 +54,13 @@ const GENERATED_AUDIT_OUTPUTS = new Map([
   ['__docs__/audits/data-flow-pipeline-deep-audit.manifest-summary.json', 'generated inventory summary; generator and review state remain in scope'],
 ]);
 
+const VENDORED_THIRD_PARTY_FILES = new Map([
+  [
+    'src/scripts/fabric.min.js',
+    'vendored minified Fabric.js 1.6.4 bundle with no first-party callers; active Fabric dependency, adapters, editor source, and lockfiles remain in scope',
+  ],
+]);
+
 function normalizeFile(file) {
   return file.replaceAll('\\', '/').replace(/^\.\//, '');
 }
@@ -74,6 +81,13 @@ function getTrackedAndUntrackedFiles() {
 }
 
 function exclusionFor(file) {
+  if (VENDORED_THIRD_PARTY_FILES.has(file)) {
+    return {
+      reason: VENDORED_THIRD_PARTY_FILES.get(file),
+      generator: 'upstream Fabric.js distribution',
+    };
+  }
+
   if (GENERATED_AUDIT_OUTPUTS.has(file)) {
     return {
       reason: GENERATED_AUDIT_OUTPUTS.get(file),
@@ -83,6 +97,12 @@ function exclusionFor(file) {
 
   const segments = file.split('/');
   for (const segment of segments) {
+    if (segment === '.next' || segment.startsWith('.next-')) {
+      return {
+        reason: 'generated Next.js build or audit-build output; source inputs and build configuration remain in scope',
+        generator: 'Next.js build/dev tooling',
+      };
+    }
     if (EXCLUDED_SEGMENTS.has(segment)) {
       return {
         reason: EXCLUDED_SEGMENTS.get(segment),

@@ -3,6 +3,8 @@
  * Toggle features on/off for testing, gradual rollout, or A/B testing
  */
 
+import { MENU_INTELLIGENCE_POLICY } from "@data/shared/menuIntelligencePolicy";
+
 export const FEATURE_FLAGS = {
     /**
      * Enable the MyCodex documentation reader.
@@ -61,6 +63,15 @@ export const FEATURE_FLAGS = {
      * route, owner-facing MenuList UI, or Answerlattice runtime behavior.
      */
     ENABLE_WEBSITE_ASSET_OPERATING_SYSTEM: true,
+
+    /**
+     * Enable the internal Security Operating System package.
+     *
+     * This registry-first developer tool maps existing repo security evidence.
+     * It must not expose a runtime route, upload code, scan production, apply
+     * fixes, write Firebase data, or deploy changes.
+     */
+    ENABLE_SECURITY_OPERATING_SYSTEM: true,
 
     /**
      * Enable the CampaignCue public product shell.
@@ -380,11 +391,14 @@ export const FEATURE_FLAGS = {
     ENABLE_CATEGORY_ICONS: true,
 
     /**
-     * Enable AI-assisted SEO & AEO generation in Business Settings.
+     * Enable the authenticated legacy SEO/AEO generation API.
      *
-     * true: Show a single generate button that drafts title, description,
-     * tagline, and keywords from business + menu data.
-     * false: Manual SEO fields only.
+     * true: /api/seo may draft title, description, tagline, and keywords from
+     * business + menu data after auth, permission, capacity, and rate checks.
+     * false: /api/seo returns 404 before any operational or AI work.
+     *
+     * Owner-facing setup is consolidated under ENABLE_BUSINESS_COPY_GENERATION;
+     * there is no separate SEO-only button in the current Business Settings UI.
      */
     ENABLE_SEO_AEO_GENERATION: true,
 
@@ -632,6 +646,14 @@ export const FEATURE_FLAGS = {
     ENABLE_HOURS_STATUS_DISPLAY: true,
 
     /**
+     * Date-specific store-local hours overrides.
+     *
+     * Uses the existing store document and hours read path. No provider sync,
+     * calendar dashboard, listener, scheduler, or additional collection.
+     */
+    ENABLE_SPECIAL_HOURS: true,
+
+    /**
      * Menu Observation Layer (MOL v0)
      *
      * SILENT INFRASTRUCTURE - No UI, no owner visibility!
@@ -777,8 +799,8 @@ export const FEATURE_FLAGS = {
      * CONFIDENT: Items above this can be auto-promoted
      * CAUTIOUS: Items below this may be auto-demoted
      */
-    MENU_INTELLIGENCE_CONFIDENT_THRESHOLD: 0.65,
-    MENU_INTELLIGENCE_CAUTIOUS_THRESHOLD: 0.35,
+    MENU_INTELLIGENCE_CONFIDENT_THRESHOLD: MENU_INTELLIGENCE_POLICY.confidentThreshold,
+    MENU_INTELLIGENCE_CAUTIOUS_THRESHOLD: MENU_INTELLIGENCE_POLICY.cautiousThreshold,
 
     /**
      * CMI Calibration Lock Day
@@ -786,7 +808,7 @@ export const FEATURE_FLAGS = {
      * After this many days, project baseline is locked
      * No more recalibration - stability is prioritized
      */
-    MENU_INTELLIGENCE_CALIBRATION_LOCK_DAY: 21,
+    MENU_INTELLIGENCE_CALIBRATION_LOCK_DAY: MENU_INTELLIGENCE_POLICY.calibrationLockDay,
 
     /**
      * CMI Minimum Stable Days for Auto-Promote
@@ -794,7 +816,7 @@ export const FEATURE_FLAGS = {
      * Item must be stable for this many days before auto-promotion
      * Prevents volatility from triggering actions
      */
-    MENU_INTELLIGENCE_MIN_STABLE_DAYS: 3,
+    MENU_INTELLIGENCE_MIN_STABLE_DAYS: MENU_INTELLIGENCE_POLICY.minimumStableDays,
 
     /**
      * Owner Upload Expiry (days)
@@ -1274,8 +1296,9 @@ export const FEATURE_FLAGS = {
      *
      * @see src/lib/outputControl/namingStandardization.ts
      *
-     * Production: Enable after testing with real menu data
-     * Development: Enable to test naming normalization
+     * The compatibility helper is enabled, but currently has no runtime
+     * consumer. Wiring it into persistence or public rendering requires a
+     * separate product/data-contract review.
      */
     ENABLE_NAMING_STANDARDIZATION: true,
 
@@ -1307,23 +1330,6 @@ export const FEATURE_FLAGS = {
     // URL ROUTING ARCHITECTURE — Stored Slugs + Reserved Namespace
     // @see __docs__/url-routing-architecture/
     // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * Stored Project Slugs — URL permanence infrastructure
-     *
-     * When enabled:
-     * - New projects get auto-generated slug stored in projectsSummary
-     * - Project rename pushes old slug to previousSlugs[] for 301 redirect
-     * - Reserved slug namespace blocks platform-conflicting names
-     * - Client resolver checks stored slug first, falls back to slugify(name)
-     *
-     * When disabled:
-     * - Slugs derived from name at runtime (current behavior)
-     * - No redirect support, no reserved namespace enforcement
-     *
-     * @see __docs__/url-routing-architecture/README.md ADR-3
-     */
-    ENABLE_STORED_SLUGS: true,
 
     // ═══════════════════════════════════════════════════════════════
     // OFFICIAL BUSINESS PAGE (OBP)
@@ -1779,8 +1785,10 @@ export const FEATURE_FLAGS = {
     /**
      * Server-Side Staff Creation
      *
-     * true: Staff users created via /api/auth/create-staff (Admin SDK)
-     * false: Falls back to client-side creation (BROKEN — do not disable)
+     * true: Staff users are created via /api/auth/create-staff (Admin SDK).
+     * false: The server rejects creation with FEATURE_DISABLED before rate
+     * limiting, request parsing, authorization reads, or Auth/Firestore writes.
+     * There is intentionally no unsafe client-side creation fallback.
      *
      * @see __docs__/auth/auth_audit-decisions.md — Decision B1
      */
@@ -1928,32 +1936,6 @@ export const FEATURE_FLAGS = {
     // PDF SURFACE (Enhanced Menu PDF Generation)
     // @see __docs__/pdf-surface/pdf-surface_spec.md
     // ═══════════════════════════════════════════════════════════════
-
-    /**
-     * PDF Surface — Enhanced menu PDF generation (v2.0)
-     *
-     * When enabled:
-     * - Density auto-detection (standard / compact / high-density)
-     * - Snapshot version hash in footer for pricing integrity tracking
-     * - Address and contact line in header (if provided)
-     * - Three-zone footer: version ID | page number | updated-on date
-     * - Menu URL on first page footer
-     * - Block-based pagination (category integrity, item integrity)
-     *
-     * When disabled:
-     * - Legacy PDF layout (v1.0) — original header/footer, no density detection
-     * - Core generation (jsPDF, categories, items, prices) unchanged
-     * - Backward-compatible: no breaking change
-     *
-     * Firebase cost: $0.00 (client-side only)
-     *
-     * @see __docs__/pdf-surface/pdf-surface_spec.md
-     * @see __docs__/pricing-integrity-system/pricing-integrity-system_spec.md FR-7.3
-     *
-     * Production: Keep true — safe, backward-compatible improvement
-     * Development: Enable to test enhanced PDF layout
-     */
-    ENABLE_PDF_SURFACE: true,
 
     /**
      * Menu Card Export — Routed print menu workflow
@@ -2584,6 +2566,23 @@ export const FEATURE_FLAGS = {
      * @see __docs__/answerlattice/founder-support-controls/
      */
     ENABLE_ANSWERLATTICE_ANSWER_TESTS: true,
+
+    /**
+     * Answerlattice Answer Trace
+     *
+     * Read-only, support-authorized projection of already-retained search
+     * history. Owners can inspect the route, governed IDs, citations, feedback,
+     * and fallback evidence behind a recent answer without exposing visitor
+     * identity or adding a raw event warehouse.
+     *
+     * Cost model: zero automatic reads. An exact ticket trace costs one
+     * document read. The explicit Trust Metrics review action scans at most 30
+     * recent scoped history documents and returns at most 12 review traces.
+     * No listener, write, scheduler, Storage object, or model call is added.
+     *
+     * @see __docs__/answerlattice/founder-support-controls/
+     */
+    ENABLE_ANSWERLATTICE_ANSWER_TRACE: true,
 
     /**
      * Product-Specific First 10 Launch Pack

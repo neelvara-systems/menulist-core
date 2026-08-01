@@ -261,7 +261,7 @@ export class AIGateway {
                 }
 
                 // Success — reset key health
-                this.keyManager.markCurrentKeySuccess();
+                this.keyManager.markKeySuccess(client);
                 return result;
 
             } catch (error: any) {
@@ -270,7 +270,7 @@ export class AIGateway {
                 // ── Rate Limit (429) → Rotate key, retry immediately ──
                 if (isRateLimitError(error)) {
                     const hardQuota = isHardQuotaError(error);
-                    this.keyManager.markCurrentKeyRateLimited();
+                    this.keyManager.markKeyRateLimited(client);
 
                     if (this.keyManager.totalKeys > 1) {
                         logger.warn(

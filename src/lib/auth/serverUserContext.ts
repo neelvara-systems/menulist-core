@@ -22,6 +22,24 @@ import { createHash } from "crypto";
 
 const USERS_COLLECTION = DB_COLLECTIONS.USERS;
 
+export type AuthBootstrapStoreMapping = {
+    name: string;
+    role: string;
+    storeId: number;
+};
+
+export type AuthBootstrapUserInput = {
+    active: boolean;
+    email: string;
+    image?: string;
+    isVerified: boolean;
+    name: string;
+    platformRole: string;
+    storeId: number | null;
+    stores: AuthBootstrapStoreMapping[];
+    tenantId: number | null;
+};
+
 export class AuthUserIdentityConflictError extends Error {
     constructor() {
         super('Authentication identity is not unique.');
@@ -122,8 +140,8 @@ export const getAuthUserByLoginIdentifier = async (identifier: string) => {
     return getUniqueAuthUserFromMatches(matches);
 };
 
-export const addAuthPlatformUser = async (data: any) => {
-    const normalizedEmail = normalizeEmail(data?.email);
+export const addAuthPlatformUser = async (data: AuthBootstrapUserInput) => {
+    const normalizedEmail = normalizeEmail(data.email);
     const userDocumentId = getOAuthUserDocumentId(normalizedEmail);
     if (!userDocumentId) throw new Error("INVALID_OAUTH_EMAIL");
     const existing = await getAuthUserByEmail(normalizedEmail);
@@ -132,23 +150,25 @@ export const addAuthPlatformUser = async (data: any) => {
     const now = admin.firestore.Timestamp.now();
     const userToAdd = sanitizeForFirestore({
         ...data,
-        email: normalizedEmail || data?.email || null,
-        pId: data?.pId ?? DEFAULT_PRODUCT_ID,
-        sId: data?.sId ?? ECOMSAI_PLATFORM_STORE_ID,
-        tId: data?.tId ?? ECOMSAI_PLATFORM_TENANT_ID,
-        role: data?.role ?? ECOMSAI_PLATFORM_USER_ROLE,
-        uId: data?.uId ?? ECOMSAI_PLATFORM_USER_ID,
-        modifiedBy: data?.modifiedBy ?? ECOMSAI_PLATFORM_USER_NAME,
+        email: normalizedEmail,
+        pId: DEFAULT_PRODUCT_ID,
+        sId: ECOMSAI_PLATFORM_STORE_ID,
+        tId: ECOMSAI_PLATFORM_TENANT_ID,
+        role: ECOMSAI_PLATFORM_USER_ROLE,
+        uId: ECOMSAI_PLATFORM_USER_ID,
+        modifiedBy: ECOMSAI_PLATFORM_USER_NAME,
         modifiedOn: now,
-        createdBy: data?.createdBy ?? ECOMSAI_PLATFORM_USER_NAME,
-        createdOn: data?.createdOn ?? now,
+        createdBy: ECOMSAI_PLATFORM_USER_NAME,
+        createdOn: now,
     });
 
     const docRef = getUsersCollection().doc(userDocumentId);
     return firestoreAdmin.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(docRef);
         if (snapshot.exists) {
-            const current = removeDangerousKeys(snapshot.data());
+            const snapshotData = snapshot.data();
+            if (!snapshotData) throw new Error("OAUTH_USER_DOCUMENT_INVALID");
+            const current = removeDangerousKeys(snapshotData);
             if (normalizeEmail(String(current.email || '')) !== normalizedEmail) {
                 throw new Error("OAUTH_USER_ID_CONFLICT");
             }

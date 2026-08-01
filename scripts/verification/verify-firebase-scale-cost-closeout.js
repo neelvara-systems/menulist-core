@@ -142,6 +142,34 @@ const rootOverrides = new Map(
   );
 });
 
+for (const relativePath of ['firestore.indexes.json', 'firestore-answerlattice.indexes.json']) {
+  const manifest = readJson(relativePath);
+  const overrides = new Map(
+    (manifest.fieldOverrides || []).map((override) => [
+      `${override.collectionGroup}:${override.fieldPath}`,
+      override,
+    ]),
+  );
+  [
+    'platformSummary:graph',
+    'platformSummary:interactionRules',
+    'platformSummary:topFrictionEntities',
+    'platformSummary:emergingTopics',
+    'platformSummary:topFailingEntities',
+    'platformSummary:cases',
+    'platformSummary:runs',
+    'platformSummary:reservations',
+    'platformSummary:steps',
+    'platformSummary:launchProof',
+    'platformSummary:content.surfaceReadiness',
+  ].forEach((key) => {
+    assertCheck(
+      Array.isArray(overrides.get(key)?.indexes) && overrides.get(key).indexes.length === 0,
+      `${relativePath} exempts owner decision summary payload: ${key}`,
+    );
+  });
+}
+
 const usageMap = spawnSync(
   process.execPath,
   ['scripts/verification/firebase-cost-usage-map.mjs', '--json'],

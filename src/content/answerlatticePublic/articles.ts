@@ -2,6 +2,158 @@ import type { AnswerlatticeResourceArticle } from './types';
 
 export const ANSWERLATTICE_RESOURCE_ARTICLES: AnswerlatticeResourceArticle[] = [
     {
+        slug: 'answerlattice-operating-guide',
+        path: '/resources/answerlattice-operating-guide',
+        title: 'AnswerLattice Operating Guide',
+        description: 'Start with the smallest trustworthy support setup, then add team coordination and deeper governance only when ownership or risk grows.',
+        metaTitle: 'AnswerLattice Operating Guide | Start, Coordinate, Govern',
+        metaDescription: 'A progressive AnswerLattice manual for solo founders, small teams, and product groups that need governed support without unnecessary operations.',
+        quickAnswer: 'Start with ten priority questions, a verified widget, safe fallback, and Daily Brief. Add team coordination when ownership spreads, then add deeper governance when releases or answer risk justify it.',
+        readingTime: '10 min read',
+        publishedAt: '2026-07-31',
+        updatedAt: '2026-07-31',
+        priority: 0.82,
+        changeFrequency: 'monthly',
+        cluster: 'launch-setup',
+        primaryCta: { label: 'Open founder launch kit', href: '/resources/founder-launch-kit' },
+        relatedSlugs: ['launch-support-checklist', 'approved-answers-before-fallback', 'support-board-workflow'],
+        sections: [
+            {
+                id: 'one-product-three-depths',
+                title: 'One product, three operating depths',
+                body: [
+                    'Solo founders remain the primary starting point. Small teams and product groups inside larger companies use the same governed system by adding existing controls only when support ownership or answer risk grows.',
+                    'Start, Coordinate, and Govern are guidance levels. They are not workspace modes, automatic scores, separate products, or required setup stages.',
+                ],
+                bullets: [
+                    'Start: one accountable owner launches trustworthy self-service.',
+                    'Coordinate: selected teammates divide support and review work.',
+                    'Govern: product, support, and engineering protect high-risk answers across releases.',
+                    'Company size alone does not decide fit. The operating group and support problem do.',
+                ],
+            },
+            {
+                id: 'start',
+                title: 'Start with the smallest useful support layer',
+                body: [
+                    'A founder should not configure every AnswerLattice capability before users receive help. The first job is to cover the most important questions and prove both the known-answer and safe-fallback paths.',
+                ],
+                checklist: [
+                    'Create one workspace for one product.',
+                    'Add the product profile, support email, and two to five support-heavy pages.',
+                    'Import the product material you already trust.',
+                    'Review ten priority customer questions and approve only supported answer truth.',
+                    'Run canonical-only Answer Tests for critical expected answers.',
+                    'Verify one known-answer path and one missing-answer fallback path in the widget.',
+                    'Use Daily Brief after launch and leave stable areas alone.',
+                ],
+            },
+            {
+                id: 'ignore-at-first',
+                title: 'What a founder can ignore at first',
+                body: [
+                    'Available features are not mandatory work. Full utilization means using the correct operating depth, not enabling every screen.',
+                ],
+                bullets: [
+                    'Do not create custom roles while one owner operates the workspace.',
+                    'Do not use Support Board for every ticket.',
+                    'Do not configure workflow notifications while one review habit is enough.',
+                    'Do not open advanced Knowledge Map or governance views unless a decision points there.',
+                    'Do not request API distribution before approved answer coverage and key controls are ready.',
+                    'Do not build a large article library merely to make setup look complete.',
+                ],
+            },
+            {
+                id: 'coordinate',
+                title: 'Coordinate when support ownership spreads',
+                body: [
+                    'Move beyond the founder setup when a second person regularly responds to users, reviews answers, ships releases that change support truth, or owns recurring follow-up.',
+                ],
+                checklist: [
+                    'Invite only active support, product, or engineering operators.',
+                    'Start with protected Owner, Manager, and Support Staff roles.',
+                    'Create a custom role only when a real authority boundary requires it.',
+                    'Add Slack or email notifications when work is being missed outside the workspace.',
+                    'Use Support Board only for selected issues that need private notes, ownership, or follow-up.',
+                    'Record releases that change plans, roles, limits, navigation, integrations, or errors.',
+                    'Expand Answer Tests around billing, permissions, cancellation, retention, and security.',
+                ],
+            },
+            {
+                id: 'govern',
+                title: 'Govern when answer risk becomes material',
+                body: [
+                    'A growing company does not need every employee in AnswerLattice. A bounded product, support, and engineering group can use deeper controls when several functions rely on the same support truth or releases frequently affect existing answers.',
+                ],
+                checklist: [
+                    'Keep one accountable owner for official support truth.',
+                    'Use Knowledge Map to locate the product area and connected review work.',
+                    'Preview release impact before activating customer-visible changes.',
+                    'Protect critical answers with repeatable tests.',
+                    'Use role controls, version history, exports, and audit evidence for accountable review.',
+                    'Keep an existing helpdesk as the conversation and SLA system when those operations are required.',
+                    'Enable public API or external distribution only when available, verified, and supported by sufficient approved coverage.',
+                ],
+            },
+            {
+                id: 'feature-triggers',
+                title: 'Introduce features because a real trigger exists',
+                bullets: [
+                    'Team Access: a second person regularly operates support or governance.',
+                    'Workflow Notifications: work is missed without an external alert.',
+                    'Support Board: a selected issue needs internal ownership or notes.',
+                    'Knowledge Map: a decision needs cross-feature product context.',
+                    'Release Impact: a release changes customer-visible product truth.',
+                    'Answer Tests: an answer is important enough to protect from regression.',
+                    'Support Truth Export: a buyer or downstream team needs bounded evidence.',
+                    'Public API: approved coverage and key controls are ready.',
+                ],
+            },
+            {
+                id: 'normal-rhythm',
+                title: 'Keep the normal operating rhythm small',
+                checklist: [
+                    'Handle real user fallback before internal improvement work.',
+                    'Review only qualified stale-answer, release-impact, or repeated-gap items.',
+                    'Approve, edit, classify, defer, or reject the exact item.',
+                    'Use one optional weekly review when the quiet Daily Brief needs no decision.',
+                    'Do not duplicate the same issue across several queues without one accountable owner.',
+                ],
+            },
+            {
+                id: 'larger-company-boundary',
+                title: 'Know the larger-company boundary',
+                body: [
+                    'AnswerLattice can support a product group inside a larger company through team access, permissions, tests, release review, exports, and audit history. It remains governed support infrastructure rather than a contact-center suite.',
+                ],
+                bullets: [
+                    'Good fit: one product group needs approved support truth across widget, hosted help, people, and releases.',
+                    'Keep the existing helpdesk when the company needs omnichannel routing, workforce management, or SLA operations.',
+                    'Do not assume unverified SAML, SCIM, contractual service levels, public certifications, or procurement commitments.',
+                    'Evaluate required controls and integrations directly instead of treating employee count as proof of fit.',
+                ],
+            },
+        ],
+        faq: [
+            {
+                question: 'Do I need to use every AnswerLattice feature?',
+                answer: 'No. Correct adoption means using the smallest depth that keeps support reliable. A founder may remain on the Start operating depth for months.',
+            },
+            {
+                question: 'Should a larger company invite every employee?',
+                answer: 'No. Invite the bounded group that operates support truth, responds to fallback, maintains product context, or approves changes.',
+            },
+            {
+                question: 'Does AnswerLattice replace an existing helpdesk?',
+                answer: 'No. A company can keep its helpdesk for conversations, routing, and SLAs while AnswerLattice governs the approved product truth used across support surfaces.',
+            },
+            {
+                question: 'Will AnswerLattice move a workspace between depths automatically?',
+                answer: 'No. Start, Coordinate, and Govern are manual operating guidance. They do not create a maturity score or change workspace data.',
+            },
+        ],
+    },
+    {
         slug: 'launch-support-checklist',
         path: '/resources/launch-support-checklist',
         title: 'Launch Support Checklist',
@@ -478,5 +630,5 @@ export function getAnswerlatticeResourceArticle(pathOrSlug: string) {
 export function getAnswerlatticeRelatedResourceArticles(article: AnswerlatticeResourceArticle) {
     return article.relatedSlugs
         .map((slug) => getAnswerlatticeResourceArticle(slug))
-        .filter(Boolean) as AnswerlatticeResourceArticle[];
+        .filter((relatedArticle): relatedArticle is AnswerlatticeResourceArticle => relatedArticle !== undefined);
 }

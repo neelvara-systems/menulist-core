@@ -49,7 +49,7 @@ export async function readResponseUint8ArrayWithLimit(response: Response, maxByt
 
             totalBytes += value.byteLength;
             if (totalBytes > maxBytes) {
-                await reader.cancel().catch(() => undefined);
+                await reader.cancel().catch((): undefined => undefined);
                 throw new ResponseBodyTooLargeError(maxBytes, totalBytes);
             }
             chunks.push(value);

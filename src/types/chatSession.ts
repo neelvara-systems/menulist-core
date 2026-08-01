@@ -4,6 +4,8 @@ import { KnowledgeBaseArticleType } from './knowledgeBase';
 import type { SourceContext } from './multiProduct';
 import type { AnswerlatticePublicCitation, AnswerlatticeScopeClarification } from './answerlattice';
 import type { AnswerlatticePublicFallbackReason } from '@lib/answerlattice/publicAnswerContracts';
+import type { JSONContent } from '@tiptap/core';
+import type { Dayjs } from 'dayjs';
 
 export interface ChatMessage {
     id: string;
@@ -61,6 +63,19 @@ export type ChatReference = Pick<KnowledgeBaseArticleType, 'id' | 'title'>
 
 export type ChatMode = 'qna' | 'assistant';
 
+export type ChatInternalNoteContent = string | JSONContent;
+
+export type ChatInternalNote = {
+    id?: string;
+    content: ChatInternalNoteContent;
+    createdBy?: string;
+    createdByName?: string;
+    createdOn?: Timestamp;
+    modifiedBy?: string;
+    modifiedByName?: string;
+    modifiedOn?: Timestamp;
+};
+
 export interface ChatSession {
     id?: string;
     title: string;
@@ -77,16 +92,7 @@ export interface ChatSession {
     createdOn?: Timestamp; // Should be a server timestamp
     modifiedOn?: Timestamp; // Should be a server timestamp
     // Admin/Owner only field for internal team collaboration (Array for future multi-note support)
-    internalNotes?: Array<{
-        id?: string;                    // Unique note ID
-        content: any;                   // TipTap JSON for rich formatted notes
-        createdBy?: string;             // User ID who created
-        createdByName?: string;         // Display name of creator
-        createdOn?: Timestamp;          // When created
-        modifiedBy?: string;            // User ID who last modified
-        modifiedByName?: string;        // Display name of last editor
-        modifiedOn?: Timestamp;         // When last modified
-    }>;
+    internalNotes?: ChatInternalNote[];
 
     // Admin Organization & Tracking Fields (for filtering and triage)
     adminStatus?: 'new' | 'in_progress' | 'resolved' | 'follow_up' | 'closed';
@@ -143,5 +149,5 @@ export interface ConversationFilters {
     tags: string[];
     hasNotes: boolean;
     isUnread: boolean;
-    dateRange: [any, any] | null; // dayjs.Dayjs type
+    dateRange: [Dayjs | null, Dayjs | null] | null;
 }

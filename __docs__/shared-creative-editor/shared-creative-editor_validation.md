@@ -456,3 +456,29 @@ Corrected the shared editor after Canva-style comparison work drifted the runtim
 ### Cost Impact
 
 No Firebase reads, writes, Storage writes, Cloud Functions, provider calls, or realtime listeners were added. The change is browser-local runtime behavior.
+## July 29, 2026 - Data-integrity and asynchronous-operation hardening
+
+### Scope
+
+The repository-wide data-flow audit re-read the full shared editor, its runtime document schema, Fabric 7 boundary, browser drafts, file imports, AI/Design Cue adapters, exports, clipboard paths, template save callback, and product-neutral persistence contract.
+
+### Closed defects
+
+- Document commits and selected-layer live patches now validate before authoritative or Fabric state changes; invalid Fabric serialization restores the last valid document.
+- Overlapping Fabric loads are serialized and generation-owned, so a late older load cannot replace a newer page/document.
+- Native and legacy JSON imports are size bounded, revision checked, and immediate single-flight. Legacy Fabric JSON uses an isolated canvas, the Promise completion API, bounded object/node traversal, safe image-source checks, neutral-document validation, and guaranteed disposal.
+- Raster add/replace imports share the persisted image-source size ceiling, verify magic bytes, and reject stale document/page/selection completions.
+- AI tools, Design Cue request/apply, export bundle, normal export, template save, and clipboard operations use immediate single-flight ownership; document-sensitive results reject revision drift.
+- Raster data URLs accepted by the file boundary no longer produce a false unsafe-image readiness warning.
+
+### Validation
+
+- `npm run verify:creative-editor-smoke`
+- `npm run test:creative-editor-template-registry-boundaries`
+- `npm run verify:printable-asset-templates`
+- `npm run verify:campaigncue`
+- `npx tsc --noEmit --incremental false --pretty false`
+- scoped ESLint for the editor and verifier
+- `git diff --check`
+
+No Firebase rules, indexes, Storage rules, Functions, provider calls, or product persistence paths changed.

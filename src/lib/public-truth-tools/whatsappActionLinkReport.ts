@@ -147,7 +147,7 @@ function hasMessageActionHint(value: string): boolean {
 }
 
 function hasHoursHint(value: string): boolean {
-  return /(?:\bhours?\b|\bopen\b|\bclosed\b|\btoday\b|\btomorrow\b|\breply\b|\bavailable\b|\bslot\b|\bmorning\b|\bevening\b|\btonight\b|\bpickup\b|\bdelivery\b)/i.test(value);
+  return /(?:\bhours?\b|\bopen\b|\bclosed\b|\btiming\b|\brepl(?:y|ies)\b|\brespond\b|\bresponse\b|\bmorning\b|\bevening\b|\btonight\b|\bwithin\s+\d+\s*(?:minutes?|hours?|days?)\b)/i.test(value);
 }
 
 function makePreviewLink(phoneDigits: string, message: string): string | null {
@@ -256,8 +256,9 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
   const suggestedMessage = trimMessage(input.suggestedMessage);
   const enteredDigits = normalizePhoneDigits(whatsappNumber);
   const validLinkPhone = getValidLinkPhone(existingWhatsappLink);
-  const hasPhoneSource = Boolean(enteredDigits || validLinkPhone || existingWhatsappLink);
   const validPhone = isLikelyWhatsAppPhone(whatsappNumber);
+  const hasValidPhoneSource = Boolean(validLinkPhone) || validPhone;
+  const hasAnyPhoneSource = Boolean(whatsappNumber || existingWhatsappLink);
   const hasRecognizedLink = isRecognizedWhatsAppUrl(parseWhatsAppUrl(existingWhatsappLink));
   const validClickToChat = Boolean(validLinkPhone) || validPhone;
   const hasUnclearPhone = Boolean(enteredDigits) && !validPhone;
@@ -274,8 +275,14 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
   const checks: WhatsAppActionLinkItem[] = [
     makeCheck(
       'whatsapp_number',
-      hasPhoneSource ? 'present' : 'missing',
-      hasPhoneSource ? 'owner_entered' : 'not_provided',
+      hasValidPhoneSource ? 'present' : hasAnyPhoneSource ? 'unclear' : 'missing',
+      validLinkPhone
+        ? 'valid_whatsapp_link_format'
+        : validPhone
+          ? 'valid_phone_format'
+          : hasAnyPhoneSource
+            ? 'unclear_phone_format'
+            : 'not_provided',
     ),
     makeCheck(
       'click_to_chat_format',
@@ -283,7 +290,7 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
         ? 'present'
         : hasUnclearPhone || hasUnclearLink || hasRecognizedLink
           ? 'unclear'
-          : hasPhoneSource
+          : hasAnyPhoneSource
             ? 'missing'
             : 'not_checked',
       validLinkPhone
@@ -294,7 +301,7 @@ export function buildWhatsAppActionLinkReport(input: WhatsAppActionLinkInput): W
             ? 'unclear_phone_format'
             : hasUnclearLink || hasRecognizedLink
               ? 'invalid_whatsapp_link_format'
-              : hasPhoneSource
+              : hasAnyPhoneSource
                 ? 'invalid_whatsapp_link_format'
                 : 'not_checked',
     ),

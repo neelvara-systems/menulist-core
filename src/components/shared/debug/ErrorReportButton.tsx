@@ -12,7 +12,12 @@ import {
     hasRuntimeClipboardWrite,
     hasRuntimeCopyFallback,
     logRuntimeFailure,
+    normalizeRuntimeDiagnosticUrl,
 } from '@lib/runtime/runtimeDiagnostics';
+import {
+    getBoundedErrorName,
+    getBoundedErrorStringField,
+} from '@lib/monitoring/boundedLogContext';
 import { sanitizeErrorForLog } from '@lib/security/secureLogger';
 import { isSentryMonitoringEnabled } from '@lib/monitoring/sentryShared';
 import type { CSSProperties } from 'react';
@@ -68,20 +73,20 @@ async function getBuildDiagnostics(): Promise<BuildDiagnostics> {
 function getRuntimeDiagnostics(error?: Error & { digest?: string }) {
     if (typeof window === 'undefined') {
         return {
-            digest: error?.digest,
+            digest: getBoundedErrorStringField(error, 'digest'),
             error: error ? sanitizeErrorForLog(error) : undefined,
-            errorName: error?.name,
+            errorName: getBoundedErrorName(error),
         };
     }
 
     return {
         console: getClientConsoleSnapshot(),
-        digest: error?.digest,
+        digest: getBoundedErrorStringField(error, 'digest'),
         error: error ? sanitizeErrorForLog(error) : undefined,
-        errorName: error?.name,
-        location: window.location.href,
+        errorName: getBoundedErrorName(error),
+        location: normalizeRuntimeDiagnosticUrl(window.location.href, window.location.origin),
         routePath: window.location.pathname,
-        referrer: document.referrer || undefined,
+        referrer: normalizeRuntimeDiagnosticUrl(document.referrer, window.location.origin),
         screen: {
             height: window.screen?.height,
             width: window.screen?.width,

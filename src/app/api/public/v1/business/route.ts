@@ -12,7 +12,16 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getBrandStoreLabel } from "@lib/businessIdentity/names";
 import { getLocalizedText, getPrimaryLocalizedLanguage } from "@lib/localization/text";
 import { getPublicBusinessDescription } from "@lib/obp/getPublicBusinessDescription";
-import { getActivePublicTempStatus, normalizePublicBusinessAttributes } from '@lib/publicApi/businessProjection';
+import {
+    getActivePublicTempStatus,
+    normalizePublicBusinessAttributes,
+    normalizePublicBusinessGeo,
+    normalizePublicBusinessLastModified,
+    normalizePublicBusinessStringRecord,
+    normalizePublicBusinessText,
+    normalizePublicBusinessWorkingHours,
+} from '@lib/publicApi/businessProjection';
+import { normalizeSpecialHours } from '@lib/hours/specialHours';
 import { buildPullApiResponseHeaders, generatePullApiETag, hasPublicApiCredentialScope, hashApiKey, isMenuListPublicApiTargetAllowed, logApiRequest, normalizeMenuListPublicApiNumericId, normalizePublicApiKey, PULL_API_KEY_RATE_LIMIT, PULL_API_PREAUTH_RATE_LIMIT, PULL_API_RATE_LIMIT_WINDOW_SECONDS, PULL_API_SCHEMA_VERSION, pullApiError, pullApiRateLimitError, validatePublicApiKey } from "@lib/publicApi/auth";
 import { isMenuListPublicApiCredentialInScope } from '@lib/publicApi/menuListScope';
 import { checkRateLimit } from "@lib/rateLimit";
@@ -116,42 +125,36 @@ export async function GET(request: NextRequest) {
             schemaVersion: PULL_API_SCHEMA_VERSION,
             generatedAt: new Date().toISOString(),
             storeId: storeNumericId,
-            name: publicName || null,
-            businessType: storeData.businessType || null,
-            description: publicDescription || null,
-            descriptor: publicDescriptor || null,
-            knownFor: publicKnownFor || null,
-            phone: storeData.phoneNumber || null,
-            email: storeData.email || null,
-            currency: storeData.currencyCode || storeData.currency || null,
-            priceRange: storeData.priceRange || null,
+            name: normalizePublicBusinessText(publicName, 256),
+            businessType: normalizePublicBusinessText(storeData.businessType, 160),
+            description: normalizePublicBusinessText(publicDescription),
+            descriptor: normalizePublicBusinessText(publicDescriptor, 512),
+            knownFor: normalizePublicBusinessText(publicKnownFor, 512),
+            phone: normalizePublicBusinessText(storeData.phoneNumber, 80),
+            email: normalizePublicBusinessText(storeData.email, 320),
+            currency: normalizePublicBusinessText(storeData.currencyCode || storeData.currency, 16),
+            priceRange: ['$','$$','$$$','$$$$'].includes(storeData.priceRange) ? storeData.priceRange : null,
             address: {
-                line: storeData.addressLine || null,
-                city: storeData.city || null,
-                state: storeData.state || null,
-                postalCode: storeData.postalCode || null,
-                country: storeData.country || null,
+                line: normalizePublicBusinessText(storeData.addressLine, 512),
+                city: normalizePublicBusinessText(storeData.city, 160),
+                state: normalizePublicBusinessText(storeData.state, 160),
+                postalCode: normalizePublicBusinessText(storeData.postalCode, 40),
+                country: normalizePublicBusinessText(storeData.country, 160),
             },
-            geo: storeData.geo ? {
-                latitude: storeData.geo.latitude,
-                longitude: storeData.geo.longitude,
-            } : null,
-            workingHours: storeData.workingHours || null,
-            timeZone: storeData.timeZone || null,
-            businessDayEndTime: storeData.businessDayEndTime || null,
-            logo: storeData.logo || null,
-            businessCover: storeData.publicPresence?.businessCover || null,
-            socialMedia: storeData.socialMedia || null,
+            geo: normalizePublicBusinessGeo(storeData.geo),
+            workingHours: normalizePublicBusinessWorkingHours(storeData.workingHours),
+            specialHours: normalizeSpecialHours(storeData.specialHours) || null,
+            timeZone: normalizePublicBusinessText(storeData.timeZone, 100),
+            businessDayEndTime: normalizePublicBusinessText(storeData.businessDayEndTime, 5),
+            logo: normalizePublicBusinessText(storeData.logo, 2_048),
+            businessCover: normalizePublicBusinessText(storeData.publicPresence?.businessCover, 2_048),
+            socialMedia: normalizePublicBusinessStringRecord(storeData.socialMedia),
             tempStatus: activeTempStatus,
-            reservationUrl: storeData.publicPresence?.reservationUrl || null,
-            orderUrl: storeData.publicPresence?.orderUrl || null,
-            subdomain: storeData.subdomain || null,
-            customDomain: storeData.customDomain || null,
-            lastModified: storeData.modifiedOn
-                ? (typeof storeData.modifiedOn === 'string'
-                    ? storeData.modifiedOn
-                    : storeData.modifiedOn?.toDate?.()?.toISOString?.() || null)
-                : null,
+            reservationUrl: normalizePublicBusinessText(storeData.publicPresence?.reservationUrl, 2_048),
+            orderUrl: normalizePublicBusinessText(storeData.publicPresence?.orderUrl, 2_048),
+            subdomain: normalizePublicBusinessText(storeData.subdomain, 253),
+            customDomain: normalizePublicBusinessText(storeData.customDomain, 253),
+            lastModified: normalizePublicBusinessLastModified(storeData.modifiedOn),
         };
 
         // Conditionally add feature-flagged fields

@@ -1,6 +1,17 @@
 import { Timestamp } from "firebase/firestore";
 import { LogEntry } from "./common";
 
+export type SupportTicketStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed' | 'Re-Opened';
+export type SupportTicketPriority = 'Low' | 'Normal' | 'High';
+export type SupportTicketCategory =
+    | 'Technical Issue'
+    | 'Billing Inquiry'
+    | 'General Question'
+    | 'Content Update'
+    | 'Feature Suggestion'
+    | 'Account & Login Help'
+    | 'Other';
+
 export interface TicketMessage {
     id: string;
     text: string;
@@ -31,9 +42,9 @@ export interface SupportTicketType {
     id: string;
     displayId: string;
     subject: string;
-    status: string;
-    priority: string;
-    category: string;
+    status: SupportTicketStatus;
+    priority: SupportTicketPriority;
+    category: SupportTicketCategory;
     message: string;
     documents: SupportTicketDocument[];
     platformNotes: string;
@@ -179,6 +190,18 @@ export const SLA_CONFIG = {
 // SLA Status Types
 export type SLAStatus = 'on_time' | 'at_risk' | 'breached';
 
+const getSupportTicketSLAConfig = (priority: unknown) => {
+    switch (priority) {
+        case SUPPORT_TICKET_PRIORITY.HIGH:
+            return SLA_CONFIG[SUPPORT_TICKET_PRIORITY.HIGH];
+        case SUPPORT_TICKET_PRIORITY.LOW:
+            return SLA_CONFIG[SUPPORT_TICKET_PRIORITY.LOW];
+        case SUPPORT_TICKET_PRIORITY.NORMAL:
+        default:
+            return SLA_CONFIG[SUPPORT_TICKET_PRIORITY.NORMAL];
+    }
+};
+
 export const getSupportTicketTimestampMillis = (value: unknown): number | null => {
     try {
         if (value instanceof Date) {
@@ -227,7 +250,9 @@ export const getFirstSupportTicketResponse = (
         if (message.type === 'system') return false;
         const senderEmail = String(message.sender?.email || '').trim().toLowerCase();
         const senderId = String(message.sender?.id || '').trim();
-        if (requesterEmail) return Boolean(senderEmail && senderEmail !== requesterEmail);
+        if (requesterEmail && senderEmail === requesterEmail) return false;
+        if (requesterId && senderId === requesterId) return false;
+        if (requesterEmail && senderEmail) return senderEmail !== requesterEmail;
         return Boolean(requesterId && senderId && senderId !== requesterId);
     });
 };
@@ -238,7 +263,7 @@ export const calculateSupportTicketSLAStatus = (
 ): ReturnType<typeof calculateSLAStatus> | null => {
     const createdMillis = getSupportTicketTimestampMillis(ticket.createdOn);
     if (createdMillis === null) return null;
-    const config = SLA_CONFIG[ticket.priority] || SLA_CONFIG[SUPPORT_TICKET_PRIORITY.NORMAL];
+    const config = getSupportTicketSLAConfig(ticket.priority);
     const firstResponse = getFirstSupportTicketResponse(ticket);
     const firstResponseMillis = getSupportTicketTimestampMillis(firstResponse?.timestamp);
     const firstResolution = (ticket.statuses || []).find((entry) => (
@@ -280,7 +305,7 @@ export const calculateSLAStatus = (
     responseTimeRemaining: number; // in hours
     resolutionTimeRemaining: number; // in hours
 } => {
-    const slaConfig = SLA_CONFIG[priority] || SLA_CONFIG[SUPPORT_TICKET_PRIORITY.NORMAL];
+    const slaConfig = getSupportTicketSLAConfig(priority);
     const now = Date.now();
     const createdTime = createdOn.toMillis();
     const elapsedMs = now - createdTime;

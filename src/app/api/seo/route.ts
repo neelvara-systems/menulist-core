@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { PERMISSIONS } from "@constant/permissions";
+import { FEATURE_FLAGS } from "@config/features";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
@@ -200,6 +201,10 @@ export const POST = withAuth(async (request, session) => {
     const requestId = crypto.randomUUID();
 
     try {
+        if (!FEATURE_FLAGS.ENABLE_SEO_AEO_GENERATION) {
+            return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
+        }
+
         const { checkSafeMode } = await import('@lib/ops/safeMode');
         const safeModeResponse = await checkSafeMode();
         if (safeModeResponse) return safeModeResponse;

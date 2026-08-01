@@ -32,11 +32,13 @@ export default function AnswerlatticeCoverageKPI() {
             setLoading(false);
             return;
         }
+        const tenantId = session.tId;
+        const storeId = session.sId;
 
         (async () => {
             try {
                 setLoadFailed(false);
-                const result = await getAnswerlatticeCoverage(session.tId, session.sId);
+                const result = await getAnswerlatticeCoverage(tenantId, storeId);
                 setData(result);
             } catch {
                 setLoadFailed(true);

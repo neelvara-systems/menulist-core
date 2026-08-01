@@ -571,7 +571,7 @@ export default function AnalyticsBackfill() {
                                 </Text>
                                 <Text type="secondary">
                                     <LuDatabase style={{ marginRight: '4px' }} />
-                                    Date range: {getDateRange(days).formatted}
+                                    Date range: {getDateRange(days ?? 30).formatted}
                                 </Text>
                             </Space>
                         </Col>

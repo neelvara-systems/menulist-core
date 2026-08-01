@@ -18,8 +18,10 @@ import {
 const scope = { tId: 31, sId: 3101 };
 const vectorValues = Array.from({ length: 768 }, (_, index) => (index % 17) / 17);
 
-const embeddingDocumentId = (cacheKey: string) => (
-    `qe_${createHash('sha256').update(cacheKey).digest('hex')}`
+const embeddingDocumentId = (cacheKey: string, embeddingScope = scope) => (
+    `qe_${createHash('sha256')
+        .update(JSON.stringify([PRODUCT_IDS.ANSWERLATTICE, embeddingScope.tId, embeddingScope.sId, cacheKey]))
+        .digest('hex')}`
 );
 
 async function run(): Promise<void> {
@@ -35,7 +37,7 @@ async function run(): Promise<void> {
     );
 
     const embeddingDoc = await db.collection(DB_COLLECTIONS.QUERY_EMBEDDINGS)
-        .doc(embeddingDocumentId(cacheKey))
+        .doc(embeddingDocumentId(cacheKey, scope))
         .get();
     assert.equal(embeddingDoc.exists, true);
     assert.equal(embeddingDoc.data()?.pId, PRODUCT_IDS.ANSWERLATTICE);
@@ -47,15 +49,33 @@ async function run(): Promise<void> {
     const cachedVector = await getCachedEmbedding(cacheKey, scope);
     assert.ok(cachedVector);
     assert.deepEqual(cachedVector?.toArray(), vectorValues);
-    assert.equal(
-        await getCachedEmbedding(cacheKey, { tId: scope.tId, sId: scope.sId + 1 }),
-        null,
-        'embedding cache must reject a different workspace even when the cache key is reused',
+    const otherScope = { tId: scope.tId, sId: scope.sId + 1 };
+    const otherVectorValues = vectorValues.map((value) => value / 2);
+    await saveCachedEmbedding(
+        cacheKey,
+        'Why did my invoice fail?',
+        new AnswerlatticeVector(otherVectorValues),
+        otherScope,
+    );
+    assert.deepEqual(
+        (await getCachedEmbedding(cacheKey, scope))?.toArray(),
+        vectorValues,
+        'a same-key write in another workspace must not overwrite the first workspace cache',
+    );
+    assert.deepEqual(
+        (await getCachedEmbedding(cacheKey, otherScope))?.toArray(),
+        otherVectorValues,
+        'same raw cache keys must coexist under independently scoped document identities',
+    );
+    await assert.rejects(
+        () => getCachedEmbedding(cacheKey, { tId: scope.tId, sId: String(scope.sId) as unknown as number }),
+        /scope is invalid/,
+        'runtime scope aliases must not be coerced into cache authority',
     );
 
     const expiredCacheKey = `${scope.tId}:${scope.sId}:expired-query-embedding`;
     const expiredDocRef = db.collection(DB_COLLECTIONS.QUERY_EMBEDDINGS)
-        .doc(embeddingDocumentId(expiredCacheKey));
+        .doc(embeddingDocumentId(expiredCacheKey, scope));
     await expiredDocRef.set({
         pId: PRODUCT_IDS.ANSWERLATTICE,
         ...scope,
@@ -76,7 +96,7 @@ async function run(): Promise<void> {
 
     const missingCreatedAtCacheKey = `${scope.tId}:${scope.sId}:missing-created-at`;
     const missingCreatedAtDocRef = db.collection(DB_COLLECTIONS.QUERY_EMBEDDINGS)
-        .doc(embeddingDocumentId(missingCreatedAtCacheKey));
+        .doc(embeddingDocumentId(missingCreatedAtCacheKey, scope));
     await missingCreatedAtDocRef.set({
         pId: PRODUCT_IDS.ANSWERLATTICE,
         ...scope,
@@ -133,6 +153,7 @@ async function run(): Promise<void> {
         ...scope,
     });
 
+    assert.ok(history.id, 'persisted search history must acknowledge its document ID');
     const historyDoc = await db.collection(DB_COLLECTIONS.AI_SEARCH_HISTORY).doc(history.id).get();
     assert.equal(historyDoc.data()?.cacheKey, createHash('sha256').update(historyCacheKey).digest('hex'));
     assert.equal(historyDoc.data()?.responseCacheVersion, 2);
@@ -176,6 +197,56 @@ async function run(): Promise<void> {
         null,
         'legacy compact history rows must remain analytics records but cannot replay as complete responses',
     );
+
+    const malformedReplayCases: Array<{
+        cacheKey: string;
+        field: string;
+        value: unknown;
+    }> = [
+        {
+            cacheKey: `${scope.tId}:${scope.sId}:malformed-clarification`,
+            field: 'clarification',
+            value: { type: 'scope_context', requiredContext: ['plan', 'invalid'] },
+        },
+        {
+            cacheKey: `${scope.tId}:${scope.sId}:malformed-entity-ids`,
+            field: 'matchedEntityIds',
+            value: ['entity-1', ' entity-1 '],
+        },
+        {
+            cacheKey: `${scope.tId}:${scope.sId}:malformed-source-versions`,
+            field: 'sourceVersions',
+            value: { kb: '1' },
+        },
+        {
+            cacheKey: `${scope.tId}:${scope.sId}:malformed-answer-id`,
+            field: 'canonicalAnswerId',
+            value: ' answer-1 ',
+        },
+    ];
+    for (const malformedCase of malformedReplayCases) {
+        await db.collection(DB_COLLECTIONS.AI_SEARCH_HISTORY).add({
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            cacheKey: createHash('sha256').update(malformedCase.cacheKey).digest('hex'),
+            query: 'Can this corrupted row replay?',
+            craftedAnswer: 'This answer must not be returned.',
+            references: [],
+            citations: [],
+            suggestedQuestions: [],
+            responseCacheVersion: 2,
+            createdOn: new Date(),
+            modifiedOn: new Date(),
+            expiresAt: new Date(Date.now() + 60_000),
+            retentionDays: 30,
+            [malformedCase.field]: malformedCase.value,
+        });
+        assert.equal(
+            await findCachedSearchByCacheKeyServer(malformedCase.cacheKey, scope),
+            null,
+            `search-history cache must reject malformed ${malformedCase.field}`,
+        );
+    }
 
     process.stdout.write('Answerlattice search cache emulator tests passed.\n');
 }

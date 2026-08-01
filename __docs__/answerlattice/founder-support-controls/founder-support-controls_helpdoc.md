@@ -48,6 +48,31 @@ tests linked to its affected product areas after you confirm. A failed check
 does not change support content. Review the approved answer or create a review
 proposal when a governed fix is required.
 
+Release impact also shows **direct-link evidence** for every changed product
+area. Review any changed area with no visible active approved-answer or active
+Answer Test link in Knowledge Map. This is a mapping check only. It does not
+prove that every article, FAQ, workflow, product surface, fact, or customer
+outcome is covered.
+
+## Inspect Why An Answer Was Served
+
+Use either existing owner workflow:
+
+1. Open **Knowledge Governance > Trust Metrics** and choose **Load review
+   traces** to inspect a bounded recent window.
+2. Open an escalated widget ticket and choose **Inspect answer trace** in the
+   Knowledge Loop card.
+3. Review the route, confidence, fallback reason, approved answer or FAQ ID,
+   matched product areas, citations, governed source versions, feedback, and
+   escalation evidence.
+4. Continue into the existing Canonical Answers, Knowledge Map, or Support
+   Board workflow when a correction needs review.
+
+Answer Trace explains retained routing evidence. It does not independently
+prove correctness, infer root cause, or create a knowledge change. Recent
+traces are loaded only when requested and are limited to the current retained
+search-history window.
+
 ## Propose A Rollback
 
 1. Open a failed Answer Test result that references an approved answer.

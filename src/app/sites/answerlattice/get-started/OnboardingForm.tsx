@@ -2,36 +2,21 @@
 
 import { ANSWERLATTICE_ROUTES, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/routes';
 import { getAnswerlatticePlans } from '@data/answerlattice/plans';
+import {
+    normalizeAnswerlatticeOnboardResult,
+    type AnswerlatticeOnboardResult,
+} from '@lib/answerlattice/onboardingResponse';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
-import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
 import type { CSSProperties, FormEvent } from 'react';
 import { SessionProvider, signIn, signOut, useSession } from 'next-auth/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type OnboardingStep = 'auth' | 'details' | 'creating' | 'done';
 type BillingModel = 'subscription' | 'usage' | 'one_time' | 'not_sure';
 type BillingCurrency = 'INR' | 'USD';
-
-interface OnboardResult {
-    apiKey: string | null;
-    billing: {
-        amount: number;
-        currency: BillingCurrency;
-        interval: 'MONTH';
-    };
-    recovered: boolean;
-    subscription?: {
-        id: string;
-        shortUrl?: string | null;
-        status?: string | null;
-    } | null;
-    plan: { id: string; name: string; isBeta: boolean };
-    widgetKeyNeedsRotation: boolean;
-    workspaceCreated: true;
-}
 
 interface OnboardErrorResult {
     code: string;
@@ -52,6 +37,7 @@ const ONBOARDING_PLANS = getAnswerlatticePlans()
 const ONBOARDING_PLAN_IDS = new Set(ONBOARDING_PLANS.map((plan) => plan.planId));
 const ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE = 'Could not create the workspace right now. Please try again.';
 const ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
+const ANSWERLATTICE_ONBOARD_SESSION_REFRESH_TIMEOUT_MS = 3_000;
 
 type AnswerlatticeOnboardResponseLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -62,32 +48,6 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
 const isNonEmptyString = (value: unknown): value is string => (
     typeof value === 'string' && value.trim().length > 0
 );
-
-const isOnboardResult = (value: unknown): value is OnboardResult => {
-    if (!isPlainRecord(value)) return false;
-    if (value.workspaceCreated !== true) return false;
-    if (value.apiKey !== null && !isNonEmptyString(value.apiKey)) return false;
-    if (typeof value.recovered !== 'boolean' || typeof value.widgetKeyNeedsRotation !== 'boolean') return false;
-    if (value.widgetKeyNeedsRotation ? value.apiKey !== null : !isNonEmptyString(value.apiKey)) return false;
-    if (!isPlainRecord(value.billing)) return false;
-    if (!Number.isFinite(value.billing.amount) || Number(value.billing.amount) <= 0) return false;
-    if (!['INR', 'USD'].includes(String(value.billing.currency))) return false;
-    if (value.billing.interval !== 'MONTH') return false;
-    if (!isPlainRecord(value.plan)) return false;
-    if (!isNonEmptyString(value.plan.id) || !isNonEmptyString(value.plan.name) || typeof value.plan.isBeta !== 'boolean') return false;
-    if (!ONBOARDING_PLAN_IDS.has(value.plan.id)) return false;
-
-    if (!isPlainRecord(value.subscription)) return false;
-    if (!isNonEmptyString(value.subscription.id)) return false;
-    if (
-        value.subscription.shortUrl !== undefined
-        && value.subscription.shortUrl !== null
-        && normalizeRazorpaySubscriptionCheckoutUrl(value.subscription.shortUrl) === null
-    ) return false;
-    if (!['created', 'pending'].includes(String(value.subscription.status))) return false;
-
-    return true;
-};
 
 const isOnboardErrorResult = (value: unknown): value is OnboardErrorResult => (
     isPlainRecord(value) && isNonEmptyString(value.code)
@@ -162,7 +122,8 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
     const [billingModel, setBillingModel] = useState<BillingModel>('subscription');
     const [primarySurfaces, setPrimarySurfaces] = useState<string[]>(['billing', 'onboarding', 'settings']);
     const [error, setError] = useState<string | null>(null);
-    const [result, setResult] = useState<OnboardResult | null>(null);
+    const [result, setResult] = useState<AnswerlatticeOnboardResult | null>(null);
+    const submissionInFlightRef = useRef(false);
     const selectedPlan = useMemo(
         () => ONBOARDING_PLANS.find((plan) => plan.planId === planId) || ONBOARDING_PLANS[0],
         [planId],
@@ -218,6 +179,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
 
     const handleCreateAccount = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (submissionInFlightRef.current) return;
         const trimmedCompanyName = companyName.trim();
         const trimmedProductName = productName.trim();
         const trimmedProductUrl = productUrl.trim();
@@ -245,6 +207,7 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
             return;
         }
 
+        submissionInFlightRef.current = true;
         setStep('creating');
         setError(null);
         const responseLogContext = {
@@ -311,7 +274,19 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                         return;
                     }
                     if (data.code === 'ANSWERLATTICE_ACCOUNT_EXISTS') {
-                        await update();
+                        let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+                        try {
+                            await Promise.race([
+                                update(),
+                                new Promise((resolve) => {
+                                    refreshTimer = setTimeout(resolve, ANSWERLATTICE_ONBOARD_SESSION_REFRESH_TIMEOUT_MS);
+                                }),
+                            ]);
+                        } catch (refreshError) {
+                            logRuntimeFailure('answerlattice_onboard_existing_session_refresh_failed', refreshError, responseLogContext);
+                        } finally {
+                            if (refreshTimer !== null) clearTimeout(refreshTimer);
+                        }
                         setError('This Google account already has an AnswerLattice workspace. Refresh to open it.');
                         setStep('details');
                         return;
@@ -319,7 +294,8 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                 }
                 throw new Error(ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE);
             }
-            if (!isOnboardResult(data)) {
+            const normalizedResult = normalizeAnswerlatticeOnboardResult(data);
+            if (!normalizedResult) {
                 logRuntimeFailure('answerlattice_onboard_response_invalid', new Error('answerlattice_onboard_response_invalid'), {
                     ...responseLogContext,
                     responseStatus: res.status,
@@ -327,12 +303,26 @@ function OnboardingFormInner({ basePath, initialCurrency, initialPlanId }: Requi
                 throw new Error(ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE);
             }
 
-            await update();
-            setResult(data);
+            let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+            try {
+                await Promise.race([
+                    update(),
+                    new Promise((resolve) => {
+                        refreshTimer = setTimeout(resolve, ANSWERLATTICE_ONBOARD_SESSION_REFRESH_TIMEOUT_MS);
+                    }),
+                ]);
+            } catch (refreshError) {
+                logRuntimeFailure('answerlattice_onboard_session_refresh_failed', refreshError, responseLogContext);
+            } finally {
+                if (refreshTimer !== null) clearTimeout(refreshTimer);
+            }
+            setResult(normalizedResult);
             setStep('done');
         } catch {
             setError(ANSWERLATTICE_ONBOARDING_FAILED_MESSAGE);
             setStep('details');
+        } finally {
+            submissionInFlightRef.current = false;
         }
     };
 

@@ -2,7 +2,10 @@ import { createOrReuseBlobInStorage } from "@database/storage/uploadBlobToStorag
 import { getMediaImageProfile, type MediaImageType, type MediaImageVariantId } from "@lib/media/imageProfiles";
 import { buildMediaStoragePath, getDataUrlBlob, getMediaFileExtension, isDataUrl } from "@lib/media/mediaStorage";
 import {
+    assertMediaBlobMatchesDataUrl,
     assertMediaUploadBlobCandidate,
+    getMediaBlobChecksum,
+    getMediaTextChecksum,
     normalizeMediaUploadMimeType,
     resolvePreparedMediaIdentity,
 } from "@lib/media/mediaUploadBoundary";
@@ -31,29 +34,7 @@ export interface UploadedPreparedMediaImage {
 }
 
 async function getBlobFingerprint(blob: Blob): Promise<string> {
-    const buffer = await blob.arrayBuffer();
-
-    if (typeof crypto !== 'undefined' && crypto.subtle) {
-        const digest = await crypto.subtle.digest('SHA-256', buffer);
-        return Array.from(new Uint8Array(digest))
-            .map((byte) => byte.toString(16).padStart(2, '0'))
-            .join('')
-            .slice(0, 16);
-    }
-
-    const bytes = new Uint8Array(buffer);
-    let hash = 0x811c9dc5;
-    const step = Math.max(1, Math.floor(bytes.length / 8000));
-
-    for (let index = 0; index < bytes.length; index += step) {
-        hash ^= bytes[index];
-        hash = Math.imul(hash, 0x01000193);
-    }
-
-    hash ^= bytes.length;
-    hash = Math.imul(hash, 0x01000193);
-
-    return (hash >>> 0).toString(16).padStart(8, '0');
+    return getMediaBlobChecksum(blob);
 }
 
 export async function uploadPreparedMediaImageWithLedger({
@@ -101,10 +82,20 @@ export async function uploadPreparedMediaImageWithLedger({
         variant: selectedVariantId,
     });
     const blobFingerprint = await getBlobFingerprint(uploadBlob);
+    const preparedDataUrlChecksum = prepared
+        ? await getMediaTextChecksum(prepared.dataUrl)
+        : undefined;
+    if (prepared) {
+        await assertMediaBlobMatchesDataUrl(prepared.blob, prepared.dataUrl);
+        if (selectedVariant) {
+            await assertMediaBlobMatchesDataUrl(selectedVariant.blob, selectedVariant.dataUrl);
+        }
+    }
     const identity = resolvePreparedMediaIdentity({
         blobFingerprint,
         mediaChecksum,
         mediaId,
+        preparedDataUrlChecksum,
         preparedChecksum: prepared?.checksum,
         preparedMediaId: prepared?.mediaId,
         profile,
@@ -171,6 +162,7 @@ export async function uploadPreparedMediaImageWithLedger({
             ) {
                 throw new Error('prepared_media_variants_invalid');
             }
+            await assertMediaBlobMatchesDataUrl(entry.blob, entry.dataUrl);
             seenVariantIds.add(entry.id);
             preparedVariants.push(entry);
         }

@@ -93,7 +93,15 @@ const toIsoDate = (value: unknown): string | null => {
     }
 };
 
-const validatePendingFile = (value: unknown): UserUploadedFileType => {
+type ValidatedPendingChangelogFile = UserUploadedFileType & {
+    name: string;
+    size: number;
+    type: SupportedFileType;
+    uid: string;
+    url: string;
+};
+
+const validatePendingFile = (value: unknown): ValidatedPendingChangelogFile => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid changelog image');
     const file = value as Record<string, unknown>;
     const name = typeof file.name === 'string' ? file.name.trim() : '';
@@ -205,7 +213,7 @@ const executeChangelogAction = async (
         body: JSON.stringify(action),
     });
     const payload = await readJsonResponseWithLimit<unknown>(response, CHANGELOG_ACTION_RESPONSE_MAX_BYTES)
-        .catch(() => null);
+        .catch((): null => null);
     if (!response.ok) {
         throw new Error('Changelog action failed');
     }

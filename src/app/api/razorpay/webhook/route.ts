@@ -46,6 +46,7 @@ import { validateRazorpayWebhookSignature } from "@lib/razorpay/webhook-validato
 import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
 import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { sanitizeForFirestore } from '@lib/firestore/sanitizeForFirestore';
+import { normalizeBillingSubscriptionDocumentId } from '@lib/billing/subscriptionDocumentIdBoundary';
 import { readBoundedTextBody, rejectInvalidOrOversizedDeclaredBody } from "@lib/security/boundedRequestBody";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { Timestamp } from "firebase/firestore";
@@ -66,6 +67,12 @@ const normalizeNumericId = (value: unknown): number | null => {
     return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
         ? value
         : null;
+};
+
+const requireInternalSubscriptionId = (subscription: FirestoreSubscriptionDoc): string => {
+    const id = normalizeBillingSubscriptionDocumentId(subscription.id);
+    if (!id) throw new Error('Internal subscription identity is missing.');
+    return id;
 };
 
 type ResolvedWebhookEventProduct = {
@@ -384,6 +391,7 @@ export async function POST(request: NextRequest) {
         });
         return retryableWebhookResponse();
     }
+    const webhookAttemptId = webhookClaim.attemptId;
 
     try {
         let eventPayloadToUpload = event;
@@ -535,7 +543,7 @@ export async function POST(request: NextRequest) {
         }
         if (!eventPayloadToUpload.transactionType) {
             const completionOutcome = await completeRazorpayWebhookEvent({
-                attemptId: webhookClaim.attemptId,
+                attemptId: webhookAttemptId,
                 data: sanitizeForAdminFirestore({
                     transactionType: null,
                     productId: eventProductId,
@@ -758,7 +766,7 @@ export async function POST(request: NextRequest) {
                                 currency: paymentEntity.currency,
                                 remark: getRazorpayPaymentFailureRemark(event.event),
                             },
-                            subscriptionId: internalSub.id,
+                            subscriptionId: requireInternalSubscriptionId(internalSub),
                             update: {
                                 pastDueSinceAt: pastDueSince,
                                 lastWebhook: { event: event.event, timestamp: Timestamp.now() },
@@ -786,7 +794,7 @@ export async function POST(request: NextRequest) {
                                     currency: internalSub.currency,
                                     remark: `Subscription ${event.event} — payment retry in progress`,
                                 },
-                                subscriptionId: internalSub.id,
+                                subscriptionId: requireInternalSubscriptionId(internalSub),
                                 update: {
                                     pastDueSinceAt: pastDueSince,
                                     lastWebhook: { event: event.event, timestamp: Timestamp.now() },
@@ -860,7 +868,7 @@ export async function POST(request: NextRequest) {
                             currency: paymentEntity?.currency || internalSub.currency || 'INR',
                             remark: event.event === 'subscription.activated' ? 'Subscription activated' : 'Subscription charged',
                         },
-                        subscriptionId: internalSub.id,
+                        subscriptionId: requireInternalSubscriptionId(internalSub),
                         update: updatePayload,
                     });
                     if (!paymentApplication || (!paymentApplication.applied && !paymentApplication.duplicate)) {
@@ -894,7 +902,7 @@ export async function POST(request: NextRequest) {
                         });
                         appliedSubscription = replacementApplication.newSubscription;
                     }
-                    await markResellerTransactionsForProduct(internalSub.id, `webhook:${event.event}`);
+                    await markResellerTransactionsForProduct(requireInternalSubscriptionId(internalSub), `webhook:${event.event}`);
                     await syncSubscriptionForProduct(
                         {
                             ...appliedSubscription,
@@ -912,19 +920,19 @@ export async function POST(request: NextRequest) {
                                 paidAt: new Date(resolvePaymentOccurredAt() ?? Date.now()),
                                 paymentEvidenceId: String(paymentEntity?.id || paymentHistoryId),
                                 source: `webhook:${event.event}`,
-                                subscriptionId: internalSub.id,
+                                subscriptionId: requireInternalSubscriptionId(internalSub),
                             },
                         });
                     }
                     const activatedSubscription = {
                         ...appliedSubscription,
-                        id: internalSub.id,
+                        id: requireInternalSubscriptionId(internalSub),
                         planId: planDetails.planId || appliedSubscription.planId,
                         status: 'active',
                     } as FirestoreSubscriptionDoc;
                     if (replacementSubscriptionId && replacementMrrPaise > 0) {
                         await recordFounderSubscriptionMrrChange({
-                            eventKey: `${replacementSubscriptionId}:${internalSub.id}`,
+                            eventKey: `${replacementSubscriptionId}:${requireInternalSubscriptionId(internalSub)}`,
                             previousMrrPaise: replacementMrrPaise,
                             productId: eventProductId,
                             requireDurableWrite: true,
@@ -1038,7 +1046,7 @@ export async function POST(request: NextRequest) {
                             currency: subscriptionEntity.currency,
                             remark: 'Subscription completed',
                         },
-                        subscriptionId: internalSub.id,
+                        subscriptionId: requireInternalSubscriptionId(internalSub),
                         update: {
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                             subscriptionEndDate: endedAtMillis == null ? Timestamp.now() : Timestamp.fromMillis(endedAtMillis),
@@ -1077,7 +1085,7 @@ export async function POST(request: NextRequest) {
                                 currency: cancelledInternalSub.currency,
                                 remark: 'Subscription cancelled by Razorpay webhook',
                             },
-                            subscriptionId: cancelledInternalSub.id,
+                            subscriptionId: requireInternalSubscriptionId(cancelledInternalSub),
                             update: {
                                 lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                                 subscriptionEndDate: endedAtMillis == null
@@ -1104,7 +1112,7 @@ export async function POST(request: NextRequest) {
                                     storeId: String(cancelledInternalSub.storeId),
                                     tenantId: String(cancelledInternalSub.tenantId),
                                     eventType: 'SUBSCRIPTION_CANCELLED',
-                                    referenceId: `subscription-cancelled-${cancelledInternalSub.id}`,
+                                    referenceId: `subscription-cancelled-${requireInternalSubscriptionId(cancelledInternalSub)}`,
                                     recipientEmail: cancelledInternalSub.email || '',
                                     storeName: cancelledInternalSub.name || '',
                                     metadata: {
@@ -1153,7 +1161,7 @@ export async function POST(request: NextRequest) {
                             currency: pausedInternalSub.currency,
                             remark: `Subscription paused by ${pausedSubEntity.pause_initiated_by || 'system'}`,
                         },
-                        subscriptionId: pausedInternalSub.id,
+                        subscriptionId: requireInternalSubscriptionId(pausedInternalSub),
                         update: {
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         },
@@ -1170,7 +1178,7 @@ export async function POST(request: NextRequest) {
                                 storeId: String(pausedInternalSub.storeId),
                                 tenantId: String(pausedInternalSub.tenantId),
                                 eventType: 'SUBSCRIPTION_PAUSED',
-                                referenceId: `subscription-paused-${pausedInternalSub.id}`,
+                                referenceId: `subscription-paused-${requireInternalSubscriptionId(pausedInternalSub)}`,
                                 recipientEmail: pausedInternalSub.email || '',
                                 storeName: pausedInternalSub.name || '',
                                 metadata: {
@@ -1227,7 +1235,7 @@ export async function POST(request: NextRequest) {
                     }
                     const statusApplication = await applyProductSubscriptionWebhookEvent(eventProductId, {
                         eventKey: webhookClaim.eventKey,
-                        subscriptionId: updatedInternalSub.id,
+                        subscriptionId: requireInternalSubscriptionId(updatedInternalSub),
                         update: {
                             quantity,
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
@@ -1254,7 +1262,7 @@ export async function POST(request: NextRequest) {
                             currency: resumedInternalSub.currency,
                             remark: `Subscription resumed by ${resumedSubEntity.resume_initiated_by || 'system'}`,
                         },
-                        subscriptionId: resumedInternalSub.id,
+                        subscriptionId: requireInternalSubscriptionId(resumedInternalSub),
                         update: {
                             lastWebhook: { event: event.event, timestamp: Timestamp.now() },
                         },
@@ -1271,7 +1279,7 @@ export async function POST(request: NextRequest) {
                                 storeId: String(resumedInternalSub.storeId),
                                 tenantId: String(resumedInternalSub.tenantId),
                                 eventType: 'SUBSCRIPTION_RESUMED',
-                                referenceId: `subscription-resumed-${resumedInternalSub.id}`,
+                                referenceId: `subscription-resumed-${requireInternalSubscriptionId(resumedInternalSub)}`,
                                 recipientEmail: resumedInternalSub.email || '',
                                 storeName: resumedInternalSub.name || '',
                                 metadata: {
@@ -1310,7 +1318,7 @@ export async function POST(request: NextRequest) {
 
         // 3. Acknowledge receipt to Razorpay to prevent retries.
         const completionOutcome = await completeRazorpayWebhookEvent({
-            attemptId: webhookClaim.attemptId,
+            attemptId: webhookAttemptId,
             data: sanitizeForAdminFirestore({
                 transactionType: eventPayloadToUpload.transactionType || null,
                 productId: eventProductId,
@@ -1332,7 +1340,7 @@ export async function POST(request: NextRequest) {
 
         let failureCompletionOutcome: Awaited<ReturnType<typeof completeRazorpayWebhookEvent>> | null = null;
         await completeRazorpayWebhookEvent({
-            attemptId: webhookClaim.attemptId,
+            attemptId: webhookAttemptId,
             data: sanitizeForAdminFirestore({
                 eventType: event?.event || null,
                 productId: eventProductId,

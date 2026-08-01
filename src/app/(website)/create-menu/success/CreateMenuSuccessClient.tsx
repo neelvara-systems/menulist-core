@@ -28,10 +28,11 @@ import {
     parsePublicCreateMenuLastClaimHandoff,
     PUBLIC_CREATE_MENU_LAST_CLAIM_KEY,
 } from '@lib/publicCreateMenu/lastClaimHandoff';
+import { isPublicCreateMenuSuccessHostname } from '@lib/publicCreateMenu/successUrl';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 import AnimateOnScroll from '@/components/website/shared/AnimateOnScroll';
 
@@ -44,7 +45,7 @@ const CREATE_MENU_SUCCESS_SESSION_REFRESH_TIMEOUT_MS = 3_000;
 
 type CreateMenuSuccessUrlKind = 'menuUrl' | 'officialPageUrl';
 type CreateMenuSuccessBusinessNameInvalidReason = 'control_chars' | 'too_long';
-type CreateMenuSuccessUrlInvalidReason = 'too_long' | 'contains_whitespace' | 'parse_failed' | 'non_https' | 'credentialed';
+type CreateMenuSuccessUrlInvalidReason = 'too_long' | 'contains_whitespace' | 'parse_failed' | 'non_https' | 'credentialed' | 'unexpected_host';
 
 const reportedCreateMenuSuccessInvalidBusinessNames = new Set<string>();
 const reportedCreateMenuSuccessInvalidUrls = new Set<string>();
@@ -66,15 +67,20 @@ function getBoundedCreateMenuSuccessStringContext(label: string, value: unknown)
 function getCreateMenuSuccessErrorContext(error: unknown) {
     if (!error || typeof error !== 'object') return {};
 
-    const record = error as Record<string, unknown>;
+    const readOwnString = (key: 'name' | 'code') => {
+        try {
+            const descriptor = Object.getOwnPropertyDescriptor(error, key);
+            return descriptor && 'value' in descriptor && typeof descriptor.value === 'string'
+                ? descriptor.value.slice(0, CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT)
+                : undefined;
+        } catch {
+            return undefined;
+        }
+    };
 
     return {
-        sourceErrorName: typeof record.name === 'string'
-            ? record.name.slice(0, CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT)
-            : undefined,
-        sourceErrorCode: typeof record.code === 'string'
-            ? record.code.slice(0, CREATE_MENU_SUCCESS_ERROR_FIELD_LIMIT)
-            : undefined,
+        sourceErrorName: readOwnString('name'),
+        sourceErrorCode: readOwnString('code'),
     };
 }
 
@@ -207,6 +213,11 @@ function normalizeCreateMenuSuccessUrl(kind: CreateMenuSuccessUrlKind, value: st
         return '';
     }
 
+    if (!isPublicCreateMenuSuccessHostname(parsed.hostname)) {
+        logCreateMenuSuccessUrlNormalizationFailure(kind, value, 'unexpected_host');
+        return '';
+    }
+
     return parsed.toString();
 }
 
@@ -271,9 +282,9 @@ export default function CreateMenuSuccessClient() {
     const searchParams = useSearchParams();
     const { data: session, update: updateSession } = useSession();
     const defaultBusinessName = t('CreateMenuSuccess.defaultBusinessName');
-    const rawMenuUrl = searchParams.get('menuUrl') || '';
-    const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';
-    const rawBusinessName = searchParams.get('name') || '';
+    const rawMenuUrl = searchParams?.get('menuUrl') || '';
+    const rawOfficialPageUrl = searchParams?.get('officialPageUrl') || '';
+    const rawBusinessName = searchParams?.get('name') || '';
     const menuUrl = useMemo(() => normalizeCreateMenuSuccessUrl('menuUrl', rawMenuUrl), [rawMenuUrl]);
     const officialPageUrl = useMemo(
         () => normalizeCreateMenuSuccessUrl('officialPageUrl', rawOfficialPageUrl),
@@ -288,10 +299,18 @@ export default function CreateMenuSuccessClient() {
 
     const [copied, setCopied] = useState(false);
     const [handoffError, setHandoffError] = useState<string | null>(null);
-    const recordedSignalsRef = useRef(new Set<StarterActivationSignal>());
+    const copiedTimerRef = useRef<number | null>(null);
+    const dashboardHandoffInFlightRef = useRef(false);
+    const recordedSignalsRef = useRef(new Set<string>());
+
+    useEffect(() => () => {
+        if (copiedTimerRef.current !== null) {
+            window.clearTimeout(copiedTimerRef.current);
+            copiedTimerRef.current = null;
+        }
+    }, []);
 
     const recordStarterSignal = useCallback((signal: StarterActivationSignal) => {
-        if (recordedSignalsRef.current.has(signal)) return;
         let rawClaim: string | null = null;
         try {
             rawClaim = window.sessionStorage.getItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
@@ -301,22 +320,25 @@ export default function CreateMenuSuccessClient() {
                 if (rawClaim) window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
                 return;
             }
+            if (!sessionScope) return;
             if (
-                !sessionScope
-                || claim.tenantId !== sessionScope.tenantScope.numericId
+                claim.tenantId !== sessionScope.tenantScope.numericId
                 || claim.storeId !== sessionScope.storeScope.numericId
             ) {
+                window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);
                 return;
             }
             const storeId = claim.storeId;
+            const signalKey = `${claim.tenantId}:${claim.storeId}:${signal}`;
+            if (recordedSignalsRef.current.has(signalKey)) return;
 
-            recordedSignalsRef.current.add(signal);
+            recordedSignalsRef.current.add(signalKey);
             recordStarterActivationSignal(storeId, signal)
                 .then((result) => {
                     assertStarterActivationSignalUpdateSucceeded(result, storeId, signal);
                 })
                 .catch((error) => {
-                    recordedSignalsRef.current.delete(signal);
+                    recordedSignalsRef.current.delete(signalKey);
                     logCreateMenuSuccessFailure(
                         'public_create_menu_success_starter_signal_write_failed',
                         error,
@@ -340,7 +362,13 @@ export default function CreateMenuSuccessClient() {
 
             setHandoffError(null);
             setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            if (copiedTimerRef.current !== null) {
+                window.clearTimeout(copiedTimerRef.current);
+            }
+            copiedTimerRef.current = window.setTimeout(() => {
+                copiedTimerRef.current = null;
+                setCopied(false);
+            }, 2000);
             recordStarterSignal(STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED);
         } catch (error) {
             logCreateMenuSuccessFailure('public_create_menu_success_copy_failed', error, {
@@ -381,10 +409,18 @@ export default function CreateMenuSuccessClient() {
     }, [hasOfficialPageUrl, menuUrl, officialPageUrl, recordStarterSignal, t]);
 
     const handleDashboardHandoff = useCallback(async () => {
+        if (dashboardHandoffInFlightRef.current) return;
+        dashboardHandoffInFlightRef.current = true;
+        let refreshTimer: ReturnType<typeof setTimeout> | null = null;
         try {
             await Promise.race([
                 updateSession(),
-                new Promise((resolve) => setTimeout(resolve, CREATE_MENU_SUCCESS_SESSION_REFRESH_TIMEOUT_MS)),
+                new Promise((resolve) => {
+                    refreshTimer = setTimeout(
+                        resolve,
+                        CREATE_MENU_SUCCESS_SESSION_REFRESH_TIMEOUT_MS,
+                    );
+                }),
             ]);
         } catch (error) {
             logCreateMenuSuccessFailure('public_create_menu_success_session_refresh_failed', error, {
@@ -392,6 +428,8 @@ export default function CreateMenuSuccessClient() {
                 hasOfficialPageUrl,
             });
         } finally {
+            if (refreshTimer !== null) clearTimeout(refreshTimer);
+            dashboardHandoffInFlightRef.current = false;
             window.location.assign('/use-menulist');
         }
     }, [hasMenuUrl, hasOfficialPageUrl, updateSession]);

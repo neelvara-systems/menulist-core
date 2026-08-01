@@ -10,9 +10,11 @@ import { getActiveSubscriptionForStore } from "@database/subscriptions/server";
 import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { normalizeBillingSubscriptionDocumentId } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { getBillingPeriodKey } from "@lib/billing/billingPeriod";
+import { hasCurrentSubscriptionPlanEntitlement } from "@lib/billing/subscriptionPlanEntitlement";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
+import { getGracePeriodInfo } from "@util/razorpay";
 import { normalizeAiOperationDocumentId } from "./operationLog";
 
 /**
@@ -32,6 +34,18 @@ export interface CapacityCheckResult {
     remaining: number;
     reason?: "free" | "sufficient" | "overdraft" | "exhausted" | "maintenance" | "no_subscription";
     subscription: FirestoreSubscriptionDoc | null;
+}
+
+export function hasCurrentAiCapacitySubscriptionEntitlement(
+    subscription: FirestoreSubscriptionDoc,
+    nowMs = Date.now(),
+): boolean {
+    if (!Number.isFinite(nowMs) || nowMs < 0) return false;
+    if (subscription.status !== "past_due") {
+        return hasCurrentSubscriptionPlanEntitlement(subscription, nowMs);
+    }
+    const gracePeriod = getGracePeriodInfo(subscription.pastDueSinceAt, 7, new Date(nowMs));
+    return gracePeriod.hasKnownGracePeriod && gracePeriod.remainingDays > 0;
 }
 
 async function refreshMonthlyCreditsIfNeeded(
@@ -69,6 +83,9 @@ async function refreshMonthlyCreditsIfNeeded(
             || currentScope.storeId !== expectedScope.storeId
         ) {
             throw new Error('Billing subscription scope is invalid.');
+        }
+        if (!hasCurrentAiCapacitySubscriptionEntitlement(current)) {
+            throw new Error('Billing subscription entitlement is not current.');
         }
         const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
         const allowance = getPositiveCreditInteger(current.monthlyCreditsAllowance);
@@ -152,12 +169,18 @@ export async function checkAICapacity(
     if (!subscriptionScope || subscriptionScope.tenantId !== tenantId) {
         return { allowed: false, unitsRequired, remaining: 0, reason: "no_subscription", subscription: null };
     }
+    if (!hasCurrentAiCapacitySubscriptionEntitlement(subscription)) {
+        return { allowed: false, unitsRequired, remaining: 0, reason: "no_subscription", subscription: null };
+    }
 
     // Lazy monthly credit reset: handles yearly plans (no monthly webhook) 
     // and acts as safety net for monthly plans. Race-safe (idempotent reset value).
     // Uses billing-cycle anchor day (not calendar month) to avoid premature resets.
     // E.g. sub starts Feb 15 → anchor=15 → billing months are 15th-to-15th.
     subscription = await refreshMonthlyCreditsIfNeeded(subscription);
+    if (!hasCurrentAiCapacitySubscriptionEntitlement(subscription)) {
+        return { allowed: false, unitsRequired, remaining: 0, reason: "no_subscription", subscription: null };
+    }
 
     const monthlyCredits = getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0);
     const topUpCredits = getNonNegativeCreditInteger(subscription.topUpCredits ?? 0);
@@ -348,6 +371,9 @@ function calculateConsumedBalance(
     billingPeriod: number | null;
     chargedBalance: RemainingBalance;
 } {
+    if (!hasCurrentAiCapacitySubscriptionEntitlement(current)) {
+        throw new Error('Billing subscription entitlement is not current.');
+    }
     const billingPeriod = getBillingPeriodKey(current.cycleStartDate);
     const monthlyAllowance = getNonNegativeCreditInteger(current.monthlyCreditsAllowance ?? 0);
     const storedMonthlyCredits = getNonNegativeCreditInteger(current.monthlyCredits ?? 0);

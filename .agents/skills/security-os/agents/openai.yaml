@@ -1,0 +1,4 @@
+interface:
+  display_name: "SecurityOS"
+  short_description: "Audit repo security coverage and evidence"
+  default_prompt: "Use $security-os to audit the selected product security surfaces and report only evidence-backed gaps."

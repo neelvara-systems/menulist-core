@@ -40,6 +40,11 @@ June 29 follow-up: the authenticated server route hashes owner, tenant, and stor
 
 The pinned request lookup handles both Node lookup callback shapes. When Node asks for `all: true`, the importer returns the validated address array shape; when it asks for a single address, the importer returns the single validated address. Multi-address hosts are sorted with IPv4 first but all resolved addresses must still pass the unsafe-IP guard.
 
+The IPv6 unsafe-address guard applies CIDR semantics rather than textual-prefix
+semantics. The full `fe80::/10` link-local range (`fe80::` through `febf::`)
+and deprecated `fec0::/10` site-local range fail before any direct request or
+rendered fallback can begin.
+
 ## Source Discovery Terms
 
 Source scoring and same-origin candidate discovery are business-agnostic. They use shared business-category context from `src/data/shared/businessTypes.ts` / `functions/src/sharedData/businessTypes.ts`:

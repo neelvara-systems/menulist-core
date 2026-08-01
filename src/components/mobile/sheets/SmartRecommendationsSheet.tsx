@@ -235,7 +235,7 @@ export default function SmartRecommendationsSheet({
                             </Flex>
 
                             <Select
-                                onChange={(value) => handlePinChange(blockType, value || undefined)}
+                                onChange={(value: string) => handlePinChange(blockType, value || undefined)}
                                 options={getPickerOptions(blockType)}
                                 placeholder={t('smartRecommendationsAutoSelect')}
                                 value={pinnedId}

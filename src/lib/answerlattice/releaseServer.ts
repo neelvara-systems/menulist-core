@@ -19,6 +19,7 @@ import {
     ANSWERLATTICE_RELEASE_ACTIVATION_LEASE_MS,
     ANSWERLATTICE_RELEASE_MAX_AFFECTED_ANSWERS,
     AnswerlatticeStoredReleaseSchema,
+    buildAnswerlatticeReleaseDirectDependencyCoverage,
     getAnswerlatticeTimestampMillis,
     type AnswerlatticeReleaseAction,
     type AnswerlatticeReleaseActionResponse,
@@ -346,13 +347,20 @@ async function createRelease(
     return { success: true, action: 'create', releaseId, status: replayStatus, replayed };
 }
 
-const getReleaseAnswerTestProof = async (
+const getReleaseAnswerTestEvidence = async (
     releaseId: string,
     release: StoredRelease,
     action: Extract<AnswerlatticeReleaseAction, { action: 'preview_impact' }>,
     access: AnswerlatticeAccessContext,
 ) => {
-    const empty = {
+    type ProofCounts = {
+        criticalCaseCount: number;
+        criticalFailureCount: number;
+        failedCaseCount: number;
+        lastRunAt: string | null;
+        linkedCaseCount: number;
+    };
+    const empty: ProofCounts = {
         linkedCaseCount: 0,
         criticalCaseCount: 0,
         failedCaseCount: 0,
@@ -360,10 +368,18 @@ const getReleaseAnswerTestProof = async (
         lastRunAt: null,
     };
     if (!action.includeAnswerTestProof) {
-        return { state: 'not_requested' as const, ...empty };
+        return {
+            proof: { state: 'not_requested' as const, ...empty },
+            linkedEntityIds: [] as string[],
+            testLinkEvidence: 'not_requested' as const,
+        };
     }
     if (access.permissions[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE] !== true) {
-        return { state: 'permission_required' as const, ...empty };
+        return {
+            proof: { state: 'permission_required' as const, ...empty },
+            linkedEntityIds: [] as string[],
+            testLinkEvidence: 'permission_required' as const,
+        };
     }
 
     const summary: AnswerlatticeAnswerTestSummary = await loadAnswerlatticeAnswerTestSummary({
@@ -378,7 +394,10 @@ const getReleaseAnswerTestProof = async (
         ))
         .sort((left, right) => left.id.localeCompare(right.id));
     const criticalCaseCount = linkedCases.filter(testCase => testCase.riskLevel === 'critical').length;
-    const base = {
+    const linkedEntityIds = release.entityChanges.filter(entityId => (
+        linkedCases.some(testCase => testCase.relatedEntityIds.includes(entityId))
+    ));
+    const base: ProofCounts = {
         linkedCaseCount: linkedCases.length,
         criticalCaseCount,
         failedCaseCount: 0,
@@ -386,14 +405,22 @@ const getReleaseAnswerTestProof = async (
         lastRunAt: null,
     };
     if (linkedCases.length === 0) {
-        return { state: 'no_linked_tests' as const, ...base };
+        return {
+            proof: { state: 'no_linked_tests' as const, ...base },
+            linkedEntityIds,
+            testLinkEvidence: 'available' as const,
+        };
     }
 
     const latestRun = summary.runs
         .filter(run => run.releaseId === releaseId)
         .sort((left, right) => Date.parse(right.completedAt) - Date.parse(left.completedAt))[0];
     if (!latestRun) {
-        return { state: 'missing' as const, ...base };
+        return {
+            proof: { state: 'missing' as const, ...base },
+            linkedEntityIds,
+            testLinkEvidence: 'available' as const,
+        };
     }
 
     const selectedCaseIds = linkedCases.map(testCase => testCase.id);
@@ -413,15 +440,31 @@ const getReleaseAnswerTestProof = async (
     if (!isAnswerlatticeAnswerTestRunCurrent(latestRun, summary)
         || latestRun.releaseVersion !== release.versionLabel
         || !coversCurrentCases) {
-        return { state: 'stale' as const, ...runBase };
+        return {
+            proof: { state: 'stale' as const, ...runBase },
+            linkedEntityIds,
+            testLinkEvidence: 'available' as const,
+        };
     }
     if (latestRun.criticalFailureCount > 0) {
-        return { state: 'blocked' as const, ...runBase };
+        return {
+            proof: { state: 'blocked' as const, ...runBase },
+            linkedEntityIds,
+            testLinkEvidence: 'available' as const,
+        };
     }
     if (latestRun.failedCount > 0) {
-        return { state: 'review' as const, ...runBase };
+        return {
+            proof: { state: 'review' as const, ...runBase },
+            linkedEntityIds,
+            testLinkEvidence: 'available' as const,
+        };
     }
-    return { state: 'ready' as const, ...runBase };
+    return {
+        proof: { state: 'ready' as const, ...runBase },
+        linkedEntityIds,
+        testLinkEvidence: 'available' as const,
+    };
 };
 
 async function previewReleaseImpact(
@@ -441,7 +484,15 @@ async function previewReleaseImpact(
 
     const answersSnapshot = await getAffectedAnswersQuery(access, release).get();
     const affectedAnswers = projectAffectedAnswers(answersSnapshot, release, access);
-    const answerTestProof = await getReleaseAnswerTestProof(action.releaseId, release, action, access);
+    const answerTestEvidence = await getReleaseAnswerTestEvidence(action.releaseId, release, action, access);
+    const directDependencyCoverage = buildAnswerlatticeReleaseDirectDependencyCoverage({
+        activeLinkedTestCount: answerTestEvidence.proof.linkedCaseCount,
+        answerEntityIds: affectedAnswers.flatMap(answer => answer.entityIds),
+        changedEntityIds: release.entityChanges,
+        directActiveAnswerCount: affectedAnswers.length,
+        testEntityIds: answerTestEvidence.linkedEntityIds,
+        testLinkEvidence: answerTestEvidence.testLinkEvidence,
+    });
     return {
         success: true,
         action: 'preview_impact',
@@ -451,7 +502,8 @@ async function previewReleaseImpact(
         affectedAnswerCount: affectedAnswers.length,
         reviewRequiredCount: affectedAnswers.filter(answer => answer.client.willRequireReview).length,
         affectedAnswers: affectedAnswers.map(answer => answer.client),
-        answerTestProof,
+        answerTestProof: answerTestEvidence.proof,
+        directDependencyCoverage,
     };
 }
 
@@ -464,9 +516,7 @@ const claimReleaseActivation = async (
     const db = getDb();
     const actor = getActor(access);
     const releaseRef = db.collection(RELEASES).doc(releaseId);
-    let alreadyActive: { evaluatedAnswers: number; driftedAnswers: number } | null = null;
-
-    await db.runTransaction(async (transaction) => {
+    return db.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(releaseRef);
         const release = readStoredRelease(snapshot, access);
         if (release.status === 'active') {
@@ -477,11 +527,10 @@ const claimReleaseActivation = async (
                     'release_impact_preview_stale',
                 );
             }
-            alreadyActive = {
+            return {
                 evaluatedAnswers: release.driftEvaluation?.evaluatedAnswers || 0,
                 driftedAnswers: release.driftEvaluation?.driftedAnswers || 0,
             };
-            return;
         }
 
         const nowMillis = Date.now();
@@ -515,9 +564,8 @@ const claimReleaseActivation = async (
             modifiedOn: now,
             modifiedBy: actor.label,
         });
+        return null;
     });
-
-    return alreadyActive;
 };
 
 async function finishReleaseActivation(

@@ -132,7 +132,6 @@ export interface UseSpecialMenusReturn {
     error: any;
     refresh: () => void;
     createSpecialMenu: (data: {
-        allowOverlap?: boolean;
         baseProjectId: string;
         displayName: string;
         localizedDisplayName?: Record<string, string>;
@@ -141,7 +140,6 @@ export interface UseSpecialMenusReturn {
         endsAt: string;
     }) => Promise<{ success: boolean; projectId?: string; error?: string }>;
     updateSpecialMenu: (data: {
-        allowOverlap?: boolean;
         projectId: string;
         description?: string;
         displayName: string;
@@ -158,17 +156,16 @@ export interface UseSpecialMenusReturn {
 export function useSpecialMenus(): UseSpecialMenusReturn {
     const enabled = FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING;
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
-    const expectedScope = useMemo(() => (
-        Number.isSafeInteger(storeDetails?.tenantId)
-        && Number(storeDetails?.tenantId) > 0
-        && Number.isSafeInteger(storeDetails?.storeId)
-        && Number(storeDetails?.storeId) > 0
-            ? {
-                sId: Number(storeDetails.storeId),
-                tId: Number(storeDetails.tenantId),
-            }
-            : null
-    ), [storeDetails?.storeId, storeDetails?.tenantId]);
+    const expectedScope = useMemo(() => {
+        const tenantId = Number(storeDetails?.tenantId);
+        const storeId = Number(storeDetails?.storeId);
+        return Number.isSafeInteger(tenantId)
+            && tenantId > 0
+            && Number.isSafeInteger(storeId)
+            && storeId > 0
+            ? { sId: storeId, tId: tenantId }
+            : null;
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
     const tId = expectedScope ? String(expectedScope.tId) : null;
     const sId = expectedScope ? String(expectedScope.sId) : null;
 
@@ -213,7 +210,6 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
 
     const createSpecialMenu = useCallback(
         async (data: {
-            allowOverlap?: boolean;
             baseProjectId: string;
             displayName: string;
             localizedDisplayName?: Record<string, string>;
@@ -262,7 +258,6 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                     ...getBoundedHookStringContext('baseProjectId', data.baseProjectId),
                     ...getBoundedHookStringContext('displayName', data.displayName),
                     ...getBoundedHookStringContext('mode', data.mode),
-                    allowOverlap: Boolean(data.allowOverlap),
                     localizedNameCount: Object.keys(data.localizedDisplayName || {}).length,
                 });
                 return { success: false, error: SPECIAL_MENU_CREATE_FAILED_MESSAGE };
@@ -273,7 +268,6 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
 
     const updateSpecialMenu = useCallback(
         async (data: {
-            allowOverlap?: boolean;
             projectId: string;
             description?: string;
             displayName: string;
@@ -315,7 +309,6 @@ export function useSpecialMenus(): UseSpecialMenusReturn {
                 logHookFailure('special_menu_update_failed', error, {
                     ...getBoundedHookStringContext('projectId', data.projectId),
                     ...getBoundedHookStringContext('displayName', data.displayName),
-                    allowOverlap: Boolean(data.allowOverlap),
                     localizedDescriptionCount: Object.keys(data.localizedDescription || {}).length,
                     localizedNameCount: Object.keys(data.localizedDisplayName || {}).length,
                 });

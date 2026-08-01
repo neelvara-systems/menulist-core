@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { addDoc, collection, deleteField, doc, getDoc, getDocs, limit, orderBy, query, QueryConstraint, runTransaction, Timestamp, where } from "@firebase/firestore";
+import { addDoc, collection, deleteField, doc, getDoc, getDocs, limit, orderBy, query, QueryConstraint, runTransaction, Timestamp, where, type DocumentData, type UpdateData } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
@@ -107,7 +107,7 @@ const hasOnlyKeys = (value: Record<string, unknown>, allowedKeys: Set<string>) =
     Object.keys(value).every(key => allowedKeys.has(key))
 );
 
-const isBoundedString = (value: unknown, maxLength: number, required = false) => (
+const isBoundedString = (value: unknown, maxLength: number, required = false): value is string => (
     typeof value === 'string'
     && value.length <= maxLength
     && (!required || value.trim().length > 0)
@@ -121,7 +121,9 @@ const getJsonByteLength = (value: unknown) => {
     }
 };
 
-const assertReviewItems = (value: unknown) => {
+const assertReviewItems: (
+    value: unknown,
+) => asserts value is NonNullable<IngestionJob['articlesToReview']> = (value) => {
     if (!Array.isArray(value) || value.length > MAX_JOB_ARTICLES) {
         throw new Error('Knowledge generation review items are invalid.');
     }
@@ -257,6 +259,305 @@ const assertReviewUpdate = (data: Partial<IngestionJob>) => {
     }
 };
 
+const INGESTION_JOB_STATUSES = new Set<string>(Object.values(INGESTION_JOB_STATUS));
+const INGESTION_JOB_FAILURE_STAGES = new Set([
+    'generation',
+    'publishing_orchestration',
+    'embedding',
+]);
+const INGESTION_JOB_EMBEDDING_ENQUEUE_STATUSES = new Set([
+    'pending',
+    'queued',
+    'failed',
+]);
+const INGESTION_JOB_RUN_STATUSES = new Set([
+    'processing',
+    'completed',
+    'failed',
+]);
+const INGESTION_JOB_DELETION_RUN_STATUSES = new Set([
+    'processing',
+    'failed',
+]);
+const INGESTION_JOB_ONBOARDING_STATUSES = new Set([
+    'pending',
+    'extracting',
+    'promoting',
+    'drafting',
+    'completed',
+    'failed',
+]);
+
+const isPersistedTimestamp = (value: unknown): value is Timestamp => (
+    value instanceof Timestamp
+    && Number.isFinite(value.toMillis())
+);
+
+const projectDocumentIdArray = (
+    value: unknown,
+    maximum = MAX_JOB_ARTICLES,
+): string[] | null => {
+    if (!Array.isArray(value) || value.length > maximum) return null;
+    const projected = value.flatMap((item) => {
+        const id = normalizeDocumentId(item);
+        return id ? [id] : [];
+    });
+    return projected.length === value.length && new Set(projected).size === projected.length
+        ? projected
+        : null;
+};
+
+const projectNonnegativeInteger = (value: unknown): number | null => (
+    Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : null
+);
+
+const projectIngestionJobRun = (
+    value: unknown,
+): IngestionJob['generationRun'] | null => {
+    if (!isRecord(value)) return null;
+    const id = normalizeDocumentId(value.id);
+    if (
+        !id
+        || typeof value.status !== 'string'
+        || !INGESTION_JOB_RUN_STATUSES.has(value.status)
+        || !isPersistedTimestamp(value.startedAt)
+        || !isPersistedTimestamp(value.leaseExpiresAt)
+        || (
+            value.completedAt !== undefined
+            && value.completedAt !== null
+            && !isPersistedTimestamp(value.completedAt)
+        )
+    ) return null;
+    return {
+        id,
+        status: value.status as NonNullable<IngestionJob['generationRun']>['status'],
+        startedAt: value.startedAt,
+        leaseExpiresAt: value.leaseExpiresAt,
+        completedAt: value.completedAt === undefined ? null : value.completedAt,
+    };
+};
+
+const projectIngestionJobDeletionRun = (
+    value: unknown,
+): IngestionJob['deletionRun'] | null => {
+    if (!isRecord(value)) return null;
+    const id = normalizeDocumentId(value.id);
+    const failedCount = projectNonnegativeInteger(value.failedCount);
+    if (
+        !id
+        || typeof value.status !== 'string'
+        || !INGESTION_JOB_DELETION_RUN_STATUSES.has(value.status)
+        || !isPersistedTimestamp(value.startedAt)
+        || !isPersistedTimestamp(value.leaseExpiresAt)
+        || (
+            value.completedAt !== undefined
+            && value.completedAt !== null
+            && !isPersistedTimestamp(value.completedAt)
+        )
+        || failedCount === null
+    ) return null;
+    return {
+        id,
+        status: value.status as NonNullable<IngestionJob['deletionRun']>['status'],
+        startedAt: value.startedAt,
+        leaseExpiresAt: value.leaseExpiresAt,
+        completedAt: value.completedAt === undefined ? null : value.completedAt,
+        failedCount,
+    };
+};
+
+const projectIngestionJobOnboarding = (
+    value: unknown,
+): IngestionJob['onboardingBootstrap'] | null => {
+    if (!isRecord(value) || typeof value.status !== 'string' || !INGESTION_JOB_ONBOARDING_STATUSES.has(value.status)) {
+        return null;
+    }
+    const counters = [
+        'entitiesExtracted',
+        'entitiesAutoPromoted',
+        'candidatesForReview',
+        'draftsGenerated',
+        'draftsFailed',
+    ] as const;
+    const projectedCounters = Object.fromEntries(counters.map((key) => [
+        key,
+        projectNonnegativeInteger(value[key]),
+    ]));
+    if (
+        Object.values(projectedCounters).some((count) => count === null)
+        || (value.startedAt !== undefined && !isPersistedTimestamp(value.startedAt))
+        || (value.completedAt !== undefined && !isPersistedTimestamp(value.completedAt))
+        || (value.errorMessage !== undefined && !isBoundedString(value.errorMessage, 2_000))
+    ) return null;
+    return {
+        status: value.status as NonNullable<IngestionJob['onboardingBootstrap']>['status'],
+        entitiesExtracted: Number(projectedCounters.entitiesExtracted),
+        entitiesAutoPromoted: Number(projectedCounters.entitiesAutoPromoted),
+        candidatesForReview: Number(projectedCounters.candidatesForReview),
+        draftsGenerated: Number(projectedCounters.draftsGenerated),
+        draftsFailed: Number(projectedCounters.draftsFailed),
+        ...(value.startedAt === undefined ? {} : { startedAt: value.startedAt }),
+        ...(value.completedAt === undefined ? {} : { completedAt: value.completedAt }),
+        ...(value.errorMessage === undefined ? {} : { errorMessage: value.errorMessage }),
+    };
+};
+
+export const projectIngestionJobDocument = (
+    documentId: unknown,
+    value: unknown,
+): IngestionJob | null => {
+    const id = normalizeDocumentId(documentId);
+    if (!id || !isRecord(value)) return null;
+    const tId = normalizeScopeId(value.tId);
+    const sId = normalizeScopeId(value.sId);
+    const uId = (
+        typeof value.uId === 'string'
+        && value.uId === value.uId.trim()
+        && value.uId.length > 0
+        && value.uId.length <= 256
+    )
+        ? value.uId
+        : normalizeScopeId(value.uId);
+    if (
+        value.pId !== PRODUCT_ID
+        || !tId
+        || !sId
+        || !uId
+        || typeof value.status !== 'string'
+        || !INGESTION_JOB_STATUSES.has(value.status)
+        || !isPersistedTimestamp(value.createdOn)
+        || !isPersistedTimestamp(value.modifiedOn)
+        || !Array.isArray(value.sourceFiles)
+        || value.sourceFiles.length < 1
+        || value.sourceFiles.length > 8
+    ) return null;
+
+    const sourceFiles = value.sourceFiles.flatMap((sourceFile) => {
+        if (!isRecord(sourceFile)) return [];
+        const storagePath = isBoundedString(sourceFile.storagePath, 1_024, true) ? sourceFile.storagePath : null;
+        const fileName = isBoundedString(sourceFile.fileName, 512, true) ? sourceFile.fileName : null;
+        const type = isBoundedString(sourceFile.type, 160, true) ? sourceFile.type : null;
+        const gsUri = isBoundedString(sourceFile.gsUri, 2_048, true) ? sourceFile.gsUri : null;
+        const downloadURL = isBoundedString(sourceFile.downloadURL, 2_048, true) ? sourceFile.downloadURL : null;
+        return storagePath && fileName && type && gsUri && downloadURL
+            ? [{ storagePath, fileName, type, gsUri, downloadURL }]
+            : [];
+    });
+    if (sourceFiles.length !== value.sourceFiles.length) return null;
+
+    let categories: IngestionJobCategoriesMap | null | undefined;
+    if (value.categories === null) {
+        categories = null;
+    } else if (value.categories !== undefined) {
+        try {
+            assertReviewNavigation(value.categories);
+            categories = value.categories;
+        } catch {
+            return null;
+        }
+    }
+
+    let articlesToReview: IngestionJob['articlesToReview'];
+    if (value.articlesToReview !== undefined) {
+        try {
+            assertReviewItems(value.articlesToReview);
+            articlesToReview = value.articlesToReview;
+        } catch {
+            return null;
+        }
+    }
+
+    const optionalIdArrays = [
+        'articleIds',
+        'embeddingPendingArticleIds',
+        'embeddingCompletedArticleIds',
+        'embeddingFailedArticleIds',
+        'replacementArticleIds',
+    ] as const;
+    const projectedIdArrays: Partial<Record<typeof optionalIdArrays[number], string[]>> = {};
+    for (const key of optionalIdArrays) {
+        if (value[key] === undefined) continue;
+        const projected = projectDocumentIdArray(value[key]);
+        if (!projected) return null;
+        projectedIdArrays[key] = projected;
+    }
+
+    const optionalCounters = [
+        'articlesEmbeddedCount',
+        'articlesToEmbedCount',
+    ] as const;
+    const projectedCounters: Partial<Record<typeof optionalCounters[number], number>> = {};
+    for (const key of optionalCounters) {
+        if (value[key] === undefined) continue;
+        const projected = projectNonnegativeInteger(value[key]);
+        if (projected === null) return null;
+        projectedCounters[key] = projected;
+    }
+
+    const generationRun = value.generationRun === undefined
+        ? undefined
+        : projectIngestionJobRun(value.generationRun);
+    const deletionRun = value.deletionRun === undefined
+        ? undefined
+        : projectIngestionJobDeletionRun(value.deletionRun);
+    const onboardingBootstrap = value.onboardingBootstrap === undefined
+        ? undefined
+        : projectIngestionJobOnboarding(value.onboardingBootstrap);
+    if (
+        generationRun === null
+        || deletionRun === null
+        || onboardingBootstrap === null
+        || (value.title !== undefined && !isBoundedString(value.title, 160))
+        || (
+            value.embeddingEnqueueStatus !== undefined
+            && (
+                typeof value.embeddingEnqueueStatus !== 'string'
+                || !INGESTION_JOB_EMBEDDING_ENQUEUE_STATUSES.has(value.embeddingEnqueueStatus)
+            )
+        )
+        || (value.embeddingRunId !== undefined && !normalizeDocumentId(value.embeddingRunId))
+        || (value.errorMessage !== undefined && value.errorMessage !== null && !isBoundedString(value.errorMessage, 2_000))
+        || (
+            value.failureStage !== undefined
+            && value.failureStage !== null
+            && (
+                typeof value.failureStage !== 'string'
+                || !INGESTION_JOB_FAILURE_STAGES.has(value.failureStage)
+            )
+        )
+        || (value.publishedOn !== undefined && !isPersistedTimestamp(value.publishedOn))
+    ) return null;
+
+    return {
+        id,
+        pId: PRODUCT_ID,
+        status: value.status as IngestionJob['status'],
+        sourceFiles,
+        createdOn: value.createdOn,
+        modifiedOn: value.modifiedOn,
+        tId,
+        sId,
+        uId,
+        ...(value.title === undefined ? {} : { title: value.title }),
+        ...(categories === undefined ? {} : { categories }),
+        ...(articlesToReview === undefined ? {} : { articlesToReview }),
+        ...projectedIdArrays,
+        ...projectedCounters,
+        ...(value.embeddingEnqueueStatus === undefined
+            ? {}
+            : { embeddingEnqueueStatus: value.embeddingEnqueueStatus as NonNullable<IngestionJob['embeddingEnqueueStatus']> }),
+        ...(value.embeddingRunId === undefined ? {} : { embeddingRunId: value.embeddingRunId as string }),
+        ...(generationRun === undefined ? {} : { generationRun }),
+        ...(deletionRun === undefined ? {} : { deletionRun }),
+        ...(value.errorMessage === undefined ? {} : { errorMessage: value.errorMessage }),
+        ...(value.failureStage === undefined
+            ? {}
+            : { failureStage: value.failureStage as IngestionJob['failureStage'] }),
+        ...(value.publishedOn === undefined ? {} : { publishedOn: value.publishedOn }),
+        ...(onboardingBootstrap === undefined ? {} : { onboardingBootstrap }),
+    };
+};
+
 export function assertIngestionJobWriteSucceeded(
     result: unknown,
     expectedJobId: string,
@@ -379,9 +680,15 @@ export const getIngestionJobs = async () => {
             const querySnapshot = await getDocs(q);
             const list: IngestionJob[] = [];
             querySnapshot.forEach((doc) => {
-                const job = { ...doc.data(), id: doc.id } as IngestionJob;
-                if (readableIngestionJobScopeAllowsJob(scope, job)) {
+                const job = projectIngestionJobDocument(doc.id, doc.data());
+                if (job && readableIngestionJobScopeAllowsJob(scope, job)) {
                     list.push(job);
+                } else {
+                    logAnswerlatticeFailure(
+                        'answerlattice_kb_generation_job_shape_invalid',
+                        new Error('answerlattice_kb_generation_job_shape_invalid'),
+                        getBoundedAnswerlatticeStringContext('jobId', doc.id),
+                    );
                 }
             });
             return list.sort((a, b) => (
@@ -416,13 +723,20 @@ export const getPreviousIngestionJobs = async (session: any, maxResults: number 
             const querySnapshot = await getDocs(q);
             const list: IngestionJob[] = [];
             querySnapshot.forEach((doc) => {
-                const job = { ...doc.data(), id: doc.id } as IngestionJob;
+                const job = projectIngestionJobDocument(doc.id, doc.data());
                 if (
-                    isExactAnswerlatticeProductId(job.pId)
+                    job
+                    && isExactAnswerlatticeProductId(job.pId)
                     && normalizeScopeId(job.tId) === tId
                     && normalizeScopeId(job.sId) === sId
                 ) {
                     list.push(job);
+                } else {
+                    logAnswerlatticeFailure(
+                        'answerlattice_kb_generation_job_shape_invalid',
+                        new Error('answerlattice_kb_generation_job_shape_invalid'),
+                        getBoundedAnswerlatticeStringContext('jobId', doc.id),
+                    );
                 }
             });
             return list.sort((a, b) => (
@@ -544,8 +858,9 @@ export const deleteIngestionJob = async (jobId: string) => {
                 throw new Error(`Job ${safeJobId} not found.`);
             }
 
-            const jobData = jobDoc.data() as IngestionJob;
-            const scope = assertAnswerlatticeJob(safeJobId, jobData as unknown as Record<string, unknown>);
+            const jobData = projectIngestionJobDocument(safeJobId, jobDoc.data());
+            if (!jobData) throw new Error('This knowledge generation job has an invalid persisted shape.');
+            const scope = assertAnswerlatticeJob(safeJobId, jobDoc.data());
             if (!isDeletableIngestionJobStatus(jobData.status)) {
                 throw new Error('Cancel this active knowledge generation job before deleting it.');
             }
@@ -723,13 +1038,14 @@ export const retryJob = async (jobId: string) => {
             await assertPlatformIngestionSession('retry_ingestion_job');
             const composed = await answerlatticeRequestBodyComposer({}, { isNew: false });
             const jobRef = doc(getCollectionRef(), safeJobId);
-            let resetJob: IngestionJob | null = null;
-            let retryMode: 'generation' | 'publishing' | 'review' = 'generation';
-            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+            const transactionResult = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                let retryMode: 'generation' | 'publishing' | 'review' = 'generation';
+                let resetResponseData: Record<string, unknown>;
+                let deletedResponseFields: string[] = [];
                 const jobSnap = await transaction.get(jobRef);
                 if (!jobSnap.exists()) throw new Error(`Job ${safeJobId} not found`);
-                const job = { id: safeJobId, ...jobSnap.data() } as IngestionJob;
-                assertAnswerlatticeJob(safeJobId, job as unknown as Record<string, unknown>);
+                const job = projectIngestionJobDocument(safeJobId, jobSnap.data());
+                if (!job) throw new Error('This knowledge generation job has an invalid persisted shape.');
                 if (job.status !== INGESTION_JOB_STATUS.FAILED) {
                     throw new Error(`Only failed jobs can be retried. Current status: ${job.status}`);
                 }
@@ -737,7 +1053,7 @@ export const retryJob = async (jobId: string) => {
                     throw new Error('Finish deleting this knowledge generation job before retrying it.');
                 }
 
-                let resetData: Record<string, unknown>;
+                let resetData: UpdateData<DocumentData>;
                 if (job.failureStage === 'embedding') {
                     retryMode = 'publishing';
                     const pendingIds = Array.from(new Set(job.embeddingPendingArticleIds || job.articleIds || []))
@@ -755,6 +1071,7 @@ export const retryJob = async (jobId: string) => {
                         errorMessage: null,
                         failureStage: null,
                     };
+                    resetResponseData = { ...resetData };
                 } else if (job.failureStage === 'publishing_orchestration') {
                     retryMode = 'review';
                     resetData = {
@@ -762,7 +1079,22 @@ export const retryJob = async (jobId: string) => {
                         errorMessage: null,
                         failureStage: null,
                     };
+                    resetResponseData = { ...resetData };
                 } else {
+                    retryMode = 'generation';
+                    deletedResponseFields = [
+                        'categories',
+                        'articleIds',
+                        'articlesToReview',
+                        'articlesEmbeddedCount',
+                        'articlesToEmbedCount',
+                        'embeddingPendingArticleIds',
+                        'embeddingCompletedArticleIds',
+                        'embeddingFailedArticleIds',
+                        'embeddingEnqueueStatus',
+                        'embeddingRunId',
+                        'generationRun',
+                    ];
                     resetData = {
                         status: INGESTION_JOB_STATUS.PENDING,
                         errorMessage: null,
@@ -779,15 +1111,35 @@ export const retryJob = async (jobId: string) => {
                         embeddingRunId: deleteField(),
                         generationRun: deleteField(),
                     };
+                    resetResponseData = {
+                        status: INGESTION_JOB_STATUS.PENDING,
+                        errorMessage: null,
+                        failureStage: null,
+                    };
                 }
                 resetData.modifiedOn = composed.modifiedOn;
                 resetData.modifiedBy = composed.modifiedBy;
                 resetData.uId = composed.uId;
+                resetResponseData.modifiedOn = composed.modifiedOn;
+                resetResponseData.modifiedBy = composed.modifiedBy;
+                resetResponseData.uId = composed.uId;
                 transaction.update(jobRef, resetData);
-                resetJob = { ...job, ...resetData, id: safeJobId } as IngestionJob;
+                const resetJob = {
+                    ...job,
+                    ...resetResponseData,
+                    id: safeJobId,
+                } as IngestionJob;
+                for (const field of deletedResponseFields) {
+                    delete (resetJob as unknown as Record<string, unknown>)[field];
+                }
+                return {
+                    resetJob,
+                    retryMode,
+                };
             });
+            const { resetJob, retryMode } = transactionResult;
 
-            if (process.env.NODE_ENV !== 'production' && resetJob) {
+            if (process.env.NODE_ENV !== 'production') {
                 if (retryMode === 'generation') {
                     await triggerStartGeneration(safeJobId, resetJob);
                 } else if (retryMode === 'publishing') {
@@ -796,7 +1148,7 @@ export const retryJob = async (jobId: string) => {
             }
 
             return {
-                ...(resetJob as IngestionJob),
+                ...resetJob,
                 success: true,
                 updatedFields: retryMode === 'generation'
                     ? ['status', 'generationRun', 'errorMessage', 'failureStage']
@@ -880,7 +1232,8 @@ export const addIngestionJob = async (data: Partial<IngestionJob>) => {
                 throw new Error('One or more knowledge source files are outside this workspace.');
             }
             const docRef = await addDoc(getCollectionRef(), submitData);
-            const newJob = { ...submitData, id: docRef.id } as IngestionJob;
+            const newJob = projectIngestionJobDocument(docRef.id, submitData);
+            if (!newJob) throw new Error('The new knowledge generation job has an invalid persisted shape.');
             if (process.env.NODE_ENV !== 'production') {
                 await triggerStartGeneration(newJob.id, newJob);
             }

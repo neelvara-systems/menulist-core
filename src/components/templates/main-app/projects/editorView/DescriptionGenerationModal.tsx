@@ -6,7 +6,10 @@ import { getProjectDescriptionContentLength, getProjectDescriptionTone, mergePro
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
-import { DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
+import {
+    type DescriptionAction,
+    type DescriptionGovernanceOptions,
+} from '@services/ai/description/descriptionUtils';
 import { InheritanceState } from '@type/multiOutlet.types';
 import { removeObjRef } from '@util/utils';
 import { message as antdMessage, Button, Flex, Grid, Modal, Popconfirm, theme, Typography } from 'antd';
@@ -89,7 +92,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
         ) * CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE
     ), [governance, modalData.sourceFile, projectData]);
 
-    const getDescriptionModalLogContext = (action: string) => ({
+    const getDescriptionModalLogContext = (action: DescriptionAction) => ({
         action,
         aiDescriptionCount,
         allowInheritedDescriptionOverride,
@@ -109,7 +112,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
         setDescriptionTone(getProjectDescriptionTone(projectData, businessType, businessCategory));
     }, [businessType, businessCategory, projectData]);
 
-    const handleDescriptionRequest = async (action: string, nextContentLength: DescriptionContentLength, nextDescriptionTone: DescriptionTone) => {
+    const handleDescriptionRequest = async (action: DescriptionAction, nextContentLength: DescriptionContentLength, nextDescriptionTone: DescriptionTone) => {
         setIsProcessing(true);
         setProcessedCount(0);
         dispatch(startLoader("adding description"));

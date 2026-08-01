@@ -24,10 +24,10 @@ export interface ImageGenerationConfigType {
     colors?: string[];
     moods?: string[];
     compositions?: string[];
-    backgroundColor?: string;
+    backgroundColor?: string | null;
     negativePrompt?: string;
     transparentBg?: boolean;
-    foregroundColor?: string;
+    foregroundColor?: string | null;
     selectedImageTypes?: string[];
     isMultiMode?: boolean;
     agreeToTerms?: boolean; // Content policy agreement
@@ -48,10 +48,10 @@ export type GenerateImageViaApiPayloadGenerationConfiType = {
     colors?: string[];
     moods?: string[];
     compositions?: string[];
-    backgroundColor?: string;
+    backgroundColor?: string | null;
     transparentBg?: boolean;
     negativePrompt?: string;
-    foregroundColor?: string;
+    foregroundColor?: string | null;
     selectedImageTypes?: string[];
     isMultiMode?: boolean;
     numberOfImages?: number;

@@ -180,7 +180,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 };
             }
 
-            const permissionError = requireAnyStorePermissionForStoreData(
+            const permissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 storeData,

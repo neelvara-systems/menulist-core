@@ -7,12 +7,16 @@ import {
     buildCSPDirective,
 } from '../../src/config/csp-allowlist';
 import {
+    DECISION_REASON_KEYS,
     formatDuration,
     getDurationConfig,
     getEffectiveDuration,
     isQuickPickEligible,
 } from '../../src/config/decisionBlocks';
 import { APP_NAME, LOGO_TEXT } from '../../src/constants/common';
+import { getDecisionBlockTranslation } from '../../src/data/decisionBlockTranslations';
+import { MENU_INTELLIGENCE_POLICY } from '../../src/data/shared/menuIntelligencePolicy';
+import { FEATURE_FLAGS } from '../../src/config/features';
 
 const productionConnectDirective = buildCSPDirective(
     'connect-src',
@@ -52,8 +56,45 @@ assert.equal(
 assert.equal(getEffectiveDuration(0, 'restaurant'), 0);
 assert.equal(formatDuration(0, 'restaurant'), 'Instant');
 
+const decisionReasonKeys: string[] = [];
+const collectDecisionReasonKeys = (value: unknown): void => {
+    if (typeof value === 'string') {
+        decisionReasonKeys.push(value);
+        return;
+    }
+    if (value && typeof value === 'object') {
+        Object.values(value).forEach(collectDecisionReasonKeys);
+    }
+};
+collectDecisionReasonKeys(DECISION_REASON_KEYS);
+for (const reasonKey of decisionReasonKeys) {
+    for (const language of ['en', 'hi']) {
+        assert.notEqual(
+            getDecisionBlockTranslation(reasonKey, language),
+            reasonKey,
+            `${language} must translate the declared Decision Block reason ${reasonKey}`,
+        );
+    }
+}
+
 assert.equal(APP_NAME, 'MenuList');
 assert.equal(LOGO_TEXT, 'MenuList');
+assert.equal(
+    FEATURE_FLAGS.MENU_INTELLIGENCE_CONFIDENT_THRESHOLD,
+    MENU_INTELLIGENCE_POLICY.confidentThreshold,
+);
+assert.equal(
+    FEATURE_FLAGS.MENU_INTELLIGENCE_CAUTIOUS_THRESHOLD,
+    MENU_INTELLIGENCE_POLICY.cautiousThreshold,
+);
+assert.equal(
+    FEATURE_FLAGS.MENU_INTELLIGENCE_CALIBRATION_LOCK_DAY,
+    MENU_INTELLIGENCE_POLICY.calibrationLockDay,
+);
+assert.equal(
+    FEATURE_FLAGS.MENU_INTELLIGENCE_MIN_STABLE_DAYS,
+    MENU_INTELLIGENCE_POLICY.minimumStableDays,
+);
 const footerSource = fs.readFileSync(
     path.resolve(__dirname, '../../src/components/organisms/footerComponent/index.tsx'),
     'utf8',

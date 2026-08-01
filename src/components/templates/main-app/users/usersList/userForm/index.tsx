@@ -3,14 +3,13 @@ import { useAppDispatch } from "@hook/useAppDispatch"
 import { _debounce } from "@hook/useDebounce"
 import { createStaffUser, updateStaffUser } from "@lib/staffManagement/client"
 import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics"
-import type { StaffStoreOption } from "@lib/staffManagement/types"
+import { isStaffUserInTenantContext } from "@lib/staffManagement/formMappingBoundary"
+import type { StaffFormUser, StaffMutationResponse, StaffStoreOption, StaffUserSummary } from "@lib/staffManagement/types"
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider"
 import { showErrorToast, showSuccessToast, showWarningToast } from "@reduxSlices/toast"
-import { UserDataType } from "@type/platform/user"
 import { getObjectDifferance } from "@util/deepMerge"
-import { removeObjRef, updateDeepPathValue } from "@util/utils"
 import { Button, Card, Divider, Flex, Modal, theme } from "antd"
-import { createRef, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { createRef, Fragment, type RefObject, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { LuClipboardSignature, LuShieldCheck, LuStore, LuUpload, LuUploadCloud } from "react-icons/lu"
 import StaffLoginDetailsContent from "../../StaffLoginDetailsContent"
 import AccessPermissions from "./accessPermissions"
@@ -22,9 +21,9 @@ type UserModalDataType = {
     canAssignRoles?: boolean
     modalData: {
         active: boolean
-        data: UserDataType
+        data: StaffUserSummary | null
     },
-    onCloseModal: Function
+    onCloseModal: (data: StaffFormUser | StaffUserSummary | null) => void
     staffStores?: StaffStoreOption[]
 }
 
@@ -33,6 +32,27 @@ const ITEMS_LIST_LABELS = {
     STORE_ACCESS: "Store Access",
     PERMISSIONS: "Permissions",
 }
+
+const getStaffErrorCode = (error: unknown): string | undefined => (
+    error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : undefined
+);
+
+const isPhoneInputValue = (value: unknown): value is {
+    countryCode: string;
+    dialCode: string;
+    phoneNumber: string;
+} => Boolean(
+    value
+    && typeof value === 'object'
+    && 'countryCode' in value
+    && typeof value.countryCode === 'string'
+    && 'dialCode' in value
+    && typeof value.dialCode === 'string'
+    && 'phoneNumber' in value
+    && typeof value.phoneNumber === 'string',
+);
 /**
  * Form to add or update a user
  * @param {UserModalDataType} param0 containing modalData and onCloseModal
@@ -40,7 +60,8 @@ const ITEMS_LIST_LABELS = {
  */
 function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, staffStores = [] }: UserModalDataType) {
 
-    const [userDetails, setUserDetails] = useState<UserDataType>(null)
+    const [userDetails, setUserDetails] = useState<StaffFormUser | null>(null)
+    const [isSaving, setIsSaving] = useState(false)
     const { storeDetails, tenantDetails } = useContext(PlatformGlobalDataContext)
     const dispatch = useAppDispatch();
     const [activeTab, setActiveTab] = useState(0)
@@ -53,41 +74,49 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
             || 'staff';
     }
 
-    const getInitialUser = (): UserDataType => ({
+    const getInitialUser = (): StaffFormUser | null => {
+        const tenantId = storeDetails?.tenantId ?? tenantDetails?.tenantId;
+        const storeId = storeDetails?.storeId;
+        if (!tenantId || !storeId) return null;
+        return {
         active: true,
         deleted: false,
-        deletedAt: '',
         email: '',
-        isVerified: false,
         name: '',
         phoneNumber: '',
         dialCode: '',
         platformRole: 'USER',
-        storeId: storeDetails?.storeId,
-        storeIds: storeDetails?.storeId ? [storeDetails.storeId] : [],
-        stores: storeDetails?.storeId ? [{
+        storeId,
+        storeIds: [storeId],
+        stores: [{
             name: storeDetails?.name || '',
             role: getDefaultRoleId(),
-            storeId: storeDetails.storeId,
-        }] : [],
-        tenantId: storeDetails?.tenantId || tenantDetails?.tenantId,
-    } as UserDataType)
+            storeId,
+        }],
+        tenantId,
+    };
+    }
 
     useEffect(() => {
         if (modalData.active) setActiveTab(0);
         if (modalData.data) {
-            const userToUpdate = modalData.data;
-            setUserDetails(userToUpdate);
+            const activeTenantId = storeDetails?.tenantId ?? tenantDetails?.tenantId;
+            if (!isStaffUserInTenantContext(modalData.data, activeTenantId)) {
+                setUserDetails(null);
+                onCloseModal(null);
+                return;
+            }
+            setUserDetails({ ...modalData.data });
         } else {
             setUserDetails(modalData.active ? getInitialUser() : null)
         }
-    }, [modalData, storeDetails?.storeId, storeDetails?.tenantId])
+    }, [modalData, storeDetails?.storeId, storeDetails?.tenantId, tenantDetails?.tenantId])
 
-    const onClose = (data = null) => {
+    const onClose = (data: StaffFormUser | StaffUserSummary | null = null) => {
         onCloseModal(data)
     }
 
-    const getStaffMutationLogContext = (user: UserDataType, operation: string) => ({
+    const getStaffMutationLogContext = (user: StaffFormUser | StaffUserSummary, operation: string) => ({
         operation,
         ...getBoundedStaffStringContext('tenantId', user?.tenantId || tenantDetails?.tenantId),
         ...getBoundedStaffStringContext('storeId', user?.storeId || storeDetails?.storeId),
@@ -99,17 +128,18 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
         storeCount: Array.isArray(user?.stores) ? user.stores.length : 0,
     })
 
-    const showStaffPasscode = (data: any) => {
+    const showStaffPasscode = (data: StaffMutationResponse, fallbackUser: StaffFormUser) => {
         if (!data?.temporaryPasscode || !data?.staffLoginId) return;
+        const responseUser = data.user || fallbackUser;
         Modal.info({
             okText: "Done",
             title: "Staff login details",
             content: (
                 <StaffLoginDetailsContent
-                    countryCode={data.user?.countryCode || userDetails.countryCode}
-                    diagnosticContext={getStaffMutationLogContext(data.user || userDetails, 'login_details_share')}
-                    dialCode={data.user?.dialCode || userDetails.dialCode}
-                    phoneNumber={data.user?.phoneNumber || userDetails.phoneNumber}
+                    countryCode={responseUser.countryCode}
+                    diagnosticContext={getStaffMutationLogContext(responseUser, 'login_details_share')}
+                    dialCode={responseUser.dialCode}
+                    phoneNumber={responseUser.phoneNumber}
                     staffLoginId={data.staffLoginId}
                     temporaryPasscode={data.temporaryPasscode}
                 />
@@ -117,11 +147,12 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
         });
     }
 
-    const scrollSmoothHandler = (index) => {
-        scrollRefs.current[index].current.scrollIntoView({ behavior: "smooth" });
+    const scrollSmoothHandler = (index: number) => {
+        scrollRefs.current[index]?.current?.scrollIntoView({ behavior: "smooth" });
     };
 
     const onCreate = async () => {
+        if (!userDetails || isSaving) return;
 
         const normalizedEmail = userDetails.email?.trim().toLowerCase();
         if (!normalizedEmail && !userDetails.name?.trim()) {
@@ -129,11 +160,17 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
             return
         }
 
+        const primaryStore = userDetails.stores.find((store) => store.storeId === userDetails.storeId) || userDetails.stores[0];
+        if (!primaryStore?.storeId || !userDetails.tenantId) {
+            dispatch(showErrorToast("Select a store before adding this staff member"))
+            return
+        }
+
+        setIsSaving(true);
         try {
             // Create staff via server API — handles Firebase Auth + Firestore doc creation
             // @see __docs__/auth/adr-email-uniqueness-strategy.md
-            const currentStore = tenantDetails?.storesList?.find((s: any) => s.storeId === userDetails.storeId);
-            const primaryStore = userDetails.stores?.find((store) => store.storeId === userDetails.storeId) || userDetails.stores?.[0];
+            const currentStore = tenantDetails?.storesList?.find((store) => store.storeId === userDetails.storeId);
             const data = await createStaffUser({
                 countryCode: userDetails.countryCode,
                 dialCode: userDetails.dialCode,
@@ -141,16 +178,20 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
                 name: userDetails.name || userDetails.phoneNumber || normalizedEmail?.split('@')[0],
                 phoneNumber: userDetails.phoneNumber,
                 role: primaryStore?.role || getDefaultRoleId(),
-                storeId: primaryStore?.storeId || userDetails.storeId,
-                storeName: primaryStore?.name || currentStore?.name || currentStore?.storeDetails?.name,
-                tenantId: userDetails.tenantId || tenantDetails?.tenantId,
+                storeId: primaryStore.storeId,
+                storeName: primaryStore.name || currentStore?.name || currentStore?.storeDetails?.name,
+                tenantId: userDetails.tenantId,
             });
 
             // API created the Firestore doc — use userId from response
-            const createdUser: any = data.user || { ...userDetails, email: data.email, id: data.userId };
+            const createdUser: StaffFormUser | StaffUserSummary = data.user || {
+                ...userDetails,
+                email: data.email || userDetails.email,
+                id: data.userId,
+            };
 
             if (data.temporaryPasscode) {
-                showStaffPasscode(data);
+                showStaffPasscode(data, userDetails);
                 dispatch(showSuccessToast("Staff user created with staff ID and temporary passcode"));
             } else if (data.mode === 'existing_user_added_to_store') {
                 dispatch(showSuccessToast("Existing staff member added to this store"));
@@ -160,58 +201,68 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
                 dispatch(showSuccessToast("Staff user created and setup email sent"));
             }
             onClose(createdUser)
-        } catch (err: any) {
-            if (err.code === 'EMAIL_EXISTS') {
+        } catch (err: unknown) {
+            const code = getStaffErrorCode(err);
+            if (code === 'EMAIL_EXISTS') {
                 dispatch(showWarningToast("Email already used"))
-            } else if (err.code === 'AUTH_BINDING_INVALID') {
+            } else if (code === 'AUTH_BINDING_INVALID') {
                 dispatch(showErrorToast("This account needs MenuList support before it can be added"))
-            } else if (err.code === 'STAFF_LOGIN_COLLISION') {
+            } else if (code === 'STAFF_LOGIN_COLLISION') {
                 dispatch(showWarningToast("Could not reserve a Staff ID. Try again."))
-            } else if (err.code === 'INVALID_EMAIL') {
+            } else if (code === 'INVALID_EMAIL') {
                 dispatch(showWarningToast("Invalid email"))
-            } else if (err.code === 'EMAIL_OTHER_TENANT') {
+            } else if (code === 'EMAIL_OTHER_TENANT') {
                 dispatch(showErrorToast("This email belongs to another business"))
-            } else if (err.code === 'ALREADY_ASSIGNED') {
+            } else if (code === 'ALREADY_ASSIGNED') {
                 dispatch(showWarningToast("User is already assigned to this store"))
-            } else if (err.code === 'ROLE_ASSIGNMENT_FORBIDDEN') {
+            } else if (code === 'ROLE_ASSIGNMENT_FORBIDDEN') {
                 dispatch(showErrorToast("You cannot assign this role"))
             } else {
                 dispatch(showErrorToast("Could not create staff member"))
             }
             logStaffClientFailure('staff_create_user_failed', err, getStaffMutationLogContext(userDetails, 'create'))
+        } finally {
+            setIsSaving(false);
         }
     }
 
-    const addUpdateUser = async (changesToUpload) => {
+    const addUpdateUser = async (changesToUpload: StaffFormUser | null) => {
+        if (!changesToUpload || isSaving) return;
         //update user flow
         if (modalData.data) {
             const originalUser = modalData.data
-            const updatedChanges: any = getObjectDifferance(changesToUpload, originalUser);
+            const updatedChanges = getObjectDifferance(changesToUpload, originalUser);
             if (Object.keys(updatedChanges).length > 0) {
-                updateStaffUser({
-                    active: changesToUpload.active,
-                    alternatePhoneNumber: changesToUpload.alternatePhoneNumber,
-                    countryCode: changesToUpload.countryCode,
-                    dialCode: changesToUpload.dialCode,
-                    name: changesToUpload.name,
-                    phoneNumber: changesToUpload.phoneNumber,
-                    storeId: changesToUpload.storeId,
-                    stores: changesToUpload.stores,
-                    tenantId: changesToUpload.tenantId || storeDetails?.tenantId,
-                    userId: originalUser.id,
-                }).then((response) => {
+                if (!originalUser.id || !changesToUpload.tenantId) return;
+                setIsSaving(true);
+                try {
+                    const response = await updateStaffUser({
+                        active: changesToUpload.active,
+                        alternatePhoneNumber: changesToUpload.alternatePhoneNumber,
+                        countryCode: changesToUpload.countryCode,
+                        dialCode: changesToUpload.dialCode,
+                        name: changesToUpload.name,
+                        phoneNumber: changesToUpload.phoneNumber,
+                        storeId: changesToUpload.storeId,
+                        stores: changesToUpload.stores,
+                        tenantId: changesToUpload.tenantId,
+                        userId: originalUser.id,
+                    });
                     dispatch(showSuccessToast("User updated successfully"))
                     onClose(response.user || { ...originalUser, ...updatedChanges })
-                }).catch((err: any) => {
+                } catch (err: unknown) {
+                    const code = getStaffErrorCode(err);
                     dispatch(showErrorToast(
-                        err.code === 'ROLE_ASSIGNMENT_FORBIDDEN'
+                        code === 'ROLE_ASSIGNMENT_FORBIDDEN'
                             ? "You cannot change roles or store access"
-                            : err.code === 'OWNER_MANAGEMENT_FORBIDDEN'
+                            : code === 'OWNER_MANAGEMENT_FORBIDDEN'
                                 ? "Only an Owner can change an Owner account"
                                 : "Could not update staff member",
                     ))
                     logStaffClientFailure('staff_update_user_failed', err, getStaffMutationLogContext(changesToUpload, 'update'))
-                })
+                } finally {
+                    setIsSaving(false);
+                }
             } else {
                 dispatch(showWarningToast("No changes found"))
             }
@@ -220,17 +271,18 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
         }
     }
 
-    const onChangeValue = (from, value) => {
-        if (from == "user") {
-            setUserDetails(value)
-        } else if (from == "phoneNumber") {
-            let userCopy: UserDataType = updateDeepPathValue(removeObjRef(userDetails), "countryCode", value.countryCode);
-            userCopy = updateDeepPathValue(userCopy, "phoneNumber", value.phoneNumber);
-            userCopy = updateDeepPathValue(userCopy, "dialCode", value.dialCode);
-            setUserDetails(userCopy)
+    const onChangeValue = (from: string, value: unknown) => {
+        if (from === "user") {
+            if (value && typeof value === 'object') setUserDetails(value as StaffFormUser);
+        } else if (from === "phoneNumber" && isPhoneInputValue(value)) {
+            setUserDetails((current) => current ? {
+                ...current,
+                countryCode: value.countryCode,
+                dialCode: value.dialCode,
+                phoneNumber: value.phoneNumber,
+            } : current)
         } else {
-            let userCopy: UserDataType = updateDeepPathValue(removeObjRef(userDetails), from, value);
-            setUserDetails(userCopy)
+            setUserDetails((current) => current ? { ...current, [from]: value } : current)
         }
     }
 
@@ -238,7 +290,7 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
         {
             label: ITEMS_LIST_LABELS.STAFF_DETAILS,
             active: true,
-            children: <BasicInformation userDetails={userDetails} onChangeValue={onChangeValue} />,
+            children: userDetails ? <BasicInformation userDetails={userDetails} onChangeValue={onChangeValue} /> : null,
             icon: <LuClipboardSignature />,
         },
         {
@@ -246,10 +298,10 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
             active: true,
             children: (
                 <Flex vertical gap={16}>
-                    {tenantDetails?.storesList?.length > 1 ? (
-                        <StoresMapping canAssignRoles={canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} />
+                    {(tenantDetails?.storesList?.length ?? 0) > 1 ? (
+                        userDetails ? <StoresMapping canAssignRoles={canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} /> : null
                     ) : (
-                        <RolesMapping disabled={!canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} />
+                        userDetails ? <RolesMapping disabled={!canAssignRoles} staffStores={staffStores} userDetails={userDetails} onChangeValue={onChangeValue} /> : null
                     )}
                 </Flex>
             ),
@@ -258,19 +310,19 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
         {
             label: ITEMS_LIST_LABELS.PERMISSIONS,
             active: true,
-            children: <AccessPermissions staffStores={staffStores} userDetails={userDetails} />,
+            children: userDetails ? <AccessPermissions staffStores={staffStores} userDetails={userDetails} /> : null,
             icon: <LuShieldCheck />,
         },
     ]
 
-    const scrollRefs = useRef([]);
+    const scrollRefs = useRef<Array<RefObject<HTMLDivElement | null>>>([]);
     scrollRefs.current = TAB_ITEMS_LIST.filter(t => t.active).map(
-        (_, i) => scrollRefs.current[i] ?? createRef()
+        (_, i) => scrollRefs.current[i] ?? createRef<HTMLDivElement>()
     );
 
     const onScrollSetActive = () => {
         scrollRefs.current?.forEach((function (element) {
-            if (element?.current?.getBoundingClientRect().top < 100) {
+            if ((element.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY) < 100) {
                 setActiveTab(scrollRefs.current.indexOf(element))
             }
         }))
@@ -296,10 +348,10 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
             open={Boolean(modalData.active)}
             onClose={() => onClose(null)}
             footerActions={[
-                <Button onClick={() => onClose(null)} key="Cancel">Cancel</Button>,
+                <Button disabled={isSaving} onClick={() => onClose(null)} key="Cancel">Cancel</Button>,
                 <>
-                    {Boolean(modalData.data) ? <Button icon={<LuUploadCloud />} onClick={() => addUpdateUser(userDetails)}>Update</Button> :
-                        <Button icon={<LuUpload />} onClick={() => onCreate()}>Add</Button>}
+                    {Boolean(modalData.data) ? <Button disabled={!userDetails} loading={isSaving} icon={<LuUploadCloud />} onClick={() => addUpdateUser(userDetails)}>Update</Button> :
+                        <Button disabled={!userDetails} loading={isSaving} icon={<LuUpload />} onClick={() => onCreate()}>Add</Button>}
                 </>
             ]}
             styles={{

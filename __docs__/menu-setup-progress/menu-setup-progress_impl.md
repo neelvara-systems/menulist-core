@@ -11,10 +11,14 @@
 
 - `project.files` and extracted item lists must be arrays; malformed values become empty.
 - Source requires trimmed `project.projectId`; `onboardingSource` is not project proof.
-- Active item count excludes `active === false`.
-- Publish uses `normalizeStarterActivationTimestamp()` rather than truthiness.
+- Active item count requires a non-empty item ID plus localized/string name and
+  excludes `active === false`; arbitrary persisted objects are not menu items.
+- Publish uses `normalizeStarterActivationTimestamp()` rather than truthiness
+  and current `active !== false` / `deleted !== true` project state remains
+  authoritative over an old publish timestamp.
 - Activation summary counts only allowlisted signals with valid timestamps.
-- Public-link/photo optional checks accept non-empty strings and valid photo arrays rather than arbitrary truthy objects.
+- Public-link/photo optional checks accept direct non-empty link/map values and
+  valid photo arrays rather than arbitrary truthy or nested metadata objects.
 
 ## Rendering
 

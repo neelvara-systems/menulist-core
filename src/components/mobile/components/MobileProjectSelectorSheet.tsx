@@ -1,6 +1,7 @@
 'use client'
 
 import { FEATURE_FLAGS } from '@config/features';
+import { getSpecialMenuCapabilities } from '@config/specialMenuConfig';
 import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader, updateSpecialMenuProject } from '@database/projects';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
@@ -8,6 +9,13 @@ import { getStoreContextName } from '@lib/businessIdentity/names';
 import { generateProjectImageCandidate } from '@lib/image/projectImageGeneration';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { isDataUrl } from '@lib/media/mediaStorage';
+import {
+    getProjectOwnerScopeFromProjectId,
+    getProjectOwnerScopeKey,
+    normalizeProjectOwnerScope,
+    projectOwnerScopesMatch,
+    type ProjectOwnerScope,
+} from '@lib/menu/projectOwnerScope';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
@@ -19,11 +27,18 @@ import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
-import { formatDateTime, fromNativeDateTimeInputValue, toNativeDateTimeInputValue, type IntlFormatter } from '@util/dateTime';
+import {
+    formatDateTime,
+    fromNativeDateInputValue,
+    fromNativeDateTimeInputValue,
+    toNativeDateInputValue,
+    toNativeDateTimeInputValue,
+    type IntlFormatter,
+} from '@util/dateTime';
 import { ProjectSelectorList } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useContext, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { LuArchiveRestore, LuCopy, LuExternalLink, LuPalette, LuPen, LuPower, LuQrCode, LuRotateCcw, LuSparkles, LuTrash2, LuX } from 'react-icons/lu';
 import MobileQrCodeSheet from './MobileQrCodeSheet';
 import MobileLocalizedLanguageSelector from './MobileLocalizedLanguageSelector';
@@ -83,6 +98,26 @@ type ActionItem = {
 
 const MOBILE_PROJECT_SELECTOR_COPY_UNAVAILABLE = 'mobile_project_selector_copy_unavailable';
 const MOBILE_PROJECT_SELECTOR_COPY_FALLBACK_FAILED = 'mobile_project_selector_copy_fallback_failed';
+
+const toSpecialMenuInputValue = (
+    value: string | null | undefined,
+    allowTimeScheduling: boolean,
+    timeZone?: string,
+): string => (
+    allowTimeScheduling
+        ? toNativeDateTimeInputValue(value, timeZone)
+        : toNativeDateInputValue(value, timeZone)
+);
+
+const fromSpecialMenuInputValue = (
+    value: string,
+    allowTimeScheduling: boolean,
+    timeZone?: string,
+): string => (
+    allowTimeScheduling
+        ? fromNativeDateTimeInputValue(value, timeZone)
+        : fromNativeDateInputValue(value, timeZone)
+);
 
 const hasMobileProjectSelectorClipboardWrite = (): boolean => (
     typeof navigator !== 'undefined'
@@ -215,10 +250,22 @@ export default function MobileProjectSelectorSheet({
     const t = useTranslations('MobileProjectSelector');
     const tShare = useTranslations('MobileShare');
     const { tenantDetails, storeDetails, userPermissions, isMasterUser } = useContext(PlatformGlobalDataContext);
+    const currentProjectScope = useMemo(
+        () => normalizeProjectOwnerScope(storeDetails?.tenantId, storeDetails?.storeId),
+        [storeDetails?.storeId, storeDetails?.tenantId],
+    );
+    const currentProjectScopeKey = getProjectOwnerScopeKey(currentProjectScope);
+    const currentProjectScopeRef = useRef<ProjectOwnerScope | null>(currentProjectScope);
+    currentProjectScopeRef.current = currentProjectScope;
+    const specialMenuCapabilities = useMemo(
+        () => getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory),
+        [storeDetails?.businessCategory, storeDetails?.businessType],
+    );
     const labels = useOfferingLabels();
     const { isLoading, projectsById, projectsList, removeCachedProject, upsertCachedProject } = useMobileProjects();
     const [managingProjectId, setManagingProjectId] = useState<string | null>(null);
     const [formMode, setFormMode] = useState<FormMode>(null);
+    const [formScope, setFormScope] = useState<ProjectOwnerScope | null>(null);
     const [formProjectId, setFormProjectId] = useState<string | null>(null);
     const [formLanguages, setFormLanguages] = useState<string[]>([storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE]);
     const [formSelectedLanguage, setFormSelectedLanguage] = useState<string>(storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE);
@@ -243,6 +290,44 @@ export default function MobileProjectSelectorSheet({
     const [isTranslatingPublicContent, setIsTranslatingPublicContent] = useState(false);
     const [qrSheet, setQrSheet] = useState<QrSheetState | null>(null);
     const [isQrSheetOpen, setIsQrSheetOpen] = useState(false);
+    const mutationInFlightRef = useRef<string | null>(null);
+    const beginMutation = useCallback((
+        operation: string,
+        expectedScope: ProjectOwnerScope | null,
+    ): string | null => {
+        if (
+            !projectOwnerScopesMatch(expectedScope, currentProjectScopeRef.current)
+            || mutationInFlightRef.current
+        ) {
+            return null;
+        }
+        const token = `${operation}:${getProjectOwnerScopeKey(expectedScope)}:${Date.now()}`;
+        mutationInFlightRef.current = token;
+        return token;
+    }, []);
+    const isCurrentMutation = useCallback((
+        token: string,
+        expectedScope: ProjectOwnerScope,
+    ): boolean => (
+        mutationInFlightRef.current === token
+        && projectOwnerScopesMatch(expectedScope, currentProjectScopeRef.current)
+    ), []);
+    const endMutation = useCallback((token: string | null): void => {
+        if (token && mutationInFlightRef.current === token) {
+            mutationInFlightRef.current = null;
+        }
+    }, []);
+
+    useEffect(() => {
+        setManagingProjectId(null);
+        setFormMode(null);
+        setFormProjectId(null);
+        setFormScope(null);
+        setIsSubmitting(false);
+        setIsGeneratingProjectImage(false);
+        setIsTranslatingPublicContent(false);
+        setIsProjectImageAdjustOpen(false);
+    }, [currentProjectScopeKey]);
     const sheetCardStyle = {
         borderRadius: Number(token.borderRadiusLG || token.borderRadius) + 4,
         borderColor: token.colorBorderSecondary,
@@ -274,7 +359,7 @@ export default function MobileProjectSelectorSheet({
         if (isMasterUser || storeDetails?.isMaster !== false) return null;
         return {
             ...DEFAULT_OUTLET_POLICY,
-            ...((userPermissions as any)?.outletPolicy || {}),
+            ...(userPermissions?.outletPolicy || {}),
         };
     }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
     const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
@@ -392,6 +477,7 @@ export default function MobileProjectSelectorSheet({
 
     const resetFormState = () => {
         setFormMode(null);
+        setFormScope(null);
         setFormProjectId(null);
         const defaultLanguage = storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE;
         setFormLanguages([defaultLanguage]);
@@ -416,10 +502,16 @@ export default function MobileProjectSelectorSheet({
             Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
             return;
         }
+        const openingScope = currentProjectScopeRef.current;
+        if (!openingScope) {
+            Toast.show({ content: 'Could not verify this location.', duration: 1800 });
+            return;
+        }
 
         const defaultLanguage = storeDetails?.defaultLanguage || CANONICAL_SOURCE_LANGUAGE;
         setManagingProjectId(null);
         setFormMode('create');
+        setFormScope(openingScope);
         setFormProjectId(null);
         setFormLanguages([defaultLanguage]);
         setFormSelectedLanguage(defaultLanguage);
@@ -436,11 +528,20 @@ export default function MobileProjectSelectorSheet({
         setFormEndsAt('');
     };
 
-    const loadDetailedProject = async (project: ProjectSheetProject) => {
+    const loadDetailedProject = async (
+        project: ProjectSheetProject,
+        expectedScope?: ProjectOwnerScope,
+    ) => {
+        if (expectedScope && !projectOwnerScopesMatch(expectedScope, currentProjectScopeRef.current)) {
+            throw new Error('mobile_project_detail_scope_changed');
+        }
         const cachedProject = projectsById[project.projectId];
         if (cachedProject) return cachedProject;
 
-        const detailedProject = await getProjectDataWithoutLoader(project.projectId);
+        const detailedProject = await getProjectDataWithoutLoader(project.projectId, expectedScope);
+        if (expectedScope && !projectOwnerScopesMatch(expectedScope, currentProjectScopeRef.current)) {
+            throw new Error('mobile_project_detail_scope_changed');
+        }
         upsertCachedProject({
             ...project,
             ...(detailedProject || {}),
@@ -449,9 +550,12 @@ export default function MobileProjectSelectorSheet({
         return detailedProject;
     };
 
-    const isLinkedOutletProject = async (project: ProjectSheetProject) => {
+    const isLinkedOutletProject = async (
+        project: ProjectSheetProject,
+        expectedScope?: ProjectOwnerScope,
+    ) => {
         if ((project as any).masterProjectId) return true;
-        const detailedProject = await loadDetailedProject(project);
+        const detailedProject = await loadDetailedProject(project, expectedScope);
         return Boolean(detailedProject?.masterProjectId);
     };
 
@@ -478,7 +582,10 @@ export default function MobileProjectSelectorSheet({
     ));
 
     const openEdit = async (project: ProjectSheetProject) => {
-        const detailedProject = await loadDetailedProject(project);
+        const openingScope = currentProjectScopeRef.current;
+        if (!openingScope) return;
+        const detailedProject = await loadDetailedProject(project, openingScope);
+        if (!projectOwnerScopesMatch(openingScope, currentProjectScopeRef.current)) return;
         const languages = getProjectManagedLanguages(detailedProject, storeDetails);
         const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
         const nextDescriptionDrafts = buildLocalizedDrafts(detailedProject?.description || project.description, languages);
@@ -489,6 +596,7 @@ export default function MobileProjectSelectorSheet({
         );
 
         setFormMode('edit');
+        setFormScope(openingScope);
         setFormProjectId(project.projectId);
         setFormLanguages(languages);
         setFormSelectedLanguage(selectedLanguage);
@@ -501,8 +609,16 @@ export default function MobileProjectSelectorSheet({
         setIsProjectImageAdjustOpen(false);
         setFormIsDefault(false);
         setFormActive(project.active !== false);
-        setFormStartsAt(toNativeDateTimeInputValue(project.specialMenuStartsAt));
-        setFormEndsAt(toNativeDateTimeInputValue(project.specialMenuEndsAt));
+        setFormStartsAt(toSpecialMenuInputValue(
+            project.specialMenuStartsAt,
+            specialMenuCapabilities.allowTimeScheduling,
+            storeDetails?.timeZone,
+        ));
+        setFormEndsAt(toSpecialMenuInputValue(
+            project.specialMenuEndsAt,
+            specialMenuCapabilities.allowTimeScheduling,
+            storeDetails?.timeZone,
+        ));
     };
 
     const openDuplicate = async (project: ProjectSheetProject) => {
@@ -510,12 +626,15 @@ export default function MobileProjectSelectorSheet({
             Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
             return;
         }
-        if (await isLinkedOutletProject(project)) {
+        const openingScope = currentProjectScopeRef.current;
+        if (!openingScope) return;
+        if (await isLinkedOutletProject(project, openingScope)) {
             Toast.show({ content: 'Inherited menus cannot be duplicated at this location.', duration: 1800 });
             return;
         }
 
-        const detailedProject = await loadDetailedProject(project);
+        const detailedProject = await loadDetailedProject(project, openingScope);
+        if (!projectOwnerScopesMatch(openingScope, currentProjectScopeRef.current)) return;
         const languages = getProjectManagedLanguages(detailedProject, storeDetails);
         const nextNameDrafts = buildLocalizedDrafts(detailedProject?.name || project.name, languages);
         const nextDescriptionDrafts = buildLocalizedDrafts(detailedProject?.description || project.description, languages);
@@ -527,6 +646,7 @@ export default function MobileProjectSelectorSheet({
         nextNameDrafts[selectedLanguage] = `Copy of ${nextNameDrafts[selectedLanguage] || resolveProjectName(project.name)}`;
 
         setFormMode('duplicate');
+        setFormScope(openingScope);
         setFormProjectId(project.projectId);
         setFormLanguages(languages);
         setFormSelectedLanguage(selectedLanguage);
@@ -579,6 +699,13 @@ export default function MobileProjectSelectorSheet({
             }
         }
 
+        const operationScope = formScope;
+        const mutationToken = beginMutation('save', operationScope);
+        if (!operationScope || !mutationToken) {
+            Toast.show({ content: 'This menu form is no longer active for the current location.', duration: 2000 });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             let savedProjectImage = formProjectImage;
@@ -596,7 +723,7 @@ export default function MobileProjectSelectorSheet({
                     uid: formProjectId || nextName || `project-image-${Date.now()}`,
                     url: savedProjectImage,
                     type: formProjectImageDraft?.prepared?.mimeType || mimeMatch?.[1] || 'image/jpeg',
-                } as any, 'project-images');
+                } as any, 'project-images', operationScope);
             }
 
             if (formMode === 'create') {
@@ -619,6 +746,7 @@ export default function MobileProjectSelectorSheet({
                     defaultHandoff: {
                         unsetProjectId: nextIsDefault ? currentDefault?.projectId : undefined,
                     },
+                    expectedScope: operationScope,
                 });
                 assertProjectUpdateSucceeded(
                     result,
@@ -628,6 +756,7 @@ export default function MobileProjectSelectorSheet({
                 if (!result.projectId) {
                     throw new Error('mobile_project_selector_create_project_update_rejected');
                 }
+                if (!isCurrentMutation(mutationToken, operationScope)) return;
 
                 if (currentDefault?.projectId && nextIsDefault && currentDefault.projectId !== result?.projectId) {
                     upsertCachedProject({
@@ -668,6 +797,7 @@ export default function MobileProjectSelectorSheet({
                     nextDescription || undefined,
                     localizedName,
                     localizedDescription,
+                    operationScope,
                 );
                 assertProjectUpdateSucceeded(
                     result,
@@ -677,9 +807,14 @@ export default function MobileProjectSelectorSheet({
                 if (!result.projectId) {
                     throw new Error('mobile_project_selector_duplicate_project_update_rejected');
                 }
+                if (!isCurrentMutation(mutationToken, operationScope)) return;
 
                 if (savedProjectImage !== (formSourceProject?.projectImage || null) && result?.projectId) {
-                    const imageMetadataResult = await updateProjectMetadata(result.projectId, { projectImage: savedProjectImage || null });
+                    const imageMetadataResult = await updateProjectMetadata(
+                        result.projectId,
+                        { projectImage: savedProjectImage || null },
+                        { expectedScope: operationScope },
+                    );
                     assertProjectUpdateSucceeded(
                         imageMetadataResult,
                         result.projectId,
@@ -691,6 +826,8 @@ export default function MobileProjectSelectorSheet({
                         projectId: result.projectId,
                         languages: formLanguages,
                         defaultLanguage: formSelectedLanguage,
+                    }, {
+                        expectedScope: operationScope,
                     });
                     assertProjectUpdateSucceeded(
                         languageResult,
@@ -757,9 +894,17 @@ export default function MobileProjectSelectorSheet({
                         displayName: nextName,
                         localizedDescription: localizedDescription || undefined,
                         localizedDisplayName: localizedName,
-                        endsAt: fromNativeDateTimeInputValue(formEndsAt),
-                        startsAt: fromNativeDateTimeInputValue(formStartsAt),
-                    });
+                        endsAt: fromSpecialMenuInputValue(
+                            formEndsAt,
+                            specialMenuCapabilities.allowTimeScheduling,
+                            storeDetails?.timeZone,
+                        ),
+                        startsAt: fromSpecialMenuInputValue(
+                            formStartsAt,
+                            specialMenuCapabilities.allowTimeScheduling,
+                            storeDetails?.timeZone,
+                        ),
+                    }, operationScope);
                     assertProjectUpdateSucceeded(
                         specialMenuResult,
                         formProjectId,
@@ -772,6 +917,7 @@ export default function MobileProjectSelectorSheet({
                         unsetProjectId: shouldUnsetPreviousDefault ? currentDefault?.projectId : undefined,
                         setProjectId: defaultReplacement?.projectId,
                     },
+                    expectedScope: operationScope,
                 });
                 assertProjectUpdateSucceeded(
                     metadataResult,
@@ -782,6 +928,8 @@ export default function MobileProjectSelectorSheet({
                     projectId: formProjectId,
                     languages: formLanguages,
                     defaultLanguage: formSelectedLanguage,
+                }, {
+                    expectedScope: operationScope,
                 });
                 assertProjectUpdateSucceeded(
                     languageResult,
@@ -789,7 +937,7 @@ export default function MobileProjectSelectorSheet({
                     'mobile_project_selector_language_project_update_rejected',
                 );
                 if (activeChanged) {
-                    const activeResult = await setProjectActive(formProjectId, nextActive);
+                    const activeResult = await setProjectActive(formProjectId, nextActive, operationScope);
                     assertProjectUpdateSucceeded(
                         activeResult,
                         formProjectId,
@@ -797,6 +945,7 @@ export default function MobileProjectSelectorSheet({
                     );
                 }
 
+                if (!isCurrentMutation(mutationToken, operationScope)) return;
                 if (shouldUnsetPreviousDefault && currentDefault?.projectId) {
                     upsertCachedProject({
                         ...(projectsById[currentDefault.projectId] || currentDefault),
@@ -826,8 +975,16 @@ export default function MobileProjectSelectorSheet({
                     projectImage: savedProjectImage || null,
                     ...(isEditingSpecialMenu ? {
                         specialMenuDisplayName: localizedName,
-                        specialMenuEndsAt: fromNativeDateTimeInputValue(formEndsAt),
-                        specialMenuStartsAt: fromNativeDateTimeInputValue(formStartsAt),
+                        specialMenuEndsAt: fromSpecialMenuInputValue(
+                            formEndsAt,
+                            specialMenuCapabilities.allowTimeScheduling,
+                            storeDetails?.timeZone,
+                        ),
+                        specialMenuStartsAt: fromSpecialMenuInputValue(
+                            formStartsAt,
+                            specialMenuCapabilities.allowTimeScheduling,
+                            storeDetails?.timeZone,
+                        ),
                     } : {}),
                 });
 
@@ -841,9 +998,12 @@ export default function MobileProjectSelectorSheet({
                 isDuplicate: formMode === 'duplicate',
                 isEdit: formMode === 'edit',
             }));
-            Toast.show({ content: t('saveFailed'), duration: 1800 });
+            if (isCurrentMutation(mutationToken, operationScope)) {
+                Toast.show({ content: t('saveFailed'), duration: 1800 });
+            }
         } finally {
             setIsSubmitting(false);
+            endMutation(mutationToken);
         }
     };
 
@@ -860,8 +1020,16 @@ export default function MobileProjectSelectorSheet({
             formIsDefault !== initialFormIsDefault ||
             formActive !== (formSourceProject?.active !== false) ||
             (isEditingSpecialMenu && (
-                fromNativeDateTimeInputValue(formStartsAt) !== initialFormStartsAt ||
-                fromNativeDateTimeInputValue(formEndsAt) !== initialFormEndsAt
+                fromSpecialMenuInputValue(
+                    formStartsAt,
+                    specialMenuCapabilities.allowTimeScheduling,
+                    storeDetails?.timeZone,
+                ) !== initialFormStartsAt ||
+                fromSpecialMenuInputValue(
+                    formEndsAt,
+                    specialMenuCapabilities.allowTimeScheduling,
+                    storeDetails?.timeZone,
+                ) !== initialFormEndsAt
             ))
         )
         : true;
@@ -876,13 +1044,26 @@ export default function MobileProjectSelectorSheet({
         setFormProjectImage(formSourceProject.projectImage || null);
         setFormIsDefault(formSourceProject.isDefault === true);
         setFormActive(formSourceProject.active !== false);
-        setFormStartsAt(toNativeDateTimeInputValue(formSourceProject.specialMenuStartsAt));
-        setFormEndsAt(toNativeDateTimeInputValue(formSourceProject.specialMenuEndsAt));
+        setFormStartsAt(toSpecialMenuInputValue(
+            formSourceProject.specialMenuStartsAt,
+            specialMenuCapabilities.allowTimeScheduling,
+            storeDetails?.timeZone,
+        ));
+        setFormEndsAt(toSpecialMenuInputValue(
+            formSourceProject.specialMenuEndsAt,
+            specialMenuCapabilities.allowTimeScheduling,
+            storeDetails?.timeZone,
+        ));
     };
 
     const handleProjectImageSelect = async (file: File) => {
+        const operationScope = formScope;
+        if (!operationScope || !projectOwnerScopesMatch(operationScope, currentProjectScopeRef.current)) {
+            return false;
+        }
         try {
             const prepared = await prepareMediaImage(file, 'projectImage');
+            if (!projectOwnerScopesMatch(operationScope, currentProjectScopeRef.current)) return false;
             setFormProjectImage(prepared.dataUrl);
             setFormProjectImageDraft({
                 crop: prepared.crop,
@@ -905,6 +1086,8 @@ export default function MobileProjectSelectorSheet({
     };
 
     const handleGenerateProjectImage = async () => {
+        const operationScope = formScope;
+        if (!operationScope || !projectOwnerScopesMatch(operationScope, currentProjectScopeRef.current)) return;
         const localizedName = applyLocalizedProjectDraftMap(formSourceProject?.name, formNameDrafts);
         const localizedDescription = applyLocalizedProjectDraftMap(formSourceProject?.description, formDescriptionDrafts);
         const projectName = getLocalizedText(
@@ -945,6 +1128,7 @@ export default function MobileProjectSelectorSheet({
             const prepared = await prepareMediaImage(candidate.dataUrl, 'projectImage', {
                 fileName: candidate.name,
             });
+            if (!projectOwnerScopesMatch(operationScope, currentProjectScopeRef.current)) return;
             setFormProjectImage(prepared.dataUrl);
             setFormProjectImageDraft({
                 crop: prepared.crop,
@@ -995,10 +1179,19 @@ export default function MobileProjectSelectorSheet({
             Toast.show({ content: 'Save the current project content first, then translate the missing public content.', duration: 2000 });
             return;
         }
+        const operationScope = formScope;
+        const mutationToken = beginMutation('translate', operationScope);
+        if (!operationScope || !mutationToken) {
+            Toast.show({ content: 'This menu form is no longer active for the current location.', duration: 2000 });
+            return;
+        }
 
         try {
             setIsTranslatingPublicContent(true);
-            const detailedProject = await loadDetailedProject(formSourceProject || { projectId: formProjectId, name: '', description: '' } as any);
+            const detailedProject = await loadDetailedProject(
+                formSourceProject || { projectId: formProjectId, name: '', description: '' } as any,
+                operationScope,
+            );
             const translated = await translateProjectPublicContent({
                 projectDetails: detailedProject,
                 projectId: formProjectId,
@@ -1020,32 +1213,23 @@ export default function MobileProjectSelectorSheet({
                         specialNote: translated.specialNote,
                     },
                 } : {}),
-                ...(translated.specialMenuDisplayName ? {
+                ...(translated.specialMenuDisplayName && detailedProject?._specialMenu ? {
                     _specialMenu: {
-                        ...(detailedProject?._specialMenu || {}),
+                        ...detailedProject._specialMenu,
                         displayName: translated.specialMenuDisplayName,
                     },
                 } : {}),
-            } as any);
+            } as any, {
+                expectedScope: operationScope,
+                syncPublicSummary: true,
+            });
             assertProjectUpdateSucceeded(
                 translationProjectResult,
                 formProjectId,
                 'mobile_project_public_content_translation_project_update_rejected',
             );
 
-            const metadataUpdate: Record<string, any> = {};
-            if (translated.name) metadataUpdate.name = translated.name;
-            if (translated.description) metadataUpdate.description = translated.description;
-            if (translated.specialMenuDisplayName) metadataUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
-            if (Object.keys(metadataUpdate).length > 0) {
-                const translationMetadataResult = await updateProjectMetadata(formProjectId, metadataUpdate);
-                assertProjectUpdateSucceeded(
-                    translationMetadataResult,
-                    formProjectId,
-                    'mobile_project_public_content_translation_metadata_update_rejected',
-                );
-            }
-
+            if (!isCurrentMutation(mutationToken, operationScope)) return;
             const resolvedName = translated.name || detailedProject?.name || formSourceProject?.name;
             const resolvedDescription = translated.description || detailedProject?.description || formSourceProject?.description;
             const nextNameDrafts = buildLocalizedDrafts(resolvedName, formLanguages);
@@ -1077,30 +1261,40 @@ export default function MobileProjectSelectorSheet({
                 hasInitialNameDrafts: Object.keys(initialFormNameDrafts).length > 0,
                 hasInitialDescriptionDrafts: Object.keys(initialFormDescriptionDrafts).length > 0,
             });
-            Toast.show({ content: 'Could not translate project public content.', duration: 1800 });
+            if (isCurrentMutation(mutationToken, operationScope)) {
+                Toast.show({ content: 'Could not translate project public content.', duration: 1800 });
+            }
         } finally {
             setIsTranslatingPublicContent(false);
+            endMutation(mutationToken);
         }
     };
 
     const handleToggleActive = async (project: ProjectSheetProject) => {
         const nextActive = project.active === false;
         const isCurrent = project.projectId === currentProjectId;
+        const operationScope = getProjectOwnerScopeFromProjectId(project.projectId);
+        const mutationToken = beginMutation('active', operationScope);
+        if (!operationScope || !mutationToken) {
+            Toast.show({ content: 'Could not verify this location.', duration: 1800 });
+            return;
+        }
 
         try {
-            if (!nextActive && !canDeactivateLinkedProjects && await isLinkedOutletProject(project)) {
+            if (!nextActive && !canDeactivateLinkedProjects && await isLinkedOutletProject(project, operationScope)) {
                 Toast.show({ content: 'Deactivating inherited menus is not enabled for this location.', duration: 1800 });
                 return;
             }
 
             if (!nextActive && isCurrent) {
                 const fallback = getDeleteFallbackProject(project.projectId);
-                const inactiveResult = await setProjectActive(project.projectId, false);
+                const inactiveResult = await setProjectActive(project.projectId, false, operationScope);
                 assertProjectUpdateSucceeded(
                     inactiveResult,
                     project.projectId,
                     'mobile_project_selector_active_toggle_project_update_rejected',
                 );
+                if (!isCurrentMutation(mutationToken, operationScope)) return;
                 upsertCachedProject({ ...project, active: false });
                 setManagingProjectId(null);
                 await syncSelectionOnly(fallback?.projectId || null);
@@ -1108,12 +1302,13 @@ export default function MobileProjectSelectorSheet({
                 return;
             }
 
-            const activeResult = await setProjectActive(project.projectId, nextActive);
+            const activeResult = await setProjectActive(project.projectId, nextActive, operationScope);
             assertProjectUpdateSucceeded(
                 activeResult,
                 project.projectId,
                 'mobile_project_selector_active_toggle_project_update_rejected',
             );
+            if (!isCurrentMutation(mutationToken, operationScope)) return;
             upsertCachedProject({ ...project, active: nextActive });
             setManagingProjectId(null);
             await syncSelectionOnly(nextActive ? project.projectId : currentProjectId || null);
@@ -1122,24 +1317,37 @@ export default function MobileProjectSelectorSheet({
             logMobileProjectFailure('mobile_project_selector_active_toggle_failed', error, buildProjectSelectorMutationLogContext('active_toggle', project, {
                 nextActive,
             }));
-            Toast.show({ content: t('saveFailed'), duration: 1800 });
+            if (isCurrentMutation(mutationToken, operationScope)) {
+                Toast.show({ content: t('saveFailed'), duration: 1800 });
+            }
+        } finally {
+            endMutation(mutationToken);
         }
     };
 
     const handleResetProject = async (project: ProjectSheetProject) => {
+        const operationScope = getProjectOwnerScopeFromProjectId(project.projectId);
+        const mutationToken = beginMutation('reset', operationScope);
+        if (!operationScope || !mutationToken) {
+            Toast.show({ content: 'Could not verify this location.', duration: 1800 });
+            return;
+        }
         try {
             setManagingProjectId(null);
-            const isLinkedProject = await isLinkedOutletProject(project);
+            const isLinkedProject = await isLinkedOutletProject(project, operationScope);
             const resetResult = await updateProjectWithoutLoader({
                 files: [],
                 projectId: project.projectId,
                 ...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {}),
-            } as any);
+            } as any, {
+                expectedScope: operationScope,
+            });
             assertProjectUpdateSucceeded(
                 resetResult,
                 project.projectId,
                 'mobile_project_selector_reset_project_update_rejected',
             );
+            if (!isCurrentMutation(mutationToken, operationScope)) return;
             upsertCachedProject({
                 ...project,
                 files: [],
@@ -1149,17 +1357,27 @@ export default function MobileProjectSelectorSheet({
             Toast.show({ content: t('catalogReset'), duration: 1400 });
         } catch (error) {
             logMobileProjectFailure('mobile_project_selector_reset_failed', error, buildProjectSelectorMutationLogContext('reset_project', project));
-            Toast.show({ content: t('saveFailed'), duration: 1800 });
+            if (isCurrentMutation(mutationToken, operationScope)) {
+                Toast.show({ content: t('saveFailed'), duration: 1800 });
+            }
+        } finally {
+            endMutation(mutationToken);
         }
     };
 
     const handleDeleteProject = async (project: ProjectSheetProject) => {
-        if (!canDeactivateLinkedProjects && await isLinkedOutletProject(project)) {
-            Toast.show({ content: 'Removing inherited menus is not enabled for this location.', duration: 1800 });
+        const operationScope = getProjectOwnerScopeFromProjectId(project.projectId);
+        const mutationToken = beginMutation('delete', operationScope);
+        if (!operationScope || !mutationToken) {
+            Toast.show({ content: 'Could not verify this location.', duration: 1800 });
             return;
         }
 
         try {
+            if (!canDeactivateLinkedProjects && await isLinkedOutletProject(project, operationScope)) {
+                Toast.show({ content: 'Removing inherited menus is not enabled for this location.', duration: 1800 });
+                return;
+            }
             const isCurrent = project.projectId === currentProjectId;
             const fallback = getDeleteFallbackProject(project.projectId);
             const defaultReplacement = project.isDefault ? getDeleteDefaultReplacement(project.projectId) : null;
@@ -1169,6 +1387,7 @@ export default function MobileProjectSelectorSheet({
                 project.projectId,
                 'mobile_project_selector_delete_project_rejected',
             );
+            if (!isCurrentMutation(mutationToken, operationScope)) return;
             setManagingProjectId(null);
             removeCachedProject(project.projectId);
             if (defaultReplacement?.projectId) {
@@ -1190,7 +1409,11 @@ export default function MobileProjectSelectorSheet({
                 isSpecialMenu: project.isSpecialMenu === true,
                 projectCount: projects.length,
             });
-            Toast.show({ content: `Could not delete ${labels.offeringLower}`, duration: 1800 });
+            if (isCurrentMutation(mutationToken, operationScope)) {
+                Toast.show({ content: `Could not delete ${labels.offeringLower}`, duration: 1800 });
+            }
+        } finally {
+            endMutation(mutationToken);
         }
     };
 
@@ -1718,18 +1941,18 @@ export default function MobileProjectSelectorSheet({
                             <Flex gap={14} vertical>
                                 <Text strong>Special menu schedule</Text>
                                 <Flex gap={6} vertical>
-                                    <Text strong>Starts Date & Time</Text>
+                                    <Text strong>{`Starts ${specialMenuCapabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                     <Input
                                         onChange={setFormStartsAt}
-                                        type="datetime-local"
+                                        type={specialMenuCapabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                         value={formStartsAt}
                                     />
                                 </Flex>
                                 <Flex gap={6} vertical>
-                                    <Text strong>Ends Date & Time</Text>
+                                    <Text strong>{`Ends ${specialMenuCapabilities.allowTimeScheduling ? 'Date & Time' : 'Date'}`}</Text>
                                     <Input
                                         onChange={setFormEndsAt}
-                                        type="datetime-local"
+                                        type={specialMenuCapabilities.allowTimeScheduling ? 'datetime-local' : 'date'}
                                         value={formEndsAt}
                                     />
                                 </Flex>

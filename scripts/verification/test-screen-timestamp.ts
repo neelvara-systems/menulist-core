@@ -38,10 +38,17 @@ const expectedSeconds = expectedMilliseconds / 1000;
     { toMillis: () => { throw new Error("invalid"); } },
     { toDate: () => "2026-07-25T12:00:00.000Z" },
     { toDate: () => new Date("invalid") },
+    { get seconds() { throw new Error("invalid"); } },
+    new Proxy(new Date(expectedIso), {}),
 ].forEach((value) => {
     assert.equal(screenTimestampToDate(value), null);
     assert.equal(screenTimestampToMillis(value), null);
 });
+
+const { proxy: revokedDateProxy, revoke } = Proxy.revocable(new Date(expectedIso), {});
+revoke();
+assert.equal(screenTimestampToDate(revokedDateProxy), null);
+assert.equal(screenTimestampToMillis(revokedDateProxy), null);
 
 assert.equal(isScreenExpiryValueExpired(undefined, expectedMilliseconds), false);
 assert.equal(isScreenExpiryValueExpired({ seconds: expectedSeconds + 1 }, expectedMilliseconds), false);

@@ -1,0 +1,417 @@
+{
+  "version": 2,
+  "updatedAt": "2026-07-29",
+  "boundary": {
+    "internalOnly": true,
+    "publicRuntime": false,
+    "publicMarketing": false,
+    "firebaseOperations": false,
+    "externalCodeUpload": false,
+    "automaticFixes": false,
+    "automaticDeploys": false
+  },
+  "surfaces": [
+    {
+      "id": "repository.security-os-boundary",
+      "product": "repository",
+      "title": "SecurityOS internal execution boundary",
+      "risk": "high",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "SECURITY.md",
+        "packages/security-os",
+        ".agents/skills/security-os"
+      ],
+      "evidenceIds": [
+        "repository.security-policy",
+        "repository.security-os-verifier"
+      ],
+      "bundleIds": [
+        "repository.baseline-and-configuration"
+      ],
+      "notes": "Mapping proves the operating contract exists. It is not a vulnerability-free claim."
+    },
+    {
+      "id": "repository.dependency-integrity",
+      "product": "repository",
+      "title": "Pinned dependency and lockfile integrity",
+      "risk": "high",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "package.json",
+        "package-lock.json",
+        "__docs__/security/dependency-security"
+      ],
+      "evidenceIds": [
+        "repository.dependency-freeze"
+      ],
+      "bundleIds": [
+        "repository.baseline-and-configuration"
+      ],
+      "notes": "The mapped verifier checks the repo dependency-freeze contract; it is not a complete vulnerability assessment."
+    },
+    {
+      "id": "repository.sensitive-finding-handling",
+      "product": "repository",
+      "title": "Private handling of findings and reproduction material",
+      "risk": "high",
+      "coverageStatus": "partial",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "SECURITY.md",
+        "packages/security-os/private/.gitignore"
+      ],
+      "evidenceIds": [
+        "repository.security-policy"
+      ],
+      "bundleIds": [
+        "repository.baseline-and-configuration"
+      ],
+      "notes": "Policy and a gitignored local location exist; access control and retention remain operator responsibilities."
+    },
+    {
+      "id": "repository.configuration-and-environment-safety",
+      "product": "repository",
+      "title": "Configuration and environment target safety",
+      "risk": "high",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/config",
+        "src/constants/deploymentTargets.ts",
+        "scripts/verification/verify-configuration-safety.js"
+      ],
+      "evidenceIds": [
+        "repository.configuration-safety",
+        "repository.env-targets"
+      ],
+      "bundleIds": [
+        "repository.baseline-and-configuration"
+      ],
+      "notes": "The mapped commands check repository configuration contracts only; they do not inspect live provider configuration."
+    },
+    {
+      "id": "menulist.auth-and-session",
+      "product": "menulist",
+      "title": "Authentication, authorization, and failure behavior",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/lib/auth",
+        "src/app/api/auth",
+        "__docs__/security/authentication"
+      ],
+      "evidenceIds": [
+        "menulist.auth-security-failure-matrix"
+      ],
+      "bundleIds": [
+        "menulist.identity-and-tenant"
+      ],
+      "notes": "Existing local verifier coverage is registered but not executed by the registry audit."
+    },
+    {
+      "id": "menulist.api-tenant-isolation",
+      "product": "menulist",
+      "title": "API tenant and store isolation",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/app/api",
+        "src/lib/auth"
+      ],
+      "evidenceIds": [
+        "menulist.api-tenant-safety"
+      ],
+      "bundleIds": [
+        "menulist.identity-and-tenant"
+      ],
+      "notes": "The mapped command includes source checks and focused tenant/CSP tests."
+    },
+    {
+      "id": "menulist.firestore-tenant-rules",
+      "product": "menulist",
+      "title": "Firestore tenant and store rule isolation",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "firestore.rules",
+        "firebase.json"
+      ],
+      "evidenceIds": [
+        "menulist.tenant-store-rules"
+      ],
+      "bundleIds": [
+        "menulist.identity-and-tenant"
+      ],
+      "notes": "The evidence command uses local Firebase emulators and a demo project ID."
+    },
+    {
+      "id": "menulist.storage-boundaries",
+      "product": "menulist",
+      "title": "Storage path, replacement, deletion, and media rules",
+      "risk": "high",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "storage.rules",
+        "src/lib/storage"
+      ],
+      "evidenceIds": [
+        "menulist.storage-paths"
+      ],
+      "bundleIds": [
+        "menulist.data-and-trust-boundaries"
+      ],
+      "notes": "The mapped composite command includes local source tests and storage emulator coverage."
+    },
+    {
+      "id": "menulist.csp-reporting-boundary",
+      "product": "menulist",
+      "title": "CSP report admission and data minimization",
+      "risk": "medium",
+      "coverageStatus": "partial",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/app/api/csp-report",
+        "__docs__/security/csp"
+      ],
+      "evidenceIds": [
+        "menulist.csp-report-boundary"
+      ],
+      "bundleIds": [
+        "menulist.data-and-trust-boundaries"
+      ],
+      "notes": "This maps the CSP reporting boundary only, not complete browser security-header coverage."
+    },
+    {
+      "id": "menulist.input-file-network-webhook-boundaries",
+      "product": "menulist",
+      "title": "Input, file, network target, and webhook boundaries",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/lib/security/inputValidation.ts",
+        "src/lib/security/fileValidation.ts",
+        "src/lib/security/serverNetworkTarget.ts",
+        "src/lib/security/webhookValidation.ts"
+      ],
+      "evidenceIds": [
+        "menulist.input-validation-boundary",
+        "menulist.file-validation-boundary",
+        "menulist.server-network-target-boundary",
+        "menulist.webhook-validation-boundary"
+      ],
+      "bundleIds": [
+        "menulist.data-and-trust-boundaries"
+      ],
+      "notes": "Focused local tests are mapped; the bundle does not execute them or claim that all application ingress paths are covered."
+    },
+    {
+      "id": "menulist.security-event-and-secret-boundaries",
+      "product": "menulist",
+      "title": "Authentication security events and POS secret isolation",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/lib/auth/security.ts",
+        "src/app/api/pos-sync/secret",
+        "firestore.rules"
+      ],
+      "evidenceIds": [
+        "menulist.auth-security-events-emulator",
+        "menulist.auth-security-events-rules",
+        "menulist.pos-sync-secret-rules"
+      ],
+      "bundleIds": [
+        "menulist.identity-and-tenant",
+        "menulist.data-and-trust-boundaries"
+      ],
+      "notes": "The mapped rule tests use demo emulator projects and do not write production data."
+    },
+    {
+      "id": "answerlattice.repository-security-audit",
+      "product": "answerlattice",
+      "title": "Answerlattice dependency and repository security audit",
+      "risk": "high",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "functions-answerlattice",
+        "scripts/verification/verify-answerlattice-security-audit.js"
+      ],
+      "evidenceIds": [
+        "answerlattice.security-audit"
+      ],
+      "bundleIds": [
+        "answerlattice.authority-and-ingress"
+      ],
+      "notes": "This evidence is limited to the assertions implemented by the existing verifier."
+    },
+    {
+      "id": "answerlattice.storage-isolation",
+      "product": "answerlattice",
+      "title": "Answerlattice tenant-scoped storage isolation",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "storage-answerlattice.rules",
+        "firebase-answerlattice.json"
+      ],
+      "evidenceIds": [
+        "answerlattice.storage-rules"
+      ],
+      "bundleIds": [
+        "answerlattice.authority-and-ingress"
+      ],
+      "notes": "The evidence command uses local Firestore and Storage emulators with a demo project ID."
+    },
+    {
+      "id": "answerlattice.governance-authority",
+      "product": "answerlattice",
+      "title": "Canonical governance and tenant authority",
+      "risk": "critical",
+      "coverageStatus": "partial",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "firestore-answerlattice.rules",
+        "__docs__/answerlattice/doctrine"
+      ],
+      "evidenceIds": [
+        "answerlattice.governance-rules",
+        "answerlattice.core-doctrine"
+      ],
+      "bundleIds": [
+        "answerlattice.authority-and-ingress"
+      ],
+      "notes": "Rules and doctrine are mapped; the complete Answerlattice runtime is not claimed as audited."
+    },
+    {
+      "id": "answerlattice.public-ingress-and-rate-limits",
+      "product": "answerlattice",
+      "title": "Answerlattice public ingress, knowledge intake, billing, and rate limits",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/app/api/answerlattice",
+        "firestore-answerlattice.rules",
+        "scripts/verification/test-answerlattice-dashboard-read-rate-limit-policy.ts"
+      ],
+      "evidenceIds": [
+        "answerlattice.public-api-rules",
+        "answerlattice.knowledge-intake-rules",
+        "answerlattice.integrations-rules",
+        "answerlattice.billing-rules",
+        "answerlattice.dashboard-read-rate-limit-policy"
+      ],
+      "bundleIds": [
+        "answerlattice.authority-and-ingress"
+      ],
+      "notes": "Focused rule and policy checks are mapped; SecurityOS does not execute them or claim full ingress coverage."
+    },
+    {
+      "id": "answerlattice.release-ontology-and-session-rules",
+      "product": "answerlattice",
+      "title": "Answerlattice release, ontology, and chat-session authority",
+      "risk": "critical",
+      "coverageStatus": "mapped",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "firestore-answerlattice.rules",
+        "src/lib/answerlattice"
+      ],
+      "evidenceIds": [
+        "answerlattice.chat-sessions-rules",
+        "answerlattice.release-rules",
+        "answerlattice.ontology-rules"
+      ],
+      "bundleIds": [
+        "answerlattice.authority-and-ingress"
+      ],
+      "notes": "The mapped evidence uses demo Firestore emulator projects and does not certify the complete Answerlattice runtime."
+    },
+    {
+      "id": "campaigncue.product-isolation",
+      "product": "campaigncue",
+      "title": "CampaignCue product and Firebase isolation",
+      "risk": "critical",
+      "coverageStatus": "registered",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "firestore-campaigncue.rules",
+        "storage-campaigncue.rules",
+        "firebase-campaigncue.json"
+      ],
+      "evidenceIds": [
+        "campaigncue.firestore-rules",
+        "campaigncue.storage-rules"
+      ],
+      "bundleIds": [
+        "campaigncue.registered-security"
+      ],
+      "notes": "Evidence is registered for a future product audit; Phase one does not claim CampaignCue coverage."
+    },
+    {
+      "id": "signaldesk.product-isolation",
+      "product": "signaldesk",
+      "title": "SignalDesk access and product isolation",
+      "risk": "critical",
+      "coverageStatus": "registered",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "firestore-signaldesk.rules",
+        "storage-signaldesk.rules",
+        "firebase-signaldesk.json"
+      ],
+      "evidenceIds": [
+        "signaldesk.security-rules"
+      ],
+      "bundleIds": [
+        "signaldesk.registered-security"
+      ],
+      "notes": "Evidence is registered for a future product audit; Phase one does not claim SignalDesk coverage."
+    },
+    {
+      "id": "mycodex.private-auth-boundary",
+      "product": "mycodex",
+      "title": "MyCodex private authentication boundary",
+      "risk": "high",
+      "coverageStatus": "registered",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/app/sites/mycodex",
+        "src/proxy.ts"
+      ],
+      "evidenceIds": [
+        "mycodex.auth-boundary"
+      ],
+      "bundleIds": [
+        "mycodex.registered-security"
+      ],
+      "notes": "Evidence is registered for a future product audit; MyCodex remains static and database-free."
+    },
+    {
+      "id": "neelvara.public-site-boundary",
+      "product": "neelvara",
+      "title": "Neelvara public-site security boundary",
+      "risk": "medium",
+      "coverageStatus": "unknown",
+      "verificationStatus": "not-run",
+      "sourcePaths": [
+        "src/app/sites/neelvara",
+        "src/constants/deploymentTargets.ts"
+      ],
+      "evidenceIds": [],
+      "bundleIds": [],
+      "notes": "Registered as an explicit gap. No focused Neelvara security verifier is claimed in Phase one."
+    }
+  ]
+}

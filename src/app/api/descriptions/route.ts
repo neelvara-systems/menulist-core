@@ -33,6 +33,7 @@ const AI_MODEL = getModelName('DESCRIPTION_GENERATION');
 const LOG_FILE = "descriptions.log";
 const DESCRIPTION_AI_MAX_BODY_BYTES = 256 * 1024;
 const MAX_DESCRIPTION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
+const getPendingAiTransactionId = (): string | null => null;
 
 type DescriptionProviderResponseParseStage =
     | 'empty_response'
@@ -594,7 +595,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         let transactionObject = {
-            transactionId: null,
+            transactionId: getPendingAiTransactionId(),
             contentLength,
             itemSummary,
             languageSummary,

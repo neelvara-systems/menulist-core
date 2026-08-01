@@ -56,6 +56,43 @@ If browser-local image sampling fails, the helper keeps the existing ready-to-sa
 
 Captured canvas output becomes a `File` named from the selected item and capture mode. `ImageUploadModal` passes it through the same preparation helper used by file uploads.
 
+Image preparation is guarded by an item-selection revision. If an owner changes
+items while camera or device-upload preparation is still running, the stale
+completion is discarded even when the owner later returns to the original item.
+The capture component is also remounted by item ID so a previous item's camera
+stream, preview, and readiness feedback cannot appear under the next item.
+
+Final association resolves one exact `fileId` and item ID pair. An ambiguous
+legacy item ID fails closed instead of selecting the first matching file.
+Browser-only `Blob`, prepared-canvas state, internal media fingerprints,
+capture-source labels, and review-selection flags are removed after the
+immutable Storage upload, leaving only public-safe image metadata in the project.
+The shared 20-image item ceiling is checked before Storage work.
+
+Removal uses the same exact file/item identity and an immutable project
+projection. The UI claims one delete confirmation/persistence flow
+synchronously, so rapid desktop or mobile taps cannot launch stale concurrent
+whole-project deletions. Content-addressed Storage cleanup remains deferred
+because one project document is not global deletion authority.
+
+Existing-photo AI editing also rebuilds its item DTO from the exact source file,
+including localized item/category/description/attribute fields. Direct edit
+surfaces no longer pass a raw extracted item with missing prompt context.
+
+Saving edited results is single-flight and awaited through the final project
+update. Success appears only after that promise resolves; rejection retains the
+modal and selected previews, shows fixed owner-safe copy, and emits bounded
+diagnostics. The delayed success close timer is cleared on unmount.
+
+Mobile add/edit data-URL uploads capture the originating project, file and item
+identity plus the exact prior-image snapshot. Per-target revisions reject an
+older completion after a second upload, and completion also fails closed after
+project navigation or any intervening image change. A rejected completion
+deletes the Storage object it just created. Linked-outlet image policy is
+checked for every supplied image value, including data URLs; an allowed data
+URL completes through the same exact-target projection and existing
+`overrides.items` persistence path.
+
 ## Phases
 
 ### Phase 1 - Support Library

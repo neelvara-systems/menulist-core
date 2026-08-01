@@ -33,7 +33,8 @@ type ProjectedRazorpayWebhookRecord = {
 
 export type RazorpayWebhookClaim =
     | { attemptId: string; eventKey: string; outcome: 'acquired' }
-    | { eventKey: string; outcome: 'processed' | 'processing' };
+    | { eventKey: string; outcome: 'processed' }
+    | { eventKey: string; outcome: 'processing' };
 
 export type RazorpayWebhookCompletionOutcome =
     | 'already_processed'

@@ -176,6 +176,20 @@ assert.deepEqual(normalizeAnswerlatticePublicCitations([{
     title: 'Mapped loopback address',
     url: 'http://[::ffff:127.0.0.1]/internal',
 }]), [], 'IPv4-mapped private IPv6 hosts must be rejected');
+for (const privateIpv6Url of [
+    'http://[fe80::1]/internal',
+    'http://[fe90::1]/internal',
+    'http://[fea0::1]/internal',
+    'http://[febf::1]/internal',
+    'http://[fec0::1]/internal',
+    'http://[feff::1]/internal',
+]) {
+    assert.deepEqual(normalizeAnswerlatticePublicCitations([{
+        id: 'citation-private-ipv6',
+        title: 'Private IPv6 address',
+        url: privateIpv6Url,
+    }]), [], `public citation projection must reject ${privateIpv6Url}`);
+}
 assert.deepEqual(normalizeAnswerlatticePublicCitations([{
     id: 'citation-documentation-network',
     title: 'Reserved documentation network',

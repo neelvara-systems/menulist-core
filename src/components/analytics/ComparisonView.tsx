@@ -120,7 +120,7 @@ export function ComparisonView({
         >
           <MetricCardWithComparison
             title="Total Conversations"
-            value={comparison.volume.current}
+            value={comparison.volume.current ?? 'Not available'}
             comparison={comparison.volume}
             format={(value) => value.toLocaleString()}
           />
@@ -133,13 +133,13 @@ export function ComparisonView({
           />
           <MetricCardWithComparison
             title="Avg Messages per Chat"
-            value={comparison.avgMessages.current}
+            value={comparison.avgMessages.current ?? 'Not available'}
             comparison={comparison.avgMessages}
             format={(value) => value.toFixed(1)}
           />
           <MetricCardWithComparison
             title="Total Messages"
-            value={comparison.totalMessages.current}
+            value={comparison.totalMessages.current ?? 'Not available'}
             comparison={comparison.totalMessages}
             format={(value) => value.toLocaleString()}
           />

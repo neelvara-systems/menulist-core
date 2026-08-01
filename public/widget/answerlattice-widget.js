@@ -53,7 +53,6 @@
     'use strict';
 
     if (window.__answerlatticeWidget) return;
-    window.__answerlatticeWidget = true;
 
     var script = document.currentScript || (function () {
         var scripts = document.getElementsByTagName('script');
@@ -72,6 +71,7 @@
         console.warn('[AnswerLattice] Invalid data-answerlattice-key attribute.');
         return;
     }
+    window.__answerlatticeWidget = true;
 
     // ===== CONFIG =====
     var defaultConfig = {
@@ -169,8 +169,10 @@
 
     function readNumberAttribute(name, fallback, min, max) {
         if (!script.hasAttribute(name)) return undefined;
-        var value = parseInt(script.getAttribute(name) || '', 10);
-        if (!Number.isFinite(value)) return fallback;
+        var rawValue = (script.getAttribute(name) || '').trim();
+        if (!/^-?\d+$/.test(rawValue)) return fallback;
+        var value = Number(rawValue);
+        if (!Number.isSafeInteger(value)) return fallback;
         return Math.max(min, Math.min(max, value));
     }
 
@@ -498,6 +500,19 @@
         if (email) output.email = email;
         if (!output.id && !output.name && !output.email) return null;
         return getPayloadByteLength(output) <= maxVisitorPayloadBytes ? output : null;
+    }
+
+    function copyProductContext() {
+        if (!productContext) return null;
+        var copy = Object.assign({}, productContext);
+        if (Array.isArray(productContext.entityHints)) {
+            copy.entityHints = productContext.entityHints.slice();
+        }
+        return copy;
+    }
+
+    function copyVisitorContext() {
+        return visitorContext ? Object.assign({}, visitorContext) : null;
     }
 
     function createPredictiveRuntimeId(prefix) {
@@ -854,7 +869,7 @@
         if (!guidedResolutionEnabled || !payload || typeof payload !== 'object') return;
         var sessionId = normalizeGuidanceSessionId(payload.sessionId);
         var step = payload.step && typeof payload.step === 'object' ? payload.step : null;
-        var stepOrder = step ? Number(step.stepOrder) : 0;
+        var stepOrder = step ? step.stepOrder : 0;
         if (!sessionId || !Number.isInteger(stepOrder) || stepOrder < 1 || stepOrder > 12) return;
 
         var targetId = step.target ? normalizeGuidanceSemanticId(step.target) : null;
@@ -1085,7 +1100,7 @@
             launcher.textContent = '✕';
             launcher.style.fontSize = (s.iconFont) + 'px';
         }
-        emitEvent('open', { context: productContext, historyMode: historyMode });
+        emitEvent('open', { context: copyProductContext(), historyMode: historyMode });
         scheduleIframeSync();
     }
 
@@ -1329,15 +1344,15 @@
             cancelPredictiveRequest();
             clearPendingSuggestion(true);
             productContext = sanitizedContext;
-            emitEvent('context', { context: sanitizedContext });
+            emitEvent('context', { context: copyProductContext() });
             sendContextToIframe();
             syncRouteAvailability();
             if (sanitizedContext && !runtimeDenied && !forceHidden && !isCurrentRouteBlocked()) requestPredictiveHelp(sanitizedContext);
         },
-        page: function (ctx) { this.setContext(ctx); },
+        page: function (ctx) { window.AnswerlatticeWidget.setContext(ctx); },
         identify: function (visitor) {
             visitorContext = sanitizeVisitorPayload(visitor);
-            emitEvent('identify', { visitor: visitorContext });
+            emitEvent('identify', { visitor: copyVisitorContext() });
             sendVisitorToIframe();
         },
         identifySigned: function (token) {
@@ -1386,8 +1401,8 @@
             if (!eventListeners[eventName]) return;
             eventListeners[eventName] = eventListeners[eventName].filter(function (current) { return current !== callback; });
         },
-        getContext: function () { return productContext; },
-        getVisitor: function () { return visitorContext; },
+        getContext: function () { return copyProductContext(); },
+        getVisitor: function () { return copyVisitorContext(); },
         hasVerifiedIdentity: function () { return Boolean(verifiedContextToken); },
         getGuidanceState: function () {
             if (!activeGuidance) return null;

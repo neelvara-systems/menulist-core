@@ -26,7 +26,7 @@ const Articles = ({ activeArticleId, parent, articles, searchTerm, onResetSearch
         const fetchAllArticles = async () => {
             setLoading(true);
             const promises = articles.map(article =>
-                getArticle(article.id).catch(() => null)
+                getArticle(article.id).catch((): null => null)
             );
             const results = await Promise.all(promises);
             setFullArticles(results);

@@ -404,7 +404,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                             <Text>{getAiOperationOwnerSummary(tx, t)}</Text>
                             <List>
                                 <List.Item title={t('createdOn')} extra={<Text>{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>} />
-                                <List.Item title={t('processingTime')} extra={<Text>{formatProcessingTime(tx.processingTime)}</Text>} />
+                                <List.Item title={t('processingTime')} extra={<Text>{tx.processingTime === undefined ? t('notRecorded') : formatProcessingTime(tx.processingTime)}</Text>} />
                             </List>
                         </Flex>
                     </Card>
@@ -521,7 +521,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                                 <Text type="secondary">{getAiOperationOwnerSummary(tx, t)}</Text>
                                                 <Flex gap={8} wrap="wrap">
                                                     <Text type="secondary">{getFormatedDateAndTime(formatter, tx.createdOn)}</Text>
-                                                    <Text type="secondary">{formatProcessingTime(tx.processingTime)}</Text>
+                                                    <Text type="secondary">{tx.processingTime === undefined ? t('notRecorded') : formatProcessingTime(tx.processingTime)}</Text>
                                                 </Flex>
                                             </Flex>
                                         )}

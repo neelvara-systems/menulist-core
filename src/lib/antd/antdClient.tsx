@@ -4,9 +4,14 @@ import { isRtlLocale } from '@lib/localization/config';
 import { getDarkColorState, getDarkModeState, getLightColorState, getRTLDirectionState } from '@reduxSlices/clientThemeConfig';
 import { App, ConfigProvider, theme, type ThemeConfig } from "antd";
 import { useLocale } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type PropsWithChildren } from "react";
 import { poppinsFont } from "src/fonts/poppins";
 import antdComponentTheme from "./componentTheme";
+import {
+    projectPersistedThemeBoolean,
+    projectPersistedThemeColor,
+    resolveAntdLocaleKey,
+} from './themeBoundary';
 
 // Import all locales statically
 import ar_EG from 'antd/es/locale/ar_EG';
@@ -88,11 +93,15 @@ const localeMap = {
     'ur-IN': ur_PK,
 };
 
-const AntdClient = ({ children, removeComponent }: any) => {
-    const isDarkMode = useAppSelector(getDarkModeState)
-    const lightThemeColor = useAppSelector(getLightColorState)
-    const darkThemeColor = useAppSelector(getDarkColorState)
-    const isRTLDirection = useAppSelector(getRTLDirectionState)
+type AntdClientProps = PropsWithChildren<{
+    removeComponent?: boolean;
+}>;
+
+const AntdClient = ({ children, removeComponent = false }: AntdClientProps) => {
+    const isDarkMode = projectPersistedThemeBoolean(useAppSelector(getDarkModeState));
+    const lightThemeColor = projectPersistedThemeColor(useAppSelector(getLightColorState), 'light');
+    const darkThemeColor = projectPersistedThemeColor(useAppSelector(getDarkColorState), 'dark');
+    const isRTLDirection = projectPersistedThemeBoolean(useAppSelector(getRTLDirectionState));
     const { token } = theme.useToken();
     const appLocale = useLocale();
     const [antdLocale, setAntdLocale] = useState(en_US)
@@ -109,17 +118,10 @@ const AntdClient = ({ children, removeComponent }: any) => {
         components: removeComponent ? {} : antdComponentTheme(token),
     }), [darkThemeColor, isDarkMode, lightThemeColor, removeComponent, token]);
 
-    const getAntdLocale = (locale: string) => {
-        // Convert locale format if needed (e.g., 'en_US' to 'en-US')
-        const normalizedLocale = locale.replace('_', '-');
-        const selectedLocale = localeMap[normalizedLocale] || en_US;
-        setAntdLocale(selectedLocale);
-    }
-
     useEffect(() => {
-        if (appLocale) {
-            getAntdLocale(appLocale);
-        }
+        const normalizedLocale = resolveAntdLocaleKey(appLocale);
+        const selectedLocale = localeMap[normalizedLocale as keyof typeof localeMap] || en_US;
+        setAntdLocale(selectedLocale);
     }, [appLocale]);
 
     useEffect(() => {

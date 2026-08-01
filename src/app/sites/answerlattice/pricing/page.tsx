@@ -227,8 +227,16 @@ export default async function AnswerlatticePricingPage() {
                             <p className="mt-2 text-sm leading-relaxed text-[#808099]">{supportCreditPack.description}</p>
                             <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-white/[0.06] pt-5">
                                 <div>
-                                    <div className="text-3xl font-bold text-white">{formatPrice(supportCreditPack.priceINR.price)}</div>
-                                    <div className="mt-1 text-sm font-semibold text-[#b7b7d2]">or {formatUsdPrice(supportCreditPack.priceUSD.price)}</div>
+                                    <div className="text-3xl font-bold text-white">
+                                        {supportCreditPack.priceINR.price === null
+                                            ? 'Price unavailable'
+                                            : formatPrice(supportCreditPack.priceINR.price)}
+                                    </div>
+                                    <div className="mt-1 text-sm font-semibold text-[#b7b7d2]">
+                                        {supportCreditPack.priceUSD.price === null
+                                            ? 'USD price unavailable'
+                                            : `or ${formatUsdPrice(supportCreditPack.priceUSD.price)}`}
+                                    </div>
                                     <div className="text-sm text-[#6b6b8a]">{supportCreditPack.creditAmount} credits, one-time purchase</div>
                                 </div>
                                 <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-[#a0a0c0]">

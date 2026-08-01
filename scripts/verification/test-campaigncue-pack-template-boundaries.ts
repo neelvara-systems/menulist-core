@@ -248,6 +248,16 @@ assert.equal(campaignCueWorkspacePackTemplateSaveSchema.safeParse({
     },
     workspaceId,
 }).success, true, "all CampaignCue owner goals accepted by template producers must be persistable");
+assert.equal(campaignCueWorkspacePackTemplateSaveSchema.safeParse({
+    businessCategory: "food",
+    payload,
+    summary: {
+        ...workspaceSummary,
+        requiredFactTypes: ["menu_item"],
+        templateId: "other-template",
+    },
+    workspaceId,
+}).success, false, "workspace template saves must reject summary and payload identity drift before persistence");
 assert.throws(() => assertCampaignCuePackTemplatePayloadIdentity(summary, { ...payload, templateId: "other" }), /does not match/);
 assert.throws(() => assertCampaignCuePackTemplatePayloadIdentity({
     ...summary,

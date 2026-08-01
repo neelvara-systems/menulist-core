@@ -1,58 +1,104 @@
 import TagElement from '@antdComponent/tagElement';
 import FormElementWrapper from '@atoms/formElementWrapper';
-import { getStoreById } from '@database/stores';
-import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
-import { StoreDataType } from '@type/platform/store';
-import { UserDataType } from '@type/platform/user';
-import { removeObjRef } from '@util/utils';
+import { DEFAULT_ROLE_IDS } from '@data/shared/defaultRoles';
+import { readStoreById } from '@database/stores';
+import {
+    applyStaffStoreRole,
+    applyStaffStoreSelection,
+    mergeLoadedStaffStoreForCurrentTenant,
+    removeStaffStoreSelection,
+} from '@lib/staffManagement/formMappingBoundary';
+import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
+import type { StaffFormUser, StaffStoreOption } from '@lib/staffManagement/types';
+import { PlatformGlobalDataContext, type PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Button, Card, Empty, Flex, Select, Tag, Typography, theme } from 'antd';
 import { Fragment, useContext } from 'react';
 import { LuTrash } from 'react-icons/lu';
 import { hasOperationalOwnerAccess, OWNER_ACCESS_NOT_TRANSFER_COPY } from '@lib/staffManagement/ownershipTransferBoundary';
 const { Text } = Typography;
 
-function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, onChangeValue }) {
+type StaffStoreChoice = {
+    name: string;
+    roles: StaffStoreOption['roles'];
+    storeId: number;
+    storeDetailsLoaded: boolean;
+};
 
-    const { tenantDetails, setTenantDetails } = useContext(PlatformGlobalDataContext)
+type StoresMappingProps = {
+    canAssignRoles?: boolean;
+    onChangeValue: (from: string, value: unknown) => void;
+    staffStores?: StaffStoreOption[];
+    userDetails: StaffFormUser;
+};
+
+function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, onChangeValue }: StoresMappingProps) {
+    const { tenantDetails, setTenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const { token } = theme.useToken();
-    const storesList = staffStores.length
-        ? staffStores.map((store) => ({ ...store, storeDetails: store }))
-        : (tenantDetails?.storesList || []);
+    const storesList: StaffStoreChoice[] = staffStores.length
+        ? staffStores.map((store) => ({
+            name: store.name,
+            roles: store.roles,
+            storeDetailsLoaded: true,
+            storeId: store.storeId,
+        }))
+        : (tenantDetails?.storesList || []).map((store) => ({
+            name: store.name,
+            roles: store.storeDetails?.roles || [],
+            storeDetailsLoaded: Boolean(store.storeDetails),
+            storeId: store.storeId,
+        }));
 
-    const onChangeStoreValue = (index, from, value) => {
-        const userCopy: UserDataType = removeObjRef(userDetails);
-        userCopy.stores[index][from] = value;
-        if (from == "storeId") {
-            const storeIndex = storesList.findIndex((s) => s.storeId == value);
-            const storeDetails = storesList[storeIndex];
-            userCopy.stores[index].name = storeDetails?.name;
-            userCopy.storeIds = Boolean(userCopy.stores?.length) ? userCopy.stores.map((s) => s.storeId) : [];
-
-            if (!userCopy.storeId) {
-                userCopy.storeId = value
-            }
-            if (!staffStores.length && !Boolean(storeDetails.storeDetails)) {//if storedetails is not fetched then fetch it on run time when user selected the store
-                getStoreById(storeDetails.storeId).then((store: StoreDataType) => {
-                    tenantDetails.storesList[storeIndex].storeDetails = store;
-                    setTenantDetails(removeObjRef(tenantDetails))
-                })
-            }
+    const onChangeStoreValue = (index: number, from: 'role' | 'storeId', value: string | number) => {
+        if (from === 'role') {
+            const nextUser = applyStaffStoreRole(userDetails, index, String(value || ''));
+            if (nextUser) onChangeValue('user', nextUser);
+            return;
         }
-        onChangeValue('user', userCopy)
+
+        const selectedStore = storesList.find((store) => store.storeId === Number(value));
+        if (!selectedStore) return;
+        const nextUser = applyStaffStoreSelection(userDetails, index, selectedStore);
+        if (!nextUser) return;
+        onChangeValue('user', nextUser);
+
+        const expectedTenantId = tenantDetails?.tenantId;
+        if (staffStores.length || selectedStore.storeDetailsLoaded || !expectedTenantId) return;
+        void readStoreById(selectedStore.storeId)
+            .then((loadedStore) => {
+                if (!loadedStore) return;
+                setTenantDetails((currentTenant) => mergeLoadedStaffStoreForCurrentTenant(
+                    currentTenant,
+                    expectedTenantId,
+                    selectedStore.storeId,
+                    loadedStore,
+                ));
+            })
+            .catch((error: unknown) => {
+                logStaffClientFailure('desktop_staff_store_roles_load_failed', error, {
+                    ...getBoundedStaffStringContext('tenantId', expectedTenantId),
+                    ...getBoundedStaffStringContext('storeId', selectedStore.storeId),
+                });
+            });
     }
 
-    const onClickDeleteStore = (index) => {
-        const userCopy: UserDataType = removeObjRef(userDetails);
-        userCopy.stores.splice(index, 1);
-        userCopy.storeIds = Boolean(userCopy.stores?.length) ? userCopy.stores.map((s) => s.storeId) : [];
-        onChangeValue('user', userCopy)
+    const onClickDeleteStore = (index: number) => {
+        const nextUser = removeStaffStoreSelection(userDetails, index);
+        if (nextUser) onChangeValue('user', nextUser);
     }
 
     const onClickAddStore = () => {
-        const userCopy: UserDataType = removeObjRef(userDetails);
-        if (!userCopy.stores) userCopy.stores = [];
-        userCopy.stores.push({ storeId: null, name: "", role: "" });  // Single role per store
-        onChangeValue('user', userCopy)
+        const firstUnassignedStore = storesList.find((store) => (
+            !userDetails.stores.some((mapping) => mapping.storeId === store.storeId)
+        ));
+        if (!firstUnassignedStore) return;
+        onChangeValue('user', {
+            ...userDetails,
+            storeIds: [...userDetails.storeIds, firstUnassignedStore.storeId],
+            stores: [
+                ...userDetails.stores,
+                { storeId: firstUnassignedStore.storeId, name: firstUnassignedStore.name, role: '' },
+            ],
+        } satisfies StaffFormUser);
     }
 
 
@@ -98,12 +144,14 @@ function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, o
                                         defaultValue={mappedStore?.role || ''}
                                         value={mappedStore?.role || ''}
                                         onChange={(value) => onChangeStoreValue(index, 'role', value)}
-                                        options={(storesList.find(s => s.storeId == mappedStore?.storeId))?.storeDetails?.roles?.filter((role) => role.active !== false)?.map((role) => ({ label: role.name, value: role.id }))}
+                                        options={storesList.find((store) => store.storeId === mappedStore.storeId)
+                                            ?.roles.filter((role) => role.active !== false)
+                                            .map((role) => ({ label: role.name, value: role.id }))}
                                     />
                                 </FormElementWrapper>
 
                                 <Flex justify='flex-end'>
-                                    <Button danger disabled={!canAssignRoles} type='text' icon={<LuTrash />} onClick={() => onClickDeleteStore(index)}>Remove store access</Button>
+                                    <Button danger disabled={!canAssignRoles || mappedStore.role === DEFAULT_ROLE_IDS.OWNER} type='text' icon={<LuTrash />} onClick={() => onClickDeleteStore(index)}>Remove store access</Button>
                                 </Flex>
                             </Flex>
                         </Card>

@@ -1,15 +1,34 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { buildQrCodeFilename, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import { isPrintableAssetEditorRenderable, renderPrintableAssetEditorTemplate, renderPrintableAssetEditorTemplateFiles } from './editorDocumentAdapter';
-import { getPrintableAssetType } from './assetTypes';
+import { getPrintableAssetType, isPrintableAssetTypeId } from './assetTypes';
 import { mapPrintableTemplateToMenuCardStyle } from './templateFamilies';
 import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAssetRenderResult, PrintableAssetTypeId } from './types';
+import { admitPrintableAssetRenderInput } from './inputBoundary';
 
 const PDFJS_CDN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const PDFJS_CDN_TIMEOUT_MS = 5000;
 
 let pdfjsLoadPromise: Promise<any> | null = null;
+
+function resolvePrintableAssetRequest(input: PrintableAssetRenderInput): {
+    assetType: ReturnType<typeof getPrintableAssetType>;
+    requestedFormat: PrintableAssetOutputFormat;
+} {
+    if (!isPrintableAssetTypeId(input?.assetTypeId)) {
+        throw new Error('Unsupported printable asset');
+    }
+
+    const assetType = getPrintableAssetType(input.assetTypeId);
+    const requestedFormat = input.outputFormat || assetType.outputFormat;
+    const supportedFormats = assetType.supportedOutputFormats || [assetType.outputFormat];
+    if (!supportedFormats.includes(requestedFormat)) {
+        throw new Error(`Unsupported output format for printable asset: ${input.assetTypeId}`);
+    }
+
+    return { assetType, requestedFormat };
+}
 
 function dataUrlToBlob(dataUrl: string): Blob {
     const [header, payload] = dataUrl.split(',');
@@ -237,28 +256,29 @@ async function convertResultFormat(
 }
 
 export async function renderPrintableAsset(input: PrintableAssetRenderInput): Promise<PrintableAssetRenderResult> {
-    const assetType = getPrintableAssetType(input.assetTypeId);
-    const requestedFormat = input.outputFormat || assetType.outputFormat;
+    resolvePrintableAssetRequest(input);
+    const admittedInput = admitPrintableAssetRenderInput(input);
+    const { assetType, requestedFormat } = resolvePrintableAssetRequest(admittedInput);
 
     if (
         FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER
         && requestedFormat !== 'zip'
-        && isPrintableAssetEditorRenderable(input.assetTypeId)
+        && isPrintableAssetEditorRenderable(admittedInput.assetTypeId)
     ) {
         return renderPrintableAssetEditorTemplate({
-            ...input,
+            ...admittedInput,
             outputFormat: requestedFormat,
         });
     }
 
-    if (input.assetTypeId === 'print_menu') {
-        if (!input.printMenuOptions) {
+    if (admittedInput.assetTypeId === 'print_menu') {
+        if (!admittedInput.printMenuOptions) {
             throw new Error('Print menu options are required');
         }
         const { generateMenuPdf } = await import('@lib/export/menuPdfGenerator');
         const result = await generateMenuPdf({
-            ...input.printMenuOptions,
-            styleId: mapPrintableTemplateToMenuCardStyle(input.templateFamilyId),
+            ...admittedInput.printMenuOptions,
+            styleId: mapPrintableTemplateToMenuCardStyle(admittedInput.templateFamilyId),
         });
         return convertResultFormat({
             blob: result.blob,
@@ -266,48 +286,48 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
             label: assetType.title,
             mimeType: 'application/pdf',
             outputFormat: 'pdf',
-        }, input, requestedFormat);
+        }, admittedInput, requestedFormat);
     }
 
-    if (input.assetTypeId === 'feedback_qr') {
-        if (!input.projectId) {
+    if (admittedInput.assetTypeId === 'feedback_qr') {
+        if (!admittedInput.projectId) {
             throw new Error('Project ID is required for Feedback QR');
         }
-        const dataUrl = await generateBrandedQrCodeDataUrl(input.feedbackUrl || input.menuUrl, {
-            activePlanType: input.activePlanType,
-            brandColor: input.brandColor,
-            footer: (input.feedbackUrl || input.menuUrl).replace(/^https?:\/\//, ''),
-            logoUrl: input.logoUrl || undefined,
-            storeName: input.storeName,
+        const dataUrl = await generateBrandedQrCodeDataUrl(admittedInput.feedbackUrl || admittedInput.menuUrl, {
+            activePlanType: admittedInput.activePlanType,
+            brandColor: admittedInput.brandColor,
+            footer: (admittedInput.feedbackUrl || admittedInput.menuUrl).replace(/^https?:\/\//, ''),
+            logoUrl: admittedInput.logoUrl || undefined,
+            storeName: admittedInput.storeName,
             subtitle: 'Scan to leave feedback',
-            templateFamilyId: input.templateFamilyId,
+            templateFamilyId: admittedInput.templateFamilyId,
             title: 'Feedback QR',
         });
         return convertResultFormat({
             blob: dataUrlToBlob(dataUrl),
-            filename: `${safeName(input.storeName)}_${buildQrCodeFilename('feedback', 'qr')}.png`,
+            filename: `${safeName(admittedInput.storeName)}_${buildQrCodeFilename('feedback', 'qr')}.png`,
             label: assetType.title,
             mimeType: 'image/png',
             outputFormat: 'png',
-        }, input, requestedFormat);
+        }, admittedInput, requestedFormat);
     }
 
     const { generateMenuKit, generateMenuKitAsset } = await import('@lib/menu-kit/menuKitGenerator');
     const menuKitInput = {
-        activePlanType: input.activePlanType,
-        brandColor: input.brandColor,
-        businessCategory: input.businessCategory,
-        businessType: input.businessType,
-        lastPublishedAt: input.lastPublishedAt,
-        locale: input.locale,
-        logoUrl: input.logoUrl || undefined,
-        menuUrl: input.menuUrl,
-        shortLink: input.shortLink,
-        storeName: input.storeName,
-        templateFamilyId: input.templateFamilyId,
+        activePlanType: admittedInput.activePlanType,
+        brandColor: admittedInput.brandColor ?? undefined,
+        businessCategory: admittedInput.businessCategory,
+        businessType: admittedInput.businessType,
+        lastPublishedAt: admittedInput.lastPublishedAt,
+        locale: admittedInput.locale,
+        logoUrl: admittedInput.logoUrl || undefined,
+        menuUrl: admittedInput.menuUrl,
+        shortLink: admittedInput.shortLink,
+        storeName: admittedInput.storeName,
+        templateFamilyId: admittedInput.templateFamilyId,
     };
 
-    if (input.assetTypeId === 'complete_menu_kit') {
+    if (admittedInput.assetTypeId === 'complete_menu_kit') {
         const result = await generateMenuKit(menuKitInput);
         return {
             blob: result.zipBlob,
@@ -319,7 +339,7 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
     }
 
     if (!assetType.menuKitAssetKey) {
-        throw new Error(`Unsupported printable asset: ${input.assetTypeId}`);
+        throw new Error(`Unsupported printable asset: ${admittedInput.assetTypeId}`);
     }
 
     const result = await generateMenuKitAsset(menuKitInput, assetType.menuKitAssetKey, { outputFormat: requestedFormat === 'png' ? 'png' : 'pdf' });
@@ -331,19 +351,20 @@ export async function renderPrintableAsset(input: PrintableAssetRenderInput): Pr
 }
 
 export async function renderPrintableAssetDownloadFiles(input: PrintableAssetRenderInput): Promise<PrintableAssetRenderResult[]> {
-    const assetType = getPrintableAssetType(input.assetTypeId);
-    const requestedFormat = input.outputFormat || assetType.outputFormat;
+    resolvePrintableAssetRequest(input);
+    const admittedInput = admitPrintableAssetRenderInput(input);
+    const { requestedFormat } = resolvePrintableAssetRequest(admittedInput);
 
     if (
         FEATURE_FLAGS.ENABLE_PRINTABLE_ASSET_EDITOR_RENDERER
         && requestedFormat !== 'zip'
-        && isPrintableAssetEditorRenderable(input.assetTypeId)
+        && isPrintableAssetEditorRenderable(admittedInput.assetTypeId)
     ) {
         return renderPrintableAssetEditorTemplateFiles({
-            ...input,
+            ...admittedInput,
             outputFormat: requestedFormat,
         });
     }
 
-    return [await renderPrintableAsset(input)];
+    return [await renderPrintableAsset(admittedInput)];
 }

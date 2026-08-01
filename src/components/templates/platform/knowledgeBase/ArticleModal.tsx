@@ -149,7 +149,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
     const [linkedFaqIds, setLinkedFaqIds] = useState<string[]>([]);
     const [refreshingFaqs, setRefreshingFaqs] = useState(false);
     const selectedCategoryData = currentCategoryId ? categoriesData?.categories[currentCategoryId] : null;
-    const hasSections = selectedCategoryData && selectedCategoryData.sections && selectedCategoryData.sections.length > 0;
+    const hasSections = Boolean(selectedCategoryData?.sections?.length);
     const { token } = theme.useToken();
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
@@ -609,7 +609,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
                                     {hasSections && (
                                         <Form.Item name="sectionId" label="Section" rules={[{ required: hasSections }]}>
                                             <Select placeholder="Select a section" disabled={!currentCategoryId}>
-                                                {hasSections && selectedCategoryData.sections.map(sec => (
+                                                {(selectedCategoryData?.sections ?? []).map(sec => (
                                                     <Select.Option key={sec.id} value={sec.id}>{sec.title}</Select.Option>
                                                 ))}
                                             </Select>

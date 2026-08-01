@@ -69,7 +69,9 @@ const RESELLER_ONBOARD_AUTH_CLAIMS_COMPENSATION_FAILED = "reseller_onboard_auth_
 const RESELLER_ONBOARD_PROVIDER_COMPENSATION_FAILED = "reseller_onboard_provider_compensation_failed";
 const RESELLER_ONBOARD_PROVIDER_COMPENSATION_CACHE_REVALIDATION_FAILED = "reseller_onboard_provider_compensation_cache_revalidation_failed";
 
-const removeUndefinedFields = (data: Record<string, unknown>) => sanitizeForFirestore(data, {
+const removeUndefinedFields = (
+    data: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData>,
+) => sanitizeForFirestore(data, {
     undefinedObjectValue: "omit",
 });
 
@@ -127,7 +129,7 @@ async function prepareOwnerAuthUser(params: {
         : '';
     const existingAuthId = storedFirebaseUid || params.existingOwnerDocId;
     let authUser = existingAuthId
-        ? await authAdmin.getUser(existingAuthId).catch((error: unknown) => {
+        ? await authAdmin.getUser(existingAuthId).catch((error: unknown): null => {
             if (getFirebaseAuthErrorCode(error) === 'auth/user-not-found') return null;
             throw error;
         })
@@ -796,8 +798,8 @@ export const POST = withAuth(async (request, session) => {
                 });
             } catch (persistenceError) {
                 const [persistedSubscription, persistedOperation] = await Promise.all([
-                    getSubscriptionById(subscriptionId).catch(() => null),
-                    operationRef.get().catch(() => null),
+                    getSubscriptionById(subscriptionId).catch((): null => null),
+                    operationRef.get().catch((): null => null),
                 ]);
                 const operationPersisted = Boolean(
                     persistedOperation?.exists
@@ -907,8 +909,8 @@ export const POST = withAuth(async (request, session) => {
             } catch (persistenceError) {
                 const exceededOfflineCap = getResellerOfflineCapFromError(persistenceError);
                 const [persistedSubscription, persistedOperation] = await Promise.all([
-                    getSubscriptionById(subscriptionId).catch(() => null),
-                    operationRef.get().catch(() => null),
+                    getSubscriptionById(subscriptionId).catch((): null => null),
+                    operationRef.get().catch((): null => null),
                 ]);
                 const operationPersisted = Boolean(
                     persistedOperation?.exists

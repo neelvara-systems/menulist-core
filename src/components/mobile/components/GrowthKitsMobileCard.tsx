@@ -241,14 +241,15 @@ export default function GrowthKitsMobileCard({
             return;
         }
         try {
-            if (navigator.share) {
+            const usedNativeShare = typeof navigator.share === 'function';
+            if (usedNativeShare) {
                 await navigator.share({ text: output.text });
             } else {
                 const copied = await copyText(output.text);
                 if (!copied) throw new Error('mobile_growthos_share_fallback_copy_failed');
             }
             await record(output, 'share');
-            Toast.show({ content: navigator.share ? 'Shared' : 'Copied', duration: 1200 });
+            Toast.show({ content: usedNativeShare ? 'Shared' : 'Copied', duration: 1200 });
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return;
             logMobileGrowthOSFailure('mobile_growthos_share_failed', error, 'share', output, {

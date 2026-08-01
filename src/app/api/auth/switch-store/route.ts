@@ -11,6 +11,7 @@ import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { getAuthSessionLogContext, getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
 import { logger } from "@lib/monitoring/logger";
+import { isMultiOutletTenantStoreListEntryInScope } from "@lib/multiOutlet/projectIdBoundary";
 import { canUserAccessStore } from "@lib/multiOutlet/storeSwitchAccess";
 import { normalizeStorePermissionScopeDocumentId, requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
@@ -46,15 +47,8 @@ function privateJson(body: unknown, init: ResponseInit = {}) {
     return NextResponse.json(body, { ...init, headers });
 }
 
-type TenantStoreSummary = {
-    storeId?: unknown;
-    active?: unknown;
-    isMaster?: unknown;
-    name?: unknown;
-};
-
-const isTenantStoreSummary = (value: unknown): value is TenantStoreSummary => (
-    Boolean(value) && typeof value === "object" && !Array.isArray(value)
+const isOptionalBoolean = (value: unknown): boolean => (
+    value === undefined || typeof value === "boolean"
 );
 
 const getSwitchStoreLogContext = (session: any, targetStoreId?: unknown) => ({
@@ -116,7 +110,7 @@ export const POST = withAuth(async (request, session) => {
         const db = admin.firestore();
         const callerStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId).get();
         const callerStore = callerStoreSnap.data();
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             callerStore,
@@ -134,10 +128,12 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const storesList = Array.isArray(tenantData?.storesList) ? tenantData.storesList : [];
-        const targetStore = storesList.find((store: unknown) => {
-            if (!isTenantStoreSummary(store)) return false;
-            return normalizeStorePermissionScopeDocumentId(store.storeId)?.numericId === targetStoreScope.numericId;
-        });
+        const targetStore = storesList.find((store: unknown) => (
+            isMultiOutletTenantStoreListEntryInScope(store, {
+                allowInactive: true,
+                storeId: targetStoreScope.numericId,
+            })
+        ));
         if (!targetStore) {
             return privateJson({ error: "Store not in tenant" }, { status: 404 });
         }
@@ -150,6 +146,9 @@ export const POST = withAuth(async (request, session) => {
         if (
             !targetStoreData
             || targetStoreData.tenantId !== tenantScope.numericId
+            || !isOptionalBoolean(targetStoreData.active)
+            || !isOptionalBoolean(targetStoreData.deleted)
+            || !isOptionalBoolean(targetStoreData.isMaster)
             || targetStoreData.active === false
             || targetStoreData.deleted === true
             || isPlatformEntityBlocked(targetStoreData)

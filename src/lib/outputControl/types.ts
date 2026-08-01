@@ -33,6 +33,8 @@ export type ConfidenceState = "TRUSTED" | "RISKY" | "BROKEN";
 export interface HoursConfidenceInput {
     /** Store's working hours (day → time range) */
     workingHours?: Record<string, string>;
+    /** Store-local date overrides which supersede weekly hours on exact dates. */
+    specialHours?: import('@type/platform/store').StoreSpecialHours;
     /** When workingHours was last updated (Firestore Timestamp or Date-like) */
     hoursLastUpdatedAt?: unknown;
     /** Store timezone (IANA) */

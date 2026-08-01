@@ -28,6 +28,7 @@ const UpgradeConfirmationModal = ({ isOpen, onClose, onConfirm, newPlan, activeS
     const isUpgrade = Boolean(activeSubscription);
     const price = newPlan?.[`price${currency}`].price;
     const billingIntervalText = newPlan?.billingInterval === 'MONTH' ? 'month' : 'year';
+    if (price === null) return null;
 
     return (
         <Modal
@@ -49,7 +50,7 @@ const UpgradeConfirmationModal = ({ isOpen, onClose, onConfirm, newPlan, activeS
 
             <Divider style={{ margin: '16px 0' }} />
 
-            {isUpgrade && <RemainingCreditNote activeSubscription={activeSubscription} />}
+            {activeSubscription ? <RemainingCreditNote activeSubscription={activeSubscription} /> : null}
 
             <Flex justify="end" gap={8} style={{ marginTop: 24 }}>
                 <Button icon={<LuX />} onClick={onClose}>Cancel</Button>

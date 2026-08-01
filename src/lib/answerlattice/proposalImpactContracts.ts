@@ -72,7 +72,49 @@ export const AnswerlatticeProposalImpactResponseSchema = z.object({
     unchangedCount: z.number().int().nonnegative(),
     comparisons: z.array(AnswerlatticeProposalImpactComparisonSchema).max(ANSWERLATTICE_PROPOSAL_IMPACT_MAX_CASES),
     warnings: z.array(z.string().trim().min(1).max(240)).max(6),
-}).strict();
+}).strict().superRefine((response, context) => {
+    const classificationCounts = {
+        regression: response.comparisons.filter(item => item.classification === 'regression').length,
+        improvement: response.comparisons.filter(item => item.classification === 'improvement').length,
+        changed: response.comparisons.filter(item => item.classification === 'changed').length,
+        unchanged: response.comparisons.filter(item => item.classification === 'unchanged').length,
+    };
+    const derivedProofStatus = (
+        side: 'current' | 'proposed',
+    ): AnswerlatticeAnswerTestProofStatus | null => {
+        if (response.comparisons.length === 0) return null;
+        const results = response.comparisons.map(item => item[side]);
+        const criticalFailure = results.some(result => result.riskLevel === 'critical' && !result.passed);
+        if (criticalFailure) return 'blocked';
+        return results.some(result => !result.passed) ? 'review' : 'ready';
+    };
+    const derivedFields = [
+        ['evaluatedTestCount', response.evaluatedTestCount, response.comparisons.length],
+        ['regressionCount', response.regressionCount, classificationCounts.regression],
+        ['improvementCount', response.improvementCount, classificationCounts.improvement],
+        ['changedCount', response.changedCount, classificationCounts.changed],
+        ['unchangedCount', response.unchangedCount, classificationCounts.unchanged],
+        ['testsTruncated', response.testsTruncated, response.linkedTestCount > response.evaluatedTestCount],
+        ['currentProofStatus', response.currentProofStatus, derivedProofStatus('current')],
+        ['proposedProofStatus', response.proposedProofStatus, derivedProofStatus('proposed')],
+    ] as const;
+    derivedFields.forEach(([field, actual, expected]) => {
+        if (actual !== expected) {
+            context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `Proposal impact ${field} is inconsistent.`,
+                path: [field],
+            });
+        }
+    });
+    if (response.linkedTestCount < response.evaluatedTestCount) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Proposal impact cannot evaluate more tests than are linked.',
+            path: ['linkedTestCount'],
+        });
+    }
+});
 
 export type AnswerlatticeProposalImpactRequest = {
     requestId: string;

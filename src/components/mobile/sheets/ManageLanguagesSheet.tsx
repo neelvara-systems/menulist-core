@@ -68,32 +68,32 @@ const getLanguageName = (code: string): string => (
 );
 
 const syncProjectPrimaryLanguage = (project: Project, requestedPrimaryCode: string): Project => {
-    const languageCodes = getUniqueLanguageCodes((project as any).languages);
+    const languageCodes = getUniqueLanguageCodes(project.languages);
     const primaryLanguageCode = languageCodes.includes(requestedPrimaryCode)
         ? requestedPrimaryCode
         : languageCodes[0] || 'en';
 
-    (project as any).languages = languageCodes;
-    (project as any).defaultLanguage = primaryLanguageCode;
+    project.languages = languageCodes;
+    project.defaultLanguage = primaryLanguageCode;
 
-    project.files?.forEach((file: any) => {
+    project.files?.forEach((file) => {
         const data = file?.extractedData?.data;
         if (!data) return;
 
         const existingLanguages = Array.isArray(data.languages) ? data.languages : [];
-        const existingByCode = new Map<string, any>(
+        const existingByCode = new Map(
             existingLanguages
-                .map((language: any) => [normalizeLanguageCode(language?.code), language] as [string, any])
+                .map((language) => [normalizeLanguageCode(language.code), language] as const)
                 .filter(([code]) => Boolean(code))
         );
 
         data.languages = languageCodes.map((code) => {
-            const existingLanguage: any = existingByCode.get(code) || {};
+            const existingLanguage = existingByCode.get(code);
             return {
                 ...existingLanguage,
                 code,
                 isPrimary: code === primaryLanguageCode,
-                name: existingLanguage.name || getLanguageName(code),
+                name: existingLanguage?.name || getLanguageName(code),
             };
         });
     });
@@ -260,6 +260,12 @@ export default function ManageLanguagesSheet({
         setIsSaving(true);
         setSavingDetail(`Adding ${targetLang.nativeName || targetLang.name}`);
         let updated = removeObjRef(projectData);
+        const projectId = updated.projectId?.trim();
+        if (!projectId) {
+            Toast.show({ content: 'This menu is missing its project ID.', duration: 1800 });
+            setIsSaving(false);
+            return;
+        }
         let completedTranslationRequest = false;
         try {
             updated.languages = [...projectLanguages, targetLang.code];
@@ -312,7 +318,7 @@ export default function ManageLanguagesSheet({
 
             const translatedProjectContent = await translateProjectPublicContent({
                 projectDetails: updated,
-                projectId: updated.projectId,
+                projectId,
                 storeDetails,
                 targetLanguageCodes: [targetLang.code],
             });
@@ -335,9 +341,9 @@ export default function ManageLanguagesSheet({
                         specialNote: translatedProjectContent.specialNote,
                     };
                 }
-                if (translatedProjectContent.specialMenuDisplayName) {
+                if (translatedProjectContent.specialMenuDisplayName && updated._specialMenu) {
                     updated._specialMenu = {
-                        ...(updated._specialMenu || {}),
+                        ...updated._specialMenu,
                         displayName: translatedProjectContent.specialMenuDisplayName,
                     };
                     (updated as any).specialMenuDisplayName = translatedProjectContent.specialMenuDisplayName;
@@ -348,10 +354,10 @@ export default function ManageLanguagesSheet({
             const persistedProject = await persistProject(removeObjRef(updated));
 
             if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
-                const metadataTranslationResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
+                const metadataTranslationResult = await updateProjectMetadata(projectId, projectMetadataTranslationUpdate);
                 assertProjectUpdateSucceeded(
                     metadataTranslationResult,
-                    updated.projectId,
+                    projectId,
                     'mobile_manage_languages_project_metadata_translation_update_rejected',
                 );
             }

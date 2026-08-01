@@ -52,6 +52,20 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 
 **July 6, 2026 ops health snapshot ID boundary note:** `/api/ops/messaging-onboarding` now validates `systemHealth/messaging_onboarding_control.lastSnapshotId` with the shared Firestore document-ID guard before reading `systemHealth/{lastSnapshotId}`. Valid hourly health snapshot IDs keep the same single follow-up read; malformed, reserved, empty, or path-shaped values return the existing unknown health state without adding reads/writes/deletes, Storage operations, Cloud Functions, provider calls, rules, indexes, Firebase deploy requirements, or Vercel deploy actions.
 
+**July 30, 2026 publication-truth and result-scope note:** the existing atomic
+publish transaction now writes one `lastPublishedAt` value into its newly
+created store, project and project-summary entry while writing the matching
+session `publishedAt`. This adds fields to the same writes, not additional
+Firestore operations. Publish admission validates the exact renderer file
+graph, and both app and Functions consumers reject a persisted
+`publishedResult` whose encoded project tenant/store differs from its
+`tenantId/storeId`. No collection, rule, index, Storage path, provider call or
+cache tag changed. `npm run verify:functions-deploy-preflight` and the complete
+messaging/extraction emulator matrix pass. The required QA deployment target is
+`functions:messagingOnboarding,functions:msgExtractionWatcher,functions:menulistMaintenanceScheduler`;
+the July 30 attempt stopped before upload because Firebase CLI authentication
+was unavailable.
+
 **June 29, 2026 intake diagnostics note:** intake processor provider-send and processing-run counter failures now log bounded Cloud Functions diagnostics only. They add no Firestore reads/writes/deletes beyond the existing session, rate-limit, event, and extraction-job paths, no Storage operations, no additional provider calls, no rules/index changes, and no Vercel deployment requirement. Because `functions/src/messagingOnboarding/intakeProcessor.ts` is imported by `menulistMaintenanceScheduler`, a scoped scheduler Functions deploy is required when cloud access permits.
 
 **June 29, 2026 cleanup diagnostics note:** expired-session upload cleanup still makes the same Storage delete attempts and still tolerates already-missing objects. Non-missing delete failures now log bounded `MESSAGING_SESSION_FILE_CLEAN_FAILED` diagnostics with session/upload/path presence-length metadata only. This adds no Firestore reads/writes/deletes, no additional Storage operations, no provider calls, no rules/index changes, and no Vercel deployment requirement. Because `functions/src/schedulers/messagingSessionCleanup.ts` is imported by `menulistMaintenanceScheduler`, a scoped scheduler Functions deploy is required when cloud access permits.

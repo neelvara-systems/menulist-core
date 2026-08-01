@@ -21,7 +21,7 @@ const { Text, Title } = Typography;
 interface BusinessCopySetupTabProps {
     onApplyGeneratedCopy: (generated: BusinessCopyGenerationResult, projectId?: string) => Promise<{ translationIncomplete: boolean }>;
     onGenerateMissingTranslations?: (projectId?: string) => Promise<boolean>;
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     storeDetails?: any;
 }
 

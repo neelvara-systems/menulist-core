@@ -5,7 +5,11 @@ import AnswerlatticeMotionAsset from './AnswerlatticeMotionAsset';
 import AnswerlatticePageStructuredData from './PageStructuredData';
 import PageProofStrip from './PageProofStrip';
 import SectionHeader from './SectionHeader';
-import { ANSWERLATTICE_PRODUCT_AREA_ASSETS, type AnswerlatticeWebsiteMotionAsset } from '../answerlatticeWebsiteAssets';
+import {
+    ANSWERLATTICE_PRODUCT_AREA_ASSETS,
+    type AnswerlatticeWebsiteAsset,
+    type AnswerlatticeWebsiteMotionAsset,
+} from '../answerlatticeWebsiteAssets';
 
 export type ProductCapabilityCard = {
     title: string;
@@ -17,11 +21,13 @@ export type ProductCapabilityMetric = {
     value: string;
 };
 
+type AnswerlatticeProductAreaAssetKey = keyof typeof ANSWERLATTICE_PRODUCT_AREA_ASSETS;
+
 export type ProductCapabilityLandingPageProps = {
     eyebrow: string;
     title: string;
     description: string;
-    activeTab: string;
+    activeTab: AnswerlatticeProductAreaAssetKey;
     tabs: Array<{ label: string; href: string }>;
     bentoTitle: string;
     bentoDescription: string;
@@ -32,6 +38,10 @@ export type ProductCapabilityLandingPageProps = {
     basePath?: string;
     canonicalPath?: string;
     proofItems?: ProductCapabilityMetric[];
+    heroAsset?: AnswerlatticeWebsiteAsset;
+    heroAssetSlotId?: string;
+    workflowAsset?: AnswerlatticeWebsiteAsset;
+    workflowAssetSlotId?: string;
     motionAsset?: AnswerlatticeWebsiteMotionAsset;
     motionAssetSlotId?: string;
 };
@@ -103,11 +113,16 @@ export default function ProductCapabilityLandingPage({
         { label: 'Review', value: 'Owner approval before official guidance' },
         { label: 'Runtime', value: 'Widget, hosted help, tickets, and signals share reviewed truth' },
     ],
+    heroAsset,
+    heroAssetSlotId,
+    workflowAsset,
+    workflowAssetSlotId,
     motionAsset,
     motionAssetSlotId,
 }: ProductCapabilityLandingPageProps) {
-    const canvasAsset = ANSWERLATTICE_PRODUCT_AREA_ASSETS[activeTab as keyof typeof ANSWERLATTICE_PRODUCT_AREA_ASSETS];
-    const canvasAssetSlotId = CAPABILITY_ASSET_SLOT_IDS[activeTab];
+    const canvasAsset = heroAsset
+        || ANSWERLATTICE_PRODUCT_AREA_ASSETS[activeTab];
+    const canvasAssetSlotId = heroAssetSlotId || CAPABILITY_ASSET_SLOT_IDS[activeTab];
 
     return (
         <main className="al-page-flow">
@@ -271,6 +286,17 @@ export default function ProductCapabilityLandingPage({
                             detail: step.description,
                         }))}
                     />
+
+                    {workflowAsset ? (
+                        <div className="mx-auto mt-10 max-w-6xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
+                            <AnswerlatticeAssetImage
+                                asset={workflowAsset}
+                                assetSlotId={workflowAssetSlotId || canvasAssetSlotId}
+                                assetRole="product-area-workflow-proof"
+                                className="rounded-[1.5rem] border border-white/[0.08]"
+                            />
+                        </div>
+                    ) : null}
 
                     <div className="mt-8 flex flex-wrap justify-center gap-4">
                         <AnswerlatticeLink

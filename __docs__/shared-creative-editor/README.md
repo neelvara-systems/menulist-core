@@ -90,6 +90,7 @@ Product surface
 
 | Version | Date | Notes |
 | --- | --- | --- |
+| 3.1 | July 29, 2026 | Added schema-enforced mutation commits, generation-owned Fabric loads, single-flight async operations, revision-safe imports, isolated Promise-based legacy Fabric deserialization, raster magic-byte/size validation, and safe raster-data readiness handling. |
 | 3.0 | July 24, 2026 | Migrated the runtime to Fabric.js 7.4.0, preserved left/top neutral-document coordinates, moved clone/image operations to Promises, adopted collection stack APIs and coordinate-safe temporary grouping, removed `@types/fabric`, and added an executable Fabric 7 boundary verifier. |
 | 2.5 | June 28, 2026 | Bounded shared editor runtime/provider/callback failure notices through `showCreativeEditorFailure()` so exception text is logged as bounded diagnostics and fixed product-neutral copy reaches the editor UI. |
 | 2.4 | June 15, 2026 | Added optional product-owned template save callback used by MenuList printable assets. The shared editor still performs no direct Firebase writes. |

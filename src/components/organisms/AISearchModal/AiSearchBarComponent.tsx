@@ -41,7 +41,7 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
             .then((categoriesResult) => {
                 if (mounted && categoriesResult) setCategoriesData(categoriesResult);
             })
-            .catch(() => undefined);
+            .catch((): void => undefined);
         return () => {
             mounted = false;
         };
@@ -77,7 +77,7 @@ function AiSearchBarComponent({ initialCategories }: { initialCategories: Knowle
                 citations: data.citations || [],
                 references: data.references.map((article: AiSearchHistoryReference): Partial<SearchDisplayResultReferenceType> => {
                     const category = categoriesData ? Object.values(categoriesData.categories).find(cat => cat.id === article.categoryId) : undefined;
-                    const section = category ? category.sections.find(sec => sec.id === article.sectionId) : undefined;
+                    const section = category?.sections?.find(sec => sec.id === article.sectionId);
 
                     return {
                         articleId: article.id,

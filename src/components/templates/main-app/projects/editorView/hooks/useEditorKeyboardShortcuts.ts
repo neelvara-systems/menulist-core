@@ -213,6 +213,10 @@ export const useEditorKeyboardShortcuts = ({
 
         const { item, file } = selected;
         const extractedData = removeObjRef(file.extractedData);
+        if (!extractedData?.data?.items) {
+            message.error("This file has no editable menu items.");
+            return;
+        }
         extractedData.data.items = extractedData.data.items.map(
             (i: ExtractedDataItem) =>
                 i.id === item.id ? { ...i, active: !i.active } : i,
@@ -254,7 +258,8 @@ export const useEditorKeyboardShortcuts = ({
                 action: () => {
                     // Determine which file to add to
                     let file: ProjectFileType | null = null;
-                    const filesCount = projectData?.files?.length || 0;
+                    const projectFiles = projectData?.files ?? [];
+                    const filesCount = projectFiles.length;
 
                     if (filesCount === 0) {
                         message.info("No file available. Upload a file first.");
@@ -264,10 +269,10 @@ export const useEditorKeyboardShortcuts = ({
                     if (selectedFileId) {
                         // User has selected an item, use that file (context is clear)
                         file =
-                            projectData?.files?.find((f) => f.uid === selectedFileId) || null;
+                            projectFiles.find((f) => f.uid === selectedFileId) || null;
                     } else if (filesCount === 1) {
                         // Only one file, no ambiguity
-                        file = projectData.files[0];
+                        file = projectFiles[0];
                     } else {
                         // Multiple files but no selection - ask user to establish context
                         message.info(
@@ -311,7 +316,8 @@ export const useEditorKeyboardShortcuts = ({
                 action: () => {
                     // Determine which file to add to
                     let file: ProjectFileType | null = null;
-                    const filesCount = projectData?.files?.length || 0;
+                    const projectFiles = projectData?.files ?? [];
+                    const filesCount = projectFiles.length;
 
                     if (filesCount === 0) {
                         message.info("No file available. Upload a file first.");
@@ -321,10 +327,10 @@ export const useEditorKeyboardShortcuts = ({
                     if (selectedFileId) {
                         // User has selected an item, use that file (context is clear)
                         file =
-                            projectData?.files?.find((f) => f.uid === selectedFileId) || null;
+                            projectFiles.find((f) => f.uid === selectedFileId) || null;
                     } else if (filesCount === 1) {
                         // Only one file, no ambiguity
-                        file = projectData.files[0];
+                        file = projectFiles[0];
                     } else {
                         // Multiple files but no selection - ask user to establish context
                         message.info(

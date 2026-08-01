@@ -86,8 +86,8 @@ export type OwnerNotificationFormattingContext = {
 
 export type OwnerNotificationScope = {
     readCount: number;
-    storeData?: Record<string, any> | null;
-    workspaceData?: Record<string, any> | null;
+    storeData?: Record<string, unknown> | null;
+    workspaceData?: Record<string, unknown> | null;
 };
 
 export type OwnerNotificationTemplate = {

@@ -61,6 +61,7 @@ export function applyCategoryOverride(
     return {
         ...category,
         active: override.active ?? category.active,
+        orderIndex: override.orderIndex ?? category.orderIndex,
         timeSlots: override.timeSlots ?? category.timeSlots,
     };
 }
@@ -255,6 +256,8 @@ export function isAvailabilityOverrideRedundant(
 export function isItemOverrideEmpty(override: ItemOverride): boolean {
     return (
         override.price === undefined &&
+        override.description === undefined &&
+        override.images === undefined &&
         override.available === undefined &&
         override.active === undefined &&
         override.orderIndex === undefined &&

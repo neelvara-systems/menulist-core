@@ -1,7 +1,7 @@
 # AnswerLattice Website - Final Assets Preparation
 
-> **Status:** Implemented production-ready generated product-scene assets, concept illustrations, and maintained visual-asset inventory
-> **Last Updated:** 2026-06-10
+> **Status:** Implemented production-ready generated product-scene assets, governed AssetOS proof assets, concept illustrations, and maintained visual-asset inventory
+> **Last Updated:** 2026-07-29
 > **Audience:** Product / Marketing / Design / Engineering
 
 ---
@@ -16,16 +16,18 @@ The current website screen mockups are image-backed generated product scenes, no
 
 ## Current Stable Asset Contract
 
-- Public image slots live in `public/answerlattice-website-assets/dummy/`. The directory name is retained for compatibility, but the current files are generated product-scene assets, not temporary stand-ins.
-- Every current screen asset is a production-ready sample workspace PNG at exactly `1440 x 1200`.
+- The original generated screen family lives in `public/answerlattice-website-assets/dummy/`. The directory name is retained for compatibility, but the current files are generated product-scene assets, not temporary stand-ins.
+- Four owner-decision proof assets live at stable top-level public paths: `public/answerlattice-owner-decision-system.webp`, `public/answerlattice-knowledge-map.webp`, `public/answerlattice-release-assurance.webp`, and `public/answerlattice-article-topic-map.webp`.
+- Every current screen asset is a production-ready `1440 x 1200` sample workspace PNG or WebP.
 - The site references screen slots through `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts`.
 - Screen-like website assets render through `AnswerlatticeAssetImage.tsx`, which preserves the intrinsic asset aspect ratio.
 - Concept illustrations render through `AnswerlatticeConceptIllustration.tsx` as inline SVG panels. They stay in code because they explain abstract product boundaries rather than captured dashboard state.
 - Every rendered product-media figure can carry `data-answerlattice-asset-slot` and `data-answerlattice-asset-role` attributes so future captures, SVGs, GIFs, or short loops map back to a known inventory slot.
 - The maintained future visual inventory lives in `src/content/answerlatticePublic/visualAssets.ts`.
-- The deterministic generator is `scripts/website-assets/generate-answerlattice-website-dummy-assets.js`; it now renders concrete AnswerLattice dashboard/widget/governance scenes from source SVGs before converting them to PNG.
+- The deterministic generator is `scripts/website-assets/generate-answerlattice-website-dummy-assets.js`; it renders concrete AnswerLattice dashboard/widget/governance scenes from source SVGs and emits the four governed proof assets as optimized WebP without adding a dependency.
 - Internal source SVGs and the generation manifest live in `packages/asset-factory/answerlattice-website-assets/dummy-sources/`.
-- The public asset folder should contain PNG screen slots only. Source SVGs, capture notes, and manifests stay internal.
+- AssetOS slots, briefs, manifest entries, source fingerprints, size budgets, and review state govern the four top-level proof assets under `packages/asset-factory/`.
+- Public paths contain optimized runtime media only. Source SVGs, capture notes, and manifests stay internal.
 - Final production dashboard screenshots or GIFs should replace the same named slots and preserve `1440 x 1200` unless the registry and this document are updated together.
 
 ---
@@ -39,6 +41,7 @@ The website now has a code-maintained visual asset inventory in `src/content/ans
 | `home.hero.product-loop` | Generated product scene | 12-18 second product loop showing source import, page-aware answer, fallback, and owner review |
 | `home.support-surfaces.sticky-story` | Generated product-scene sequence | Five-step sticky story: owner inputs, in-product help, hosted help, fallback gaps, approved-answer review |
 | `home.product-overview.feature-cards` | Generated product-scene/card set | Feature-wise product-control scenes for widget, hosted help, tickets, FAQ, changelog, feedback, Support Board, and intake |
+| `home.owner-decision-system` | AssetOS-governed WebP proof | Bounded Daily Brief, qualified evidence, retained context, owner decision, and quiet state |
 | `home.support-loop.diagram` | Implemented vector diagram | Keep the current governed loop and tune pacing/captions only if needed |
 | `product.source-to-answer.illustration` | Implemented vector illustration | Product hero concept: sources flow into governed answer layer, then widget, hosted help, and review queue |
 | `product.governance-loop.illustration` | Implemented vector illustration | Approved-answer section concept: fallback, review queue, owner approval, future trusted answer |
@@ -49,7 +52,9 @@ The website now has a code-maintained visual asset inventory in `src/content/ans
 | `product.area.launch-setup` | Generated product scene | Product-area scene for first-session setup and widget readiness |
 | `product.area.page-aware-widget` | Generated product scene | Product-area scene for safe widget context and fallback |
 | `product.area.support-control` | Generated product scene | Product-area scene for hosted help, FAQ, changelog, tickets, and feedback |
-| `product.area.knowledge-governance` | Generated product scene | Product-area scene for drafts, stale guidance, repeated misses, and owner approval |
+| `product.knowledge-map` | AssetOS-governed WebP proof | Curated product hierarchy with answer coverage, freshness, selected context, and owner review |
+| `product.release-assurance` | AssetOS-governed WebP proof | Release-linked approved answers and Answer Tests before owner-controlled activation |
+| `product.article-topic-map` | AssetOS-governed WebP proof | Public article-heading map with approved summary, related guides, and mobile drill-down |
 | `feature.template.hero-scene` | Generated feature scenes | One concrete product scene per feature page, using consistent AnswerLattice visual language |
 
 Do not add a new public visual asset until its slot is either already present in the inventory or added there first with purpose, route, status, must-show, and must-avoid notes.

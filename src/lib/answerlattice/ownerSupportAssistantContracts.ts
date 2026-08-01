@@ -4,11 +4,11 @@ import {
     type AnswerlatticePermissionKey,
 } from '@constant/answerlattice/permissions';
 import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/routes';
-import { PRODUCT_IDS } from '@constant/product';
 import type {
     AnswerlatticeFrictionLevel,
     AnswerlatticeSupportBoardSummary,
 } from '@type/answerlattice';
+import { projectAnswerlatticeSupportBoardSummary } from './supportBoardReadBoundary';
 
 export const ANSWERLATTICE_OWNER_ASSISTANT_SOURCE_KEYS = [
     'coverage',
@@ -306,26 +306,10 @@ export const buildAnswerlatticeOwnerAssistantCapabilities = (
 export const parseAnswerlatticeOwnerAssistantSupportBoardSummary = (
     value: unknown,
     scope: { tenantId: number; storeId: number },
-): AnswerlatticeSupportBoardSummary | null => {
-    if (
-        !isRecord(value)
-        || value.pId !== PRODUCT_IDS.ANSWERLATTICE
-        || value.tId !== scope.tenantId
-        || value.sId !== scope.storeId
-        || value.schemaVersion !== 1
-        || !isCount(value.openCards)
-        || !isCount(value.needsAnswerCards)
-        || !isCount(value.highPriorityCards)
-        || !isCount(value.totalRecentCards)
-        || value.openCards > value.totalRecentCards
-        || value.needsAnswerCards > value.openCards
-        || value.highPriorityCards > value.openCards
-        || !toTimestampIso(value.lastUpdated)
-        || (value.breakdownFresh !== undefined && typeof value.breakdownFresh !== 'boolean')
-        || (value.sourceWindowsSaturated !== undefined && typeof value.sourceWindowsSaturated !== 'boolean')
-    ) return null;
-    return value as unknown as AnswerlatticeSupportBoardSummary;
-};
+): AnswerlatticeSupportBoardSummary | null => projectAnswerlatticeSupportBoardSummary(value, {
+    sId: scope.storeId,
+    tId: scope.tenantId,
+});
 
 export const getAnswerlatticeOwnerAssistantStatus = (
     metrics: AnswerlatticeOwnerAssistantMetrics,

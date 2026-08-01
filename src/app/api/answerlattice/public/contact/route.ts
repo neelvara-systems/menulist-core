@@ -13,8 +13,15 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { getAnswerlatticeRetentionFields } from '@lib/answerlattice/dataRetention';
 import { AnswerlatticePublicContactRequestSchema } from '@lib/answerlattice/publicContactContracts';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import {
+    answerlatticeAdminApp,
+    answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import {
+    normalizePublicContactReferrer,
+    normalizePublicContactSourcePath,
+} from '@lib/publicContact/contactBoundary';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import { admin } from '@lib/firebase/firebaseAdminCompat';
@@ -35,8 +42,7 @@ const ANSWERLATTICE_PUBLIC_CONTACT_RESPONSE_HEADERS = {
 } as const;
 
 const getAnswerlatticeDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    return db && typeof db.collection === 'function' ? answerlatticeFirestoreAdmin : null;
+    return answerlatticeAdminApp ? answerlatticeFirestoreAdmin : null;
 };
 
 const clean = (value?: string | null, max = 500): string | null => {
@@ -109,8 +115,8 @@ async function postAnswerlatticeContact(request: NextRequest) {
             helpTopic: body.helpTopic,
             message: clean(body.message, 2000),
             consent: body.consent,
-            sourcePath: clean(body.sourcePath, 240),
-            referrer: clean(request.headers.get('referer'), 300),
+            sourcePath: normalizePublicContactSourcePath(body.sourcePath),
+            referrer: normalizePublicContactReferrer(request.headers.get('referer')),
             userAgent: clean(request.headers.get('user-agent'), 300),
             ipHash: hashPublicRateLimitValue(ip),
             createdAt: now,

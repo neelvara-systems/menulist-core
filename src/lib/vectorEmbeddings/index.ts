@@ -18,6 +18,7 @@ import {
     getBoundedErrorStatus,
     getBoundedErrorName,
 } from '@lib/monitoring/boundedLogContext';
+import { isValidEmbeddingVector } from './vectorBoundary';
 
 export const EMBED_MODEL = ANSWERLATTICE_EMBEDDING_MODEL;
 export const EMBED_OUTPUT_DIMENSIONALITY = ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY;
@@ -156,11 +157,7 @@ export async function callGeminiEmbeddingWithMetadata(
     const response = await answerlatticeGenAIClient.models.embedContent(request);
     const embedding = response.embeddings[0];
 
-    if (
-        !embedding?.values
-        || embedding.values.length !== embeddingConfig.outputDimensionality
-        || !embedding.values.some(value => typeof value === 'number' && Number.isFinite(value) && value !== 0)
-    ) {
+    if (!isValidEmbeddingVector(embedding?.values, embeddingConfig.outputDimensionality)) {
         throw new Error('Unexpected Gemini embedding response shape');
     }
 
@@ -351,7 +348,7 @@ function buildGeminiPromptConfig(
         `[${d.docId}] (${d.category} / ${d.section}) ${d.title || ''}\n${trim(d.content)}`).join('\n\n');
 
     const conversationContext = buildConversationContext(conversationHistory);
-    const hasConversationHistory = conversationHistory && conversationHistory.length > 0;
+    const hasConversationHistory = Boolean(conversationHistory?.length);
     const hasImageContext = Boolean(image || imageContext?.trim());
     const systemInstruction = buildSystemInstruction(hasConversationHistory, hasImageContext);
     const visualContextBlock = imageContext?.trim()

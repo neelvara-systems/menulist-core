@@ -41,6 +41,7 @@ const FOOTER_LINKS = {
     ],
     Resources: [
         { label: 'Resources', href: '/resources' },
+        { label: 'Operating Guide', href: '/resources/answerlattice-operating-guide' },
         { label: 'Pre-Onboarding Kit', href: '/pre-onboarding' },
         { label: 'Pre-Onboarding Guide', href: '/pre-onboarding/guide' },
         { label: 'Widget Install', href: '/install' },

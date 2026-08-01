@@ -238,10 +238,11 @@ const EditCategoryModal = ({
         }
 
         // Validate at least one language has a name
-        const hasName = selectedLanguages.some(lang =>
-            categoryData.name?.[lang]?.trim()
+        const categoryNames = categoryData.name;
+        const hasName = categoryNames && selectedLanguages.some(lang =>
+            categoryNames[lang]?.trim()
         );
-        if (!hasName) {
+        if (!categoryNames || !hasName) {
             antdMessage.error('Please enter a category name in at least one language.');
             return;
         }
@@ -258,16 +259,20 @@ const EditCategoryModal = ({
 
         // Deep clone to ensure immutability (handles Timestamps properly)
         const extractedData = removeObjRef(fileData.extractedData);
+        if (!extractedData?.data) {
+            antdMessage.error('The menu file data is unavailable.');
+            return;
+        }
 
         // Translation drift protection: if canonical English source name changed,
         // clear stale translations so they get retranslated instead of showing wrong data
         let finalCategory = categoryData;
         if (modalData.status === 'edit' && modalData.category && selectedLanguages.length > 1) {
             const clearedName = clearStaleCategoryTranslations(
-                modalData.category.name, categoryData.name, primaryLanguage, selectedLanguages
+                modalData.category.name, categoryNames, primaryLanguage, selectedLanguages
             );
-            if (clearedName !== categoryData.name) {
-                finalCategory = { ...categoryData, name: clearedName };
+            if (clearedName !== categoryNames) {
+                finalCategory = { ...categoryData, name: clearedName ?? categoryNames };
             }
         }
         finalCategory = normalizeCategoryDraft(finalCategory);

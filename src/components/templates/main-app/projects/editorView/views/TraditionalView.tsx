@@ -2,6 +2,8 @@ import { InheritanceBadge } from "@atoms/InheritanceBadge";
 import { FEATURE_FLAGS } from "@config/features";
 import GlobalLanguagesList from "@data/languages";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
+import { normalizeProjectLanguages } from "@lib/localization/languagePolicy";
+import type { UserUploadedFileType } from "@type/common";
 import type { InheritanceState } from "@type/multiOutlet.types";
 import {
     Button,
@@ -31,6 +33,7 @@ import {
 import {
     ExtractedDataCategory,
     ExtractedDataItem,
+    ItemForDropdown,
     Project,
     ProjectFileType,
 } from "../../types";
@@ -57,11 +60,14 @@ interface TraditionalViewProps {
     filters: any;
     setIsImageModalOpen: (state: {
         active: boolean;
-        item?: ExtractedDataItem;
+        item?: ExtractedDataItem & { fileId?: string };
         from?: string;
     }) => void;
     setProjectData: React.Dispatch<React.SetStateAction<Project>>;
-    onImageUpload: (...args: any[]) => void;
+    onImageUpload: (
+        selectedItem: ItemForDropdown,
+        imagesToUpload: UserUploadedFileType[],
+    ) => Promise<void>;
     setPreviewFile: (file: ProjectFileType | null) => void;
     selectedItemId?: string | null;
     setSelectedItemId?: (id: string | null) => void;
@@ -87,6 +93,11 @@ export const TraditionalView = ({
     isMasterLinked,
 }: TraditionalViewProps) => {
     const { token } = theme.useToken();
+    const projectLanguages = useMemo(
+        () => normalizeProjectLanguages(projectData.languages),
+        [projectData.languages],
+    );
+    const projectFiles = projectData.files ?? [];
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
         null,
     );
@@ -105,11 +116,11 @@ export const TraditionalView = ({
     );
     useEffect(() => {
         setActiveLanguage((currentLanguage) => (
-            projectData.languages.includes(currentLanguage)
+            projectLanguages.includes(currentLanguage)
                 ? currentLanguage
                 : getProjectDefaultLanguage(projectData)
         ));
-    }, [projectData.defaultLanguage, projectData.languages]);
+    }, [projectData, projectLanguages]);
     const [hideInactiveCategories, setHideInactiveCategories] =
         useState<boolean>(false);
     const [hideInactiveItems, setHideInactiveItems] = useState<boolean>(false);
@@ -134,7 +145,7 @@ export const TraditionalView = ({
         (fileUid: string, newExtractedData: any) => {
             setProjectData((prev) => ({
                 ...prev,
-                files: prev.files.map((f) =>
+                files: (prev.files ?? []).map((f) =>
                     f.uid === fileUid ? { ...f, extractedData: newExtractedData } : f,
                 ),
             }));
@@ -194,7 +205,7 @@ export const TraditionalView = ({
         (file: ProjectFileType) => {
             const newCategory = createNewCategory(
                 file,
-                projectData.languages,
+                projectLanguages,
                 projectData.masterProjectId,
             );
             setEditCategoryModalState({
@@ -204,7 +215,7 @@ export const TraditionalView = ({
                 file,
             });
         },
-        [projectData.languages, projectData.masterProjectId],
+        [projectLanguages, projectData.masterProjectId],
     );
 
     // Add new item - opens modal with new item
@@ -213,7 +224,7 @@ export const TraditionalView = ({
             const newItem = createNewItem(
                 file,
                 categoryId,
-                projectData.languages,
+                projectLanguages,
                 projectData.masterProjectId,
             );
             setEditItemModalState({
@@ -223,7 +234,7 @@ export const TraditionalView = ({
                 file,
             });
         },
-        [projectData.languages, projectData.masterProjectId],
+        [projectLanguages, projectData.masterProjectId],
     );
 
     // Handle file data update from modals
@@ -231,7 +242,7 @@ export const TraditionalView = ({
         (updatedFile: ProjectFileType) => {
             setProjectData((prev) => ({
                 ...prev,
-                files: prev.files.map((f) =>
+                files: (prev.files ?? []).map((f) =>
                     f.uid === updatedFile.uid ? updatedFile : f,
                 ),
             }));
@@ -365,7 +376,7 @@ export const TraditionalView = ({
 
     // Calculate language completion stats across ALL files
     const languageStats = useMemo(() => {
-        return projectData.languages.map((lang) => {
+        return projectLanguages.map((lang) => {
             let totalCategories = 0;
             let totalItems = 0;
             let filled = 0;
@@ -390,7 +401,7 @@ export const TraditionalView = ({
             const percentage = total > 0 ? Math.round((filled / total) * 100) : 0;
             return { lang, filled, total, percentage };
         });
-    }, [projectData.files, projectData.languages]);
+    }, [projectData.files, projectLanguages]);
 
     // Auto-clear selected category if it no longer exists or is filtered out
     useEffect(() => {
@@ -423,7 +434,7 @@ export const TraditionalView = ({
                 style={{ width: "100%", height: "calc(100vh - 180px)" }}
             >
                 {/* Language Switcher Header - Chip-based UI */}
-                {projectData.languages.length > 1 && (
+                {projectLanguages.length > 1 && (
                     <Flex
                         align="center"
                         gap={8}
@@ -438,7 +449,7 @@ export const TraditionalView = ({
                             style={{ color: token.colorTextSecondary, flexShrink: 0 }}
                         />
                         <Flex gap={6} wrap="wrap" align="center">
-                            {projectData.languages.map((lang, idx) => {
+                            {projectLanguages.map((lang, idx) => {
                                 const stats = languageStats.find((s) => s.lang === lang);
                                 const langData = GlobalLanguagesList.find(
                                     (l) => l.code === lang,
@@ -536,7 +547,7 @@ export const TraditionalView = ({
                 <Splitter
                     style={{
                         height:
-                            projectData.languages.length > 1 ? "calc(100% - 49px)" : "100%",
+                            projectLanguages.length > 1 ? "calc(100% - 49px)" : "100%",
                     }}
                 >
                     {/* Left Side: Categories List */}
@@ -630,7 +641,7 @@ export const TraditionalView = ({
                                                 )?.file
                                                 : null;
                                             const targetFile =
-                                                selectedCategoryFile || projectData.files[0];
+                                                selectedCategoryFile || projectFiles[0];
                                             if (targetFile) {
                                                 handleAddCategory(targetFile);
                                             }
@@ -1237,7 +1248,7 @@ export const TraditionalView = ({
                             file: null,
                         })
                     }
-                    selectedLanguages={projectData.languages}
+                    selectedLanguages={projectLanguages}
                     setUpdatedFileData={handleModalFileUpdate}
                     fileData={editCategoryModalState.file}
                     projectData={projectData}
@@ -1264,11 +1275,15 @@ export const TraditionalView = ({
                             file: null,
                         })
                     }
-                    selectedLanguages={projectData.languages}
+                    selectedLanguages={projectLanguages}
                     projectData={projectData}
                     onImageUpload={onImageUpload}
                     openAddImageModal={(itemData) =>
-                        setIsImageModalOpen({ active: true, item: itemData, from: "item" })
+                        setIsImageModalOpen({
+                            active: true,
+                            item: { ...itemData, fileId: editItemModalState.file?.uid },
+                            from: "item",
+                        })
                     }
                     setUpdatedFileData={handleModalFileUpdate}
                     fileData={editItemModalState.file}

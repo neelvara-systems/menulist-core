@@ -132,7 +132,10 @@ export function calculateProration(
     }
 
     const totalDays = Math.max(1, Math.ceil((cycleEnd.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24)));
-    const daysRemaining = Math.max(0, Math.ceil((cycleEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const daysRemaining = Math.min(
+        totalDays,
+        Math.max(0, Math.ceil((cycleEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+    );
     const proratedAmount = Math.round((amount * daysRemaining) / totalDays);
 
     return { proratedAmount, fullCycleAmount: amount, daysRemaining, totalDays };

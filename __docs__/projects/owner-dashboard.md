@@ -68,6 +68,11 @@ The settlement job also stores cached weekly/monthly movement labels and trend c
 - Owner Business Health APIs independently enforce authentication, selected-store scope, and `VIEW_ANALYTICS`.
 - Owner action mark-done acknowledgement transactionally rechecks that the action is current and updates the bounded deterministic receipt map, preventing concurrent stale read/update loss.
 - Invalid, wrong-project, or malformed cached read models fail normalization and are evicted or rejected. Scope remains part of every cache/SWR key, sign-out clears the cache namespace, and no TypeScript generic assertion is accepted as runtime cache validation.
+- Desktop and mobile analytics-detail cards share one exact runtime projector.
+  It reads only known own-data fields, bounds row counts/text/counts/rates,
+  ignores malformed nested records/accessors, maps lifetime metrics explicitly,
+  and emits no section for unusable data. Rates are capped at 100 and counts
+  are finite non-negative integers before owner-facing formatting.
 - Today and settled failures remain visible through the existing safe error/empty states; the client does not fabricate totals.
 - Analytics collection browser writes remain denied by Firestore rules. Public customer writes go through the protected Admin route.
 
@@ -79,6 +84,7 @@ The focused source boundary is `npm run verify:owner-dashboard-today-boundary`.
 
 ```bash
 npm run verify:owner-dashboard-today-boundary
+npm run test:owner-dashboard-details-boundary
 npm run verify:owner-business-health-boundary
 npm run verify:analytics-write-boundary
 npm run verify:catalog-analytics

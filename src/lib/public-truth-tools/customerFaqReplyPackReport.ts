@@ -303,12 +303,12 @@ export function buildCustomerFaqReplyPackReport(input: CustomerFaqReplyPackInput
   ];
 
   const copyBlocks = buildFaqReplyBlocks({
-    actionLink,
+    actionLink: validActionLink ? actionLink : '',
     answerSource,
     availabilityNotes,
     businessName,
     cityOrArea,
-    currentCustomerLink,
+    currentCustomerLink: validCurrentCustomerLink ? currentCustomerLink : '',
     customerQuestions,
     hours,
     locationContact,

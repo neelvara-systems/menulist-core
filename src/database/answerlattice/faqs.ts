@@ -9,6 +9,7 @@ import {
     limit,
     orderBy,
     query,
+    type QueryConstraint,
     runTransaction,
     Timestamp,
     where,
@@ -26,7 +27,7 @@ import {
 } from '@lib/answerlattice/faqContent';
 import { normalizeAnswerlatticeFaqId } from '@lib/answerlattice/faqIdBoundary';
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
-import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { revalidateAnswerlatticePublicClientCache } from '@lib/cache/answerlatticePublicClientCache';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
@@ -39,6 +40,8 @@ import {
 
 const COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_FAQS;
 const ARTICLE_COLLECTION = DB_COLLECTIONS.KB_ARTICLES;
+const FAQ_STATUS_SET = new Set<AnswerlatticeFaqStatus>(Object.values(ANSWERLATTICE_FAQ_STATUS));
+const FAQ_SOURCE_SET = new Set(Object.values(ANSWERLATTICE_FAQ_SOURCE));
 
 const getCollectionRef = () => collection(answerlatticeFirebaseClient, COLLECTION);
 const getDocRef = (docId: string) => {
@@ -68,6 +71,63 @@ export type AnswerlatticeFaqArchiveResult = Partial<AnswerlatticeFaq> & {
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
+
+const projectManagedFaq = (
+    id: string,
+    value: unknown,
+    scope: { tId: number; sId: number },
+): AnswerlatticeFaq | null => {
+    if (!isRecord(value)) return null;
+    const normalizedId = normalizeAnswerlatticeFaqId(id);
+    const question = normalizeFaqText(value.question, 240);
+    const answer = normalizeFaqText(value.answer, 2000);
+    const articleId = value.articleId == null
+        ? null
+        : normalizeAnswerlatticeKbArticleId(value.articleId);
+    if (
+        !normalizedId
+        || normalizedId !== id
+        || value.pId !== PRODUCT_IDS.ANSWERLATTICE
+        || value.tId !== scope.tId
+        || value.sId !== scope.sId
+        || !question
+        || !answer
+        || !FAQ_STATUS_SET.has(value.status as AnswerlatticeFaqStatus)
+        || !FAQ_SOURCE_SET.has(value.source as AnswerlatticeFaq['source'])
+        || typeof value.active !== 'boolean'
+        || value.active !== (value.status !== ANSWERLATTICE_FAQ_STATUS.ARCHIVED)
+        || typeof value.sortOrder !== 'number'
+        || !Number.isSafeInteger(value.sortOrder)
+        || value.sortOrder < 0
+        || value.sortOrder > 9999
+        || (value.articleId != null && articleId !== value.articleId)
+        || !Array.isArray(value.entityIds)
+        || !Array.isArray(value.contextKeys)
+        || !Array.isArray(value.tags)
+    ) return null;
+
+    return {
+        ...value,
+        id: normalizedId,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        tId: scope.tId,
+        sId: scope.sId,
+        question,
+        answer,
+        status: value.status as AnswerlatticeFaqStatus,
+        source: value.source as AnswerlatticeFaq['source'],
+        active: value.active,
+        sortOrder: value.sortOrder,
+        articleId,
+    } as AnswerlatticeFaq;
+};
+
+const projectManagedFaqDocuments = (
+    documents: Array<{ id: string; data: () => unknown }>,
+    scope: { tId: number; sId: number },
+): AnswerlatticeFaq[] => documents
+    .map(item => projectManagedFaq(item.id, item.data(), scope))
+    .filter((faq): faq is AnswerlatticeFaq => faq !== null);
 
 export function assertAnswerlatticeFaqWriteSucceeded(
     result: unknown,
@@ -112,32 +172,53 @@ const requireScope = async () => {
     return { tId: scope.tenantId, sId: scope.storeId };
 };
 
-const getTimestampMillis = (value: any): number => {
+const getTimestampMillis = (value: unknown): number => {
     if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    const parsed = Date.parse(String(value));
-    return Number.isFinite(parsed) ? parsed : 0;
+    try {
+        if (value instanceof Timestamp) return value.toMillis();
+        if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.getTime() : 0;
+        if (typeof value === 'object' && 'toMillis' in value && typeof value.toMillis === 'function') {
+            const millis = value.toMillis();
+            return typeof millis === 'number' && Number.isFinite(millis) ? millis : 0;
+        }
+        return 0;
+    } catch {
+        return 0;
+    }
 };
 
 const sortFaqs = (faqs: AnswerlatticeFaq[]) => [...faqs].sort((left, right) => (
-    Number(left.sortOrder || 0) - Number(right.sortOrder || 0)
+    (typeof left.sortOrder === 'number' && Number.isSafeInteger(left.sortOrder) ? left.sortOrder : 0)
+    - (typeof right.sortOrder === 'number' && Number.isSafeInteger(right.sortOrder) ? right.sortOrder : 0)
     || getTimestampMillis(right.modifiedOn) - getTimestampMillis(left.modifiedOn)
     || left.question.localeCompare(right.question)
 ));
+
+const clampFaqResultLimit = (value: unknown, fallback: number, max: number): number => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+        ? Math.min(value, max)
+        : fallback
+);
 
 const buildFaqQuery = (
     scope: { tId: number; sId: number },
     statuses?: AnswerlatticeFaqStatus[],
     maxResults = ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT,
 ) => {
-    const filters: any[] = [
+    const filters: QueryConstraint[] = [
         where('pId', '==', PRODUCT_IDS.ANSWERLATTICE),
         where('tId', '==', scope.tId),
         where('sId', '==', scope.sId),
     ];
 
-    const validStatuses = Array.from(new Set(statuses || [])).filter(Boolean);
+    if (statuses !== undefined && (
+        !Array.isArray(statuses)
+        || statuses.length > 10
+        || statuses.some(status => !FAQ_STATUS_SET.has(status))
+    )) {
+        throw new Error('Invalid Answerlattice FAQ status filter');
+    }
+    const validStatuses = Array.from(new Set(statuses || []));
     if (validStatuses.length === 1) {
         filters.push(where('status', '==', validStatuses[0]));
     } else if (validStatuses.length > 1 && validStatuses.length <= 10) {
@@ -149,7 +230,7 @@ const buildFaqQuery = (
         ...filters,
         orderBy('sortOrder', 'asc'),
         orderBy('modifiedOn', 'desc'),
-        limit(Math.min(Math.max(maxResults, 1), 200)),
+        limit(clampFaqResultLimit(maxResults, ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT, 200)),
     );
 };
 
@@ -161,7 +242,7 @@ export const getFaqsForSession = async (
         async () => {
             const scope = await requireScope();
             const snapshot = await getDocs(buildFaqQuery(scope, statuses, maxResults));
-            return sortFaqs(snapshot.docs.map(item => ({ ...item.data(), id: item.id } as AnswerlatticeFaq)));
+            return sortFaqs(projectManagedFaqDocuments(snapshot.docs, scope));
         },
         { statuses, maxResults },
         'getFaqsForSession',
@@ -181,9 +262,13 @@ export const getPublishedFaqsForSession = async (maxResults = ANSWERLATTICE_FAQ_
                 where('active', '==', true),
                 orderBy('sortOrder', 'asc'),
                 orderBy('modifiedOn', 'desc'),
-                limit(Math.min(Math.max(maxResults, 1), ANSWERLATTICE_FAQ_PUBLIC_LIMIT)),
+                limit(clampFaqResultLimit(
+                    maxResults,
+                    ANSWERLATTICE_FAQ_PUBLIC_LIMIT,
+                    ANSWERLATTICE_FAQ_PUBLIC_LIMIT,
+                )),
             ));
-            return sortFaqs(snapshot.docs.map(item => ({ ...item.data(), id: item.id } as AnswerlatticeFaq)));
+            return sortFaqs(projectManagedFaqDocuments(snapshot.docs, scope));
         },
         { maxResults },
         'getPublishedFaqsForSession',
@@ -204,9 +289,13 @@ export const getFaqsByArticleId = async (articleId: string, maxResults = ANSWERL
                 where('sId', '==', scope.sId),
                 where('articleId', '==', normalizedArticleId),
                 where('active', '==', true),
-                limit(Math.min(Math.max(maxResults, 1), ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT)),
+                limit(clampFaqResultLimit(
+                    maxResults,
+                    ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT,
+                    ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT,
+                )),
             ));
-            return sortFaqs(snapshot.docs.map(item => ({ ...item.data(), id: item.id } as AnswerlatticeFaq)));
+            return sortFaqs(projectManagedFaqDocuments(snapshot.docs, scope));
         },
         { articleId: normalizedArticleId, maxResults },
         'getFaqsByArticleId',
@@ -234,8 +323,8 @@ export const saveFaq = async (input: unknown) => {
                     existing
                     && (
                         existing.pId !== 'AL'
-                        || normalizeAnswerlatticeScopeDocumentId(existing.tId) !== scope.tId
-                        || normalizeAnswerlatticeScopeDocumentId(existing.sId) !== scope.sId
+                        || existing.tId !== scope.tId
+                        || existing.sId !== scope.sId
                     )
                 ) {
                     throw new Error('FAQ is outside this Answerlattice workspace.');
@@ -257,8 +346,8 @@ export const saveFaq = async (input: unknown) => {
                     const linkedArticle = articleDoc.data();
                     if (
                         linkedArticle.pId !== 'AL'
-                        || normalizeAnswerlatticeScopeDocumentId(linkedArticle.tId) !== scope.tId
-                        || normalizeAnswerlatticeScopeDocumentId(linkedArticle.sId) !== scope.sId
+                        || linkedArticle.tId !== scope.tId
+                        || linkedArticle.sId !== scope.sId
                     ) {
                         throw new Error(`Linked article ${linkedArticleId} is outside this workspace.`);
                     }
@@ -372,20 +461,23 @@ export const archiveFaq = async (faqId: string) => {
                 const existing = snap.data() as AnswerlatticeFaq;
                 if (
                     existing.pId !== 'AL'
-                    || normalizeAnswerlatticeScopeDocumentId(existing.tId) !== scope.tId
-                    || normalizeAnswerlatticeScopeDocumentId(existing.sId) !== scope.sId
+                    || existing.tId !== scope.tId
+                    || existing.sId !== scope.sId
                 ) {
                     throw new Error('FAQ is outside this Answerlattice workspace.');
                 }
                 const linkedArticleId = normalizeAnswerlatticeKbArticleId(existing.articleId);
+                if (existing.articleId != null && existing.articleId !== '' && !linkedArticleId) {
+                    throw new Error('FAQ has an invalid stored article link and cannot be archived safely.');
+                }
                 const linkedArticleRef = linkedArticleId ? getArticleRef(linkedArticleId) : null;
                 const linkedArticleSnap = linkedArticleRef ? await transaction.get(linkedArticleRef) : null;
                 if (linkedArticleSnap?.exists()) {
                     const linkedArticle = linkedArticleSnap.data();
                     if (
                         linkedArticle.pId !== 'AL'
-                        || normalizeAnswerlatticeScopeDocumentId(linkedArticle.tId) !== scope.tId
-                        || normalizeAnswerlatticeScopeDocumentId(linkedArticle.sId) !== scope.sId
+                        || linkedArticle.tId !== scope.tId
+                        || linkedArticle.sId !== scope.sId
                     ) {
                         throw new Error('Linked article is outside this Answerlattice workspace.');
                     }

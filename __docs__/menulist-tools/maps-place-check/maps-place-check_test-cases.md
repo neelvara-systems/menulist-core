@@ -6,7 +6,9 @@
 | --- | --- |
 | Unauthenticated callable request | `unauthenticated` |
 | Store-scoped user checks another store | `permission-denied` |
-| Platform user checks any store | Allowed |
+| Current persisted platform user checks a valid store | Allowed |
+| Platform claim remains after persisted demotion, disable, block, deletion, failed verification, or removal | `permission-denied` before provider work |
+| Owner claim remains after persisted tenant/store reassignment or lifecycle denial | `permission-denied` before provider work |
 | Missing tenant/store/business name | `invalid-argument` |
 | Non-English `languageCode` | `invalid-argument` |
 

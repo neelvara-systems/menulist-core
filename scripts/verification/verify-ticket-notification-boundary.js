@@ -44,7 +44,11 @@ requireText(ticketDal, 'tId: submitData.tId', 'ticket-created trigger tenant sco
 requireText(ticketDal, "eventType: 'TICKET_REPLY',\n                    ticketId,\n                    messageId: persistedMessage.id", 'ticket-reply trigger');
 requireText(ticketDal, 'tId: mutationContext.scope.tId', 'ticket-reply trigger tenant scope');
 requireText(ticketDal, "eventType: 'TICKET_STATUS_CHANGED'", 'ticket-status trigger');
-requireText(ticketDal, 'tId: transactionResult.ticket.tId', 'ticket-status trigger tenant scope');
+requireText(ticketDal, 'tId: mutationContext.scope.tId', 'ticket-status trigger tenant scope');
+requireText(ticketDal, 'sId: mutationContext.scope.sId', 'ticket-status trigger store scope');
+requireText(ticketDal, 'const updateData: UpdateData<DocumentData> = {', 'ticket update existing-document contract');
+requireText(ticketDal, 'transaction.update(ticketRef, updateData);', 'ticket update existing-document contract');
+forbidText(ticketDal, 'transaction.set(ticketRef, updateData, { merge: true });', 'ticket update existing-document contract');
 for (const token of [
   'recipientEmail: data.clientDetails.email',
   'recipientEmail: notifyEmail',

@@ -7,7 +7,7 @@ import { LuCheckCircle, LuExternalLink, LuInfo } from 'react-icons/lu';
 const { Title, Text, Paragraph } = Typography;
 
 interface FeedbackSettingsTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     feedbackEnabled?: boolean;
     setFeedbackEnabled: (enabled: boolean) => void;
     feedbackDefaults?: {

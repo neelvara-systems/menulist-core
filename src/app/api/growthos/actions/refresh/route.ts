@@ -9,6 +9,7 @@ import { applyGrowthOSWriteRateLimit } from "@lib/growthos/apiGuards";
 import { growthOSPrivateJson, withGrowthOSPrivateHeaders } from "@lib/growthos/apiResponse";
 import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
 import { isGrowthOSMasterEnabled } from "@lib/growthos/entitlements";
+import { projectGrowthOSSummaryForScope } from "@lib/growthos/clientContracts";
 import { buildGrowthOSEmptySummary, loadGrowthOSServerContext } from "@lib/growthos/serverContext";
 import { logger } from "@lib/monitoring/logger";
 import { resolveStorePermissionSessionScope } from "@lib/permissions/scopeDocumentId";
@@ -85,7 +86,12 @@ export const POST = withAuth(async (request, session) => {
                 session,
             });
             const committed = await writeGrowthOSRefreshedSummaryServer(scope.storeScope.documentId, summary, projectId);
-            return growthOSPrivateJson({ data: committed }, { status: 200 });
+            const responseSummary = projectGrowthOSSummaryForScope(committed, {
+                tId: scope.tenantScope.documentId,
+                sId: scope.storeScope.documentId,
+            });
+            if (!responseSummary) throw new Error("GrowthOS refreshed response contract invalid");
+            return growthOSPrivateJson({ data: responseSummary }, { status: 200 });
         }
 
         if (!context.actions.length) {
@@ -96,7 +102,12 @@ export const POST = withAuth(async (request, session) => {
                 readiness: context.readiness,
             });
             const committed = await writeGrowthOSRefreshedSummaryServer(scope.storeScope.documentId, summary, projectId);
-            return growthOSPrivateJson({ data: committed }, { status: 200 });
+            const responseSummary = projectGrowthOSSummaryForScope(committed, {
+                tId: scope.tenantScope.documentId,
+                sId: scope.storeScope.documentId,
+            });
+            if (!responseSummary) throw new Error("GrowthOS refreshed response contract invalid");
+            return growthOSPrivateJson({ data: responseSummary }, { status: 200 });
         }
 
         const previousKit = context.summary?.latestKit
@@ -118,7 +129,12 @@ export const POST = withAuth(async (request, session) => {
         };
 
         const committed = await writeGrowthOSRefreshedSummaryServer(scope.storeScope.documentId, summary, projectId);
-        return growthOSPrivateJson({ data: committed }, { status: 200 });
+        const responseSummary = projectGrowthOSSummaryForScope(committed, {
+            tId: scope.tenantScope.documentId,
+            sId: scope.storeScope.documentId,
+        });
+        if (!responseSummary) throw new Error("GrowthOS refreshed response contract invalid");
+        return growthOSPrivateJson({ data: responseSummary }, { status: 200 });
     } catch (error) {
         if (error instanceof Error && error.message === GROWTHOS_SOURCE_FACTS_CHANGED) {
             return growthOSPrivateJson({

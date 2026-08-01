@@ -346,10 +346,19 @@ export default function MenuFooter({
         width: useFullWidthActionGrid ? '100%' : undefined,
         whiteSpace: 'nowrap',
     };
-    const hasWorkingHours = !!storeDetails?.workingHours && Object.keys(storeDetails.workingHours).length > 0;
-    const openHoursState: TrackingData['openHoursState'] = hasWorkingHours
-        ? (getStoreStatus(storeDetails.workingHours, storeDetails.timeZone).isOpen ? 'open' : 'closed')
-        : 'unknown';
+    const storeStatus = getStoreStatus(
+        storeDetails?.workingHours,
+        storeDetails?.timeZone,
+        undefined,
+        new Date(),
+        storeDetails?.specialHours,
+    );
+    const openHoursState: TrackingData['openHoursState'] =
+        storeStatus.statusText === 'Hours not available'
+            ? 'unknown'
+            : storeStatus.isOpen
+                ? 'open'
+                : 'closed';
 
     const handleMenuAction = (menuAction: 'call' | 'whatsapp' | 'directions' | 'reserve' | 'order') => {
         if (!shouldTrackMenuActions) return Promise.resolve();

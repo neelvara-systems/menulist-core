@@ -1,7 +1,7 @@
 # B2C View — Current Implementation
 
 **Status:** Local source complete; not current launch certification
-**Last Updated:** July 16, 2026
+**Last Updated:** July 29, 2026
 
 This is the maintained implementation note. The former implementation narrative is preserved at `_archive/b2c-view_impl-pre-2026-07-16.md` and is historical only.
 
@@ -30,7 +30,15 @@ The exported older `output/MenuPage.tsx` component is not the active renderer, b
 | active option-price projection | `src/lib/pricing/publicItemPricePresentation.ts` |
 | public background admission | `src/lib/menu/publicMenuBackground.ts` |
 
-`normalizeMenuMood()` and `normalizeMenuLayout()` use owned-key checks, not prototype membership. `resolveMenuDesignConfig()` accepts only object/non-array input, normalizes the known boolean fields only from actual booleans, and preserves legacy tabs as navigation intent rather than a selectable structural layout.
+`normalizeMenuMood()` and `normalizeMenuLayout()` use owned-key checks, not
+prototype membership. `resolveMenuDesignConfig()` reads only the seven known
+menu fields through own data descriptors, omits unknown fields without invoking
+accessors, normalizes booleans only from actual booleans, and preserves legacy
+tabs as navigation intent rather than a selectable structural layout.
+Compatibility helpers normalize invalid mood values before indexing the matrix.
+Preset recommendation uses detailed type matching only for an exact canonical
+business type; malformed/free-text values fall back to the exact canonical
+business category or the governed default.
 
 ## Price presentation
 
@@ -82,6 +90,11 @@ npm run verify:menu-design-presentation-boundary
 npx tsc --noEmit --pretty false
 ```
 
-The focused verifier executes runtime checks for the exact matrix, preset compatibility, malformed/prototype values, color contrast, option-price ranges/filtering, and public-background admission. It source-checks desktop/mobile parity, public/PDP presentation, stable large-menu rendering, publish acknowledgement/truth/cache behavior, and this doc set.
+The focused verifier executes runtime checks for the exact matrix, preset
+compatibility, malformed/prototype/accessor values, unknown-field omission,
+canonical business-type/category recommendation, color contrast, option-price
+ranges/filtering, and public-background admission. It source-checks
+desktop/mobile parity, public/PDP presentation, stable large-menu rendering,
+publish acknowledgement/truth/cache behavior, and this doc set.
 
 Passing local gates is not current launch certification. Browser/mobile customer-menu QA, target deployment, authenticated owner publish smoke, public-cache observation, and production-host checks remain external pending work.

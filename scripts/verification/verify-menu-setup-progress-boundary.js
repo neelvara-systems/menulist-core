@@ -124,6 +124,12 @@ const {
   applyStarterActivationSignalToStoreDetails,
   applyStarterPresenceUpdateToStoreDetails,
   buildStarterActivationSummary,
+  getStarterActivationSignalCount,
+  hasStarterWorkspaceAccess,
+  isStarterActivationExpired,
+  isStarterPublicSurfaceExpired,
+  normalizeStarterActivationTimestamp,
+  shouldShowStarterPublicPlaceholders,
 } = require('../../src/lib/onboarding/starterActivation');
 
 const projectWithPublishedMenu = {
@@ -199,6 +205,58 @@ assert.equal(
   'malformed publication timestamps must not mark a menu published',
 );
 
+for (const unavailableProject of [
+  { ...projectWithPublishedMenu, active: false },
+  { ...projectWithPublishedMenu, deleted: true },
+]) {
+  const unavailableProgress = buildMenuSetupProgress({
+    project: unavailableProject,
+    qualitySignals: [],
+    storeDetails: {},
+  });
+  assert.equal(
+    unavailableProgress.requiredSteps.find(({ id }) => id === 'menu_published').done,
+    false,
+    'inactive or deleted current project truth must override historical publication time',
+  );
+  assert.equal(unavailableProgress.phase, 'publish');
+}
+
+const malformedMenuItemProgress = buildMenuSetupProgress({
+  project: {
+    projectId: 'menu-setup-malformed-items',
+    files: [{
+      extractedData: {
+        data: {
+          items: [{ active: true, internalNote: 'not a menu item' }],
+        },
+      },
+    }],
+  },
+  qualitySignals: [],
+  storeDetails: {},
+});
+assert.equal(
+  malformedMenuItemProgress.requiredSteps.find(({ id }) => id === 'menu_imported').done,
+  false,
+  'arbitrary persisted objects must not count as imported menu items',
+);
+
+const malformedSocialProgress = buildMenuSetupProgress({
+  project: projectWithPublishedMenu,
+  qualitySignals: [],
+  storeDetails: {
+    socialMedia: {
+      internalMetadata: { ownerEmail: 'private@example.com' },
+    },
+  },
+});
+assert.equal(
+  malformedSocialProgress.optionalSteps.find(({ id }) => id === 'obp_links_added').done,
+  false,
+  'nested malformed store metadata must not count as a public social link',
+);
+
 const throwingTimestampProject = buildMenuSetupProgress({
   project: { ...projectWithPublishedMenu, lastPublishedAt: { toMillis: () => { throw new Error('bad timestamp'); } } },
   qualitySignals: [],
@@ -216,6 +274,64 @@ const invalidEvidenceSummary = buildStarterActivationSummary({
   menuPresence: { googleBusiness: true },
 });
 assert.equal(invalidEvidenceSummary.signalCount, 0, 'malformed action/presence evidence must not count toward activation');
+assert.equal(
+  getStarterActivationSignalCount({
+    starterActivationSignals: { actions: { menu_link_copied: true, qr_downloaded: 'not-a-date' } },
+    menuPresence: { googleBusiness: true },
+  }),
+  0,
+  'the compact signal count must reject the same malformed evidence as the detailed summary',
+);
+
+const activationNow = Date.parse('2026-07-16T00:00:00.000Z');
+const futureStarter = {
+  onboardingSource: 'PUBLIC_MENU_ENTRY',
+  activationDeadline: { seconds: Math.floor((activationNow + 60_000) / 1000), nanoseconds: 500_000_000 },
+};
+assert.equal(isStarterActivationExpired(futureStarter, activationNow), false, 'a valid future Firebase timestamp must remain active');
+assert.equal(hasStarterWorkspaceAccess(futureStarter, false, activationNow), true, 'a valid future starter deadline must grant workspace access');
+assert.equal(
+  normalizeStarterActivationTimestamp(futureStarter.activationDeadline),
+  '2026-07-16T00:01:00.500Z',
+  'Firebase timestamp seconds and nanoseconds must retain millisecond precision',
+);
+
+for (const invalidDeadline of [undefined, null, 'not-a-date', { seconds: 1, nanoseconds: 1_000_000_000 }]) {
+  const malformedStarter = {
+    onboardingSource: 'PUBLIC_MENU_ENTRY',
+    activationDeadline: invalidDeadline,
+  };
+  assert.equal(isStarterActivationExpired(malformedStarter, activationNow), true, 'missing or malformed starter deadlines must fail closed');
+  assert.equal(hasStarterWorkspaceAccess(malformedStarter, false, activationNow), false, 'invalid deadlines must not grant indefinite workspace access');
+  assert.equal(isStarterPublicSurfaceExpired(malformedStarter, activationNow), true, 'invalid deadlines must not grant indefinite public access');
+  assert.equal(shouldShowStarterPublicPlaceholders(malformedStarter, activationNow), false, 'invalid deadlines must not render active-starter placeholders');
+}
+
+const malformedPlanStarter = {
+  onboardingSource: 'PUBLIC_MENU_ENTRY',
+  activationDeadline: 'not-a-date',
+  activePlanType: { internal: 'premium' },
+};
+assert.equal(
+  isStarterPublicSurfaceExpired(malformedPlanStarter, activationNow),
+  true,
+  'a malformed truthy plan value must not bypass starter expiry',
+);
+assert.equal(
+  isStarterPublicSurfaceExpired({ ...malformedPlanStarter, activePlanType: ' premium ' }, activationNow),
+  false,
+  'a bounded non-empty plan string must preserve paid public access',
+);
+
+let timestampAdapterCalls = 0;
+const methodOnlyTimestamp = {
+  toMillis() {
+    timestampAdapterCalls += 1;
+    return activationNow + 60_000;
+  },
+};
+assert.equal(normalizeStarterActivationTimestamp(methodOnlyTimestamp), null, 'method-only persisted objects are not admitted as timestamps');
+assert.equal(timestampAdapterCalls, 0, 'timestamp normalization must not execute methods from persisted objects');
 
 const baseStarterStore = { storeId: 10, onboardingSource: 'PUBLIC_MENU_ENTRY' };
 const wrongStoreMerge = applyStarterActivationSignalToStoreDetails(

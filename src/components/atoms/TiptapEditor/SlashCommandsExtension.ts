@@ -1,18 +1,39 @@
-// @ts-nocheck
 import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
-import Suggestion from '@tiptap/suggestion';
+import Suggestion, { type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
 import tippy from 'tippy.js';
-import { getSuggestionItems, SlashCommandsList, SlashCommandsListRef } from './SlashCommandsList';
+import type { Instance } from 'tippy.js';
+import {
+    getSuggestionItems,
+    SlashCommandsList,
+    type SlashCommandItem,
+    type SlashCommandsListProps,
+    type SlashCommandsListRef,
+} from './SlashCommandsList';
 
-export const SlashCommandsExtension = Extension.create({
+interface SlashCommandsExtensionOptions {
+    suggestion: Omit<SuggestionOptions<SlashCommandItem, SlashCommandItem>, 'editor'>;
+}
+
+const toListProps = (
+    props: SuggestionProps<SlashCommandItem, SlashCommandItem>,
+): SlashCommandsListProps => ({
+    command: props.command,
+    items: props.items,
+});
+
+export const SlashCommandsExtension = Extension.create<SlashCommandsExtensionOptions>({
     name: 'slash-commands',
 
     addOptions() {
         return {
             suggestion: {
                 char: '/',
-                command: ({ editor, range, props }) => {
+                command: ({ editor, range, props }: {
+                    editor: import('@tiptap/core').Editor;
+                    range: import('@tiptap/core').Range;
+                    props: SlashCommandItem;
+                }) => {
                     props.command({ editor, range });
                 },
             },
@@ -26,22 +47,23 @@ export const SlashCommandsExtension = Extension.create({
                 ...this.options.suggestion,
                 items: getSuggestionItems,
                 render: () => {
-                    let component: ReactRenderer<SlashCommandsListRef>;
-                    let popup: any;
+                    let component: ReactRenderer<SlashCommandsListRef, SlashCommandsListProps> | null = null;
+                    let popup: Instance[] = [];
 
                     return {
-                        onStart: props => {
-                            component = new ReactRenderer(SlashCommandsList, {
-                                props,
+                        onStart: (props: SuggestionProps<SlashCommandItem, SlashCommandItem>) => {
+                            component = new ReactRenderer<SlashCommandsListRef, SlashCommandsListProps>(SlashCommandsList, {
+                                props: toListProps(props),
                                 editor: props.editor,
                             });
 
                             if (!props.clientRect) {
                                 return;
                             }
+                            const getReferenceClientRect = (): DOMRect => props.clientRect?.() ?? new DOMRect();
 
                             popup = tippy('body', {
-                                getReferenceClientRect: props.clientRect as any,
+                                getReferenceClientRect,
                                 appendTo: () => document.body,
                                 content: component.element,
                                 showOnCreate: true,
@@ -51,30 +73,33 @@ export const SlashCommandsExtension = Extension.create({
                             });
                         },
 
-                        onUpdate(props) {
-                            component.updateProps(props);
+                        onUpdate(props: SuggestionProps<SlashCommandItem, SlashCommandItem>) {
+                            component?.updateProps(toListProps(props));
 
-                            if (!props.clientRect) {
+                            if (!props.clientRect || !popup[0]) {
                                 return;
                             }
+                            const getReferenceClientRect = (): DOMRect => props.clientRect?.() ?? new DOMRect();
 
                             popup[0].setProps({
-                                getReferenceClientRect: props.clientRect as any,
+                                getReferenceClientRect,
                             });
                         },
 
                         onKeyDown(props) {
                             if (props.event.key === 'Escape') {
-                                popup[0].hide();
+                                popup[0]?.hide();
                                 return true;
                             }
 
-                            return component.ref?.onKeyDown(props);
+                            return component?.ref?.onKeyDown(props) ?? false;
                         },
 
                         onExit() {
-                            popup[0].destroy();
-                            component.destroy();
+                            popup[0]?.destroy();
+                            popup = [];
+                            component?.destroy();
+                            component = null;
                         },
                     };
                 },

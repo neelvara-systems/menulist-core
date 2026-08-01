@@ -13,7 +13,7 @@ interface UseInViewOptions {
 
 export function useInView<T extends Element>(
   options: UseInViewOptions = {}
-): [RefObject<T>, boolean] {
+): [RefObject<T | null>, boolean] {
   const { root = null, rootMargin = '0px', threshold = 0.1, triggerOnce = true } = options;
   const ref = useRef<T>(null);
   const [isInView, setIsInView] = useState(false);

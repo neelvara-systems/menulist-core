@@ -3,6 +3,10 @@ import { headers } from 'next/headers';
 import AnswerlatticeFooter from '../../components/Footer';
 import AnswerlatticeHeader from '../../components/Header';
 import ProductCapabilityLandingPage from '../../components/ProductCapabilityLandingPage';
+import {
+    ANSWERLATTICE_KNOWLEDGE_MAP_ASSET,
+    ANSWERLATTICE_RELEASE_ASSURANCE_ASSET,
+} from '../../answerlatticeWebsiteAssets';
 import { ANSWERLATTICE_PRODUCT_AREAS } from '../../productAreas';
 
 export const metadata: Metadata = {
@@ -36,6 +40,10 @@ export default async function KnowledgeGovernanceProductPage() {
                 description="Knowledge Map locates governed product truth. Product Friction Evidence shows where users are struggling. Answer Tests and release impact help you review changes before support depends on them."
                 activeTab="Review approved answers"
                 tabs={ANSWERLATTICE_PRODUCT_AREAS}
+                heroAsset={ANSWERLATTICE_KNOWLEDGE_MAP_ASSET}
+                heroAssetSlotId="product.knowledge-map"
+                workflowAsset={ANSWERLATTICE_RELEASE_ASSURANCE_ASSET}
+                workflowAssetSlotId="product.release-assurance"
                 bentoTitle="One product model, several owner decisions."
                 bentoDescription="These are not separate analytics systems. They are focused views over the same product entities, approved answers, support evidence, releases, and tests. Knowledge Map is a governed decision view, not a raw graph or diagram editor."
                 bentoCards={[

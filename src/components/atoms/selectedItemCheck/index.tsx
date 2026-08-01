@@ -3,7 +3,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { GiCheckMark } from 'react-icons/gi';
 import styles from './selectedItemCheck.module.scss';
 
-function SelectedItemCheck({ active }) {
+interface SelectedItemCheckProps {
+    active: boolean;
+}
+
+function SelectedItemCheck({ active }: SelectedItemCheckProps) {
     const { token } = theme.useToken();
 
     return (

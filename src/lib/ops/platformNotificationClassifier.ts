@@ -14,15 +14,58 @@ type RawAlert = {
   type?: unknown;
   tId?: unknown;
   sId?: unknown;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 };
+
+const PLATFORM_NOTIFICATION_PRODUCT_IDS = new Set<PlatformNotificationProductId>([
+  'PLATFORM',
+  'ML',
+  'AL',
+  'CC',
+  'MC',
+]);
+const PLATFORM_NOTIFICATION_CATEGORIES = new Set<PlatformNotificationCategory>([
+  'cost',
+  'security',
+  'public_output',
+  'scheduler',
+  'payments',
+  'owner_notifications',
+  'ai',
+  'extraction',
+  'pos',
+  'answerlattice',
+  'manual',
+  'system',
+]);
 
 function asText(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
-function normalizeSeverity(value: unknown): PlatformNotificationSeverity {
-  return value === 'critical' || value === 'warning' || value === 'info' ? value : 'warning';
+function normalizeSeverity(
+  value: unknown,
+  fallback: PlatformNotificationSeverity,
+): PlatformNotificationSeverity {
+  return value === 'critical' || value === 'warning' || value === 'info' ? value : fallback;
+}
+
+function normalizeProductId(
+  value: unknown,
+  fallback: PlatformNotificationProductId,
+): PlatformNotificationProductId {
+  return PLATFORM_NOTIFICATION_PRODUCT_IDS.has(value as PlatformNotificationProductId)
+    ? value as PlatformNotificationProductId
+    : fallback;
+}
+
+function normalizeCategory(
+  value: unknown,
+  fallback: PlatformNotificationCategory,
+): PlatformNotificationCategory {
+  return PLATFORM_NOTIFICATION_CATEGORIES.has(value as PlatformNotificationCategory)
+    ? value as PlatformNotificationCategory
+    : fallback;
 }
 
 function inferTriggerType(alert: RawAlert): string {
@@ -111,8 +154,8 @@ export function classifyPlatformAlert(alert: RawAlert): {
   return {
     triggerType: entry.triggerType,
     entry,
-    productId: (alert.metadata?.productId || entry.productId) as PlatformNotificationProductId,
-    category: (alert.metadata?.category || entry.category) as PlatformNotificationCategory,
-    severity: normalizeSeverity(alert.severity || entry.severity),
+    productId: normalizeProductId(alert.metadata?.productId, entry.productId),
+    category: normalizeCategory(alert.metadata?.category, entry.category),
+    severity: normalizeSeverity(alert.severity, entry.severity),
   };
 }

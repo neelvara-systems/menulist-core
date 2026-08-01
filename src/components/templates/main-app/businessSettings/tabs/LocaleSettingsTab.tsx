@@ -22,7 +22,7 @@ const BUSINESS_DAY_END_OPTIONS = [
 
 interface LocaleSettingsTabProps {
     onOpenSearchDiscovery?: () => void;
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     storeDetails?: any;
 }
 
@@ -94,7 +94,7 @@ const LocaleSettingsTab: React.FC<LocaleSettingsTabProps> = ({ onOpenSearchDisco
                             placeholder={t('selectTimeZone')}
                             showSearch
                             filterOption={(input, option) =>
-                                option?.label?.toLowerCase().includes(input.toLowerCase())
+                                option?.label?.toLowerCase().includes(input.toLowerCase()) ?? false
                             }
                             options={TIMEZONES_LIST.map((t) => ({ label: t.label, value: t.tzCode }))}
                         />

@@ -77,7 +77,7 @@ const DESKTOP_POS_SYNC_COPY_UNAVAILABLE = 'desktop_pos_sync_copy_unavailable';
 const DESKTOP_POS_SYNC_COPY_FALLBACK_FAILED = 'desktop_pos_sync_copy_fallback_failed';
 
 interface PosSyncTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     storeDetails?: any;
     onStoreStateUpdate?: (updates: Record<string, any>) => void;
     onStoreUpdate?: (updates: Record<string, any>) => void | Promise<void>;

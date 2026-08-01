@@ -1,6 +1,28 @@
 import { APP_THEME_COLOR } from '@constant/common';
 
 export const CUSTOMER_APP_ICON_CACHE_CONTROL = 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800';
+export const CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL = 'private, no-store, max-age=0';
+
+const MAX_CUSTOMER_APP_DISPLAY_NAME_LENGTH = 120;
+const MAX_CUSTOMER_APP_IMAGE_URL_LENGTH = 2048;
+const CUSTOMER_APP_RENDERABLE_IMAGE_HOSTS = new Set([
+    'firebasestorage.googleapis.com',
+    'storage.googleapis.com',
+]);
+
+function getCustomerAppStorageBucketFromUrl(url: URL): string | undefined {
+    const pathSegments = url.pathname.split('/').filter(Boolean);
+    if (url.hostname === 'firebasestorage.googleapis.com') {
+        const bucketIndex = pathSegments.findIndex((segment, index) => (
+            segment === 'b' && pathSegments[index - 1] === 'v0'
+        ));
+        return bucketIndex >= 0 ? pathSegments[bucketIndex + 1] : undefined;
+    }
+    if (pathSegments[0] === 'download' && pathSegments[1] === 'storage' && pathSegments[2] === 'v1' && pathSegments[3] === 'b') {
+        return pathSegments[4];
+    }
+    return pathSegments[0];
+}
 
 const SUPPORTED_ICON_SIZES = new Set([120, 152, 167, 180, 192, 384, 512]);
 
@@ -86,10 +108,46 @@ export function getStaticCustomerAppleStartupImages() {
 }
 
 export function clampCustomerAppIconSize(raw: string): number {
-    const n = parseInt(raw, 10);
-    if (!Number.isFinite(n)) return 512;
+    if (!/^[1-9]\d{1,3}$/.test(raw)) return 512;
+    const n = Number(raw);
     if (SUPPORTED_ICON_SIZES.has(n)) return n;
     return 512;
+}
+
+export function normalizeCustomerAppDisplayName(value: unknown, fallback = 'Menu'): string {
+    if (typeof value !== 'string') return fallback;
+    const normalized = value.trim().replace(/\s+/g, ' ');
+    return normalized ? normalized.slice(0, MAX_CUSTOMER_APP_DISPLAY_NAME_LENGTH) : fallback;
+}
+
+export function normalizeCustomerAppRenderableImageUrl(value: unknown): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim();
+    if (!normalized || normalized.length > MAX_CUSTOMER_APP_IMAGE_URL_LENGTH) return undefined;
+
+    try {
+        const url = new URL(normalized);
+        if (
+            url.protocol !== 'https:'
+            || url.username
+            || url.password
+            || url.port
+            || !CUSTOMER_APP_RENDERABLE_IMAGE_HOSTS.has(url.hostname.toLowerCase())
+        ) return undefined;
+
+        const configuredBucket = (
+            process.env.NEXT_PUBLIC_MENULIST_FIREBASE_STORAGE_BUCKET
+            || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+            || ''
+        ).trim();
+        if (!configuredBucket || getCustomerAppStorageBucketFromUrl(url) !== configuredBucket) return undefined;
+
+        const decodedPath = decodeURIComponent(url.pathname);
+        if (!/\.(png|jpe?g|webp)$/i.test(decodedPath)) return undefined;
+        return url.toString();
+    } catch {
+        return undefined;
+    }
 }
 
 export function parseCustomerAppSplashSize(raw: string): { width: number; height: number } | null {
@@ -111,26 +169,27 @@ export function deriveCustomerAppShortName(displayName: string, override?: strin
 export type CustomerAppIconSource = 'override' | 'logo' | 'generated';
 
 export function resolveCustomerAppIconSource(store: any): { imageUrl?: string; source: CustomerAppIconSource } {
-    const overrideUrl =
+    const rawOverrideUrl =
         typeof store?.publicPresence?.pwaIconOverrideUrl === 'string'
             ? store.publicPresence.pwaIconOverrideUrl.trim()
             : '';
     const mode = typeof store?.publicPresence?.pwaIconMode === 'string'
         ? store.publicPresence.pwaIconMode
         : '';
-    const logoUrl = typeof store?.logo === 'string' ? store.logo.trim() : '';
-    const hasUsableImage = (candidate: string) => /\.(png|jpe?g|webp)(\?|$)/i.test(candidate);
+    const rawLogoUrl = typeof store?.logo === 'string' ? store.logo.trim() : '';
+    const overrideUrl = normalizeCustomerAppRenderableImageUrl(rawOverrideUrl);
+    const logoUrl = normalizeCustomerAppRenderableImageUrl(rawLogoUrl);
 
-    if (mode === 'override' && overrideUrl && hasUsableImage(overrideUrl)) {
+    if (mode === 'override' && overrideUrl) {
         return { imageUrl: overrideUrl, source: 'override' };
     }
     if (mode === 'generated') {
         return { source: 'generated' };
     }
-    if (overrideUrl && hasUsableImage(overrideUrl)) {
+    if (overrideUrl) {
         return { imageUrl: overrideUrl, source: 'override' };
     }
-    if (logoUrl && hasUsableImage(logoUrl)) {
+    if (logoUrl) {
         return { imageUrl: logoUrl, source: 'logo' };
     }
     return { source: 'generated' };

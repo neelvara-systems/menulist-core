@@ -33,11 +33,11 @@ export default async function SmallSaasTeamsUseCasePage() {
             answerlatticeAnswer="AnswerLattice serves approved help from the widget or hosted help center first. If the answer is missing, the user gets ticket fallback and the missing coverage becomes a reviewable support gap."
             ownerReview="The team can improve support without turning every ticket into a one-off reply. Repeated gaps, stale answers, low-rated responses, and support-heavy pages stay visible until a human approves the next official answer."
             setupSteps={[
-                'Create the workspace and add the product support email.',
-                'Import docs, FAQs, changelog notes, ticket patterns, and repeated founder answers.',
+                'Start with the same bounded founder path: one workspace, priority questions, trusted sources, and a verified widget.',
+                'Invite only the teammates who regularly respond, review support truth, or maintain product context.',
                 'Map the pages where users get stuck: onboarding, billing, settings, integrations, and errors.',
-                'Install the widget and publish hosted help from the same reviewed knowledge.',
-                'Review support gaps weekly before they become official answers.',
+                'Add workflow notifications or selected Support Board work only when shared ownership requires them.',
+                'Review support gaps and release impact weekly before changes become official answers.',
             ]}
             primaryCta="Create workspace"
             secondaryCta="See 60-sec demo"

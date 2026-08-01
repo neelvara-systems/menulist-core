@@ -77,6 +77,39 @@ export const normalizeLocalePreference = (value?: string | null): Locale | null 
     }
 };
 
+const ACCEPT_LANGUAGE_MAX_LENGTH = 8_192;
+const ACCEPT_LANGUAGE_MAX_ENTRIES = 50;
+const ACCEPT_LANGUAGE_QUALITY_PATTERN = /^(?:0(?:\.\d{1,3})?|1(?:\.0{1,3})?)$/;
+
+export const parseAcceptLanguageLocales = (value: unknown): Locale[] => {
+    if (
+        typeof value !== 'string'
+        || value.length === 0
+        || value.length > ACCEPT_LANGUAGE_MAX_LENGTH
+    ) {
+        return [];
+    }
+
+    const candidates = value.split(',').slice(0, ACCEPT_LANGUAGE_MAX_ENTRIES).flatMap((entry, index) => {
+        const [rawLocale, ...parameters] = entry.trim().split(';');
+        const locale = normalizeLocalePreference(rawLocale);
+        if (!locale) return [];
+        const qualityParameter = parameters
+            .map((parameter) => parameter.trim())
+            .find((parameter) => parameter.toLowerCase().startsWith('q='));
+        const rawQuality = qualityParameter?.slice(2);
+        const quality = rawQuality === undefined
+            ? 1
+            : ACCEPT_LANGUAGE_QUALITY_PATTERN.test(rawQuality)
+                ? Number(rawQuality)
+                : 0;
+        return quality > 0 ? [{ index, locale, quality }] : [];
+    });
+
+    candidates.sort((left, right) => right.quality - left.quality || left.index - right.index);
+    return Array.from(new Set(candidates.map(({ locale }) => locale)));
+};
+
 export const normalizeTimeZone = (
     value?: string | null,
     fallback = defaultTimezone,

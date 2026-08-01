@@ -24,6 +24,9 @@
 7. Custom governance error subclasses restore their prototype so `instanceof` works under the current TypeScript runtime target.
 8. The editor now exposes plan, role, state, and bounded version applicability for create and update.
 9. Version history labels match the action names emitted by the server transaction.
+10. Identity-bearing proposal, answer, entity, evidence, and request IDs are validated exactly; surrounding whitespace is rejected instead of being normalized into another mutation target or idempotency key.
+11. Canonical scope arrays reject duplicate entity, plan, role, and state identifiers before proposal persistence.
+12. The shared product-binding schema rejects validation versions before introduction and applicability windows whose end precedes their start, so API, stored-proposal, and server candidate checks share one contract.
 
 ## Data precedence on approval
 

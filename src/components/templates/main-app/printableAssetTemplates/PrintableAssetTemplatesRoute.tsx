@@ -207,11 +207,11 @@ export default function PrintableAssetTemplatesRoute() {
     const searchParams = useSearchParams();
     const { token } = theme.useToken();
     const { message: messageApi, modal } = AntApp.useApp();
-    const projectIdQuery = searchParams.get('projectId') || '';
+    const projectIdQuery = searchParams?.get('projectId') || '';
     const [pageState, setPageState] = useState<PageState>('loading');
     const [data, setData] = useState<AssetsData | null>(null);
     const [selectedAssetId, setSelectedAssetId] = useState<PrintableAssetTypeId>(() => {
-        const fromQuery = searchParams.get('asset');
+        const fromQuery = searchParams?.get('asset');
         return isPrintableAssetTypeId(fromQuery) ? fromQuery : 'single_table_card';
     });
     const [activeTemplateId, setActiveTemplateId] = useState<PrintableTemplateFamilyId | null>(null);

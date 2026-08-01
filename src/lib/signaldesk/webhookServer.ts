@@ -117,7 +117,7 @@ const getSignalDeskDb = () => {
 const now = () => admin.firestore.Timestamp.now();
 const env = (key: string) => process.env[key]?.trim() || "";
 const hashValue = (value: string) => createHash("sha256").update(value).digest("hex");
-const sanitizeForFirestore = (value: unknown) => sanitizeFirestoreValue(value, {
+const sanitizeForFirestore = <T>(value: T): T extends undefined ? null : T => sanitizeFirestoreValue(value, {
     dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
 });
 
@@ -758,7 +758,7 @@ const processNormalizedWebhookEvent = async (params: {
                 ? timestampMillis(conversationAuthority.lastInboundOccurredAt || conversationAuthority.lastInboundAt)
                 : null;
             outOfOrder = Boolean(lastInboundMillis && eventOccurredAtMillis < lastInboundMillis);
-            currentConversationState = conversationAuthority?.state || "";
+            currentConversationState = conversationAuthority?.state ?? "";
             const targetSuppressed = target.suppressionStatus !== "clear";
             if (outOfOrder || (targetSuppressed && isSignalDeskSafetyReplyState(currentConversationState) && !isSignalDeskSafetyReplyState(inboundState))) {
                 projectedInboundState = (currentConversationState || inboundState) as SignalDeskWebhookInboundState;
@@ -766,7 +766,7 @@ const processNormalizedWebhookEvent = async (params: {
             conversationId = conversationRef.id;
             if (!outOfOrder) {
                 const previousNeedsReview = isSignalDeskInboxReviewState(currentConversationState);
-                const nextNeedsReview = isSignalDeskInboxReviewState(projectedInboundState);
+                const nextNeedsReview = isSignalDeskInboxReviewState(projectedInboundState ?? inboundState);
                 if (previousNeedsReview !== nextNeedsReview) {
                     queueRef = db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.QUEUES);
                     const queueSnap = await transaction.get(queueRef);

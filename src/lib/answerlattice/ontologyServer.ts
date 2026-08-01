@@ -1010,7 +1010,7 @@ export async function executeAnswerlatticeOntologyAction(
 export async function upsertAnswerlatticeExtractedEntityCandidate(params: {
     scope: Scope;
     actorLabel: string;
-    candidate: Omit<AnswerlatticeEntityCandidate, 'id'>;
+    candidate: Omit<AnswerlatticeEntityCandidate, 'id' | 'pId'>;
     sourceArticleId?: string;
 }): Promise<{ candidateId: string; created: boolean; updated: boolean }> {
     const { scope } = params;

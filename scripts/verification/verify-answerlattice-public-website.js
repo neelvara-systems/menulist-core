@@ -63,6 +63,9 @@ const {
 const {
   ANSWERLATTICE_PUBLIC_CLAIM_GUARDRAILS,
 } = require('../../src/content/answerlatticePublic/guardrails');
+const {
+  getAnswerlatticeResourceArticle,
+} = require('../../src/content/answerlatticePublic/articles');
 
 const monthlyPlans = getAnswerlatticePlans()
   .filter((plan) => plan.billingInterval === 'MONTH')
@@ -107,6 +110,7 @@ const pricing = read(`${WEBSITE_ROOT}/pricing/page.tsx`);
 const faq = read(`${WEBSITE_ROOT}/faq/page.tsx`);
 const pricingArticle = read('src/content/answerlatticePublic/articles.ts');
 const onboarding = read(`${WEBSITE_ROOT}/get-started/OnboardingForm.tsx`);
+const onboardingResponse = read('src/lib/answerlattice/onboardingResponse.ts');
 const onboardingPage = read(`${WEBSITE_ROOT}/get-started/page.tsx`);
 const billingPlans = read('src/lib/billing/productBillingPlans.ts');
 const structuredData = read(`${WEBSITE_ROOT}/components/StructuredData.tsx`);
@@ -115,6 +119,37 @@ const websiteImpl = read(`${WEBSITE_DOCS_ROOT}/answerlattice-website_impl.md`);
 const analytics = read(`${WEBSITE_ROOT}/components/AnswerlatticeAnalytics.tsx`);
 const resourceAnalytics = read(`${WEBSITE_ROOT}/components/AnswerlatticeResourceAnalytics.tsx`);
 const knowledgeMapWebsiteDoc = read('__docs__/answerlattice/knowledge-map/knowledge-map_website.md');
+const operatingGuideRoute = read(`${WEBSITE_ROOT}/resources/answerlattice-operating-guide/page.tsx`);
+const founderLaunchKit = read(`${WEBSITE_ROOT}/resources/founder-launch-kit/page.tsx`);
+const operatingGuide = getAnswerlatticeResourceArticle('answerlattice-operating-guide');
+
+assert(operatingGuide, 'public Operating Guide article must exist');
+assert(
+  operatingGuide.sections.map((section) => section.title).join('\n').includes('One product, three operating depths'),
+  'public Operating Guide must preserve one product with progressive operating guidance',
+);
+assertIncludes(
+  operatingGuide.sections.flatMap((section) => section.body || []).join('\n'),
+  'They are not workspace modes, automatic scores, separate products, or required setup stages.',
+  'public Operating Guide runtime-mode boundary',
+);
+assertIncludes(
+  operatingGuide.sections.flatMap((section) => section.body || []).join('\n'),
+  'A bounded product, support, and engineering group',
+  'public Operating Guide bounded larger-company fit',
+);
+assertIncludes(
+  operatingGuideRoute,
+  '<AnswerlatticeResourceArticlePage articlePath={articlePath} />',
+  'public Operating Guide shared static renderer',
+);
+assertNotIncludes(operatingGuideRoute, 'fetch(', 'public Operating Guide network dependency');
+assertNotIncludes(operatingGuideRoute, 'firebase', 'public Operating Guide Firebase dependency');
+assertIncludes(
+  founderLaunchKit,
+  'href="/resources/answerlattice-operating-guide"',
+  'Founder Launch Kit progressive guidance handoff',
+);
 
 [
   'readStoredTheme()',
@@ -139,7 +174,9 @@ assertIncludes(pricing, 'plan.priceUSD.price', 'public pricing USD amount');
 assertIncludes(pricing, 'plan.priceINR.monthlyCredits', 'public pricing support-credit amount');
 assertIncludes(onboarding, 'getAnswerlatticePlans', 'onboarding plan source');
 assertIncludes(onboarding, "plan.billingInterval === 'MONTH'", 'onboarding monthly packaging');
-assertIncludes(onboarding, 'ONBOARDING_PLAN_IDS.has(value.plan.id)', 'onboarding response plan admission');
+assertIncludes(onboarding, 'normalizeAnswerlatticeOnboardResult(data)', 'onboarding response projection');
+assertIncludes(onboardingResponse, "getAnswerlatticePlanById(value.plan.id, 'MONTH')", 'onboarding response current plan admission');
+assertIncludes(onboardingResponse, 'value.plan.name !== plan.name', 'onboarding response current plan-name admission');
 assertIncludes(onboarding, "interval: 'MONTH'", 'onboarding request interval');
 assertIncludes(onboarding, 'currency,', 'onboarding request currency');
 assertIncludes(billingPlans, 'getAnswerlatticePlans()', 'Billing plan source');
@@ -186,7 +223,7 @@ assertIncludes(onboarding, 'Choose at least one main product page.', 'onboarding
 assertIncludes(onboarding, '${basePath}/terms-of-service', 'onboarding terms link');
 assertIncludes(onboarding, '${basePath}/privacy-policy', 'onboarding privacy link');
 assertIncludes(onboarding, 'ANSWERLATTICE_ONBOARD_RESPONSE_JSON_MAX_BYTES', 'onboarding bounded response');
-assertIncludes(onboarding, 'normalizeRazorpaySubscriptionCheckoutUrl', 'onboarding checkout URL admission');
+assertIncludes(onboardingResponse, 'normalizeRazorpaySubscriptionCheckoutUrl', 'onboarding checkout URL admission');
 
 const registeredPaths = ANSWERLATTICE_PUBLIC_PAGES.map((page) => page.path);
 assert(
@@ -239,6 +276,9 @@ const widgetProductPage = read(`${WEBSITE_ROOT}/product/page-aware-widget/page.t
 const supportControlProductPage = read(`${WEBSITE_ROOT}/product/support-control/page.tsx`);
 const knowledgeGovernanceProductPage = read(`${WEBSITE_ROOT}/product/knowledge-governance/page.tsx`);
 const productFeatures = read(`${WEBSITE_ROOT}/productFeatures.ts`);
+const websiteAssets = read(`${WEBSITE_ROOT}/answerlatticeWebsiteAssets.ts`);
+const productCapabilityLandingPage = read(`${WEBSITE_ROOT}/components/ProductCapabilityLandingPage.tsx`);
+const productFeatureLandingPage = read(`${WEBSITE_ROOT}/components/ProductFeatureLandingPage.tsx`);
 const updatesPage = read(`${WEBSITE_ROOT}/updates/page.tsx`);
 const websiteStyles = read(`${WEBSITE_ROOT}/styles.css`);
 assertIncludes(homepage, 'Answer what is known. Catch what is missing. Improve it once.', 'homepage support-loop focus');
@@ -246,6 +286,8 @@ assertIncludes(homepage, 'Why this answer is trusted', 'homepage trusted-answer 
 assertIncludes(homepage, '<FounderReviewSection basePath={basePath} />', 'homepage active owner-decision section');
 assertIncludes(homepage, 'id="owner-decision-system"', 'homepage owner-decision anchor');
 assertIncludes(homepage, 'Open once. Know what deserves your decision.', 'homepage owner-decision promise');
+assertIncludes(homepage, 'ANSWERLATTICE_OWNER_DECISION_ASSET', 'homepage owner-decision proof asset');
+assertIncludes(homepage, 'assetSlotId="home.owner-decision-system"', 'homepage owner-decision AssetOS slot');
 assertIncludes(homepage, 'Article topic maps', 'homepage public article-navigation capability');
 assertIncludes(homepage, 'They do not publish answers, change releases, or create a second task system.', 'homepage owner-decision mutation boundary');
 assertIncludes(
@@ -294,9 +336,16 @@ assertIncludes(productPage, 'Provider-backed fallback cannot certify critical pr
 assertIncludes(supportControlProductPage, 'clear quiet state when complete evidence needs no action', 'Support Control qualified quiet state');
 assertIncludes(supportControlProductPage, 'sanitized published headings', 'Support Control public topic-map boundary');
 assertIncludes(knowledgeGovernanceProductPage, 'One product model, several owner decisions.', 'Knowledge Governance connected model');
+assertIncludes(knowledgeGovernanceProductPage, 'ANSWERLATTICE_KNOWLEDGE_MAP_ASSET', 'Knowledge Governance curated map proof');
+assertIncludes(knowledgeGovernanceProductPage, 'heroAssetSlotId="product.knowledge-map"', 'Knowledge Governance map AssetOS slot');
+assertIncludes(knowledgeGovernanceProductPage, 'ANSWERLATTICE_RELEASE_ASSURANCE_ASSET', 'Knowledge Governance release assurance proof');
+assertIncludes(knowledgeGovernanceProductPage, 'workflowAssetSlotId="product.release-assurance"', 'Knowledge Governance release assurance AssetOS slot');
 assertIncludes(knowledgeGovernanceProductPage, 'Knowledge Map is a governed decision view, not a raw graph or diagram editor.', 'Knowledge Map raw-graph boundary');
 assertIncludes(knowledgeGovernanceProductPage, 'No map, metric, test, or impact preview changes support truth automatically.', 'Knowledge Governance mutation boundary');
 assertIncludes(productFeatures, 'Publish readable article topic maps', 'Knowledge Base topic-map capability');
+assertIncludes(websiteAssets, "'knowledge-base': ANSWERLATTICE_ARTICLE_TOPIC_MAP_ASSET", 'Knowledge Base public topic-map proof');
+assertIncludes(productFeatureLandingPage, "'knowledge-base': 'product.article-topic-map'", 'Knowledge Base topic-map AssetOS slot');
+assertIncludes(productCapabilityLandingPage, 'assetRole="product-area-workflow-proof"', 'product capability workflow proof mounting');
 assertIncludes(productFeatures, 'Reject stale previews', 'Changelog stale-impact boundary');
 assertIncludes(faq, 'a clear quiet state when complete evidence needs no action', 'FAQ qualified Daily Brief truth');
 assertIncludes(faq, 'does not expose a raw graph or become a diagram editor', 'FAQ Knowledge Map boundary');
@@ -310,6 +359,14 @@ assertIncludes(knowledgeMapWebsiteDoc, 'validated product-area context into gove
 assertIncludes(widgetProductPage, 'Opt-in guided resolution', 'widget bounded guided-resolution copy');
 assertIncludes(widgetProductPage, 'AnswerLattice does not click controls or change product data.', 'widget guided-resolution action boundary');
 assertIncludes(websiteStyles, '.al-page-flow > section.al-page-hero', 'mobile structured-data hero spacing boundary');
+for (const assetPath of [
+  'public/answerlattice-owner-decision-system.webp',
+  'public/answerlattice-knowledge-map.webp',
+  'public/answerlattice-release-assurance.webp',
+  'public/answerlattice-article-topic-map.webp',
+]) {
+  assert(exists(assetPath), `Answerlattice governed proof asset must exist: ${assetPath}`);
+}
 
 const header = read(`${WEBSITE_ROOT}/components/Header.tsx`);
 const footer = read(`${WEBSITE_ROOT}/components/Footer.tsx`);
@@ -317,9 +374,17 @@ assertIncludes(header, 'aria-controls="answerlattice-mobile-navigation"', 'mobil
 assertIncludes(header, 'drawerRef.current', 'mobile drawer focus boundary');
 assertIncludes(header, "event.key !== 'Tab'", 'mobile drawer focus trap');
 assertIncludes(header, 'menuButtonRef.current?.focus()', 'mobile drawer focus restoration');
+assertIncludes(header, 'const shouldCloseMobileNavigation = hasMounted && !isMobile;', 'mobile navigation desktop-resize close boundary');
+assertNotIncludes(header, 'shouldShowMobileNavigation', 'mobile navigation hydration-gated trigger');
+assertIncludes(header, 'if (!isDrawerMounted) return undefined;', 'mobile drawer scoped body scroll lock');
+assertIncludes(header, 'const originalOverflow = document.body.style.overflow;', 'mobile drawer previous body scroll state capture');
+assertIncludes(header, 'document.body.style.overflow = originalOverflow;', 'mobile drawer previous body scroll state restoration');
+assertNotIncludes(header, "document.body.style.overflow = isDrawerMounted ? 'hidden' : '';", 'mobile drawer closed-state scroll overwrite');
 assertNotIncludes(header, 'onTouchStart={openDrawer}', 'mobile drawer duplicate touch activation');
+assertIncludes(header, '/resources/answerlattice-operating-guide', 'desktop and mobile Operating Guide navigation');
 assertNotIncludes(footer, 'The first 24/7 support layer', 'unsupported public category superlative');
 assertIncludes(footer, 'The governed support layer for founder-led SaaS.', 'public footer category');
+assertIncludes(footer, '/resources/answerlattice-operating-guide', 'footer Operating Guide navigation');
 
 const contact = read(`${WEBSITE_ROOT}/contact/ContactForm.tsx`);
 const contactRoute = read('src/app/api/answerlattice/public/contact/route.ts');
@@ -404,8 +469,18 @@ for (const doc of requiredDocs) {
 const packageJson = JSON.parse(read('package.json'));
 assert(
   packageJson.scripts['verify:answerlattice-public-website']
-    === 'node scripts/verification/verify-answerlattice-public-website.js && npm run test:answerlattice-public-contact-contracts && npm run test:answerlattice-robots-policy',
+    === 'node scripts/verification/verify-answerlattice-public-website.js && npm run test:answerlattice-public-resource-boundary && npm run test:answerlattice-public-roi-calculator && npm run test:answerlattice-public-contact-contracts && npm run test:answerlattice-robots-policy',
   'package must expose the Answerlattice public-website verifier',
+);
+assert(
+  packageJson.scripts['test:answerlattice-public-resource-boundary']
+    === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-answerlattice-public-resource-boundary.ts',
+  'package must expose the Answerlattice public-resource boundary regression test',
+);
+assert(
+  packageJson.scripts['test:answerlattice-public-roi-calculator']
+    === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022","jsx":"react-jsx"}\' -r tsconfig-paths/register scripts/verification/test-answerlattice-public-roi-calculator.ts',
+  'package must expose the Answerlattice public ROI calculator regression test',
 );
 assert(
   packageJson.scripts['test:answerlattice-robots-policy']

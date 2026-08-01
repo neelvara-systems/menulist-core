@@ -146,9 +146,9 @@ export function useMasterUpdateAwareness(
         const requestSequence = ++awarenessRequestSequenceRef.current;
         const isCurrentRequest = () => {
             const currentOutletProject = outletProjectRef.current;
-            return awarenessRequestSequenceRef.current === requestSequence
+                return awarenessRequestSequenceRef.current === requestSequence
                 && currentOutletProject?.projectId === requestedOutletProject.projectId
-                && currentOutletProject.masterProjectId === requestedOutletProject.masterProjectId;
+                && currentOutletProject?.masterProjectId === requestedOutletProject.masterProjectId;
         };
 
         setIsChecking(true);
@@ -261,7 +261,7 @@ export function useMasterUpdateAwareness(
         const isCurrentAcknowledgement = () => {
             const currentOutletProject = outletProjectRef.current;
             return currentOutletProject?.projectId === requestedOutletProject.projectId
-                && currentOutletProject.masterProjectId === requestedOutletProject.masterProjectId
+                && currentOutletProject?.masterProjectId === requestedOutletProject.masterProjectId
                 && masterProjectRef.current === requestedMasterProject;
         };
 
@@ -270,6 +270,9 @@ export function useMasterUpdateAwareness(
         try {
             const session = await getActiveSession();
             if (!isCurrentAcknowledgement()) return;
+            if (!session) {
+                throw new Error("Active outlet session is unavailable");
+            }
 
             const { tId, sId } = parseProjectId(requestedOutletProject.projectId);
             if (String(session.tId) !== String(tId) || String(session.sId) !== String(sId)) {

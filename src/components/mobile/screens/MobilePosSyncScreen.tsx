@@ -316,6 +316,12 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
     });
 
     const handleSave = async () => {
+        const expectedStoreId = storeDetails?.storeId;
+        const expectedTenantId = storeDetails?.tenantId;
+        if (!expectedStoreId || !expectedTenantId) {
+            Toast.show({ content: 'Store workspace is unavailable. Refresh and try again.', duration: 1500 });
+            return;
+        }
         const requestScopeKey = posSyncScopeKey;
         const trimmedWebhookUrl = webhookUrl.trim();
         let normalizedWebhookUrl = trimmedWebhookUrl;
@@ -333,8 +339,8 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
             try {
                 const result = await requestPosSyncSecret({
                     action: 'ensure',
-                    storeId: storeDetails?.storeId,
-                    tenantId: storeDetails?.tenantId,
+                    storeId: expectedStoreId,
+                    tenantId: expectedTenantId,
                 });
                 if (
                     componentActiveRef.current
@@ -426,6 +432,10 @@ function MobilePosSyncScreenContent({ onBack }: MobilePosSyncScreenProps) {
         const requestScopeKey = posSyncScopeKey;
         const expectedStoreId = storeDetails?.storeId;
         const expectedTenantId = storeDetails?.tenantId;
+        if (!expectedStoreId || !expectedTenantId) {
+            Toast.show({ content: 'Store workspace is unavailable. Refresh and try again.', duration: 1500 });
+            return;
+        }
         const audit = buildSecretRotationAudit();
         setSecretLoading(true);
         try {

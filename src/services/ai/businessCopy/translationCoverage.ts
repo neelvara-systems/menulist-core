@@ -1,7 +1,11 @@
 import { getStoreManagedLanguages, getStorePreferredLanguage } from '@lib/localization/storeContent';
 import { getLocalizedDraftStringList, getLocalizedStringList, getPrimaryLocalizedLanguage } from '@lib/localization/text';
-import { BusinessCopyLocalizedFieldKey, getBusinessCopyFieldConfigs } from './fieldConfig';
-import { BusinessCopyFieldValue, computeBusinessCopyCoverageCore } from './translationCoverageCore';
+import {
+    BusinessCopyLocalizedFieldKey,
+    getBusinessCopyFieldConfigs,
+    readBusinessCopyOwnValueAtPath,
+} from './fieldConfig';
+import { computeBusinessCopyCoverageCore } from './translationCoverageCore';
 
 export type BusinessCopyCoverageFieldKey = BusinessCopyLocalizedFieldKey | 'keywords';
 
@@ -18,20 +22,21 @@ type CoverageOptions = {
 };
 
 function getKeywordsCoverageField(
-    storeDetails: any,
+    storeDetails: unknown,
     managedLanguages: string[],
     referenceLanguage: string,
 ): BusinessCopyCoverageField {
+    const keywordValue = readBusinessCopyOwnValueAtPath(storeDetails, ['keywords']);
     const keywords = getLocalizedStringList(
-        storeDetails?.keywords,
+        keywordValue,
         referenceLanguage,
-        getPrimaryLocalizedLanguage(storeDetails?.keywords, referenceLanguage),
+        getPrimaryLocalizedLanguage(keywordValue, referenceLanguage),
         [],
     );
     const missingLanguages = keywords.length > 0
         ? managedLanguages.filter((languageCode) => (
             languageCode !== referenceLanguage
-            && getLocalizedDraftStringList(storeDetails?.keywords, languageCode, []).length === 0
+            && getLocalizedDraftStringList(keywordValue, languageCode, []).length === 0
         ))
         : [];
 
@@ -45,7 +50,7 @@ function getKeywordsCoverageField(
 }
 
 export function computeBusinessCopyCoverage(
-    storeDetails?: any,
+    storeDetails?: unknown,
     options?: CoverageOptions,
 ): {
     fields: BusinessCopyCoverageField[];
@@ -59,7 +64,7 @@ export function computeBusinessCopyCoverage(
     const result = computeBusinessCopyCoverageCore({
         fields: enabledFields.map((field) => ({
             key: field.key,
-            value: field.readValue(storeDetails) as BusinessCopyFieldValue,
+            value: field.readValue(storeDetails),
         })),
         managedLanguages,
         preferredLanguage: getStorePreferredLanguage(storeDetails),

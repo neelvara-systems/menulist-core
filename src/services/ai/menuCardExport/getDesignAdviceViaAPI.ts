@@ -1,9 +1,10 @@
-import type { MenuCardDesignAdvisorRecommendation } from '@lib/menu-card-export/ai/designAdvisor';
+import { MenuCardDesignAdvisorRecommendationSchema } from '@lib/menu-card-export/ai/designAdvisor';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import type { MenuCardDesignAdvisorRequest } from '@lib/validation/apiSchemas';
 import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, getBoundedAiServiceStringContext, logAiServiceFailure } from '@services/ai/aiServiceDiagnostics';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
 import { AICapacityError, checkCapacityResponse } from '@services/ai/capacityError';
+import { z } from 'zod';
 
 const MENU_CARD_DESIGN_ADVISOR_RESPONSE_JSON_MAX_BYTES = 16 * 1024;
 
@@ -16,18 +17,22 @@ export class MenuCardDesignAdvisorPlanError extends Error {
     }
 }
 
-export interface MenuCardDesignAdvisorResponse {
-    recommendation: MenuCardDesignAdvisorRecommendation;
-    remainingBalance?: {
-        monthlyCredits: number;
-        topUpCredits: number;
-    } | null;
-    transaction?: {
-        transactionId: string | null;
-        unitsConsumed: number;
-        processingTime: number;
-    };
-}
+export const MenuCardDesignAdvisorResponseSchema = z.object({
+    success: z.literal(true),
+    recommendation: MenuCardDesignAdvisorRecommendationSchema,
+    remainingBalance: z.object({
+        billingStoreId: z.number().int().safe().positive(),
+        monthlyCredits: z.number().int().safe().nonnegative(),
+        topUpCredits: z.number().int().safe().nonnegative(),
+    }).strict().nullable(),
+    transaction: z.object({
+        transactionId: z.string().trim().min(1).max(240).nullable(),
+        unitsConsumed: z.number().int().safe().nonnegative(),
+        processingTime: z.number().int().safe().nonnegative(),
+    }).strict(),
+}).strict();
+
+export type MenuCardDesignAdvisorResponse = z.infer<typeof MenuCardDesignAdvisorResponseSchema>;
 
 type MenuCardDesignAdvisorErrorResponse = {
     code?: unknown;
@@ -92,13 +97,15 @@ export default async function getMenuCardDesignAdviceViaAPI(
             throw createAiServiceHttpError('ai_menu_card_design_advisor_request_failed', response);
         }
 
-        const responseJson = await readMenuCardDesignAdvisorResponseJson<MenuCardDesignAdvisorResponse>(
+        const responseJson = await readMenuCardDesignAdvisorResponseJson<unknown>(
             response,
             payload,
             'recommendation',
         );
-        syncBalanceFromResponse(responseJson);
-        return responseJson?.recommendation ? responseJson : null;
+        const parsed = MenuCardDesignAdvisorResponseSchema.safeParse(responseJson);
+        if (!parsed.success) return null;
+        syncBalanceFromResponse(parsed.data);
+        return parsed.data;
     } catch (error) {
         if (error instanceof AICapacityError || error instanceof MenuCardDesignAdvisorPlanError) {
             throw error;

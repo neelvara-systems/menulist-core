@@ -3,10 +3,20 @@ import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/anal
 
 let analyticsClient: BetaAnalyticsDataClient | null = null;
 
+export const normalizeGoogleAnalyticsPrivateKey = (value?: string): string | undefined => (
+    typeof value === 'string' ? value.replace(/\\n/g, '\n') : undefined
+);
+
 const getAnalyticsProviderCode = (error: unknown): number | string | undefined => {
-    if (!error || typeof error !== 'object' || !('code' in error)) return undefined;
-    const code = (error as { code?: unknown }).code;
-    return typeof code === 'number' || typeof code === 'string' ? code : undefined;
+    try {
+        if (!error || typeof error !== 'object' || !Object.prototype.hasOwnProperty.call(error, 'code')) {
+            return undefined;
+        }
+        const code = Reflect.get(error, 'code');
+        return typeof code === 'number' || typeof code === 'string' ? code : undefined;
+    } catch {
+        return undefined;
+    }
 };
 
 const isAnalyticsAccessDenied = (error: unknown): boolean => getAnalyticsProviderCode(error) === 7 || getAnalyticsProviderCode(error) === '7';
@@ -29,7 +39,7 @@ export const getAnalyticsClient = async () => {
             analyticsClient = new BetaAnalyticsDataClient({
                 credentials: {
                     client_email: process.env.GA_CLIENT_EMAIL,
-                    private_key: process.env.GA_PRIVATE_KEY?.replace(/\n/g, '\n'),
+                    private_key: normalizeGoogleAnalyticsPrivateKey(process.env.GA_PRIVATE_KEY),
                 },
                 projectId: process.env.GA_PROJECT_ID
             });
@@ -59,7 +69,7 @@ export const getAnalyticsReport = async (propertyId: string, startDate: string, 
             dimensions: [{ name: 'date' }]
         });
         return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
         logAnalyticsFailure(
             'analytics_server_report_failed',
             error,
@@ -81,7 +91,7 @@ export const getRealTimeUsers = async (propertyId: string) => {
             dimensions: [{ name: 'country' }]
         });
         return response;
-    } catch (error: any) {
+    } catch (error: unknown) {
         logAnalyticsFailure(
             'analytics_server_realtime_report_failed',
             error,

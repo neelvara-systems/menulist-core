@@ -27,6 +27,46 @@ const asRecord = (value: unknown): UnknownRecord | undefined =>
     ? value as UnknownRecord
     : undefined;
 
+type OwnerBusinessAnalyticsSourceScope = {
+  tId: string;
+  sId: string;
+  projectId: string;
+  localDate: string;
+};
+
+export function isOwnerBusinessAnalyticsDashboardInScope(
+  value: unknown,
+  expected: OwnerBusinessAnalyticsSourceScope,
+): value is UnknownRecord {
+  const data = asRecord(value);
+  return Boolean(
+    data
+    && data.tId === expected.tId
+    && data.sId === expected.sId
+    && data.projectId === expected.projectId
+    && data.kind === 'ownerDashboardSummary'
+    && data.generatedForLocalDate === expected.localDate,
+  );
+}
+
+export function isOwnerBusinessAnalyticsDailyInScope(
+  value: unknown,
+  expected: OwnerBusinessAnalyticsSourceScope,
+): value is UnknownRecord {
+  const data = asRecord(value);
+  return Boolean(
+    data
+    && data.tId === expected.tId
+    && data.sId === expected.sId
+    && data.projectId === expected.projectId
+    && data.analyticsScope === 'customer'
+    && data.grain === 'daily'
+    && data.surface === 'menu'
+    && data.date === expected.localDate
+    && data.localDate === expected.localDate,
+  );
+}
+
 const toNumber = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
 
@@ -438,14 +478,26 @@ export async function buildOwnerBusinessAnalyticsIndex(params: {
 
   dashboardSnaps.forEach((snap, index) => {
     const entry = dashboardEntries[index];
-    if (entry && snap.exists) {
-      dashboardDataByProject.set(entry.project.projectId, { docId: entry.docId, data: snap.data() || {} });
+    const data = snap.data();
+    if (entry && snap.exists && isOwnerBusinessAnalyticsDashboardInScope(data, {
+      tId: params.tId,
+      sId: params.sId,
+      projectId: entry.project.projectId,
+      localDate: params.localDate,
+    })) {
+      dashboardDataByProject.set(entry.project.projectId, { docId: entry.docId, data });
     }
   });
   todaySnaps.forEach((snap, index) => {
     const entry = todayEntries[index];
-    if (entry && snap.exists) {
-      todayDataByProject.set(entry.project.projectId, { docId: entry.docId, data: snap.data() || {} });
+    const data = snap.data();
+    if (entry && snap.exists && isOwnerBusinessAnalyticsDailyInScope(data, {
+      tId: params.tId,
+      sId: params.sId,
+      projectId: entry.project.projectId,
+      localDate: params.localDate,
+    })) {
+      todayDataByProject.set(entry.project.projectId, { docId: entry.docId, data });
     }
   });
 

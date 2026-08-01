@@ -64,7 +64,7 @@ const normalizeBreakdown = <K extends readonly string[]>(value: unknown, keys: K
   for (const key of keys) {
     const normalized = normalizeNumber(value[key]);
     if (normalized === null) return null;
-    result[key] = normalized;
+    result[key as K[number]] = normalized;
   }
   return result as Record<K[number], number>;
 };
@@ -253,8 +253,8 @@ export function normalizeOBPDashboardReadModel(
   const overallNumbers = [
     'lifetimeViews', 'lifetimeActionClicks', 'lifetimeMenuClicks', 'lifetimeLinkClicks', 'lifetimeShares',
   ] as const;
-  const normalizedOverallNumbers = Object.fromEntries(overallNumbers.map((field) => [field, normalizeNumber(value.overall[field])]));
-  if (Object.values(normalizedOverallNumbers).some((entry) => entry === null)) return null;
+  const normalizedOverallNumbers = normalizeBreakdown(value.overall, overallNumbers);
+  if (!normalizedOverallNumbers) return null;
   const lifetimeActions = normalizeBreakdown(value.overall.lifetimeActions, ['call', 'whatsapp', 'directions', 'reserve', 'order'] as const);
   const lifetimeShareMethods = normalizeBreakdown(value.overall.lifetimeShareMethods, ['whatsapp', 'copy_link', 'copy_message'] as const);
   const lifetimeLinks = normalizeBreakdown(value.overall.lifetimeLinks, ['google_review', 'instagram', 'facebook', 'website'] as const);
@@ -280,7 +280,7 @@ export function normalizeOBPDashboardReadModel(
       viewsChange: viewsChange as number | null,
     },
     overall: {
-      ...normalizedOverallNumbers as Record<typeof overallNumbers[number], number>,
+      ...normalizedOverallNumbers,
       lifetimeActions,
       lifetimeShareMethods,
       lifetimeLinks,

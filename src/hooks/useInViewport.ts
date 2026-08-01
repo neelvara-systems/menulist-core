@@ -1,6 +1,6 @@
 import { RefObject, useEffect, useState } from "react";
 
-const OPTIONS = {
+const OPTIONS: IntersectionObserverInit = {
     root: null,
     rootMargin: "0px 0px 0px 0px",
     threshold: 0,

@@ -551,12 +551,14 @@ export function prepareAiMenuManagerSessionWrite<T extends Partial<AiMenuManager
     session: T,
     previousSession?: AiMenuManagerSessionDoc | null,
 ): T & { hasPendingOperations: boolean; pendingCount: number } {
+    const compactMessages = [...(session.compactMessages || [])];
+    const recentReceiptSummaries = [...(session.recentReceiptSummaries || [])];
     const next = {
         ...session,
-        compactMessages: [...(session.compactMessages || [])],
+        compactMessages,
         pendingCardSummaries: [...(session.pendingCardSummaries || [])],
         pendingOperations: [...(session.pendingOperations || [])],
-        recentReceiptSummaries: [...(session.recentReceiptSummaries || [])],
+        recentReceiptSummaries,
         ...(session.artifactRefs ? { artifactRefs: [...session.artifactRefs] } : {}),
         ...buildAiMenuManagerPendingState(session),
     } as T & { hasPendingOperations: boolean; pendingCount: number };
@@ -569,15 +571,15 @@ export function prepareAiMenuManagerSessionWrite<T extends Partial<AiMenuManager
     }
     while (
         estimateAiMenuManagerSessionBytes(next) > AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES
-        && next.recentReceiptSummaries.length
+        && recentReceiptSummaries.length
     ) {
-        next.recentReceiptSummaries.pop();
+        recentReceiptSummaries.pop();
     }
     while (
         estimateAiMenuManagerSessionBytes(next) > AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES
-        && next.compactMessages.length
+        && compactMessages.length
     ) {
-        next.compactMessages.shift();
+        compactMessages.shift();
     }
 
     const nextBytes = estimateAiMenuManagerSessionBytes(next);

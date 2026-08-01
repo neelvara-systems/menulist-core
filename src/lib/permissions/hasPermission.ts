@@ -2,6 +2,8 @@ import { ALL_PERMISSIONS, PermissionKey } from "@constant/permissions";
 import { DEFAULT_ROLE_METADATA } from "@data/defaultRoles";
 import { RolePermissions, StoreRoleDataType } from "@type/platform/roles";
 
+type RolePermissionDefinition = Pick<StoreRoleDataType, "active" | "id" | "permissions">;
+
 /**
  * Permission Check Utility - Single Role per Store
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -62,15 +64,23 @@ export function normalizeRolePermissions(
  */
 export function hasPermission(
     userRoleId: string | undefined,
-    storeRoles: StoreRoleDataType[],
+    storeRoles: RolePermissionDefinition[],
     permission: PermissionKey
 ): boolean {
-    if (!userRoleId) return false;
+    if (!userRoleId || !Array.isArray(storeRoles)) return false;
 
-    // Find user's role definition
-    const userRole = storeRoles.find(
-        role => role.active && role.id === userRoleId
+    // A malformed or duplicated persisted role is ambiguous authority. Require
+    // one exact active definition and fail closed until the store role record
+    // is repaired.
+    const matchingRoles = storeRoles.filter(
+        role => (
+            role !== null
+            && typeof role === 'object'
+            && role.active === true
+            && role.id === userRoleId
+        )
     );
+    const userRole = matchingRoles.length === 1 ? matchingRoles[0] : undefined;
 
     // No valid role = no permission
     if (!userRole) return false;
@@ -94,16 +104,21 @@ export function hasPermission(
  */
 export function getPermissionsForRole(
     userRoleId: string | undefined,
-    storeRoles: StoreRoleDataType[]
+    storeRoles: RolePermissionDefinition[]
 ): RolePermissions {
-    if (!userRoleId) {
+    if (!userRoleId || !Array.isArray(storeRoles)) {
         return getEmptyPermissions();
     }
 
-    // Find user's role definition
-    const userRole = storeRoles.find(
-        role => role.active && role.id === userRoleId
+    const matchingRoles = storeRoles.filter(
+        role => (
+            role !== null
+            && typeof role === 'object'
+            && role.active === true
+            && role.id === userRoleId
+        )
     );
+    const userRole = matchingRoles.length === 1 ? matchingRoles[0] : undefined;
 
     if (!userRole) {
         return getEmptyPermissions();
@@ -147,5 +162,5 @@ export const isStaff = (userRoleId: string | undefined): boolean => {
  * Check if user has any valid role
  */
 export const hasValidRole = (userRoleId: string | undefined): boolean => {
-    return !!userRoleId && userRoleId.length > 0;
+    return typeof userRoleId === 'string' && userRoleId.trim().length > 0;
 };

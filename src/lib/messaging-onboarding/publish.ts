@@ -20,6 +20,7 @@ import { admin, storageAdmin } from "@lib/firebase/firebaseAdmin";
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
 import { getBusinessAttributesWithMenuDefaults } from "@lib/obp/inferBusinessAttributesFromMenu";
+import { buildSummaryProjectPayload } from "@lib/firestore/summaryProjectsWriter";
 import { createTenantStoreInTransaction, preCheckSubdomain } from "@lib/onboarding/createTenantStore";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from "@lib/onboarding/starterActivation";
@@ -40,6 +41,7 @@ import {
   normalizeMessagingPublishSession,
   type MessagingPublishSession,
 } from "./publishSessionBoundary";
+import { validateMessagingPublishProjectFiles } from "./publishValidationBoundary";
 import { drainMessagingPendingUploadCleanupServer } from "./uploadCleanup";
 
 const db = admin.firestore();
@@ -59,6 +61,12 @@ export interface MessagingOnboardingPublishResult {
   publicUrl: string;
   dashboardUrl: string;
 }
+
+type MessagingOnboardingPublishTransactionResult = MessagingOnboardingPublishResult & {
+  claimToken: string | null;
+  subdomain?: string;
+  userId: string;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
@@ -115,6 +123,9 @@ export async function executeMessagingOnboardingPublish(
     expectedBucket,
   );
   if (!sessionData) throw new Error("Invalid messaging publish source");
+  if (!validateMessagingPublishProjectFiles(sessionData.extractedProjectFiles).valid) {
+    throw new Error("Invalid messaging publish project menu");
+  }
   const sourceFingerprint = getMessagingPublishSourceFingerprint(sessionData);
   const businessName = typeof params.businessName === "string" ? params.businessName.trim() : "";
   const address = typeof params.address === "string" ? params.address.trim() : "";
@@ -233,7 +244,8 @@ export async function executeMessagingOnboardingPublish(
   if (!ownerUserId) throw new MessagingOwnerClaimConflictError();
 
   // Atomic transaction
-  const result = await db.runTransaction(async (transaction) => {
+  const result = await db.runTransaction<MessagingOnboardingPublishTransactionResult>(async (transaction) => {
+    const publishedAt = Timestamp.now();
     const sessionSnapshot = await transaction.get(sessionRef);
     if (!sessionSnapshot.exists) {
       throw new Error("Session not found");
@@ -298,6 +310,7 @@ export async function executeMessagingOnboardingPublish(
         currencyCode: currency.code,
         currencySymbol: currency.symbol,
         logo: "",
+        lastPublishedAt: publishedAt,
         ...(initialBusinessAttributes ? { businessAttributes: initialBusinessAttributes } : {}),
       },
     });
@@ -385,6 +398,7 @@ export async function executeMessagingOnboardingPublish(
       deleted: false,
       createdOn: core.now,
       modifiedOn: core.now,
+      lastPublishedAt: publishedAt,
     });
 
     // URL Routing Architecture: Create projectsSummary with slug
@@ -393,13 +407,14 @@ export async function executeMessagingOnboardingPublish(
     const projectsSummaryRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${core.storeId}`);
     transaction.set(projectsSummaryRef, {
       lastUpdated: core.now,
-      [`projects.${projectId}`]: {
+      ...buildSummaryProjectPayload(projectId, {
         name: projectName,
         description: `Digital menu for ${businessName}`,
         active: true,
         isDefault: true,
         slug: projectSlug,
-      },
+        lastPublishedAt: publishedAt,
+      }),
     }, { merge: true });
 
     // Finalize the onboarding session in the same transaction as the public
@@ -429,7 +444,7 @@ export async function executeMessagingOnboardingPublish(
       extractedProjectFiles: FieldValue.delete(),
       ...buildMessagingPublishDeliveryState(),
       ...buildMessagingPublishUploadCleanupState(currentSession),
-      publishedAt: core.now,
+      publishedAt,
       updatedAt: core.now,
     });
 

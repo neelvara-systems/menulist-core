@@ -20,6 +20,12 @@ export type StaffMutationResponse = {
     temporaryPasscode?: string;
 };
 
+export type StaffMutationWithUserResponse = StaffMutationResponse & {
+    success: true;
+    user: StaffUserSummary;
+    userId: string;
+};
+
 export type RoleMutationResponse = {
     role?: StoreRoleDataType;
     roles: StoreRoleDataType[];
@@ -59,6 +65,10 @@ export type StaffUserSummary = {
     sessionRevokedAt?: unknown;
 };
 
+export type StaffFormUser = Omit<StaffUserSummary, "id"> & {
+    id?: string;
+};
+
 export type StaffStoreMappingInput = {
     storeId: number;
     name?: string;
@@ -74,6 +84,7 @@ export type StaffStoreOption = {
         description?: string;
         id: string;
         name: string;
+        permissions: RolePermissions;
     }>;
     storeId: number;
     tenantId: number;

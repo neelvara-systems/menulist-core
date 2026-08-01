@@ -104,7 +104,8 @@ export type SuccessfulGuestFeedbackSubmitResponse = GuestFeedbackSubmitResponse 
 export const isSuccessfulGuestFeedbackSubmitResponse = (
     value: GuestFeedbackSubmitResponse | null | undefined,
 ): value is SuccessfulGuestFeedbackSubmitResponse => (
-    Boolean(value)
+    value !== null
+    && value !== undefined
     && value.success === true
     && isNonEmptyString(value.feedbackId)
     && isOptionalSafeReviewUrl(value.reviewUrl)

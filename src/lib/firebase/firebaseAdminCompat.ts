@@ -56,7 +56,7 @@ export namespace admin {
     }
 
     export function firestore(firebaseApp?: FirebaseApp): FirebaseFirestore {
-        return getFirestore(firebaseApp);
+        return firebaseApp ? getFirestore(firebaseApp) : getFirestore();
     }
 
     export namespace firestore {

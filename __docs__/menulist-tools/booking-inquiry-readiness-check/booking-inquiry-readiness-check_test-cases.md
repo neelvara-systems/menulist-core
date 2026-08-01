@@ -17,6 +17,8 @@
 | External booking inspection row | Always `not_checked` |
 | `tel:not-a-phone`, `mailto:not-an-email`, `whatsapp://evil?...`, or phone text containing letters | Destination is `unclear`, never `present` |
 | Valid formatted phone, `tel:+...`, `mailto:owner@example.com`, or `whatsapp://send?phone=...` | Destination is `present` without opening the provider |
+| Action says “book a slot during opening hours” with no response/confirmation selection or statement | Hours may be present; response and confirmation remain unclear |
+| Primary action says “call to book” without an alternative/help cue or location statement | Fallback contact and location remain unclear |
 
 ## Boundary Cases
 

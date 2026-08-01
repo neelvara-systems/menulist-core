@@ -12,6 +12,7 @@ import {
 import {
     ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
     AnswerlatticeAnswerTestCaseSchema,
+    AnswerlatticeAnswerTestCaseResultSchema,
     AnswerlatticeAnswerTestRunRequestSchema,
     createEmptyAnswerlatticeAnswerTestSummary,
     getAnswerlatticeAnswerTestSummaryId,
@@ -40,6 +41,17 @@ import {
     classifyAnswerlatticeProposalImpact,
     selectAnswerlatticeProposalImpactCases,
 } from '../../src/lib/answerlattice/proposalImpactContracts';
+import {
+    ANSWERLATTICE_ANSWER_TRACE_MAX_ANSWER_CHARS,
+    ANSWERLATTICE_ANSWER_TRACE_RECENT_RESULT_LIMIT,
+    ANSWERLATTICE_ANSWER_TRACE_RESPONSE_MAX_BYTES,
+    AnswerlatticeAnswerTraceResponseSchema,
+} from '../../src/lib/answerlattice/answerTraceContracts';
+import { projectAnswerlatticeAnswerTrace } from '../../src/lib/answerlattice/answerTraceServer';
+import {
+    AnswerlatticeReleaseActionResultSchema,
+    buildAnswerlatticeReleaseDirectDependencyCoverage,
+} from '../../src/lib/answerlattice/releaseContracts';
 
 const encodeJson = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
 
@@ -500,6 +512,42 @@ assert.deepEqual(getAnswerTestProofSummary([failingEvidenceResult]), {
     proofStatus: 'blocked',
 });
 
+const maximalFailureCase = AnswerlatticeAnswerTestCaseSchema.parse({
+    ...criticalEvidenceCase,
+    id: 'maximal_failure_contract',
+    expected: {
+        source: 'canonical',
+        answerId: 'expected_answer',
+        faqId: 'expected_faq',
+        minimumConfidence: 'high',
+        mustInclude: Array.from({ length: 8 }, (_, index) => `required-${index}`),
+        mustNotInclude: Array.from({ length: 8 }, (_, index) => `blocked-${index}`),
+        citationPolicy: 'specific_sources',
+        referenceIds: Array.from(
+            { length: 8 },
+            (_, index) => `reference-${index}-${'x'.repeat(145)}`,
+        ),
+    },
+});
+const maximalFailureResult = evaluateAnswerTestCase(maximalFailureCase, {
+    source: 'rag',
+    answer: Array.from({ length: 8 }, (_, index) => `blocked-${index}`).join(' '),
+    answerId: 'wrong_answer',
+    faqId: 'wrong_faq',
+    referenceIds: [],
+    confidence: 'low',
+    aiProviderUsed: true,
+}, Number.POSITIVE_INFINITY);
+assert.equal(maximalFailureResult.passed, false);
+assert.equal(maximalFailureResult.failures.length, 20, 'result failures must stay within the persisted schema cap');
+assert.ok(maximalFailureResult.failures.every(failure => failure.length <= 240));
+assert.equal(maximalFailureResult.durationMs, 0, 'non-finite duration evidence must normalize before persistence');
+assert.equal(
+    AnswerlatticeAnswerTestCaseResultSchema.safeParse(maximalFailureResult).success,
+    true,
+    'the evaluator must always emit its authoritative persisted result contract',
+);
+
 const standardFailure = { ...failingEvidenceResult, riskLevel: 'standard' as const };
 assert.equal(
     getAnswerTestProofSummary([standardFailure]).proofStatus,
@@ -598,36 +646,288 @@ assert.equal(
     'unchanged',
     'identical outcomes must be labelled unchanged',
 );
+const emptyProposalImpactResponse = {
+    requestId: 'impact_request_1',
+    proposalId: 'proposal_1',
+    candidate: {
+        answerId: 'canonical_target',
+        title: 'Billing answer',
+        status: 'active' as const,
+        answerType: 'explanation' as const,
+        entityIds: ['entity_billing'],
+        versionFrom: 1,
+        versionTo: null,
+        structuredSummary: 'Approved billing guidance.',
+    },
+    currentAnswer: null,
+    linkedTestCount: 0,
+    evaluatedTestCount: 0,
+    testsTruncated: false,
+    currentProofStatus: null,
+    proposedProofStatus: null,
+    regressionCount: 0,
+    improvementCount: 0,
+    changedCount: 0,
+    unchangedCount: 0,
+    comparisons: [],
+    warnings: ['No active Answer Test is linked.'],
+};
+assert.equal(AnswerlatticeProposalImpactResponseSchema.safeParse(emptyProposalImpactResponse).success, true);
 assert.equal(
     AnswerlatticeProposalImpactResponseSchema.safeParse({
-        requestId: 'impact_request_1',
-        proposalId: 'proposal_1',
-        candidate: {
-            answerId: 'canonical_target',
-            title: 'Billing answer',
-            status: 'active',
-            answerType: 'explanation',
-            entityIds: ['entity_billing'],
-            versionFrom: 1,
-            versionTo: null,
-            structuredSummary: 'Approved billing guidance.',
-        },
-        currentAnswer: null,
-        linkedTestCount: 0,
-        evaluatedTestCount: 0,
-        testsTruncated: false,
-        currentProofStatus: null,
-        proposedProofStatus: null,
-        regressionCount: 0,
-        improvementCount: 0,
-        changedCount: 0,
-        unchangedCount: 0,
-        comparisons: [],
-        warnings: ['No active Answer Test is linked.'],
+        ...emptyProposalImpactResponse,
         unexpectedScope: 99,
     }).success,
     false,
     'proposal impact browser responses must reject unknown fields',
+);
+assert.equal(
+    AnswerlatticeProposalImpactResponseSchema.safeParse({
+        ...emptyProposalImpactResponse,
+        linkedTestCount: 1,
+        regressionCount: 1,
+    }).success,
+    false,
+    'proposal impact browser responses must reject contradictory derived counts and truncation state',
+);
+
+const directReleaseDependencyCoverage = buildAnswerlatticeReleaseDirectDependencyCoverage({
+    activeLinkedTestCount: 2,
+    answerEntityIds: ['entity_billing'],
+    changedEntityIds: ['entity_billing', 'entity_export', 'entity_permissions'],
+    directActiveAnswerCount: 1,
+    testEntityIds: ['entity_export'],
+    testLinkEvidence: 'available',
+});
+assert.deepEqual(directReleaseDependencyCoverage, {
+    mappingScope: 'direct_entity_links_only',
+    changedEntityIds: ['entity_billing', 'entity_export', 'entity_permissions'],
+    answerLinkedEntityIds: ['entity_billing'],
+    testLinkedEntityIds: ['entity_export'],
+    entityIdsWithoutVisibleDirectLinks: ['entity_permissions'],
+    directActiveAnswerCount: 1,
+    activeLinkedTestCount: 2,
+    testLinkEvidence: 'available',
+});
+const releasePreviewContract = {
+    success: true as const,
+    action: 'preview_impact' as const,
+    releaseId: 'release_1',
+    status: 'pending' as const,
+    impactFingerprint: 'a'.repeat(64),
+    affectedAnswerCount: 1,
+    reviewRequiredCount: 1,
+    affectedAnswers: [{
+        answerId: 'answer_1',
+        title: 'Billing answer',
+        lastValidatedInVersion: 1,
+        currentDriftFlag: false,
+        currentReviewRequired: false,
+        willRequireReview: true,
+        matchReason: 'direct_entity_binding' as const,
+        matchedEntityCount: 1,
+    }],
+    answerTestProof: {
+        state: 'missing' as const,
+        linkedCaseCount: 2,
+        criticalCaseCount: 1,
+        failedCaseCount: 0,
+        criticalFailureCount: 0,
+        lastRunAt: null,
+    },
+    directDependencyCoverage: directReleaseDependencyCoverage,
+    scope: { tId: 11, sId: 22 },
+};
+assert.equal(AnswerlatticeReleaseActionResultSchema.safeParse(releasePreviewContract).success, true);
+assert.equal(
+    AnswerlatticeReleaseActionResultSchema.safeParse({
+        ...releasePreviewContract,
+        directDependencyCoverage: {
+            ...directReleaseDependencyCoverage,
+            entityIdsWithoutVisibleDirectLinks: [],
+        },
+    }).success,
+    false,
+    'release impact must reject a dependency disclosure that hides an unmapped changed entity',
+);
+
+const answerTraceContract = {
+    mode: 'recent' as const,
+    scannedCount: 30,
+    windowLimited: true,
+    traces: [{
+        id: 'history_1',
+        createdAt: '2026-07-29T10:00:00.000Z',
+        question: 'Why did billing fail?',
+        answer: 'The approved answer was not available.',
+        answerSource: 'rag' as const,
+        answerType: 'explanation' as const,
+        canonical: false,
+        canonicalAnswerId: null,
+        faqAnswerId: null,
+        matchedEntityIds: ['entity_billing'],
+        citations: [],
+        fallbackReason: 'canonical_scope_not_covered',
+        confidence: 'low' as const,
+        mountContext: 'widget' as const,
+        clarificationRequired: ['plan' as const],
+        sourceVersions: { canonical: 3, kb: 4 },
+        userFeedback: 'not_resolved' as const,
+        escalationTicketId: 'ticket_1',
+        drifted: false,
+        reviewSignals: ['canonical_miss', 'fallback_used', 'low_confidence', 'not_resolved', 'escalated'] as const,
+    }],
+};
+assert.equal(AnswerlatticeAnswerTraceResponseSchema.safeParse(answerTraceContract).success, true);
+assert.equal(
+    AnswerlatticeAnswerTraceResponseSchema.safeParse({
+        ...answerTraceContract,
+        traces: [{ ...answerTraceContract.traces[0], reviewSignals: [] }],
+    }).success,
+    false,
+    'recent answer-trace responses must contain review candidates only',
+);
+assert.equal(
+    AnswerlatticeAnswerTraceResponseSchema.safeParse({
+        ...answerTraceContract,
+        scannedCount: 0,
+    }).success,
+    false,
+    'answer-trace responses must not return more traces than scanned documents',
+);
+assert.equal(
+    AnswerlatticeAnswerTraceResponseSchema.safeParse({
+        ...answerTraceContract,
+        windowLimited: false,
+    }).success,
+    false,
+    'the capped-window disclosure must match the recent scan count',
+);
+const maximalAnswerTrace = {
+    ...answerTraceContract.traces[0],
+    id: '界'.repeat(180),
+    question: '界'.repeat(500),
+    answer: '界'.repeat(ANSWERLATTICE_ANSWER_TRACE_MAX_ANSWER_CHARS),
+    canonicalAnswerId: '界'.repeat(180),
+    faqAnswerId: '界'.repeat(180),
+    matchedEntityIds: Array.from(
+        { length: 20 },
+        (_, index) => `${String(index).padStart(2, '0')}${'界'.repeat(178)}`,
+    ),
+    citations: Array.from({ length: 8 }, (_, index) => ({
+        id: `${index}${'界'.repeat(179)}`,
+        title: '界'.repeat(240),
+        url: `https://docs.example.com/${index}/${'u'.repeat(450)}`,
+    })),
+    fallbackReason: '界'.repeat(240),
+    escalationTicketId: '界'.repeat(180),
+    reviewSignals: [
+        'canonical_miss',
+        'fallback_used',
+        'low_confidence',
+        'negative_feedback',
+        'not_resolved',
+        'escalated',
+        'drifted_answer',
+        'no_answer',
+    ] as const,
+};
+const maximalAnswerTraceResponse = {
+    ...answerTraceContract,
+    traces: Array.from(
+        { length: ANSWERLATTICE_ANSWER_TRACE_RECENT_RESULT_LIMIT },
+        (_, index) => ({ ...maximalAnswerTrace, id: `${index}${'界'.repeat(178)}` }),
+    ),
+};
+assert.equal(
+    AnswerlatticeAnswerTraceResponseSchema.safeParse(maximalAnswerTraceResponse).success,
+    true,
+    'the maximum bounded multibyte trace response must remain schema-valid',
+);
+assert.ok(
+    Buffer.byteLength(JSON.stringify(maximalAnswerTraceResponse)) < ANSWERLATTICE_ANSWER_TRACE_RESPONSE_MAX_BYTES,
+    'the bounded browser response ceiling must admit the maximum schema-valid multibyte trace response',
+);
+
+const retainedTraceRecord = {
+    pId: 'AL',
+    tId: 11,
+    sId: 22,
+    createdOn: { toMillis: () => 1_780_000_000_000 },
+    expiresAt: { toMillis: () => 4_102_444_800_000 },
+    query: 'Why did billing fail?',
+    craftedAnswer: 'Review the approved billing requirements.',
+    answerSource: 'rag',
+    answerType: 'explanation',
+    canonical: false,
+    matchedEntityIds: ['entity_billing', 'entity_billing'],
+    citations: [
+        { id: 'safe_source', title: 'Billing guide', url: 'https://docs.example.com/billing' },
+        { id: 'secret_source', title: 'Private link', url: 'https://docs.example.com/private?token=secret' },
+    ],
+    fallbackReason: 'canonical_scope_not_covered',
+    confidence: 'low',
+    mountContext: 'widget',
+    clarification: { type: 'scope_context', requiredContext: ['plan'] },
+    sourceVersions: { canonical: 3, kb: 4 },
+    resolutionOutcome: 'not_resolved',
+    escalationTicketId: 'ticket_1',
+    visitorEmail: 'private@example.com',
+    visitorId: 'private_visitor',
+    requestOrigin: 'https://private.example.com',
+};
+const projectedTrace = projectAnswerlatticeAnswerTrace(
+    'history_1',
+    retainedTraceRecord,
+    { tId: 11, sId: 22 },
+);
+assert.ok(projectedTrace);
+assert.deepEqual(projectedTrace.citations, [
+    { id: 'safe_source', title: 'Billing guide', url: 'https://docs.example.com/billing' },
+]);
+assert.deepEqual(projectedTrace.matchedEntityIds, ['entity_billing']);
+assert.deepEqual(projectedTrace.reviewSignals, [
+    'canonical_miss',
+    'fallback_used',
+    'low_confidence',
+    'not_resolved',
+    'escalated',
+]);
+assert.equal('visitorEmail' in projectedTrace, false);
+assert.equal('visitorId' in projectedTrace, false);
+assert.equal('requestOrigin' in projectedTrace, false);
+assert.equal(
+    projectAnswerlatticeAnswerTrace('history_1', retainedTraceRecord, { tId: 11, sId: 23 }),
+    null,
+    'answer traces must fail closed outside the exact workspace',
+);
+assert.equal(
+    projectAnswerlatticeAnswerTrace(
+        'history_1',
+        { ...retainedTraceRecord, expiresAt: { toMillis: () => 1 } },
+        { tId: 11, sId: 22 },
+    ),
+    null,
+    'expired answer traces must not remain reviewable',
+);
+const cachedCanonicalTrace = projectAnswerlatticeAnswerTrace(
+    'history_2',
+    {
+        ...retainedTraceRecord,
+        canonical: true,
+        answerSource: 'cache',
+        confidence: 'high',
+        fallbackReason: null,
+        resolutionOutcome: 'resolved',
+        escalationTicketId: null,
+    },
+    { tId: 11, sId: 22 },
+);
+assert.ok(cachedCanonicalTrace);
+assert.deepEqual(
+    cachedCanonicalTrace.reviewSignals,
+    [],
+    'a cached canonical answer must not manufacture fallback review work',
 );
 
 const activationSourceVersions = {
@@ -1132,9 +1432,93 @@ const answerTestsUi = readFileSync(
     path.join(process.cwd(), 'src/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests.tsx'),
     'utf8',
 );
-assert.match(answerTestsUi, /normalizeAnswerlatticeOwnerReleaseContext\(searchParams\.get\('release'\)\)/);
+assert.match(answerTestsUi, /normalizeAnswerlatticeOwnerReleaseContext\(searchParams\?\.get\('release'\)\)/);
 assert.match(answerTestsUi, /openReleaseCheck\(requestedReleaseId\)/);
 assert.match(answerTestsUi, /Review approved answer/);
 assert.match(answerTestsUi, /getAnswerlatticeAnswerContextRoute\(/);
+
+const answerTraceRoute = readFileSync(
+    path.join(process.cwd(), 'src/app/api/answerlattice/answer-traces/route.ts'),
+    'utf8',
+);
+assert.match(answerTraceRoute, /ANSWERLATTICE_PERMISSION_KEYS\.MANAGE_SUPPORT/);
+assert.match(answerTraceRoute, /applyAnswerlatticeDashboardReadRateLimit/);
+assert.match(answerTraceRoute, /normalizeAnswerlatticeSearchHistoryId/);
+const answerTraceServer = readFileSync(
+    path.join(process.cwd(), 'src/lib/answerlattice/answerTraceServer.ts'),
+    'utf8',
+);
+assert.doesNotMatch(answerTraceServer, /visitorEmail|visitorName|visitorId|requestOrigin|requestPath|userAgentFamily/);
+assert.match(answerTraceServer, /ANSWERLATTICE_ANSWER_TRACE_RECENT_SCAN_LIMIT/);
+assert.match(answerTraceServer, /data\.canonical !== true/);
+assert.match(answerTraceServer, /fieldMask: \[\.\.\.TRACE_PROJECTED_FIELDS\]/);
+assert.match(answerTraceServer, /\.select\(\.\.\.TRACE_PROJECTED_FIELDS\)/);
+const answerTraceClient = readFileSync(
+    path.join(process.cwd(), 'src/lib/answerlattice/answerTraceClient.ts'),
+    'utf8',
+);
+assert.match(answerTraceClient, /ANSWERLATTICE_ANSWER_TRACE_RESPONSE_MAX_BYTES/);
+assert.match(answerTraceClient, /ANSWER_TRACE_TIMEOUT_MS = 15_000/);
+assert.match(answerTraceClient, /controller\.abort\(\)/);
+const answerTraceDrawer = readFileSync(
+    path.join(process.cwd(), 'src/components/templates/answerlattice/governance/AnswerTraceDrawer.tsx'),
+    'utf8',
+);
+assert.match(answerTraceDrawer, /Routing evidence, not a correctness guarantee/);
+assert.match(answerTraceDrawer, /width="min\(620px, 100vw\)"/);
+const founderTrustDashboard = readFileSync(
+    path.join(process.cwd(), 'src/components/templates/answerlattice/governance/FounderTrustDashboard.tsx'),
+    'utf8',
+);
+const ticketDetailView = readFileSync(
+    path.join(process.cwd(), 'src/components/templates/platform/supportTickets/TicketDetailView.tsx'),
+    'utf8',
+);
+assert.match(founderTrustDashboard, /answerTraceRequestRef/);
+assert.match(ticketDetailView, /answerTraceRequestRef/);
+assert.match(founderTrustDashboard, /answerTraceInFlightRef/);
+assert.match(ticketDetailView, /answerTraceInFlightRef/);
+type AnswerlatticeIndexManifest = {
+    indexes?: Array<{
+        collectionGroup?: string;
+        fields?: Array<{ fieldPath?: string; order?: string }>;
+    }>;
+    fieldOverrides?: Array<{
+        collectionGroup?: string;
+        fieldPath?: string;
+        indexes?: Array<unknown>;
+    }>;
+};
+const answerlatticeIndexes = JSON.parse(
+    readFileSync(path.join(process.cwd(), 'firestore-answerlattice.indexes.json'), 'utf8'),
+) as AnswerlatticeIndexManifest;
+assert.ok(answerlatticeIndexes.indexes?.some(index => (
+    index.collectionGroup === 'aiSearchHistory'
+    && JSON.stringify(index.fields) === JSON.stringify([
+        { fieldPath: 'pId', order: 'ASCENDING' },
+        { fieldPath: 'tId', order: 'ASCENDING' },
+        { fieldPath: 'sId', order: 'ASCENDING' },
+        { fieldPath: 'createdOn', order: 'DESCENDING' },
+    ])
+)), 'Answer Trace requires the existing scoped recent-history index');
+for (const indexPath of ['firestore-answerlattice.indexes.json', 'firestore.indexes.json']) {
+    const manifest = JSON.parse(
+        readFileSync(path.join(process.cwd(), indexPath), 'utf8'),
+    ) as AnswerlatticeIndexManifest;
+    for (const fieldPath of ['cases', 'runs', 'reservations']) {
+        assert.ok(manifest.fieldOverrides?.some(entry => (
+            entry.collectionGroup === 'platformSummary'
+            && entry.fieldPath === fieldPath
+            && Array.isArray(entry.indexes)
+            && entry.indexes.length === 0
+        )), `${indexPath} must exempt the point-read Answer Tests ${fieldPath} payload`);
+    }
+}
+const releaseImpactUi = readFileSync(
+    path.join(process.cwd(), 'src/components/templates/platform/changelog/addEditChangelog.tsx'),
+    'utf8',
+);
+assert.match(releaseImpactUi, /direct_entity_links_only|directDependencyCoverage/);
+assert.match(releaseImpactUi, /does not claim complete article, FAQ, workflow, product-surface, or factual coverage/);
 
 console.log('Answerlattice founder support controls contract tests passed');

@@ -117,7 +117,7 @@ async function readPublicApiKeyActionResponse(
 }
 
 interface IntegrationsTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     storeDetails?: {
         storeId?: number | string;
         tenantId?: number | string;

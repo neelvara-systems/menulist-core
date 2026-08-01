@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Button, Card, Dialog, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
+import MobileSpecialHoursManager from '../components/MobileSpecialHoursManager';
 import {
     getMobileOwnerStoreLogContext,
     logMobileOwnerFailure,
@@ -95,6 +96,7 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
         const requestScopeKey = scopeKey;
         if (
             !componentActiveRef.current
+            || !storeDetails
             || activeScopeRef.current !== requestScopeKey
             || actionInFlightRef.current
             || !Number.isSafeInteger(expectedStoreId)
@@ -235,7 +237,7 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
                     <Flex gap={4} vertical>
                         <Text strong>Regular weekly hours</Text>
                         <Text type="secondary">
-                            These are the hours customers see every week. Use temporary status for one-day changes.
+                            These repeat every week. Use Special hours below for a planned date, or Temporary Status for a live interruption.
                         </Text>
                     </Flex>
                 </Card>
@@ -315,6 +317,8 @@ function MobileWorkingHoursEditScreenContent({ onBack }: MobileWorkingHoursEditS
                         </Card>
                     );
                 })}
+
+                <MobileSpecialHoursManager />
 
                 <Flex
                     gap={8}

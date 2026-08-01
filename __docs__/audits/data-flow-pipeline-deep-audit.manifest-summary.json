@@ -1,26 +1,26 @@
 {
-  "generatedAt": "2026-07-29T05:06:27.865Z",
-  "repositoryHead": "4644261348ce110be77d8622737a479a480465e4",
-  "totalDiscoveredFiles": 9007,
+  "generatedAt": "2026-07-31T18:09:12.198Z",
+  "repositoryHead": "685370dbe099ceb1e87c90f55ce64f8e3d8e0a65",
+  "totalDiscoveredFiles": 8875,
   "vanishedDuringInventory": 0,
-  "inScopeFiles": 8587,
-  "excludedFiles": 420,
+  "inScopeFiles": 8562,
+  "excludedFiles": 313,
   "byCategory": {
-    "documentation/contract": 3269,
-    "shared-runtime": 1092,
-    "ui-component": 1032,
-    "verifier/test": 622,
-    "asset/public-output": 533,
-    "runtime/support": 488,
+    "documentation/contract": 3289,
+    "shared-runtime": 1128,
+    "ui-component": 1036,
+    "verifier/test": 705,
+    "asset/public-output": 544,
     "nextjs-entrypoint": 375,
-    "firebase-functions": 315,
-    "api-route": 227,
-    "constant/config/data": 139,
-    "configuration/data": 119,
+    "runtime/support": 342,
+    "firebase-functions": 316,
+    "api-route": 228,
+    "constant/config/data": 140,
+    "configuration/data": 99,
     "data-access-layer": 98,
     "hook/state-flow": 79,
-    "type/schema-contract": 71,
-    "presentation/public-output": 64,
+    "type/schema-contract": 69,
+    "presentation/public-output": 50,
     "script/maintenance": 44,
     "security-rules": 8,
     "redux-state": 7,
@@ -28,98 +28,85 @@
     "proxy/routing": 1
   },
   "byReviewStatus": {
-    "inventory-only": 4940,
-    "in-progress": 1869,
-    "reviewed": 1778
+    "inventory-only": 4182,
+    "reviewed": 2741,
+    "in-progress": 1639
   },
   "byCategoryAndReviewStatus": {
     "documentation/contract": {
-      "inventory-only": 2839,
-      "in-progress": 384,
-      "reviewed": 46
+      "inventory-only": 2823,
+      "in-progress": 390,
+      "reviewed": 76
     },
     "shared-runtime": {
-      "reviewed": 445,
-      "in-progress": 395,
-      "inventory-only": 252
+      "reviewed": 740,
+      "in-progress": 388
     },
     "ui-component": {
-      "inventory-only": 783,
-      "in-progress": 207,
-      "reviewed": 42
+      "inventory-only": 731,
+      "in-progress": 230,
+      "reviewed": 75
     },
     "verifier/test": {
-      "in-progress": 306,
-      "reviewed": 197,
-      "inventory-only": 119
+      "reviewed": 322,
+      "in-progress": 280,
+      "inventory-only": 103
     },
     "asset/public-output": {
-      "inventory-only": 533
-    },
-    "runtime/support": {
-      "inventory-only": 373,
-      "reviewed": 82,
-      "in-progress": 33
+      "inventory-only": 523,
+      "reviewed": 21
     },
     "nextjs-entrypoint": {
-      "reviewed": 319,
-      "in-progress": 55,
-      "inventory-only": 1
+      "reviewed": 314,
+      "in-progress": 61
+    },
+    "runtime/support": {
+      "reviewed": 342
     },
     "firebase-functions": {
-      "in-progress": 182,
-      "reviewed": 133
-    },
-    "api-route": {
-      "reviewed": 156,
-      "in-progress": 70,
+      "in-progress": 163,
+      "reviewed": 152,
       "inventory-only": 1
     },
+    "api-route": {
+      "reviewed": 167,
+      "in-progress": 61
+    },
     "constant/config/data": {
-      "reviewed": 98,
-      "in-progress": 41
+      "reviewed": 139,
+      "inventory-only": 1
     },
     "configuration/data": {
-      "reviewed": 83,
-      "inventory-only": 23,
-      "in-progress": 13
+      "reviewed": 99
     },
     "data-access-layer": {
-      "in-progress": 57,
-      "reviewed": 41
+      "reviewed": 98
     },
     "hook/state-flow": {
-      "in-progress": 52,
-      "reviewed": 27
+      "in-progress": 43,
+      "reviewed": 36
     },
     "type/schema-contract": {
-      "in-progress": 38,
-      "reviewed": 33
+      "reviewed": 69
     },
     "presentation/public-output": {
-      "reviewed": 45,
-      "inventory-only": 15,
-      "in-progress": 4
+      "reviewed": 50
     },
     "script/maintenance": {
       "in-progress": 23,
-      "reviewed": 20,
-      "inventory-only": 1
+      "reviewed": 21
     },
     "security-rules": {
-      "reviewed": 7,
-      "in-progress": 1
+      "reviewed": 8
     },
     "redux-state": {
-      "in-progress": 6,
-      "reviewed": 1
+      "reviewed": 7
     },
     "test": {
-      "reviewed": 3,
-      "in-progress": 1
+      "reviewed": 4
     },
     "proxy/routing": {
-      "in-progress": 1
+      "reviewed": 1
     }
   },
   "manifest": "__docs__/audits/data-flow-pipeline-deep-audit.manifest.csv",

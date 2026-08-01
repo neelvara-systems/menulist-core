@@ -14,10 +14,10 @@ function cleanText(value: unknown): string {
 }
 
 const readStoreField = (
-    store: StoreIdentityLike | null | undefined,
+    store: unknown,
     key: keyof StoreIdentityLike,
 ): unknown => {
-    if (!store) return undefined;
+    if (!store || typeof store !== 'object') return undefined;
     try {
         return Reflect.get(store, key);
     } catch {
@@ -29,7 +29,7 @@ export function stripMainStoreSuffix(value: string): string {
     return value.replace(MAIN_STORE_SUFFIX, '').trim();
 }
 
-export function getBrandName(store?: StoreIdentityLike | null, fallback = 'Business'): string {
+export function getBrandName(store?: unknown, fallback = 'Business'): string {
     const tenantName = cleanText(readStoreField(store, 'tenantName'));
     if (tenantName) return tenantName;
 
@@ -38,13 +38,13 @@ export function getBrandName(store?: StoreIdentityLike | null, fallback = 'Busin
     return normalizedStoreName || fallback;
 }
 
-export function getStoreName(store?: StoreIdentityLike | null, fallback = 'Store'): string {
+export function getStoreName(store?: unknown, fallback = 'Store'): string {
     return cleanText(readStoreField(store, 'name'))
         || cleanText(readStoreField(store, 'storeName'))
         || fallback;
 }
 
-export function getStoreContextName(store?: StoreIdentityLike | null, fallback = 'Business'): string {
+export function getStoreContextName(store?: unknown, fallback = 'Business'): string {
     const brandName = getBrandName(store, '');
     const storeName = getStoreName(store, '');
     const comparableStoreName = stripMainStoreSuffix(storeName);

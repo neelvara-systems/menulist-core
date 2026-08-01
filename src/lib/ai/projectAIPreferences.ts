@@ -1,11 +1,60 @@
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import type { ImageGenerationConfigType, Project, ProjectAIPreferences, ProjectAIImagePreferences } from '@template/main-app/projects/types';
 
-export const DEFAULT_PROJECT_DESCRIPTION_LENGTH: NonNullable<ProjectAIPreferences['description']>['contentLength'] = 'Standard';
-export const DEFAULT_PROJECT_DESCRIPTION_TONE: NonNullable<ProjectAIPreferences['description']>['tone'] = 'Professional';
+type ResolvedProjectAIPreferences = {
+    description: Required<NonNullable<ProjectAIPreferences['description']>>;
+    image: Required<ProjectAIImagePreferences>;
+};
+
+export const DEFAULT_PROJECT_DESCRIPTION_LENGTH = 'Standard' as const;
+export const DEFAULT_PROJECT_DESCRIPTION_TONE = 'Professional' as const;
 export const DEFAULT_PROJECT_IMAGE_ASPECT_RATIO = '1:1';
 export const DEFAULT_PROJECT_IMAGE_STYLE_CATEGORY = 'Photorealism';
 export const DEFAULT_PROJECT_IMAGE_STYLES = ['Natural Light'];
+
+const PROJECT_AI_ASPECT_RATIOS = new Set(['1:1', '4:5', '16:9']);
+const PROJECT_AI_CONTENT_LENGTHS = new Set(['Standard', 'Detailed']);
+const PROJECT_AI_DESCRIPTION_TONES = new Set(['Professional', 'Friendly', 'Premium']);
+const PROJECT_AI_LIST_MAX_ITEMS = 20;
+const PROJECT_AI_LIST_ITEM_MAX_LENGTH = 120;
+const PROJECT_AI_TEXT_MAX_LENGTH = 500;
+
+function normalizeExactString<T extends string>(
+    value: unknown,
+    allowed: ReadonlySet<string>,
+    fallback: T,
+): T {
+    return typeof value === 'string' && allowed.has(value) ? value as T : fallback;
+}
+
+function normalizeBoundedString(value: unknown, fallback: string, allowEmpty = false): string {
+    if (typeof value !== 'string' || value.length > PROJECT_AI_TEXT_MAX_LENGTH) return fallback;
+    const normalized = value.trim();
+    return normalized || (allowEmpty ? '' : fallback);
+}
+
+function normalizePreferenceList(value: unknown, fallback: string[], requireNonEmpty = false): string[] {
+    if (
+        !Array.isArray(value)
+        || value.length > PROJECT_AI_LIST_MAX_ITEMS
+        || value.some((entry) => (
+            typeof entry !== 'string'
+            || !entry.trim()
+            || entry.length > PROJECT_AI_LIST_ITEM_MAX_LENGTH
+        ))
+    ) {
+        return [...fallback];
+    }
+    const normalized = Array.from(new Set(value.map((entry) => entry.trim())));
+    return requireNonEmpty && normalized.length === 0 ? [...fallback] : normalized;
+}
+
+function normalizePreferenceColor(value: unknown, fallback: string | null): string | null {
+    if (value === null) return null;
+    if (typeof value !== 'string') return fallback;
+    const normalized = value.trim();
+    return /^#[0-9a-f]{3,8}$/i.test(normalized) ? normalized : fallback;
+}
 
 function includesBusinessTerm(businessType: string | undefined, terms: string[]): boolean {
     const normalized = businessType?.trim().toLowerCase() || '';
@@ -27,7 +76,7 @@ function resolveBusinessPresetCategory(businessType?: string, businessCategory?:
     return 'default';
 }
 
-export function getRecommendedProjectAIPreferences(businessType?: string, businessCategory?: string): Required<ProjectAIPreferences> {
+export function getRecommendedProjectAIPreferences(businessType?: string, businessCategory?: string): ResolvedProjectAIPreferences {
     const presetCategory = resolveBusinessPresetCategory(businessType, businessCategory);
     const isPremium = includesBusinessTerm(businessType, ['luxury', 'jewelry', 'watch', 'spa', 'boutique hotel', 'wedding']);
 
@@ -192,30 +241,53 @@ export const AI_IMAGE_ASPECT_RATIO_OPTIONS = [
     },
 ] as const;
 
-export function getResolvedProjectAIPreferences(projectData?: Project | null, businessType?: string, businessCategory?: string): Required<ProjectAIPreferences> {
+export function getResolvedProjectAIPreferences(projectData?: Project | null, businessType?: string, businessCategory?: string): ResolvedProjectAIPreferences {
     const recommended = getRecommendedProjectAIPreferences(businessType, businessCategory);
+    const savedDescription = projectData?.aiPreferences?.description;
+    const savedImage = projectData?.aiPreferences?.image;
 
     return {
         description: {
-            contentLength: projectData?.aiPreferences?.description?.contentLength || recommended.description.contentLength,
-            tone: projectData?.aiPreferences?.description?.tone || recommended.description.tone,
+            contentLength: normalizeExactString(
+                savedDescription?.contentLength,
+                PROJECT_AI_CONTENT_LENGTHS,
+                recommended.description.contentLength,
+            ),
+            tone: normalizeExactString(
+                savedDescription?.tone,
+                PROJECT_AI_DESCRIPTION_TONES,
+                recommended.description.tone,
+            ),
         },
         image: {
-            aspectRatio: projectData?.aiPreferences?.image?.aspectRatio || recommended.image.aspectRatio,
-            backgroundColor: projectData?.aiPreferences?.image?.backgroundColor ?? recommended.image.backgroundColor,
-            colors: projectData?.aiPreferences?.image?.colors || recommended.image.colors,
-            compositions: projectData?.aiPreferences?.image?.compositions || recommended.image.compositions,
-            environments: projectData?.aiPreferences?.image?.environments || recommended.image.environments,
-            foregroundColor: projectData?.aiPreferences?.image?.foregroundColor ?? recommended.image.foregroundColor,
-            isMultiMode: projectData?.aiPreferences?.image?.isMultiMode || recommended.image.isMultiMode,
-            lighting: projectData?.aiPreferences?.image?.lighting || recommended.image.lighting,
-            moods: projectData?.aiPreferences?.image?.moods || recommended.image.moods,
-            negativePrompt: projectData?.aiPreferences?.image?.negativePrompt || recommended.image.negativePrompt,
-            styles: projectData?.aiPreferences?.image?.styles?.length
-                ? projectData.aiPreferences.image.styles
-                : recommended.image.styles,
-            stylesCategory: projectData?.aiPreferences?.image?.stylesCategory || recommended.image.stylesCategory,
-            transparentBg: projectData?.aiPreferences?.image?.transparentBg || recommended.image.transparentBg,
+            aspectRatio: normalizeExactString(
+                savedImage?.aspectRatio,
+                PROJECT_AI_ASPECT_RATIOS,
+                recommended.image.aspectRatio,
+            ),
+            backgroundColor: normalizePreferenceColor(savedImage?.backgroundColor, recommended.image.backgroundColor),
+            colors: normalizePreferenceList(savedImage?.colors, recommended.image.colors),
+            compositions: normalizePreferenceList(savedImage?.compositions, recommended.image.compositions),
+            environments: normalizePreferenceList(savedImage?.environments, recommended.image.environments),
+            foregroundColor: normalizePreferenceColor(savedImage?.foregroundColor, recommended.image.foregroundColor),
+            isMultiMode: typeof savedImage?.isMultiMode === 'boolean'
+                ? savedImage.isMultiMode
+                : recommended.image.isMultiMode,
+            lighting: normalizePreferenceList(savedImage?.lighting, recommended.image.lighting),
+            moods: normalizePreferenceList(savedImage?.moods, recommended.image.moods),
+            negativePrompt: normalizeBoundedString(
+                savedImage?.negativePrompt,
+                recommended.image.negativePrompt,
+                true,
+            ),
+            styles: normalizePreferenceList(savedImage?.styles, recommended.image.styles, true),
+            stylesCategory: normalizeBoundedString(
+                savedImage?.stylesCategory,
+                recommended.image.stylesCategory,
+            ),
+            transparentBg: typeof savedImage?.transparentBg === 'boolean'
+                ? savedImage.transparentBg
+                : recommended.image.transparentBg,
         },
     };
 }
@@ -224,7 +296,7 @@ export function getProjectDescriptionContentLength(projectData?: Project | null,
     return getResolvedProjectAIPreferences(projectData, businessType, businessCategory).description.contentLength;
 }
 
-export function getProjectDescriptionTone(projectData?: Project | null, businessType?: string, businessCategory?: string): NonNullable<ProjectAIPreferences['description']>['tone'] {
+export function getProjectDescriptionTone(projectData?: Project | null, businessType?: string, businessCategory?: string): ResolvedProjectAIPreferences['description']['tone'] {
     return getResolvedProjectAIPreferences(projectData, businessType, businessCategory).description.tone;
 }
 

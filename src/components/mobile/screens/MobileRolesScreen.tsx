@@ -93,7 +93,7 @@ function MobileRolesScreenContent({ onBack }: MobileRolesScreenProps) {
                 tenantId: expectedTenantId,
             });
             if (!isMountedRef.current) return;
-            setStoreDetails((currentStoreDetails: typeof storeDetails) => (
+            setStoreDetails((currentStoreDetails) => (
                 currentStoreDetails?.tenantId === expectedTenantId
                 && currentStoreDetails?.storeId === expectedStoreId
                 && currentStoreDetails?.roles === sourceStoreDetails.roles

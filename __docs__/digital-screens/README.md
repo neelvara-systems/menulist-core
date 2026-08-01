@@ -19,16 +19,17 @@ Digital Screens extends MenuList's authority into the physical store environment
 
 Both modes use the same data pipeline, same URL base. Owner opens a link on their TV. That's it. Content management IS menu management — there's no separate "screen content" to manage.
 
-Both screen modes keep the same quiet public attribution as OBP and menu pages: `Powered by MenuList. All rights reserved`.
+Both screen modes keep the same quiet public attribution as OBP and menu pages: `Powered by MenuList. All rights reserved`. They also inherit the canonical normalized OBP brand accent from `store.publicPresence.accentColor`; owners do not configure a separate screen theme.
 
 June 2026 hardening keeps that boundary while making the feature owner-trustworthy:
 
 - TV setup now shows the two screen types as distinct setup cards with compact links, QR blocks, and last-seen status.
 - Menu Board now uses screen-grade typography, price alignment, fewer rows per page, and the owner/menu category order instead of bestseller-first sorting.
+- The OBP accent is used only for restrained Menu Board header/progress/category framing and Highlights logo/slide chrome. Text, prices, dietary indicators, and the dark TV canvas keep fixed high-contrast semantic colors.
 - Screen content now normalizes item/category text, currency-bearing prices, tags, descriptions, and custom slide captions before display, and TV price symbols follow the store's selected `currencySymbol`.
 - Highlights owner-only mode now truly uses custom slides only, with brand fallback if no valid upload remains.
 - Highlights no longer overlays management captions on custom poster slides; owner-uploaded artwork is treated as the screen content.
-- Public menu cache invalidation now also touches screen content version when a screen exists, so ordinary menu edits can refresh connected TVs.
+- Public menu cache invalidation now also touches screen content version when a screen exists, so ordinary menu edits and OBP accent changes can refresh connected TVs.
 - Public screen cold renders now use a generated available-item menu projection inside the existing screen summary when it matches the current menu/version and base menu slug context, with the old project-read fallback still intact.
 - Projection refresh reads the compact project summary and selected project through the same Firestore transaction that advances the screen version, so a concurrent menu write retries instead of publishing stale items under a current version. Read/write counts are unchanged.
 - Public screen clients now listen to a tiny safe `platformSummary/screen_{storeId}` mirror instead of the internal `campaigns_{storeId}` owner summary document.
@@ -37,7 +38,18 @@ June 2026 hardening keeps that boundary while making the feature owner-trustwort
 - Unexpected seen-write failures now return a retryable response, so a transient failure is not cached locally as that day's successful signal.
 - The global Digital Screens kill switch now closes both the public display route and the seen endpoint, while desktop/mobile owner entry points require the Digital Screens permission before reading screen state. Desktop and mobile Menu Manager also omit the bearer link unless that permission is present.
 - Expired custom slides no longer consume the three-slide allowance: owner reads hide them and the next screen mutation prunes their Firestore references. Storage retention remains governed by the shared media lifecycle rather than the display-expiry timer.
-- Browser-local fallback is offline-only and version-matched; an online empty/current response cannot be replaced by old menu items or slides.
+- Browser-local fallback is offline-only, version-matched, real-array checked,
+  field-projected and expiry-aware; an online empty/current response cannot be
+  replaced by old menu items or slides, and expired owner posters cannot return
+  from storage.
+- Highlights rotation keeps a bounded integer index through empty/non-empty
+  slide transitions, Menu Board pagination reads the current page bound, later
+  server props remain authoritative, fullscreen/reload recovery owns
+  cleanup-safe timers, and blocked browser storage is a contained seen-signal
+  diagnostic rather than a public-display failure.
+- A missing/disabled public listener mirror immediately enters a guarded retry;
+  a content-version reload suppressed by the 30-second guard retains a retry
+  instead of silently accepting stale public truth.
 - Menu Board uses height-aware one/two/three-column pagination, a compact 720p layout, a 12-second page interval, and a 500-item fallback ceiling. Custom artwork renders without destructive cropping, shows owner safe-area/QR reservations before save, and reloads at expiry so an old offer cannot remain on a long-running TV.
 - Owner health copy distinguishes `Link ready`, `Seen recently`, and `Check TV`; it never equates a generated link or an old daily signal with a live connection.
 - Public token resolvers, menu fallback helpers, invalidation, and reload utilities no longer direct-console raw screen tokens, project IDs, slide IDs, settings, or error objects; failures use normalized bounded diagnostics.

@@ -40,6 +40,16 @@ assert.equal(
 assert.equal(isMenuListPublicEntityEligible({}), true, 'legacy entities without lifecycle flags remain eligible');
 assert.equal(isMenuListPublicEntityEligible({ active: false }), false, 'inactive entities fail closed');
 assert.equal(isMenuListPublicEntityEligible({ deleted: true }), false, 'deleted entities fail closed');
+assert.equal(isMenuListPublicEntityEligible({ active: 'false' }), false, 'malformed active state fails closed');
+assert.equal(isMenuListPublicEntityEligible({ deleted: 'false' }), false, 'malformed deleted state fails closed');
+assert.equal(isMenuListPublicEntityEligible({ blocked: 'false' }), false, 'malformed block state fails closed');
+assert.equal(isMenuListPublicEntityEligible({ tenantBlocked: 'false' }), false, 'malformed tenant-block state fails closed');
+assert.equal(isMenuListPublicEntityEligible({ blockDetails: { blocked: 'false' } }), false, 'malformed nested block state fails closed');
+assert.equal(isMenuListPublicEntityEligible(new Proxy({}, {
+    get() {
+        throw new Error('public entity lifecycle getter must remain contained');
+    },
+})), false, 'throwing lifecycle access fails closed');
 assert.equal(isMenuListPublicEntityEligible({ tenantBlocked: true }), false, 'tenant-block mirrors fail closed');
 assert.equal(
     isMenuListPublicEntityEligible({ blockDetails: { blocked: true } }),

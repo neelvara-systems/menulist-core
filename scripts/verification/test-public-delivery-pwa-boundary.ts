@@ -24,5 +24,15 @@ assert.deepEqual(buildShortcuts({ menuPath: '/menu' }, 'hi'), [{
     description: hi('menu.menuOffering'),
     url: '/menu?lang=hi&entry_source=shortcut-menu',
 }]);
+assert.equal(
+    buildShortcuts({ menuPath: '/menu?entry_source=old#today' })[0]?.url,
+    '/menu?entry_source=shortcut-menu#today',
+);
+assert.deepEqual(buildShortcuts({ menuPath: 'https://evil.example/menu' }), []);
+assert.deepEqual(buildShortcuts(new Proxy({} as never, {
+    getOwnPropertyDescriptor() {
+        throw new Error('blocked');
+    },
+})), []);
 
 console.log('Public delivery PWA shortcut boundary tests passed.');

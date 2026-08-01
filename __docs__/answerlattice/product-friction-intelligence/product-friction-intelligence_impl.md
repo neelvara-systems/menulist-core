@@ -39,9 +39,13 @@ not justify a second map, event pipeline, or analytics store.
    the already-loaded top-ten list when that entity is present.
 9. Ranked rows and strictly admitted entity-specific advisory actions link to
    the existing Knowledge Map with the selected entity.
+10. Ranked rows can open an owner evidence brief built only from the loaded
+    summary. The owner selects a review path, then copies or downloads the
+    deterministic Markdown packet.
 
-No workflow tree, release overlay, root-cause percentages, or classification
-write is admitted in this code scope.
+No workflow tree, release overlay, root-cause percentages, persisted
+classification, issue delivery, or decision-memory write is admitted in this
+code scope.
 
 ## Nightly Aggregation
 
@@ -90,6 +94,26 @@ Every completed provider response is written to the scoped AI-operation ledger b
   for entity IDs present in the admitted snapshot and routes those actions to
   read-only map review.
 
+## Client-Side Evidence Brief
+
+`frictionEvidenceBrief.ts` is a pure deterministic projection over one parsed
+`AnswerlatticeFrictionEntitySummary` and its complete metric window. It:
+
+- rejects incomplete windows, malformed dates, invalid counts, unsupported
+  review paths, and contradictory component totals;
+- normalizes bounded single-line entity metadata;
+- preserves exact support-evidence language;
+- calculates only transparent comparison and escalation percentages;
+- emits a fixed non-causality boundary;
+- caps UTF-8 output at 8 KiB;
+- creates a safe Markdown filename.
+
+`FrictionEvidenceBriefDrawer.tsx` uses the existing hardened clipboard helper
+and a browser-local Blob download. It does not import a database module, call
+`fetch`, open a listener, invoke a provider, or persist the owner selection.
+Desktop uses the existing table action; narrow viewports use a 44px labeled
+action on each stacked entity item.
+
 ## Security and Permissions
 
 - daily stats and summary writes are server-only;
@@ -111,3 +135,8 @@ call, or new document family.
 
 Entity-focused URL handoffs add no Firestore operation. The Knowledge Map pays
 its existing two point reads only after the owner explicitly opens it.
+
+Preparing, changing, copying, and downloading an evidence brief all operate on
+the already-loaded in-memory snapshot. They add zero Firestore reads, writes,
+deletes, listeners, Storage objects, Function invocations, scheduler work,
+provider calls, or integration calls.

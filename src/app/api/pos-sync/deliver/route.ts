@@ -133,7 +133,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const store = storeDoc.data();
-        const targetPermissionError = requireAnyStorePermissionForStoreData(
+        const targetPermissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             store,
@@ -155,7 +155,7 @@ export const POST = withAuth(async (request, session) => {
                 const freshDoc = await transaction.get(storeRef);
                 if (!freshDoc.exists) return;
                 const freshStore = freshDoc.data();
-                const freshPermissionError = requireAnyStorePermissionForStoreData(
+                const freshPermissionError = await requireAnyStorePermissionForStoreData(
                     request,
                     session,
                     freshStore,
@@ -221,7 +221,7 @@ export const POST = withAuth(async (request, session) => {
             ]);
             if (!freshDoc.exists) return null;
             const freshStore = freshDoc.data();
-            const freshPermissionError = requireAnyStorePermissionForStoreData(
+            const freshPermissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 freshStore,

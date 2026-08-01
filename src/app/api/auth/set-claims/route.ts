@@ -475,7 +475,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             logAuthDiagnostic('set_claims_invalid_workspace_scope_rejected', {
                 ...getSetClaimsEmailLogContext(session.user.email),
                 ...getSetClaimsTenantLogContext(dbUser.tenantId ?? dbUser.tId),
-                ...getSetClaimsStoreLogContext(claimStoreScope?.documentId ?? dbUser.storeId),
+                ...getSetClaimsStoreLogContext(dbUser.storeId),
                 ...getSetClaimsUserLogContext(dbUser.id),
             });
             return authJson({ error: 'Forbidden' }, { status: 403 });

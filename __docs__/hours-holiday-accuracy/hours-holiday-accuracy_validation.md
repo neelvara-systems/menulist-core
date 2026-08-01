@@ -1,6 +1,6 @@
 # Working Hours, Holidays, and Time Slots — Verification
 
-**Result:** Local source complete on July 16, 2026
+**Result:** Local source complete on July 30, 2026
 
 **Release status:** Owner/deployment/browser/device evidence pending
 
@@ -20,6 +20,9 @@
 - Decision Blocks share the normal category time-slot evaluator.
 - Structured data and FAQ output omit malformed hours.
 - Store DAL validates weekday keys and range shapes before Firestore.
+- Special dates are bounded, normalized, and evaluated in the store timezone.
+- Exact-date closure suppresses weekly/prior-overnight truth for that complete date.
+- Public projection, OBP, menu status, owner messages, API output, and JSON-LD share normalized special-hour truth.
 
 ## Focused Gates
 
@@ -47,11 +50,17 @@
 | Slot exact end | Hidden |
 | Invalid `99:00-17:00` | Hours not available; structured data omitted |
 | Overlapping preset definitions | Accepted |
+| Weekly open plus exact-date closed | Closed for the exact store-local date |
+| Exact-date different hours | Exact-date range wins |
+| Prior special overnight with no current exception | Carries into the next date |
+| Current exact-date closure after prior overnight | Closure wins; no carry |
+| Invalid date/range/extra entry key | DAL/public projection rejects or omits |
 
 ## Pending Owner/Release Evidence
 
 - Authenticated desktop and MobileShell mutation/rollback smoke.
 - Real public menu and OBP boundary smoke in multiple timezones.
+- Desktop/mobile special-date add/edit/remove and Today override smoke.
 - iOS/Android PWA and desktop browser QA.
 - Approved app deployment, cache observation, and production-host smoke.
 

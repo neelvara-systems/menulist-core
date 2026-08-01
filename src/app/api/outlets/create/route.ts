@@ -29,6 +29,8 @@ import {
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
+import { isMultiOutletTenantStoreListEntryInScope } from "@lib/multiOutlet/projectIdBoundary";
+import { normalizePersistedOutletPolicy } from "@lib/multiOutlet/outletPolicyBoundary";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     buildUserStoreAccessUpdate,
@@ -48,7 +50,6 @@ import {
     type OutletSlugReservation,
     writeCurrentOutletSlugClaim,
 } from "@lib/routing/outletSlugClaim";
-import { DEFAULT_OUTLET_POLICY } from "@type/multiOutlet.types";
 import { slugify } from "@lib/utils/slugify";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
@@ -215,7 +216,7 @@ export const POST = withAuth(async (request, session) => {
         ) {
             return NextResponse.json({ error: "Store not available" }, { status: 403 });
         }
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             masterStore,
@@ -238,14 +239,20 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Account not available" }, { status: 403 });
         }
         const initialStoresList = Array.isArray(initialTenant?.storesList) ? initialTenant.storesList : [];
-        const activeStoreCount = initialStoresList.filter((s: any) => s?.active !== false).length || 1;
+        const activeStoreCount = initialStoresList.filter((store: unknown) => (
+            isMultiOutletTenantStoreListEntryInScope(store, {})
+        )).length || 1;
         const targetQty = activeStoreCount + 1;
-        const hasMasterStore = initialStoresList.some((s: any) => s?.isMaster === true);
+        const hasMasterStore = initialStoresList.some((store: unknown) => (
+            isMultiOutletTenantStoreListEntryInScope(store, { isMaster: true })
+        ));
         masterPromoted = (
             masterStore.isMaster !== true
             && !hasMasterStore
             && initialStoresList.length === 1
-            && Number(initialStoresList[0]?.storeId) === Number(storeId)
+            && isMultiOutletTenantStoreListEntryInScope(initialStoresList[0], {
+                storeId: Number(storeId),
+            })
         );
 
         // Validate: current store must be master. Legacy single-store tenants
@@ -254,20 +261,23 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Only master store can add outlets" }, { status: 403 });
         }
         if (masterPromoted) {
+            const promotedOutletPolicy = normalizePersistedOutletPolicy(masterStore.outletPolicy);
+            if (!promotedOutletPolicy) {
+                return NextResponse.json({ error: "Store not available" }, { status: 409 });
+            }
             masterStore = {
                 ...masterStore,
                 isMaster: true,
-                outletPolicy: masterStore.outletPolicy || DEFAULT_OUTLET_POLICY,
+                outletPolicy: promotedOutletPolicy,
             };
         }
         // Enforce outlet count limit against active outlets only. Deactivated
         // outlets preserve history, but should not block replacement locations.
         const maxOutlets = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT;
         if (maxOutlets > 0) {
-            const currentOutlets = initialStoresList.filter((s: any) => (
-                Number(s?.storeId) !== Number(storeId)
-                && !s.isMaster
-                && s?.active !== false
+            const currentOutlets = initialStoresList.filter((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { isMaster: false })
+                && !isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })
             )).length;
             if (currentOutlets >= maxOutlets) {
                 return NextResponse.json({ error: `Maximum ${maxOutlets} outlets reached` }, { status: 400 });
@@ -401,7 +411,7 @@ export const POST = withAuth(async (request, session) => {
             ) {
                 throw new OutletCreateScopeChangedError();
             }
-            const freshPermissionError = requireAnyStorePermissionForStoreData(
+            const freshPermissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 freshMasterStore,
@@ -412,15 +422,19 @@ export const POST = withAuth(async (request, session) => {
             );
             if (freshPermissionError) throw new OutletCreateScopeChangedError();
             const currentStoresList = Array.isArray(freshTenantData.storesList) ? freshTenantData.storesList : [];
-            const freshCurrentStoreSummary = currentStoresList.find((store: any) => (
-                Number(store?.storeId) === Number(storeId)
+            const freshCurrentStoreSummary = currentStoresList.find((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })
             ));
-            const freshHasMasterStore = currentStoresList.some((store: any) => store?.isMaster === true);
+            const freshHasMasterStore = currentStoresList.some((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { isMaster: true })
+            ));
             const freshMasterPromoted = (
                 freshMasterStore.isMaster !== true
                 && !freshHasMasterStore
                 && currentStoresList.length === 1
-                && Number(currentStoresList[0]?.storeId) === Number(storeId)
+                && isMultiOutletTenantStoreListEntryInScope(currentStoresList[0], {
+                    storeId: Number(storeId),
+                })
             );
             if (freshMasterStore.isMaster !== true && !freshMasterPromoted) {
                 throw new OutletCreateScopeChangedError();
@@ -438,24 +452,29 @@ export const POST = withAuth(async (request, session) => {
             }
             const freshMasterListRepairNeeded = freshMasterStore.isMaster === true && !freshHasMasterStore;
             const shouldMarkCurrentStoreAsMasterInTenant = freshMasterPromoted || freshMasterListRepairNeeded;
-            const freshActiveStoreCount = currentStoresList.filter((store: any) => store?.active !== false).length || 1;
+            const freshActiveStoreCount = currentStoresList.filter((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, {})
+            )).length || 1;
             if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && freshActiveStoreCount + 1 > newQty) {
                 throw new OutletCreateScopeChangedError();
             }
-            const freshOutletCount = currentStoresList.filter((store: any) => (
-                Number(store?.storeId) !== Number(storeId)
-                && !store.isMaster
-                && store?.active !== false
+            const freshOutletCount = currentStoresList.filter((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { isMaster: false })
+                && !isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })
             )).length;
             if (maxOutlets > 0 && freshOutletCount >= maxOutlets) {
                 throw new OutletCreateScopeChangedError();
             }
             masterPromoted = freshMasterPromoted;
+            const freshOutletPolicy = normalizePersistedOutletPolicy(freshMasterStore.outletPolicy);
+            if (freshMasterPromoted && !freshOutletPolicy) {
+                throw new OutletCreateScopeChangedError();
+            }
             masterStore = freshMasterPromoted
                 ? {
                     ...freshMasterStore,
                     isMaster: true,
-                    outletPolicy: freshMasterStore.outletPolicy || DEFAULT_OUTLET_POLICY,
+                    outletPolicy: freshOutletPolicy,
                 }
                 : freshMasterStore;
             const masterProjectsSummary = freshMasterProjectsSummarySnap.exists
@@ -577,14 +596,15 @@ export const POST = withAuth(async (request, session) => {
             if (masterPromoted) {
                 tx.set(masterStoreRef, {
                     isMaster: true,
-                    outletPolicy: masterStore.outletPolicy || DEFAULT_OUTLET_POLICY,
+                    outletPolicy: masterStore.outletPolicy,
                     modifiedOn: now,
                 }, { merge: true });
             }
 
             // Update tenant storesList
-            const normalizedStoresList = currentStoresList.map((store: any) => (
-                shouldMarkCurrentStoreAsMasterInTenant && Number(store?.storeId) === Number(storeId)
+            const normalizedStoresList = currentStoresList.map((store: unknown) => (
+                shouldMarkCurrentStoreAsMasterInTenant
+                    && isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })
                     ? { ...store, isMaster: true }
                     : store
             ));
@@ -697,7 +717,7 @@ export const POST = withAuth(async (request, session) => {
             outletSlug: result.outletSlug,
             outletName,
             masterPromoted,
-            outletPolicy: masterPromoted ? masterStore.outletPolicy || DEFAULT_OUTLET_POLICY : null,
+            outletPolicy: masterPromoted ? masterStore.outletPolicy : null,
             tenantName: result.tenantName,
             quantity: subId ? newQty : null,
         });

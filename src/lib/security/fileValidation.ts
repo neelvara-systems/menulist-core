@@ -63,6 +63,19 @@ export function detectFileType(buffer: ArrayBuffer | Uint8Array): string | null 
 
     // Check against known signatures
     for (const [mimeType, signatures] of Object.entries(FILE_SIGNATURES)) {
+        if (mimeType === 'image/webp') {
+            if (
+                bytes.length >= 12
+                && matchesSignature(bytes, signatures[0])
+                && bytes[8] === 0x57
+                && bytes[9] === 0x45
+                && bytes[10] === 0x42
+                && bytes[11] === 0x50
+            ) {
+                return mimeType;
+            }
+            continue;
+        }
         for (const signature of signatures) {
             if (matchesSignature(bytes, signature)) {
                 return mimeType;
@@ -113,6 +126,10 @@ export async function validateFileUpload(
             return { valid: false, error: 'Unknown file type' };
         }
 
+        if (!Number.isSafeInteger(claimedSize) || claimedSize <= 0) {
+            return { valid: false, error: 'Invalid file size' };
+        }
+
         if (claimedSize > maxSize) {
             return {
                 valid: false,
@@ -123,9 +140,16 @@ export async function validateFileUpload(
         // 3. Convert to ArrayBuffer if Blob
         let buffer: ArrayBuffer | Uint8Array;
         if (file instanceof Blob) {
+            if (file.size !== claimedSize || file.size > maxSize) {
+                return { valid: false, error: 'File size does not match uploaded content' };
+            }
             buffer = await file.arrayBuffer();
         } else {
             buffer = file;
+        }
+        const actualSize = buffer.byteLength;
+        if (actualSize !== claimedSize || actualSize <= 0 || actualSize > maxSize) {
+            return { valid: false, error: 'File size does not match uploaded content' };
         }
 
         // 4. Verify magic bytes (file signature)

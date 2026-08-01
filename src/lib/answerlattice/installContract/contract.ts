@@ -506,13 +506,13 @@ export const ANSWERLATTICE_FRAMEWORK_SNIPPETS: Record<'nextjs' | 'react' | 'vue'
 
 import Script from 'next/script';
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 
 export function AnswerlatticeInstall() {
   const pathname = usePathname() || '/';
   const widgetKey = process.env.NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY;
 
-  useEffect(() => {
+  const updateContext = useCallback(() => {
     if (!widgetKey) return;
     window.AnswerlatticeWidget?.page({
       path: pathname,
@@ -523,6 +523,10 @@ export function AnswerlatticeInstall() {
     });
   }, [pathname, widgetKey]);
 
+  useEffect(() => {
+    updateContext();
+  }, [updateContext]);
+
   if (!widgetKey) return null;
 
   return (
@@ -531,6 +535,7 @@ export function AnswerlatticeInstall() {
       src="${ANSWERLATTICE_WIDGET_SCRIPT_URL}"
       data-answerlattice-key={widgetKey}
       strategy="afterInteractive"
+      onLoad={updateContext}
     />
   );
 }
@@ -539,14 +544,21 @@ export function AnswerlatticeInstall() {
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-function loadAnswerlattice(widgetKey) {
-  if (document.querySelector('script[data-answerlattice-widget="v1"]')) return;
+function loadAnswerlattice(widgetKey, updateContext) {
+  const existing = document.querySelector('script[data-answerlattice-widget="v1"]');
+  if (existing) {
+    if (window.AnswerlatticeWidget) updateContext();
+    else existing.addEventListener('load', updateContext, { once: true });
+    return () => existing.removeEventListener('load', updateContext);
+  }
   const script = document.createElement('script');
   script.src = '${ANSWERLATTICE_WIDGET_SCRIPT_URL}';
   script.async = true;
   script.setAttribute('data-answerlattice-widget', 'v1');
   script.setAttribute('data-answerlattice-key', widgetKey);
+  script.addEventListener('load', updateContext, { once: true });
   document.head.appendChild(script);
+  return () => script.removeEventListener('load', updateContext);
 }
 
 export function AnswerlatticeInstall() {
@@ -555,25 +567,28 @@ export function AnswerlatticeInstall() {
 
   useEffect(() => {
     if (!widgetKey) return;
-    loadAnswerlattice(widgetKey);
-    window.AnswerlatticeWidget?.page({
+    const updateContext = () => window.AnswerlatticeWidget?.page({
       path: location.pathname,
       title: document.title,
       feature: location.pathname.split('/').filter(Boolean)[0] || 'app',
       role: 'member',
       locale: navigator.language || 'en',
     });
+    const removeLoadListener = loadAnswerlattice(widgetKey, updateContext);
+    updateContext();
+    return removeLoadListener;
   }, [location.pathname, widgetKey]);
 
   return null;
 }
 `),
     vue: normalizeLines(`
-import { onMounted, watch } from 'vue';
+import { onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 export function useAnswerlatticeInstall(widgetKey: string) {
   const route = useRoute();
+  let removeLoadListener = () => {};
 
   const updateContext = () => {
     if (!widgetKey) return;
@@ -587,17 +602,24 @@ export function useAnswerlatticeInstall(widgetKey: string) {
   };
 
   onMounted(() => {
-    if (!document.querySelector('script[data-answerlattice-widget="v1"]')) {
-      const script = document.createElement('script');
+    if (!widgetKey) return;
+    let script = document.querySelector<HTMLScriptElement>('script[data-answerlattice-widget="v1"]');
+    if (!script) {
+      script = document.createElement('script');
       script.src = '${ANSWERLATTICE_WIDGET_SCRIPT_URL}';
       script.async = true;
       script.setAttribute('data-answerlattice-widget', 'v1');
       script.setAttribute('data-answerlattice-key', widgetKey);
       document.head.appendChild(script);
     }
+    if (!window.AnswerlatticeWidget) {
+      script.addEventListener('load', updateContext, { once: true });
+      removeLoadListener = () => script.removeEventListener('load', updateContext);
+    }
     updateContext();
   });
 
+  onUnmounted(() => removeLoadListener());
   watch(() => route.path, updateContext);
 }
 `),

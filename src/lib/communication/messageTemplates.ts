@@ -14,9 +14,11 @@ import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization
 import {
     getBoundedRuntimeStringContext,
     logRuntimeDiagnostic,
-    logRuntimeFailure,
 } from '@lib/runtime/runtimeDiagnostics';
 import { formatClockTime } from '@util/dateTime';
+import { getStoreDayKey, getStoreLocalDateKey } from '@lib/hours/hoursEngine';
+import { getSpecialHoursEntry } from '@lib/hours/specialHours';
+import type { StoreSpecialHours } from '@type/platform/store';
 
 export interface MessageTemplateInput {
     storeName: string;
@@ -44,7 +46,6 @@ export interface MessageTemplate {
 
 const MAX_COMMUNICATION_KIT_TODAY_HOURS_DIAGNOSTICS = 25;
 
-const reportedCommunicationKitTodayHoursTimezoneFailures = new Set<string>();
 const reportedCommunicationKitTodayHoursRangeFailures = new Set<string>();
 
 /**
@@ -270,20 +271,6 @@ function parseCommunicationKitTimeToMinutes(time: string): number | null {
     return (hours * 60) + minutes;
 }
 
-function logCommunicationKitTodayHoursTimezoneFallback(error: unknown, timeZone?: string): void {
-    const failureKey = timeZone ? `timezone:${timeZone.length}` : 'timezone:missing';
-
-    if (reportedCommunicationKitTodayHoursTimezoneFailures.has(failureKey)) return;
-    if (reportedCommunicationKitTodayHoursTimezoneFailures.size >= MAX_COMMUNICATION_KIT_TODAY_HOURS_DIAGNOSTICS) return;
-    reportedCommunicationKitTodayHoursTimezoneFailures.add(failureKey);
-
-    logRuntimeFailure('communication_kit_today_hours_timezone_fallback_failed', error, {
-        ...getBoundedRuntimeStringContext('timeZone', timeZone),
-        fallbackPolicy: 'browser_local_day',
-        hasIntl: typeof Intl !== 'undefined',
-    });
-}
-
 function logCommunicationKitTodayHoursInvalidRange(dayKey: string, todayValue: string): void {
     const failureKey = `${dayKey}:${todayValue.length}:${todayValue.includes('-') ? 'range' : 'no-range'}`;
 
@@ -309,33 +296,38 @@ export interface TodayHoursResult {
 export function getTodayHours(
     workingHours?: Record<string, string>,
     timeZone?: string,
+    specialHours?: StoreSpecialHours,
 ): TodayHoursResult {
-    if (!workingHours || Object.keys(workingHours).length === 0) {
+    if (
+        (!workingHours || typeof workingHours !== 'object' || Array.isArray(workingHours))
+        && !specialHours
+    ) {
         return { hours: null, isClosed: false };
     }
 
-    const dayKeys = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
-
-    let dayIndex: number;
+    const now = new Date();
+    const todayKey = getStoreDayKey(timeZone, now);
+    const specialEntry = getSpecialHoursEntry(specialHours, getStoreLocalDateKey(timeZone, now));
+    let hasTodayValue = false;
+    let todayValue: unknown;
     try {
-        const now = new Date();
-        const dayStr = new Intl.DateTimeFormat('en-US', {
-            weekday: 'short',
-            timeZone: timeZone || undefined,
-        }).format(now).toLowerCase();
-        dayIndex = dayKeys.indexOf(dayStr as any);
-        if (dayIndex === -1) dayIndex = now.getDay();
-    } catch (error) {
-        logCommunicationKitTodayHoursTimezoneFallback(error, timeZone);
-        dayIndex = new Date().getDay();
+        hasTodayValue = Boolean(specialEntry)
+            || Boolean(workingHours && Object.prototype.hasOwnProperty.call(workingHours, todayKey));
+        todayValue = specialEntry?.hours
+            ?? (workingHours && hasTodayValue ? Reflect.get(workingHours, todayKey) : undefined);
+    } catch {
+        return { hours: null, isClosed: false };
     }
 
-    const todayKey = dayKeys[dayIndex];
-    const todayValue = workingHours[todayKey];
-
-    // No entry or explicitly closed
-    if (!todayValue || !todayValue.includes('-')) {
+    // No entry or an explicitly blank value means closed.
+    if (!hasTodayValue || todayValue === '') {
         return { hours: null, isClosed: true };
+    }
+    if (typeof todayValue !== 'string' || !todayValue.includes('-')) {
+        if (typeof todayValue === 'string') {
+            logCommunicationKitTodayHoursInvalidRange(todayKey, todayValue);
+        }
+        return { hours: null, isClosed: false };
     }
 
     const [openRaw, closeRaw] = todayValue.split('-').map(t => t.trim());

@@ -14,6 +14,9 @@
 | Looks too busy | Returns review findings and does not delete layers automatically. |
 | Check facts | Flags missing business name and unknown numbers. |
 | Export checklist | Shows manual export and rights checklist. |
+| “Make this WhatsApp ready” | Resolves to WhatsApp readiness, not Add Contact. |
+| “Get this ready for print” | Resolves to print readiness, not Resize Poster. |
+| Coercive or hostile context/patch input | No conversion hooks execute; context is empty/bounded and validation fails closed. |
 
 ## Model Boundary
 

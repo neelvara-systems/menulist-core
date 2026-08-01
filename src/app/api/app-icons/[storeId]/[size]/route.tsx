@@ -20,6 +20,8 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import {
     clampCustomerAppIconSize,
     CUSTOMER_APP_ICON_CACHE_CONTROL,
+    CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL,
+    normalizeCustomerAppDisplayName,
     renderCustomerAppIcon,
     resolveCustomerAppIconSource,
 } from '@lib/pwa/customerAppAssets';
@@ -39,6 +41,7 @@ async function shouldUseFallbackAsset(request: NextRequest, storeId: string): Pr
     const limit = await checkRateLimit({
         key: `public-dynamic-asset:icon:${ipHash}`,
         ...config,
+        failClosedOnProviderError: true,
     });
     return !limit.allowed;
 }
@@ -68,7 +71,7 @@ export async function GET(
             }), {
                 width: size,
                 height: size,
-                headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
+                headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL },
             });
         }
 
@@ -85,7 +88,7 @@ export async function GET(
             });
         }
 
-        const displayName: string = getStoreContextName(store, 'Menu');
+        const displayName = normalizeCustomerAppDisplayName(getStoreContextName(store, 'Menu'));
         const iconSource = resolveCustomerAppIconSource(store);
         const visualRatio = iconSource.source === 'override'
             ? size >= 512 ? 0.9 : 0.92
@@ -100,7 +103,7 @@ export async function GET(
         }), {
             width: size,
             height: size,
-            headers: { 'Cache-Control': CUSTOMER_APP_ICON_CACHE_CONTROL },
+            headers: { 'Cache-Control': CUSTOMER_APP_TRANSIENT_FALLBACK_CACHE_CONTROL },
         });
     } catch (err) {
         logRuntimeFailure('customer_app_icon_generation_failed', err, {

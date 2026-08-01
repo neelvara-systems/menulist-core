@@ -3,7 +3,7 @@ import { PRODUCT_IDS } from "@constant/product";
 import { ECOMSAI_PLATFORM_SUPPORT_USER_ROLE, ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
 import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, Timestamp, where, type QueryConstraint } from "@firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, Timestamp, where, type DocumentData, type QueryConstraint, type UpdateData } from "@firebase/firestore";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import {
     ANSWERLATTICE_TICKET_MESSAGE_LIMIT,
@@ -384,7 +384,7 @@ export const addTicket = async (data: SupportTicketType) => {
                 logs: capturedLogs,
                 ...(clientDebugContext ? { clientDebugContext } : {}),
             }, { isNew: true });
-            delete submitData.documents;
+            submitData.documents = [];
             const ticketScope = normalizeSupportTicketScope({
                 tId: submitData.tId,
                 sId: submitData.sId,
@@ -506,7 +506,7 @@ export const updateTicket = async (data: SupportTicketMutationInput) => {
                     mutationContext.scope,
                 );
 
-                const updateData: Record<string, unknown> = {
+                const updateData: UpdateData<DocumentData> = {
                     ...mutation,
                     pId: PRODUCT_IDS.ANSWERLATTICE,
                     tId: mutationContext.scope.tId,
@@ -561,8 +561,8 @@ export const updateTicket = async (data: SupportTicketMutationInput) => {
                 triggerNotification({
                     eventType: 'TICKET_STATUS_CHANGED',
                     ticketId,
-                    tId: transactionResult.ticket.tId,
-                    sId: transactionResult.ticket.sId,
+                    tId: mutationContext.scope.tId,
+                    sId: mutationContext.scope.sId,
                 });
             }
 
@@ -811,7 +811,7 @@ export const updateTicketStatus = async (
 
 export const deleteTicket = async (data: SupportTicketMutationInput) => {
     return await apiCallComposer(
-        async () => {
+        async (): Promise<null> => {
             const ticketId = normalizeAnswerlatticeSupportTicketId(data?.id);
             if (!ticketId) throw new Error('answerlattice_ticket_id_invalid');
             const mutationContext = await requireSupportTicketMutationContext(data, 'support_ticket_delete');
@@ -968,7 +968,7 @@ export const getStoresTickets = async (maxResults = STORE_TICKETS_LIMIT) => {
             );
 
             const querySnapshot = await getDocs(q);
-            const list = [];
+            const list: SupportTicketType[] = [];
             querySnapshot.forEach((doc) => {
                 const ticket = parseAnswerlatticeSupportTicketDocument({
                     id: doc.id,

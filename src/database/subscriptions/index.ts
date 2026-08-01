@@ -7,6 +7,7 @@ import {
 } from "@lib/billing/subscriptionDocumentIdBoundary";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
 import { getMenuListSubscriptionEntitlementScope } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
+import { getExactMasterStoreIdFromList } from "@lib/billing/masterStoreBoundary";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { MinimalStoreDataType } from "@type/platform/store";
 import { FirestoreSubscriptionDoc } from "@type/razorpay";
@@ -151,39 +152,7 @@ const expireIfGracePeriodEnded = async (sub: FirestoreSubscriptionDoc): Promise<
 
 /** BT5: Derive master store ID from storesList without extra Firestore read. */
 export function getMasterStoreIdFromList(storesList?: MinimalStoreDataType[]): number | null {
-    if (!storesList?.length) return null;
-
-    const normalizedStores = storesList
-        .map((store) => {
-            const storeId = Number(store?.storeId);
-            return Number.isSafeInteger(storeId) && storeId > 0
-                ? { store, storeId }
-                : null;
-        })
-        .filter((store): store is { store: MinimalStoreDataType; storeId: number } => Boolean(store));
-
-    const explicitMaster = normalizedStores.find(({ store }) => (
-        store?.isMaster === true
-        || store?.storeDetails?.isMaster === true
-    ));
-    if (explicitMaster) return explicitMaster.storeId;
-
-    // Legacy tenants may have store.isMaster=true while tenants.storesList
-    // missed the same marker. If all outlets are explicitly isMaster:false,
-    // the remaining active unflagged store is the master without another read.
-    const activeStores = normalizedStores.filter(({ store }) => (
-        (store as any)?.active !== false
-        && store?.storeDetails?.active !== false
-    ));
-    if (activeStores.length === 1) return activeStores[0].storeId;
-
-    const unflaggedActiveStores = activeStores.filter(({ store }) => (
-        store?.isMaster !== false
-        && store?.storeDetails?.isMaster !== false
-    ));
-    if (unflaggedActiveStores.length === 1) return unflaggedActiveStores[0].storeId;
-
-    return null;
+    return getExactMasterStoreIdFromList(storesList);
 }
 
 /**

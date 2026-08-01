@@ -9,10 +9,12 @@ import { createPublicCustomerTranslator } from "@lib/localization/publicCustomer
 import { localizePublicHoursText } from "@lib/localization/publicHoursText";
 import { Tag } from "antd";
 import { useEffect, useState } from "react";
+import type { StoreSpecialHours } from "@type/platform/store";
 
 interface StoreStatusBadgeProps {
     activeLanguage?: string;
     workingHours?: Record<string, string>;
+    specialHours?: StoreSpecialHours;
     timezone?: string;
     showNextChange?: boolean;
     urgentOnly?: boolean;
@@ -30,6 +32,7 @@ interface StoreStatusBadgeProps {
 export function StoreStatusBadge({
     activeLanguage,
     workingHours,
+    specialHours,
     timezone,
     showNextChange = true,
     urgentOnly = false,
@@ -43,20 +46,23 @@ export function StoreStatusBadge({
 
     useEffect(() => {
         const computeStatus = () => {
-            const result = getStoreStatus(workingHours, timezone);
+            const result = getStoreStatus(workingHours, timezone, undefined, new Date(), specialHours);
             setStatus(result);
             setMinutesUntilChange(
-                getMinutesUntilStoreStatusChange(workingHours, timezone),
+                getMinutesUntilStoreStatusChange(workingHours, timezone, new Date(), specialHours),
             );
         };
 
         computeStatus();
         const interval = setInterval(computeStatus, 30000);
         return () => clearInterval(interval);
-    }, [workingHours, timezone]);
+    }, [specialHours, workingHours, timezone]);
 
     if (!status) return null;
-    if (!workingHours || Object.keys(workingHours).length === 0) return null;
+    if (
+        (!workingHours || Object.keys(workingHours).length === 0)
+        && (!specialHours || Object.keys(specialHours).length === 0)
+    ) return null;
 
     const isUrgentStatusChange =
         minutesUntilChange !== null &&

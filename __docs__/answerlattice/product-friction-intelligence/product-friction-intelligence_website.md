@@ -7,6 +7,11 @@ entity in Knowledge Map. This is a validated navigation handoff over already
 loaded or explicitly opened summaries; it is not a new Customer Friction Map,
 root-cause model, or automatic diagnosis.
 
+The local evidence-brief action is implemented, but it does not require a new
+homepage section or category claim. Deeper product copy may mention a factual
+copy/download handoff only when it also states that the owner chooses the
+review path and Answerlattice does not create or synchronize engineering work.
+
 Do not market a Customer Friction Map, workflow tree, root-cause percentage,
 release-causation overlay, or automatic friction classification until each
 capability is implemented and validated with real founder evidence. The

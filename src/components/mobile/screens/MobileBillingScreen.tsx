@@ -64,7 +64,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const [billingInterval, setBillingInterval] = useState<'MONTH' | 'YEAR'>('MONTH');
     const [isLoading, setIsLoading] = useState(false);
 
-    const noopDispatcher = (_action: any) => undefined;
+    const noopDispatcher: Parameters<typeof usePaymentHandler>[0] = () => undefined;
     const { onUpgradePlan, onClickPaymentCard, handleTopupPurchase, onCancelSubscription, onPauseSubscription, onResumeSubscription } = usePaymentHandler(noopDispatcher);
 
     const tenantStoresList = tenantDetails?.storesList || [];

@@ -5,7 +5,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
 import { applyStoreBusinessAttributeDefaults, assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import GlobalLanguagesList from '@data/languages';
-import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, updateSpecialMenuProject, uploadFile } from '@database/projects';
+import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getProjectDataWithoutLoader, getProjectsListWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader, updateSpecialMenuProject, uploadFile, type ProjectExpectedScope } from '@database/projects';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
@@ -29,6 +29,12 @@ import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectMana
 import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
+import {
+    getProjectOwnerScopeFromProjectId,
+    getProjectOwnerScopeKey as getProjectPageScopeKey,
+    normalizeProjectOwnerScope as normalizeProjectPageScope,
+    projectOwnerScopesMatch as projectPageScopesMatch,
+} from '@lib/menu/projectOwnerScope';
 import {
     MENULIST_ANSWERLATTICE_EVENTS,
     MENULIST_ANSWERLATTICE_TARGETS,
@@ -135,6 +141,11 @@ type PendingQualityAction = {
 const PENDING_QUALITY_ACTION_STORAGE_KEY = 'menulist:pendingQualityAction';
 const PENDING_QUALITY_ACTION_MAX_AGE_MS = 5 * 60 * 1000;
 
+type ProjectsListData = {
+    lastDoc: unknown | null;
+    projects: ProjectMetadata[];
+};
+
 const normalizeProjectsList = (projects: unknown): ProjectMetadata[] => {
     if (Array.isArray(projects)) {
         return projects.filter(Boolean) as ProjectMetadata[];
@@ -152,11 +163,15 @@ const normalizeProjectsList = (projects: unknown): ProjectMetadata[] => {
         })) as ProjectMetadata[];
 };
 
-const normalizeProjectsData = (data: any) => ({
-    ...(data || {}),
-    projects: normalizeProjectsList(data?.projects),
-    lastDoc: data?.lastDoc ?? null,
-});
+const normalizeProjectsData = (data: unknown): ProjectsListData => {
+    const record = data && typeof data === 'object' && !Array.isArray(data)
+        ? data as { lastDoc?: unknown; projects?: unknown }
+        : {};
+    return {
+        projects: normalizeProjectsList(record.projects),
+        lastDoc: record.lastDoc ?? null,
+    };
+};
 
 function BusinessIdentitySuggestionList({
     details,
@@ -273,6 +288,13 @@ function ProjectsPage() {
     const { tenantDetails, storeDetails, setStoreDetails, activeSubscription, activeSubscriptionLoading, userPermissions, isMasterUser } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const sessionTenantId = storeDetails?.tenantId || loggedInSession?.tId;
     const sessionStoreId = storeDetails?.storeId || loggedInSession?.sId;
+    const currentProjectScope = useMemo(
+        () => normalizeProjectPageScope(sessionTenantId, sessionStoreId),
+        [sessionStoreId, sessionTenantId],
+    );
+    const currentProjectScopeKey = getProjectPageScopeKey(currentProjectScope);
+    const currentProjectScopeRef = useRef<ProjectExpectedScope | null>(currentProjectScope);
+    currentProjectScopeRef.current = currentProjectScope;
     const pendingQualityActionStorageKey = getTenantStoreStorageKey(
         PENDING_QUALITY_ACTION_STORAGE_KEY,
         sessionTenantId,
@@ -289,7 +311,7 @@ function ProjectsPage() {
     }), [sessionStoreId, sessionTenantId]);
     const { hasMounted } = useDeviceType();
     const [selectedProject, setSelectedProject] = useState<ProjectMetadata | null>(null);
-    const [fileProcessingId, setFileProcessingId] = useState(null)
+    const [fileProcessingId, setFileProcessingId] = useState<string | null>(null)
     const [currentView, setCurrentView] = useState(1);
     const [pendingQualityAction, setPendingQualityAction] = useState<PendingQualityAction | null>(null);
     useEffect(() => {
@@ -310,10 +332,10 @@ function ProjectsPage() {
         }
     }, [pendingQualityActionStorageKey]);
     const deepLinkIntentHandledRef = useRef<string | null>(null);
-    const projectIdQuery = searchParams.get('projectId') || '';
-    const viewQuery = searchParams.get('view') || '';
-    const focusQuery = searchParams.get('focus') || '';
-    const qualityActionQuery = searchParams.get('qualityAction') || '';
+    const projectIdQuery = searchParams?.get('projectId') || '';
+    const viewQuery = searchParams?.get('view') || '';
+    const focusQuery = searchParams?.get('focus') || '';
+    const qualityActionQuery = searchParams?.get('qualityAction') || '';
     const [activeDeviceType, setActiveDeviceType] = useState<DeviceTypes>('mobile');
     const [uiEditorHasChanges, setUiEditorHasChanges] = useState(false);
     const b2cViewRef = useRef<B2CViewRef>(null);
@@ -327,12 +349,12 @@ function ProjectsPage() {
         if (isMasterUser || storeDetails?.isMaster !== false) return null;
         return {
             ...DEFAULT_OUTLET_POLICY,
-            ...((userPermissions as any)?.outletPolicy || {}),
+            ...(userPermissions?.outletPolicy || {}),
         };
     }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
     const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
     const canDeactivateLinkedProjects = !outletPolicy || outletPolicy.allowProjectDeactivate !== false;
-    const [pdfPagesCount, setPdfPagesCount] = useState(null);
+    const [pdfPagesCount, setPdfPagesCount] = useState<number | null>(null);
     const cancelPdfRef = useRef(false); // Ref for immediate access in async operations
     const dispatch = useAppDispatch()
     const DefaultLanguage = 'en';
@@ -340,6 +362,7 @@ function ProjectsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm<ProjectFormData>();
     const [editingProject, setEditingProject] = useState<ProjectMetadata | null>(null);
+    const [projectFormScope, setProjectFormScope] = useState<ProjectExpectedScope | null>(null);
     const [projectFormLanguages, setProjectFormLanguages] = useState<string[]>([DefaultLanguage]);
     const [projectFormSelectedLanguage, setProjectFormSelectedLanguage] = useState(DefaultLanguage);
     const [projectNameDrafts, setProjectNameDrafts] = useState<Record<string, string>>({});
@@ -357,6 +380,33 @@ function ProjectsPage() {
     const [menuLinkImporting, setMenuLinkImporting] = useState(false);
     const [menuLinkImportModalOpen, setMenuLinkImportModalOpen] = useState(false);
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
+    const projectMutationInFlightRef = useRef<string | null>(null);
+    const beginProjectMutation = useCallback((
+        operation: string,
+        expectedScope: ProjectExpectedScope | null,
+    ): string | null => {
+        if (
+            !projectPageScopesMatch(expectedScope, currentProjectScopeRef.current)
+            || projectMutationInFlightRef.current
+        ) {
+            return null;
+        }
+        const token = `${operation}:${getProjectPageScopeKey(expectedScope)}:${Date.now()}`;
+        projectMutationInFlightRef.current = token;
+        return token;
+    }, []);
+    const endProjectMutation = useCallback((token: string | null): void => {
+        if (token && projectMutationInFlightRef.current === token) {
+            projectMutationInFlightRef.current = null;
+        }
+    }, []);
+    const isCurrentProjectMutation = useCallback((
+        token: string,
+        expectedScope: ProjectExpectedScope,
+    ): boolean => (
+        projectMutationInFlightRef.current === token
+        && projectPageScopesMatch(expectedScope, currentProjectScopeRef.current)
+    ), []);
     const clearPendingQualityAction = useCallback(() => {
         if (typeof window !== 'undefined' && pendingQualityActionStorageKey) {
             window.sessionStorage.removeItem(pendingQualityActionStorageKey);
@@ -399,6 +449,7 @@ function ProjectsPage() {
     // Duplicate modal state
     const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
     const [projectToDuplicate, setProjectToDuplicate] = useState<ProjectMetadata | null>(null);
+    const [projectToDuplicateScope, setProjectToDuplicateScope] = useState<ProjectExpectedScope | null>(null);
 
     // Share modal state (for ProjectsSubHeader)
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -413,6 +464,7 @@ function ProjectsPage() {
         projectImage?: string | null,
         fallbackUid?: string,
         prepared?: PreparedMediaImage | null,
+        expectedScope?: ProjectExpectedScope,
     ) => {
         if (!projectImage) return null;
         if (!isDataUrl(projectImage)) return projectImage;
@@ -429,7 +481,7 @@ function ProjectsPage() {
             uid: fallbackUid || `project-image-${Date.now()}`,
             url: projectImage,
             type: prepared?.mimeType || mimeMatch?.[1] || 'image/jpeg',
-        } as any, 'project-images');
+        } as any, 'project-images', expectedScope);
 
         return uploadedUrl || null;
     }, []);
@@ -505,11 +557,11 @@ function ProjectsPage() {
         : null;
 
     // Fetch projects list with SWR (automatic caching & deduplication)
-    const { data: projectsData, error: projectsError, isLoading: projectsLoading, mutate: mutateProjects } = useSWR(
+    const { data: projectsData, error: projectsError, isLoading: projectsLoading, mutate: mutateProjects } = useSWR<ProjectsListData>(
         projectsListCacheKey,
         async () => {
-            if (!loggedInSession) return { projects: [], lastDoc: null };
-            const result = await getMetadataProjectsList();
+            if (!loggedInSession || !currentProjectScope) return { projects: [], lastDoc: null };
+            const result = await getProjectsListWithoutLoader(false, currentProjectScope);
             return normalizeProjectsData(result);
         },
         {
@@ -526,7 +578,8 @@ function ProjectsPage() {
         projectDataCacheKey,
         async () => {
             if (!selectedProject?.projectId) return null;
-            const project = await getProjectData(selectedProject.projectId);
+            if (!currentProjectScope) return null;
+            const project = await getProjectDataWithoutLoader(selectedProject.projectId, currentProjectScope);
 
             // Check if the project already has defined languages
             if (!Boolean(project?.languages?.length)) {
@@ -609,7 +662,18 @@ function ProjectsPage() {
     useEffect(() => {
         setSelectedProject(null);
         setCurrentView(1);
-    }, [effectiveStoreId]);
+        setIsModalOpen(false);
+        setEditingProject(null);
+        setProjectFormScope(null);
+        setProjectImagePreparedForSave(null);
+        setDuplicateModalOpen(false);
+        setProjectToDuplicate(null);
+        setProjectToDuplicateScope(null);
+        setFileProcessingId(null);
+        setMenuLinkImporting(false);
+        setMenuLinkImportModalOpen(false);
+        form.resetFields();
+    }, [currentProjectScopeKey, form]);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CHECK FOR EXISTING ACTIVE JOB ON PROJECT LOAD
@@ -618,6 +682,7 @@ function ProjectsPage() {
         if (!activeProject?.projectId) {
             return;
         }
+        const activeProjectId = activeProject.projectId;
 
         // Don't check for existing jobs if we already have an active job from user action
         // This prevents the job check from clearing a job that was just created
@@ -630,14 +695,14 @@ function ProjectsPage() {
                 const { checkExistingActiveJob } = await import('@lib/firebase/menuProcessing');
 
                 const ignoredJobIds = getDismissedMenuProcessingJobIds(menuProcessingDismissalScope);
-                const activeJobId = await checkExistingActiveJob(activeProject.projectId, ignoredJobIds);
+                const activeJobId = await checkExistingActiveJob(activeProjectId, ignoredJobIds);
                 if (activeJobId) {
                     setActiveProcessingJobId(activeJobId);
                     return;
                 }
             } catch (error) {
                 logMenuProcessingFailure('menu_upload_existing_job_check_failed', error, {
-                    ...getMenuProcessingProjectLogContext(activeProject.projectId),
+                    ...getMenuProcessingProjectLogContext(activeProjectId),
                 });
             }
         };
@@ -729,6 +794,10 @@ function ProjectsPage() {
     }, [mutateProjects]);
 
     const handleGenerateProjectImageForForm = useCallback(async () => {
+        const operationScope = projectFormScope;
+        if (!operationScope || !projectPageScopesMatch(operationScope, currentProjectScopeRef.current)) {
+            throw new Error('project_image_form_scope_changed');
+        }
         const localizedName = applyLocalizedProjectDraftMap(projectFormSourceData?.name, projectNameDrafts);
         const localizedDescription = applyLocalizedProjectDraftMap(projectFormSourceData?.description, projectDescriptionDrafts);
         const projectName = getLocalizedText(
@@ -755,6 +824,7 @@ function ProjectsPage() {
             },
             storeName: storeContextName,
         });
+        if (!projectPageScopesMatch(operationScope, currentProjectScopeRef.current)) return null;
 
         return candidate?.dataUrl || null;
     }, [
@@ -764,6 +834,7 @@ function ProjectsPage() {
         projectDescriptionDrafts,
         projectFormSelectedLanguage,
         projectFormSourceData,
+        projectFormScope,
         projectNameDrafts,
         storeDetails?.businessCategory,
         storeDetails?.businessType,
@@ -784,6 +855,8 @@ function ProjectsPage() {
         projectSummary?: any;
     }) => {
         if (!projectId) return;
+        const operationScope = getProjectOwnerScopeFromProjectId(projectId);
+        if (!operationScope || !projectPageScopesMatch(operationScope, currentProjectScopeRef.current)) return;
         if (projectSummary?.projectImage || projectData?.projectImage) return;
         if (projectImageAutoGenerationAttemptRef.current.has(projectId)) return;
         projectImageAutoGenerationAttemptRef.current.add(projectId);
@@ -799,11 +872,15 @@ function ProjectsPage() {
                     ...(projectSummary || {}),
                     projectId,
                 },
+                expectedScope: operationScope,
                 storeName: storeContextName,
                 summaryData: projectSummary || null,
             });
 
-            if (result.imageUrl) {
+            if (
+                result.imageUrl
+                && projectPageScopesMatch(operationScope, currentProjectScopeRef.current)
+            ) {
                 updateProjectImageInLocalState(projectId, result.imageUrl);
             }
         } catch (error) {
@@ -920,6 +997,7 @@ function ProjectsPage() {
         if (jobIsPreviewReady && !showReviewScreen && activeJob?.result) {
             void (async () => {
                 const previewResult = activeJob.result;
+                if (!previewResult) return;
                 // Re-extraction: raw data ready for client-side comparison
                 try {
                     const storeProject = buildComparisonProjectInput(activeProject);
@@ -939,8 +1017,8 @@ function ProjectsPage() {
                     });
 
                     // Get extracted data from job result
-                    const extractedItems = activeJob.result.combinedData?.items || [];
-                    const extractedCategories = activeJob.result.combinedData?.categories || [];
+                    const extractedItems = previewResult.combinedData?.items || [];
+                    const extractedCategories = previewResult.combinedData?.categories || [];
                     const primaryLang = getCanonicalProjectSourceLanguage(activeProject?.languages);
 
                     // Determine comparison mode based on project type
@@ -1069,16 +1147,25 @@ function ProjectsPage() {
         localStorage.setItem('projects_visited', 'true');
     };
 
-    const isLinkedOutletProject = async (project?: ProjectMetadata | Project | null) => {
+    const isLinkedOutletProject = async (
+        project?: ProjectMetadata | Project | null,
+        expectedScope?: ProjectExpectedScope,
+    ) => {
         if (!project?.projectId) return false;
         if ((project as any).masterProjectId) return true;
         if (activeProject?.projectId === project.projectId && activeProject?.masterProjectId) return true;
 
-        const detailedProject = await getProjectDataWithoutLoader(project.projectId);
+        const detailedProject = await getProjectDataWithoutLoader(project.projectId, expectedScope);
         return Boolean(detailedProject?.masterProjectId);
     };
 
     const handleProjectEdit = async (values: ProjectFormData) => {
+        const operationScope = projectFormScope;
+        const mutationToken = beginProjectMutation('save', operationScope);
+        if (!operationScope || !mutationToken) {
+            message.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
+            return;
+        }
         try {
             const sanitizedNameDrafts = Object.fromEntries(
                 Object.entries(projectNameDrafts).map(([languageCode, draftValue]) => [
@@ -1181,6 +1268,7 @@ function ProjectsPage() {
                 values.projectImage ?? null,
                 editingProject?.projectId || sanitizedName,
                 projectImagePreparedForSave,
+                operationScope,
             );
 
             if (editingProject) {
@@ -1188,7 +1276,7 @@ function ProjectsPage() {
                     values.active === false &&
                     (editingProject as any).active !== false &&
                     !canDeactivateLinkedProjects &&
-                    await isLinkedOutletProject(editingProject)
+                    await isLinkedOutletProject(editingProject, operationScope)
                 ) {
                     message.info("Deactivating inherited menus is not enabled for this store.");
                     return;
@@ -1238,7 +1326,7 @@ function ProjectsPage() {
                         localizedDisplayName: localizedName,
                         startsAt,
                         endsAt,
-                    });
+                    }, operationScope);
                     assertProjectUpdateSucceeded(
                         specialMenuResult,
                         editingProject.projectId!,
@@ -1260,6 +1348,7 @@ function ProjectsPage() {
                         unsetProjectId: shouldBeDefault ? otherDefault?.projectId : undefined,
                         setProjectId: defaultReplacement?.projectId,
                     },
+                    expectedScope: operationScope,
                 });
                 assertProjectUpdateSucceeded(
                     metadataResult,
@@ -1270,6 +1359,8 @@ function ProjectsPage() {
                     projectId: editingProject.projectId!,
                     languages: projectFormLanguages,
                     defaultLanguage: nextDefaultLanguage,
+                }, {
+                    expectedScope: operationScope,
                 });
                 assertProjectUpdateSucceeded(
                     languageResult,
@@ -1277,7 +1368,11 @@ function ProjectsPage() {
                     'projects_page_project_language_update_rejected',
                 );
                 if (activeChanged) {
-                    const activeResult = await setProjectActive(editingProject.projectId!, nextActive);
+                    const activeResult = await setProjectActive(
+                        editingProject.projectId!,
+                        nextActive,
+                        operationScope,
+                    );
                     assertProjectUpdateSucceeded(
                         activeResult,
                         editingProject.projectId!,
@@ -1285,6 +1380,7 @@ function ProjectsPage() {
                     );
                 }
 
+                if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
                 // Update selected project if editing current
                 if (selectedProject?.projectId === editingProject.projectId) {
                     setSelectedProject(updatedProject);
@@ -1327,6 +1423,7 @@ function ProjectsPage() {
                     defaultHandoff: {
                         unsetProjectId: shouldBeDefault ? otherDefault?.projectId : undefined,
                     },
+                    expectedScope: operationScope,
                 });
                 assertProjectUpdateSucceeded(
                     newProject,
@@ -1336,6 +1433,7 @@ function ProjectsPage() {
                 if (!newProject.projectId) {
                     throw new Error('projects_page_create_project_update_rejected');
                 }
+                if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
                 const projectMetadata = {
                     ...newProject.summaryData,
                     projectId: newProject.projectId,
@@ -1356,6 +1454,7 @@ function ProjectsPage() {
                 );
                 message.success(`${offeringName} created successfully`);
             }
+            if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
             setIsModalOpen(false);
             form.resetFields();
             setEditingProject(null);
@@ -1369,25 +1468,37 @@ function ProjectsPage() {
                 isDefault: Boolean((editingProject as any)?.isDefault),
                 canCreateLocalProjects,
             });
-            message.error(`Failed to ${editingProject ? 'update' : 'create'} ${labels.offeringPhrase}`);
+            if (isCurrentProjectMutation(mutationToken, operationScope)) {
+                message.error(`Failed to ${editingProject ? 'update' : 'create'} ${labels.offeringPhrase}`);
+            }
+        } finally {
+            endProjectMutation(mutationToken);
         }
     };
 
     const handleDelete = async () => {
         if (editingProject) {
+            const operationScope = projectFormScope;
+            const mutationToken = beginProjectMutation('delete-modal', operationScope);
+            if (!operationScope || !mutationToken) {
+                message.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
+                return;
+            }
             try {
-                if (!canDeactivateLinkedProjects && await isLinkedOutletProject(editingProject)) {
+                if (!canDeactivateLinkedProjects && await isLinkedOutletProject(editingProject, operationScope)) {
                     message.info("Removing inherited menus is not enabled for this store.");
                     return;
                 }
 
                 dispatch(startLoader("Deleting project"))
+                if (!editingProject.projectId) throw new Error('Project identity is unavailable.');
                 const deleteResult = await deleteProject(editingProject.projectId);
                 assertProjectDeleteSucceeded(
                     deleteResult,
                     editingProject.projectId,
                     'projects_page_modal_delete_rejected',
                 );
+                if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
                 message.success(`${offeringName} deleted successfully`);
                 if (selectedProject?.projectId === editingProject.projectId) {
                     setSelectedProject(null);
@@ -1407,18 +1518,28 @@ function ProjectsPage() {
                     ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
                     canDeactivateLinkedProjects,
                 });
-                message.error(`Failed to delete ${labels.offeringPhrase}`);
+                if (isCurrentProjectMutation(mutationToken, operationScope)) {
+                    message.error(`Failed to delete ${labels.offeringPhrase}`);
+                }
+            } finally {
+                dispatch(stopLoader("Deleting project"))
+                endProjectMutation(mutationToken);
             }
-            dispatch(stopLoader("Deleting project"))
         }
     };
 
     const handleReset = async () => {
         if (selectedProject && activeProject) {
+            const operationScope = currentProjectScopeRef.current;
+            const mutationToken = beginProjectMutation('reset', operationScope);
+            if (!operationScope || !mutationToken) {
+                message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+                return;
+            }
             try {
                 dispatch(startLoader("Resetting project"))
                 const isLinkedProject = Boolean(activeProject.masterProjectId)
-                    || await isLinkedOutletProject(activeProject);
+                    || await isLinkedOutletProject(activeProject, operationScope);
                 const resetPatch = {
                     projectId: selectedProject.projectId,
                     files: [],
@@ -1427,15 +1548,19 @@ function ProjectsPage() {
                 // Optimistically update cache
                 mutateProject({ ...activeProject, ...resetPatch }, false);
                 setCurrentView(1);
-                const resetResult = await updateProject(resetPatch);
+                const resetResult = await updateProjectWithoutLoader(resetPatch, {
+                    expectedScope: operationScope,
+                });
                 assertProjectUpdateSucceeded(
                     resetResult,
                     selectedProject.projectId,
                     'projects_page_reset_project_update_rejected',
                 );
                 // Revalidate cache after mutation
-                mutateProject();
-                message.success(`${offeringName} has been reset`);
+                if (isCurrentProjectMutation(mutationToken, operationScope)) {
+                    mutateProject();
+                    message.success(`${offeringName} has been reset`);
+                }
             } catch (error) {
                 logProjectPageFailure('projects_page_project_reset_failed', error, {
                     ...getProjectPageProjectLogContext(selectedProject.projectId, activeProject.masterProjectId),
@@ -1443,17 +1568,29 @@ function ProjectsPage() {
                     isLinkedProject: Boolean(activeProject.masterProjectId),
                     fileCount: activeProject.files?.length ?? 0,
                 });
-                message.error(`Failed to reset ${labels.offeringPhrase}`);
-                // Revert on error
-                mutateProject();
+                if (isCurrentProjectMutation(mutationToken, operationScope)) {
+                    message.error(`Failed to reset ${labels.offeringPhrase}`);
+                    // Revert on error
+                    mutateProject();
+                }
+            } finally {
+                dispatch(stopLoader("Resetting project"))
+                endProjectMutation(mutationToken);
             }
-            dispatch(stopLoader("Resetting project"))
-            onCloseModal();
+            if (projectPageScopesMatch(operationScope, currentProjectScopeRef.current)) {
+                onCloseModal();
+            }
         }
     };
 
     const handleDuplicateProject = (project: ProjectMetadata) => {
+        const operationScope = currentProjectScopeRef.current;
+        if (!operationScope) {
+            message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+            return;
+        }
         setProjectToDuplicate(project);
+        setProjectToDuplicateScope(operationScope);
         setDuplicateModalOpen(true);
     };
 
@@ -1467,13 +1604,19 @@ function ProjectsPage() {
             message.error(`Invalid ${labels.offeringPhrase} data`);
             return;
         }
+        const operationScope = projectToDuplicateScope;
+        const mutationToken = beginProjectMutation('duplicate', operationScope);
+        if (!operationScope || !mutationToken) {
+            message.error(`This ${labels.offeringPhrase} action is no longer active for the current location.`);
+            return;
+        }
 
         try {
             if (!canCreateLocalProjects) {
                 message.info("New local menus are not enabled for this store.");
                 return;
             }
-            if (await isLinkedOutletProject(projectToDuplicate)) {
+            if (await isLinkedOutletProject(projectToDuplicate, operationScope)) {
                 message.info("Inherited menus cannot be duplicated in this store.");
                 return;
             }
@@ -1494,6 +1637,7 @@ function ProjectsPage() {
             if (!result.projectId) {
                 throw new Error('projects_page_duplicate_project_update_rejected');
             }
+            if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
 
             // Auto-select the new project and update local state
             if (result?.summaryData) {
@@ -1522,11 +1666,15 @@ function ProjectsPage() {
                 localizedNameCount: localizedName ? Object.keys(localizedName).length : 0,
                 localizedDescriptionCount: localizedDescription ? Object.keys(localizedDescription).length : 0,
             });
-            message.error(`Failed to duplicate ${labels.offeringPhrase}`);
+            if (isCurrentProjectMutation(mutationToken, operationScope)) {
+                message.error(`Failed to duplicate ${labels.offeringPhrase}`);
+            }
         } finally {
             dispatch(stopLoader("Duplicating project"));
             setDuplicateModalOpen(false);
             setProjectToDuplicate(null);
+            setProjectToDuplicateScope(null);
+            endProjectMutation(mutationToken);
         }
     };
 
@@ -1537,9 +1685,15 @@ function ProjectsPage() {
             message.error(`Invalid ${labels.offeringPhrase} data`);
             return;
         }
+        const operationScope = currentProjectScopeRef.current;
+        const mutationToken = beginProjectMutation('delete-selector', operationScope);
+        if (!operationScope || !mutationToken) {
+            message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+            return;
+        }
 
         try {
-            if (!canDeactivateLinkedProjects && await isLinkedOutletProject(project)) {
+            if (!canDeactivateLinkedProjects && await isLinkedOutletProject(project, operationScope)) {
                 message.info("Removing inherited menus is not enabled for this store.");
                 return;
             }
@@ -1551,6 +1705,7 @@ function ProjectsPage() {
                 project.projectId,
                 'projects_page_selector_delete_rejected',
             );
+            if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
 
             // Update local state directly instead of refetching
             mutateProjects(
@@ -1575,9 +1730,12 @@ function ProjectsPage() {
                 ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
                 canDeactivateLinkedProjects,
             });
-            message.error(`Failed to delete ${labels.offeringPhrase}`);
+            if (isCurrentProjectMutation(mutationToken, operationScope)) {
+                message.error(`Failed to delete ${labels.offeringPhrase}`);
+            }
         } finally {
             dispatch(stopLoader("Deleting project"));
+            endProjectMutation(mutationToken);
         }
     };
 
@@ -1592,13 +1750,20 @@ function ProjectsPage() {
         setProjectDescriptionDrafts({});
         setProjectFormSourceData(null);
         setProjectImagePreparedForSave(null);
+        setProjectFormScope(null);
     }
 
     const openModal = async (project?: ProjectMetadata) => {
+        const openingScope = currentProjectScopeRef.current;
+        if (!openingScope) {
+            message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+            return;
+        }
         if (project) {
             const detailedProject = activeProject?.projectId === project.projectId
                 ? activeProject
-                : await getProjectDataWithoutLoader(project.projectId!);
+                : await getProjectDataWithoutLoader(project.projectId!, openingScope);
+            if (!projectPageScopesMatch(openingScope, currentProjectScopeRef.current)) return;
             const languages = getProjectManagedLanguages(detailedProject, storeDetails);
             const selectedLanguage = getProjectPreferredLanguage(detailedProject, storeDetails);
             const nextNameDrafts = buildProjectLocalizedDrafts(detailedProject?.name || project.name, languages);
@@ -1636,6 +1801,7 @@ function ProjectsPage() {
                 projectImage: null,
             });
         }
+        setProjectFormScope(openingScope);
         setIsModalOpen(true);
     };
 
@@ -1656,11 +1822,18 @@ function ProjectsPage() {
             return;
         }
 
+        const operationScope = projectFormScope;
+        const mutationToken = beginProjectMutation('translate', operationScope);
+        if (!operationScope || !mutationToken) {
+            message.error(`This ${labels.offeringPhrase} form is no longer active for the current location.`);
+            return;
+        }
+
         try {
             setIsTranslatingProjectPublicContent(true);
             const detailedProject = activeProject?.projectId === editingProject.projectId
                 ? activeProject
-                : await getProjectDataWithoutLoader(editingProject.projectId);
+                : await getProjectDataWithoutLoader(editingProject.projectId, operationScope);
             const translated = await translateProjectPublicContent({
                 projectDetails: detailedProject,
                 projectId: editingProject.projectId,
@@ -1682,32 +1855,23 @@ function ProjectsPage() {
                         specialNote: translated.specialNote,
                     },
                 } : {}),
-                ...(translated.specialMenuDisplayName ? {
+                ...(translated.specialMenuDisplayName && detailedProject?._specialMenu ? {
                     _specialMenu: {
-                        ...(detailedProject?._specialMenu || {}),
+                        ...detailedProject._specialMenu,
                         displayName: translated.specialMenuDisplayName,
                     },
                 } : {}),
-            } as any);
+            } as any, {
+                expectedScope: operationScope,
+                syncPublicSummary: true,
+            });
             assertProjectUpdateSucceeded(
                 projectTranslationResult,
                 editingProject.projectId,
                 'projects_page_public_content_translation_project_update_rejected',
             );
 
-            const nextSummaryUpdate: any = {};
-            if (translated.name) nextSummaryUpdate.name = translated.name;
-            if (translated.description) nextSummaryUpdate.description = translated.description;
-            if (translated.specialMenuDisplayName) nextSummaryUpdate.specialMenuDisplayName = translated.specialMenuDisplayName;
-            if (Object.keys(nextSummaryUpdate).length > 0) {
-                const metadataTranslationResult = await updateProjectMetadata(editingProject.projectId, nextSummaryUpdate);
-                assertProjectUpdateSucceeded(
-                    metadataTranslationResult,
-                    editingProject.projectId,
-                    'projects_page_public_content_translation_metadata_update_rejected',
-                );
-            }
-
+            if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
             const resolvedName = translated.name || detailedProject?.name || editingProject?.name;
             const resolvedDescription = translated.description || detailedProject?.description || editingProject?.description;
             setProjectNameDrafts(buildProjectLocalizedDrafts(resolvedName, projectFormLanguages));
@@ -1740,9 +1904,12 @@ function ProjectsPage() {
                 ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
                 languageCount: projectFormLanguages.length,
             });
-            message.error('Could not translate project public content.');
+            if (isCurrentProjectMutation(mutationToken, operationScope)) {
+                message.error('Could not translate project public content.');
+            }
         } finally {
             setIsTranslatingProjectPublicContent(false);
+            endProjectMutation(mutationToken);
         }
     };
 
@@ -1757,7 +1924,7 @@ function ProjectsPage() {
         mutateProject({ ...activeProject, languages: newLanguages }, false);
     };
 
-    const handlePdfSave = (files: any[], action: string) => {
+    const handlePdfSave = (files: ConvertedImageType[], action: string) => {
         const projectDataCopy = { ...activeProject };
         if (!Boolean(projectDataCopy.files?.length)) {
             projectDataCopy.files = [];
@@ -1769,7 +1936,7 @@ function ProjectsPage() {
             return;
         }
 
-        projectDataCopy.files = [...projectDataCopy.files, ...files];
+        projectDataCopy.files = [...(projectDataCopy.files || []), ...files];
         if (action == "quick-action-upload") {
             handleUploadAndContinue(projectDataCopy);
         } else {
@@ -1848,13 +2015,13 @@ function ProjectsPage() {
 
     useEffect(() => {
         // Guard: Only process when PDF conversion is complete AND we have a target count
-        if (pdfPagesCount && pdfFiles.images.length === pdfPagesCount) {
+        if (pdfPagesCount && pdfFiles && pdfFiles.images.length === pdfPagesCount) {
             setFileProcessingId(null);
             setPdfPagesCount(null);
             const sortedList = pdfFiles.images.filter((page) => page.url).sort((a, b) => a.fileId.localeCompare(b.fileId));
             setPdfFiles({ images: sortedList, action: pdfFiles.action });
         }
-    }, [pdfFiles.images.length, pdfPagesCount]);
+    }, [pdfFiles, pdfPagesCount]);
 
     /**
      * Timeout wrapper - wraps a promise with a timeout
@@ -2092,6 +2259,27 @@ function ProjectsPage() {
             message.error('Menu extraction is not enabled for this location.');
             return null;
         }
+        const operationScope = getProjectOwnerScopeFromProjectId(projectDataCopy.projectId);
+        if (!operationScope || !projectPageScopesMatch(operationScope, currentProjectScopeRef.current)) {
+            throw new Error('menu_upload_project_scope_changed');
+        }
+        const admittedFiles: MenuFileToProcess[] = filesToProcess.map((file) => {
+            if (
+                typeof file.uid !== 'string'
+                || typeof file.name !== 'string'
+                || typeof file.type !== 'string'
+                || typeof file.url !== 'string'
+            ) {
+                throw new Error('menu_upload_file_contract_invalid');
+            }
+            return {
+                name: file.name,
+                size: Number.isFinite(file.size) && Number(file.size) >= 0 ? Number(file.size) : 0,
+                type: file.type,
+                uid: file.uid,
+                url: file.url,
+            };
+        });
 
         const cleanupUploadedMenuFiles = async (
             files: MenuFileToProcess[],
@@ -2116,10 +2304,25 @@ function ProjectsPage() {
         };
 
         // Step 1: Upload ALL files to Firebase Storage in parallel
-        const uploadPromises = filesToProcess.map(file =>
-            uploadFile({ url: file.url, type: file.type, uid: file.uid })
-                .then(url => ({ uid: file.uid, url, file }))
-                .catch(err => ({ uid: file.uid, url: null, file, error: err }))
+        type MenuUploadSettlement = {
+            error?: unknown;
+            file: MenuFileToProcess;
+            uid: string;
+            url: string | null;
+        };
+        const uploadPromises: Array<Promise<MenuUploadSettlement>> = admittedFiles.map(file =>
+            uploadFile({ url: file.url, type: file.type, uid: file.uid }, 'files', operationScope)
+                .then((value: unknown): MenuUploadSettlement => ({
+                    uid: file.uid,
+                    url: typeof value === 'string' && value.trim() ? value : null,
+                    file,
+                }))
+                .catch((error: unknown): MenuUploadSettlement => ({
+                    uid: file.uid,
+                    url: null,
+                    file,
+                    error,
+                }))
         );
 
         const uploadResults = await Promise.all(uploadPromises);
@@ -2137,7 +2340,7 @@ function ProjectsPage() {
                     size: result.file.size || 0
                 });
             } else {
-                logMenuProcessingFailure('menu_upload_file_upload_failed', (result as any).error, {
+                logMenuProcessingFailure('menu_upload_file_upload_failed', result.error, {
                     ...getMenuProcessingProjectLogContext(projectDataCopy.projectId),
                     ...getBoundedMenuProcessingStringContext('fileUid', result.file.uid),
                     ...getBoundedMenuProcessingStringContext('fileType', result.file.type),
@@ -2146,36 +2349,38 @@ function ProjectsPage() {
             }
         });
 
-        if (successfulUploads.length !== filesToProcess.length) {
+        if (successfulUploads.length !== admittedFiles.length) {
             await cleanupUploadedMenuFiles(
                 successfulUploads,
                 'partial_upload_failure',
                 projectDataCopy.projectId,
             );
-            throw new Error(`${filesToProcess.length - successfulUploads.length} file(s) failed to upload. Please check storage quota and try again.`);
+            throw new Error(`${admittedFiles.length - successfulUploads.length} file(s) failed to upload. Please check storage quota and try again.`);
         }
 
         if (successfulUploads.length === 0) {
             throw new Error('All file uploads failed');
         }
 
-        const intakeDecision = await confirmMenuIntakeDecision(projectDataCopy.projectId, successfulUploads, projectDataCopy);
+        const sourceProjectId = projectDataCopy.projectId;
+        if (!sourceProjectId) throw new Error('Project identity is unavailable.');
+        const intakeDecision = await confirmMenuIntakeDecision(sourceProjectId, successfulUploads, projectDataCopy);
         if (intakeDecision.action === 'cancel') {
-            await cleanupUploadedMenuFiles(successfulUploads, 'intake_cancelled', projectDataCopy.projectId);
+            await cleanupUploadedMenuFiles(successfulUploads, 'intake_cancelled', sourceProjectId);
             return null;
         }
-        await cleanupUploadedMenuFiles(intakeDecision.ignoredFiles, 'intake_ignored_files', projectDataCopy.projectId);
+        await cleanupUploadedMenuFiles(intakeDecision.ignoredFiles, 'intake_ignored_files', sourceProjectId);
         const filesForJob = intakeDecision.files;
         if (filesForJob.length === 0) {
-            await cleanupUploadedMenuFiles(successfulUploads, 'no_files_for_job', projectDataCopy.projectId);
+            await cleanupUploadedMenuFiles(successfulUploads, 'no_files_for_job', sourceProjectId);
             return null;
         }
         const targetProjectId = intakeDecision.action === 'create_new_project'
             ? intakeDecision.projectId
-            : projectDataCopy.projectId;
+            : sourceProjectId;
 
         // Step 2: Create job with uploaded files
-        const targetLanguages = GlobalLanguagesList.filter(lang => projectDataCopy.languages.includes(lang.code));
+        const targetLanguages = GlobalLanguagesList.filter(lang => (projectDataCopy.languages || []).includes(lang.code));
 
         const { checkExistingActiveJob } = await import('@lib/firebase/menuProcessing');
         const existingJobId = await checkExistingActiveJob(targetProjectId);
@@ -2195,7 +2400,7 @@ function ProjectsPage() {
                     businessType: storeDetails?.businessType,
                     identityOverrideConfirmed: intakeDecision.identityOverrideConfirmed,
                 }),
-                PROCESSING_TIMEOUT * filesToProcess.length,
+                PROCESSING_TIMEOUT * admittedFiles.length,
             ));
         } catch (error) {
             if (shouldCleanupUploadedFilesAfterJobStartError(error)) {
@@ -2233,6 +2438,12 @@ function ProjectsPage() {
             message.info('Wait for the current import to finish.');
             return;
         }
+        const operationScope = getProjectOwnerScopeFromProjectId(selectedProject.projectId);
+        const mutationToken = beginProjectMutation('link-import', operationScope);
+        if (!operationScope || !mutationToken) {
+            message.error(`Could not verify this ${labels.offeringPhrase} location.`);
+            return;
+        }
 
         try {
             setMenuLinkImporting(true);
@@ -2242,6 +2453,7 @@ function ProjectsPage() {
                 url: menuLinkUrl.trim(),
             });
 
+            if (!isCurrentProjectMutation(mutationToken, operationScope)) return;
             setActiveProcessingJobId(result.jobId);
             emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_STARTED);
             setMenuLinkUrl('');
@@ -2254,11 +2466,14 @@ function ProjectsPage() {
                 ...getBoundedProjectPageStringContext('menuLinkUrl', menuLinkUrl),
                 permissionConfirmed: Boolean(menuLinkPermissionConfirmed),
             });
-            message.error('We could not read this menu link. Upload a photo/PDF or add the menu manually.');
+            if (isCurrentProjectMutation(mutationToken, operationScope)) {
+                message.error('We could not read this menu link. Upload a photo/PDF or add the menu manually.');
+            }
         } finally {
             setMenuLinkImporting(false);
+            endProjectMutation(mutationToken);
         }
-    }, [activeProcessingJobId, canUseMenuExtraction, hasPendingLocalUploadFiles, menuLinkPermissionConfirmed, menuLinkUrl, selectedProject?.projectId, setActiveProcessingJobId]);
+    }, [activeProcessingJobId, beginProjectMutation, canUseMenuExtraction, endProjectMutation, hasPendingLocalUploadFiles, isCurrentProjectMutation, labels.offeringPhrase, menuLinkPermissionConfirmed, menuLinkUrl, selectedProject, setActiveProcessingJobId]);
 
     /**
      * Handle "Continue" button click
@@ -2280,8 +2495,8 @@ function ProjectsPage() {
         const projectDataCopy: Project = removeObjRef(activeProject);
 
         // Check if all files are already processed (have extractedData)
-        const allFilesProcessed = projectDataCopy.files?.length > 0 &&
-            projectDataCopy.files.every(f => f.extractedData);
+        const allFilesProcessed = (projectDataCopy.files?.length || 0) > 0 &&
+            (projectDataCopy.files || []).every(f => f.extractedData);
 
         if (allFilesProcessed) {
             // All files already processed - just navigate to editor
@@ -2315,6 +2530,16 @@ function ProjectsPage() {
                 return;
             }
             const { jobId, projectId: targetProjectId } = jobPayload;
+            const targetScope = getProjectOwnerScopeFromProjectId(targetProjectId);
+            if (
+                !targetScope
+                || !projectPageScopesMatch(
+                    targetScope,
+                    currentProjectScopeRef.current,
+                )
+            ) {
+                return;
+            }
 
             // Server already saved files + extractedData to the project doc
             // (the callable blocks until processing is complete)
@@ -2432,6 +2657,7 @@ function ProjectsPage() {
         }
 
         // Generate unique file ID
+        if (!tenantDetails?.tenantId || !storeDetails?.storeId) return Upload.LIST_IGNORE;
         file.uid = generateMenuFileUid(tenantDetails.tenantId, storeDetails.storeId);
 
         return false; // Don't auto-upload
@@ -2449,7 +2675,11 @@ function ProjectsPage() {
             return;
         }
 
-        const newFileList = [];
+        const newFileList: ProjectFileType[] = [];
+        if (!activeProject) {
+            message.error('Select a project before adding files.');
+            return;
+        }
         const projectDataCopy: Project = removeObjRef(activeProject)
 
         // Generate preview URLs for new files with optimization
@@ -2506,7 +2736,7 @@ function ProjectsPage() {
             return;
         }
 
-        projectDataCopy.files = [...projectDataCopy.files, ...newFileList];
+        projectDataCopy.files = [...(projectDataCopy.files || []), ...newFileList];
 
         if (action == "quick-action-upload") {
             handleUploadAndContinue(projectDataCopy)
@@ -2519,6 +2749,11 @@ function ProjectsPage() {
         // Check if user cancelled processing (use ref)
         if (cancelPdfRef.current) {
             return null;
+        }
+        const tenantId = tenantDetails?.tenantId;
+        const storeId = storeDetails?.storeId;
+        if (!tenantId || !storeId) {
+            throw new Error('Menu upload tenant scope is unavailable.');
         }
 
         setFileProcessingId(file.uid)
@@ -2555,7 +2790,7 @@ function ProjectsPage() {
                         });
                     }
 
-                    setPdfPagesCount(prev => prev + pdf.numPages);
+                    setPdfPagesCount((previous) => (previous ?? 0) + pdf.numPages);
 
                     for (let i = 1; i <= pdf.numPages; i++) {
                         // Check cancel flag during page processing (use ref)
@@ -2580,7 +2815,7 @@ function ProjectsPage() {
                         canvas.width = 0;
                         canvas.height = 0;
                         const imageData = {
-                            uid: generateMenuFileUid(tenantDetails.tenantId, storeDetails.storeId),
+                            uid: generateMenuFileUid(tenantId, storeId),
                             name: `${file.name.replace(/\.pdf$/i, '')}-page-${i}.jpg`,
                             size: Math.round(pageUrl.length * 0.75), // Approximate size from base64
                             type: 'image/jpeg',
@@ -2719,7 +2954,7 @@ function ProjectsPage() {
             {activeSubscriptionLoading ? <Spin style={{ display: 'block', marginTop: 80, textAlign: 'center' }} /> : (hasPaidAccess || hasStarterAccess) ? <>
 
                 <ProjectsDataProvider
-                    contextData={{ activeProject, setActiveProject: (data: Project) => mutateProject(data, { revalidate: false }), currentView, setCurrentView, activeBatchImageJob, setActiveBatchImageJob }}>
+                    contextData={{ activeProject: activeProject || null, setActiveProject: (data) => mutateProject(data, { revalidate: false }), currentView, setCurrentView, activeBatchImageJob, setActiveBatchImageJob }}>
                     <LoadingMessage
                         open={Boolean(fileProcessingId) || isTrackedJobProcessing || isTrackedJobPending}
                         progress={activeProcessingJobId ? jobProgress : undefined}
@@ -2775,7 +3010,7 @@ function ProjectsPage() {
                     )}
 
                     {/* Special Menu Card — shown in upload view when a project is selected */}
-                    {currentView === 1 && selectedProject?.projectId && activeProject?.files?.length > 0 && (
+                    {currentView === 1 && selectedProject?.projectId && (activeProject?.files?.length || 0) > 0 && (
                         <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 8px' }}>
                             <SpecialMenuCard
                                 baseProjectId={(selectedProject as any).isSpecialMenu === true ? undefined : selectedProject.projectId}
@@ -2843,11 +3078,11 @@ function ProjectsPage() {
                                 />
 
                                 {/* When files EXIST: Show file list first, compact upload second */}
-                                {activeProject?.files?.length > 0 && (<>
+                                {(activeProject?.files?.length || 0) > 0 && (<>
                                     {/* File List - Primary focus when files exist */}
                                     <FileList
                                         fileProcessingId={fileProcessingId}
-                                        files={activeProject.files}
+                                        files={activeProject?.files || []}
                                         onRemove={handleRemove}
                                         onClearAll={handleClearAll}
                                     />
@@ -2873,7 +3108,7 @@ function ProjectsPage() {
                                 </>)}
 
                                 {/* Fixed Continue Button - Always visible at bottom */}
-                                {activeProject?.files?.length > 0 && (
+                                {(activeProject?.files?.length || 0) > 0 && (
                                     <Flex
                                         justify="center"
                                         align="center"
@@ -2892,7 +3127,7 @@ function ProjectsPage() {
                                     >
                                         <Button
                                             {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_START)}
-                                            onClick={() => handleUploadAndContinue(activeProject)}
+                                            onClick={() => handleUploadAndContinue(activeProject || null)}
                                             type="primary"
                                             icon={activeProject?.files?.some(file => !file.extractedData) ? <LuUpload size={20} /> : <LuArrowRight size={20} />}
                                             size='large'
@@ -3132,7 +3367,7 @@ function ProjectsPage() {
                             </Flex>
                         </>}
 
-                        {currentView == 2 && <>
+                        {currentView == 2 && selectedProject && <>
                             <Flex gap={10} vertical align='center' justify='center' style={{ width: '100%' }}>
                                 <Suspense fallback={<Spin size="large" />}>
                                     <Editor
@@ -3332,7 +3567,7 @@ function ProjectsPage() {
                     />
                 )}
                 {/* Preview modal for Upload/Editor views (UI Editor has its own in B2CView) */}
-                {activeProject?.projectId && currentView !== 3 && (
+                {activeProject?.projectId && storeDetails && currentView !== 3 && (
                     <PreviewModal
                         projectData={activeProject}
                         storeDetails={storeDetails}

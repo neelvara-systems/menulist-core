@@ -3,6 +3,11 @@
 import { useEffect } from 'react';
 import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
 import {
+    getPublicAnalyticsAttributionToken,
+    getPublicAnalyticsReferrerGroup,
+    getPublicAnalyticsSessionEntryPage,
+} from '@lib/website/publicAnalyticsContext';
+import {
     cleanAnswerlatticeAnalyticsString,
     getAnswerlatticeAnalyticsPagePath,
     getAnswerlatticeAnalyticsUrl,
@@ -23,51 +28,23 @@ type AnswerlatticeResourceAnalyticsProps = {
     slug?: string;
 };
 
-function getReferrerHost(): string | undefined {
-    if (!document.referrer) return undefined;
-
-    try {
-        return new URL(document.referrer).hostname.replace(/^www\./, '');
-    } catch {
-        return undefined;
-    }
-}
-
 function getQueryParam(name: string): string | undefined {
-    return cleanAnswerlatticeAnalyticsString(new URLSearchParams(window.location.search).get(name), 80);
-}
-
-function getSessionValue(storageKey: string, nextValue: string): string {
-    try {
-        const existing = window.sessionStorage.getItem(storageKey);
-        if (existing) return existing;
-        window.sessionStorage.setItem(storageKey, nextValue);
-    } catch {
-        return nextValue;
-    }
-
-    return nextValue;
+    return getPublicAnalyticsAttributionToken(
+        new URLSearchParams(window.location.search).get(name),
+    );
 }
 
 function getEntryPage(): string {
-    return getSessionValue(
-        'answerlattice_resource_entry_page',
-        getAnswerlatticeAnalyticsPagePath(),
-    );
+    return getPublicAnalyticsSessionEntryPage('answerlattice_resource_entry_page');
 }
 
 export default function AnswerlatticeResourceAnalytics({
     cluster,
     pageType,
     slug,
-}: AnswerlatticeResourceAnalyticsProps) {
+}: AnswerlatticeResourceAnalyticsProps): null {
     useEffect(() => {
-        const referrerHost = getReferrerHost();
-        const referrerMatch = referrerHost
-            ? trackedReferrers.find((referrer) => (
-                referrer.hosts.some((host) => referrerHost === host || referrerHost.endsWith(`.${host}`))
-            ))
-            : undefined;
+        const referrerGroup = getPublicAnalyticsReferrerGroup(document.referrer, trackedReferrers);
 
         const payload = {
             category: cleanAnswerlatticeAnalyticsString(cluster, 80) || 'answerlattice_resource',
@@ -75,8 +52,7 @@ export default function AnswerlatticeResourceAnalytics({
             entry_page: getEntryPage(),
             page_path: getAnswerlatticeAnalyticsPagePath(),
             page_type: pageType,
-            referrer: getAnswerlatticeAnalyticsUrl(document.referrer),
-            referrer_host: referrerHost,
+            referrer_group: referrerGroup,
             slug: cleanAnswerlatticeAnalyticsString(slug, 120),
             target_url: getAnswerlatticeAnalyticsUrl(window.location.href),
             utm_medium: getQueryParam('utm_medium'),
@@ -87,12 +63,12 @@ export default function AnswerlatticeResourceAnalytics({
 
         trackGoogleMarketingEvent('answerlattice_resource_page_view', payload);
 
-        if (referrerMatch) {
+        if (referrerGroup) {
             trackPlausibleEvent('answerlattice_ai_referral_detected');
 
             trackGoogleMarketingEvent('answerlattice_ai_referral_detected', {
                 ...payload,
-                referrer_group: referrerMatch.group,
+                referrer_group: referrerGroup,
             });
         }
     }, [cluster, pageType, slug]);

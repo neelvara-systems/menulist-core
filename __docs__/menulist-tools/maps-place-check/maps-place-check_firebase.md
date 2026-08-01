@@ -8,7 +8,7 @@
 | Resource | Count per check | Notes |
 | --- | ---: | --- |
 | Callable Function invocation | 1 | `mapsPlaceCheck` |
-| Firestore reads | 1 cached SAFE_MODE read per warm instance per minute | Existing SAFE_MODE helper |
+| Firestore reads | 3 current-scope point reads plus 1 cached SAFE_MODE read per warm instance per minute | Exact tenant, store, and user authority is proved before provider work; the existing SAFE_MODE helper remains cached |
 | Firestore writes | 0 | No canonical write-back |
 | Firestore deletes | 0 | None |
 | Storage operations | 0 | None |
@@ -35,6 +35,10 @@ public output and therefore does not trigger a public cache refill.
   confirmations. Removal remains available while disabled.
 - Feature must stay off until provider smoke confirms Maps grounding on the pinned Functions `@google/genai` path or a scoped SDK migration is approved.
 - Callable requires authentication.
+- Signed tenant/store/platform claims are only initial admission. The callable
+  re-reads the exact current tenant, store, and user and rejects inactive,
+  deleted, disabled, blocked, unverified, removed, cross-product, or
+  no-longer-assigned authority before provider work.
 - SAFE_MODE blocks provider use.
 - Rate limiting runs before provider use.
 - No public route or anonymous usage.

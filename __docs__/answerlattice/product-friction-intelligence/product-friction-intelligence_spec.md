@@ -94,6 +94,34 @@ read to the owner page.
 
 The advisory producer must validate exact workspace scope and the complete source shape before provider work. Publication must occur through a transaction-current source fingerprint check and exact document replacement; a changed source, malformed metric, unsupported model field, or unknown entity ID produces no advisory write.
 
+### Owner evidence brief
+
+For one already-loaded ranked entity, the browser may deterministically prepare
+a Markdown evidence brief containing:
+
+- entity name, type, and governed entity ID;
+- current and previous completed seven-day windows;
+- current and previous support-evidence counts and weighted loads;
+- escalation count and rate;
+- the admitted evidence-component breakdown, or the explicit legacy
+  unavailable state;
+- trend wording derived from the stored trend direction and exact counts;
+- one owner-selected review path;
+- a fixed evidence limitation statement.
+
+The owner-selected review path is a handoff instruction, not a root-cause
+classification. Allowed paths are investigate further, review support
+knowledge, review product behavior, review known limitation, review plan or
+permission explanation, watch the next completed window, and no action now.
+Choosing known limitation does not confirm that the product behavior is
+intentional; it sends the evidence into an owner review that must verify the
+constraint before treating it as support truth.
+
+The brief must remain at or below 8 KiB, be deterministic for the same snapshot
+and selection, use a safe bounded filename, and stay local to the browser. It
+must not create a document, call a provider, query raw evidence, invoke an
+integration, or persist the selected review path.
+
 ## Owner Experience
 
 - show an unavailable state when no valid snapshot exists;
@@ -109,6 +137,8 @@ The advisory producer must validate exact workspace scope and the complete sourc
   exists rather than adding repair state to the friction surface.
 - preserve one validated entity focus from Daily Brief and allow ranked rows or
   admitted advisory actions to open that entity in the read-only Knowledge Map.
+- let the owner prepare, copy, or download the bounded evidence brief from each
+  ranked entity without claiming a diagnosis or creating a second task system.
 
 ## Customer Friction Map Proposal Decision
 
@@ -124,6 +154,8 @@ The advisory producer must validate exact workspace scope and the complete sourc
 | Add 7/30/90-day controls | Reject for now. The completed 7-day comparison is bounded and comparable. |
 | Add heatmap or giant tree | Reject. Ranked evidence is more legible for the founder ICP and mobile. |
 | Add suggested fixes | Implement only as validated entity-bound advisory links to Knowledge Map review; no product or knowledge mutation. |
+| Add an evidence-backed product-problem brief | Adapt to a local friction evidence brief using the existing summary and owner-selected review path; do not invent affected users, severity, cause, workaround, release attribution, or resolution. |
+| Push a brief to Linear or GitHub | Keep outside this feature. Copy/download provides a manual handoff without integration state or delivery claims. |
 | Ingest product analytics, abandonment, or mouse/session data | Reject. |
 
 ## Validation Gates
@@ -159,6 +191,7 @@ Any saturated or invalid required source fails the tenant task. The prior valid 
 - autonomous customer outreach;
 - treating every ticket or chat as verified truth.
 - automatic product-bug, UX, policy, or expectation classification;
+- persisted product-problem, owner-decision, or issue-delivery lifecycle;
 - product-journey reconstruction from raw conversation text;
 - release causation claims;
 - session replay, product analytics, funnels, abandonment, or mouse tracking.

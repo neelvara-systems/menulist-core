@@ -251,6 +251,17 @@ function verifyMetadataAndRegistration() {
   assertIncludes(clientContainer, 'MAX_AUDIO_QUEUE_DOCUMENTS = 12', 'MyCodex multi-document speech preparation must cap document count');
   assertIncludes(clientContainer, 'MAX_AUDIO_QUEUE_CHARACTERS = 250_000', 'MyCodex speech queues must cap retained text');
   assertIncludes(clientContainer, 'MAX_SCROLL_POSITION_DOCS = 200', 'MyCodex browser scroll state must cap retained document keys');
+  assertIncludes(clientContainer, 'const pruneScrollPositions = (', 'MyCodex scroll persistence must enforce its retained-key cap during writes');
+  assertIncludes(clientContainer, 'scrollPositionsRef.current = pruneScrollPositions({', 'MyCodex scroll writes must prune before persistence');
+  assertIncludes(clientContainer, 'audioPreparationControllerRef.current?.abort()', 'MyCodex audio preparation must cancel obsolete document reads');
+  assertIncludes(clientContainer, 'if (!isCurrentAudioPreparation(preparation.generation)) return', 'MyCodex audio preparation must reject stale completions');
+  assertIncludes(clientContainer, 'getSpeechChunksForFavoriteDocument(entry, preparation.controller.signal)', 'MyCodex queued document reads must be abort-owned');
+  assertIncludes(clientContainer, 'wakeLockRequestGenerationRef.current !== requestGeneration', 'MyCodex wake locks must reject acquisitions that settle after release');
+  assertIncludes(clientContainer, 'screenshotInFlightRef.current', 'MyCodex screenshot export must keep an immediate single-flight boundary');
+  assertIncludes(clientContainer, "if (document.execCommand('copy')) return true;", 'MyCodex legacy clipboard fallback must verify acknowledged success');
+  assertIncludes(clientContainer, "throw new Error('mycodex_clipboard_copy_rejected')", 'MyCodex legacy clipboard rejection must reach the visible failure path');
+  assertNotIncludes(clientContainer, 'const removePrefixFromChild = (child: any', 'MyCodex Markdown render transforms must not use broad any-valued child contracts');
+  assertNotIncludes(clientContainer, '({ children }: any)', 'MyCodex Markdown render components must use the library component contract');
   assertNotIncludes(clientContainer, "const cleanPath = targetPath.startsWith('/') ? targetPath : '/' + targetPath;", 'MyCodex client route builder must not trust raw protocol-relative target paths');
   assertIncludes(shellImplDoc, 'MyCodex client navigation path boundary', 'MyCodex implementation docs route builder boundary');
   assertIncludes(shellFirebaseDoc, 'Client navigation path guard', 'MyCodex Firebase docs route builder boundary');

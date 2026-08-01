@@ -27,6 +27,7 @@ const AI_MODEL = getModelName('TRANSLATION');
 const LOG_FILE = "translations.log"
 const TRANSLATION_AI_MAX_BODY_BYTES = 1024 * 1024;
 const MAX_TRANSLATION_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
+const getPendingAiTransactionId = (): string | null => null;
 
 type TranslationProviderResponseParseAttempt = 'initial' | 'retry';
 type TranslationProviderResponseParseStage =
@@ -687,7 +688,7 @@ export const POST = withAuth(async (request, session) => {
         const realCostPaise = getRealCostPaise(action) * providerUsage.providerCallCount;
 
         let transactionObject = {
-            transactionId: null,
+            transactionId: getPendingAiTransactionId(),
             inputSummary,
             languageSummary,
             targetLanguages: targetLanguageSummary,

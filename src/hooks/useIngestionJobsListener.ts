@@ -1,6 +1,6 @@
 'use client';
 
-import { getIngestionJobCollectionRef } from '@database/kb-generation/jobs';
+import { getIngestionJobCollectionRef, projectIngestionJobDocument } from '@database/kb-generation/jobs';
 import { buildAnswerlatticeHookScopeKey } from '@lib/answerlattice/hookScopeBoundary';
 import { getBoundedHookStringContext, logHookDiagnostic, logHookFailure } from '@hook/hookDiagnostics';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -57,7 +57,19 @@ export const useIngestionJobsListener = (scope?: IngestionJobsScope) => {
 
             const unsubscribe = onSnapshot(jobsCollectionRef, async (querySnapshot) => {
                 if (latestListenerRef.current !== listenerId) return;
-                const jobsData = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id } as IngestionJob));
+                const jobsData = querySnapshot.docs.flatMap((doc) => {
+                    const job = projectIngestionJobDocument(doc.id, doc.data());
+                    if (job) return [job];
+                    logHookFailure(
+                        'ingestion_jobs_listener_document_shape_invalid',
+                        new Error('ingestion_jobs_listener_document_shape_invalid'),
+                        {
+                            ...getIngestionJobsListenerLogContext(tenantId, storeId),
+                            ...getBoundedHookStringContext('jobId', doc.id),
+                        },
+                    );
+                    return [];
+                });
                 const currentActiveJob = jobsData.length > 0 ? jobsData[0] : null;
                 if (currentActiveJob) {
                     if (process.env.NODE_ENV !== 'production' && currentActiveJob.status === INGESTION_JOB_STATUS.PUBLISHING) {

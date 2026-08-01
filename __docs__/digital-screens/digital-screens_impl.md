@@ -66,7 +66,8 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 
 ### Types & Config
 
-- `src/types/campaigns.ts:370-461` — `MenuItemForSlide`, `ScreenStoreInfo`, `ScreenSlide`, `DigitalScreenState`, `ScreenAPIResponse`, `SCREEN_CONFIDENCE_THRESHOLD` (0.7)
+- `src/types/campaigns.ts` — `MenuItemForSlide`, `ScreenStoreInfo`, `ScreenSlide`, `DigitalScreenState`, and `ScreenAPIResponse`
+- `src/config/features.ts` — authoritative `DIGITAL_SCREENS_CONFIDENCE_THRESHOLD` (0.7), consumed by the slide generator
 - `src/config/features.ts` — `DIGITAL_SCREENS_ENABLED` (true), `_CONFIDENCE_THRESHOLD` (0.7), `_UPLOAD_EXPIRY_DAYS` (14), `_MAX_UPLOADS` (3), **`DIGITAL_SCREENS_MODE`** (v2.0)
 
 ### Library (`src/lib/screen/` — 7 files)
@@ -79,14 +80,14 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 - `publicScreenState.ts` — Converts canonical screen state into the token-free public listener mirror; owner mutations write canonical and mirror documents in one transaction.
 - `screenManagementServer.ts` — Authorized owner state transaction for explicit initialization, settings, custom slides, legacy token migration, and expired-reference pruning.
 - `serverScreenInvalidation.ts` — Admin-only content-version and public mirror transaction plus exact token-cache invalidation.
-- `screenRuntime.ts` — Offline cache admission and TV viewport layout rules.
+- `screenRuntime.ts` — Offline cache admission, TV viewport layout rules, and the stable fallback accent used when no valid OBP accent exists.
 - `serverScreenInvalidation.ts` — Next.js server-side screen content-version touch used by direct public-truth routes and `revalidateMenuCache()`. It reads the existing screen state, returns when no screen token exists, increments `screen.contentVersion`, and mirrors `screen_{storeId}` for live display listeners.
 
 ### Screen Page (`src/app/screen/[token]/` — 3 files)
 
 - `page.tsx` (~90 lines) — Server component: DAL fetch, generated projection/fallback menu resolution, mode routing via `?mode=` query param
-- `ScreenDisplay.tsx` — **Highlights mode** client: rotation, version-matched offline fallback, onSnapshot, seen signal, expiry refresh, hero image slides, QR, capsule progress, screen-safe brand fallback
-- **`MenuBoardDisplay.tsx`** — **Menu Board mode** client: screen-grade full menu layout, ordered categories/items, price alignment, QR, progress bar, auto-pagination
+- `ScreenDisplay.tsx` — **Highlights mode** client: zero-safe bounded rotation, runtime-projected/version-matched/expiry-aware offline fallback, first-mount versus later-server-truth reconciliation, fail-closed public mirror listener with cleanup-owned guarded reload retry, storage-contained seen signal, expiry refresh, cleanup-owned fullscreen hint, hero image slides, QR, capsule progress, screen-safe brand fallback
+- **`MenuBoardDisplay.tsx`** — **Menu Board mode** client: screen-grade full menu layout, runtime-projected offline fallback, later-server-truth reconciliation, current-bound ordered category/item pagination, fail-closed public mirror listener with cleanup-owned guarded reload retry, price alignment, QR, progress bar, and storage/fullscreen containment
 - `ScreenAttribution.tsx` — Shared quiet MenuList attribution used by both screen modes.
 
 ### API Route (1 file)
@@ -99,7 +100,7 @@ Both share: Cache (localStorage) · Firebase listener on public-safe `screen_{st
 
 ### DAL (`src/database/campaigns/`)
 
-- `serverScreen.ts` — Public server-side screen resolver for `/screen/[token]`, including token lookup, store lookup, automatic base menu context, projection context validation, and project-read fallback.
+- `serverScreen.ts` — Public server-side screen resolver for `/screen/[token]`, including token lookup, store lookup, normalized `publicPresence.accentColor`, automatic base menu context, projection context validation, and project-read fallback.
 - `getScreenDataByTokenServer(token)` — Server-only public resolver; validates token shape/uniqueness, campaign summary ID, and shared public store eligibility before automatic base-menu context
 - `getMenuItemsForScreenServer(storeId, tenantId)` — Server-only fallback; re-verifies tenant/store ownership and document IDs before project reads
 - `index.ts` — Owner/session DAL for screen setup, settings, uploads, pinned slide management, and content-version bumps.
@@ -350,7 +351,7 @@ Do not deploy step 6 before steps 1–5.
 
 | Feature                  | File:Line                   | Purpose                             |
 | ------------------------ | --------------------------- | ----------------------------------- |
-| Version-matched offline rendering | `screenRuntime.ts`, display clients | localStorage is admitted only offline for the same content version |
+| Version-matched offline rendering | `screenRuntime.ts`, `screenContent.ts`, display clients | localStorage is admitted only offline for the same content version after real-array, bounded-field and expiry projection |
 | Firebase doc listener    | `ScreenDisplay.tsx:174-206` | GPT FIX 3: direct doc, not query    |
 | Zero-blank guarantee     | `ScreenDisplay.tsx:239-303` | Emergency brand fallback            |
 | Lazy QR loading          | `ScreenDisplay.tsx:118-125` | 2s delay for cold boot speed        |
@@ -360,7 +361,7 @@ Do not deploy step 6 before steps 1–5.
 | 30-min offline retry     | `ScreenDisplay.tsx:209-218` | Reload if listener error            |
 | 6-hour proactive refresh | `ScreenDisplay.tsx:220-233` | Memory leaks, code deploys          |
 
-Public display clients use `src/lib/screen/screenDiagnostics.ts` for bounded display failure diagnostics. Cache read/write failures, daily seen signal failures, non-OK daily seen signal responses, listener failures, fullscreen recovery request failures, and guarded reload storage failures record normalized `digital_screen_*` or `screen_guarded_reload_storage_failed` failure codes with bounded token/store/version/count/component metadata, response status when available, and source error name/code/status only. The daily seen POST is explicitly same-origin, uncached, and manual-redirect, and the local daily marker is cached only after an OK response. IP/token rate-limit denials return non-success `429` plus `Retry-After`, so they cannot create a browser marker for an unverified write; unexpected persistence failures remain non-success `503`. The API route accepts a valid direct target; its legacy no-store fallback queries at most two token matches and proceeds only when exactly one canonical `campaigns_{storeId}` candidate exists. The selected candidate then enters a transaction that re-reads the current summary, store, and tenant. The same transaction requires the exact token, enabled screen, exact store/tenant aliases, and current public lifecycle/block eligibility before it checks the UTC daily marker and updates `screenLastSeenAt`. A duplicate legacy token, disable, reassignment, deletion, or block therefore fails closed. Owner desktop/mobile screen-link blocked-open failures use the same helper and record only mode plus URL presence/length metadata. Normal cache hits, server-data fallback, QR readiness, content-version changes, listener setup/cleanup, offline retries, successful owner link opens, successful fullscreen recovery, reload suppression, successful seen-signal marker caching, and six-hour refreshes stay silent.
+Public display clients use `src/lib/screen/screenDiagnostics.ts` for bounded display failure diagnostics. Cache read/write failures, blocked daily-marker storage reads, daily seen signal failures, non-OK daily seen signal responses, listener failures, fullscreen recovery request failures, and guarded reload storage failures record normalized `digital_screen_*` or `screen_guarded_reload_storage_failed` failure codes with bounded token/store/version/count/component metadata, response status when available, and source error name/code/status only. The daily seen POST is explicitly same-origin, uncached, and manual-redirect, and the local daily marker is cached only after an OK response. IP/token rate-limit denials return non-success `429` plus `Retry-After`, so they cannot create a browser marker for an unverified write; unexpected persistence failures remain non-success `503`. The API route accepts a valid direct target; its legacy no-store fallback queries at most two token matches and proceeds only when exactly one canonical `campaigns_{storeId}` candidate exists. The selected candidate then enters a transaction that re-reads the current summary, store, and tenant. The same transaction requires the exact token, enabled screen, exact store/tenant aliases, and current public lifecycle/block eligibility before it checks the UTC daily marker and updates `screenLastSeenAt`. A duplicate legacy token, disable, reassignment, deletion, or block therefore fails closed. Owner desktop/mobile screen-link blocked-open failures use the same helper and record only mode plus URL presence/length metadata. Normal cache hits, server-data fallback, QR readiness, content-version changes, listener setup/cleanup, offline retries, successful owner link opens, successful fullscreen recovery, reload suppression, successful seen-signal marker caching, and six-hour refreshes stay silent.
 
 Owner desktop settings, mobile settings, and Output Center retain the canonical `DigitalScreenState["screenLastSeenAt"]` type instead of widening the field to `any`. `src/lib/screen/screenTimestamp.ts` is the shared defensive presentation boundary for Firestore `Timestamp`, Admin/JSON seconds forms, valid `Date`, millisecond, and ISO inputs. It validates conversion results and returns `null` for malformed, throwing, non-finite, whitespace-mutated, or invalid-date values, so malformed legacy/presentation data renders the established “waiting” state rather than throwing.
 
@@ -492,7 +493,8 @@ interface MenuBoardData {
 **Design rules (Non-negotiable):**
 
 - Clean, readable, dark background preferred for TV readability
-- No owner customization of layout, colors, or fonts
+- No Digital Screen-specific customization of layout, colors, or fonts
+- Reuse the normalized `store.publicPresence.accentColor` as restrained decorative chrome; never apply arbitrary owner color to prices, dietary markers, category/body text, or the dark TV canvas
 - System-designed layout only
 - No images in menu board (text + price only for density)
 - Category headers are bold, items are regular weight
@@ -673,6 +675,7 @@ The following historical docs are in `_archive/` — their content has been abso
 | 14.3    | 2026-06-28 | Codex   | **Functions public-output refresh:** Server-side cache revalidation can now bump initialized screen versions for first extraction, scheduled special-menu switching, and entitlement attribution changes. |
 | 14.4    | 2026-07-01 | Codex   | **Seen-signal store eligibility:** `/api/screen/seen` now verifies enabled screen state, legacy `campaigns_{storeId}` document shape, and shared public store-id eligibility before updating `screenLastSeenAt`. |
 | 14.5    | 2026-07-25 | Codex   | **Seen-signal transaction authority:** direct and legacy daily liveness paths now re-read current screen, store, and tenant truth in one transaction and reject concurrent disable, reassignment, deletion, lifecycle block, or identity-alias drift before updating `screenLastSeenAt`. |
+| 16.1    | 2026-07-29 | Codex   | **OBP brand continuity:** `ScreenStoreInfo` now carries the normalized canonical OBP accent; screen roots expose one CSS variable for restrained chrome, and nested accent saves wake initialized screens through the existing refresh transaction. |
 | 14.6    | 2026-07-25 | Codex   | **Legacy token uniqueness:** the no-store daily liveness fallback now queries up to two candidates and fails closed unless exactly one canonical `campaigns_{storeId}` document owns the token, matching public screen-render admission. |
 | 14.7    | 2026-07-25 | Codex   | **Seen-signal acknowledgement integrity:** IP/token limiter denials return non-success `429` with `Retry-After` rather than cached success, preventing the display from persisting its local daily marker when no transaction ran. |
 | 14.8    | 2026-07-25 | Codex   | **Owner timestamp contract:** desktop, mobile, and Output Center use the canonical screen-seen timestamp type plus one defensive conversion helper; malformed legacy or serialized timestamp values fail to the waiting label instead of throwing. |

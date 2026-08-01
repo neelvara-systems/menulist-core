@@ -29,11 +29,13 @@ No new collection, rule, or Storage rule was added. The obsolete `claimed + expi
 | New-account claim | Existing starter onboarding transaction reads/writes plus project, summary, and receipt. |
 | Idempotent claim retry | Draft receipt read and no duplicate tenant/store/project mutation. |
 | Post-commit effects | Cache invalidation and existing Digital Screens/assistant invalidation; failures do not repeat the transaction. |
-| Daily cleanup | At most 100 expired drafts; unclaimed file delete then draft delete, or claimed receipt delete while source is preserved. |
+| Daily cleanup | At most 100 expired drafts, independent of the intake feature flag; unclaimed file delete then draft delete, or claimed receipt delete while source is preserved. |
 
 Public create-menu claim target document-ID boundary hardening is Firebase-cost neutral. The slug, explicit project identity, price validation, phone validation, canonical business type, and in-transaction Menu Correctness stamp are CPU/transaction-shaping boundaries and add no new read or write.
 
-The browser last-claim handoff is session-only and adds no Firebase operation. Its strict versioned DTO contains exact tenant/store/project identity, canonical subdomain and a 24-hour timestamp. The success page compares tenant/store against the current session before the existing `recordStarterActivationSignal` call; that DAL still independently rechecks the active session store before its one acknowledged store update. Invalid or cross-session state creates no write.
+The browser preview projector and request-lifecycle guards add no Firebase operation. Canonical response normalization occurs after the existing bounded HTTP read; an aborted status request does not schedule another poll or mutate current state. The immediate claim single-flight guard prevents duplicate browser POSTs, while the route's transaction receipt remains the durable idempotency authority.
+
+The browser last-claim handoff is session-only and adds no Firebase operation. Its strict versioned DTO contains exact tenant/store/project identity, canonical subdomain and a 24-hour timestamp. The success page compares tenant/store against the current session before the existing `recordStarterActivationSignal` call, evicts a known mismatch, and keys browser acknowledgement by exact tenant/store/signal; that DAL still independently rechecks the active session store before its one acknowledged store update. Invalid or cross-session state creates no write. Success query URLs are browser-output-only and now require the active MenuList platform root or exact tenant subdomain; this adds no read, write, delete, Storage, Function, rule, index, cache, or deployment effect.
 
 ## Scale decisions
 

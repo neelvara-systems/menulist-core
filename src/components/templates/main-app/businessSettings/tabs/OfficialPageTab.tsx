@@ -29,11 +29,11 @@ function normalizePhotoList(photos: unknown): string[] {
 }
 
 interface OfficialPageTabProps {
-    actionsScrollRef?: React.RefObject<HTMLDivElement>;
+    actionsScrollRef?: React.RefObject<HTMLDivElement | null>;
     businessCategory?: string | null;
     businessType?: string | null;
-    photosScrollRef?: React.RefObject<HTMLDivElement>;
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    photosScrollRef?: React.RefObject<HTMLDivElement | null>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     compact?: boolean;
     showDistributionTools?: boolean;
     publicPresence?: {
@@ -1135,7 +1135,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                         </Row>
                     </div>
 
-                    {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES ? (
+                    {FEATURE_FLAGS.ENABLE_COMPLIANCE_PAGES && session?.sId && session?.tId ? (
                         <>
                             <Divider orientation="left" orientationMargin={0}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
@@ -1171,7 +1171,11 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     </Form.Item>
                                 </Col>
                             </Row>
-                            <CompliancePagesSection domain={customDomain || (subdomain ? `${subdomain}.menulist.ai` : undefined)} />
+                            <CompliancePagesSection
+                                domain={customDomain || (subdomain ? `${subdomain}.menulist.ai` : undefined)}
+                                storeId={session.sId}
+                                tenantId={session.tId}
+                            />
                         </>
                     ) : null}
                 </Card>

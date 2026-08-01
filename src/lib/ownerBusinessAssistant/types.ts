@@ -340,7 +340,6 @@ export type OwnerBusinessAssistantAnswer = {
   freshnessLabel: string;
   sourceFactIds: string[];
   artifacts?: OwnerAssistantAnswerArtifact[];
-  cards?: Array<Record<string, unknown>>;
   suggestedQuestions?: OwnerBusinessHealthQuestion[];
   confidence: 'high' | 'medium' | 'low';
   cache?: {
@@ -349,7 +348,6 @@ export type OwnerBusinessAssistantAnswer = {
     generatedAt?: string;
   };
   metrics?: OwnerBusinessAssistantRouteMetrics;
-  remainingBalance?: unknown;
 };
 
 export type OwnerBusinessAssistantFeedbackPayload = {

@@ -88,6 +88,13 @@ export interface AnswerlatticeContextPayload {
 
 The browser SDK source, built SDK output, public widget loader, iframe runtime, and server Zod schema use the same bounded field set. `path` rejects wildcard input and remains transient; route definitions own wildcard matching. `state` and `version` survive every browser boundary, and `version` is normalized into `RetrievalContext.currentVersion` before canonical retrieval.
 
+The entire validated context remains request-local. Search-history writers do
+not persist `contextKey`, `feature`, `page`, `workflow`, `path`, plan, role,
+state, version, title, locale, or entity hints. Explicit widget escalation
+links the retained search result to its support ticket but does not copy
+legacy search-history context into the ticket, ticket classifications, or
+signal metadata.
+
 ### Extended: RetrievalContext
 
 Extend existing `RetrievalContext` in `src/lib/answerlattice/canonicalRetrieval.ts`:

@@ -187,7 +187,6 @@ export function buildCreativeEditorImageElement(
         id: buildCreativeEditorId("layer"),
         name: params.name || "Image",
         opacity: 1,
-        src: params.src,
         type: "image",
         visible: true,
         width: 360,

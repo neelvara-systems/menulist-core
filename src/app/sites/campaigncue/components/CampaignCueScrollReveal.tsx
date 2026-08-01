@@ -137,7 +137,7 @@ function setSpotlightPointer(card: HTMLElement, event: PointerEvent) {
     card.style.setProperty("--cc-card-pointer-y", `${event.clientY - rect.top}px`);
 }
 
-export default function CampaignCueScrollReveal() {
+export default function CampaignCueScrollReveal(): null {
     const pathname = usePathname();
 
     useEffect(() => {

@@ -11,7 +11,7 @@ interface SocialMediaPlatform {
 }
 
 interface SocialMediaTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     socialMedia: Record<string, string>;
     setSocialMedia: (media: Record<string, string>) => void;
 }

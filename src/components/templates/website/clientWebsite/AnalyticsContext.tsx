@@ -4,6 +4,7 @@ import { getResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getSessionId, refreshSession } from '@lib/analytics/session';
 import { trackItemClick, trackItemView, trackMenuLanguageAdoption, trackMenuView, trackProjectSwitch } from '@lib/analytics/unified';
+import { normalizeMenuListPublicEntityIdentityAliases } from '@lib/publicTruth/entityEligibility';
 import { StoreDataType } from '@type/platform/store';
 import React, { createContext, useCallback, useEffect, useRef } from 'react';
 
@@ -60,22 +61,47 @@ const getUtmParams = () => {
   };
 };
 
+type PublicMenuAnalyticsStore = StoreDataType & {
+  _id?: unknown;
+  tId?: unknown;
+};
+
+const resolvePublicMenuAnalyticsScope = (
+  storeDetails?: PublicMenuAnalyticsStore,
+): { storeId: string; tenantId: string } | null => {
+  if (!storeDetails) return null;
+  const tenantScope = normalizeMenuListPublicEntityIdentityAliases([
+    storeDetails.tenantId,
+    storeDetails.tId,
+  ]);
+  const storeScope = normalizeMenuListPublicEntityIdentityAliases([
+    storeDetails.storeId,
+    storeDetails._id,
+  ]);
+  return tenantScope && storeScope
+    ? { storeId: storeScope.documentId, tenantId: tenantScope.documentId }
+    : null;
+};
+
 const getPublicMenuAnalyticsContext = (
-  storeDetails?: StoreDataType,
+  storeDetails?: PublicMenuAnalyticsStore,
   projectId?: string,
   sessionId?: string,
   extra: Record<string, boolean | number | string | null | undefined> = {},
-) => ({
+) => {
+  const scope = resolvePublicMenuAnalyticsScope(storeDetails);
+  return {
   ...getAnalyticsTrackingContext({
-    tenantId: storeDetails?.tenantId || (storeDetails as any)?.tId,
-    storeId: storeDetails?.storeId || (storeDetails as any)?._id,
+    tenantId: scope?.tenantId,
+    storeId: scope?.storeId,
     projectId,
     sessionId,
     storeTimeZone: storeDetails?.timeZone,
     businessDayEndTime: storeDetails?.businessDayEndTime,
   }),
   ...extra,
-});
+  };
+};
 
 const getPublicMenuItemAnalyticsContext = (
   data: MenuItemViewData,
@@ -99,6 +125,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
   const trackedMenuViewKeyRef = useRef<string | null>(null);
   const languageDwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousLanguageRef = useRef<string | null>(activeLanguage || null);
+  const previousLanguageScopeKeyRef = useRef<string | null>(null);
 
   // Keep the session alive while analytics are enabled on the public menu.
   useEffect(() => {
@@ -118,10 +145,9 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
     if (!storeDetails || !isEnabled || !projectId) return;
 
     try {
-      // Ensure we have valid tenant and store IDs
-      const tenantId = storeDetails.tenantId || (storeDetails as any).tId;
-      const storeId = storeDetails.storeId || (storeDetails as any)._id;
-      if (!tenantId || !storeId) return;
+      const scope = resolvePublicMenuAnalyticsScope(storeDetails);
+      if (!scope) return;
+      const { tenantId, storeId } = scope;
 
       const storeName = getStoreContextName(storeDetails, 'Store Menu');
       const utmParams = getUtmParams();
@@ -189,6 +215,15 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
   useEffect(() => {
     if (!storeDetails || !isEnabled || !projectId || !activeLanguage) return;
 
+    const scope = resolvePublicMenuAnalyticsScope(storeDetails);
+    if (!scope) return;
+    const languageScopeKey = `${scope.tenantId}|${scope.storeId}|${projectId}`;
+    if (previousLanguageScopeKeyRef.current !== languageScopeKey) {
+      previousLanguageScopeKeyRef.current = languageScopeKey;
+      previousLanguageRef.current = activeLanguage;
+      return;
+    }
+
     const previousLanguage = previousLanguageRef.current;
     if (!previousLanguage) {
       previousLanguageRef.current = activeLanguage;
@@ -203,9 +238,9 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
 
     languageDwellTimerRef.current = setTimeout(() => {
       try {
-        const tenantId = storeDetails.tenantId || (storeDetails as any).tId;
-        const storeId = storeDetails.storeId || (storeDetails as any)._id;
-        if (!tenantId || !storeId) return;
+        const currentScope = resolvePublicMenuAnalyticsScope(storeDetails);
+        if (!currentScope) return;
+        const { tenantId, storeId } = currentScope;
 
         const sessionId = getSessionId();
         const utmParams = getUtmParams();
@@ -247,12 +282,10 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
     if (!isEnabled || !storeDetails) return;
 
     try {
-      // Ensure we have valid tenant and store IDs
-      const tenantId = storeDetails.tenantId || (storeDetails as any).tId;
-      const storeId = storeDetails.storeId || (storeDetails as any)._id;
+      const scope = resolvePublicMenuAnalyticsScope(storeDetails);
 
       // Skip tracking if we don't have valid IDs
-      if (!tenantId || !storeId) {
+      if (!scope) {
         logAnalyticsFailure('public_menu_item_view_missing_scope', undefined, getPublicMenuItemAnalyticsContext(
           data,
           storeDetails,
@@ -260,6 +293,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
         ));
         return;
       }
+      const { tenantId, storeId } = scope;
 
       // Get the session ID for consistent tracking
       const sessionId = getSessionId();
@@ -311,9 +345,9 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({ children, 
     if (!isEnabled || !storeDetails) return;
 
     try {
-      const tenantId = storeDetails.tenantId || (storeDetails as any).tId;
-      const storeId = storeDetails.storeId || (storeDetails as any)._id;
-      if (!tenantId || !storeId) return;
+      const scope = resolvePublicMenuAnalyticsScope(storeDetails);
+      if (!scope) return;
+      const { tenantId, storeId } = scope;
 
       const sessionId = getSessionId();
       const utmParams = getUtmParams();

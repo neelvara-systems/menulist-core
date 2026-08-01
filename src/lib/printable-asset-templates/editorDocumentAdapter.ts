@@ -8,6 +8,8 @@ import {
 import { getOfferingLabels } from "@lib/menu-kit/businessTypeLabels";
 import { drawMenuListAttribution, MENU_LIST_DOMAIN } from "@lib/menu-kit/platformAttribution";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
+import { creativeEditorDocumentSchema } from "@lib/validation/creativeEditorTemplateSchemas";
+import { admitPrintableAssetRenderInput } from "./inputBoundary";
 import { getPrintableAssetType } from "./assetTypes";
 import { resolvePrintableTemplateBrandTokens } from "./templateStyles";
 import type {
@@ -60,6 +62,30 @@ const PRINT_DIMENSIONS: Record<PrintableAssetTypeId, { height: number; heightMm:
     staff_id_card: { width: 900, height: 1420, widthMm: 54, heightMm: 85 },
     table_tent: { width: 2480, height: 1748, widthMm: 210, heightMm: 148 },
 };
+
+export function admitPrintableAssetEditorDocument(
+    documentValue: unknown,
+    assetTypeId: PrintableAssetTypeId,
+): CreativeEditorDocument {
+    if (!isPrintableAssetEditorRenderable(assetTypeId)) {
+        throw new Error(`Editor templates are not available for ${assetTypeId}`);
+    }
+    const parsed = creativeEditorDocumentSchema.safeParse(documentValue);
+    if (!parsed.success || parsed.data.productContext.productId !== "menulist") {
+        throw new Error("Invalid printable asset editor document");
+    }
+
+    if (assetTypeId !== "business_card") {
+        const dimensions = PRINT_DIMENSIONS[assetTypeId];
+        if (
+            parsed.data.canvas.width !== dimensions.width
+            || parsed.data.canvas.height !== dimensions.height
+        ) {
+            throw new Error("Printable asset editor document size does not match the selected asset");
+        }
+    }
+    return parsed.data;
+}
 
 type BuildContext = {
     accent: string;
@@ -321,7 +347,6 @@ function qrElement(ctx: BuildContext, params: Partial<Extract<CreativeEditorElem
     return {
         darkColor: "#111827",
         errorCorrectionLevel: "H",
-        height: params.height,
         id: ctx.id("qr"),
         lightColor: "#ffffff",
         locked: true,
@@ -338,9 +363,6 @@ function qrElement(ctx: BuildContext, params: Partial<Extract<CreativeEditorElem
         type: "qr",
         value: ctx.qrValue,
         visible: true,
-        width: params.width,
-        x: params.x,
-        y: params.y,
         ...params,
     };
 }
@@ -1667,22 +1689,23 @@ export function isPrintableAssetEditorRenderable(assetTypeId: PrintableAssetType
 }
 
 export function buildPrintableAssetEditorDocument(input: PrintableAssetRenderInput): CreativeEditorDocument {
-    if (!isPrintableAssetEditorRenderable(input.assetTypeId)) {
-        throw new Error(`Editor templates are not available for ${input.assetTypeId}`);
+    const admittedInput = admitPrintableAssetRenderInput(input);
+    if (!isPrintableAssetEditorRenderable(admittedInput.assetTypeId)) {
+        throw new Error(`Editor templates are not available for ${admittedInput.assetTypeId}`);
     }
 
-    const ctx = buildContext(input);
-    if (input.assetTypeId === "table_tent") buildTableTent(ctx);
-    else if (input.assetTypeId === "counter_sticker") buildSticker(ctx);
-    else if (input.assetTypeId === "entrance_poster") buildEntrancePoster(ctx);
-    else if (input.assetTypeId === "campaign_flyer") buildCampaignFlyer(ctx);
-    else if (input.assetTypeId === "gift_certificate") buildGiftCertificate(ctx);
-    else if (input.assetTypeId === "business_card") buildBusinessCard(ctx);
-    else if (input.assetTypeId === "staff_id_card") buildStaffIdCard(ctx);
-    else if (input.assetTypeId === "event_invitation") buildEventInvitation(ctx);
-    else if (input.assetTypeId === "postcard") buildPostcard(ctx);
-    else if (input.assetTypeId === "product_tag") buildProductTag(ctx);
-    else if (input.assetTypeId === "campaign_poster") buildCampaignPoster(ctx);
+    const ctx = buildContext(admittedInput);
+    if (admittedInput.assetTypeId === "table_tent") buildTableTent(ctx);
+    else if (admittedInput.assetTypeId === "counter_sticker") buildSticker(ctx);
+    else if (admittedInput.assetTypeId === "entrance_poster") buildEntrancePoster(ctx);
+    else if (admittedInput.assetTypeId === "campaign_flyer") buildCampaignFlyer(ctx);
+    else if (admittedInput.assetTypeId === "gift_certificate") buildGiftCertificate(ctx);
+    else if (admittedInput.assetTypeId === "business_card") buildBusinessCard(ctx);
+    else if (admittedInput.assetTypeId === "staff_id_card") buildStaffIdCard(ctx);
+    else if (admittedInput.assetTypeId === "event_invitation") buildEventInvitation(ctx);
+    else if (admittedInput.assetTypeId === "postcard") buildPostcard(ctx);
+    else if (admittedInput.assetTypeId === "product_tag") buildProductTag(ctx);
+    else if (admittedInput.assetTypeId === "campaign_poster") buildCampaignPoster(ctx);
     else buildSingleCard(ctx);
 
     const now = new Date().toISOString();
@@ -1693,21 +1716,21 @@ export function buildPrintableAssetEditorDocument(input: PrintableAssetRenderInp
             width: ctx.canvasWidth,
         },
         elements: ctx.elements,
-        id: `print_asset_${input.assetTypeId}_${input.templateFamilyId}_${Date.now().toString(36)}`,
+        id: `print_asset_${admittedInput.assetTypeId}_${admittedInput.templateFamilyId}_${Date.now().toString(36)}`,
         metadata: {
             brand: {
                 accentColor: ctx.accent,
                 fontFamily: "Inter, Arial, sans-serif",
-                logoUrl: input.logoUrl || undefined,
-                name: input.storeName,
+                logoUrl: admittedInput.logoUrl || undefined,
+                name: admittedInput.storeName,
                 primaryColor: ctx.accent,
                 secondaryColor: ctx.text,
             },
             createdAt: now,
-            printFrames: input.assetTypeId === "business_card" ? getBusinessCardPrintFrames() : undefined,
-            templateId: `${input.assetTypeId}:${input.templateFamilyId}`,
+            printFrames: admittedInput.assetTypeId === "business_card" ? getBusinessCardPrintFrames() : undefined,
+            templateId: `${admittedInput.assetTypeId}:${admittedInput.templateFamilyId}`,
             textPlaceholders: [
-                { id: "business-name", label: "Business name", value: input.storeName },
+                { id: "business-name", label: "Business name", value: admittedInput.storeName },
                 { id: "offering", label: "Offering", value: ctx.labels.offeringTitle },
                 { id: "scan-link", label: "Scan link", value: ctx.qrValue },
             ],
@@ -1716,13 +1739,13 @@ export function buildPrintableAssetEditorDocument(input: PrintableAssetRenderInp
         productContext: {
             productId: "menulist",
             sourceSurface: "printable-asset-templates",
-            workspaceId: input.projectId || undefined,
+            workspaceId: admittedInput.projectId || undefined,
         },
         schemaVersion: CREATIVE_EDITOR_SCHEMA_VERSION,
-        title: `${safeName(input.storeName)} ${ctx.assetTitle} ${input.templateFamilyId}`,
+        title: `${safeName(admittedInput.storeName)} ${ctx.assetTitle} ${admittedInput.templateFamilyId}`,
     };
 
-    return input.assetTypeId === "business_card"
+    return admittedInput.assetTypeId === "business_card"
         ? normalizeBusinessCardEditorDocument(documentValue)
         : documentValue;
 }
@@ -1731,20 +1754,19 @@ export function rehydratePrintableAssetEditorDocument(
     documentValue: CreativeEditorDocument,
     input: PrintableAssetRenderInput,
 ): CreativeEditorDocument {
-    if (!isPrintableAssetEditorRenderable(input.assetTypeId)) {
-        throw new Error(`Editor templates are not available for ${input.assetTypeId}`);
-    }
+    const admittedInput = admitPrintableAssetRenderInput(input);
+    const admittedDocument = admitPrintableAssetEditorDocument(documentValue, admittedInput.assetTypeId);
 
-    const ctx = buildContext(input);
+    const ctx = buildContext(admittedInput);
     const now = new Date().toISOString();
-    const shortLink = input.shortLink || input.menuUrl.replace(/^https?:\/\//, "");
-    const updatedElements = documentValue.elements.map((element): CreativeEditorElement => {
+    const shortLink = admittedInput.shortLink;
+    const updatedElements = admittedDocument.elements.map((element): CreativeEditorElement => {
         if (element.type === "qr") {
             return {
                 ...element,
                 locked: true,
                 sourceRefs: [{
-                    label: input.assetTypeId === "feedback_qr" ? "Feedback link" : "Menu link",
+                    label: admittedInput.assetTypeId === "feedback_qr" ? "Feedback link" : "Menu link",
                     locked: true,
                     productId: "menulist",
                     sourceRef: "printable-asset-templates",
@@ -1777,21 +1799,21 @@ export function rehydratePrintableAssetEditorDocument(
     });
 
     const nextDocument: CreativeEditorDocument = {
-        ...documentValue,
+        ...admittedDocument,
         elements: updatedElements,
-        id: `print_asset_saved_${input.assetTypeId}_${Date.now().toString(36)}`,
+        id: `print_asset_saved_${admittedInput.assetTypeId}_${Date.now().toString(36)}`,
         metadata: {
-            ...documentValue.metadata,
+            ...admittedDocument.metadata,
             brand: {
-                ...documentValue.metadata?.brand,
+                ...admittedDocument.metadata?.brand,
                 accentColor: ctx.accent,
-                logoUrl: input.logoUrl || documentValue.metadata?.brand?.logoUrl,
-                name: input.storeName,
+                logoUrl: admittedInput.logoUrl || admittedDocument.metadata?.brand?.logoUrl,
+                name: admittedInput.storeName,
                 primaryColor: ctx.accent,
                 secondaryColor: ctx.text,
             },
             textPlaceholders: [
-                { id: "business-name", label: "Business name", value: input.storeName },
+                { id: "business-name", label: "Business name", value: admittedInput.storeName },
                 { id: "offering", label: "Offering", value: ctx.labels.offeringTitle },
                 { id: "scan-link", label: "Scan link", value: ctx.qrValue },
             ],
@@ -1800,12 +1822,12 @@ export function rehydratePrintableAssetEditorDocument(
         productContext: {
             productId: "menulist",
             sourceSurface: "printable-asset-templates",
-            workspaceId: input.projectId || undefined,
+            workspaceId: admittedInput.projectId || undefined,
         },
-        title: documentValue.title || `${safeName(input.storeName)} ${ctx.assetTitle}`,
+        title: admittedDocument.title || `${safeName(admittedInput.storeName)} ${ctx.assetTitle}`,
     };
 
-    return input.assetTypeId === "business_card"
+    return admittedInput.assetTypeId === "business_card"
         ? normalizeBusinessCardEditorDocument(nextDocument)
         : nextDocument;
 }
@@ -1883,8 +1905,9 @@ export async function renderPrintableAssetEditorDocument(params: {
     outputFormat: Exclude<PrintableAssetOutputFormat, "zip">;
     templateFamilyId?: string;
 }): Promise<PrintableAssetRenderResult> {
+    const admittedDocument = admitPrintableAssetEditorDocument(params.document, params.assetTypeId);
     const documentValue = preparePrintableAssetDocumentForExport(
-        stripPrintableAssetEditorAttributionLayers(params.document),
+        stripPrintableAssetEditorAttributionLayers(admittedDocument),
         params.assetTypeId,
     );
     return renderPrintableAssetEditorDocumentFile(params, documentValue);
@@ -1991,8 +2014,9 @@ export async function renderPrintableAssetEditorDocumentFiles(params: {
     outputFormat: Exclude<PrintableAssetOutputFormat, "zip">;
     templateFamilyId?: string;
 }): Promise<PrintableAssetRenderResult[]> {
+    const admittedDocument = admitPrintableAssetEditorDocument(params.document, params.assetTypeId);
     const documentValue = preparePrintableAssetDocumentForExport(
-        stripPrintableAssetEditorAttributionLayers(params.document),
+        stripPrintableAssetEditorAttributionLayers(admittedDocument),
         params.assetTypeId,
     );
     if (params.assetTypeId === "business_card" && params.outputFormat === "png") {

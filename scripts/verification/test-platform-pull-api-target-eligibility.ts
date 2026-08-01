@@ -3,6 +3,11 @@ import { buildMenuSnapshot } from '../../src/lib/posSync/payloadFormatter';
 import {
     getActivePublicTempStatus,
     normalizePublicBusinessAttributes,
+    normalizePublicBusinessGeo,
+    normalizePublicBusinessLastModified,
+    normalizePublicBusinessStringRecord,
+    normalizePublicBusinessText,
+    normalizePublicBusinessWorkingHours,
 } from '../../src/lib/publicApi/businessProjection';
 import { isMenuListPublicApiEntityEligible } from '../../src/lib/publicApi/targetEligibility';
 import { buildPullApiETagPayload } from '../../src/lib/publicApi/responseIdentity';
@@ -67,6 +72,29 @@ assert.deepEqual(
     'business attribute output must include only known boolean public fields',
 );
 assert.equal(normalizePublicBusinessAttributes(['vegetarian']), null);
+assert.equal(normalizePublicBusinessText({ privateValue: 'must not escape' }), null);
+assert.equal(normalizePublicBusinessText('  Public value  ', 80), 'Public value');
+assert.deepEqual(
+    normalizePublicBusinessWorkingHours({ mon: ' 09:00 - 17:00 ', sun: 'closed' }),
+    { mon: '09:00-17:00', sun: '' },
+);
+assert.equal(normalizePublicBusinessWorkingHours({ someday: '09:00-17:00' }), null);
+assert.equal(normalizePublicBusinessWorkingHours({ mon: { privateValue: 'must not escape' } }), null);
+assert.deepEqual(
+    normalizePublicBusinessStringRecord({ custom_platform: ' https://example.com/profile ' }),
+    { custom_platform: 'https://example.com/profile' },
+);
+assert.equal(normalizePublicBusinessStringRecord({ privateConfig: { accessToken: 'secret' } }), null);
+assert.deepEqual(normalizePublicBusinessGeo({ latitude: 12.5, longitude: 77.6 }), {
+    latitude: 12.5,
+    longitude: 77.6,
+});
+assert.equal(normalizePublicBusinessGeo({ latitude: 12.5, longitude: 77.6, privatePrecision: 10 }), null);
+assert.equal(normalizePublicBusinessGeo({ latitude: 91, longitude: 77.6 }), null);
+assert.equal(normalizePublicBusinessLastModified('2026-07-31T12:00:00.000Z'), '2026-07-31T12:00:00.000Z');
+assert.equal(normalizePublicBusinessLastModified('not-a-date'), null);
+assert.equal(normalizePublicBusinessLastModified({ toDate: () => new Date('2026-07-31T12:00:00.000Z') }), '2026-07-31T12:00:00.000Z');
+assert.equal(normalizePublicBusinessLastModified({ get toDate() { throw new Error('hostile'); } }), null);
 assert.deepEqual(
     normalizeBusinessAttributes({ acceptsCards: false, internal: true, vegetarian: true, wifi: 'false' }),
     { acceptsCards: false, vegetarian: true },
@@ -196,6 +224,10 @@ async function verifyLinkedOutletPullProjection(): Promise<void> {
             },
         },
     };
+    const masterFiles = masterProject.files ?? [];
+    assert.equal(masterFiles.length, 1, 'linked public pull fixture must contain exactly one master file');
+    const masterFile = masterFiles[0];
+    assert.ok(masterFile, 'linked public pull fixture master file must be present');
 
     clearMasterCache();
     try {
@@ -241,6 +273,84 @@ async function verifyLinkedOutletPullProjection(): Promise<void> {
             payload.menu.items[0]?.decisionFacts,
             { allergens: { value: ['milk'] } },
             'public pull output may expose the approved value but must not leak internal provenance metadata',
+        );
+        assert.equal(
+            populateMasterCache(masterProjectId, {
+                ...masterProject,
+                projectId: '2-wrong-master-30',
+            }),
+            false,
+            'master cache population must reject a project whose identity differs from the cache key',
+        );
+
+        clearMasterCache();
+        assert.equal(populateMasterCache(masterProjectId, {
+            ...masterProject,
+            masterProjectId: '1-upstream-master-5',
+        }), true);
+        assert.equal(
+            (await resolveProjectForRender({ storeProject: outletProject }))._resolved?.isMasterLinked,
+            false,
+            'a linked project cannot itself become inheritance authority for another outlet',
+        );
+
+        clearMasterCache();
+        assert.equal(populateMasterCache(masterProjectId, {
+            ...masterProject,
+            files: [...masterFiles, { ...masterFile, uid: 'second-master-file' }],
+        }), true);
+        assert.equal(
+            (await resolveProjectForRender({ storeProject: outletProject }))._resolved?.isMasterLinked,
+            false,
+            'multi-file master inheritance must fail closed instead of flattening ambiguous files',
+        );
+
+        clearMasterCache();
+        assert.equal(populateMasterCache(masterProjectId, masterProject), true);
+        const multiFileOutlet = {
+            ...outletProject,
+            files: [
+                {
+                    uid: 'local-file-1',
+                    extractedData: { data: { categories: [], items: [], languages: [] } },
+                },
+                {
+                    uid: 'local-file-2',
+                    extractedData: {
+                        data: {
+                            categories: [{ id: 'L_C_local', name: { en: 'Local' } }],
+                            items: [{ id: 'L_I_local', category: 'L_C_local', name: { en: 'Local item' } }],
+                            languages: [],
+                        },
+                    },
+                },
+            ],
+        } as unknown as Project;
+        assert.equal(
+            (await resolveProjectForRender({ storeProject: multiFileOutlet }))._resolved?.isMasterLinked,
+            false,
+            'multi-file outlet inheritance must fail closed instead of duplicating later-file local entities',
+        );
+
+        clearMasterCache();
+        assert.equal(populateMasterCache(masterProjectId, masterProject), true);
+        const invalidLocalIdentityOutlet = {
+            ...outletProject,
+            files: [{
+                uid: 'local-file',
+                extractedData: {
+                    data: {
+                        categories: [{ id: 'ghost-category', name: { en: 'Ghost' } }],
+                        items: [{ id: 'ghost-item', category: 'ghost-category', name: { en: 'Ghost item' } }],
+                        languages: [],
+                    },
+                },
+            }],
+        } as unknown as Project;
+        assert.equal(
+            (await resolveProjectForRender({ storeProject: invalidLocalIdentityOutlet }))._resolved?.isMasterLinked,
+            false,
+            'unprefixed store-only entities must not become linked public menu truth',
         );
     } finally {
         clearMasterCache();

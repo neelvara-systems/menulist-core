@@ -55,6 +55,7 @@ import {
     assertCampaignCueCueLayersClaimOwnership,
     CampaignCueCueLayersIdempotencyConflictError,
     getCampaignCueCueLayersClaimDecision,
+    type CampaignCueCueLayersIdempotencyRecord,
 } from "./idempotency";
 import {
     assertCampaignCueCueLayerImageLimits,
@@ -77,7 +78,7 @@ import {
 
 const nowTimestamp = () => admin.firestore.Timestamp.now();
 const CUE_LAYERS_IDEMPOTENCY_LEASE_MS = 5 * 60 * 1000;
-const sanitizeForAdminFirestore = (value: unknown) => sanitizeFirestoreValue(value, {
+const sanitizeForAdminFirestore = <T>(value: T): T extends undefined ? null : T => sanitizeFirestoreValue(value, {
     dateTransform: (date) => admin.firestore.Timestamp.fromDate(date),
     undefinedObjectValue: "omit",
 });
@@ -367,7 +368,10 @@ async function claimCueLayersIdempotency(params: {
     const ref = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.idempotencyKey);
     const claimId = buildCampaignCueCueLayerId("claim");
     const nowMillis = Date.now();
-    const result = await firestoreAdmin.runTransaction(async (transaction) => {
+    const result = await firestoreAdmin.runTransaction<{
+        claimId: string | null;
+        replay: CampaignCueCueLayersIdempotencyRecord | null;
+    }>(async (transaction) => {
         const [snap] = await Promise.all([
             transaction.get(ref),
             assertCurrentCueLayersWorkspaceAccess(transaction, params.scope, params.workspaceId),
@@ -486,7 +490,7 @@ function businessTruthSnapshot(businessBrain: CampaignCueBusinessBrain) {
     };
 }
 
-function protectedTextSnapshot(businessBrain: CampaignCueBusinessBrain) {
+function protectedTextSnapshot(businessBrain: CampaignCueBusinessBrain): string[] {
     return [
         businessBrain.name,
         businessBrain.locality,
@@ -497,7 +501,7 @@ function protectedTextSnapshot(businessBrain: CampaignCueBusinessBrain) {
         businessBrain.contacts.publicMenuUrl,
         ...businessBrain.catalog.items.flatMap((item) => [item.name, item.priceLabel]),
         ...businessBrain.catalog.services.flatMap((service) => [service.name, service.priceLabel]),
-    ].filter(Boolean);
+    ].filter((value): value is string => typeof value === "string" && value.length > 0);
 }
 
 function brandSnapshot(businessBrain: CampaignCueBusinessBrain) {
@@ -1184,12 +1188,18 @@ export async function exportCampaignCueCueLayerDesignServer(params: {
                 status: (idempotency.replay.responseStatus || 409) as 409,
             };
         }
+        const replayResultId = idempotency.replay.resultId;
+        if (!replayResultId) {
+            throw new CampaignCueCueLayersIdempotencyConflictError(
+                "The saved export retry result is incomplete.",
+            );
+        }
         const exportSnap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CUE_LAYER_EXPORTS)
-            .doc(idempotency.replay.resultId)
+            .doc(replayResultId)
             .get();
         const exportRecord = parseCueLayerExportReplayRecord(
             exportSnap.exists ? exportSnap.data() : null,
-            idempotency.replay.resultId,
+            replayResultId,
             design.id,
             workspaceId,
         );

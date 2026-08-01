@@ -6,7 +6,6 @@
 
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { LanguageType } from "./common.types";
-import { ExtractedDataItem } from "./extractedData.types";
 import { ProjectFileType } from "./project.types";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -54,8 +53,16 @@ export interface BatchTranslationAPIParams {
 // Description API
 // ═══════════════════════════════════════════════════════════════════════════
 
+export interface DescriptionAPIItem {
+    id: string;
+    name: string;
+    category?: string;
+    attributes?: string;
+    description?: string;
+}
+
 export interface DescriptionAPIParams {
-    itemsList: ExtractedDataItem[];
+    itemsList: DescriptionAPIItem[];
     targetLang: LanguageType[];
     sourceLang: LanguageType;
     action: DescriptionActionType;

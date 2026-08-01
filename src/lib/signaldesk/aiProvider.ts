@@ -126,13 +126,38 @@ const AiAssistOutputSchema = z.object({
     suggestedCopy: z.string().trim().max(4000).optional(),
 }).strict();
 
-const AiCriticOutputSchema = z.object({
+export const SignalDeskAiCriticOutputSchema = z.object({
     confidence: z.enum(["high", "medium", "low"]),
     reasons: z.array(z.string().trim().min(1).max(240)).max(8),
     rejectedFacts: z.array(z.string().trim().min(1).max(240)).max(8),
     revisedOutput: AiAssistOutputSchema.optional(),
     verdict: z.enum(["pass", "revise", "hold"]),
-}).strict();
+}).strict().superRefine((value, context) => {
+    if (value.verdict === "revise" && !value.revisedOutput) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "A revise verdict requires a complete revised output.",
+            path: ["revisedOutput"],
+        });
+    }
+    if (value.verdict !== "revise" && value.revisedOutput) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Only a revise verdict may include revised output.",
+            path: ["revisedOutput"],
+        });
+    }
+});
+
+export const readSignalDeskAiResponseText = (response: unknown): string => {
+    if (!response || typeof response !== "object") return "";
+    try {
+        const text = (response as { text?: unknown }).text;
+        return typeof text === "string" ? text : "";
+    } catch {
+        return "";
+    }
+};
 
 const parseSignalDeskAiJsonResponse = (
     text: string,
@@ -189,7 +214,8 @@ export async function runSignalDeskAiAssist(input: SignalDeskAiAssistInput): Pro
         },
     });
 
-    const parsedOutput = parseSignalDeskAiJsonResponse(String((response as any).text || ""), {
+    const responseText = readSignalDeskAiResponseText(response);
+    const parsedOutput = parseSignalDeskAiJsonResponse(responseText, {
         model,
         task: input.task,
     });
@@ -198,7 +224,7 @@ export async function runSignalDeskAiAssist(input: SignalDeskAiAssistInput): Pro
         logRuntimeFailure(SIGNALDESK_AI_RESPONSE_SHAPE_INVALID, validation.error, getAiParseLogContext({
             model,
             task: input.task,
-            text: String((response as any).text || ""),
+            text: responseText,
         }));
         throw new Error("SignalDesk AI response shape is invalid");
     }
@@ -235,12 +261,12 @@ export async function runSignalDeskAiCritic(input: SignalDeskAiCriticInput): Pro
             topP: 0.8,
         },
     });
-    const responseText = String((response as any).text || "");
+    const responseText = readSignalDeskAiResponseText(response);
     const parsedOutput = parseSignalDeskAiJsonResponse(responseText, {
         model,
         task: "quality-critic",
     });
-    const validation = AiCriticOutputSchema.safeParse(parsedOutput);
+    const validation = SignalDeskAiCriticOutputSchema.safeParse(parsedOutput);
     if (!validation.success) {
         logRuntimeFailure(SIGNALDESK_AI_RESPONSE_SHAPE_INVALID, validation.error, getAiParseLogContext({
             model,

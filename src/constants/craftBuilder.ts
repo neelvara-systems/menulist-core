@@ -301,54 +301,6 @@ export const complexImageFilters = [
     //     ],
     // },
 ];
-// Combined Parametric Filters
-const gammaImageFilters = [
-    {
-        type: 'Gamma',
-        status: false,
-        params: [
-            {
-                key: 'red',
-                value: 0,
-                uiType: uiTypeImageFilters.NUMBER,
-                min: 0.01,
-                max: 2.2,
-                step: 0.01,
-            },
-            {
-                key: 'green',
-                value: 0,
-                uiType: uiTypeImageFilters.NUMBER,
-                min: 0.01,
-                max: 2.2,
-                step: 0.01,
-            },
-            {
-                key: 'blue',
-                value: 0,
-                uiType: uiTypeImageFilters.NUMBER,
-                min: 0.01,
-                max: 2.2,
-                step: 0.01,
-            },
-        ],
-        handler(red, green, blue) {
-            return {
-                gamma: [red, green, blue],
-            };
-        },
-    },
-];
-
-// 1
-// 2
-// 3
-// 4
-// 5
-// 6
-// 7
-// 8
-
 export const lineHeightsList = [
     { label: 'Unset', value: 'unset' },
     { label: '0.5', value: '0.5' },

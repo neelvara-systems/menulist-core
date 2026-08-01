@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 
 import { AnswerlatticePublicContactRequestSchema } from '../../src/lib/answerlattice/publicContactContracts';
+import {
+    normalizePublicContactReferrer,
+    normalizePublicContactSourcePath,
+} from '../../src/lib/publicContact/contactBoundary';
 
 const validRequest = {
     name: '  <b>Owner Name</b>  ',
@@ -39,5 +43,15 @@ assert.equal(AnswerlatticePublicContactRequestSchema.safeParse({
     phoneNumber: ' <b></b> ',
     productUrl: null,
 }).success, true);
+
+assert.equal(normalizePublicContactSourcePath('/contact?token=secret#private'), '/contact');
+assert.equal(normalizePublicContactSourcePath('https://attacker.example/contact'), null);
+assert.equal(normalizePublicContactSourcePath('//attacker.example/contact'), null);
+assert.equal(normalizePublicContactSourcePath('/contact%5c..%5cprivate'), null);
+assert.equal(
+    normalizePublicContactReferrer('https://answerlattice.com/contact?token=secret#private'),
+    'https://answerlattice.com/contact',
+);
+assert.equal(normalizePublicContactReferrer('javascript:alert(1)'), null);
 
 process.stdout.write('Answerlattice public contact contracts passed.\n');

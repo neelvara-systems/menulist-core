@@ -1,4 +1,5 @@
 import type { StoreDataType } from '@type/platform/store';
+import { normalizeMenuListPlanType } from '@lib/platform/menuListBranding';
 
 export const STARTER_ACTIVATION_DAYS = 7;
 export const STARTER_ACTIVATION_MS = STARTER_ACTIVATION_DAYS * 24 * 60 * 60 * 1000;
@@ -149,27 +150,32 @@ function timestampLikeToMillis(value: unknown): number | null {
     try {
         let millis: number | null = null;
         if (value instanceof Date) {
-            millis = value.getTime();
+            millis = Date.prototype.getTime.call(value);
         } else if (typeof value === 'number') {
             millis = value;
         } else if (typeof value === 'string') {
             millis = Date.parse(value);
         } else if (typeof value === 'object') {
-            const record = value as {
-                toMillis?: () => number;
-                toDate?: () => Date;
-                seconds?: number;
-                _seconds?: number;
-            };
+            const secondsDescriptor = Object.getOwnPropertyDescriptor(value, 'seconds')
+                || Object.getOwnPropertyDescriptor(value, '_seconds');
+            const nanosecondsDescriptor = Object.getOwnPropertyDescriptor(value, 'nanoseconds')
+                || Object.getOwnPropertyDescriptor(value, '_nanoseconds');
+            const seconds = secondsDescriptor && 'value' in secondsDescriptor
+                ? secondsDescriptor.value
+                : null;
+            const nanoseconds = nanosecondsDescriptor && 'value' in nanosecondsDescriptor
+                ? nanosecondsDescriptor.value
+                : 0;
 
-            if (typeof record.toMillis === 'function') {
-                millis = record.toMillis();
-            } else if (typeof record.toDate === 'function') {
-                millis = record.toDate().getTime();
-            } else if (typeof record.seconds === 'number') {
-                millis = record.seconds * 1000;
-            } else if (typeof record._seconds === 'number') {
-                millis = record._seconds * 1000;
+            if (
+                typeof seconds === 'number'
+                && Number.isInteger(seconds)
+                && typeof nanoseconds === 'number'
+                && Number.isInteger(nanoseconds)
+                && nanoseconds >= 0
+                && nanoseconds < 1_000_000_000
+            ) {
+                millis = (seconds * 1000) + (nanoseconds / 1_000_000);
             }
         }
 
@@ -284,7 +290,7 @@ export function isStarterActivationStore(storeDetails?: Pick<StoreDataType, 'onb
 
 function hasStarterPaidPublicAccess(storeDetails?: Pick<StoreDataType, 'activePlanType' | 'starterActivationStatus'> | null) {
     return Boolean(
-        storeDetails?.activePlanType ||
+        normalizeMenuListPlanType(storeDetails?.activePlanType) ||
         storeDetails?.starterActivationStatus === STARTER_ACTIVATION_STATUS.ACTIVE_PAID,
     );
 }
@@ -316,7 +322,7 @@ export function isStarterActivationExpired(
 ) {
     if (!isStarterActivationStore(storeDetails)) return false;
     const deadlineMs = timestampLikeToMillis(storeDetails?.activationDeadline);
-    return Boolean(deadlineMs && deadlineMs <= nowMs);
+    return deadlineMs === null || !Number.isFinite(nowMs) || deadlineMs <= nowMs;
 }
 
 export function hasStarterWorkspaceAccess(
@@ -355,14 +361,15 @@ export function getStarterActivationSignalCount(
     const signalKeys = new Set<StarterActivationSignal>();
     const actions = storeDetails?.starterActivationSignals?.actions || {};
 
-    Object.keys(actions).forEach((signal) => {
-        if (isStarterActivationSignal(signal)) {
+    Object.entries(actions).forEach(([signal, recordedAt]) => {
+        if (isStarterActivationSignal(signal) && normalizeStarterActivationTimestamp(recordedAt)) {
             signalKeys.add(signal);
         }
     });
 
     Object.entries(STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE).forEach(([surface, signal]) => {
-        if (storeDetails?.menuPresence?.[surface as keyof NonNullable<StoreDataType['menuPresence']>]) {
+        const recordedAt = storeDetails?.menuPresence?.[surface as keyof NonNullable<StoreDataType['menuPresence']>];
+        if (normalizeStarterActivationTimestamp(recordedAt)) {
             signalKeys.add(signal);
         }
     });

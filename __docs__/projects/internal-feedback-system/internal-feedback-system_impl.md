@@ -56,6 +56,11 @@ Authenticated desktop/mobile owner
 | Browser-safe store projection | `src/lib/publicTruth/clientStoreProjection.ts` |
 | Review URL response/allowlist | `src/lib/feedback/guestFeedbackSubmitResponse.ts` |
 | Reply drafts | `src/lib/feedback/feedbackReplyTemplates.ts` |
+
+Feedback URL/QR emitters use the same public project-ID normalizer before
+building `/feedback/{projectId}`. Optional tenant URL overrides must resolve
+to a credential-free HTTP(S) origin; path, query and fragment components are
+never retained in the feedback destination.
 | Desktop inbox | `src/components/templates/main-app/feedback/` |
 | Mobile inbox/detail | `src/components/mobile/screens/MobileFeedbackScreen.tsx`, `MobileFeedbackDetail.tsx` |
 | Store settings | `src/components/templates/main-app/businessSettings/tabs/FeedbackSettingsTab.tsx` |

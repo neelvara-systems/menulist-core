@@ -13,9 +13,11 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { getTrustMetrics } from '@database/answerlattice/trustMetrics';
+import { loadRecentAnswerlatticeAnswerTraces } from '@lib/answerlattice/answerTraceClient';
+import type { AnswerlatticeAnswerTrace } from '@lib/answerlattice/answerTraceContracts';
 import { AnswerlatticeTrustMetrics } from '@type/answerlattice';
-import { Card, Empty, Flex, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Empty, Flex, Space, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuActivity,
     LuArrowDown,
@@ -23,10 +25,13 @@ import {
     LuArrowUp,
     LuBarChart3,
     LuListChecks,
+    LuRefreshCw,
+    LuRouter,
     LuShieldAlert,
     LuShieldCheck,
     LuTarget,
 } from 'react-icons/lu';
+import AnswerTraceDrawer from './AnswerTraceDrawer';
 
 const { Text, Title } = Typography;
 
@@ -72,6 +77,14 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
     const [data, setData] = useState<AnswerlatticeTrustMetrics | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
+    const [answerTraces, setAnswerTraces] = useState<AnswerlatticeAnswerTrace[]>([]);
+    const [answerTracesLoaded, setAnswerTracesLoaded] = useState(false);
+    const [answerTracesLoading, setAnswerTracesLoading] = useState(false);
+    const [answerTraceError, setAnswerTraceError] = useState<string | null>(null);
+    const [answerTraceWindowLimited, setAnswerTraceWindowLimited] = useState(false);
+    const [selectedAnswerTrace, setSelectedAnswerTrace] = useState<AnswerlatticeAnswerTrace | null>(null);
+    const answerTraceRequestRef = useRef(0);
+    const answerTraceInFlightRef = useRef(false);
 
     useEffect(() => {
         if (!tId || !sId) {
@@ -91,6 +104,45 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
             }
         })();
     }, [tId, sId]);
+
+    useEffect(() => {
+        answerTraceRequestRef.current += 1;
+        setAnswerTraces([]);
+        setAnswerTracesLoaded(false);
+        setAnswerTracesLoading(false);
+        answerTraceInFlightRef.current = false;
+        setAnswerTraceError(null);
+        setAnswerTraceWindowLimited(false);
+        setSelectedAnswerTrace(null);
+        return () => {
+            answerTraceRequestRef.current += 1;
+            answerTraceInFlightRef.current = false;
+        };
+    }, [tId, sId]);
+
+    const loadAnswerTraces = async () => {
+        if (answerTraceInFlightRef.current) return;
+        const requestId = answerTraceRequestRef.current + 1;
+        answerTraceRequestRef.current = requestId;
+        answerTraceInFlightRef.current = true;
+        setAnswerTracesLoading(true);
+        setAnswerTraceError(null);
+        try {
+            const result = await loadRecentAnswerlatticeAnswerTraces();
+            if (answerTraceRequestRef.current !== requestId) return;
+            setAnswerTraces(result.traces);
+            setAnswerTraceWindowLimited(result.windowLimited);
+            setAnswerTracesLoaded(true);
+        } catch {
+            if (answerTraceRequestRef.current !== requestId) return;
+            setAnswerTraceError('Could not load the recent answer-trace window.');
+        } finally {
+            if (answerTraceRequestRef.current === requestId) {
+                answerTraceInFlightRef.current = false;
+                setAnswerTracesLoading(false);
+            }
+        }
+    };
 
     const escalationTotal = useMemo(() => {
         if (!data?.escalationBreakdown) return 0;
@@ -381,6 +433,72 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                 </Card>
             )}
 
+            {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TRACE ? (
+                <Card
+                    title={<Space><LuRouter size={16} /> Recent Answer Traces</Space>}
+                    extra={(
+                        <Button
+                            icon={answerTracesLoaded ? <LuRefreshCw /> : <LuRouter />}
+                            loading={answerTracesLoading}
+                            onClick={loadAnswerTraces}
+                            style={{ minHeight: 44 }}
+                        >
+                            {answerTracesLoaded ? 'Refresh traces' : 'Load review traces'}
+                        </Button>
+                    )}
+                    size="small"
+                >
+                    <Flex vertical gap={12}>
+                        <Text type="secondary">
+                            Loaded only when requested. The bounded window shows recent retained answers with fallback, feedback, escalation, drift, or confidence evidence.
+                        </Text>
+                        {answerTraceError ? <Alert message={answerTraceError} showIcon type="error" /> : null}
+                        {answerTracesLoaded && answerTraces.length === 0 ? (
+                            <Empty
+                                description="No review trace was found in the recent retained window."
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            />
+                        ) : null}
+                        {answerTraces.map(trace => (
+                            <Flex
+                                align="center"
+                                gap={12}
+                                justify="space-between"
+                                key={trace.id}
+                                style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, paddingBottom: 12 }}
+                                wrap
+                            >
+                                <Flex vertical gap={5} style={{ minWidth: 0 }}>
+                                    <Text ellipsis={{ tooltip: trace.question }} strong>
+                                        {trace.question}
+                                    </Text>
+                                    <Flex gap={6} wrap>
+                                        <Tag color={trace.canonical ? 'success' : 'warning'}>
+                                            {trace.canonical ? 'Approved answer' : trace.answerSource}
+                                        </Tag>
+                                        {trace.reviewSignals.slice(0, 3).map(signal => (
+                                            <Tag key={signal}>{signal.replace(/_/g, ' ')}</Tag>
+                                        ))}
+                                    </Flex>
+                                </Flex>
+                                <Button
+                                    icon={<LuRouter />}
+                                    onClick={() => setSelectedAnswerTrace(trace)}
+                                    style={{ minHeight: 44 }}
+                                >
+                                    Inspect trace
+                                </Button>
+                            </Flex>
+                        ))}
+                        {answerTracesLoaded && answerTraceWindowLimited ? (
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                This is a capped recent window, not a complete historical search.
+                            </Text>
+                        ) : null}
+                    </Flex>
+                </Card>
+            ) : null}
+
             {/* Escalation Breakdown */}
             {escalationItems.length > 0 && (
                 <Card
@@ -408,6 +526,11 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                     )}
                 </Card>
             )}
+            <AnswerTraceDrawer
+                onClose={() => setSelectedAnswerTrace(null)}
+                open={Boolean(selectedAnswerTrace)}
+                trace={selectedAnswerTrace}
+            />
         </Flex>
     );
 }

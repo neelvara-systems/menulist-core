@@ -13,6 +13,8 @@ import {
   mergeMessagingPendingUploadCleanupPaths,
   normalizeMessagingPendingUploadCleanupPaths,
 } from '@data/shared/messagingReplacementUploads';
+import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
+import { validateMessagingPublishProjectFiles } from './publishValidationBoundary';
 
 const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   'application/pdf',
@@ -66,13 +68,30 @@ export type MessagingPublishResult = {
   userId: string;
 };
 
+export type MessagingPublishDeliveryState = {
+  confirmationMessageDeliveryAttempts: number;
+  confirmationMessageLeaseToken: null;
+  confirmationMessageLeaseUntil: null;
+  confirmationPending: true;
+  fixMessageDeliveryAttempts: number;
+  fixMessageLeaseToken: null;
+  fixMessageLeaseUntil: null;
+  fixMessagePending: false;
+  previewMessageDeliveryAttempts: number;
+  previewMessageLeaseToken: null;
+  previewMessageLeaseUntil: null;
+  previewMessagePending: false;
+  reminderMessageLeaseToken: null;
+  reminderMessageLeaseUntil: null;
+};
+
 /**
  * Resets every obsolete outbound-delivery claim when publish commits and opens
  * exactly one fresh confirmation delivery. Keeping this contract beside the
  * publish-session boundary makes stale preview/fix/reminder leases testable
  * without executing the full tenant/store transaction.
  */
-export function buildMessagingPublishDeliveryState() {
+export function buildMessagingPublishDeliveryState(): MessagingPublishDeliveryState {
   return {
     confirmationMessageDeliveryAttempts: 0,
     confirmationMessageLeaseToken: null,
@@ -183,6 +202,7 @@ function normalizePublishedResult(value: unknown): MessagingPublishResult | null
   const userId = boundedString(source.userId, 180);
   const publicUrl = safeHttpsUrl(source.publicUrl);
   const dashboardUrl = safeHttpsUrl(source.dashboardUrl);
+  const projectScope = projectId ? normalizeMultiOutletProjectId(projectId) : null;
   if (
     typeof tenantId !== 'number'
     || !Number.isSafeInteger(tenantId)
@@ -191,6 +211,9 @@ function normalizePublishedResult(value: unknown): MessagingPublishResult | null
     || !Number.isSafeInteger(storeId)
     || storeId <= 0
     || !projectId
+    || !projectScope
+    || projectScope.tId !== tenantId
+    || projectScope.sId !== storeId
     || !userId
     || !publicUrl
     || !dashboardUrl
@@ -576,6 +599,7 @@ export function normalizeMessagingPublishSession(
     || !validMenuFiles
     || !extractedMenuData
     || !extractedProjectFiles
+    || !validateMessagingPublishProjectFiles(extractedProjectFiles).valid
     || extractedBusinessProfile === undefined
     || (source.publishedResult !== null && !publishedResult)
     || (state === 'LIVE' && !publishedResult)
@@ -622,6 +646,7 @@ export function getMessagingPublishSourceFingerprint(session: MessagingPublishSe
   return crypto.createHash('sha256').update(JSON.stringify({
     detectedBusinessCategory: session.detectedBusinessCategory,
     detectedBusinessType: session.detectedBusinessType,
+    extractedBusinessInfoAddress: session.extractedBusinessInfoAddress,
     extractedBusinessProfile: session.extractedBusinessProfile,
     extractedMenuData: session.extractedMenuData,
     extractedProjectFiles: session.extractedProjectFiles,

@@ -1,10 +1,19 @@
 # AnswerLattice Website — Implementation
 
-> **Version:** 1.3.7
-> **Last Updated:** 2026-07-29
+> **Version:** 1.3.9
+> **Last Updated:** 2026-07-31
 > **Audience:** Developers
 
 ---
+
+## July 31, 2026 Progressive Adoption Guidance
+
+- `src/content/answerlatticePublic/articles.ts` owns the static `/resources/answerlattice-operating-guide` article. Its explicit route wrapper uses the existing shared resource renderer, structured data, analytics consent, sitemap, and LLM discovery paths.
+- Header, Footer, Resources, Founder Launch Kit, and relevant team use cases link to the same guide. The homepage hero and activation path remain founder-first.
+- Start, Coordinate, and Govern are content labels only. No workspace field, Firestore document, automatic classifier, feature flag, entitlement, or alternate dashboard was added.
+- The larger-company path invites a bounded operating group and preserves the helpdesk/contact-center boundary. It does not claim unverified identity, procurement, service-level, certification, or seat capability.
+- The mobile navigation trigger now renders without waiting for viewport hydration; its existing `xl:hidden` class owns desktop visibility, and the viewport hook only closes an open drawer after resizing to desktop.
+- This change is static website source and has zero Firebase, Storage, Function, scheduler, or model-call cost.
 
 ## July 29, 2026 Owner-Decision Website Alignment
 
@@ -86,7 +95,7 @@ Visible AnswerLattice website diagrams stay vector-based. `AnswerlatticeFlowDiag
 
 Diagram centers use a single soft outer ripple around the logo mark and do not render a second static inner strip. Shared pulse keyframes travel to the visible route endpoint and fade there; cross diagrams launch all logo-origin pulses together so the center reads as one listening source.
 
-Screen-like product scenes use raster website assets, not hand-drawn HTML/CSS dashboard mockups. The asset registry in `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts` points to stable PNG slots under `public/answerlattice-website-assets/dummy/`; the directory name is retained for compatibility, but the current files are production-ready generated sample workspace visuals. `AnswerlatticeAssetImage.tsx` preserves their intrinsic `1440 x 1200` aspect ratio while exposing `data-answerlattice-asset-slot` and `data-answerlattice-asset-role` for future visual QA. The maintained future visual inventory lives in `src/content/answerlatticePublic/visualAssets.ts`. The generator `scripts/website-assets/generate-answerlattice-website-dummy-assets.js` creates concrete AnswerLattice dashboard, widget, support, and governance scenes without new npm dependencies and keeps source SVGs plus the manifest in `packages/asset-factory/answerlattice-website-assets/dummy-sources/`.
+Screen-like product scenes use raster website assets, not hand-drawn HTML/CSS dashboard mockups. The asset registry in `src/app/sites/answerlattice/answerlatticeWebsiteAssets.ts` points to stable PNG slots under `public/answerlattice-website-assets/dummy/` plus four top-level AssetOS-governed WebP proof assets for the Owner Decision System, Knowledge Map, Release Assurance, and public Article Topic Map. `AnswerlatticeAssetImage.tsx` preserves their intrinsic `1440 x 1200` aspect ratio while exposing `data-answerlattice-asset-slot` and `data-answerlattice-asset-role` for visual QA. The maintained visual inventory lives in `src/content/answerlatticePublic/visualAssets.ts`. The generator `scripts/website-assets/generate-answerlattice-website-dummy-assets.js` creates concrete AnswerLattice dashboard, widget, support, and governance scenes using the existing root image runtime without adding a dependency, and keeps source SVGs plus the generation manifest in `packages/asset-factory/answerlattice-website-assets/dummy-sources/`.
 
 Concept illustrations use `AnswerlatticeConceptIllustration.tsx`, a zero-dependency inline SVG component for abstract buyer concepts that should not be represented as fake dashboard screenshots. Current variants cover source-to-answer, governance loop, install verification, safe-context boundary, and category positioning. These panels are used on Product, Install, Security, and Comparisons pages to reduce explanatory text while preserving the AnswerLattice non-goals: no mascot art, no helpdesk replacement framing, no chatbot/autopilot claims, and no fake customer proof.
 
@@ -246,7 +255,15 @@ src/content/answerlatticePublic/
 
 Related AnswerLattice route constants live in `src/constants/answerlattice/routes.ts`. `src/constants/answerlattice/navigations.ts` re-exports those constants for existing dashboard imports while keeping icon-heavy sidebar metadata out of lightweight public client islands such as `/get-started`.
 
-Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM` with fail-closed provider behavior, caps JSON bodies at 8KB, and then applies one strict normalization contract before any persistence work. Required text is stripped and revalidated after markup removal, optional text becomes `null` when empty, email is normalized to lowercase, and an optional product URL must use HTTP or HTTPS. The route ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together. Public contact browser submissions use same-origin credentials, no-store cache, manual redirect handling, and an 8KB bounded JSON response parser before accepting `{ accepted: true }`. `/get-started` uses a 16KB bounded response parser, plan/currency billing validation, and resumable provisioning states before success. Public contact, `/get-started` onboarding, and the hosted widget use fixed failure copy in the browser and must not display API response text, provider text, or local exception messages.
+The progressive operating manual is implemented as one normal resource article, not as application configuration:
+
+- route: `src/app/sites/answerlattice/resources/answerlattice-operating-guide/page.tsx`;
+- content: `ANSWERLATTICE_RESOURCE_ARTICLES` in `src/content/answerlatticePublic/articles.ts`;
+- discovery: the resource registry automatically feeds `siteConfig.ts`, sitemap, structured data, resources, and extended LLM context;
+- navigation: Header, Footer, and Founder Launch Kit use the public resource path;
+- runtime cost: static bundle only, with no Firebase listener, document, API call, or AI arrangement step.
+
+Public contact submissions use `src/app/api/answerlattice/public/contact/route.ts`. The route is Node-only, rate-limited as `ANSWERLATTICE_CONTACT_FORM` with fail-closed provider behavior, caps JSON bodies at 8KB, and then applies one strict normalization contract before any persistence work. Required text is stripped and revalidated after markup removal, optional text becomes `null` when empty, email is normalized to lowercase, and an optional product URL must use HTTP or HTTPS. Persisted source paths must be same-origin relative paths and both source paths and HTTP(S) referrers retain pathname only, preventing query or fragment data from entering the 365-day contact record. The route ignores honeypot submissions, verifies `captchaToken` when `TURNSTILE_SECRET_KEY` is configured, hashes requester IPs, and writes accepted submissions to `DB_COLLECTIONS.ANSWERLATTICE_CONTACT_ENQUIRIES` in AnswerLattice Firebase. The client form renders Cloudflare Turnstile from `NEXT_PUBLIC_TURNSTILE_SITE_KEY`; both env keys must be configured together. Public contact browser submissions use same-origin credentials, no-store cache, manual redirect handling, and an 8KB bounded JSON response parser before accepting `{ accepted: true }`. `/get-started` uses a 16KB bounded response parser, plan/currency billing validation, and resumable provisioning states before success. Public contact, `/get-started` onboarding, and the hosted widget use fixed failure copy in the browser and must not display API response text, provider text, or local exception messages.
 
 Pricing renders INR and USD amounts from `src/data/answerlattice/plans.ts` and sends the selected plan in the Get Started URL. `get-started/page.tsx` admits only the three current plan IDs and INR/USD currency values before passing defaults into `OnboardingForm.tsx`. The form submits the selected monthly plan and currency to the existing paid onboarding route and confirms the server-returned billing amount/currency.
 
@@ -318,6 +335,7 @@ The public website now follows `../self-sellable-product-strategy.md`:
 - Homepage Product Overview now uses a priority bento so high-intent surfaces such as ticket fallback, approved answers, and knowledge intake carry more visual weight while FAQ, changelog, feedback, Support Board, and notifications stay available without turning the page into another uniform card wall.
 - Homepage founder fit and category boundary copy now render as one section: a larger best-fit panel plus three compact boundary cards for not-a-chatbot, not-a-full-helpdesk, and not-static-docs. Keep these messages consolidated unless a future funnel test proves they need separate sections again.
 - Public product scenes are static website assets or controlled HTML/CSS previews; they do not expose private workspace data, do not call Firebase, and keep public browsing at zero Firebase cost.
+- The four owner-decision WebP proofs are generated and served as static public files. AssetOS audits their source freshness and size locally; it adds no listener, API route, Firestore operation, Storage operation, scheduled function, or runtime dependency.
 - The `/product` page reuses the same product scene before the architecture deep dive so buyers see the working owner flow before reading implementation concepts.
 - May 23 agent-context pass added product-domain `llms.txt` and `llms-full.txt` routes so agents reading `answerlattice.com` get AnswerLattice-specific product context, route links, non-goals, mutation boundaries, and structured-data guidance instead of falling back to generic platform context.
 - May 22 positioning pass made the demo the hero primary CTA and reframed the homepage around page-aware support truth rather than generic AI support.
@@ -505,9 +523,9 @@ Conversion analytics is client-side only:
 
 - `AnswerlatticeAnalytics.tsx` shows the shared public cookie banner first. It loads Plausible only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_PLAUSIBLE_DOMAIN` exists. It loads Google Analytics only after accepted analytics consent and only when `NEXT_PUBLIC_ANSWERLATTICE_FIREBASE_MEASUREMENT_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` exists and matches the GA4 `G-...` measurement-id shape.
 - Every custom event rechecks the current product-specific consent choice through the shared Plausible/Google helper. Changing from accepted to declined updates the in-memory gate immediately, clears known cookies, and prevents later conversion, onboarding, or resource event pings even if a vendor function remains loaded.
-- Answerlattice website analytics URL minimization boundary: `answerlatticeAnalyticsUtils.ts` strips query strings and hash fragments from GA4 page-location, click-link, resource target, referrer, and entry-page URL fields before emission while bounding analytics text fields.
+- Answerlattice website analytics URL minimization boundary: the shared public analytics context strips query strings and hash fragments from same-site GA4 page-location, click-link, resource target, and entry-page fields; external links retain origin only. Resource events emit only an allowlisted referrer group, never a raw external referrer host/path, and admit compact UTM tokens rather than arbitrary query text. Plausible script overrides require a relative same-site path or credential-free HTTPS URL.
 - CTA/demo/pricing/onboarding events are emitted to Plausible as property-free custom events and to GA4 only through the shared consent and payload boundary when GA4 is configured.
-- Resource page/referrer events keep page, entry-page, referrer, UTM, slug, and target URL context for GA4 compatibility, but do not send raw full URLs or a custom repo-generated `session_id` parameter to third-party website analytics.
+- Resource page/referrer events keep minimized page, entry-page, known referrer group, compact UTM, slug, and target URL context for GA4 compatibility, but do not send raw referrer hosts/paths, full URLs, arbitrary query text, or a custom repo-generated `session_id` parameter to third-party website analytics.
 - Public get-started completion analytics do not send API key material or token prefixes.
 - No event is written to Firestore, no API route is called, and no AnswerLattice Firebase cost is introduced by normal tracking.
 - `src/config/csp-allowlist.ts` allows Plausible and Google Analytics destinations so optional website analytics can report when enabled.
@@ -533,7 +551,9 @@ Conversion analytics is client-side only:
 
 | Date | Version | Change |
 |------|---------|--------|
+| 2026-07-29 | 1.3.8 | Added and wired four AssetOS-governed 6:5 WebP proof assets for owner decisions, Knowledge Map, release assurance, and public article topic maps without changing runtime data or Firebase behavior |
 | 2026-07-29 | 1.3.7 | Connected the five owner decision features and public article topic maps across the compressed homepage and deeper product routes, synchronized public docs/metadata, and extended the source verifier without adding Firebase cost. |
+| 2026-07-31 | 1.3.9 | Added the static progressive Operating Guide, navigation and use-case wiring, and source verification while keeping one product model and zero Firebase runtime cost. |
 | 2026-07-28 | 1.3.5 | Retained the three deferred homepage section mounts as an explicit commented block and guarded them against silent deletion. |
 | 2026-07-28 | 1.3.4 | Compressed the homepage buyer path, moved workspace activation before supporting content, added the primary support-resolution demo, bounded Guided Resolution copy, and extended website source gates without adding public routes or Firebase cost. |
 | 2026-07-19 | 1.3.3 | Aligned public credit, retention, AI-provider, operating-trade-name, cancellation, deletion, and category claims with runtime sources; strengthened the public verifier; and moved root mail delivery to the compatible Nodemailer 9 runtime alias. |

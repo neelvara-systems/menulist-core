@@ -2,25 +2,33 @@
 import DrawerElement from '@antdComponent/drawerElement';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import BusinessSettings from '@template/main-app/businessSettings';
+import type { StoreDataType } from '@type/platform/store';
+import type { TenantDataType } from '@type/platform/tenant';
 import { Flex } from 'antd';
-import { memo, useContext, useEffect, useState } from 'react';
+import { memo, useContext } from 'react';
 
-function StoreDetailsModal({ modalData, closeModal, fromPage = "" }) {
+export type PlatformStoreModalState = {
+    active: boolean;
+    data: StoreDataType | null;
+    tenantData: TenantDataType | null;
+};
+
+type StoreDetailsModalProps = {
+    modalData: PlatformStoreModalState;
+    closeModal: (updatedStore?: StoreDataType | null) => void;
+    fromPage?: string;
+};
+
+function StoreDetailsModal({ modalData, closeModal, fromPage = "" }: StoreDetailsModalProps) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
-    const [data, setData] = useState(modalData);
-
-    useEffect(() => {
-        setData(modalData);
-    }, [modalData])
-
-    useEffect(() => {
-        setData({
+    const data: PlatformStoreModalState = fromPage
+        ? {
             ...modalData,
             data: storeDetails,
-            tenantData: tenantDetails
-        });
-    }, [storeDetails])
+            tenantData: tenantDetails,
+        }
+        : modalData;
 
 
     return (

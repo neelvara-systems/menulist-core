@@ -24,6 +24,7 @@ import {
     getAuthUserByEmail,
     getAuthUserByLoginIdentifier,
     normalizePhoneUsername,
+    type AuthBootstrapUserInput,
 } from "./serverUserContext";
 
 // Validate required environment variables at startup
@@ -137,27 +138,32 @@ export const authOptions: NextAuthOptions = {
         signIn: async ({ user, profile, account }: any) => {
             const email = user?.email?.toLowerCase()?.trim();
 
+            if (!email) {
+                logAuthDiagnostic('oauth_email_missing', {
+                    provider: getAuthProviderLogValue(account?.provider),
+                });
+                return '/unauthorized';
+            }
+
             // ✅ EMAIL VALIDATION: Block disposable emails and invalid domains
-            if (email) {
-                const emailValidation = validateEmail(email);
-                if (!emailValidation.valid) {
-                    logAuthDiagnostic('oauth_email_validation_failed', {
+            const emailValidation = validateEmail(email);
+            if (!emailValidation.valid) {
+                logAuthDiagnostic('oauth_email_validation_failed', {
+                    ...getAuthEmailLogContext(email),
+                    reason: emailValidation.reason,
+                    provider: getAuthProviderLogValue(account?.provider),
+                });
+
+                // Log failed attempt
+                await logFailedLogin(email, `invalid_email: ${emailValidation.reason}`, 'google').catch(err =>
+                    logAuthFailure('oauth_invalid_email_login_log_failed', err, {
                         ...getAuthEmailLogContext(email),
                         reason: emailValidation.reason,
-                        provider: getAuthProviderLogValue(account?.provider),
-                    });
+                        provider: 'google',
+                    })
+                );
 
-                    // Log failed attempt
-                    await logFailedLogin(email, `invalid_email: ${emailValidation.reason}`, 'google').catch(err =>
-                        logAuthFailure('oauth_invalid_email_login_log_failed', err, {
-                            ...getAuthEmailLogContext(email),
-                            reason: emailValidation.reason,
-                            provider: 'google',
-                        })
-                    );
-
-                    return '/unauthorized?error=' + encodeURIComponent(emailValidation.reason || 'Invalid email address');
-                }
+                return '/unauthorized?error=' + encodeURIComponent(emailValidation.reason || 'Invalid email address');
             }
 
             if (user && !('isVerified' in user)) {
@@ -168,7 +174,7 @@ export const authOptions: NextAuthOptions = {
                 // They'll complete onboarding via payment flow
                 if (!dbUser) {
                     // Create minimal user record for OAuth users
-                    const newUser = {
+                    const newUser: AuthBootstrapUserInput = {
                         email: email,
                         name: user.name || email.split('@')[0],
                         image: user.image || '',
@@ -461,17 +467,15 @@ export const authOptions: NextAuthOptions = {
     ]
 }
 
-export const signOutSession = (callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN) => {
-    return new Promise((res, rej) => {
-        signOutFirebaseAuth()
-            .then(() => {
-                signOut({ redirect: true, callbackUrl })
-                res(true)
-            }).catch((error) => {
-                logAuthFailure('auth_signout_failed', error);
-                rej(error)  // Pass error for proper handling
-            })
-    })
+export const signOutSession = async (callbackUrl: string = NAVIGARIONS_ROUTINGS.SIGNIN): Promise<true> => {
+    try {
+        await signOutFirebaseAuth();
+        await signOut({ redirect: true, callbackUrl });
+        return true;
+    } catch (error) {
+        logAuthFailure('auth_signout_failed', error);
+        throw error;
+    }
 }
 
 const getEntityBlockSnapshot = async (collectionName: string, id?: string | number | null) => {
@@ -484,7 +488,7 @@ const getEntityBlockSnapshot = async (collectionName: string, id?: string | numb
             collectionName,
             ...getBoundedAuthStringContext('entityId', id),
         });
-        return null;
+        throw error;
     }
 };
 
@@ -502,7 +506,7 @@ const applyInheritedBlockState = async (dbUser: any): Promise<any> => {
     const tenant = await getEntityBlockSnapshot(DB_COLLECTIONS.TENANTS, dbUser.tenantId);
     const tenantProductId = normalizeAuthProductId((tenant as any)?.pId)
         || normalizeAuthProductId((tenant as any)?.productId);
-    if (isPlatformEntityBlocked(tenant)) {
+    if (tenant && isPlatformEntityBlocked(tenant)) {
         return {
             ...dbUser,
             pId: normalizeAuthProductId(dbUser.pId) || tenantProductId || DEFAULT_PRODUCT_ID,
@@ -526,7 +530,7 @@ const applyInheritedBlockState = async (dbUser: any): Promise<any> => {
         || tenantProductId
         || DEFAULT_PRODUCT_ID;
 
-    if (isPlatformEntityBlocked(store)) {
+    if (store && isPlatformEntityBlocked(store)) {
         return {
             ...dbUser,
             pId: resolvedProductId,

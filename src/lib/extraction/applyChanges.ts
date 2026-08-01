@@ -878,6 +878,9 @@ export async function applyExtractionChanges(
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
 
             try {
+                if (session.sId == null || session.tId == null) {
+                    throw new Error('menu_review_apply_business_attributes_scope_missing');
+                }
                 const storeRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(session.sId));
                 const storeSnap = await getDoc(storeRef);
                 const storeData = storeSnap.exists() ? storeSnap.data() : null;

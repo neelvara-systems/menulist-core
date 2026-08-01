@@ -8,6 +8,7 @@ import type {
     SaveRoleInput,
     StaffListResponse,
     StaffMutationResponse,
+    StaffMutationWithUserResponse,
     UpdateStaffInput,
 } from "./types";
 import { logStaffClientFailure } from "./diagnostics";
@@ -73,6 +74,8 @@ const isStaffStoreOptionResponse = (value: unknown): boolean => (
         && typeof role.id === "string"
         && role.id.length > 0
         && typeof role.name === "string"
+        && isRecord(role.permissions)
+        && Object.values(role.permissions).every((permission) => typeof permission === "boolean")
     ))
 );
 
@@ -286,7 +289,7 @@ export const fetchStaffUsers = async (tenantId: number, storeId: number) => {
 };
 
 export const createStaffUser = async (payload: CreateStaffInput) => {
-    return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff", {
+    return parseStaffResponse<StaffMutationWithUserResponse>(await fetch("/api/staff", {
         ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
@@ -299,7 +302,7 @@ export const createStaffUser = async (payload: CreateStaffInput) => {
 };
 
 export const updateStaffUser = async (payload: UpdateStaffInput) => {
-    return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff", {
+    return parseStaffResponse<StaffMutationWithUserResponse>(await fetch("/api/staff", {
         ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
@@ -318,7 +321,7 @@ export const removeStaffFromStore = async (payload: RemoveStaffInput) => {
         userId: payload.userId,
     });
 
-    return parseStaffResponse<StaffMutationResponse>(await fetch(`/api/staff?${params.toString()}`, {
+    return parseStaffResponse<StaffMutationWithUserResponse>(await fetch(`/api/staff?${params.toString()}`, {
         ...STAFF_CLIENT_REQUEST_POLICY,
         method: "DELETE",
     }), "staff_mutation", {
@@ -329,7 +332,7 @@ export const removeStaffFromStore = async (payload: RemoveStaffInput) => {
 };
 
 export const requestStaffPasswordReset = async (payload: ResetStaffPasswordInput) => {
-    return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff/password-reset", {
+    return parseStaffResponse<StaffMutationWithUserResponse>(await fetch("/api/staff/password-reset", {
         ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },
@@ -342,7 +345,7 @@ export const requestStaffPasswordReset = async (payload: ResetStaffPasswordInput
 };
 
 export const forceSignOutStaffUser = async (payload: ForceSignOutStaffInput) => {
-    return parseStaffResponse<StaffMutationResponse>(await fetch("/api/staff/force-signout", {
+    return parseStaffResponse<StaffMutationWithUserResponse>(await fetch("/api/staff/force-signout", {
         ...STAFF_CLIENT_REQUEST_POLICY,
         body: JSON.stringify(payload),
         headers: { "Content-Type": "application/json" },

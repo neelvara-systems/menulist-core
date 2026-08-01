@@ -12,14 +12,69 @@ const normalizeProjectSlug = (value: unknown): string => (
     typeof value === "string" ? value.trim().toLowerCase() : ""
 );
 
+const readOwnDataField = (
+    value: unknown,
+    key: string,
+): { ok: true; value: unknown } | { ok: false } => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return { ok: false };
+    }
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor) return { ok: true, value: undefined };
+        return "value" in descriptor
+            ? { ok: true, value: descriptor.value }
+            : { ok: false };
+    } catch {
+        return { ok: false };
+    }
+};
+
+const previousSlugsClaim = (
+    value: unknown,
+    normalizedSlug: string,
+): { ok: boolean; claimed: boolean } => {
+    if (value === undefined) return { ok: true, claimed: false };
+    if (!Array.isArray(value)) return { ok: true, claimed: false };
+    try {
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+        const length = lengthDescriptor && "value" in lengthDescriptor
+            ? lengthDescriptor.value
+            : undefined;
+        if (!Number.isSafeInteger(length) || length < 0 || length > 1_000) {
+            return { ok: false, claimed: true };
+        }
+        for (let index = 0; index < length; index += 1) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+            if (descriptor && !("value" in descriptor)) return { ok: false, claimed: true };
+            if (
+                descriptor
+                && "value" in descriptor
+                && normalizeProjectSlug(descriptor.value) === normalizedSlug
+            ) {
+                return { ok: true, claimed: true };
+            }
+        }
+        return { ok: true, claimed: false };
+    } catch {
+        return { ok: false, claimed: true };
+    }
+};
+
 const projectDeletionTimeMillis = (value: unknown): number | null => {
-    if (value instanceof Date) {
-        const millis = value.getTime();
-        return Number.isFinite(millis) ? millis : null;
+    try {
+        if (value instanceof Date) {
+            const millis = Date.prototype.getTime.call(value);
+            return Number.isFinite(millis) ? millis : null;
+        }
+    } catch {
+        return null;
     }
 
     if (!value || typeof value !== "object") return null;
-    const toMillis = (value as { toMillis?: unknown }).toMillis;
+    const toMillisField = readOwnDataField(value, "toMillis");
+    if (!toMillisField.ok) return null;
+    const toMillis = toMillisField.value;
     if (typeof toMillis !== "function") return null;
 
     try {
@@ -35,17 +90,24 @@ export const isRecentlyDeletedProjectSlugReservation = (
     proposedSlug: string,
     cutoffMillis: number,
 ): boolean => {
-    if (!candidate || typeof candidate !== "object" || candidate.deleted !== true) return false;
+    const normalized = normalizeProjectSlug(proposedSlug);
+    if (!normalized || !Number.isFinite(cutoffMillis)) return false;
 
-    const deletedAtMillis = projectDeletionTimeMillis(candidate.deletedAt);
+    const deleted = readOwnDataField(candidate, "deleted");
+    if (!deleted.ok) return true;
+    if (deleted.value !== true) return false;
+
+    const deletedAt = readOwnDataField(candidate, "deletedAt");
+    if (!deletedAt.ok) return true;
+    const deletedAtMillis = projectDeletionTimeMillis(deletedAt.value);
     if (deletedAtMillis === null || deletedAtMillis < cutoffMillis) return false;
 
-    const normalized = normalizeProjectSlug(proposedSlug);
-    if (!normalized) return false;
-    if (normalizeProjectSlug(candidate.slug) === normalized) return true;
+    const slug = readOwnDataField(candidate, "slug");
+    const previousSlugs = readOwnDataField(candidate, "previousSlugs");
+    if (!slug.ok || !previousSlugs.ok) return true;
+    if (normalizeProjectSlug(slug.value) === normalized) return true;
 
-    return Array.isArray(candidate.previousSlugs)
-        && candidate.previousSlugs.some((slug) => normalizeProjectSlug(slug) === normalized);
+    return previousSlugsClaim(previousSlugs.value, normalized).claimed;
 };
 
 /**
@@ -60,12 +122,21 @@ export const isProjectSlugClaimed = (
     const normalized = normalizeProjectSlug(proposedSlug);
     if (!normalized) return false;
 
-    return Object.entries(projects).some(([projectId, summary]) => {
-        if (projectId === excludeProjectId || !summary || typeof summary !== "object") return false;
-        if (normalizeProjectSlug(summary.slug) === normalized) return true;
-        return Array.isArray(summary.previousSlugs)
-            && summary.previousSlugs.some((slug) => normalizeProjectSlug(slug) === normalized);
-    });
+    try {
+        const entries = Object.entries(projects);
+        if (entries.length > 10_000) return true;
+        return entries.some(([projectId, summary]) => {
+            if (projectId === excludeProjectId || !summary || typeof summary !== "object") return false;
+            const slug = readOwnDataField(summary, "slug");
+            const previousSlugs = readOwnDataField(summary, "previousSlugs");
+            if (!slug.ok || !previousSlugs.ok) return true;
+            if (normalizeProjectSlug(slug.value) === normalized) return true;
+            const previousClaim = previousSlugsClaim(previousSlugs.value, normalized);
+            return !previousClaim.ok || previousClaim.claimed;
+        });
+    } catch {
+        return true;
+    }
 };
 
 export const resolveAvailableProjectSlug = (
@@ -74,13 +145,22 @@ export const resolveAvailableProjectSlug = (
     stableSuffix: string,
     excludeProjectId?: string,
 ): string => {
-    if (!isProjectSlugClaimed(projects, proposedSlug, excludeProjectId)) return proposedSlug;
+    const canonicalProposedSlug = normalizeProjectSlug(proposedSlug)
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 120)
+        .replace(/-+$/g, "")
+        || "menu";
+    if (!isProjectSlugClaimed(projects, canonicalProposedSlug, excludeProjectId)) {
+        return canonicalProposedSlug;
+    }
 
     const normalizedSuffix = normalizeProjectSlug(stableSuffix)
         .replace(/[^a-z0-9-]+/g, "-")
         .replace(/^-+|-+$/g, "")
         .slice(-24);
-    const base = proposedSlug.replace(/-+$/g, "") || "menu";
+    const base = canonicalProposedSlug.replace(/-+$/g, "") || "menu";
     const firstCandidate = `${base}-${normalizedSuffix || "copy"}`;
     if (!isProjectSlugClaimed(projects, firstCandidate, excludeProjectId)) return firstCandidate;
 

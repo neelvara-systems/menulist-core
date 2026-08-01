@@ -880,7 +880,17 @@ function verifyClientRuntime() {
   assertIncludes(designCueContext, "hasLocality", "Design Cue context tracks confirmed locality");
   assertIncludes(designCueContext, "hasContactLine", "Design Cue context tracks confirmed contact");
   assertIncludes(designCueContext, "brandAvoidList", "Design Cue context tracks Brand Playbook avoid list");
-  assertIncludes(designCueIntent, "resolveFreeTextAction", "Design Cue deterministic free-text resolver");
+  assertIncludes(designCueIntent, "resolveCampaignCueDesignCueFreeTextAction", "Design Cue deterministic free-text resolver");
+  assert(
+    designCueIntent.indexOf("whatsapp ready|ready for whatsapp|whatsapp pack")
+      < designCueIntent.indexOf("whatsapp|phone|call|contact|booking"),
+    "Design Cue WhatsApp-ready intent must precede generic contact intent",
+  );
+  assert(
+    designCueIntent.indexOf("print ready|ready for print|poster ready|flyer ready")
+      < designCueIntent.indexOf("poster|print|flyer"),
+    "Design Cue print-ready intent must precede generic resize intent",
+  );
   assertIncludes(designCueIntent, "buildCampaignCueDesignCueUnsupportedPatch", "Design Cue unknown requests fail closed");
   assertIncludes(designCuePatches, "missing-location", "Design Cue missing location creates review finding");
   assertIncludes(designCuePatches, "missing-contact", "Design Cue missing contact creates review finding");
@@ -1825,6 +1835,9 @@ function verifyDocsAlignment() {
   assertIncludes(publicMobileNavigation, "delete document.body.dataset.campaigncueMobileMenu", "CampaignCue mobile drawer clears body open state");
   assertIncludes(publicMobileNavigation, "createPortal", "CampaignCue mobile drawer portals outside the sticky nav container");
   assertIncludes(publicMobileNavigation, "event.key === \"Escape\"", "CampaignCue mobile drawer supports Escape close");
+  assertIncludes(publicMobileNavigation, "closeButtonRef.current?.focus()", "CampaignCue mobile drawer moves focus into the dialog");
+  assertIncludes(publicMobileNavigation, "event.key !== \"Tab\"", "CampaignCue mobile drawer traps keyboard focus");
+  assertIncludes(publicMobileNavigation, "triggerRef.current?.focus()", "CampaignCue mobile drawer restores trigger focus");
   assertIncludes(publicMobileNavigation, "onClick={openDrawer}", "CampaignCue mobile hamburger opens from click/tap activation");
   assertNotIncludes(publicMobileNavigation, "onTouchStart={openDrawer}", "CampaignCue mobile hamburger avoids touchstart/click double activation");
   assertIncludes(publicMobileNavigation, "CAMPAIGNCUE_WEBSITE_FEATURE_PATHS", "CampaignCue mobile drawer uses product feature paths");

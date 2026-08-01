@@ -472,7 +472,7 @@ const sanitizeStaffUser = (
     const rawStoreIds = Array.isArray(data?.storeIds)
         ? data.storeIds
             .map(normalizeStaffScopeNumericId)
-            .filter((storeId): storeId is number => storeId !== null)
+            .filter((storeId: number | null): storeId is number => storeId !== null)
         : rawStores.map((store) => store.storeId);
     const storeIds = rawStoreIds.filter(canShowStore);
     const normalizedDefaultStoreId = normalizeStaffScopeNumericId(data?.storeId);
@@ -525,6 +525,10 @@ const sanitizeStoreOption = (store: StoreDataType): StaffStoreOption => ({
         description: role.description,
         id: role.id,
         name: role.name,
+        permissions: normalizeRolePermissions(
+            role.permissions,
+            DEFAULT_ROLE_METADATA[role.id as keyof typeof DEFAULT_ROLE_METADATA]?.permissions,
+        ),
     })),
     storeId: normalizeStaffScopeNumericId(store?.storeId) || 0,
     tenantId: normalizeStaffScopeNumericId(store?.tenantId) || 0,
@@ -1021,6 +1025,10 @@ export const createStaffUser = async (
     request: NextRequest,
     session: any,
 ) => {
+    if (!FEATURE_FLAGS.ENABLE_SERVER_STAFF_CREATION) {
+        return jsonError("Feature disabled", 404, "FEATURE_DISABLED");
+    }
+
     const rateLimit = await applyRateLimit(request, session, "AUTH_SENSITIVE", "staff-create");
     if (rateLimit) return rateLimit;
     const actorId = resolveCurrentSessionUserDocumentId(session);

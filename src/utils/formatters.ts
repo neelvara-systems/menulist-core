@@ -34,18 +34,22 @@ export const useFormatCurrency = () => {
    * @returns Formatted currency string
    */
   return (amount: number | undefined, currency = 'USD'): string => {
-    if (amount === undefined || amount === null) return '-';
+    if (amount === undefined || amount === null || !Number.isFinite(amount)) return '-';
 
     // Convert cents to the base unit (dollars, euros, etc.)
     const baseAmount = amount / 100;
 
     // Use next-intl formatter to respect all user preferences
-    return formatter.number(baseAmount, {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    try {
+      return formatter.number(baseAmount, {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    } catch {
+      return '-';
+    }
   };
 };
 
@@ -58,7 +62,7 @@ export const useFormatCurrency = () => {
  * @returns Formatted currency string
  */
 export const formatCurrency = (amount: number | undefined, currency = 'USD', locale?: string): string => {
-  if (amount === undefined || amount === null) return '-';
+  if (amount === undefined || amount === null || !Number.isFinite(amount)) return '-';
 
   // Try to get locale from cookie if not provided
   if (!locale) {
@@ -72,12 +76,16 @@ export const formatCurrency = (amount: number | undefined, currency = 'USD', loc
   locale = normalizeLocalePreference(locale) || defaultLocale;
 
   // Convert cents to the base unit and format
-  return new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount / 100);
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount / 100);
+  } catch {
+    return '-';
+  }
 };
 
 export const formatNumber = (
@@ -103,7 +111,7 @@ export const formatInrAmount = (
   amount: number | undefined,
   options: Intl.NumberFormatOptions = {},
 ): string => {
-  if (amount === undefined || amount === null || Number.isNaN(Number(amount))) return '-';
+  if (amount === undefined || amount === null || !Number.isFinite(amount)) return '-';
 
   return new Intl.NumberFormat('en-IN', {
     currency: 'INR',
@@ -117,7 +125,7 @@ export const formatInrAmount = (
 export const formatInrPaise = (
   paise: number | undefined,
   options: Intl.NumberFormatOptions = {},
-): string => formatInrAmount((paise || 0) / 100, options);
+): string => formatInrAmount((paise === undefined ? 0 : paise) / 100, options);
 
 /**
  * Get user's date format preference or fall back to default
@@ -154,7 +162,7 @@ export const getUserTimeFormatOptions = (): DateTimeFormatOptions => {
  * @returns Formatted time string with seconds unit
  */
 export const formatProcessingTime = (milliseconds: number, decimals = 2): string => {
-  if (milliseconds === undefined || milliseconds === null) return '-';
+  if (milliseconds === undefined || milliseconds === null || !Number.isFinite(milliseconds)) return '-';
   return `${(milliseconds / 1000).toFixed(decimals)}s`;
 };
 

@@ -1,28 +1,32 @@
 import FormElementWrapper from "@atoms/formElementWrapper"
+import { DEFAULT_ROLE_IDS } from "@data/shared/defaultRoles"
+import { applyStaffStoreRole } from "@lib/staffManagement/formMappingBoundary"
+import { OWNER_ACCESS_NOT_TRANSFER_COPY } from "@lib/staffManagement/ownershipTransferBoundary"
+import type { StaffFormUser, StaffStoreOption } from "@lib/staffManagement/types"
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider"
-import { UserDataType } from "@type/platform/user"
-import { removeObjRef } from "@util/utils"
 import { Alert, Flex, Select } from "antd"
 import { useContext } from "react"
-import { DEFAULT_ROLE_IDS } from "@data/shared/defaultRoles"
-import { OWNER_ACCESS_NOT_TRANSFER_COPY } from "@lib/staffManagement/ownershipTransferBoundary"
 
-function RolesMapping({ disabled = false, staffStores = [], userDetails, onChangeValue }) {
+type RolesMappingProps = {
+    disabled?: boolean;
+    onChangeValue: (from: string, value: unknown) => void;
+    staffStores?: StaffStoreOption[];
+    userDetails: StaffFormUser;
+};
+
+function RolesMapping({ disabled = false, staffStores = [], userDetails, onChangeValue }: RolesMappingProps) {
 
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const activeStoreRoles = staffStores.find((store) => store.storeId == storeDetails?.storeId)?.roles || storeDetails?.roles || [];
 
     // Get user's current role for this store
-    const userStoreMapping = userDetails?.stores?.find(s => s.storeId == storeDetails?.storeId);
+    const userStoreMapping = userDetails.stores.find((store) => store.storeId === storeDetails?.storeId);
     const currentRole = userStoreMapping?.role || '';
 
-    const onChangeRoleValue = (value) => {
-        const userCopy: UserDataType = removeObjRef(userDetails);
-        const index = userDetails.stores.findIndex(s => s.storeId == storeDetails?.storeId);
-        if (index !== -1) {
-            userCopy.stores[index].role = value;  // Single role per store
-        }
-        onChangeValue('user', userCopy)
+    const onChangeRoleValue = (value: string | undefined) => {
+        const index = userDetails.stores.findIndex((store) => store.storeId === storeDetails?.storeId);
+        const nextUser = applyStaffStoreRole(userDetails, index, value || '');
+        if (nextUser) onChangeValue('user', nextUser);
     }
 
     return (

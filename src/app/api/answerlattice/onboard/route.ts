@@ -132,6 +132,27 @@ type AnswerlatticeOnboardingResumeScope = AnswerlatticeProvisioningScope & {
     storeName: string;
 };
 
+type AnswerlatticePendingSubscriptionSummary = {
+    amount: number;
+    creditsLastResetMonth: number;
+    currency: FirestoreSubscriptionDoc['currency'];
+    id: string;
+    isBeta: false;
+    monthlyCredits: number;
+    monthlyCreditsAllowance: number;
+    pId: typeof PRODUCT_IDS.ANSWERLATTICE;
+    planId: string;
+    planName: string;
+    providerSubscriptionId: string;
+    sId: number;
+    shortUrl: string;
+    status: 'pending';
+    subscriptionEndDate: null;
+    tId: number;
+    topUpCredits: number;
+    updatedAt: FirebaseFirestore.Timestamp;
+};
+
 const isPlainRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
@@ -963,7 +984,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     startedAtMillis: attemptStartedAtMillis,
                     storeId: result.storeId,
                     tenantId: result.tenantId,
-                }).catch(() => null);
+                }).catch((): null => null);
                 if (!razorpaySubscription) throw providerError;
             }
         }
@@ -989,6 +1010,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             throw new Error('answerlattice_onboarding_provider_total_count_invalid');
         }
         const shortUrl = normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url) || '';
+        const creditsLastResetMonth = new Date().getFullYear() * 100 + (new Date().getMonth() + 1);
         const subscriptionPayload: Omit<FirestoreSubscriptionDoc, 'id'> = {
             paymentProvider: 'razorpay',
             providerSubscriptionId,
@@ -1021,7 +1043,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             monthlyCreditsAllowance: monthlyCredits,
             monthlyCredits,
             topUpCredits: 0,
-            creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
+            creditsLastResetMonth,
             shortUrl,
             paymentMethod: { type: '', brand: '', last4: '', upiId: '', upiTransactionId: '' },
             statuses: [{
@@ -1036,9 +1058,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             billingMode: 'auto',
             onboardingSource: 'ANSWERLATTICE_ONBOARDING',
         };
-        const subscriptionSummary = {
+        const subscriptionSummary: AnswerlatticePendingSubscriptionSummary = {
             amount: price,
-            creditsLastResetMonth: subscriptionPayload.creditsLastResetMonth,
+            creditsLastResetMonth,
             currency,
             id: providerSubscriptionId,
             isBeta: false,

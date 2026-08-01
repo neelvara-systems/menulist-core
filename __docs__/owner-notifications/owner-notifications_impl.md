@@ -13,6 +13,12 @@ July 21 retry/digest product-boundary follow-up: MenuList Functions retry now qu
 
 July 28 persisted-boundary and ambiguous-delivery correction: app and Functions processors project every stored event through the byte-identical runtime contract before scope reads, counters, templates, or provider calls. The contract proves exact product/scope identity, deterministic dedupe, registry fields, bounded metadata/source, Firestore timestamps, processing attempts, and total event size. Persisted rate-limit counters likewise require exact product/date/scope-or-recipient identity, a non-negative safe-integer count, and a Firestore timestamp; malformed rows fail closed instead of being numerically coerced. A deterministic delivery row is transactionally claimed as `sending` before SMTP or WhatsApp is invoked and finalized only when the same event, product, channel, recipient hash, attempt, `createdAt`, and `sending` state still match. A terminal row converges without a provider replay. A pre-existing `sending` row is deliberately treated as an ambiguous provider outcome and is never automatically resent; this is duplicate prevention with explicit reconciliation, not provider-level exactly-once delivery.
 
+July 29 formatter follow-up: owner/store locale tags are verified with the
+server `Intl` runtime before they enter date or money formatting. An invalid
+hyphenated tag falls back to `en-IN` just like an absent or unsupported
+setting, so malformed legacy settings cannot abort notification rendering or
+delivery.
+
 The Functions retry path also queries at most 20 exact-MenuList `processing` events whose `processingStartedAt` is at least 15 minutes old. Each row is transactionally re-read and revalidated before being moved to terminal `failed` with the stable `owner_notification_processing_outcome_ambiguous` code and an error diagnostic. This makes a crashed post-claim execution visible without guessing whether the provider accepted the message.
 
 Retry bookkeeping is part of the persisted event boundary. `retryCount` admits only exact `0` or `1`, `retriedAt` must be a Firestore timestamp and cannot exist without `retryCount: 1`, and the bounded failed-event query projects the complete row before attempting it. After processing, a transaction re-reads the event and records the retry only when the deterministic event/registry identity still matches, the second processing attempt has settled, and another worker has not already recorded it. Raw or stale query data cannot consume the retry budget or mutate a non-owning claim.
@@ -50,6 +56,11 @@ June 28 follow-up, updated July 5: the MenuList Next lifecycle wrapper (`src/lib
 July 5 SMTP follow-up: app-side owner-notification email delivery (`src/lib/owner-notifications/channels/email.ts`) uses `src/lib/notifications/smtpConfig.ts`, the same explicit SMTP config helper used by root lifecycle and generic notification sends. Missing, malformed, or out-of-range `SMTP_PORT` returns `smtp_not_configured` before a transporter is created; valid SMTP credentials, templates, recipient resolution, delivery rows, WhatsApp delivery, and recovery tooling are unchanged.
 
 July 5 template-output follow-up: MenuList owner notification templates now normalize owner-visible text, strip control characters from subject/text values, validate rendered email links as `http:`/`https:`, and map publish-health failure codes plus `menulist.menu_stale` reason metadata to fixed owner copy before rendering. Arbitrary `metadata.failureReason` and `metadata.reason` text are no longer printed into owner-facing email or manual handoff copy. The lifecycle template mirrors in `src/lib/messaging/templates.ts` and `functions/src/messaging/templates.ts` use the same HTML metadata escaping and email-link validation boundary, preserving existing delivery, dedupe, rate-limit, and recovery behavior.
+
+July 29 URL-boundary follow-up: MenuList and Answerlattice owner templates and
+both lifecycle mirrors require credential-free HTTP(S) links. Parsed URLs with
+a username or password are omitted before HTML/text rendering; ordinary
+credential-free links retain the existing behavior.
 
 July 5 Answerlattice template-output follow-up: Answerlattice owner notification templates now use the same bounded app-side rendering boundary for owner-visible metadata. Product/workspace/source/topic text is normalized and capped, action links render only when they parse as `http:` or `https:`, and widget/source-sync/high-priority failure metadata maps to fixed owner copy before email/text output. Arbitrary `metadata.failureReason` and `metadata.reason` strings are no longer printed into Answerlattice owner notification bodies.
 

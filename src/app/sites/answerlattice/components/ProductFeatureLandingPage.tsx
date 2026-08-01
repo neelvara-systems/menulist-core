@@ -65,6 +65,10 @@ const FEATURE_EVALUATION_ITEMS = [
     },
 ];
 
+const FEATURE_ASSET_SLOT_IDS: Record<string, string> = {
+    'knowledge-base': 'product.article-topic-map',
+};
+
 function FeatureHeroMockup({ feature }: { feature: AnswerlatticeProductFeature }) {
     const asset = ANSWERLATTICE_FEATURE_ASSETS[feature.slug];
 
@@ -72,7 +76,7 @@ function FeatureHeroMockup({ feature }: { feature: AnswerlatticeProductFeature }
         <div className="relative mx-auto w-full max-w-xl rounded-[2rem] border border-white/[0.08] bg-[#09091a] p-2 shadow-2xl shadow-black/35 sm:p-3">
             <AnswerlatticeAssetImage
                 asset={asset}
-                assetSlotId="feature.template.hero-scene"
+                assetSlotId={FEATURE_ASSET_SLOT_IDS[feature.slug] || 'feature.template.hero-scene'}
                 assetRole={feature.slug}
                 className="rounded-[1.45rem] border border-white/[0.08]"
             />

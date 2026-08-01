@@ -140,6 +140,22 @@ function verifyOpsRoute(route) {
   ].forEach((token) => assertNotIncludes(route, token, 'Platform notification ops API route'));
 }
 
+function verifyClassifier(classifier) {
+  [
+    'metadata?: Record<string, unknown>;',
+    'const PLATFORM_NOTIFICATION_PRODUCT_IDS = new Set<PlatformNotificationProductId>',
+    'const PLATFORM_NOTIFICATION_CATEGORIES = new Set<PlatformNotificationCategory>',
+    'normalizeProductId(alert.metadata?.productId, entry.productId)',
+    'normalizeCategory(alert.metadata?.category, entry.category)',
+    'normalizeSeverity(alert.severity, entry.severity)',
+  ].forEach((token) => assertIncludes(classifier, token, 'Platform notification classifier'));
+
+  [
+    'metadata?: Record<string, any>;',
+    "severity: normalizeSeverity(alert.severity || entry.severity)",
+  ].forEach((token) => assertNotIncludes(classifier, token, 'Platform notification classifier'));
+}
+
 function verifyMonitor(monitor, responseHelper) {
   [
     "platformRole === 'PLATFORM'",
@@ -225,6 +241,7 @@ function verifyPlatformNotificationsBoundary() {
     functionsRegistry: read('functions/src/sharedData/platformNotificationRegistry.ts'),
     firestoreDocumentId: read('src/lib/firebase/firestoreDocumentId.ts'),
     route: read('src/app/api/ops/platform-notifications/route.ts'),
+    classifier: read('src/lib/ops/platformNotificationClassifier.ts'),
     monitor: read('src/components/templates/main-app/platform/platformNotificationMonitor/index.tsx'),
     responseHelper: read('src/lib/ops/platformNotificationClientResponse.ts'),
     opsDoc: read('__docs__/ops-control-room/ops-control-room_impl.md'),
@@ -234,6 +251,7 @@ function verifyPlatformNotificationsBoundary() {
   verifyRegistryMirror(files.appRegistry, files.functionsRegistry);
   verifyFirestoreDocumentIdHelper(files.firestoreDocumentId);
   verifyOpsRoute(files.route);
+  verifyClassifier(files.classifier);
   verifyMonitor(files.monitor, files.responseHelper);
   verifyDocsAndPackage(files.packageJson, files.opsDoc, files.auditDoc);
 

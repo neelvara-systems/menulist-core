@@ -2,25 +2,38 @@ import DrawerElement from "@antdComponent/drawerElement";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { saveRoleDefinition } from "@lib/staffManagement/client";
 import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
+import { mergeStaffRolesForCurrentStore } from "@lib/staffManagement/formMappingBoundary";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast, showWarningToast } from "@reduxSlices/toast";
 import RolesPermissionForm from "@template/platform/stores/rolesPermissionForm";
 import { StoreRoleDataType } from "@type/platform/roles";
+import type { StoreDataType } from "@type/platform/store";
 import { objectNullCheck, removeObjRef } from "@util/utils";
 import { Button, Flex, Input, Switch, Typography, theme } from "antd";
 import { useContext, useEffect, useState } from "react";
 const { Text, Title } = Typography;
 
-const getDesktopRoleDetailsLogContext = (storeDetails: any, roleData?: StoreRoleDataType) => ({
+type RoleDraft = Pick<StoreRoleDataType, 'active' | 'description' | 'name' | 'permissions'> & {
+    id?: string;
+};
+
+type RoleDetailsModalProps = {
+    modalData: { active: boolean; data: StoreRoleDataType | null };
+    onClose: (store: StoreDataType | null) => void;
+    storeDetails: StoreDataType | null;
+};
+
+const getDesktopRoleDetailsLogContext = (storeDetails: StoreDataType | null, roleData?: RoleDraft | null) => ({
     ...getBoundedStaffStringContext('storeId', storeDetails?.storeId),
     ...getBoundedStaffStringContext('tenantId', storeDetails?.tenantId),
     ...getBoundedStaffStringContext('roleId', roleData?.id),
     ...getBoundedStaffStringContext('roleName', roleData?.name),
 });
 
-function RoleDetailsModal({ storeDetails, modalData, onClose }) {
+function RoleDetailsModal({ storeDetails, modalData, onClose }: RoleDetailsModalProps) {
 
-    const [roleData, setRoleData] = useState<StoreRoleDataType>(modalData?.data);
+    const [roleData, setRoleData] = useState<RoleDraft | null>(modalData.data);
+    const [isSaving, setIsSaving] = useState(false);
     const { setStoreDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const dispatch = useAppDispatch()
     const { token } = theme.useToken();
@@ -34,22 +47,27 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
                     description: "",
                     name: "",
                     permissions: {},
-                } as StoreRoleDataType)
+                })
         } else {
             setRoleData(null)
         }
     }, [modalData])
 
-    const onCancel = (data) => {
+    const onCancel = (data: StoreDataType | null) => {
         onClose(data)
     }
 
     const addUpdateDetails = async () => {
+        if (isSaving || !storeDetails?.storeId || !storeDetails.tenantId) return;
         if (!roleData?.name?.trim()) {
             dispatch(showWarningToast("Role name is required"))
             return
         }
 
+        setIsSaving(true);
+        const expectedTenantId = storeDetails.tenantId;
+        const expectedStoreId = storeDetails.storeId;
+        const sourceRoles = storeDetails.roles;
         try {
             const response = await saveRoleDefinition({
                 role: {
@@ -62,20 +80,26 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
             })
-            onCancel({ ...storeDetails, roles: response.roles })
-            setStoreDetails({ ...storeDetails, roles: response.roles })
+            setStoreDetails((currentStore) => mergeStaffRolesForCurrentStore(
+                currentStore,
+                expectedTenantId,
+                expectedStoreId,
+                sourceRoles,
+                response.roles,
+            ))
+            onCancel(null)
             dispatch(showSuccessToast(objectNullCheck(modalData, 'data') ? "Role updated" : "Role added"))
         } catch (err) {
             logStaffClientFailure('desktop_staff_role_save_failed', err, getDesktopRoleDetailsLogContext(storeDetails, roleData));
             dispatch(showErrorToast("Could not save role"))
+        } finally {
+            setIsSaving(false);
         }
     }
 
-    const onChangeValue = (key, value) => {
-        let dataCopy = removeObjRef(roleData)
-        if (!dataCopy) dataCopy = {}
-        dataCopy[key] = value
-        setRoleData(dataCopy)
+    const onChangeValue = <Key extends keyof RoleDraft>(key: Key, value: RoleDraft[Key]) => {
+        if (!roleData) return
+        setRoleData({ ...roleData, [key]: value })
     }
 
     return (
@@ -85,8 +109,8 @@ function RoleDetailsModal({ storeDetails, modalData, onClose }) {
             onClose={() => onCancel(null)}
             width="min(760px, calc(100vw - 32px))"
             footerActions={[
-                <Button size="large" key="Cancel" type="default" onClick={() => onCancel(null)}>Cancel</Button>,
-                <Button size="large" key="Ok" type="primary" onClick={addUpdateDetails}>{objectNullCheck(modalData, 'data') ? 'Update Role' : 'Add Role'}</Button>
+                <Button disabled={isSaving} size="large" key="Cancel" type="default" onClick={() => onCancel(null)}>Cancel</Button>,
+                <Button loading={isSaving} size="large" key="Ok" type="primary" onClick={addUpdateDetails}>{objectNullCheck(modalData, 'data') ? 'Update Role' : 'Add Role'}</Button>
             ]}
             styles={{
                 body: { overflow: 'auto' },

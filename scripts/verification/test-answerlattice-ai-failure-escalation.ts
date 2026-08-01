@@ -108,6 +108,30 @@ assert.deepEqual(refusalWithCandidateEvidence.triggerTypes, [
     'entity_resolution_failure',
 ]);
 
+const malformedCanonicalDebugResult = canonicalResult();
+Object.defineProperty(malformedCanonicalDebugResult, 'entityDebug', {
+    configurable: true,
+    enumerable: true,
+    value: {
+            queryTokens: null,
+            candidates: null,
+            confidence: 'high',
+    },
+});
+const malformedOptionalEntityDebug = evaluateEscalation({
+    canonicalResult: malformedCanonicalDebugResult,
+    ragDocuments: [],
+    searchQuery: 'Why did this fail?',
+    answerWasEmpty: true,
+});
+assert.equal(
+    malformedOptionalEntityDebug.escalationSuggested,
+    true,
+    'Malformed optional entity telemetry must not suppress a real escalation decision',
+);
+assert.equal(malformedOptionalEntityDebug.escalationType, 'hard');
+assert.equal(malformedOptionalEntityDebug.escalationContext?.entityDebug, undefined);
+
 for (const invalidInput of [
     {
         canonicalResult: canonicalResult(),

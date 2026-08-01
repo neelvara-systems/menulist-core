@@ -165,7 +165,7 @@ export const AnswerlatticeStoredEntitySchema = z.object({
     createdBy: z.string().max(200).optional(),
     modifiedBy: z.string().max(200).optional(),
     uId: z.union([z.string(), z.number()]).optional(),
-}).passthrough();
+}).strip();
 
 export const AnswerlatticeStoredEntityRelationSchema = z.object({
     id: relationIdSchema,
@@ -175,7 +175,7 @@ export const AnswerlatticeStoredEntityRelationSchema = z.object({
     relationType: relationTypeSchema,
     createdOn: z.unknown().optional(),
     modifiedOn: z.unknown().optional(),
-}).passthrough();
+}).strip();
 
 export const AnswerlatticeStoredEntitySearchIndexSchema = z.object({
     id: searchIndexIdSchema,
@@ -188,7 +188,7 @@ export const AnswerlatticeStoredEntitySearchIndexSchema = z.object({
     weight: z.number().min(0.1).max(10),
     createdOn: z.unknown().optional(),
     modifiedOn: z.unknown().optional(),
-}).passthrough();
+}).strip();
 
 export const AnswerlatticeStoredEntityCandidateSchema = z.object({
     id: candidateIdSchema,
@@ -207,7 +207,7 @@ export const AnswerlatticeStoredEntityCandidateSchema = z.object({
     sourceArticleIds: z.array(articleIdSchema).max(50).optional(),
     createdOn: z.unknown().optional(),
     modifiedOn: z.unknown().optional(),
-}).passthrough();
+}).strip();
 
 export const AnswerlatticeOntologyActionResultSchema = z.object({
     success: z.literal(true),

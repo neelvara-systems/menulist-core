@@ -185,11 +185,11 @@ export type SignalDeskSourcePolicyRenewInput = z.infer<typeof SignalDeskSourcePo
 export type SignalDeskSourcePolicyContactChannel = (typeof SIGNALDESK_SOURCE_POLICY_CONTACT_CHANNELS)[number];
 
 const timestampToIso = (value: unknown): string | null => {
-    if (typeof value !== "object" || value === null || !("toDate" in value) || typeof value.toDate !== "function") {
-        return null;
-    }
     try {
-        const date = value.toDate();
+        if (typeof value !== "object" || value === null) return null;
+        const toDate = (value as { toDate?: unknown }).toDate;
+        if (typeof toDate !== "function") return null;
+        const date = toDate.call(value);
         return date instanceof Date && Number.isFinite(date.getTime()) ? date.toISOString() : null;
     } catch {
         return null;
@@ -231,7 +231,7 @@ const persistedPolicySchema = z.object({
     updatedAt: z.unknown().optional(),
 }).passthrough();
 
-export const parseSignalDeskSourcePolicyDocument = (raw: unknown, documentId: string): SignalDeskSourcePolicy => {
+const parseSignalDeskSourcePolicyDocumentUnsafe = (raw: unknown, documentId: string): SignalDeskSourcePolicy => {
     if (typeof raw !== "object" || raw === null || Array.isArray(raw)) throw new Error("SOURCE_POLICY_SHAPE_INVALID");
     const identity = raw as Record<string, unknown>;
     if (identity.pId !== SIGNALDESK_PRODUCT_CODE) throw new Error("SOURCE_POLICY_PRODUCT_MISMATCH");
@@ -326,6 +326,21 @@ export const parseSignalDeskSourcePolicyDocument = (raw: unknown, documentId: st
         termsVersion: parsed.data.termsVersion || null,
         updatedAt,
     };
+};
+
+const SOURCE_POLICY_PARSE_ERRORS = new Set([
+    "SOURCE_POLICY_IDENTITY_MISMATCH",
+    "SOURCE_POLICY_PRODUCT_MISMATCH",
+    "SOURCE_POLICY_SHAPE_INVALID",
+]);
+
+export const parseSignalDeskSourcePolicyDocument = (raw: unknown, documentId: string): SignalDeskSourcePolicy => {
+    try {
+        return parseSignalDeskSourcePolicyDocumentUnsafe(raw, documentId);
+    } catch (error) {
+        if (error instanceof Error && SOURCE_POLICY_PARSE_ERRORS.has(error.message)) throw error;
+        throw new Error("SOURCE_POLICY_SHAPE_INVALID");
+    }
 };
 
 export const sourcePolicyAllowsContactChannel = (

@@ -93,6 +93,11 @@ Related links are selected from the compact category payload already sent for ar
 - Public maps receive only title, URL, category/section labels, sanitized HTML, and a bounded outline.
 - Unknown rich-text nodes render escaped children only.
 - Heading text and IDs are bounded and escaped.
+- Public rich-text links and images use parsed URL admission. Root-relative
+  values must resolve to the fixed same-site base; absolute URLs must use an
+  allowed scheme without credentials. Protocol-relative values, backslash
+  normalization escapes, controls, credential-bearing URLs, and unsafe schemes
+  fail closed.
 
 ## Failure Behavior
 

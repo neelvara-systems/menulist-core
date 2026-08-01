@@ -14,7 +14,7 @@ Treat the code paths and `npm run verify:digital-screens-boundary` as authority.
 
 ## July 29, 2026 — Truth, Security, TV Output, And Owner Dry Run
 
-Restaurant-owner dry runs exposed four trust failures: a generated link was presented as `Running`/`Connected`; old local content could override an intentional empty/current response; 720p boards could clip rows and take too long to rotate; and custom posters could be cropped or covered by output chrome.
+Restaurant-owner dry runs exposed six trust failures: a generated link was presented as `Running`/`Connected`; old local content could override an intentional empty/current response; 720p boards could clip rows and take too long to rotate; 1080p and portrait layouts could leave columns unused or clip behind the footer; missing Firebase client setup could replace valid server-rendered truth with an error page; and custom posters could be cropped or covered by output chrome.
 
 Resolved:
 
@@ -22,12 +22,14 @@ Resolved:
 - denied direct client writes to canonical screen state and the public listener mirror;
 - replaced global screen state cache invalidation with hashed-token tags and retained store-scoped menu tags;
 - admitted browser-local content only offline and only for the same content version;
-- added compact 720p CSS, one/two/three-column packing, 12-second pages, a 500-item fallback ceiling, locale-aware prices, safe-area/QR preview, non-cropping owner artwork, non-overlapping watermarks, and expiry-time reload;
+- added measured 720p/1080p/portrait capacities, least-used fitting-column packing, 12-second pages, a 500-item fallback ceiling, locale-aware prices, two-line wide-TV item names, portrait footer clearance, safe-area/QR preview, non-cropping owner artwork, QR-safe offline status, non-overlapping watermarks, and expiry-time reload;
+- preserved valid server-rendered menu/highlight truth when the Firebase listener cannot be constructed, while showing the bounded offline state and retaining timed refresh recovery;
 - replaced status overclaims with `Link ready`, `Seen recently`, and `Check TV`;
 - removed the duplicate desktop custom-slide list, fixed the Output Center setup deep link, and removed stale store token fallbacks from desktop/mobile AI Menu Manager;
+- removed the temporary browser-audit fixture route after TV-output QA so fixture business content cannot enter the production route table;
 - added guarded dry-run/write private-control migration, Firestore emulator coverage, lifecycle behavior tests, and the dedicated source gate.
 
-The private control and Functions changes require the ordered QA migration/deploy runbook. Vercel/browser/physical-TV certification remains required because source verification cannot prove actual TV overscan, browser fullscreen behavior, or deployed cache propagation.
+Browser dry-run evidence covered Menu Board at 1280x720, 1920x1080, and 768x1024 plus Highlights owner-poster and item-promotion states. The private control and Functions changes require the ordered QA migration/deploy runbook. Authenticated owner setup, real Firebase listener/reconnect behavior, physical-TV overscan/fullscreen/QR-distance checks, and deployed cache propagation remain release evidence rather than source claims.
 
 ---
 
@@ -495,6 +497,74 @@ The predictable `platformSummary/screen_{storeId}` document previously included 
 
 ---
 
+## FINDING 15: Compiled TV Presentation And First-Frame Reliability
+
+**Severity:** CRITICAL | **Status:** ✅ IMPLEMENTED July 29, 2026
+
+**Impact:** The current Next.js/Turbopack runtime did not reliably emit the screen components' runtime styled-jsx rules. The Menu Board could therefore render as an unstyled document, and Framer Motion's server-side initial opacity could leave approved screen content blank. Highlights also allowed square owner artwork to establish a square slide height, cropping the lower part of the artwork on a landscape TV.
+
+### What Was Done
+
+- Replaced the duplicated Menu Board and Highlights styled-jsx blocks with one compiled `screenDisplay.module.scss` stylesheet.
+- Scoped global TV selectors under the compiled Menu Board or Highlights root class so Framer Motion wrapper elements receive the intended layout rules.
+- Disabled hidden first-frame motion states for menu pages, categories, rows, and Highlights slides. Transitions still work after the first approved frame is visible.
+- Anchored both roots to the viewport and positioned Highlights wrappers to exact viewport bounds.
+- Kept owner artwork on `object-fit: contain`; item photography remains full-bleed with a fixed readability overlay.
+- Standardized category cards, type hierarchy, price alignment, QR reservations, offline status, brand fallback, empty output, fullscreen recovery, and reduced-motion behavior.
+- Removed the obsolete inline style blocks and added source-verifier assertions for the compiled style and first-frame contracts.
+
+### Visual Evidence
+
+- 1280x720 Menu Board: two columns, four visible categories, aligned prices, no footer collision.
+- 1920x1080 Menu Board: deterministic content-aware columns, wrapped long names, no horizontal or viewport overflow.
+- 768x1024 portrait Menu Board: compact single-column pages with footer/progress clearance.
+- 1280x720 Highlights: owner poster, item highlight, and brand fallback all remain inside the exact TV canvas.
+- Empty Menu Board: truthful, centered fallback without loading or publishing claims.
+- 1280x720 OBP-color cross-check: a non-fallback `#2c7a67` accent reached the Menu Board header and every category frame while category text, prices, and canvas retained fixed high-contrast colors; Highlights used the same accent on the brand logo frame. Neither state overflowed the viewport.
+
+**Firebase cost impact:** $0. The change is presentation-only and adds no read, write, listener, Storage, Function, scheduler, or index.
+
+---
+
+## FINDING 16: Competitive Presentation And Screen-Distance Clarity
+
+**Severity:** HIGH (customer-facing output quality) | **Status:** ✅ IMPLEMENTED July 29, 2026
+
+**Impact:** A fixed wide-screen column count made a moderate menu look unnecessarily sparse, standard portrait output rotated one category at a time despite available space, QR destinations were visually unexplained, and the brand fallback hid the business name whenever a logo existed.
+
+### Market Evidence Reviewed
+
+- [ScreenCloud menu boards](https://screencloud.com/digital-menu-board) and [design rules](https://screencloud.com/digital-signage/design-rules): strong hierarchy, contrast, readable type, high-impact visuals for selected products, and sufficient dwell time.
+- [OptiSigns readability guidance](https://www.optisigns.com/post/stop-the-squinting-how-to-make-your-digital-menu-boards-easier-to-read): category/column structure, one aligned item-price row, restrained emphasis, and distance-readable typography.
+- [Yodeck menu-board guidance](https://www.yodeck.com/use-cases/how-to-design-digital-menu-board/): minimal clutter, clear hierarchy, strong real imagery, and explained QR use.
+- [NoviSign menu-board guidance](https://www.novisign.com/blog/solutions/howto-effective-digital-menu-board/): color-coded category structure, spacing, high-resolution imagery, and orientation-aware layouts.
+- [Samsung menu-board guidance](https://insights.samsung.com/2024/10/24/menu-board-ideas-unique-ways-to-leverage-digital-signage-for-menus/): current items/prices, daypart relevance, and branded product photography.
+- [Toast digital menu-board support](https://support.toasttab.com/en/article/Create-a-Menu-for-the-Delphi-Digital-Menu-Board): published-menu authority, automatic price updates, and item visibility/stock truth.
+
+### What Was Done
+
+- Menu Board now chooses the smallest column count that can hold the current page at the current screen capacity. Moderate 1080p menus use two balanced columns; dense menus retain three.
+- Column admission uses an exact bounded assignment rather than a greedy approximation, so category order cannot add an unnecessary column when a valid smaller layout exists.
+- Wide two-column boards use the recovered space for descriptions and screen-distance typography rather than leaving a mostly empty third column.
+- Wide descriptions appear only when every rendered column has comfortable row and category density; dense or short displays automatically stay compact.
+- Standard portrait boards use compact rows without secondary descriptions and fit two representative categories per page, reducing unnecessary rotations while preserving full names and prices.
+- Highlights QR cards now identify the destination as `Full menu`; a custom slide URL uses the neutral `Scan` label.
+- Brand fallback always shows the business name, even when the business has a logo.
+- Digital Screens now inherit the canonical normalized `store.publicPresence.accentColor` already selected for the Official Business Page.
+- The owner accent is limited to decorative screen chrome: Menu Board header/progress/category framing and Highlights logo/slide accents. The prior rotating category palette was removed so it cannot compete with the business brand. Semantic and readable colors for prices, dietary markers, category text, body text, and the dark TV canvas remain fixed.
+- Saving the nested OBP accent is now recognized as a Digital Screen output change, so the screen content version and exact token cache refresh immediately instead of waiting for the 60-second cache lifetime.
+- Offline status remains below the expanded QR reservation.
+
+### Deliberately Rejected Scope
+
+- No drag-and-drop signage editor, template marketplace, weather/social/RSS widgets, video wall, POS-specific management layer, or per-screen campaign analytics.
+- Menu Board remains the canonical business-truth surface. Food photography and owner artwork remain in Highlights, where one visual and one message can be presented clearly.
+- No Digital Screen-specific styling controls were added; the existing OBP brand color flows through automatically.
+
+**Firebase cost impact:** Rendering adds no operation, listener, Storage path, Function, scheduler, index, or dependency. Saving a changed OBP accent for an initialized screen now reuses the existing guarded screen-refresh transaction: up to 2 `platformSummary` reads and 2 writes for the canonical version and token-free public mirror. A store without an initialized screen performs the 2 guarded reads and no screen write.
+
+---
+
 ## Document History
 
 | Version | Date       | Author  | Changes                                                                                                                                                                                                                                                                                     |
@@ -514,3 +584,6 @@ The predictable `platformSummary/screen_{storeId}` document previously included 
 | 13.0    | 2026-07-01 | Codex   | **Seen-signal eligibility hardening:** Current cost baseline now includes the possible cached public store eligibility read before daily liveness writes. |
 | 14.0    | 2026-07-16 | Codex   | **End-to-end hardening:** Token-free get-only public mirror and migration guard; shared rate-limit truth; feature/permission/mobile parity; expired-slide capacity recovery; cache/index safety; retryable seen failures. |
 | 14.1    | 2026-07-16 | Codex   | **Projection consistency:** Moved summary/project projection rebuild reads into the existing invalidation transaction so concurrent menu saves retry without changing operation counts. |
+| 15.0    | 2026-07-29 | Codex   | **Compiled TV presentation:** Replaced unreliable runtime styled-jsx, guaranteed visible first frames, bounded Highlights to the viewport, and browser-verified Menu Board, poster, item, brand, portrait, and empty states. |
+| 16.0    | 2026-07-29 | Codex   | **Competitive presentation hardening:** Added exact content-aware columns, density-guarded descriptions, compact portrait paging, labeled QR destinations, and persistent business identity on brand fallback. |
+| 16.1    | 2026-07-29 | Codex   | **OBP brand continuity:** Propagated the canonical normalized OBP accent into restrained screen chrome and made accent saves refresh initialized screens immediately. |

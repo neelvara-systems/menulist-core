@@ -13,6 +13,7 @@ import { filterUnreferencedObpMediaUrls } from '@lib/media/obpMediaReferences';
 import { prepareMediaImage, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { uploadPreparedMediaImage } from '@database/storage/uploadPreparedMediaImage';
 import { getBoundedStringLogContext, logStorageHelperFailure } from '@database/storage/storageDiagnostics';
+import { normalizeStorageDeleteErrorCode } from '@lib/storage/storageDeleteBoundary';
 import { ref, deleteObject } from 'firebase/storage';
 
 /**
@@ -71,8 +72,8 @@ export async function deleteOBPPhoto(photoUrl: string): Promise<void> {
     try {
         const storageRef = ref(firebaseStorage, photoUrl);
         await deleteObject(storageRef);
-    } catch (error: any) {
-        if (error?.code === 'storage/object-not-found') {
+    } catch (error: unknown) {
+        if (normalizeStorageDeleteErrorCode(error) === 'storage/object-not-found') {
             return;
         }
         throw error;

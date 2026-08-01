@@ -35,11 +35,16 @@ const TicketActions: React.FC<TicketActionsProps> = ({ ticket, setTicket, from }
 
     const handleAttachmentOpen = (item: { url?: string; name?: string; type?: string; size?: number }) => {
         try {
+            const storeId = Number(ticket.sId);
+            const tenantId = Number(ticket.tId);
+            if (!Number.isSafeInteger(storeId) || storeId <= 0 || !Number.isSafeInteger(tenantId) || tenantId <= 0) {
+                throw new Error('answerlattice_ticket_attachment_scope_invalid');
+            }
             const trustedUrl = getSupportTicketAttachmentDownloadUrl({
                 bucket: answerlatticeApp?.options.storageBucket,
                 collection: DB_COLLECTIONS.SUPPORT_TICKETS,
-                sId: ticket.sId,
-                tId: ticket.tId,
+                sId: storeId,
+                tId: tenantId,
                 url: item.url,
             });
             if (!trustedUrl) {

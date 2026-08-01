@@ -8,7 +8,18 @@ import { applyProjectImagePreferencesToGenerationConfig, extractImagePreferenceP
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
 import { loadImageGenPreferences, saveImageGenPreferences } from '@lib/imageGenPreferences';
-import { assessItemPhotoReadiness, type ItemPhotoCaptureMode, type ItemPhotoReadinessResult } from '@lib/media/itemPhotoCaptureAssist';
+import {
+    assessItemPhotoReadiness,
+    isItemPhotoPreparationContextCurrent,
+    type ItemPhotoCaptureMode,
+    type ItemPhotoPreparationContext,
+    type ItemPhotoReadinessResult,
+} from '@lib/media/itemPhotoCaptureAssist';
+import {
+    buildItemImageTargetValue,
+    parseItemImageTargetValue,
+    resolveUniqueItemImageTarget,
+} from '@lib/media/itemImageAssociationBoundary';
 import { getMediaProfileAcceptAttribute, getSafeMediaAspectRatio } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -48,9 +59,9 @@ interface ImageUploadModalProps {
     projectData: Project;
     onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
     onBatchImagesPersist: (selections: ImageBatchProjectSelection[]) => Promise<void>;
-    itemToUpdate: ExtractedDataItem | null;
-    onImageUpload: (item: ItemForDropdown, imagesToUse?: UserUploadedFileType[]) => Promise<void>;
-    from: string;
+    itemToUpdate: (ExtractedDataItem & { fileId?: string }) | null;
+    onImageUpload: (item: ItemForDropdown, imagesToUse: UserUploadedFileType[]) => Promise<void>;
+    from?: string;
     preferredInitialTab?: 'upload' | 'generate';
     initialBatchItemIds?: string[];
     /** Multi-outlet: Item inheritance states for governance filtering */
@@ -85,7 +96,7 @@ function toDropdownItem(
     return {
         ...item,
         attributesList: Array.isArray(item.attributes) ? item.attributes.map(attr => attr.name?.[language] || attr.id || '') : [],
-        categoryName: file.extractedData.data.categories.find(cat => cat.id === item.category)?.name?.[language] || 'Uncategorized',
+        categoryName: (file.extractedData?.data?.categories ?? []).find(cat => cat.id === item.category)?.name?.[language] || 'Uncategorized',
         descriptionLine: item.description?.[language] || '',
         fileId: file.uid,
         id: item.id,
@@ -128,7 +139,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     const { token } = theme.useToken();
     const { isMobile } = useDeviceType();
     const [modalView, setModalView] = useState<'initialChoice' | 'singleItemSetup' | 'batchSetup' | 'batchAIConfig' | 'batchResult'>('initialChoice');
-    const [selectedItem, setSelectedItem] = useState<ItemForDropdown | null>();
+    const [selectedItem, setSelectedItem] = useState<ItemForDropdown | null>(null);
     const [activeTab, setActiveTab] = useState<string>('upload');
     const [selectedImages, setSelectedImages] = useState<UserUploadedFileType[]>([]);
     const [generationConfig, setGenerationConfig] = useState<ImageGenerationConfigType>(DefaultGenerationConfig);
@@ -138,6 +149,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const [batchGenerationConfig, setBatchGenerationConfig] = useState<GenerateImageViaApiPayloadGenerationConfiType>(DefaultGenerationConfig);
     const batchStartInFlightRef = useRef(false);
+    const preparedUploadContextRef = useRef<ItemPhotoPreparationContext>({ itemId: null, revision: 0 });
     const dispatch = useAppDispatch()
     const initialBatchItemIds = initialBatchItemIdsProp ?? EMPTY_INITIAL_BATCH_ITEM_IDS;
     const initialBatchItemIdsKey = useMemo(() => initialBatchItemIds.join('|'), [initialBatchItemIds]);
@@ -151,9 +163,17 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         await onProjectDataUpdate?.(updatedProject);
     }, [onProjectDataUpdate, projectData]);
 
+    const advancePreparedUploadContext = useCallback((itemId: string | null) => {
+        preparedUploadContextRef.current = {
+            itemId,
+            revision: preparedUploadContextRef.current.revision + 1,
+        };
+    }, []);
+
     // Debug logging removed for production
 
     const resetGenerateState = useCallback(() => {
+        advancePreparedUploadContext(null);
         const savedPrefs = storeDetails?.tenantId && storeDetails?.storeId
             ? loadImageGenPreferences(storeDetails.tenantId, storeDetails.storeId)
             : null;
@@ -184,7 +204,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         setActiveTab(FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? preferredInitialTab : 'upload');
         setSelectedImages([]);
         setSelectedItemsForBatch([]);
-    }, [preferredInitialTab, projectData, storeDetails?.businessType, storeDetails?.tenantId, storeDetails?.storeId]);
+    }, [advancePreparedUploadContext, preferredInitialTab, projectData, storeDetails?.businessType, storeDetails?.tenantId, storeDetails?.storeId]);
 
     const closeModal = useCallback(() => {
         if (generationConfig.loading) return;
@@ -276,19 +296,20 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 }
             }
         } else {
+            advancePreparedUploadContext(null);
             setModalView('initialChoice');
             setSelectedItem(null);
             setSelectedItemsForBatch([]);
         }
-    }, [activeBatchImageJob, initialBatchItemIdSet, itemToUpdate, items, open, resetGenerateState]);
+    }, [activeBatchImageJob, advancePreparedUploadContext, initialBatchItemIdSet, itemToUpdate, items, open, resetGenerateState]);
 
     useEffect(() => {
         if (activeProject && selectedItem) {
-            const file = activeProject.files.find(file => {
-                return file.extractedData.data.items.find(item => item.id === selectedItem.id);
+            const file = (activeProject.files ?? []).find(file => {
+                return file.extractedData?.data?.items?.some(item => item.id === selectedItem.id);
             });
             if (file) {
-                const item = file.extractedData.data.items.find(item => item.id === selectedItem.id)
+                const item = file.extractedData?.data?.items?.find(item => item.id === selectedItem.id)
                 if (!item) return;
                 const language = projectData?.languages?.[0] || 'en';
                 const nextSelectedItem = toDropdownItem(item, file, language);
@@ -301,7 +322,8 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         if (!open) return;
 
         if (itemToUpdate?.id) {
-            const matchedItem = items.find((item) => item.id === itemToUpdate.id) || null;
+            const matchedItem = resolveUniqueItemImageTarget(items, itemToUpdate);
+            advancePreparedUploadContext(matchedItem?.id || null);
             setSelectedItem((prev) => areDropdownItemsEqual(prev, matchedItem || undefined) ? prev : (matchedItem ? removeObjRef(matchedItem) : null));
             setGenerationConfig((prev) => ({
                 ...prev,
@@ -317,10 +339,14 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 setSelectedItem((prev) => areDropdownItemsEqual(prev, refreshedItem) ? prev : removeObjRef(refreshedItem));
             }
         }
-    }, [itemToUpdate?.id, items, open, selectedItem?.id]);
+    }, [advancePreparedUploadContext, itemToUpdate?.fileId, itemToUpdate?.id, items, open, selectedItem?.id]);
 
     const onSelectItem = (value: string) => {
-        const nextSelectedItem = items.find(i => i.id === value) || null;
+        const target = parseItemImageTargetValue(value);
+        const nextSelectedItem = target
+            ? resolveUniqueItemImageTarget(items, target)
+            : null;
+        advancePreparedUploadContext(nextSelectedItem?.id || null);
         setSelectedItem(nextSelectedItem);
         setSelectedImages([]);
         setGenerationConfig((prev) => ({
@@ -487,7 +513,11 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         file: File & { uid?: string },
         source: string,
     ): Promise<ItemPhotoReadinessResult | null> => {
+        const startedContext = { ...preparedUploadContextRef.current };
         const prepared = await prepareMediaImage(file, 'menuItem');
+        if (!isItemPhotoPreparationContextCurrent(startedContext, preparedUploadContextRef.current)) {
+            return null;
+        }
         const uid = file.uid || `${source}-${Date.now()}-${file.name}`;
         const newImage: UserUploadedFileType = {
             blob: prepared.blob,
@@ -534,9 +564,9 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         listType: 'picture-card',
         maxCount: 10,
         className: 'upload-list-inline',
-        fileList: selectedImages.map((image) => ({
-            uid: image.uid,
-            name: image.name,
+        fileList: selectedImages.map((image, index) => ({
+            uid: image.uid || image.mediaId || image.url || `selected-image-${index}`,
+            name: image.name || 'Image',
             status: 'done' as const,
             url: image.url,
         })),
@@ -576,6 +606,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     <ItemPhotoCaptureAssist
                         disabled={isUploadingSingleItem || !selectedItem?.id}
                         itemName={selectedItem?.itemName}
+                        key={selectedItem?.id || 'no-item'}
                         onCapture={handleCaptureAssistPhoto}
                     />
                 ) : null}
@@ -593,11 +624,13 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     };
 
     const handleSingleItemFlow = () => {
+        advancePreparedUploadContext(null);
         setModalView('singleItemSetup');
         setSelectedItem(null);
     };
 
     const handleBatchFlow = () => {
+        advancePreparedUploadContext(null);
         setModalView('batchSetup');
         setSelectedItem(null);
         setSelectedImages([]);
@@ -671,12 +704,15 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                     showSearch
                     style={{ width: '100%', marginTop: 8 }}
                     placeholder="Select an item"
-                    value={selectedItem?.id}
+                    value={selectedItem ? buildItemImageTargetValue(selectedItem) || undefined : undefined}
                     onChange={onSelectItem}
                     filterOption={(input, option) =>
                         String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                     }
-                    options={items.map(i => ({ value: i.id, label: <Text>{i.itemName} <Text type='secondary'>({i.categoryName})</Text></Text> }))}
+                    options={items.map(i => ({
+                        value: buildItemImageTargetValue(i) || '',
+                        label: <Text>{i.itemName} <Text type='secondary'>({i.categoryName})</Text></Text>,
+                    }))}
                     disabled={Boolean(itemToUpdate)}
                 />
             </Flex>}
@@ -752,15 +788,18 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         />
     )
 
-    const renderBatchResult = () => (
-        <BatchImageGenerationResultView
-            activeBatchImageJob={activeBatchImageJob}
-            projectData={projectData}
-            onBatchImagesPersist={onBatchImagesPersist}
-            onComplete={onClose}
-            onRetry={onRetryBatchGeneration}
-        />
-    )
+    const renderBatchResult = () => {
+        if (!activeBatchImageJob) return null;
+        return (
+            <BatchImageGenerationResultView
+                activeBatchImageJob={activeBatchImageJob}
+                projectData={projectData}
+                onBatchImagesPersist={onBatchImagesPersist}
+                onComplete={onClose}
+                onRetry={onRetryBatchGeneration}
+            />
+        );
+    };
 
     const getModalTitle = () => {
         let titleText = '';

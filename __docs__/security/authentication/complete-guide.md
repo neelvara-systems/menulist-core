@@ -118,6 +118,8 @@ Tracks all authentication security events:
 
 **Current runtime boundary (July 28, 2026)**:
 - Lock checks and failed-attempt persistence fail closed with `AuthSecurityUnavailableError` when Firestore, index, or persisted event validation is unavailable.
+- Tenant/store block inheritance reads also fail closed across OAuth, credentials, phone OTP, and JWT refresh. A provider read failure cannot be interpreted as an unblocked entity.
+- OAuth profiles without a normalized email are denied before account lookup or creation. Sign-out completion is acknowledged only after both Firebase Auth and NextAuth teardown settle.
 - Failed-attempt transactions read at most five rows and return a monitoring decision; Sentry/log effects run only after a successful commit, so transaction retries do not duplicate alerts.
 - Persisted timestamps must be Admin Firestore `Timestamp` instances. Email, source, reason, IP, and user-agent fields are normalized/bounded before writes; malformed lock/failure rows are not treated as valid auth state.
 - Security summaries clamp lookback to the 90-day retention window, probe at 1,001 rows, admit at most 1,000 exact-shaped events, and fail visibly on malformed/overflow/provider state rather than returning false zeroes.

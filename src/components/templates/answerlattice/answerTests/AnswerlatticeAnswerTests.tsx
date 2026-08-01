@@ -273,8 +273,8 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const routeContextQuery = searchParams.toString();
-    const requestedReleaseId = normalizeAnswerlatticeOwnerReleaseContext(searchParams.get('release')) || '';
+    const routeContextQuery = searchParams?.toString() ?? '';
+    const requestedReleaseId = normalizeAnswerlatticeOwnerReleaseContext(searchParams?.get('release')) || '';
     const isMobile = screens.md !== true;
     const isLaunchMode = entryMode === 'launch';
     const launchProofQuery = isLaunchMode ? '?includeLaunchProof=1' : '';
@@ -323,7 +323,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             );
             if (!response.ok || !parsedSummary) throw new Error(getErrorMessage(payload, 'Could not load answer tests.'));
             setSummary(parsedSummary);
-            setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
+            setCurrentLaunchProof(normalizeLaunchProof(payload?.launchProof));
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not load answer tests.');
         } finally {
@@ -404,7 +404,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
             );
             if (!response.ok || !parsedSummary) throw new Error(getErrorMessage(payload, 'Could not save answer tests.'));
             setSummary(parsedSummary);
-            setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
+            setCurrentLaunchProof(normalizeLaunchProof(payload?.launchProof));
             return true;
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not save answer tests.');
@@ -619,7 +619,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
                 throw new Error(getErrorMessage(payload, 'Could not complete the answer test run.'));
             }
             setSummary(parsedSummary);
-            setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
+            setCurrentLaunchProof(normalizeLaunchProof(payload?.launchProof));
             setReleaseModalOpen(false);
             const run = parsedRun.data as AnswerlatticeAnswerTestRun;
             const runIsCurrent = isAnswerlatticeAnswerTestRunCurrent(run, parsedSummary);
@@ -714,7 +714,7 @@ export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: Answer
 
     const closeReleaseCheck = useCallback(() => {
         setReleaseModalOpen(false);
-        if (!searchParams.has('release')) return;
+        if (!searchParams?.has('release')) return;
         const nextParams = new URLSearchParams(routeContextQuery);
         nextParams.delete('release');
         router.replace(`${pathname}${nextParams.size ? `?${nextParams.toString()}` : ''}`, { scroll: false });

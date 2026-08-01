@@ -25,4 +25,10 @@ Mobile upload enforces the same extraction file/page cap as desktop and the owne
 
 Mobile upload cleanup is best-effort but observable. When mobile intake is cancelled, preflight ignores uploaded files, no files remain for job creation, or an existing active job is reused, the sheet still attempts the same uploaded-file deletes and logs `mobile_menu_upload_uploaded_file_cleanup_failed` if any cleanup promise rejects. The diagnostic records bounded project presence/length, cleanup reason presence/length, attempted cleanup count, failed cleanup count, and source error metadata only. It must not log raw Storage URLs, filenames, file UIDs, project IDs, job IDs, or exception text.
 
+Selected image preview object URLs remain owned until that exact file is
+removed or the sheet unmounts; adding another file must not revoke previews
+that remain selected. Storage upload and processing-job creation are not
+cancellable once started, so the active progress state must not present a
+Cancel action that merely closes the sheet while side effects continue.
+
 Mobile and desktop review apply use the shared extraction apply path. When that path saves linked-outlet review changes through `/api/projects/outlet-save`, it uses the shared no-store, same-origin, manual-redirect request policy, caps the acknowledgement at 2MB, and requires `success: true` plus matching `projectId` and `masterProjectId` before treating the save as complete.

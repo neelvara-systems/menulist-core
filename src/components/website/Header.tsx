@@ -474,7 +474,7 @@ export default function Header() {
                 </Link>
                 <button
                   onClick={() => {
-                    void handleSignOut().catch(() => undefined);
+                    void handleSignOut().catch((): undefined => undefined);
                   }}
                   className="ws-btn ws-btn--secondary"
                   style={{
@@ -839,7 +839,7 @@ export default function Header() {
                   <button
                     onClick={() => {
                       closeDrawer();
-                      void handleSignOut().catch(() => undefined);
+                      void handleSignOut().catch((): undefined => undefined);
                     }}
                     style={{
                       display: "flex",

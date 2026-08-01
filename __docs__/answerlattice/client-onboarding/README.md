@@ -59,7 +59,9 @@ answerlattice.com/get-started
   │   → Seed selected product surfaces and compact summaries
   │   → Write productAccounts.AL bridge to the default auth user
   │
-  └── Step 4: Show widget key + next steps
+  └── Step 4: Project exact plan/amount/provider/key acknowledgement
+      → Bounded non-authoritative session refresh
+      → Show widget key + next steps
       → Go to dashboard
 ```
 
@@ -69,6 +71,12 @@ Compensation is permitted only when the route can prove that provider creation d
 
 The server admits product URLs only over HTTP/HTTPS without embedded credentials, detects duplicate Answerlattice users for the same normalized email instead of selecting one arbitrarily, preserves a known provider subscription ID across provider-fetch failures, and clears stale recovery fields before a compensated user starts a new attempt.
 
+The browser starts only one setup POST at a time. A successful route response is
+reconciled against current monthly plan pricing, exact provider checkout host,
+subscription identity, and one-time `al_*` key format before display. Session
+refresh is bounded and diagnostic-only after durable success; it cannot turn a
+created workspace into a false failed-creation message.
+
 A provisioned but unpaid workspace cannot consume licensed Knowledge Intake or paid AI operations. Subscription activation remains owned by the product-aware Razorpay verification and webhook flow.
 
 ## Key Files
@@ -77,6 +85,7 @@ A provisioned but unpaid workspace cannot consume licensed Knowledge Intake or p
 |------|---------|
 | `src/app/api/answerlattice/onboard/route.ts` | Onboarding API (Answerlattice tenant+store+subscription+widget key) |
 | `src/app/sites/answerlattice/get-started/OnboardingForm.tsx` | Self-service signup form UI |
+| `src/lib/answerlattice/onboardingResponse.ts` | Exact browser acknowledgement projector for plan, billing, provider checkout, subscription and widget-key truth |
 | `src/app/sites/answerlattice/get-started/page.tsx` | Get-started page (criteria + form) |
 | `src/data/answerlattice/plans.ts` | Answerlattice plans config (starter, growth, studio) |
 | `src/app/api/answerlattice/workspace-profile/route.ts` | Edit product profile after onboarding |

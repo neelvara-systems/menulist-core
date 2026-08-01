@@ -23,6 +23,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
     getAnswerlatticeAnswerContextRoute,
+    getAnswerlatticeEntityContextRoute,
     getAnswerlatticeReleaseContextRoute,
 } from '@lib/answerlattice/ownerDecisionNavigation';
 import { normalizeAnswerlatticeVersionLabel } from '@lib/answerlattice/releaseContracts';
@@ -43,6 +44,7 @@ import {
     Modal,
     Select,
     Switch,
+    Tag,
     TimePicker,
     Typography,
     Upload,
@@ -278,6 +280,51 @@ const AddEditChangelog: React.FC<AddEditChangelogProps> = ({ open, onClose, onSa
                             showIcon
                             message={getAnswerTestProofCopy(impact.answerTestProof)}
                         />
+                        <Alert
+                            showIcon
+                            type={impact.directDependencyCoverage.entityIdsWithoutVisibleDirectLinks.length > 0 ? 'warning' : 'info'}
+                            message={impact.directDependencyCoverage.entityIdsWithoutVisibleDirectLinks.length > 0
+                                ? `${impact.directDependencyCoverage.entityIdsWithoutVisibleDirectLinks.length} changed product ${impact.directDependencyCoverage.entityIdsWithoutVisibleDirectLinks.length === 1 ? 'area has' : 'areas have'} no visible direct answer or Answer Test link.`
+                                : 'Every changed product area has at least one visible direct answer or Answer Test link.'}
+                            description="This checks direct entity links only. It does not claim complete article, FAQ, workflow, product-surface, or factual coverage."
+                        />
+                        <Flex gap={6} wrap>
+                            <Tag>{impact.directDependencyCoverage.changedEntityIds.length} changed areas</Tag>
+                            <Tag>{impact.directDependencyCoverage.answerLinkedEntityIds.length} answer-linked</Tag>
+                            {impact.directDependencyCoverage.testLinkEvidence === 'available' ? (
+                                <Tag>{impact.directDependencyCoverage.testLinkedEntityIds.length} test-linked</Tag>
+                            ) : (
+                                <Tag>Test links unavailable for this role</Tag>
+                            )}
+                        </Flex>
+                        {impact.directDependencyCoverage.entityIdsWithoutVisibleDirectLinks.length > 0 ? (
+                            <Flex vertical gap={6}>
+                                <Typography.Text type="secondary">Review unmapped changed areas</Typography.Text>
+                                <Flex gap={6} wrap>
+                                    {impact.directDependencyCoverage.entityIdsWithoutVisibleDirectLinks.map(entityId => (
+                                        <Button
+                                            href={getAnswerlatticeEntityContextRoute(
+                                                getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.MAP),
+                                                entityId,
+                                            )}
+                                            icon={<LuExternalLink />}
+                                            key={entityId}
+                                            rel="noopener noreferrer"
+                                            style={{
+                                                height: 'auto',
+                                                maxWidth: '100%',
+                                                minHeight: 44,
+                                                overflowWrap: 'anywhere',
+                                                whiteSpace: 'normal',
+                                            }}
+                                            target="_blank"
+                                        >
+                                            {entityId}
+                                        </Button>
+                                    ))}
+                                </Flex>
+                            </Flex>
+                        ) : null}
                         {previewRows.length > 0 && (
                             <Flex vertical gap={8}>
                                 {previewRows.map(answer => (

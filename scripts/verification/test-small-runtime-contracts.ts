@@ -87,6 +87,13 @@ import {
     getStyleValueAndType,
 } from '../../src/utils/getColorsValue';
 import {
+    blobToBase64,
+    getBase64Length,
+    getNewIndex,
+    removeObjRef,
+    updateDeepPathValue,
+} from '../../src/utils/utils';
+import {
     extractUiErrorMessage,
     getSafeUiErrorMessage,
 } from '../../src/lib/errors/uiErrorMessages';
@@ -99,6 +106,34 @@ import {
 } from '../../src/utils/validations';
 
 assert.equal(firstText('  Direct name  '), 'Direct name');
+
+const cloneSourceWithUnsafeKey = {
+    nested: { value: 'preserved' },
+    when: new Date('2026-07-29T00:00:00.000Z'),
+};
+Object.defineProperty(cloneSourceWithUnsafeKey, '__proto__', {
+    enumerable: true,
+    value: { polluted: true },
+});
+const safeClone = removeObjRef(cloneSourceWithUnsafeKey);
+assert.equal(removeObjRef(null), null);
+assert.equal(removeObjRef(undefined), undefined);
+assert.notEqual(safeClone, cloneSourceWithUnsafeKey);
+assert.deepEqual(safeClone.nested, { value: 'preserved' });
+assert.notEqual(safeClone.nested, cloneSourceWithUnsafeKey.nested);
+assert.equal(safeClone.when.toISOString(), '2026-07-29T00:00:00.000Z');
+assert.notEqual(safeClone.when, cloneSourceWithUnsafeKey.when);
+assert.equal(Object.hasOwn(safeClone, '__proto__'), false);
+assert.equal(({} as { polluted?: boolean }).polluted, undefined);
+assert.equal(getNewIndex([{ order: 7 }, { order: 2 }], 'order'), 8);
+assert.equal(getNewIndex([{ order: '9' }, { order: Number.NaN }], 'order'), 0);
+assert.deepEqual(updateDeepPathValue({}, 'profile.name', 'Owner'), {
+    profile: { name: 'Owner' },
+});
+assert.throws(
+    () => updateDeepPathValue({}, '__proto__.polluted', true),
+    /Unsafe or empty object path segment/,
+);
 assert.equal(firstText({ en: '', hi: '  नमस्ते  ' }), 'नमस्ते');
 assert.equal(firstText(['not', 'a', 'localized', 'map']), '');
 
@@ -453,6 +488,34 @@ assert.deepEqual(metricArtifacts[0], {
 });
 
 async function run(): Promise<void> {
+    assert.equal(getBase64Length('data:image/png;base64,AQIDBA=='), 4);
+    assert.equal(getBase64Length('data:image/jpeg;base64,AQID'), 3);
+    assert.equal(getBase64Length('data:text/plain,hello%20world'), 11);
+    assert.equal(getBase64Length('data:text/plain,hello world'), 11);
+    assert.equal(getBase64Length(null), 0);
+
+    const originalFileReaderDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'FileReader');
+    class FailingFileReader {
+        error = new Error('fixture read failure');
+        onerror: (() => void) | null = null;
+        onloadend: (() => void) | null = null;
+        result: string | ArrayBuffer | null = null;
+
+        readAsDataURL(): void {
+            this.onerror?.();
+        }
+    }
+    Object.defineProperty(globalThis, 'FileReader', {
+        configurable: true,
+        value: FailingFileReader,
+    });
+    await assert.rejects(() => blobToBase64(new Blob(['fixture'])), /fixture read failure/);
+    if (originalFileReaderDescriptor) {
+        Object.defineProperty(globalThis, 'FileReader', originalFileReaderDescriptor);
+    } else {
+        Reflect.deleteProperty(globalThis, 'FileReader');
+    }
+
     const workerIndexes: number[] = [];
     const concurrencyResults = await mapWithConcurrency(
         ['a', 'b', 'c'],

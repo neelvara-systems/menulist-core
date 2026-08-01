@@ -245,6 +245,29 @@ Planner action contracts are provider argument metadata for the current executab
 
 For `prepare_action`, MenuList materializes the provider intent into an owner-readable command plus structured entity IDs, re-runs the deterministic resolver, and accepts the result only when the registered resolved action is compatible with the planned action. For clarification, every supplied item/category ID must exist in the selected context and the validated ID is carried through the clarification option into the next resolver pass on desktop and mobile. The provider cannot supply a project patch, approval level, execution directive, receipt, or completion state. Owner-facing planner copy is also rejected when it exposes internal implementation terms or claims unverified completion.
 
+The route-result safety assertion treats `prepare_action`, `mutatesTruth`,
+`requiresApproval`, and action-type presence as one exact invariant. Prepared
+actions must set both safety flags and carry an action type; every read-only
+outcome must set neither flag and carry no action type. The approved model-tool
+allowlist remains an independent final check.
+
+The browser treats `/api/ai-menu-manager/plan` as an untrusted serialization
+boundary even though it is same-origin and authenticated. It reads the response
+under the existing byte cap, then validates the complete route with
+`AiMenuManagerPlannerResponseSchema`: outcome/provider/tool/action enums,
+bounded owner copy and IDs, scalar values, bounded targets/clarifications/
+suggestions, plus the exact prepared-action safety invariant. Invalid or
+version-skewed responses enter the existing deterministic fallback and never
+reach materialization or card construction.
+
+Before either client or server approval creates an execution directive, patch
+policy requires an exact top-level shape for its patch kind, unique bounded
+target IDs, action-specific update fields, and exact correlation between
+`itemIds` and per-item update keys. Per-item patches may omit individual maps
+only when an explicit shared update applies to all targets. Design patches
+admit only `menu` and `brand`. Stable patch-hash verification runs after this
+structural policy.
+
 ---
 
 ## 5. Action Adapter Contract
@@ -509,6 +532,14 @@ Reads:
 - one current session/day summary doc when possible.
 - proposal detail docs only when a compact summary explicitly points to server-backed durable detail.
 - session/project mismatch returns an empty inbox instead of showing cards from another selected menu.
+- inbox and explicit-session responses use the shared
+  `serializeAiMenuManagerInboxForJson()` boundary after persisted session and
+  proposal normalization. The serializer preserves finite JSON scalars,
+  converts real `Date` and Firestore timestamp values (including
+  nanoseconds) to ISO strings, bounds object keys/arrays/depth, skips unsafe
+  prototype keys, contains cycles and omits unsupported object values instead
+  of letting response serialization fail. Both routes must use this one typed
+  boundary; route-local `any` serializers are not permitted.
 
 ### `GET /api/ai-menu-manager/sessions/{sessionId}`
 
@@ -809,6 +840,10 @@ Desktop route:
 - Work on context picker inside the composer. It uses selected-project data already loaded in the screen, supports item multi-select and single category selection, and can scope commands to menu design, digital menu, official page, digital screens, feedback, or store settings. Item/category choices render as compact selectable rows/grid cells; search is shown only for longer lists or active search text.
 - Work on selection rewrites the outgoing owner message into explicit text before resolver execution. It does not create cards, write Firestore, or bypass the resolver/action registry.
 - suggestion chooser opens as an inline tray inside the chat frame; suggestions are grouped from selected-menu context and may use a two-layer guided flow: first choose the action area, then choose the exact option. Final options fill the composer without submitting automatically.
+- Contextual suggestion rows use the same bounded project-integrity snapshot as
+  execution context. Malformed or oversized persisted project state suppresses
+  contextual quick fixes/attention rows without crashing; static safe
+  navigation suggestions remain available.
 - Work on and Suggestions are mutually exclusive; opening either panel closes the other and clears any active nested suggestion view.
 - proposal and clarification cards can expose option rows. Clarification option rows resolve the pending clarification into the next card in one compact session write; other suggestion rows remain draft-only. No option row approves or executes by itself.
 - menu link/QR, official page link/QR, feedback link/QR, customer app install link, digital screen link, POS setup copy, POS technical summary copy, and POS sample payload requests render as exact browser-local export cards with Copy, Open, Download QR, or Download text controls as appropriate. They use already-loaded selected project/store context, do not mutate menu truth, and do not store generated QR image or text export data in Firestore.
@@ -904,6 +939,30 @@ Adapter metadata must include desktop/manual evidence, mobile handling, Firebase
 
 Implementation note, June 20, 2026 production hardening: current code-level adapter definitions include `manualEquivalent`, `executionMode`, `approvalLevel`, `costClass`, `mobileBehavior`, `sourceEvidence`, and readiness. The dedicated verifier fails if any current adapter definition omits these fields.
 
+Implementation note, July 29, 2026 registry-integrity hardening: the
+authoritative definition and executable arrays, each definition and its nested
+evidence/flag arrays, and the lookup registry are immutable at runtime.
+Registry construction rejects duplicate and missing action definitions before
+serving a request. `listAiMenuManagerActionDefinitions()` and
+`listAiMenuManagerExecutableActions()` return defensive copies so a caller
+cannot change later authorization, planner, approval, or execution decisions.
+
+Implementation note, July 29, 2026 multilingual conversation hardening:
+read-only domain questions normalize owner text and loaded item/category names
+with a Unicode letter, combining-mark, and number boundary. Non-Latin menu
+names remain matchable when an owner asks an English diagnostic question; the
+router still answers only from the already validated selected-menu context.
+Mentioned item/category names must also occupy complete Unicode phrase
+boundaries; substring matches inside unrelated words are not entity evidence.
+Read-only customer-visibility, readiness, missing-content, sold-out, and
+promotion answers require both an active item and a visible parent category.
+An active item under a hidden category is reported as hidden with that category
+and the suggested recovery targets the category visibility action.
+The deterministic mutation resolver imports this same text projector; it must
+not maintain an ASCII-only copy. Localized item/category names therefore retain
+their identity before price, availability, visibility, rename, description,
+category-move, bestseller, preparation-time, bulk and design intent matching.
+
 The checklist currently covers these adapter families:
 
 - item, attribute, category, bulk, and repair actions.
@@ -938,6 +997,14 @@ The current production executable client-project mutation list is the `AI_MENU_M
 Every action in that list must have resolver fixture coverage, an approval/card path, and approved-patch verification through the existing project update path. The broader production priority order remains in the checklist for future adapter connection, but it is not a claim that image, import, publish, special-menu, staff, domain, compliance, or integration actions are directly executable from AMM today.
 
 Implementation note, June 27, 2026 UI failure hardening: desktop and mobile Menu Manager screens use fixed owner-safe copy for load, prompt, apply, project-update, and cancel failures. The original exception is logged only through `src/lib/runtime/runtimeDiagnostics.ts` with coded failure names and bounded store/project/session/card metadata. Failed project-update receipts persist the generic `Project update failed` reason instead of raw exception text. June 30 follow-up: if that failed-receipt/proposal completion attempt also fails, desktop and mobile log bounded `*_project_update_failed_*_completion_failed` diagnostics instead of silently dropping the secondary failure.
+
+Implementation note, July 29, 2026 approval-boundary hardening: the executable
+patch policy validates both exact action-specific structure and values before
+client or server mutation. Targets are unique and correlated to per-item
+updates. Prices use the canonical price contract; boolean, localized text,
+source, category, duration, note, decision-block and design values use bounded
+closed runtime contracts. The patch hash is an integrity correlation check,
+not a substitute for this validation.
 
 ---
 
@@ -979,3 +1046,6 @@ Verifier should check:
 - no unsupported action executes project/store truth writes.
 - desktop/mobile UI does not surface raw `error?.message` / `error.message` failure text.
 - failed project-update receipts persist generic failure text only.
+- desktop/mobile presentation projects persisted project timestamps, compact
+  messages, active cards and receipts through contained, bounded runtime
+  guards; malformed legacy accessors or arrays cannot abort the timeline.

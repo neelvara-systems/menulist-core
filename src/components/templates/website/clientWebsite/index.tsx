@@ -5,6 +5,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DEVICE_TYPES_LIST } from "@constant/builder";
 import GlobalLanguagesList from "@data/languages";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
+import { resolvePublicMenuAccentColor } from "@lib/obp/accentColor";
 import { resolvePublicBusinessType } from "@lib/businessIdentity/publicBusinessType";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { normalizePublicLanguageCode, resolveProjectPublicLanguage } from "@lib/localization/publicRenderLanguage";
@@ -114,7 +115,11 @@ function ClientMenuRenderer({
     const analyticsPreferences = getResolvedAnalyticsPreferences(storeDetails?.analytics);
     const tenantId = storeDetails?.tenantId;
     const storeId = storeDetails?.storeId;
-    const brandAccentColor = projectData?.config?.design?.brand?.accentColor || APP_THEME_COLOR;
+    const brandAccentColor = resolvePublicMenuAccentColor(
+        projectData?.config?.design?.brand?.accentColor,
+        storeDetails?.publicPresence,
+        APP_THEME_COLOR,
+    ) || APP_THEME_COLOR;
     const publicBusinessType = resolvePublicBusinessType(
         storeDetails?.businessType,
         storeDetails?.businessIndustry,
@@ -289,6 +294,7 @@ function ClientMenuRenderer({
                     <StoreStatusBadge
                         activeLanguage={activeLanguage}
                         workingHours={storeDetails?.workingHours}
+                        specialHours={storeDetails?.specialHours}
                         timezone={storeDetails?.timeZone}
                         urgentOnly
                         urgencyWindowMinutes={5}

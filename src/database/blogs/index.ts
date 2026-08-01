@@ -183,11 +183,12 @@ export const updateBlog = async (data: BlogMutationInput & { id: string | number
     return await apiCallComposer(
         async () => {
             const blogRef = getDocRef(data.id);
-            const nextData = { ...data };
-            const imageToUpdate: unknown = nextData.imageToUpdate;
-            delete nextData.id;
-            delete nextData.imageToUpdate;
-            delete nextData.imageType;
+            const {
+                id: _id,
+                imageToUpdate,
+                imageType: _imageType,
+                ...nextData
+            } = data;
             let uploadedUrl = '';
             let previousUrl: unknown;
             let persistenceAttempted = false;

@@ -20,7 +20,7 @@ import { MenuMoodConfig } from '../designSystem';
 
 interface BackToTopProps {
     activeLanguage?: string;
-    scrollContainerRef: React.RefObject<HTMLDivElement>;
+    scrollContainerRef: React.RefObject<HTMLDivElement | null>;
     moodConfig: MenuMoodConfig;
 }
 

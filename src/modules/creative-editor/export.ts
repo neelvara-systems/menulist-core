@@ -120,7 +120,7 @@ async function buildQrDataUrl(element: Extract<CreativeEditorElement, { type: "q
 }
 
 async function renderElement(element: CreativeEditorElement): Promise<string> {
-    if (element.visible === false) return "";
+    if (element.visible === false || element.excludeFromExport || element.editorGuide) return "";
     const shellAttrs = buildElementShellAttributes(element);
 
     if (element.type === "text") return `<g${shellAttrs}>${renderTextElement(element)}</g>`;

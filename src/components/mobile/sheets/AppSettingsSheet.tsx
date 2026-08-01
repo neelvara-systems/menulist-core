@@ -269,7 +269,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <Text strong>{`${t('language')} (${selectedLanguageOption?.preview || selectedLanguageLabel})`}</Text>
                             </Flex>
                             <Select
-                                onChange={(value) => handleLocaleChange([value])}
+                                onChange={(value: string) => handleLocaleChange([value])}
                                 options={languageOptions.map((option) => ({ label: option.label, value: option.value }))}
                                 placeholder={tSettings('selectLanguage')}
                                 value={locale}
@@ -284,7 +284,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <Text strong>{`${tSettings('timezone')} (${selectedTimezonePreview || selectedTimezoneLabel})`}</Text>
                             </Flex>
                             <Select
-                                onChange={(value) => handleTimezoneChange([value])}
+                                onChange={(value: string) => handleTimezoneChange([value])}
                                 options={TIMEZONES_LIST.map((option) => ({ label: option.label, value: option.tzCode }))}
                                 placeholder={tSettings('selectTimezone')}
                                 value={selectedTimezone}
@@ -299,7 +299,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <Text strong>{`${tSettings('dateFormat')} (${selectedDateFormatLabel})`}</Text>
                             </Flex>
                             <Select
-                                onChange={(value) => handleDateFormatChange([value])}
+                                onChange={(value: string) => handleDateFormatChange([value])}
                                 options={DATE_FORMATS.map((option) => ({
                                     label: format.dateTime(previewDate, option.value),
                                     value: option.label,
@@ -317,7 +317,7 @@ export default function AppSettingsSheet({ visible, onClose }: AppSettingsSheetP
                                 <Text strong>{`${tSettings('timeFormat')} (${selectedTimeFormatLabel})`}</Text>
                             </Flex>
                             <Select
-                                onChange={(value) => handleTimeFormatChange([value])}
+                                onChange={(value: string) => handleTimeFormatChange([value])}
                                 options={TIME_FORMATS.map((option) => ({
                                     label: `${format.dateTime(previewDate, option.value)} (${option.labelHelper})`,
                                     value: option.label,

@@ -85,6 +85,11 @@ function ActiveSubscriptionCard({
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const isManualBilling = activeSubscription.billingMode === 'manual';
     const isPaymentPending = activeSubscription.status === 'pending';
+    const renewsOnSeconds = activeSubscription.renewsOn?.seconds;
+    const subscriptionEndSeconds = activeSubscription.subscriptionEndDate?.seconds;
+    const isFinalCycle = typeof renewsOnSeconds === 'number'
+        && typeof subscriptionEndSeconds === 'number'
+        && Math.abs(renewsOnSeconds - subscriptionEndSeconds) <= 86400;
     const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(activeSubscription.shortUrl);
     const intervalLabel = activeSubscription.planType === 'YEAR' ? 'Year' : 'Month';
     const amountSuffix = isManualBilling
@@ -176,6 +181,13 @@ function ActiveSubscriptionCard({
             message.error('Could not open payment link.');
         }
     };
+    const openCancellationModal = () => {
+        if (!activeSubscription.cycleEndDate) {
+            message.error('The billing-cycle end date is unavailable. Contact support before cancelling.');
+            return;
+        }
+        setIsCancellationModalOpen(true);
+    };
 
 
     // --- SMART BUTTON RENDERING LOGIC ---
@@ -184,8 +196,6 @@ function ActiveSubscriptionCard({
             return null;
         }
 
-        const isFinalCycle = Boolean(activeSubscription.renewsOn?.seconds && activeSubscription.subscriptionEndDate?.seconds)
-            && Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
         if (isPaymentPending) {
             return subscriptionCheckoutUrl ? (
                 <Button type="primary" icon={<LuCreditCard />} onClick={() => handleOpenPaymentLink('pending_payment')}>
@@ -204,7 +214,7 @@ function ActiveSubscriptionCard({
             return (
                 <Space>
                     {isFinalCycle ? <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })}>Change Plan</Button> :
-                        <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
+                        <Button icon={<LuXCircle />} danger onClick={openCancellationModal}>Cancel Subscription</Button>}
                     {canPauseSubscriptions && <Button icon={<LuPause />} onClick={handlePauseSubscription}>Pause</Button>}
                     {(canUpgradePlan ?? activeSubscription.planId !== 'premium') && <Button icon={<LuZap />} type="primary" onClick={() => setIsPricingModalOpen({ action: "upgrade", active: true })}>Upgrade Plan</Button>}
                 </Space>
@@ -221,7 +231,7 @@ function ActiveSubscriptionCard({
                             Contact Support
                         </Button>
                     )}
-                    <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>
+                    <Button icon={<LuXCircle />} danger onClick={openCancellationModal}>Cancel Subscription</Button>
                 </Space>
             );
         }
@@ -232,7 +242,7 @@ function ActiveSubscriptionCard({
 
         if (activeSubscription.status === 'past_due') {
             return <Space>
-                {!isFinalCycle && <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
+                {!isFinalCycle && <Button icon={<LuXCircle />} danger onClick={openCancellationModal}>Cancel Subscription</Button>}
                 {subscriptionCheckoutUrl ? (
                     <Button type="primary" icon={<LuCreditCard />} onClick={() => handleOpenPaymentLink('retry_payment')}>
                         Retry Payment
@@ -271,9 +281,6 @@ function ActiveSubscriptionCard({
     };
 
     const renderAccessUntillDate = () => {
-
-        const isFinalCycle = Boolean(activeSubscription.renewsOn?.seconds && activeSubscription.subscriptionEndDate?.seconds)
-            && Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
 
         if (isPaymentPending) {
             return <Statistic
@@ -521,12 +528,12 @@ function ActiveSubscriptionCard({
                     </Card>
                 </Col> : null}
             </Row>
-            <CancellationModal
+            {activeSubscription.cycleEndDate ? <CancellationModal
                 isOpen={isCancellationModalOpen}
                 onClose={() => setIsCancellationModalOpen(false)}
                 onConfirm={handleConfirmCancellation}
                 subscriptionEndDate={activeSubscription.cycleEndDate}
-            />
+            /> : null}
         </>
     );
 };

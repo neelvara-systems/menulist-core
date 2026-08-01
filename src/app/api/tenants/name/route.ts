@@ -3,7 +3,10 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
-import { resolveCurrentSessionUserDocumentId } from '@lib/auth/currentPlatformUser';
+import {
+    getCurrentPlatformUser,
+    resolveCurrentSessionUserDocumentId,
+} from '@lib/auth/currentPlatformUser';
 import { resolveExactSessionPlatformRole } from '@lib/auth/sessionPlatformRole';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { getOutletSessionScope } from '@lib/multiOutlet/outletSessionScope';
@@ -11,6 +14,7 @@ import { runTenantNamePostCommitEffects } from '@lib/multiTenant/tenantNamePostC
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { isMenuListPublicEntityEligible } from '@lib/publicTruth/entityEligibility';
 import { checkRateLimit } from '@lib/rateLimit';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { validateAPIInput } from '@lib/security/inputValidation';
@@ -65,7 +69,7 @@ export const POST = withAuth(async (request, session) => {
         return privateJson({ error: 'Forbidden' }, { status: 403 });
     }
     const platformActorId = platformSession ? resolveCurrentSessionUserDocumentId(session) : null;
-    if (platformSession && !platformActorId) {
+    if (platformSession && (!platformActorId || !(await getCurrentPlatformUser(session)))) {
         return privateJson({ error: 'Forbidden' }, { status: 403 });
     }
     const limiterHash = hashPublicRateLimitValue(platformSession
@@ -108,7 +112,7 @@ export const POST = withAuth(async (request, session) => {
     if (!platformSession) {
         const currentStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(sessionScope!.storeDocumentId).get();
         const currentStore = currentStoreSnap.exists ? currentStoreSnap.data() || {} : {};
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             currentStore,
@@ -135,13 +139,18 @@ export const POST = withAuth(async (request, session) => {
                 transaction.get(tenantRef),
                 transaction.get(storeQuery),
             ]);
-            if (!tenantSnap.exists || storeSnapshot.size > MAX_TENANT_NAME_STORES) {
+            const tenantData = tenantSnap.data();
+            if (
+                !tenantSnap.exists
+                || !isMenuListPublicEntityEligible(tenantData)
+                || storeSnapshot.size > MAX_TENANT_NAME_STORES
+            ) {
                 throw new Error('tenant_name_scope_invalid');
             }
             if (!platformSession) {
                 const currentStore = storeSnapshot.docs.find((store) => store.id === sessionScope!.storeDocumentId);
                 const currentStoreData = currentStore?.data() || {};
-                const freshPermissionError = requireAnyStorePermissionForStoreData(
+                const freshPermissionError = await requireAnyStorePermissionForStoreData(
                     request,
                     session,
                     currentStoreData,

@@ -10,6 +10,7 @@ Founder Support Controls provide repeatable evidence that configured priority su
 
 - Test the questions users will ask before launch.
 - Recheck affected answers after a release.
+- Inspect why a recent answer fell back, received negative feedback, or escalated.
 - Show a temporary known-issue notice without rewriting permanent documentation.
 - Use trusted plan and role context when the host product signs it.
 - Keep debugging evidence attached without buying another recording system.
@@ -21,6 +22,8 @@ Founder Support Controls provide repeatable evidence that configured priority su
 - Advisory ready, review, or blocked proof status for priority release questions.
 - Provider-backed RAG cannot produce passing critical proof.
 - Release-scoped checks and owner-reviewed rollback proposals.
+- Read-only retained answer traces connected to governed review workflows.
+- Direct changed-entity answer/test link disclosure, explicitly not a completeness guarantee.
 - Read-only current-versus-proposed checks for explicitly linked priority questions before approval.
 - Contextual, expiring known-issue notices.
 - Optional signed visitor context.
@@ -36,6 +39,7 @@ Founder Support Controls provide repeatable evidence that configured priority su
 - Provider-backed simulation of unapproved answer content.
 - Full status page or subscriber notification system.
 - Session replay or product analytics.
+- A complete root-cause diagnosis or raw customer-event warehouse.
 - Private account-data retrieval.
 - Export of all support/customer data.
 

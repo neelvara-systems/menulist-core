@@ -31,11 +31,12 @@
 2. Duplicate headings receive unique deterministic IDs.
 3. Heading text and count are bounded.
 4. Unsafe markup remains escaped.
-5. Protocol-relative and unsafe-scheme links remain rejected.
-6. Topic map receives no raw article JSON or internal entity data.
-7. Related articles are published navigation entries only.
-8. Selecting a topic opens the article and targets the matching sanitized heading.
-9. No-heading articles keep a useful root and related-article view.
+5. Protocol-relative, backslash-normalized, credential-bearing, control-character, and unsafe-scheme links remain rejected.
+6. Images use the same parsed same-site or credential-free HTTP(S) admission and omit invalid sources.
+7. Topic map receives no raw article JSON or internal entity data.
+8. Related articles are published navigation entries only.
+9. Selecting a topic opens the article and targets the matching sanitized heading.
+10. No-heading articles keep a useful root and related-article view.
 
 ## Responsive and Accessibility
 

@@ -78,6 +78,13 @@ July 5 app-side notification safety update: failed duplicate or rate-limit safet
 
 July 5 staleness delivery diagnostics update: failed `MENU_STALE` lifecycle delivery after a staleness detection row is written now logs bounded diagnostics and keeps the existing cooldown fallback. This adds no Firestore reads or writes beyond the already-written staleness detection row, no new index, no Storage operation, no rule change, and no cache invalidation path.
 
+July 29 credential-free URL projection changes template rendering only. It adds
+no Firestore read/write/delete, index, Storage operation or cache behavior.
+The affected Functions entry points are `menulistMaintenanceScheduler` and
+`verifyMenuPublish`. Their narrow `menulist-qa` deployment was attempted after
+build/lint validation but is blocked locally because Firebase CLI
+authentication is unavailable.
+
 July 5 template output update: lifecycle template output hardening adds zero Firestore reads/writes/deletes, zero Storage operations, zero provider calls, no new index, no rule change, and no cache invalidation path. It changes only the rendered email/manual-message content boundary: metadata is escaped before HTML output, email links must parse as `http:`/`https:`, and publish-health failure codes render fixed owner copy instead of arbitrary `failureReason` strings. The app-side mirror requires the normal Next.js release path when released; the Functions mirror requires a scoped Firebase Functions deploy before live effect.
 
 July 5 template output deploy note: the scoped `menulist-qa` deploy target list was `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler`; the exact command is recorded in `__docs__/audits/menulist-production-readiness-audit.md`. The attempt completed predeploy lint/build and then failed before upload with Cloud Resource Manager HTTP 403 caller permission for `menulist-qa`. Live Functions effect remains blocked until an account with project access can deploy the changed Functions bundle.

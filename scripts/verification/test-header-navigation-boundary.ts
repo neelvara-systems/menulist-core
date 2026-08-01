@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import type { IconType } from 'react-icons';
+
+import type { NavItemType } from '../../src/constants/navigations';
+import { resolveAppBreadcrumb } from '../../src/lib/navigation/resolveAppBreadcrumb';
+
+const Icon: IconType = () => null;
+const layout: NavItemType[] = [
+    { icon: Icon, label: 'Dashboard', route: '/dashboard' },
+    {
+        icon: Icon,
+        label: 'Users',
+        route: '/users',
+        subNav: [
+            { icon: Icon, label: 'Users List', route: '/users/list' },
+            { icon: Icon, label: 'Roles', route: '/users/permissions' },
+        ],
+    },
+];
+const originalLayout = structuredClone(layout.map((item) => ({
+    ...item,
+    icon: 'icon',
+    subNav: item.subNav?.map((subItem) => ({ ...subItem, icon: 'icon' })),
+})));
+
+const usersBreadcrumb = resolveAppBreadcrumb('/users/permissions', layout);
+assert.equal(usersBreadcrumb.length, 1);
+assert.equal(usersBreadcrumb[0]?.label, 'Users');
+assert.equal(usersBreadcrumb[0]?.key, '1:1');
+assert.equal(usersBreadcrumb[0]?.subNav[0]?.active, false);
+assert.equal(usersBreadcrumb[0]?.subNav[1]?.active, true);
+assert.equal(usersBreadcrumb[0]?.subNav[1]?.route, '/users/permissions');
+assert.deepEqual(
+    layout.map((item) => ({
+        ...item,
+        icon: 'icon',
+        subNav: item.subNav?.map((subItem) => ({ ...subItem, icon: 'icon' })),
+    })),
+    originalLayout,
+    'breadcrumb resolution must not attach active flags or generated keys to shared navigation data',
+);
+assert.deepEqual(resolveAppBreadcrumb('/missing', layout), []);
+
+const profileSource = readFileSync(
+    resolve(process.cwd(), 'src/components/organisms/headerComponent/profileActionsModal/index.tsx'),
+    'utf8',
+);
+const notificationSource = readFileSync(
+    resolve(process.cwd(), 'src/components/organisms/headerComponent/notificationsModal/index.tsx'),
+    'utf8',
+);
+for (const source of [profileSource, notificationSource]) {
+    assert.ok(source.includes('open={isOpen}'));
+    assert.ok(source.includes('onOpenChange={setIsOpen}'));
+    assert.ok(!source.includes('document.getElementById'));
+    assert.ok(!source.includes('modal-close-btn'));
+}
+assert.ok(!notificationSource.includes('Mark All Read'));
+assert.ok(!notificationSource.includes('View All Notifications'));
+
+console.log('Header navigation boundary tests passed.');

@@ -7,7 +7,10 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { OwnerBusinessAssistantFeedbackRequestSchema } from '@lib/ownerBusinessAssistant/schemas';
-import { buildOwnerBusinessAssistantFeedbackRecord } from '@lib/ownerBusinessAssistant/feedbackRecordBoundary';
+import {
+  buildOwnerBusinessAssistantFeedbackDocumentId,
+  buildOwnerBusinessAssistantFeedbackRecord,
+} from '@lib/ownerBusinessAssistant/feedbackRecordBoundary';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
@@ -47,7 +50,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   }
 
   const scope = resolveOwnerAssistantSelectedStoreScope(request, session, parsed.data.storeId);
-  if ('error' in scope && scope.error) return scope.error;
+  if ('error' in scope) return scope.error;
 
   const permissionError = await requireAnyStorePermissionForStore(
     request,
@@ -59,8 +62,13 @@ export const POST = withAuth(async (request: NextRequest, session) => {
   );
   if (permissionError) return permissionError;
 
-  const docId = `${parsed.data.answerId}_${scope.userId || 'unknown'}`;
-  if (!isValidFirestoreDocumentId(docId)) {
+  const docId = buildOwnerBusinessAssistantFeedbackDocumentId({
+    answerId: parsed.data.answerId,
+    storeId: scope.sId,
+    tenantId: scope.tId,
+    userId: scope.userId,
+  });
+  if (!docId || !isValidFirestoreDocumentId(docId)) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 

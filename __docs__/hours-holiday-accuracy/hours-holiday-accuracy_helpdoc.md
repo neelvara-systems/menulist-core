@@ -2,7 +2,7 @@
 
 ## Current Source Boundary
 
-This help doc covers current weekly working-hours status and Today quick-hours edits. Holiday calendars and date-specific exception managers are not shipped. For an unscheduled closure, use Temporary Status or update today's hours.
+This help doc covers regular weekly hours, date-specific special hours, and Today quick edits. MenuList does not add public holidays automatically; you choose each special date.
 
 ## Set Regular Weekly Hours
 
@@ -18,7 +18,18 @@ An overnight range is allowed. For example, Friday `10:00 PM–2:00 AM` stays op
 
 Use **Today → Edit [day] Hours** when the regular timing for that weekday should change. This changes the regular weekly value for that weekday.
 
-Use **Temporary Status** for a one-off closure or short interruption without changing the regular weekly schedule.
+For a planned holiday or one-day change:
+
+1. Open **Business Settings → Working Hours** on desktop, or **More → Working Hours** on mobile.
+2. In **Special hours**, choose the date.
+3. Choose **Closed all day** or **Different hours**.
+4. Add an optional occasion name customers can understand.
+5. Add or update the date and wait for the published confirmation.
+
+Special hours replace the regular schedule only on that date. If Today already has special hours, the Today quick edit updates that date.
+Upcoming dates are listed first. Past dates remain available for removal but cannot be edited into a new public claim.
+
+Use **Temporary Status** for an unplanned closure or live interruption that needs an expiry time.
 
 ## Set Menu Time Slots
 
@@ -35,4 +46,4 @@ MenuList restores the previous owner view and shows a fixed retry message. Check
 
 ## Not Available
 
-Automatic holiday calendars, date-specific special hours, and Google Business Profile hours sync are not part of the current runtime.
+Automatic holiday calendars and Google Business Profile hours sync are not part of the current runtime.

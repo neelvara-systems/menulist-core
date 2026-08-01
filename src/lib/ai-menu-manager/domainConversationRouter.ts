@@ -10,7 +10,6 @@ import { parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 import { getAiMenuManagerActionDefinition } from './actionRegistry';
 import type { AiMenuManagerContextPacket } from './contextPacket';
-import { findAiMenuManagerCategoryByName, findAiMenuManagerItemByName } from './contextPacket';
 
 export interface AiMenuManagerDomainConversationResult {
     actionType: 'system_context_answer';
@@ -34,13 +33,37 @@ type MenuContextIssue = {
     severity: number;
 };
 
-function normalizeDomainText(value = '') {
+const DOMAIN_DISALLOWED_TEXT_PATTERN = new RegExp('[^\\p{L}\\p{M}\\p{N}\\s.]+', 'gu');
+const DOMAIN_WORD_CHARACTER_PATTERN = new RegExp('[\\p{L}\\p{M}\\p{N}]', 'u');
+
+export function normalizeAiMenuManagerCommandText(value = '') {
     return value
         .toLowerCase()
         .replace(/[₹]/g, ' rs ')
-        .replace(/[^a-z0-9\s.]+/g, ' ')
+        .replace(DOMAIN_DISALLOWED_TEXT_PATTERN, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+}
+
+function containsDomainPhrase(normalizedText: string, normalizedPhrase: string) {
+    if (!normalizedPhrase) return false;
+    let index = normalizedText.indexOf(normalizedPhrase);
+
+    while (index >= 0) {
+        const beforePoints = Array.from(normalizedText.slice(0, index));
+        const afterPoints = Array.from(normalizedText.slice(index + normalizedPhrase.length));
+        const before = beforePoints[beforePoints.length - 1];
+        const after = afterPoints[0];
+        if (
+            (!before || !DOMAIN_WORD_CHARACTER_PATTERN.test(before))
+            && (!after || !DOMAIN_WORD_CHARACTER_PATTERN.test(after))
+        ) {
+            return true;
+        }
+        index = normalizedText.indexOf(normalizedPhrase, index + normalizedPhrase.length);
+    }
+
+    return false;
 }
 
 function activeItems(context: AiMenuManagerContextPacket) {
@@ -49,6 +72,11 @@ function activeItems(context: AiMenuManagerContextPacket) {
 
 function visibleCategories(context: AiMenuManagerContextPacket) {
     return context.categories.filter((category) => category.active !== false);
+}
+
+function visibleItems(context: AiMenuManagerContextPacket) {
+    const visibleCategoryIds = new Set(visibleCategories(context).map((category) => category.id));
+    return activeItems(context).filter((item) => visibleCategoryIds.has(item.categoryId));
 }
 
 function listNames(entries: Array<{ name: string }>, limit = 4) {
@@ -95,7 +123,7 @@ function buildResult(params: {
 }
 
 function missingPriceItems(context: AiMenuManagerContextPacket) {
-    return activeItems(context).filter((item) => {
+    return visibleItems(context).filter((item) => {
         if (typeof item.hasDisplayPrice === 'boolean') return !item.hasDisplayPrice;
         const result = normalizeOptionalMenuPrice(item.price);
         return !result.success || !result.data;
@@ -103,7 +131,7 @@ function missingPriceItems(context: AiMenuManagerContextPacket) {
 }
 
 function unavailableItems(context: AiMenuManagerContextPacket) {
-    return activeItems(context).filter((item) => item.available === false);
+    return visibleItems(context).filter((item) => item.available === false);
 }
 
 function hiddenItems(context: AiMenuManagerContextPacket) {
@@ -115,11 +143,11 @@ function hiddenCategories(context: AiMenuManagerContextPacket) {
 }
 
 function missingImageItems(context: AiMenuManagerContextPacket) {
-    return activeItems(context).filter((item) => !item.hasImage);
+    return visibleItems(context).filter((item) => !item.hasImage);
 }
 
 function missingDescriptionItems(context: AiMenuManagerContextPacket) {
-    return activeItems(context).filter((item) => !item.hasDescription);
+    return visibleItems(context).filter((item) => !item.hasDescription);
 }
 
 function buildMenuIssues(context: AiMenuManagerContextPacket): MenuContextIssue[] {
@@ -130,7 +158,7 @@ function buildMenuIssues(context: AiMenuManagerContextPacket): MenuContextIssue[
     const imageItems = missingImageItems(context);
     const descriptionItems = missingDescriptionItems(context);
     const categories = visibleCategories(context);
-    const emptyCategories = categories.filter((category) => !activeItems(context).some((item) => item.categoryId === category.id));
+    const emptyCategories = categories.filter((category) => !visibleItems(context).some((item) => item.categoryId === category.id));
     const issues: Array<MenuContextIssue | null> = [
         priceItems.length ? {
             count: priceItems.length,
@@ -201,9 +229,9 @@ function buildIssueSuggestedReplies(issues: MenuContextIssue[]) {
 }
 
 function mentionScore(entry: { aliases: string[]; name: string }, normalized: string) {
-    return [normalizeDomainText(entry.name), ...entry.aliases.map(normalizeDomainText)]
+    return [normalizeAiMenuManagerCommandText(entry.name), ...entry.aliases.map(normalizeAiMenuManagerCommandText)]
         .filter((alias) => alias.length >= 3)
-        .reduce((score, alias) => normalized.includes(alias) ? Math.max(score, alias.length) : score, 0);
+        .reduce((score, alias) => containsDomainPhrase(normalized, alias) ? Math.max(score, alias.length) : score, 0);
 }
 
 function findMentionedItem(context: AiMenuManagerContextPacket, normalized: string) {
@@ -227,7 +255,7 @@ function findMentionedCategory(context: AiMenuManagerContextPacket, normalized: 
 }
 
 function resolveSurfaceFreshnessQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     const asksLiveSurface = /\b(qr|public menu|customer menu|menu link|live menu|customers?|customer)\b/.test(normalized)
         && /\b(old|stale|wrong|outdated|not updated|showing old|cache|cached)\b/.test(normalized);
     if (!asksLiveSurface) return null;
@@ -258,7 +286,7 @@ function resolveSurfaceFreshnessQuestion(text: string, context: AiMenuManagerCon
 }
 
 function resolvePrintFreshnessQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     const asksPrintSurface = /\b(print|printed|pdf|menu pdf|downloaded menu|menu kit|export)\b/.test(normalized)
         && /\b(old|stale|wrong|outdated|not updated|showing old)\b/.test(normalized);
     if (!asksPrintSurface) return null;
@@ -285,15 +313,19 @@ function resolvePrintFreshnessQuestion(text: string, context: AiMenuManagerConte
 }
 
 function resolveEntityStateQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     const asksState = /\b(why|status|customer|customers|visible|hidden|unavailable|available|sold out|khatam|over|inactive|deactivated|shown|showing)\b/.test(normalized)
         && /\b(why|is|are|status|check|customer|customers|show me|tell me)\b/.test(normalized);
     if (!asksState) return null;
 
     const item = findMentionedItem(context, normalized);
     if (item) {
+        const parentCategory = context.categories.find((category) => category.id === item.categoryId);
+        const hiddenByCategory = parentCategory?.active === false;
         const state = item.active === false
             ? 'Hidden from customers'
+            : hiddenByCategory
+                ? 'Hidden with its category'
             : item.available === false
                 ? 'Shown as unavailable'
                 : 'Visible and available';
@@ -302,6 +334,8 @@ function resolveEntityStateQuestion(text: string, context: AiMenuManagerContextP
             title: `${item.name} status`,
             message: item.active === false
                 ? `${item.name} is hidden in the selected menu. Customers will not see it until it is shown again.`
+                : hiddenByCategory
+                    ? `${item.name} is active, but its ${item.categoryName} category is hidden. Customers will not see the item until the category is shown again.`
                 : item.available === false
                     ? `${item.name} is visible but marked unavailable. Customers can see it as sold out/unavailable.`
                     : `${item.name} is visible and available in the selected menu.`,
@@ -322,6 +356,8 @@ function resolveEntityStateQuestion(text: string, context: AiMenuManagerContextP
             ],
             suggestedReplies: item.active === false
                 ? [{ label: `Show ${item.name}`, prompt: `Show ${item.name}`, helper: 'Prepare visibility card' }]
+                : hiddenByCategory
+                    ? [{ label: `Show ${item.categoryName}`, prompt: `Show ${item.categoryName} category`, helper: 'Prepare category card' }]
                 : item.available === false
                     ? [{ label: `Make ${item.name} available`, prompt: `Make ${item.name} available`, helper: 'Prepare availability card' }]
                     : [
@@ -400,7 +436,7 @@ function resolveEntityStateQuestion(text: string, context: AiMenuManagerContextP
 }
 
 function resolveMenuHealthQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     const asksForFixes = /\b(what|which|where|how)\b.*\b(fix|improve|better|missing|incomplete|problem|wrong|attention|ready|share|publish|qr)\b/.test(normalized)
         || /\b(menu health|menu readiness|ready to share|ready to publish|check my menu|review my menu|what should i fix|what needs attention)\b/.test(normalized);
     if (!asksForFixes) return null;
@@ -415,7 +451,7 @@ function resolveMenuHealthQuestion(text: string, context: AiMenuManagerContextPa
                 title: 'Selected menu check',
                 rows: [
                     { label: 'Menu', after: context.projectName },
-                    { label: 'Visible items', after: String(activeItems(context).length) },
+                    { label: 'Visible items', after: String(visibleItems(context).length) },
                     { label: 'Visible categories', after: String(visibleCategories(context).length) },
                     { label: 'Menu truth', after: 'Unchanged' },
                 ],
@@ -446,7 +482,7 @@ function resolveMenuHealthQuestion(text: string, context: AiMenuManagerContextPa
 }
 
 function promotionCandidateItems(context: AiMenuManagerContextPacket) {
-    return activeItems(context)
+    return visibleItems(context)
         .filter((item) => item.available !== false && Boolean(parsePrice(item.price)))
         .sort((a, b) => {
             const score = (item: typeof a) => (
@@ -460,7 +496,7 @@ function promotionCandidateItems(context: AiMenuManagerContextPacket) {
 }
 
 function resolvePromotionRecommendationQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     const asksPromotion = /\b(what|which|suggest|recommend|can|should|today|now)\b.*\b(promote|feature|featured|special|push|highlight|bestseller)\b/.test(normalized)
         || /\b(what should i promote|what can i promote|what to promote|today special suggestion|suggest special)\b/.test(normalized);
     if (!asksPromotion) return null;
@@ -475,7 +511,7 @@ function resolvePromotionRecommendationQuestion(text: string, context: AiMenuMan
             beforeAfterSummary: {
                 title: 'Promotion check',
                 rows: [
-                    { label: 'Visible active items', after: String(activeItems(context).length) },
+                    { label: 'Visible active items', after: String(visibleItems(context).length) },
                     { label: 'Promotion-ready items', after: 'None found in loaded context' },
                     { label: 'Menu truth', after: 'Unchanged' },
                 ],
@@ -517,7 +553,7 @@ function resolvePromotionRecommendationQuestion(text: string, context: AiMenuMan
 }
 
 function resolvePhotoGapQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     if (!/\b(photo|photos|image|images|picture|pictures)\b/.test(normalized) || !/\b(missing|without|no|need|which|what)\b/.test(normalized)) {
         return null;
     }
@@ -531,7 +567,7 @@ function resolvePhotoGapQuestion(text: string, context: AiMenuManagerContextPack
         beforeAfterSummary: {
             title: 'Photo check',
             rows: [
-                { label: 'Items checked', after: String(activeItems(context).length) },
+                { label: 'Items checked', after: String(visibleItems(context).length) },
                 { label: 'Missing photos', after: items.length ? listNames(items, 6) : 'None found' },
                 { label: 'Menu truth', after: 'Unchanged' },
             ],
@@ -551,7 +587,7 @@ function resolvePhotoGapQuestion(text: string, context: AiMenuManagerContextPack
 }
 
 function resolveDescriptionGapQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     if (!/\b(description|descriptions|content|details)\b/.test(normalized) || !/\b(missing|without|no|need|which|what)\b/.test(normalized)) {
         return null;
     }
@@ -565,7 +601,7 @@ function resolveDescriptionGapQuestion(text: string, context: AiMenuManagerConte
         beforeAfterSummary: {
             title: 'Description check',
             rows: [
-                { label: 'Items checked', after: String(activeItems(context).length) },
+                { label: 'Items checked', after: String(visibleItems(context).length) },
                 { label: 'Missing descriptions', after: items.length ? listNames(items, 6) : 'None found' },
                 { label: 'Menu truth', after: 'Unchanged' },
             ],
@@ -583,7 +619,7 @@ function resolveDescriptionGapQuestion(text: string, context: AiMenuManagerConte
 }
 
 function resolveAvailabilityQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     if (!/\b(sold out|unavailable|available|khatam|over|hidden|visible|deactivate|inactive)\b/.test(normalized) || !/\b(which|what|show|list|any|are)\b/.test(normalized)) {
         return null;
     }
@@ -624,7 +660,7 @@ function resolveAvailabilityQuestion(text: string, context: AiMenuManagerContext
 }
 
 function resolveShareReadinessQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     const asksShareReadiness = /\b(ready|safe|ok|okay|can i|should i|is my)\b.*\b(share|publish|qr|customer|public|link)\b/.test(normalized)
         || /\b(qr menu|public menu|customer menu)\b.*\b(ready|working|live|updated|old|stale)\b/.test(normalized);
     if (!asksShareReadiness) return null;
@@ -642,7 +678,7 @@ function resolveShareReadinessQuestion(text: string, context: AiMenuManagerConte
             rows: [
                 { label: 'Menu', after: context.projectName },
                 { label: 'Menu link', after: context.publicLinks?.menuUrl ? 'Available' : 'Not available in context' },
-                { label: 'Visible items', after: String(activeItems(context).length) },
+                { label: 'Visible items', after: String(visibleItems(context).length) },
                 { label: 'Review items', after: blockingIssues.length ? blockingIssues.map((issue) => `${issue.label}: ${issue.count}`).join(', ') : 'None found' },
                 { label: 'Menu truth', after: 'Unchanged' },
             ],
@@ -657,17 +693,15 @@ function resolveShareReadinessQuestion(text: string, context: AiMenuManagerConte
 }
 
 function resolvePriceAdviceQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     const asksForAdvice = /\b(can i|should i|what price|price advice|pricing advice)\b/.test(normalized)
         || /\b(how much|what should)\b.*\b(price|charge)\b/.test(normalized);
     if (!asksForAdvice || !/\b(price|prices|rate|rates|cost|rs|charge)\b/.test(normalized)) {
         return null;
     }
 
-    const item = context.items.find((entry) => normalized.includes(normalizeDomainText(entry.name)))
-        || findAiMenuManagerItemByName(context, normalized);
-    const category = context.categories.find((entry) => normalized.includes(normalizeDomainText(entry.name)))
-        || findAiMenuManagerCategoryByName(context, normalized);
+    const item = context.items.find((entry) => containsDomainPhrase(normalized, normalizeAiMenuManagerCommandText(entry.name)));
+    const category = context.categories.find((entry) => containsDomainPhrase(normalized, normalizeAiMenuManagerCommandText(entry.name)));
     const scopedItems = category
         ? activeItems(context).filter((entry) => entry.categoryId === category.id)
         : item ? [item] : activeItems(context).slice(0, 5);
@@ -707,7 +741,7 @@ function resolvePriceAdviceQuestion(text: string, context: AiMenuManagerContextP
 }
 
 function resolveCustomerPriceConcernQuestion(text: string, context: AiMenuManagerContextPacket) {
-    const normalized = normalizeDomainText(text);
+    const normalized = normalizeAiMenuManagerCommandText(text);
     const asksPriceProblem = /\b(customer|guest|someone|they|client)\b.*\b(price|rate|cost)\b.*\b(wrong|old|different)\b/.test(normalized)
         || /\b(price|rate|cost)\b.*\b(wrong|old|different|customer says|guest says)\b/.test(normalized);
     if (!asksPriceProblem) return null;

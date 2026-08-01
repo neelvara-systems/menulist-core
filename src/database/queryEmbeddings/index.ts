@@ -35,14 +35,25 @@ const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EXPECTED_VECTOR_DIMENSIONS = ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY;
 
-const getCacheDocumentId = (cacheKey: string): string => (
-    `qe_${createHash('sha256').update(cacheKey).digest('hex')}`
+const getCacheDocumentId = (
+    cacheKey: string,
+    scope: Readonly<{ tId: number; sId: number }>,
+): string => (
+    `qe_${createHash('sha256')
+        .update(JSON.stringify([PRODUCT_IDS.ANSWERLATTICE, scope.tId, scope.sId, cacheKey]))
+        .digest('hex')}`
 );
 
 const normalizeScope = (scope: { tId: unknown; sId: unknown }) => {
-    const tId = Number(scope.tId);
-    const sId = Number(scope.sId);
-    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
+    const { tId, sId } = scope;
+    if (
+        typeof tId !== 'number'
+        || !Number.isSafeInteger(tId)
+        || tId <= 0
+        || typeof sId !== 'number'
+        || !Number.isSafeInteger(sId)
+        || sId <= 0
+    ) {
         throw new Error('Answerlattice query embedding scope is invalid.');
     }
     return { tId, sId };
@@ -68,25 +79,29 @@ const getVectorValues = (value: VectorInstance): number[] => {
 };
 
 const toMillis = (value: unknown): number => {
-    if (!value) return 0;
-    if (value instanceof Date) return value.getTime();
-    if (typeof value === 'object') {
-        const timestampLike = value as {
-            seconds?: unknown;
-            toDate?: unknown;
-            toMillis?: unknown;
-        };
-        if (typeof timestampLike.toMillis === 'function') {
-            return (timestampLike.toMillis as () => number)();
+    try {
+        if (!value) return 0;
+        if (value instanceof Date) return value.getTime();
+        if (typeof value === 'object') {
+            const timestampLike = value as {
+                seconds?: unknown;
+                toDate?: unknown;
+                toMillis?: unknown;
+            };
+            if (typeof timestampLike.toMillis === 'function') {
+                return (timestampLike.toMillis as () => number)();
+            }
+            if (typeof timestampLike.toDate === 'function') {
+                return (timestampLike.toDate as () => Date)().getTime();
+            }
+            if (typeof timestampLike.seconds === 'number') return timestampLike.seconds * 1000;
         }
-        if (typeof timestampLike.toDate === 'function') {
-            return (timestampLike.toDate as () => Date)().getTime();
+        if (typeof value === 'string' || typeof value === 'number') {
+            const parsed = new Date(value).getTime();
+            return Number.isFinite(parsed) ? parsed : 0;
         }
-        if (typeof timestampLike.seconds === 'number') return timestampLike.seconds * 1000;
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
-        const parsed = new Date(value).getTime();
-        return Number.isFinite(parsed) ? parsed : 0;
+    } catch {
+        return 0;
     }
     return 0;
 };
@@ -97,7 +112,7 @@ export const getCachedEmbedding = async (
 ): Promise<VectorInstance | null> => {
     const scope = normalizeScope(scopeInput);
     const cacheKeyHash = createHash('sha256').update(cacheKey).digest('hex');
-    const docRef = firestoreAdmin.collection(COLLECTION).doc(getCacheDocumentId(cacheKey));
+    const docRef = firestoreAdmin.collection(COLLECTION).doc(getCacheDocumentId(cacheKey, scope));
     const docSnap = await docRef.get();
 
     if (!docSnap.exists) {
@@ -159,7 +174,7 @@ export const saveCachedEmbedding = async (
 ): Promise<void> => {
     const scope = normalizeScope(scopeInput);
     const cacheKeyHash = createHash('sha256').update(cacheKey).digest('hex');
-    const docRef = firestoreAdmin.collection(COLLECTION).doc(getCacheDocumentId(cacheKey));
+    const docRef = firestoreAdmin.collection(COLLECTION).doc(getCacheDocumentId(cacheKey, scope));
     const vectorValues = getVectorValues(vector);
     const now = Timestamp.now();
 

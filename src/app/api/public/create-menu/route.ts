@@ -140,6 +140,51 @@ type PublicDraftSource = {
     storagePath: string;
 };
 
+type PublicMenuLinkDraftSourceMetadata = {
+    acquisitionProvider: 'direct-http';
+    contentHash: string;
+    finalUrl: string;
+    permissionConfirmed: true;
+    redirectCount: number;
+    sourceContentType: string;
+    sourceInputHash: string;
+    sourceKind: string;
+    sourceTextLength: number;
+    sourceTextPresent: boolean;
+    sourceUrl: string;
+    storagePath: string;
+};
+
+type PendingPublicMenuDraftDocument = {
+    claimed: false;
+    contentHash: string;
+    createdAt: Timestamp;
+    createdByUId: string;
+    detectedBrandAccentColor: null;
+    detectedBusinessCategory: null;
+    detectedBusinessName: null;
+    detectedBusinessType: null;
+    detectedCurrencyCode: null;
+    detectedImageBackgroundColor: null;
+    expiresAt: Timestamp;
+    extractedBusinessProfile: null;
+    extractedData: null;
+    extractionStatus: 'pending';
+    fileSize: number;
+    fileType: string;
+    growthAcquisition?: GrowthAcquisitionAttribution;
+    imagePath: string;
+    imageUrl: string;
+    ipHash: string;
+    originalFileName: string;
+    sourceInputHash?: string;
+    sourceMetadata?: PublicMenuLinkDraftSourceMetadata;
+    sourceType: PublicDraftSource['kind'];
+    suggestedProjectName: null;
+    token: string;
+    updatedAt: Timestamp;
+};
+
 type ReusableDraft = {
     data: Record<string, unknown>;
     id: string;
@@ -489,7 +534,7 @@ async function createImageDraft(
             },
         });
 
-        const draftData = {
+        const draftData: PendingPublicMenuDraftDocument = {
             token: draftToken,
             imageUrl,
             imagePath: storagePath,
@@ -666,7 +711,7 @@ async function createMenuLinkDraft(req: NextRequest, userId: string, body: unkno
         const ipHash = hashClientIp(req);
         const fileName = `Imported menu link.${acquisition.artifactExtension}`;
 
-        const draftData = {
+        const draftData: PendingPublicMenuDraftDocument = {
             token: draftToken,
             imageUrl: sourceArtifactUrl,
             imagePath: storagePath,
@@ -897,10 +942,11 @@ export const GET = withAuth(async (req: NextRequest, session) => {
 
     const { searchParams } = new URL(req.url);
     const draftId = searchParams.get('draftId');
+    const normalizedDraftId = normalizePublicMenuDraftId(draftId);
     const statusOnly = searchParams.get('statusOnly') === '1' || searchParams.get('statusOnly') === 'true';
     const userId = String(session?.user?.id || '');
 
-    if (!normalizePublicMenuDraftId(draftId)) {
+    if (!normalizedDraftId) {
         return NextResponse.json(
             { success: false, error: 'Invalid draftId parameter.' },
             { status: 400 }
@@ -909,7 +955,7 @@ export const GET = withAuth(async (req: NextRequest, session) => {
 
     try {
         const userRateLimitHash = hashPublicRateLimitValue(userId);
-        const draftRateLimitHash = hashPublicRateLimitValue(draftId);
+        const draftRateLimitHash = hashPublicRateLimitValue(normalizedDraftId);
         const statusRateLimit = await checkRateLimit({
             key: `public-menu-entry-status:${userRateLimitHash}:${draftRateLimitHash}`,
             limit: 90,
@@ -934,7 +980,7 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             );
         }
 
-        const draftDoc = await firestoreAdmin.collection(COLLECTION).doc(draftId).get();
+        const draftDoc = await firestoreAdmin.collection(COLLECTION).doc(normalizedDraftId).get();
 
         if (!draftDoc.exists) {
             return NextResponse.json(
@@ -967,7 +1013,7 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             } catch (error) {
                 extractedData = null;
                 logSecurityFailure(PUBLIC_MENU_ENTRY_DRAFT_PRICE_INVALID, error, buildPublicMenuEntryLogContext({
-                    draftToken: draftId,
+                    draftToken: normalizedDraftId,
                     status: draft.extractionStatus,
                     userId,
                 }));
@@ -999,7 +1045,7 @@ export const GET = withAuth(async (req: NextRequest, session) => {
 
         return NextResponse.json(responseBody);
     } catch (error) {
-        logSecurityFailure(PUBLIC_MENU_ENTRY_POLL_FAILED, error, buildPublicMenuEntryLogContext({ draftToken: draftId, userId }));
+        logSecurityFailure(PUBLIC_MENU_ENTRY_POLL_FAILED, error, buildPublicMenuEntryLogContext({ draftToken: normalizedDraftId, userId }));
         return NextResponse.json(
             { success: false, error: 'Failed to check status.' },
             { status: 500 }

@@ -39,6 +39,21 @@ const parsePlatformEntityBlockResponse = (
     return parsePlatformEntityBlockAcknowledgement(value.entity, expected);
 };
 
+const getPlatformEntityBlockRequestContext = ({
+    blocked,
+    entityId,
+    entityType,
+}: {
+    blocked: boolean;
+    entityId: string | number;
+    entityType: PlatformBlockEntityType;
+}) => ({
+    blocked,
+    entityType,
+    maxBytes: PLATFORM_ENTITY_BLOCK_RESPONSE_JSON_MAX_BYTES,
+    ...getBoundedRuntimeStringContext('entityId', entityId),
+});
+
 const getPlatformEntityBlockResponseContext = ({
     blocked,
     entityId,
@@ -50,12 +65,9 @@ const getPlatformEntityBlockResponseContext = ({
     entityType: PlatformBlockEntityType;
     response: Response;
 }) => ({
-    blocked,
-    entityType,
-    maxBytes: PLATFORM_ENTITY_BLOCK_RESPONSE_JSON_MAX_BYTES,
+    ...getPlatformEntityBlockRequestContext({ blocked, entityId, entityType }),
     responseOk: response.ok,
     responseStatus: response.status,
-    ...getBoundedRuntimeStringContext('entityId', entityId),
 });
 
 const createPlatformEntityBlockError = (
@@ -105,25 +117,35 @@ export async function updatePlatformEntityBlockState({
     entityType: PlatformBlockEntityType;
     reason: string;
 }) {
-    const response = await fetch('/api/platform/entity-blocks', {
-        ...PLATFORM_ENTITY_BLOCK_REQUEST_POLICY,
-        body: JSON.stringify({
-            blocked,
-            entityId,
-            entityType,
-            reason,
-        }),
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        method: 'POST',
-    });
-
     const responseContext = {
         blocked,
         entityId,
         entityType,
     };
+    let response: Response;
+    try {
+        response = await fetch('/api/platform/entity-blocks', {
+            ...PLATFORM_ENTITY_BLOCK_REQUEST_POLICY,
+            body: JSON.stringify({
+                blocked,
+                entityId,
+                entityType,
+                reason,
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            method: 'POST',
+        });
+    } catch (error) {
+        logRuntimeFailure(
+            'platform_entity_block_request_failed',
+            error,
+            getPlatformEntityBlockRequestContext(responseContext),
+        );
+        throw error;
+    }
+
     const payload = await readPlatformEntityBlockResponseJson(response, responseContext);
 
     if (!response.ok) {

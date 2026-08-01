@@ -1,7 +1,7 @@
 # Print Assets Implementation
 
 **Status:** Implemented
-**Last Updated:** July 9, 2026
+**Last Updated:** July 29, 2026
 
 ## Architecture
 
@@ -25,14 +25,25 @@ Assets is a route/screen layer over existing generators. The older "Print Assets
 
 ## Catalog Contract
 
-`src/lib/print-assets/printAssetCatalog.ts` owns stable owner-facing IDs. Runtime downloads use semantic Menu Kit asset keys through `generateMenuKitAsset()` so one requested file does not render the whole ZIP. `PRINT_ASSET_MENU_KIT_INDEX` is kept only as a guarded ZIP-order compatibility map:
+`src/lib/printable-asset-templates/assetTypes.ts` owns the active runtime IDs,
+copy, placement, size, template and output-format contract.
+`src/lib/print-assets/printAssetCatalog.ts` is a compatibility projection of
+that registry for older type/import paths; it no longer duplicates runtime
+rows. Runtime downloads use semantic Menu Kit asset keys through
+`generateMenuKitAsset()` so one requested file does not render the whole ZIP.
+`PRINT_ASSET_MENU_KIT_INDEX` is kept only as a guarded ZIP-order compatibility
+map:
 
 - `table_tent -> 0`
 - `single_table_card -> 9`
 - `counter_sticker -> 1`
 - `entrance_poster -> 2`
 
-New printables must be added to the catalog first, then consumed by desktop and mobile by key. Do not add new owner-facing downloads that depend on `result.assets[index]` outside the catalog/verifier.
+New printables must be added to `PRINTABLE_ASSET_TYPES`; the compatibility
+catalog derives automatically. The focused catalog regression requires exact
+ID/copy/placement/size parity, unique IDs/groups, complete placement grouping,
+and Menu Kit key/index alignment. Do not add owner-facing downloads that depend
+on `result.assets[index]` outside the compatibility map/verifier.
 
 ## Owner Guidance Contract
 

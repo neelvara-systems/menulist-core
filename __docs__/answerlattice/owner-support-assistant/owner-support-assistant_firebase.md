@@ -79,7 +79,7 @@ Rejected collections:
 
 ## Page Load Cost
 
-The live page reads exactly `coverage`, `trustMetrics`, `supportBoardSummary`, `frictionSnapshot`, `knowledgeIntakeSummary`, and `activation`: six reads on a cold packet and zero reads on a tenant/store cache hit within 60 seconds. The activation snapshot supplies factual launch verification; Daily Founder Brief is computed from that already-loaded packet and adds no write, listener, scheduler, provider call, or support-credit debit. The broader target budget below is deferred.
+The live page reads exactly `coverage`, `trustMetrics`, `supportBoardSummary`, `frictionSnapshot`, `knowledgeIntakeSummary`, and `activation`: six reads for one cold packet and zero reads on a tenant/store cache hit within 60 seconds. Same-workspace concurrent cold requests share one in-flight `getAll()` and therefore do not multiply that six-document load. The activation snapshot supplies factual launch verification; Daily Founder Brief is computed from that already-loaded packet and adds no write, listener, scheduler, provider call, or support-credit debit. The broader target budget below is deferred.
 
 Strict source parsing, 48-hour stale classification, five-minute future-timestamp tolerance, status derivation, and caller-permission filtering are CPU-only. They do not create a repair read or write and cannot silently refresh source evidence.
 

@@ -60,7 +60,7 @@ const captureWithScope = (
     }
 
     if (error) {
-      scope.setContext('error_payload', getSanitizedMonitoringContext({ error }));
+      scope.setContext('error_payload', getSanitizedMonitoringContext({ error }) ?? null);
       return Sentry.captureMessage(safeMessage, level);
     }
 
@@ -379,7 +379,7 @@ export function trackBusinessEvent(event: string, details?: Record<string, any>)
  */
 export function setContext(key: string, value: any) {
   if (!hasMonitoring) return;
-  Sentry.setContext(key, getSanitizedMonitoringContext(value));
+  Sentry.setContext(key, getSanitizedMonitoringContext(value) ?? null);
 }
 
 export default logger;

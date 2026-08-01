@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+    AnswerlatticeCanonicalProposalAnswerSchema,
     AnswerlatticeGovernanceActionResultSchema,
     AnswerlatticeGovernanceActionSchema,
     AnswerlatticeStoredMutationProposalSchema,
@@ -67,6 +68,75 @@ assert.equal(
     }).success,
     false,
     'clients must not be able to submit authoritative drift reasons',
+);
+assert.equal(
+    AnswerlatticeGovernanceActionSchema.safeParse({
+        action: 'reject_proposal',
+        proposalId: ' proposal_123 ',
+    }).success,
+    false,
+    'governance mutation IDs must be exact and must not be trimmed into another proposal identity',
+);
+assert.equal(
+    AnswerlatticeGovernanceActionSchema.safeParse({
+        action: 'merge_entities',
+        mergedId: 'entity_merged',
+        requestId: ` ${requestId}`,
+        survivorId: 'entity_survivor',
+    }).success,
+    false,
+    'governance idempotency IDs must reject non-canonical whitespace instead of aliasing another request',
+);
+
+const canonicalAnswer = {
+    title: 'Billing retries',
+    status: 'active' as const,
+    answerType: 'explanation' as const,
+    scope: {
+        entityIds: ['entity_billing'],
+        planIds: ['growth'],
+        roleIds: ['owner'],
+        stateIds: ['past_due'],
+    },
+    productBinding: {
+        introducedInVersion: 1_000_000,
+        lastValidatedInVersion: 1_000_000,
+        applicableVersions: { from: 1_000_000, to: null },
+    },
+    content: {
+        structuredSummary: 'Retry the failed invoice.',
+        detailedExplanation: 'Open Billing and retry the failed invoice.',
+    },
+};
+assert.equal(
+    AnswerlatticeCanonicalProposalAnswerSchema.safeParse({
+        ...canonicalAnswer,
+        scope: { ...canonicalAnswer.scope, planIds: ['growth', 'growth'] },
+    }).success,
+    false,
+    'canonical applicability dimensions must reject duplicate identifiers before persistence',
+);
+assert.equal(
+    AnswerlatticeCanonicalProposalAnswerSchema.safeParse({
+        ...canonicalAnswer,
+        productBinding: {
+            ...canonicalAnswer.productBinding,
+            lastValidatedInVersion: 999_999,
+        },
+    }).success,
+    false,
+    'canonical validation cannot predate the answer introduction version',
+);
+assert.equal(
+    AnswerlatticeCanonicalProposalAnswerSchema.safeParse({
+        ...canonicalAnswer,
+        productBinding: {
+            ...canonicalAnswer.productBinding,
+            applicableVersions: { from: 1_000_000, to: 999_999 },
+        },
+    }).success,
+    false,
+    'canonical applicability windows must reject an end before the start',
 );
 
 const storedProposal = {
@@ -153,6 +223,20 @@ assert.equal(
     }).success,
     false,
     'review proposals must reject citation URLs containing credentials',
+);
+assert.equal(
+    AnswerlatticeStoredMutationProposalSchema.safeParse({
+        ...storedProposal,
+        suggestedChange: {
+            ...storedProposal.suggestedChange,
+            proposedEvidence: {
+                sourceIds: [' source_123 '],
+                citations: [],
+            },
+        },
+    }).success,
+    false,
+    'stored evidence identities must fail closed instead of being trimmed into another document identity',
 );
 assert.equal(
     AnswerlatticeGovernanceActionSchema.safeParse({

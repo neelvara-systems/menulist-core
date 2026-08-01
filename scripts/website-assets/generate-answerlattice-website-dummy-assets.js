@@ -300,6 +300,7 @@ const ASSETS = [
         chips: ['Read-only brief', 'Qualified evidence', 'Owner decides'],
         format: 'webp',
         publicRoot: true,
+        activeNav: 'Review',
     },
     {
         slug: 'answerlattice-knowledge-map',
@@ -311,6 +312,7 @@ const ASSETS = [
         chips: ['Curated hierarchy', 'Coverage visible', 'Drift review'],
         format: 'webp',
         publicRoot: true,
+        activeNav: 'Review',
     },
     {
         slug: 'answerlattice-release-assurance',
@@ -322,6 +324,7 @@ const ASSETS = [
         chips: ['Linked answers', 'Answer Tests', 'Owner confirmation'],
         format: 'webp',
         publicRoot: true,
+        activeNav: 'Review',
     },
     {
         slug: 'answerlattice-article-topic-map',
@@ -333,6 +336,7 @@ const ASSETS = [
         chips: ['Published headings', 'Mobile drill-down', 'Public only'],
         format: 'webp',
         publicRoot: true,
+        activeNav: 'Help',
     },
 ];
 
@@ -453,7 +457,8 @@ function topBar() {
 
 function sidebar(asset) {
     const nav = ['Setup', 'Sources', 'Surfaces', 'Widget', 'Review', 'Help'];
-    const activeIndex = Math.abs(asset.slug.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % nav.length;
+    const generatedActiveIndex = Math.abs(asset.slug.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)) % nav.length;
+    const activeIndex = asset.activeNav ? nav.indexOf(asset.activeNav) : generatedActiveIndex;
     return `${rect(112, 218, 256, 858, 34, '#080818', COLORS.lineSoft)}
         <rect x="150" y="258" width="72" height="72" rx="22" fill="${asset.accent}"/>
         ${text(174, 306, 'A', 34, '#ffffff', 800)}
@@ -807,10 +812,10 @@ function renderReleaseAssurance(asset) {
 
 function renderTopicMap(asset) {
     const topics = [
-        { x: 652, y: 500, width: 188, label: 'Requirements', color: COLORS.teal },
-        { x: 652, y: 580, width: 188, label: 'Connect Slack', color: COLORS.cyan, active: true },
-        { x: 652, y: 660, width: 188, label: 'Authorize access', color: COLORS.blue },
-        { x: 652, y: 740, width: 188, label: 'Troubleshoot', color: COLORS.amber },
+        { x: 652, y: 560, width: 188, label: 'Requirements', color: COLORS.teal },
+        { x: 652, y: 636, width: 188, label: 'Connect Slack', color: COLORS.cyan, active: true },
+        { x: 652, y: 712, width: 188, label: 'Authorize access', color: COLORS.blue },
+        { x: 652, y: 788, width: 188, label: 'Troubleshoot', color: COLORS.amber },
     ];
     return browserShell(asset, `
         ${rect(420, 470, 450, 512, 30, COLORS.panel, COLORS.line)}
@@ -818,9 +823,9 @@ function renderTopicMap(asset) {
         ${text(476, 523, 'Article', 16, COLORS.muted, 750)}
         ${rect(624, 496, 188, 42, 16, alpha(asset.accent, 0.12), alpha(asset.accent, 0.4))}
         ${text(652, 523, 'Topic map', 16, '#dff8ff', 800)}
-        ${rect(462, 616, 152, 58, 18, alpha(asset.accent, 0.12), alpha(asset.accent, 0.42))}
-        ${text(484, 652, 'Connect Slack', 17, '#e9fbff', 800)}
-        <path d="M614 645 C636 645 630 528 652 528 M614 645 C636 645 630 608 652 608 M614 645 C636 645 630 688 652 688 M614 645 C636 645 630 768 652 768" stroke="${alpha(asset.accent, 0.55)}" stroke-width="2" fill="none"/>
+        ${rect(462, 660, 152, 58, 18, alpha(asset.accent, 0.12), alpha(asset.accent, 0.42))}
+        ${text(484, 696, 'Connect Slack', 17, '#e9fbff', 800)}
+        <path d="M614 689 C636 689 630 588 652 588 M614 689 C636 689 630 664 652 664 M614 689 C636 689 630 740 652 740 M614 689 C636 689 630 816 652 816" stroke="${alpha(asset.accent, 0.55)}" stroke-width="2" fill="none"/>
         ${topics.map((topic) => `${rect(topic.x, topic.y, topic.width, 56, 17, topic.active ? alpha(topic.color, 0.14) : 'rgba(255,255,255,0.04)', topic.active ? alpha(topic.color, 0.48) : COLORS.lineSoft)}
             ${text(topic.x + 18, topic.y + 35, topic.label, 16, topic.active ? '#f5fffd' : COLORS.muted, topic.active ? 800 : 700)}`).join('')}
         ${text(462, 902, 'Built from published headings only', 15, COLORS.faint, 700)}

@@ -6,6 +6,10 @@ import {
     normalizeAnswerlatticeSubscriptionId,
 } from '@lib/answerlattice/billingDocumentIdBoundary';
 import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
+import {
+    projectActiveAnswerlatticeSubscriptionForRead,
+    projectAnswerlatticeSubscriptionForRead,
+} from '@lib/answerlattice/subscriptionReadBoundary';
 import { AiOperationLogInput, buildAiOperationLog, recordAiOperation } from '@lib/ai/operationLog';
 import { getAnswerlatticeScopeLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import {
@@ -135,10 +139,6 @@ const getAnswerlatticeAiAccountingLogContext = (
     unitsConsumed,
 });
 
-const isActiveAnswerlatticeAiSubscription = (subscription: FirestoreSubscriptionDoc): boolean => (
-    subscription.status === 'active'
-);
-
 const getExactSubscriptionCredits = (subscription: FirestoreSubscriptionDoc) => {
     const monthlyCredits = getNonNegativeCreditInteger(subscription.monthlyCredits ?? 0);
     const topUpCredits = getNonNegativeCreditInteger(subscription.topUpCredits ?? 0);
@@ -156,31 +156,23 @@ const getExactSubscriptionCredits = (subscription: FirestoreSubscriptionDoc) => 
 async function refreshMonthlyCreditsIfNeeded(
     subscription: FirestoreSubscriptionDoc,
     scope: AnswerlatticeAiScope,
-): Promise<FirestoreSubscriptionDoc> {
+): Promise<FirestoreSubscriptionDoc | null> {
     const normalizedSubscriptionId = normalizeAnswerlatticeSubscriptionId(subscription?.id);
-    const initialCredits = getExactSubscriptionCredits(subscription);
-    if (!normalizedSubscriptionId || initialCredits.monthlyCreditsAllowance <= 0) {
-        return subscription;
-    }
-
-    const billingPeriod = getBillingPeriodKey(subscription.cycleStartDate);
-    if (billingPeriod === null) return subscription;
-    if (subscription.creditsLastResetMonth === billingPeriod) {
-        return subscription;
-    }
+    getExactSubscriptionCredits(subscription);
+    if (!normalizedSubscriptionId) return null;
 
     const subscriptionRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSubscriptionId);
     return db.runTransaction(async (transaction) => {
         const subscriptionSnap = await transaction.get(subscriptionRef);
         if (!subscriptionSnap.exists) return subscription;
 
-        const current = {
-            ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
-            id: subscriptionSnap.id,
-        };
-        if (!isActiveAnswerlatticeAiSubscription(current) || !isAnswerlatticeSubscriptionInScope(current, scope)) {
-            return current;
-        }
+        const current = projectActiveAnswerlatticeSubscriptionForRead(
+            subscriptionSnap.data(),
+            subscriptionSnap.id,
+            scope.tId,
+            scope.sId,
+        );
+        if (!current) return null;
         const currentBillingPeriod = getBillingPeriodKey(current.cycleStartDate);
         const currentCredits = getExactSubscriptionCredits(current);
         const allowance = currentCredits.monthlyCreditsAllowance;
@@ -226,21 +218,19 @@ export async function checkAnswerlatticeAICapacity(
     if (!Number.isSafeInteger(unitsRequired) || unitsRequired <= 0) {
         throw new Error('Answerlattice AI capacity units are invalid.');
     }
-    let subscription = preloadedSubscription === undefined
+    const loadedSubscription = preloadedSubscription === undefined
         ? await getActiveProductSubscriptionForStore(PRODUCT_IDS.ANSWERLATTICE, scope.tId, scope.sId)
         : preloadedSubscription;
-
-    if (!subscription || !isActiveAnswerlatticeAiSubscription(subscription)) {
-        return {
-            allowed: false,
-            reason: 'no_subscription',
-            remaining: 0,
-            subscription: null,
-            unitsRequired,
-        };
-    }
-
-    if (!isAnswerlatticeSubscriptionInScope(subscription, scope)) {
+    const loadedSubscriptionId = normalizeAnswerlatticeSubscriptionId(loadedSubscription?.id);
+    let subscription = loadedSubscription && loadedSubscriptionId
+        ? projectActiveAnswerlatticeSubscriptionForRead(
+            loadedSubscription,
+            loadedSubscriptionId,
+            scope.tId,
+            scope.sId,
+        )
+        : null;
+    if (!subscription) {
         return {
             allowed: false,
             reason: 'no_subscription',
@@ -251,7 +241,7 @@ export async function checkAnswerlatticeAICapacity(
     }
 
     subscription = await refreshMonthlyCreditsIfNeeded(subscription, scope);
-    if (!isActiveAnswerlatticeAiSubscription(subscription) || !isAnswerlatticeSubscriptionInScope(subscription, scope)) {
+    if (!subscription) {
         return {
             allowed: false,
             reason: 'no_subscription',
@@ -298,13 +288,13 @@ export async function consumeAnswerlatticeAICapacity(
         const subscriptionSnap = await transaction.get(subscriptionRef);
         if (!subscriptionSnap.exists) return null;
 
-        const current = {
-            ...(subscriptionSnap.data() as FirestoreSubscriptionDoc),
-            id: subscriptionSnap.id,
-        };
-        if (!isAnswerlatticeSubscriptionInScope(current, { tId: tenantScope.numericId, sId: storeScope.numericId })) {
-            throw new Error('Answerlattice subscription scope does not match this workspace.');
-        }
+        const current = projectActiveAnswerlatticeSubscriptionForRead(
+            subscriptionSnap.data(),
+            subscriptionSnap.id,
+            tenantScope.numericId,
+            storeScope.numericId,
+        );
+        if (!current) throw new Error('An active Answerlattice subscription is required for this operation.');
 
         const currentCredits = getExactSubscriptionCredits(current);
         let monthlyCredits = currentCredits.monthlyCredits;
@@ -526,11 +516,13 @@ export async function reserveAnswerlatticeAiOperationCapacity(params: {
         if (!subscriptionSnapshot.exists) {
             throw new Error('An active Answerlattice subscription is required for this operation.');
         }
-        const current = {
-            ...(subscriptionSnapshot.data() as FirestoreSubscriptionDoc),
-            id: subscriptionSnapshot.id,
-        };
-        if (!isAnswerlatticeSubscriptionInScope(current, identity.scope) || !isActiveAnswerlatticeAiSubscription(current)) {
+        const current = projectActiveAnswerlatticeSubscriptionForRead(
+            subscriptionSnapshot.data(),
+            subscriptionSnapshot.id,
+            identity.scope.tId,
+            identity.scope.sId,
+        );
+        if (!current) {
             throw new Error('An active Answerlattice subscription is required for this operation.');
         }
         if (operationSnapshot.exists && existing.accountingStatus !== 'refunded') {
@@ -822,11 +814,13 @@ export async function refundAnswerlatticeAiOperationReservation(params: {
             subscriptionId,
             unitsReserved: params.reservation.unitsReserved,
         });
-        const current = {
-            ...(subscriptionSnapshot.data() as FirestoreSubscriptionDoc),
-            id: subscriptionSnapshot.id,
-        };
-        if (!isAnswerlatticeSubscriptionInScope(current, params.reservation.scope)) {
+        const current = projectAnswerlatticeSubscriptionForRead(
+            subscriptionSnapshot.data(),
+            subscriptionSnapshot.id,
+            params.reservation.scope.tId,
+            params.reservation.scope.sId,
+        );
+        if (!current) {
             throw new Error('Answerlattice subscription scope does not match this workspace.');
         }
         const currentCredits = getExactSubscriptionCredits(current);
@@ -938,14 +932,13 @@ async function finalizeIdempotentAnswerlatticeAiOperation({
         if (!subscriptionSnapshot.exists) {
             throw new Error('An active Answerlattice subscription is required for this operation.');
         }
-        const current = {
-            ...(subscriptionSnapshot.data() as FirestoreSubscriptionDoc),
-            id: subscriptionSnapshot.id,
-        };
-        if (!isAnswerlatticeSubscriptionInScope(current, { tId: tenantScope.numericId, sId: storeScope.numericId })) {
-            throw new Error('Answerlattice subscription scope does not match this workspace.');
-        }
-        if (!isActiveAnswerlatticeAiSubscription(current)) {
+        const current = projectActiveAnswerlatticeSubscriptionForRead(
+            subscriptionSnapshot.data(),
+            subscriptionSnapshot.id,
+            tenantScope.numericId,
+            storeScope.numericId,
+        );
+        if (!current) {
             throw new Error('An active Answerlattice subscription is required for this operation.');
         }
 

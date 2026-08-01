@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
-export default function WebsiteDocumentTheme() {
+export default function WebsiteDocumentTheme(): ReactNode {
   useEffect(() => {
     const previousBackgroundColor = document.body.style.backgroundColor;
     const previousColor = document.body.style.color;

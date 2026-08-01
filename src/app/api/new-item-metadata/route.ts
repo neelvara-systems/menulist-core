@@ -32,6 +32,7 @@ const LOG_FILE = "new-item-metadata.log";
 const action = AI_ACTIONS_TYPES.NEW_ITEM_METADATA;
 const NEW_ITEM_METADATA_AI_MAX_BODY_BYTES = 256 * 1024;
 const MAX_NEW_ITEM_METADATA_PROVIDER_RESPONSE_PARSE_DIAGNOSTICS = 25;
+const getPendingAiTransactionId = (): string | null => null;
 
 type NewItemMetadataProviderResponseParseStage =
     | 'empty_response'
@@ -570,7 +571,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         let transactionObject = {
-            transactionId: null,
+            transactionId: getPendingAiTransactionId(),
             contentLength,
             itemSummary,
             languageSummary,

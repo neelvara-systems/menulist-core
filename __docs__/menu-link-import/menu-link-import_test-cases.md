@@ -13,6 +13,10 @@
 - `file:`, `ftp:`, `data:`, and `javascript:` URLs are rejected.
 - `localhost`, `127.0.0.1`, `10.0.0.0/8`, `192.168.0.0/16`, `169.254.169.254`, and metadata hostnames are rejected.
 - Redirect to unsafe target is rejected.
+- IPv6 literals across the full `fe80::/10` link-local range, including
+  `fe90::1`, `fea0::1`, and `febf::1`, are rejected before network access.
+- Deprecated `fec0::/10` site-local IPv6 literals are rejected before network
+  access.
 - Oversized response is rejected.
 - Unsupported content type is rejected.
 - Valid HTML menu creates `menuLinkImportArtifacts` and `menuImageProcessingJobs`.

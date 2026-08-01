@@ -9,7 +9,7 @@
 - The active widget support request remains independent, server-authoritative, deterministic, and idempotent.
 - Automatic evaluator execution remains behind `ENABLE_ANSWERLATTICE_AI_ESCALATION: false`; Help Chat browser ticket authority and its suggestion callback were removed.
 - Browser-owned repeated-failure authority was removed from request, search, evaluator, and trigger contracts.
-- Evaluator evidence is type-checked, bounded, normalized, limited to final-answer cited references, sorted before the five-result output cap, and rejected on malformed scores.
+- Evaluator decision evidence is type-checked, bounded, normalized, limited to final-answer cited references, sorted before the five-result output cap, and rejected on malformed scores. Malformed optional entity-debug telemetry is omitted without suppressing an otherwise valid empty/refusal escalation.
 - A healthy source-backed RAG answer after a canonical miss no longer creates a false suggestion; safe refusals remain eligible for hard escalation metadata.
 - Internal escalation context is not projected to the Help Center browser response.
 - Browser ticket creation cannot set server-owned escalation fields or emit an `ESCALATION` signal; the DAL and both Firestore rule sets enforce this boundary.

@@ -14,11 +14,12 @@ import {
   ANALYTICS_QUEUE_MAX_ENTRIES,
   ANALYTICS_QUEUE_MAX_RETRY_COUNT,
   ANALYTICS_QUEUE_MAX_STORAGE_CHARS,
+  canMergeAnalyticsUpdateData,
   getAnalyticsQueueKey,
   mergeAnalyticsUpdateData,
   normalizeAnalyticsDeliveryId,
   normalizePersistedAnalyticsQueue,
-  subtractFlushedAnalyticsData,
+  type AnalyticsDeliverySnapshot,
 } from "@lib/analytics/queueBoundary";
 import { filterAnalyticsUpdateData, type AnalyticsWriteValue } from "@lib/analytics/writePolicy";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
@@ -57,6 +58,7 @@ type QueuedAnalyticsWrite = {
   deliveryId: string;
   updateData: Record<string, AnalyticsWriteValue>;
   eventCount: number;
+  activeDelivery?: AnalyticsDeliverySnapshot;
   retryCount: number;
   createdAt: number;
   flushTimer?: ReturnType<typeof setTimeout>;
@@ -116,6 +118,7 @@ const persistAnalyticsQueue = () => {
         deliveryId: queued.deliveryId,
         updateData: queued.updateData,
         eventCount: queued.eventCount,
+        activeDelivery: queued.activeDelivery,
         retryCount: queued.retryCount,
         createdAt: queued.createdAt,
       },
@@ -250,32 +253,41 @@ const flushAnalyticsQueueKey = async (queueKey: string) => {
   flushingAnalyticsKeys.add(queueKey);
   if (queued.flushTimer) clearTimeout(queued.flushTimer);
   queued.flushTimer = undefined;
-  const flushedData = { ...queued.updateData };
-  const flushedEventCount = queued.eventCount;
-  const flushedDeliveryId = queued.deliveryId;
+  if (!queued.activeDelivery) {
+    queued.activeDelivery = {
+      deliveryId: queued.deliveryId,
+      updateData: { ...queued.updateData },
+      eventCount: queued.eventCount,
+    };
+    queued.deliveryId = createRandomIdSegment(32);
+    queued.updateData = {};
+    queued.eventCount = 0;
+    // Persist the exact request snapshot before network delivery so a page
+    // reload cannot merge newer counters under an already-receipted ID.
+    persistAnalyticsQueue();
+  }
+  const activeDelivery = queued.activeDelivery;
 
   try {
     await writeAnalyticsEventViaPublicApi(
-      flushedData,
+      activeDelivery.updateData,
       queued.tenantId,
       queued.storeId,
       queued.projectId,
       queued.dateString,
       queued.storeTimeZone,
       queued.businessDayEndTime,
-      flushedDeliveryId,
+      activeDelivery.deliveryId,
     );
 
     const current = analyticsWriteQueue.get(queueKey);
     if (current) {
-      current.updateData = subtractFlushedAnalyticsData(current.updateData, flushedData);
-      current.eventCount = Math.max(0, current.eventCount - flushedEventCount);
+      current.activeDelivery = undefined;
       current.retryCount = 0;
-      current.createdAt = Date.now();
       if (current.eventCount === 0 || Object.keys(current.updateData).length === 0) {
         analyticsWriteQueue.delete(queueKey);
       } else {
-        current.deliveryId = createRandomIdSegment(32);
+        current.createdAt = Date.now();
       }
     }
     reportedAnalyticsQueueFailures.delete(queueKey);
@@ -330,16 +342,14 @@ const enqueueAnalyticsWrite = (
   const existing = analyticsWriteQueue.get(queueKey);
 
   if (existing) {
-    const mergedFieldCount = new Set([
-      ...Object.keys(existing.updateData),
-      ...Object.keys(policyData),
-    ]).size;
-    if (mergedFieldCount > 100 && !flushingAnalyticsKeys.has(queueKey)) {
-      void flushAnalyticsQueueKey(queueKey).catch((error) => {
-        reportAnalyticsQueueFlushError(queueKey, error, 'flush');
-      });
+    if (!canMergeAnalyticsUpdateData(existing.updateData, policyData)) {
+      if (!flushingAnalyticsKeys.has(queueKey)) {
+        void flushAnalyticsQueueKey(queueKey).catch((error) => {
+          reportAnalyticsQueueFlushError(queueKey, error, 'flush');
+        });
+      }
+      return false;
     }
-    if (mergedFieldCount > 200) return false;
 
     mergeAnalyticsUpdateData(existing.updateData, policyData);
     existing.eventCount += 1;
@@ -401,6 +411,7 @@ if (typeof window !== 'undefined') {
         deliveryId: queued.deliveryId,
         updateData: queued.updateData,
         eventCount: queued.eventCount,
+        activeDelivery: queued.activeDelivery,
         retryCount: queued.retryCount,
         createdAt: queued.createdAt,
       });

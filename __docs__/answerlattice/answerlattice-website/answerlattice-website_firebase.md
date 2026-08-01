@@ -1,7 +1,7 @@
 # AnswerLattice Website Firebase And Cost Contract
 
 > **Status:** Implemented source contract
-> **Last audited:** July 29, 2026
+> **Last audited:** July 31, 2026
 
 ## Infrastructure Boundary
 
@@ -13,6 +13,7 @@ The public AnswerLattice site is hosted through the existing web application but
 |---|---|
 | Browse static pages | Zero Firestore operations |
 | Browse owner-decision website sections | Zero Firestore operations; capability copy and links are bundled source |
+| Browse the Operating Guide | Zero Firestore and provider operations; Start, Coordinate, and Govern are bundled guidance, not workspace state |
 | Run deterministic demo | Zero Firestore and zero AI-provider operations |
 | Read pricing | Zero Firestore operations; plan source is bundled code |
 | Accept/decline website analytics | Exact browser consent state; configured analytics and every custom event require the current accepted choice, and declining stops subsequent event pings |
@@ -43,11 +44,23 @@ The browser submits only the selected current monthly plan, INR/USD currency, bo
 
 ## Deployment
 
+The July 31 progressive-adoption work adds one bundled resource article, one
+explicit route wrapper, and static navigation/use-case links. It adds no
+Firestore document, workspace maturity field, read, write, delete, listener,
+Storage object, Function, scheduled task, model call, or Firebase deployment.
+Existing team access, permissions, summaries, and feature flags continue to own
+runtime behavior.
+
 The July 29 owner-decision website alignment changes no Firestore rules,
 indexes, Storage rules, Cloud Functions, public payloads, listeners, scheduled
 work, or provider calls, so no Firebase deploy is required. It only links to
 existing product routes and renders bundled capability copy plus an existing
 website asset.
+
+The four July 29 AssetOS proof visuals are bundled static WebP files. Their
+generation, brief review, fingerprinting, and size checks run locally, so they
+add zero Firebase reads, writes, deletes, listeners, Storage operations,
+Functions invocations, or scheduled work.
 
 The root application dependency changes only its existing SMTP runtime: vulnerable direct Nodemailer `7.0.13` is replaced by the `nodemailer9` npm alias pinned to `9.0.3`. Existing root mail consumers import one typed wrapper. The alias deliberately does not satisfy NextAuth 4's unused optional `nodemailer ^7.0.7` peer, and Answerlattice Functions retain their independent direct `nodemailer` `9.0.3` pin. This does not add a provider, request, collection, or Firebase deployment target.
 

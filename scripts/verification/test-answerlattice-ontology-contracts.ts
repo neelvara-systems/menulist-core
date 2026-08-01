@@ -7,6 +7,8 @@ import {
     AnswerlatticeOntologyActionSchema,
     normalizeStoredAnswerlatticeEntity,
     normalizeStoredAnswerlatticeEntityCandidate,
+    normalizeStoredAnswerlatticeEntityRelation,
+    normalizeStoredAnswerlatticeEntitySearchIndex,
 } from '../../src/lib/answerlattice/ontologyContracts';
 
 const create = {
@@ -39,10 +41,59 @@ const legacy = normalizeStoredAnswerlatticeEntity({
 }, 'entity-1');
 assert.equal(legacy?.pId, 'AL', 'legacy product-specific rows without pId must normalize to AL');
 assert.equal(normalizeStoredAnswerlatticeEntity({ ...legacy, pId: 'ML' }, 'entity-1'), null);
+assert.equal(
+    'privateNote' in (normalizeStoredAnswerlatticeEntity({
+        ...legacy,
+        privateNote: 'must not leave persistence',
+    }, 'entity-private') || {}),
+    false,
+    'entity normalization must project only the declared runtime contract',
+);
+assert.equal(
+    'privateNote' in (normalizeStoredAnswerlatticeEntityRelation({
+        tId: 1,
+        sId: 101,
+        fromEntityId: 'entity-1',
+        toEntityId: 'entity-2',
+        relationType: 'requires',
+        privateNote: 'must not leave persistence',
+    }, 'relation-private') || {}),
+    false,
+    'relation normalization must project only the declared runtime contract',
+);
+assert.equal(
+    'privateNote' in (normalizeStoredAnswerlatticeEntitySearchIndex({
+        tId: 1,
+        sId: 101,
+        entityId: 'entity-1',
+        canonicalName: 'Billing Retry',
+        synonyms: ['retry billing'],
+        normalizedTokens: ['billing', 'retry'],
+        weight: 1,
+        privateNote: 'must not leave persistence',
+    }, 'entity-search-private') || {}),
+    false,
+    'search-index normalization must project only the declared runtime contract',
+);
 assert.equal(normalizeStoredAnswerlatticeEntityCandidate({
     tId: 1, sId: 101, name: 'Billing Retry', type: 'feature', confidence: 0.8,
     frequency: { articles: 1, tickets: 0, chat: 0 }, description: 'Billing retry.', status: 'pending',
 }, 'candidate-1')?.status, 'pending');
+assert.equal(
+    'privateNote' in (normalizeStoredAnswerlatticeEntityCandidate({
+        tId: 1,
+        sId: 101,
+        name: 'Billing Retry',
+        type: 'feature',
+        confidence: 0.8,
+        frequency: { articles: 1, tickets: 0, chat: 0 },
+        description: 'Billing retry.',
+        status: 'pending',
+        privateNote: 'must not leave persistence',
+    }, 'candidate-private') || {}),
+    false,
+    'candidate normalization must project only the declared runtime contract',
+);
 assert.equal(normalizeStoredAnswerlatticeEntityCandidate({
     pId: 'AL', tId: 1, sId: 101, name: 'Billing Retry', type: 'feature', confidence: 0.8,
     frequency: { articles: 1, tickets: 0, chat: 0 }, description: 'Billing retry.', status: 'pending',
@@ -151,6 +202,26 @@ const nightlySource = fs.readFileSync(
 assert.match(nightlySource, /limit\(SCHEDULER_LIMITS\.graphRelationsPerTenant \+ 1\)/);
 assert.match(nightlySource, /graph relation limit exceeded; existing graph index was preserved/);
 
+const entitiesSource = fs.readFileSync(
+    path.join(root, 'src/database/answerlattice/entities.ts'),
+    'utf8',
+);
+assert.match(
+    entitiesSource,
+    /if \(data\.status !== 'active' && data\.status !== 'beta'\)/,
+    'entity create must reject unsupported status instead of coercing it to active',
+);
+assert.match(
+    entitiesSource,
+    /data\.status !== undefined && data\.status !== 'active' && data\.status !== 'beta'/,
+    'entity update must reject unsupported status instead of silently dropping it',
+);
+assert.equal(
+    entitiesSource.includes("status: data.status === 'beta' ? 'beta' : 'active'"),
+    false,
+    'entity create must not retain deprecated-to-active coercion',
+);
+
 const requiredProductScopedSources = [
     'src/database/answerlattice/entities.ts',
     'src/database/answerlattice/entityCandidates.ts',
@@ -183,6 +254,19 @@ const requiredProductScopedSources = [
     'functions-answerlattice/src/answerlattice/predictiveTriggerSync.ts',
     'functions-answerlattice/src/answerlattice/resolutionExtractor.ts',
 ];
+const entityLookupSource = fs.readFileSync(
+    path.join(root, 'src/lib/answerlattice/entityLookup.ts'),
+    'utf8',
+);
+assert.equal(
+    (
+        entityLookupSource.match(
+            /\.where\(['"]pId['"],\s*['"]==['"],\s*PRODUCT_IDS\.ANSWERLATTICE\)/g,
+        ) || []
+    ).length,
+    2,
+    'both prefix and legacy Answerlattice entity-index lookup paths must enforce the product partition',
+);
 const productSensitiveCollections = [
     'ANSWERLATTICE_ENTITIES',
     'ANSWERLATTICE_ENTITY_RELATIONS',

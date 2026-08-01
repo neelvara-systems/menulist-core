@@ -1,6 +1,7 @@
 import { CHANGELOG_TAG_OPTIONS } from '@constant/changelog';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import type { ChangelogEntry, ChangelogPage } from '@type/changelog';
+import type { JSONContent } from '@tiptap/core';
 import type { Timestamp } from 'firebase/firestore';
 import { z } from 'zod';
 
@@ -20,11 +21,14 @@ const uniqueStrings = (maxItems: number, maxLength: number) => z.array(boundedSt
     if (new Set(values).size !== values.length) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Values must be unique' });
 });
 
-const tiptapDocumentSchema = z.unknown().superRefine((value, context) => {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        context.addIssue({ code: z.ZodIssueCode.custom, message: 'Description must be a rich-text document' });
-        return;
-    }
+const isTiptapDocument = (value: unknown): value is JSONContent => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const tiptapDocumentSchema = z.custom<JSONContent>(
+    isTiptapDocument,
+    { message: 'Description must be a rich-text document' },
+).superRefine((value, context) => {
     try {
         if (new TextEncoder().encode(JSON.stringify(value)).byteLength > 512 * 1024) {
             context.addIssue({ code: z.ZodIssueCode.custom, message: 'Description is too large' });

@@ -22,6 +22,11 @@ import {
     isAnswerlatticeStoreInScope,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
+import {
+    getAnswerlatticeSubscriptionTimestampMillis,
+    isAnswerlatticeSubscriptionCurrent,
+    projectAnswerlatticeSubscriptionForRead,
+} from '@lib/answerlattice/subscriptionReadBoundary';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
@@ -216,44 +221,17 @@ const productDocPayload = (
     });
 };
 
-const toMillis = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    if (value instanceof Date) return value.getTime();
-    return Number(value) || 0;
-};
-
 const normalizeAnswerlatticeSubscription = (
-    data: Record<string, any>,
+    data: unknown,
     id: string,
     tenantId: number,
     storeId: number,
-): FirestoreSubscriptionDoc => ({
-    ...(data as FirestoreSubscriptionDoc),
+): FirestoreSubscriptionDoc | null => projectAnswerlatticeSubscriptionForRead(
+    data,
     id,
-    providerSubscriptionId: data.providerSubscriptionId || id,
-    pId: PRODUCT_IDS.ANSWERLATTICE,
-    productId: PRODUCT_IDS.ANSWERLATTICE,
-    tId: tenantId,
-    sId: storeId,
     tenantId,
     storeId,
-    amount: Number.isFinite(Number(data.amount)) ? Number(data.amount) : 0,
-    quantity: Number.isFinite(Number(data.quantity)) && Number(data.quantity) > 0 ? Number(data.quantity) : 1,
-    monthlyCreditsAllowance: data.monthlyCreditsAllowance ?? 0,
-    monthlyCredits: data.monthlyCredits ?? 0,
-    topUpCredits: data.topUpCredits ?? 0,
-    currency: data.currency || 'INR',
-    status: data.status || 'pending',
-    planType: data.planType || 'MONTH',
-    planName: data.planName || 'Answerlattice Plan',
-    planId: data.planId || '',
-    paymentMethod: data.paymentMethod || { type: '', brand: '', last4: '', upiId: '', upiTransactionId: '' },
-    statuses: Array.isArray(data.statuses) ? data.statuses : [],
-    billingHistory: Array.isArray(data.billingHistory) ? data.billingHistory : [],
-    shortUrl: data.shortUrl || '',
-} as FirestoreSubscriptionDoc);
+);
 
 const isAnswerlatticeSubscriptionForScope = (
     subscription: FirestoreSubscriptionDoc,
@@ -261,18 +239,7 @@ const isAnswerlatticeSubscriptionForScope = (
     storeId: number,
 ): boolean => isAnswerlatticeSubscriptionInScope(subscription, { tId: tenantId, sId: storeId });
 
-const isCurrentAnswerlatticeSubscription = (subscription: FirestoreSubscriptionDoc): boolean => {
-    if (['pending', 'paused', 'past_due'].includes(String(subscription.status))) return true;
-    if (subscription.status === 'active') {
-        const cycleEndMs = toMillis(subscription.cycleEndDate);
-        return !cycleEndMs || cycleEndMs >= Date.now();
-    }
-    if (subscription.status === 'cancelled') {
-        const cycleEndMs = toMillis(subscription.cycleEndDate);
-        return Boolean(cycleEndMs && cycleEndMs >= Date.now());
-    }
-    return false;
-};
+const isCurrentAnswerlatticeSubscription = isAnswerlatticeSubscriptionCurrent;
 
 export const createProductInitialSubscription = async (
     productId: ProductId,
@@ -363,8 +330,14 @@ export const getProductSubscriptionById = async (
 
     if (!docSnap.exists) return null;
     const subscription = { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
-    if (!getProductSubscriptionBillingScope(productId, subscription)) return null;
-    return subscription;
+    const scope = getProductSubscriptionBillingScope(productId, subscription);
+    if (!scope) return null;
+    return projectAnswerlatticeSubscriptionForRead(
+        docSnap.data(),
+        docSnap.id,
+        scope.tenantId,
+        scope.storeId,
+    );
 };
 
 const fetchAnswerlatticeSubscriptionRaw = async (
@@ -397,7 +370,7 @@ const fetchAnswerlatticeSubscriptionRaw = async (
                 sId: storeScope.numericId,
             })) {
                 const subscription = normalizeAnswerlatticeSubscription(subscriptionData, subscriptionSnap.id, tenantScope.numericId, storeScope.numericId);
-                if (isCurrentAnswerlatticeSubscription(subscription)) return subscription;
+                if (subscription && isCurrentAnswerlatticeSubscription(subscription)) return subscription;
             }
         }
     }
@@ -418,8 +391,12 @@ const fetchAnswerlatticeSubscriptionRaw = async (
             sId: storeScope.numericId,
         }))
         .map((docSnap) => normalizeAnswerlatticeSubscription(docSnap.data(), docSnap.id, tenantScope.numericId, storeScope.numericId))
+        .filter((subscription): subscription is FirestoreSubscriptionDoc => Boolean(subscription))
         .filter(isCurrentAnswerlatticeSubscription)
-        .sort((a, b) => toMillis(b.cycleEndDate) - toMillis(a.cycleEndDate))[0] || null;
+        .sort((a, b) => (
+            (getAnswerlatticeSubscriptionTimestampMillis(b.cycleEndDate) || 0)
+            - (getAnswerlatticeSubscriptionTimestampMillis(a.cycleEndDate) || 0)
+        ))[0] || null;
 };
 
 const expireIfGracePeriodEnded = async (
@@ -445,13 +422,23 @@ const expireIfGracePeriodEnded = async (
         const snapshot = await transaction.get(subscriptionRef);
         if (!snapshot.exists) return { expired: false, subscription: null };
 
-        const current = {
+        const currentRecord = {
             ...(snapshot.data() as FirestoreSubscriptionDoc),
             id: snapshot.id,
         } as FirestoreSubscriptionDoc;
-        if (!getProductSubscriptionBillingScope(productId, current)) {
+        const currentScope = getProductSubscriptionBillingScope(productId, currentRecord);
+        if (!currentScope) {
             return { expired: false, subscription: null };
         }
+        const current = isAnswerlatticeBillingProduct(productId)
+            ? projectAnswerlatticeSubscriptionForRead(
+                snapshot.data(),
+                snapshot.id,
+                currentScope.tenantId,
+                currentScope.storeId,
+            )
+            : currentRecord;
+        if (!current) return { expired: false, subscription: null };
         if (current.status !== 'past_due') {
             return { expired: false, subscription: current };
         }
@@ -605,9 +592,10 @@ export const writeProductPaymentTransactionAudit = async (
                 throw new Error('Billing audit document identity conflict.');
             }
         }
+        const existingCreatedOn = existing?.createdOn;
         transaction.set(docRef, {
             ...payload,
-            createdOn: isTimestampLike(existing?.createdOn) ? existing.createdOn : now,
+            createdOn: isTimestampLike(existingCreatedOn) ? existingCreatedOn : now,
         }, { merge: true });
     });
 
@@ -703,7 +691,7 @@ export async function applyProductSubscriptionPayment(
         if (!Number.isSafeInteger(nextAllowance) || nextAllowance < 0) {
             throw new Error('Subscription monthly credit allowance is invalid.');
         }
-        const update = {
+        const update: Partial<FirestoreSubscriptionDoc> = {
             ...safeUpdate,
             status: 'active' as const,
             pastDueSinceAt: null,
@@ -1175,6 +1163,8 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
         .where('status', '==', 'active')
         .where('storeId', '==', storeScope.numericId)
         .where('tenantId', '==', tenantScope.numericId)
+        .where('tId', '==', tenantScope.numericId)
+        .where('sId', '==', storeScope.numericId)
         .where('cycleEndDate', '>=', admin.firestore.Timestamp.now())
         .orderBy('cycleEndDate', 'desc')
         .limit(10);
@@ -1209,6 +1199,7 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
             currentTenantScope.numericId,
             currentStoreScope.numericId,
         );
+        if (!current) return;
         const syncedAt = admin.firestore.FieldValue.serverTimestamp();
         const activeSubscription = activeSubscriptionsSnapshot.docs
             .filter((activeSnapshot) => isAnswerlatticeSubscriptionInScope(activeSnapshot.data(), {
@@ -1221,12 +1212,16 @@ export const syncAnswerlatticeSubscriptionEntitlementFromSubscription = async (
                 currentTenantScope.numericId,
                 currentStoreScope.numericId,
             ))
+            .filter((candidate): candidate is FirestoreSubscriptionDoc => Boolean(candidate))
             .filter((candidate) => isAnswerlatticeSubscriptionForScope(
                 candidate,
                 currentTenantScope.numericId,
                 currentStoreScope.numericId,
             ))
-            .sort((left, right) => toMillis(right.cycleEndDate) - toMillis(left.cycleEndDate))[0]
+            .sort((left, right) => (
+                (getAnswerlatticeSubscriptionTimestampMillis(right.cycleEndDate) || 0)
+                - (getAnswerlatticeSubscriptionTimestampMillis(left.cycleEndDate) || 0)
+            ))[0]
             || null;
         const summarySubscription = activeSubscription || current;
         const activePlanType = activeSubscription

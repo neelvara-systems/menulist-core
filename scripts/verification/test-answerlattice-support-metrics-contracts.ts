@@ -15,6 +15,10 @@ import {
     parseAnswerlatticeTrustMetrics,
 } from '@lib/answerlattice/analyticsIntelligenceContracts';
 import {
+    ANSWERLATTICE_FRICTION_EVIDENCE_BRIEF_MAX_BYTES,
+    buildAnswerlatticeFrictionEvidenceBrief,
+} from '@lib/answerlattice/frictionEvidenceBrief';
+import {
     getAnswerlatticeFrictionScopeKey,
     projectFrictionInsightsStateForScope,
 } from '@hook/answerlattice/frictionInsightsScopeState';
@@ -256,6 +260,73 @@ assert.equal(parseAnswerlatticeFrictionSnapshot({
     window: { ...calendarWindow, currentStartDate: '2026-07-10' },
 }, scope), null);
 
+const frictionEvidenceBrief = buildAnswerlatticeFrictionEvidenceBrief({
+    entity: projectedFrictionSnapshot.topFrictionEntities[0],
+    reviewPath: 'review_product_behavior',
+    sourceLastUpdated: '2026-07-18T00:03:30.000Z',
+    window: projectedFrictionSnapshot.window,
+});
+assert.equal(
+    frictionEvidenceBrief.fileName,
+    'answerlattice-friction-evidence-billing-2026-07-17.md',
+);
+assert.ok(frictionEvidenceBrief.markdown.includes('Selected review path: Review product behavior'));
+assert.ok(frictionEvidenceBrief.markdown.includes('Support-evidence events: 8'));
+assert.ok(frictionEvidenceBrief.markdown.includes('Ticket evidence: 2'));
+assert.ok(frictionEvidenceBrief.markdown.includes('Canonical-miss evidence: 2'));
+assert.ok(frictionEvidenceBrief.markdown.includes('Rising: 100% more evidence events'));
+assert.ok(frictionEvidenceBrief.markdown.includes('does not prove unique affected users'));
+assert.ok(!frictionEvidenceBrief.markdown.includes('Probable product defect'));
+assert.ok(!frictionEvidenceBrief.markdown.includes('Affected users:'));
+assert.ok(!frictionEvidenceBrief.markdown.includes('Pain reduced'));
+const knownLimitationBrief = buildAnswerlatticeFrictionEvidenceBrief({
+    entity: projectedFrictionSnapshot.topFrictionEntities[0],
+    reviewPath: 'review_known_limitation',
+    window: projectedFrictionSnapshot.window,
+});
+assert.ok(knownLimitationBrief.markdown.includes('Selected review path: Review known limitation'));
+assert.ok(knownLimitationBrief.markdown.includes('Verify whether this is an intentional approved constraint'));
+assert.ok(!knownLimitationBrief.markdown.includes('Confirmed limitation'));
+assert.ok(
+    new TextEncoder().encode(frictionEvidenceBrief.markdown).byteLength
+        <= ANSWERLATTICE_FRICTION_EVIDENCE_BRIEF_MAX_BYTES,
+);
+assert.deepEqual(
+    buildAnswerlatticeFrictionEvidenceBrief({
+        entity: projectedFrictionSnapshot.topFrictionEntities[0],
+        reviewPath: 'review_product_behavior',
+        sourceLastUpdated: '2026-07-18T00:03:30.000Z',
+        window: projectedFrictionSnapshot.window,
+    }),
+    frictionEvidenceBrief,
+    'the same admitted snapshot and owner selection must produce the same brief',
+);
+assert.throws(() => buildAnswerlatticeFrictionEvidenceBrief({
+    entity: projectedFrictionSnapshot.topFrictionEntities[0],
+    reviewPath: 'automatic_root_cause' as never,
+    window: projectedFrictionSnapshot.window,
+}));
+assert.throws(() => buildAnswerlatticeFrictionEvidenceBrief({
+    entity: projectedFrictionSnapshot.topFrictionEntities[0],
+    reviewPath: 'investigate_further',
+    window: { ...projectedFrictionSnapshot.window, complete: false },
+}));
+assert.throws(() => buildAnswerlatticeFrictionEvidenceBrief({
+    entity: projectedFrictionSnapshot.topFrictionEntities[0],
+    reviewPath: 'investigate_further',
+    window: { ...projectedFrictionSnapshot.window, currentEndDate: '2026-02-30' },
+}));
+const legacyFrictionEvidenceBrief = buildAnswerlatticeFrictionEvidenceBrief({
+    entity: projectedLegacyFrictionSnapshot.topFrictionEntities[0],
+    reviewPath: 'investigate_further',
+    window: projectedLegacyFrictionSnapshot.window,
+});
+assert.ok(
+    legacyFrictionEvidenceBrief.markdown.includes(
+        'Evidence component breakdown: Available after the next nightly refresh.',
+    ),
+);
+
 const frictionInsight = {
     ...storedScope,
     schemaVersion: ANSWERLATTICE_SUPPORT_METRICS_SCHEMA_VERSION,
@@ -339,12 +410,51 @@ const frictionUi = fs.readFileSync(
     path.join(ROOT, 'src/components/templates/answerlattice/governance/FrictionTab.tsx'),
     'utf8',
 );
+const frictionEvidenceBriefUi = fs.readFileSync(
+    path.join(ROOT, 'src/components/templates/answerlattice/governance/FrictionEvidenceBriefDrawer.tsx'),
+    'utf8',
+);
 assert.ok(frictionUi.includes('Support evidence load'), 'owner UI must name the aggregate precisely');
 assert.ok(frictionUi.includes('Breakdown available after the next nightly refresh.'), 'legacy summaries need an explicit breakdown state');
 assert.ok(!frictionUi.includes('queryCount} questions'), 'mixed evidence totals must not be described as questions');
 assert.ok(frictionUi.includes('suggestedActions={insight.suggestedActions}'), 'validated advisory actions must reach the owner review surface');
 assert.ok(frictionUi.includes('Open in Knowledge Map'), 'friction evidence must preserve entity context into the Knowledge Map');
-assert.ok(frictionUi.includes("normalizeAnswerlatticeEntityId(searchParams.get('entity'))"), 'Daily Brief entity context must be revalidated');
+assert.ok(frictionUi.includes("normalizeAnswerlatticeEntityId(searchParams?.get('entity'))"), 'Daily Brief entity context must be revalidated');
+assert.ok(frictionUi.includes('Prepare evidence brief'), 'ranked evidence must expose the bounded owner handoff');
+assert.ok(
+    frictionEvidenceBriefUi.includes('buildAnswerlatticeFrictionEvidenceBrief'),
+    'the drawer must render the deterministic brief projection',
+);
+assert.ok(
+    frictionEvidenceBriefUi.includes('copyAnswerlatticeSupportTextToClipboard'),
+    'the drawer must reuse the hardened clipboard boundary',
+);
+assert.ok(
+    frictionEvidenceBriefUi.includes("new Blob([brief.markdown], { type: 'text/markdown;charset=utf-8' })"),
+    'the drawer must keep Markdown download local to the browser',
+);
+assert.ok(
+    frictionEvidenceBriefUi.includes('anchor?.remove()'),
+    'the drawer must remove its temporary download element after success or failure',
+);
+assert.ok(
+    frictionEvidenceBriefUi.includes('URL.revokeObjectURL(objectUrl)'),
+    'the drawer must release its temporary download URL after success or failure',
+);
+assert.ok(
+    frictionEvidenceBriefUi.includes('width="min(680px, 100vw)"'),
+    'the evidence drawer must remain viewport-bounded on mobile',
+);
+assert.ok(
+    frictionEvidenceBriefUi.includes('vertical={isMobile}'),
+    'copy and download actions must stack on narrow viewports',
+);
+assert.ok(
+    frictionEvidenceBriefUi.includes('style={{ minHeight: 44 }}'),
+    'evidence-brief actions must retain 44px touch targets',
+);
+assert.ok(!frictionEvidenceBriefUi.includes('fetch('), 'preparing a brief must not add a network call');
+assert.ok(!frictionEvidenceBriefUi.includes('@database/'), 'preparing a brief must not add a Firestore read or write');
 
 const nightly = fs.readFileSync(path.join(ROOT, 'functions-answerlattice/src/answerlattice/answerlatticeNightly.ts'), 'utf8');
 assert.ok(nightly.includes('.limit(sourceLimit + 1)'), 'coverage must use cap+1 saturation detection');

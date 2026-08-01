@@ -11,7 +11,7 @@ export type PrintGuidanceInput = {
     hasFeedbackEnabled?: boolean;
     menuLink?: string | null;
     shortMenuLink?: string | null;
-    storeData?: Record<string, any> | null;
+    storeData?: unknown;
     storeLogo?: string | null;
     storeName?: string | null;
 };
@@ -36,19 +36,32 @@ export const PRINT_ASSET_REPRINT_GUIDANCE = [
     'Reprint damaged, faded, stained, or bent table and counter pieces.',
 ] as const;
 
-export function hasConfiguredPrintBrandColor(storeData?: Record<string, any> | null): boolean {
-    const color = storeData?.publicPresence?.accentColor
-        || storeData?.primaryColor
-        || storeData?.brandColor
-        || storeData?.themeColor;
-    return typeof color === 'string' && color.trim().length > 0;
+function readOwnField(value: unknown, key: string): unknown {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function normalizeGuidanceText(value: unknown, maxLength: number): string {
+    return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+export function hasConfiguredPrintBrandColor(storeData?: unknown): boolean {
+    return Boolean(resolveStoreBrandColor(storeData));
 }
 
 export function buildPrintReadinessItems(input: PrintGuidanceInput): PrintReadinessItem[] {
-    const storeName = input.storeName?.trim() || '';
-    const hasLogo = Boolean(input.storeLogo || input.storeData?.logo);
+    const storeName = normalizeGuidanceText(input.storeName, 200);
+    const hasLogo = Boolean(
+        normalizeGuidanceText(input.storeLogo, 2048)
+        || normalizeGuidanceText(readOwnField(input.storeData, 'logo'), 2048),
+    );
     const hasBrandColor = hasConfiguredPrintBrandColor(input.storeData);
-    const hasMenuLink = Boolean(input.menuLink);
+    const hasMenuLink = Boolean(normalizeGuidanceText(input.menuLink, 2048));
     const hasLongName = storeName.length > 42;
 
     return [
@@ -96,8 +109,10 @@ export function buildPrintReadinessItems(input: PrintGuidanceInput): PrintReadin
 }
 
 export function buildPrintShopHandoffMessage(input: PrintGuidanceInput): string {
-    const storeName = input.storeName?.trim() || 'MenuList business';
-    const menuLink = input.shortMenuLink || input.menuLink || 'Menu link is included in the QR files.';
+    const storeName = normalizeGuidanceText(input.storeName, 200) || 'MenuList business';
+    const menuLink = normalizeGuidanceText(input.shortMenuLink, 2048)
+        || normalizeGuidanceText(input.menuLink, 2048)
+        || 'Menu link is included in the QR files.';
 
     return [
         `Print files for ${storeName}`,
@@ -111,3 +126,4 @@ export function buildPrintShopHandoffMessage(input: PrintGuidanceInput): string 
         'Use matte finish where possible so the QR scans cleanly under lights.',
     ].join('\n');
 }
+import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';

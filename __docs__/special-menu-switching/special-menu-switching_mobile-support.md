@@ -3,7 +3,7 @@
 **Status:** ✅ IMPLEMENTED — Active behind `ENABLE_SPECIAL_MENU_SWITCHING`; expansion remains governed by `__docs__/constitution/14-feature-lifecycle-doctrine.md`
 **Author:** Cascade (Lead Architect)
 **Date:** February 20, 2026
-**Last Updated:** July 23, 2026
+**Last Updated:** July 30, 2026
 **Audience:** Internal (mobile development)
 
 ---
@@ -113,9 +113,15 @@ Mobile does NOT get:
 | Aspect       | Source                  | Notes                              |
 | ------------ | ----------------------- | ---------------------------------- |
 | Auth         | NextAuth session        | Same RBAC, owner-only actions      |
-| Localization | next-intl               | Date formats follow store timezone |
+| Localization | next-intl               | Date display and owner input conversion follow store timezone |
 | Settings     | Redux clientThemeConfig | Theme, language inherited          |
 | Icons        | react-icons/lu (Lucide) | LuCalendar, LuCheck, LuX, LuClock  |
+
+Schedule controls also follow the canonical business capability. Dynamic
+businesses receive date-and-time inputs; occasional/minimal businesses receive
+date-only inputs. The dedicated Special Menus screen and alternate project
+editor use the same conversion rule, so a travelling owner's device timezone
+cannot silently move the public activation window.
 
 ---
 

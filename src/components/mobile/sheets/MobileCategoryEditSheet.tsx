@@ -169,7 +169,7 @@ export default function MobileCategoryEditSheet({
     const hasChanges = currentComparisonState !== initialComparisonState;
 
     const handleGenerateContent = async () => {
-        if (!onGenerateContent || isSaving || !translationActionState || translationActionState.disabled) return;
+        if (!onGenerateContent || isSaving || !translationActionState?.mode || translationActionState.disabled) return;
         setIsSaving(true);
         try {
             const nextNames = await onGenerateContent({

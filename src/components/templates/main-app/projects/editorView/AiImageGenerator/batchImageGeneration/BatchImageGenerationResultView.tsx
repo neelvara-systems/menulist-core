@@ -50,6 +50,10 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         ownerActionInFlightRef.current = true;
         return true;
     };
+    const requireJobId = (job: BatchImageGenerationJobType): string => {
+        if (!job.id) throw new Error('image_batch_result_job_identity_missing');
+        return job.id;
+    };
     const formatJobTime = (value: unknown, fallback = 'N/A') => {
         const date = toDate(value as DateLike);
         return Number.isNaN(date.getTime()) ? fallback : formatTimeOnly(date);
@@ -142,8 +146,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                     await uploadImages();
                 }
             }
+            const jobId = requireJobId(activeJobData);
             const cancelResult = await updateImageBatchProcessingJob({
-                id: activeJobData.id,
+                id: jobId,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
                 selectedImagesPersisted: action === "upload",
                 statusHistory: [
@@ -157,7 +162,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
             }, activeJobData.projectId);
             assertImageBatchJobUpdateSucceeded(
                 cancelResult,
-                activeJobData.id,
+                jobId,
                 BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
                 'image_batch_result_cancel_update_rejected',
             );
@@ -179,8 +184,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         try {
             if (!activeJobData) throw new Error('image_batch_result_job_missing');
             await uploadImages();
+            const jobId = requireJobId(activeJobData);
             const uploadResult = await updateImageBatchProcessingJob({
-                id: activeJobData.id,
+                id: jobId,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
                 selectedImagesPersisted: true,
                 statusHistory: [
@@ -194,7 +200,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
             }, activeJobData.projectId);
             assertImageBatchJobUpdateSucceeded(
                 uploadResult,
-                activeJobData.id,
+                jobId,
                 BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
                 'image_batch_result_upload_update_rejected',
             );
@@ -214,8 +220,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         try {
             dispatch(startLoader("discarding image batch job"))
             if (!activeJobData) throw new Error('image_batch_result_job_missing');
+            const jobId = requireJobId(activeJobData);
             const discardResult = await updateImageBatchProcessingJob({
-                id: activeJobData.id,
+                id: jobId,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
                 selectedImagesPersisted: false,
                 statusHistory: [
@@ -229,7 +236,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
             }, activeJobData.projectId);
             assertImageBatchJobUpdateSucceeded(
                 discardResult,
-                activeJobData.id,
+                jobId,
                 BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
                 'image_batch_result_discard_update_rejected',
             );
@@ -256,8 +263,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
             const resolvedStatus = hasSelectedImages
                 ? BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED
                 : BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED;
+            const jobId = requireJobId(activeJobData);
             const resolvedResult = await updateImageBatchProcessingJob({
-                id: activeJobData.id,
+                id: jobId,
                 selectedImagesPersisted: hasSelectedImages,
                 status: resolvedStatus,
                 statusHistory: [
@@ -273,7 +281,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
             }, activeJobData.projectId);
             assertImageBatchJobUpdateSucceeded(
                 resolvedResult,
-                activeJobData.id,
+                jobId,
                 resolvedStatus,
                 'image_batch_result_retry_resolution_rejected',
             );
@@ -417,7 +425,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
 
                 {Boolean(activeJobData?.itemsList?.length) &&
                     <Card size='small'>
-                        {activeJobData?.itemsList?.length > 1 && <Flex justify="flex-start" align="center" style={{ paddingLeft: 13, paddingBottom: 13 }}>
+                        {(activeJobData?.itemsList?.length ?? 0) > 1 && <Flex justify="flex-start" align="center" style={{ paddingLeft: 13, paddingBottom: 13 }}>
                             <Checkbox
                                 checked={activeJobData?.itemsList?.every(item => item.images.every(img => img.isSelected)) ?? false}
                                 onChange={(e) => handleSelectAllImages(e.target.checked)}

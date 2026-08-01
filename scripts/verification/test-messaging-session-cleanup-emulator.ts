@@ -141,6 +141,8 @@ async function main(): Promise<void> {
     state: "EXPIRED",
   }));
   const staleSnapshot = await staleQuarantineRef.get();
+  const staleSnapshotUpdateTime = staleSnapshot.updateTime;
+  assert.ok(staleSnapshotUpdateTime, "Persisted cleanup fixture must expose an update time");
   await staleQuarantineRef.update({
     sessionId: staleQuarantineId,
     state: "COLLECTING_INPUT",
@@ -150,7 +152,7 @@ async function main(): Promise<void> {
   await assert.rejects(
     quarantineInvalidMessagingCleanupSession({
       docRef: staleQuarantineRef,
-      lastUpdateTime: staleSnapshot.updateTime,
+      lastUpdateTime: staleSnapshotUpdateTime,
       now: Timestamp.now(),
       stage: "cleanup",
     }),

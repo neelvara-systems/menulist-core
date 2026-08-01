@@ -40,7 +40,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = getPlatformDiscoveryBaseUrl();
     const platformPages: MetadataRoute.Sitemap = PLATFORM_DISCOVERY_PAGES.map((page) => ({
         url: buildPlatformDiscoveryUrl(page.path, baseUrl),
-        lastModified: new Date(),
         changeFrequency: page.changeFrequency,
         priority: page.priority,
         alternates: buildSitemapAlternates(page.path, baseUrl),

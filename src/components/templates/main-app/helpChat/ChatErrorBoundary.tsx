@@ -35,11 +35,11 @@ class ChatErrorBoundary extends Component<Props, State> {
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         logHelpChatFailure(HELP_CHAT_ERROR_BOUNDARY_TRIGGERED, error, {
-            componentStackFrameCount: errorInfo.componentStack
+            componentStackFrameCount: (errorInfo.componentStack ?? '')
                 .split('\n')
                 .filter((line) => line.trim().length > 0)
                 .length,
-            ...getBoundedHelpChatStringContext('componentStack', errorInfo.componentStack),
+            ...getBoundedHelpChatStringContext('componentStack', errorInfo.componentStack ?? undefined),
         });
     }
 

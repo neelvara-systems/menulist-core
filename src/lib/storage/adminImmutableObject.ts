@@ -1,24 +1,13 @@
 export interface AdminImmutableObjectMetadata {
     cacheControl?: string | null;
     contentType?: string | null;
-    metadata?: Record<string, string | number | boolean | undefined> | null;
+    metadata?: Record<string, string | number | boolean | null | undefined> | null;
     size?: number | string | null;
 }
 
 export interface AdminImmutableStorageFile {
-    getMetadata(): Promise<[AdminImmutableObjectMetadata, ...unknown[]]>;
-    save(
-        data: Buffer,
-        options: {
-            metadata: {
-                cacheControl: string;
-                contentType: string;
-                metadata: Record<string, string>;
-            };
-            preconditionOpts: { ifGenerationMatch: number };
-            resumable: false;
-        },
-    ): Promise<unknown>;
+    getMetadata(): Promise<[AdminImmutableObjectMetadata, unknown]>;
+    save: File['save'];
 }
 
 export interface CreateOrReuseAdminImmutableObjectInput {
@@ -159,3 +148,4 @@ export async function createOrReuseAdminImmutableObject({
         url: buildAdminImmutableObjectDownloadUrl(bucketName, path, existingToken),
     };
 }
+import type { File } from '@google-cloud/storage';

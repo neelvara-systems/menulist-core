@@ -78,6 +78,26 @@ assert.equal(isTempStatusMutationScopeCurrent({
     tenantDocumentId: '11',
 }), false);
 assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: 'false', tenantId: 11 },
+    tenant: { active: true },
+    tenantDocumentId: '11',
+}), false);
+assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: true, deleted: 'false', tenantId: 11 },
+    tenant: { active: true },
+    tenantDocumentId: '11',
+}), false);
+assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: true, tenantId: 11 },
+    tenant: { blocked: 'false' },
+    tenantDocumentId: '11',
+}), false);
+assert.equal(isTempStatusMutationScopeCurrent({
+    store: { active: true, tenantId: 11 },
+    tenant: { blockDetails: { blocked: 'false' } },
+    tenantDocumentId: '11',
+}), false);
+assert.equal(isTempStatusMutationScopeCurrent({
     store: { active: true, tenantId: 11 },
     tenant: { blockDetails: { blocked: true } },
     tenantDocumentId: '11',

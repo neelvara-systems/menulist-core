@@ -125,17 +125,30 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
     }, [generationConfig.referanceImage]);
 
     const onGenerateImage = async (): Promise<void> => {
-
         // Validate prompt only if it's empty AND no description exists for the item
         if (!generationConfig.prompt && !selectedItem?.descriptionLine) {
             message.error('Please enter a prompt or ensure the item has a description.');
             return;
         }
 
-        if (generationConfig.selectedImageTypes?.length === 0 && generationConfig.isMultiMode) {
+        if (selectedImageTypes.length === 0 && generationConfig.isMultiMode) {
             message.error('Please select at least one image type for multi-mode generation.');
             return;
         }
+        if (!selectedItem) {
+            message.error('Select an item before generating an image.');
+            return;
+        }
+        const projectId = activeProject?.projectId;
+        const fileId = selectedItem.fileId;
+        if (!projectId || !fileId) {
+            message.error('The selected item is missing its project or file identity.');
+            return;
+        }
+        const businessType =
+            storeDetails?.businessType ||
+            storeDetails?.businessCategory ||
+            'business';
 
         setGenerationConfig({ ...generationConfig, loading: true, generatedImages: [] });
         dispatch(startLoader("Generating Image"))
@@ -143,9 +156,9 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
             const genratedImages = await generateImageViaApi({
                 itemDetails: selectedItem,
                 generationConfig,
-                projectId: activeProject?.projectId,
-                fileId: selectedItem?.fileId,
-                businessType: storeDetails?.businessType
+                projectId,
+                fileId,
+                businessType,
             });
             if (genratedImages?.length > 0) {
                 // Create a descriptive name based on the styles and prompt
@@ -156,13 +169,16 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                     const uniqueId = createUppercaseRandomIdSegment(6);
                     let name = imageName;
                     if (generationConfig.isMultiMode) {
-                        name = `${imageName}_${generationConfig.selectedImageTypes[index]}`;
+                        name = `${imageName}_${selectedImageTypes[index] || `view-${index + 1}`}`;
                     }
                     return { name, url: image.base64, uid: uniqueId }
                 });
 
                 // Update the reference images array
-                const updatedRefImages = [...generationConfig.referanceImages, ...newGenImages];
+                const updatedRefImages = [
+                    ...(generationConfig.referanceImages ?? []),
+                    ...newGenImages,
+                ];
 
                 setGenerationConfig({
                     ...generationConfig,
@@ -653,7 +669,7 @@ const AiImageGenerator: React.FC<AiImageGeneratorProps> = ({
                                             </Flex>
                                         ) : null}
                                         <Flex style={{ width: '100%' }} wrap gap={8} justify='flex-start' align='center'>
-                                            {generationConfig.referanceImages.map((image, index) => (
+                                            {(generationConfig.referanceImages ?? []).map((image, index) => (
                                                 <Flex
                                                     key={index}
                                                     style={{

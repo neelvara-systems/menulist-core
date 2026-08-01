@@ -113,4 +113,35 @@ assert.equal(parseFunctionFeatureOverride('off'), false);
 assert.equal(parseFunctionFeatureOverride('flase'), null);
 assert.equal(parseFunctionFeatureOverride(''), null);
 
+const {
+    runEnvValidation,
+} = require('../../src/lib/env/validateEnv') as typeof import('../../src/lib/env/validateEnv');
+const productionEnvKeys = ['NODE_ENV', 'VERCEL', 'VERCEL_ENV', 'NEXTAUTH_SECRET'] as const;
+const previousProductionEnv = Object.fromEntries(
+    productionEnvKeys.map((key) => [key, process.env[key]]),
+);
+try {
+    process.env.NODE_ENV = 'production';
+    delete process.env.VERCEL;
+    delete process.env.VERCEL_ENV;
+    delete process.env.NEXTAUTH_SECRET;
+    assert.throws(
+        () => runEnvValidation(),
+        /Required production environment variables are missing/,
+        'non-Vercel production startup must fail closed when required configuration is missing',
+    );
+
+    process.env.VERCEL_ENV = 'production';
+    assert.doesNotThrow(
+        () => runEnvValidation(),
+        'Vercel build/runtime validation retains the deliberate log-only exception',
+    );
+} finally {
+    productionEnvKeys.forEach((key) => {
+        const value = previousProductionEnv[key];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+    });
+}
+
 console.log('Configuration safety behavior tests passed.');

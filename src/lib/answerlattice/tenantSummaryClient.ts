@@ -16,9 +16,15 @@ type AnswerlatticeTenantSummarySyncResponse = {
     skipped?: boolean;
 };
 
-const isPositiveId = (value: number | string): boolean => {
+export const normalizeAnswerlatticeTenantSummaryPositiveId = (
+    value: number | string,
+): number | null => {
+    if (typeof value === 'number') {
+        return Number.isSafeInteger(value) && value > 0 ? value : null;
+    }
+    if (!/^[1-9]\d*$/.test(value)) return null;
     const numeric = Number(value);
-    return Number.isFinite(numeric) && numeric > 0;
+    return Number.isSafeInteger(numeric) && String(numeric) === value ? numeric : null;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
@@ -92,10 +98,10 @@ export async function markAnswerlatticeTenantHasEntities(
     source: AnswerlatticeTenantSummarySource = 'entity_created',
 ): Promise<void> {
     if (typeof window === 'undefined') return;
-    if (!isPositiveId(tId) || !isPositiveId(sId)) return;
+    const tenantId = normalizeAnswerlatticeTenantSummaryPositiveId(tId);
+    const storeId = normalizeAnswerlatticeTenantSummaryPositiveId(sId);
+    if (!tenantId || !storeId) return;
 
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
     const response = await fetch('/api/answerlattice/tenant-summary', {
         ...ANSWERLATTICE_TENANT_SUMMARY_REQUEST_POLICY,
         method: 'POST',

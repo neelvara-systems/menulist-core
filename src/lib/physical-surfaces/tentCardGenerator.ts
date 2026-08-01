@@ -7,6 +7,7 @@ import {
     MENU_LIST_ATTRIBUTION_TEXT,
 } from "@lib/menu-kit/platformAttribution";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
+import { normalizePhysicalSurfaceQrUrl } from "./outputBoundary";
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 
@@ -63,6 +64,10 @@ export async function generateTentCardPDF(
     options: TentCardOptions
 ): Promise<Blob> {
     const { brandColor, brandName, itemName, logoUrl, templateId, qrUrl, size } = options;
+    const normalizedQrUrl = normalizePhysicalSurfaceQrUrl(qrUrl);
+    if (!normalizedQrUrl) {
+        throw new Error("Tent card QR URL must be a valid HTTPS URL");
+    }
     const brand = resolveMenuKitBrandTokens(brandColor);
     const logo = logoUrl ? await loadLogo(logoUrl, 180) : null;
 
@@ -110,7 +115,7 @@ export async function generateTentCardPDF(
     doc.text(textLines, dimensions.width / 2, textY, { align: "center" });
 
     // QR Code
-    const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+    const qrDataUrl = await QRCode.toDataURL(normalizedQrUrl, {
         width: 200,
         margin: 4,
         color: { dark: brand.qrDark, light: brand.qrLight },

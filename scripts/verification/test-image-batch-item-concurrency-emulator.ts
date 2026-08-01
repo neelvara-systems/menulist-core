@@ -18,6 +18,7 @@ import {
 import { consumeAICapacityIdempotently } from '../../src/lib/ai/capacityCheck';
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 import type { FirestoreSubscriptionDoc } from '../../src/types/razorpay';
+import { Timestamp } from 'firebase-admin/firestore';
 
 const jobId = 'AbCdEfGhIjKlMnOpQrSt';
 const projectId = '11-owner-22-project';
@@ -317,6 +318,11 @@ async function run(): Promise<void> {
         reason: 'Cancelled while provider work was in flight.',
     });
     assert.equal(cancelledFailure.terminal, true);
+    assert.equal(
+        cancelledFailure.retainsStagedResult,
+        false,
+        'A terminal job must not claim to retain an exact in-flight result that never staged.',
+    );
     assert.equal((await cancelledJobRef.get()).data()?.status, BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED);
 
     await exhaustedJobRef.set({
@@ -359,7 +365,9 @@ async function run(): Promise<void> {
     const subscriptionId = 'sub_image_batch_scope_test';
     const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
     const operationRef = firestoreAdmin.doc('testImageBatchAccounting/operation-1');
+    const cycleEndDate = Timestamp.fromMillis(Date.now() + 86_400_000);
     await subscriptionRef.set({
+        cycleEndDate,
         cycleStartDate: null,
         monthlyCredits: 10,
         monthlyCreditsAllowance: 10,
@@ -367,11 +375,13 @@ async function run(): Promise<void> {
         productId: 'ML',
         sId: 22,
         storeId: 22,
+        status: 'active',
         tId: 11,
         tenantId: 11,
         topUpCredits: 0,
     });
     const subscription = {
+        cycleEndDate,
         id: subscriptionId,
         monthlyCredits: 10,
         monthlyCreditsAllowance: 10,
@@ -379,6 +389,7 @@ async function run(): Promise<void> {
         productId: 'ML',
         sId: 22,
         storeId: 22,
+        status: 'active',
         tId: 11,
         tenantId: 11,
         topUpCredits: 0,

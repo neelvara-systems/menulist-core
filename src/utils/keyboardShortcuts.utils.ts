@@ -1,4 +1,7 @@
-import { ShortcutConfig } from '@hook/useKeyboardShortcuts';
+import {
+    matchesKeyboardShortcut,
+    type ShortcutConfig,
+} from '@hook/useKeyboardShortcuts';
 
 /**
  * 🎹 Keyboard Shortcuts Utilities
@@ -212,14 +215,7 @@ export const matchesShortcut = (
     event: KeyboardEvent,
     shortcut: BaseShortcutConfig
 ): boolean => {
-    const keyMatch = event.key.toLowerCase() === shortcut.key.toLowerCase();
-    const ctrlMatch = shortcut.ctrlKey
-        ? (event.ctrlKey || event.metaKey)  // Mac uses metaKey
-        : (!event.ctrlKey && !event.metaKey);
-    const shiftMatch = shortcut.shiftKey ? event.shiftKey : !event.shiftKey;
-    const metaMatch = shortcut.metaKey ? event.metaKey : true;
-
-    return keyMatch && ctrlMatch && shiftMatch && metaMatch;
+    return matchesKeyboardShortcut(event, shortcut);
 };
 
 /**

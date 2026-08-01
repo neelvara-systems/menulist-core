@@ -792,7 +792,7 @@ function MobileDomainSettingsScreenContent({ onBack }: MobileDomainSettingsScree
                                 {availability ? (
                                     <Flex align="center" gap={8}>
                                         {availability.available ? <LuCheck color={token.colorSuccess} size={16} /> : <LuX color={token.colorError} size={16} />}
-                                        <Text type="secondary">{availability.available ? t('isAvailable', { name: availability.preview }) : availability.reason}</Text>
+                                        <Text type="secondary">{availability.available ? t('isAvailable', { name: availability.preview ?? subdomainValue }) : availability.reason}</Text>
                                     </Flex>
                                 ) : null}
                                 {!storeDetails?.subdomain ? (

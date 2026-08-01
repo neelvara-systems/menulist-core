@@ -76,7 +76,22 @@ export const NAVIGARIONS_ROUTINGS = {
 
 export const SKIP_CLIENT_APP_LAYOUT_ROUTINGS = [NAVIGARIONS_ROUTINGS.SIGNIN, HOME_ROUTING, NAVIGARIONS_ROUTINGS.MENU, NAVIGARIONS_ROUTINGS.FORGOT_PASSWORD];
 
-export type NavItemType = { key?: any, label: string, route: string, defaultRoute?: string, icon: any, isChild?: boolean, sectionLabel?: string, subNav?: NavItemType[], showSubNav?: boolean, active?: boolean, subNavActive?: boolean, allowedPlatformRoles?: string[] };
+export type NavItemType = {
+    key?: string | number;
+    label: string;
+    route: string;
+    defaultRoute?: string;
+    // The source catalog stores icon components; sidebar adapters reuse this
+    // legacy type after converting those components to rendered nodes/brands.
+    icon: any;
+    isChild?: boolean;
+    sectionLabel?: string;
+    subNav?: NavItemType[];
+    showSubNav?: boolean;
+    active?: boolean;
+    subNavActive?: boolean;
+    allowedPlatformRoles?: string[];
+};
 
 export const SIDEBAR_DASHBOARD_LAYOUT: NavItemType[] = [
     { label: 'Dashboard', route: NAVIGARIONS_ROUTINGS.DASHBOARD, icon: LuLayoutDashboard, sectionLabel: 'Check feedback and activity' },

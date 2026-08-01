@@ -120,6 +120,13 @@ function verifyProjectIdBoundary(helper, resolver, linkedOutletSaveRoute) {
     'const tenantScope = normalizeMultiOutletNumericDocumentId(parts[0]);',
     'const storeScope = normalizeMultiOutletNumericDocumentId(parts[parts.length - 1]);',
   ].forEach((token) => assertIncludes(helper, token, 'Multi-outlet shared project ID boundary'));
+  [
+    'export function isMultiOutletTenantStoreListEntryInScope(',
+    'const storeScope = normalizeMultiOutletNumericDocumentId(entry.storeId);',
+    'if (entry.active !== undefined && typeof entry.active !== "boolean") return false;',
+    'if (!expected.allowInactive && entry.active === false) return false;',
+    'entry.isMaster !== expected.isMaster',
+  ].forEach((token) => assertIncludes(helper, token, 'Multi-outlet tenant membership boundary'));
 
   [
     'import { normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";',
@@ -136,13 +143,17 @@ function verifyProjectIdBoundary(helper, resolver, linkedOutletSaveRoute) {
   ].forEach((token) => assertNotIncludes(resolver, token, 'Multi-outlet resolver must not prefix-parse project scope'));
 
   [
-    'import { normalizeMultiOutletNumericDocumentId, normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";',
+    'isMultiOutletTenantStoreListEntryInScope,',
+    'normalizeMultiOutletNumericDocumentId,',
+    'normalizeMultiOutletProjectId,',
     'const outletProjectRef = normalizeMultiOutletProjectId(project.projectId);',
     'const masterProjectRef = normalizeMultiOutletProjectId(project.masterProjectId);',
       'const outletSessionScope = getOutletSessionScope(session);',
       'const currentStoreScope = normalizeMultiOutletNumericDocumentId(outletSessionScope?.storeDocumentId);',
     'linked_outlet_save_invalid_session_store_scope',
     'const currentStoreId = currentStoreScope.numericId;',
+    'normalizePersistedOutletPolicy(masterStore?.outletPolicy)',
+    'linked_outlet_policy_invalid',
   ].forEach((token) => assertIncludes(linkedOutletSaveRoute, token, 'Linked outlet save shared project ID boundary'));
 
   [
@@ -173,14 +184,12 @@ function verifyCreateRoute(createRoute) {
     'tx.get(storesSummaryRef)',
     'await tx.get(db.doc(`${DB_COLLECTIONS.STORES}/${candidateId}`))',
     'tx.set(summaryRef, {',
-    'activeStoreCount = initialStoresList.filter((s: any) => s?.active !== false).length || 1',
-    [
-      'const currentOutlets = initialStoresList.filter((s: any) => (',
-      '                Number(s?.storeId) !== Number(storeId)',
-      '                && !s.isMaster',
-      '                && s?.active !== false',
-      '            )).length;',
-    ].join('\n'),
+    'activeStoreCount = initialStoresList.filter((store: unknown) => (',
+    'isMultiOutletTenantStoreListEntryInScope(store, {})',
+    'isMultiOutletTenantStoreListEntryInScope(store, { isMaster: false })',
+    '!isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })',
+    'normalizePersistedOutletPolicy(masterStore.outletPolicy)',
+    'normalizePersistedOutletPolicy(freshMasterStore.outletPolicy)',
     'updateRazorpaySubscriptionQuantity(providerSubId, newQty)',
     'await updateSubscription(subId, { quantity: newQty });',
     'multi_outlet_billing_provider_quantity_revert_failed',
@@ -204,7 +213,7 @@ function verifyCreateRoute(createRoute) {
     'if (!freshTenantSnap.exists || !userSnap.exists || !freshMasterSnap.exists)',
     'freshTenantData.active === false',
     'freshTenantData.deleted === true',
-    'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    'const freshPermissionError = await requireAnyStorePermissionForStoreData(',
     'if (freshPermissionError) throw new OutletCreateScopeChangedError();',
     'freshActiveStoreCount + 1 > newQty',
     'const masterProjectDocs = freshMasterProjectsSnap.docs.filter(',
@@ -305,7 +314,7 @@ function verifyDeactivateRoute(deactivateRoute) {
     'tenant?.deleted === true',
     'freshTenantSnap.data()?.active === false',
     'freshTenantSnap.data()?.deleted === true',
-    'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    'const freshPermissionError = await requireAnyStorePermissionForStoreData(',
     'if (freshPermissionError) throw new OutletDeactivateScopeChangedError();',
     'alreadyInactive = freshTarget?.active === false && freshTargetSummary.active === false',
     'freshTarget?.isMaster === true',
@@ -340,7 +349,7 @@ function verifyRenameRoute(renameRoute) {
     'outlet.active === false',
     'const [freshMasterSnap, tenantDoc, freshOutletSnap] = await Promise.all([',
     'tx.get(masterStoreRef)',
-    'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    'const freshPermissionError = await requireAnyStorePermissionForStoreData(',
     "if (freshPermissionError) throw new OutletRenameConflictError('SCOPE_CHANGED');",
     'isPlatformEntityBlocked(freshMaster)',
     'tenantDoc.data()?.active === false',
@@ -430,9 +439,10 @@ function verifyPolicyRoute(policyRoute) {
     'freshTenantSnap.data()?.deleted === true',
     'isPlatformEntityBlocked(freshTenantSnap.data())',
     'freshStore.isMaster !== true && !masterPromoted',
-    'const mergedPolicy = {',
-    '...(freshStore.outletPolicy || DEFAULT_OUTLET_POLICY)',
-    '...v.data.policy',
+    'const currentPolicy = normalizePersistedOutletPolicy(freshStore.outletPolicy);',
+    'if (!currentPolicy) throw new OutletPolicyScopeChangedError();',
+    'const mergedPolicy = { ...currentPolicy, ...v.data.policy };',
+    'isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })',
     'tx.set(storeRef,',
     'tx.update(tenantRef,',
     'tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`),',
@@ -501,7 +511,9 @@ function verifyLinkedOutletSaveRoute(route) {
     'const callerIsInTenant = tenantStores.some',
     'const masterIsInTenant = tenantStores.some',
     '!callerIsInTenant || !targetIsInTenant || !masterIsInTenant',
-    'store?.active !== false',
+    'isMultiOutletTenantStoreListEntryInScope(store, {',
+    'normalizePersistedOutletPolicy(masterStore?.outletPolicy)',
+    'linked_outlet_policy_invalid',
     'currentStoreId !== outletStoreId && callerStore?.isMaster !== true',
     'outletProjectRef.sId === masterProjectRef.sId',
     'existingProject.masterProjectId !== standardProject.masterProjectId',
@@ -623,6 +635,8 @@ function verifyClientBoundaries(files) {
   [
     'readJsonResponseWithLimit<unknown>',
     'OUTLET_POLICY_RESPONSE_JSON_MAX_BYTES',
+    'const hasExactlyOneMasterFile = (value: unknown): boolean',
+    'value.files.length === 1',
     'isOutletPolicyResponse',
     '...MULTI_OUTLET_ACTION_REQUEST_POLICY',
     'fetch("/api/outlets/policy"',
@@ -674,7 +688,7 @@ function verifyClientBoundaries(files) {
     'activeOutletCount = storesList.filter((s: any) => !s.isMaster && s.active !== false).length',
     '...MULTI_OUTLET_ACTION_REQUEST_POLICY',
     'readDesktopLocationActionResponse(res,',
-    'isOutletDeactivateResponse(data)',
+    'isOutletDeactivateResponse(data, outletStoreId)',
     'desktop_location_deactivate_response_invalid',
     'if (Number(targetStoreId) === currentStoreId) return;',
     'data.billingReductionPending',
@@ -695,7 +709,7 @@ function verifyClientBoundaries(files) {
   [
     '...MULTI_OUTLET_ACTION_REQUEST_POLICY',
     'readDesktopOutletRenameResponse(res,',
-    'isOutletRenameResponse(body)',
+    'isOutletRenameResponse(body, outletStoreId, proposedSlug)',
     'desktop_location_rename_response_invalid',
     'slugify(raw)',
     'currentOutletSlug',
@@ -716,8 +730,8 @@ function verifyClientBoundaries(files) {
     '...AUTH_ACCOUNT_REQUEST_POLICY',
     '...MULTI_OUTLET_ACTION_REQUEST_POLICY',
     'readMobileOutletActionResponse(res,',
-    'isOutletDeactivateResponse(data)',
-    'isOutletRenameResponse(data)',
+    'isOutletDeactivateResponse(data, outletStoreId)',
+    'isOutletRenameResponse(data, submittedTarget.storeId, submittedSlug)',
     'isOutletPaymentRequiredResponse(data)',
     'isOutletCreateResponse(data)',
     'updateOutletPolicy(expectedPolicyStoreId, submittedPolicy)',
@@ -1253,6 +1267,7 @@ function verifyMultiLocationBoundary() {
   ].map(read);
   const createRoute = read('src/app/api/outlets/create/route.ts');
   const deactivateRoute = read('src/app/api/outlets/deactivate/route.ts');
+  assert(deactivateRoute.includes('allowInactive: true'), 'Outlet deactivation must retain exact inactive target identity for idempotent retries');
   const renameRoute = read('src/app/api/outlets/rename/route.ts');
   const policyRoute = read('src/app/api/outlets/policy/route.ts');
   const linkedOutletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
@@ -1435,7 +1450,7 @@ function verifyMultiLocationBoundary() {
     'const propagationResult = await db.runTransaction(async (transaction) => {',
     'transaction.get(masterStoreRef)',
     'transaction.get(outletQuery)',
-    'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    'const freshPermissionError = await requireAnyStorePermissionForStoreData(',
     'if (permissionError) return applyPrivateResponseHeaders(permissionError);',
     'transaction.set(masterStoreRef, { ...propagatedValues, modifiedOn: now }, { merge: true });',
     'transaction.set(outlet.ref, { ...propagatedValues, modifiedOn: now }, { merge: true });',
@@ -1477,6 +1492,10 @@ function verifyMultiLocationBoundary() {
 
   [
     "fetch('/api/outlets/brand-propagation'",
+    'updatedFields: Record<string, unknown>',
+    "typeof businessType === 'string'",
+    "typeof businessCategory === 'string'",
+    'propagatedChanges: MasterStorePropagationChanges',
     'MULTI_OUTLET_ACTION_REQUEST_POLICY',
     'readJsonResponseWithLimit<unknown>(',
     'MULTI_OUTLET_ACTION_RESPONSE_JSON_MAX_BYTES',
@@ -1484,6 +1503,7 @@ function verifyMultiLocationBoundary() {
     "throw new Error('multi_outlet_brand_propagation_response_invalid')",
     'throw e;',
   ].forEach((token) => assertIncludes(brandPropagationDal, token, 'Brand propagation client acknowledgement boundary'));
+  assertNotIncludes(brandPropagationDal, 'Record<string, any>', 'Brand propagation client value boundary');
   [
     'firebaseClient',
     'updateDoc(',
@@ -1629,11 +1649,11 @@ function verifyMultiLocationBoundary() {
     'const STORES_SUMMARY_BACKFILL_MAX_PAYLOAD_BYTES = 850_000;',
     '.orderBy(FieldPath.documentId())',
     '.limit(STORES_SUMMARY_BACKFILL_MAX_STORES + 1)',
-    'normalizePlatformStoreSummaryIdentity(doc.id, data)',
+    'const projection = buildBackfillStoreSummaryEntry(',
     'if (invalidIdentityCount > 0)',
     "Buffer.byteLength(JSON.stringify({ stores: summary }), 'utf8')",
     "throw new HttpsError('resource-exhausted'",
-    '}, { merge: true });',
+    'await replaceStoresSummaryIfUnchanged(summary, expectedSummaryUpdateTime);',
     'if (error instanceof HttpsError) throw error;',
   ].forEach((token) => assertIncludes(operationsFunctions, token, 'Stores summary backfill bounded merge contract'));
   assertNotIncludes(

@@ -12,20 +12,10 @@ import {
     normalizeAiMenuManagerProjectId,
     normalizeAiMenuManagerSessionId,
 } from '@lib/ai-menu-manager/routeIds';
+import { serializeAiMenuManagerInboxForJson } from '@lib/ai-menu-manager/inboxJsonBoundary';
 import { requireAnyStorePermissionForStore } from '@lib/permissions/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth';
-
-function serializeForJson(value: any): any {
-    if (value == null) return value;
-    if (typeof value.toDate === 'function') return value.toDate().toISOString();
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
-    if (Array.isArray(value)) return value.map(serializeForJson);
-    if (typeof value === 'object') {
-        return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, serializeForJson(entry)]));
-    }
-    return value;
-}
 
 export const GET = withAuth(async (
     request: NextRequest,
@@ -75,8 +65,8 @@ export const GET = withAuth(async (
         projectId,
     });
 
-    return NextResponse.json(serializeForJson({
-        sessionId,
+    return NextResponse.json(serializeAiMenuManagerInboxForJson({
         ...inbox,
+        sessionId,
     }));
 });

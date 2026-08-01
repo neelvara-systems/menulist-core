@@ -184,7 +184,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
         router.push(option.route);
     };
 
-    const onClickActionsMenu = (navItem) => {
+    const onClickActionsMenu = (navItem: NavItemType) => {
         switch (navItem.route) {
             case 'darkMode':
                 dispatch(toggleDarkMode(!isDarkMode))

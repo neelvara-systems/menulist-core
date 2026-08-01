@@ -142,7 +142,30 @@ Runtime readers must admit this denormalized document through the byte-identical
 
 The nested `stores` and `projects` payload maps are not query surfaces. `firestore.indexes.json` exempts `platformSummary.stores` and `platformSummary.projects` from automatic single-field indexing so index entries do not grow with every store/project row. Keep independently queried top-level summary scalars, such as `specialMenuNextTransitionAt`, indexed. If a future feature needs a cross-summary query, add one explicit bounded scalar projection/index instead of re-enabling automatic indexing for the entire nested map.
 
-The platform backfill is a repair merge, never a destructive rebuild. `backfillStoresSummary` reads at most 1,501 canonical rows to enforce a 1,500-store ceiling, rejects any invalid canonical identity before writing, caps the serialized row payload at 850,000 bytes, and uses nested `{ merge: true }` so omitted scheduler enrichment, distribution hints, billing state, routing fields and future bounded fields survive. The external parity verifier applies the same exact-ID and safe-map rules, caps default store reads at 1,500 and canonical project reads at 500 per store, and must describe `storesSummary` as internal rather than public membership authority.
+Answerlattice applies the same rule to large owner-decision payloads that are
+loaded only by exact `platformSummary/{documentId}` reads. The dedicated and
+shared index manifests exempt the Knowledge Map graph, friction rankings,
+Answer Tests cases/runs/reservations, and bounded Activation proof arrays from
+automatic indexing. Their independently queried source collections and
+top-level control fields remain indexed. A new query must project a bounded
+scalar into an explicitly indexed field; it must not make these complete
+read-model payloads query surfaces.
+
+The platform backfill is a fenced set reconciliation, never a blind nested
+merge or destructive reduced projection. `backfillStoresSummary` reads at most
+1,501 canonical rows to enforce a 1,500-store ceiling, rejects any invalid
+canonical identity before writing, and caps the serialized row payload at
+850,000 bytes. For each still-canonical store it starts from the existing
+identity-valid summary row so scheduler enrichment, distribution hints,
+billing state, routing fields and future bounded fields survive, then
+overrides canonical store fields from the source document. It exact-replaces
+the complete `stores` field so orphan store keys disappear. The replacement is
+transactionally fenced to the summary document update time captured before the
+canonical scan; any intervening summary mutation aborts the backfill and
+requires a safe retry. The external parity verifier applies the same exact-ID
+and safe-map rules, caps default store reads at 1,500 and canonical project
+reads at 500 per store, and must describe `storesSummary` as internal rather
+than public membership authority.
 
 ---
 

@@ -93,17 +93,6 @@ const B2BplansList = [
     }
 ] as const;
 
-const CustomePlanForB2B = {
-    "planId": "custom",
-    "type": "B2B",
-    "name": "Custom API",
-    "billingInterval": null,
-    "priceINR": { "price": null, "monthlyCredits": "Custom" },
-    "priceUSD": { "price": null, "monthlyCredits": "Custom" },
-    "monthlyApiCallAllowance": null,
-    "featuresList": PlatformFeaturesList.B2B
-} as const;
-
 // ═══════════════════════════════════════════════════════════
 // Content Credit Packs (one pack at launch — per-store)
 // @see __docs__/ai-enhancement-packs/ai-enhancement-packs_spec.md
@@ -142,4 +131,4 @@ const getB2BPlansList = (): Plan[] => {
     });
 }
 
-export { aiEnhancementPacksList, B2BplansList, B2CplansList, creditPacksList, CustomePlanForB2B, getB2BPlansList, getB2CPlansList };
+export { aiEnhancementPacksList, B2BplansList, B2CplansList, creditPacksList, getB2BPlansList, getB2CPlansList };

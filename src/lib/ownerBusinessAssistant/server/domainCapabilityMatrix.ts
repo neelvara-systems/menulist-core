@@ -19,7 +19,7 @@ export function buildOwnerBusinessDomainCapabilities(
 ): OwnerBusinessDomainCapability[] {
   const supportedFromHealth = new Set(packet.health.supportedDomains?.map((entry) => entry.domain) || []);
 
-  return OWNER_BUSINESS_ASSISTANT_DOMAINS.map((domain) => {
+  return OWNER_BUSINESS_ASSISTANT_DOMAINS.map((domain): OwnerBusinessDomainCapability => {
     if (domain === BUSINESS_HEALTH_DOMAIN) {
       return {
         domain,

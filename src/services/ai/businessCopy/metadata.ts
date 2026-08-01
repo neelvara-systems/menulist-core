@@ -1,7 +1,11 @@
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { getStoreManagedLanguages } from '@lib/localization/storeContent';
 import { BusinessCopyCoverageField } from './translationCoverage';
-import { getBusinessCopyFieldConfigs } from './fieldConfig';
+import {
+    getBusinessCopyFieldConfigs,
+    hasBusinessCopyOwnDataField,
+    readBusinessCopyOwnValueAtPath,
+} from './fieldConfig';
 
 export type BusinessCopyMeta = {
     lastGeneratedAt?: string;
@@ -92,19 +96,19 @@ export function buildBusinessCopyManualOverrideMeta({
     };
 }
 
-export function getBusinessCopyFieldKeysFromUpdate(update: any): string[] {
+export function getBusinessCopyFieldKeysFromUpdate(update: unknown): string[] {
     const fieldKeys = new Set<string>();
+    const publicPresence = readBusinessCopyOwnValueAtPath(update, ['publicPresence']);
+    const pwaSettings = readBusinessCopyOwnValueAtPath(update, ['pwaSettings']);
 
-    if (update?.publicPresence) {
-        if ('descriptor' in update.publicPresence) fieldKeys.add('descriptor');
-        if ('knownFor' in update.publicPresence) fieldKeys.add('knownFor');
-        if ('specialNote' in update.publicPresence) fieldKeys.add('specialNote');
-    }
-    if ('tagline' in (update || {})) fieldKeys.add('tagline');
-    if ('metaTitle' in (update || {})) fieldKeys.add('metaTitle');
-    if ('metaDescription' in (update || {})) fieldKeys.add('metaDescription');
-    if ('keywords' in (update || {})) fieldKeys.add('keywords');
-    if (update?.pwaSettings && 'pwaShortName' in update.pwaSettings) fieldKeys.add('pwaShortName');
+    if (hasBusinessCopyOwnDataField(publicPresence, 'descriptor')) fieldKeys.add('descriptor');
+    if (hasBusinessCopyOwnDataField(publicPresence, 'knownFor')) fieldKeys.add('knownFor');
+    if (hasBusinessCopyOwnDataField(publicPresence, 'specialNote')) fieldKeys.add('specialNote');
+    if (hasBusinessCopyOwnDataField(update, 'tagline')) fieldKeys.add('tagline');
+    if (hasBusinessCopyOwnDataField(update, 'metaTitle')) fieldKeys.add('metaTitle');
+    if (hasBusinessCopyOwnDataField(update, 'metaDescription')) fieldKeys.add('metaDescription');
+    if (hasBusinessCopyOwnDataField(update, 'keywords')) fieldKeys.add('keywords');
+    if (hasBusinessCopyOwnDataField(pwaSettings, 'pwaShortName')) fieldKeys.add('pwaShortName');
 
     return Array.from(fieldKeys);
 }

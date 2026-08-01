@@ -225,7 +225,6 @@ export const POST = withAuth(async (request, session) => {
         const billingStoreId = activeSubscriptionScope.storeId;
 
         const { packId, currency } = validation.data;
-        const priceKey = `price${currency.toUpperCase()}`;
         // 3. Find Pack Details
         const selectedPack = getCreditPacksForProduct(productId).find((p) => p.packId === packId);
 
@@ -233,8 +232,9 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Credit pack not found." }, { status: 404 });
         }
 
-        const price = selectedPack[priceKey].price;
-        if (price === undefined) {
+        const selectedPrice = currency === 'USD' ? selectedPack.priceUSD : selectedPack.priceINR;
+        const price = selectedPrice.price;
+        if (typeof price !== 'number' || !Number.isSafeInteger(price) || price <= 0) {
             return NextResponse.json({ error: `Pricing for currency ${currency} not available for this pack.` }, { status: 400 });
         }
 

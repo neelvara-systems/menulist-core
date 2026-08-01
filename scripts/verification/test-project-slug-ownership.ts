@@ -22,10 +22,40 @@ assert.equal(isProjectSlugClaimed(projects, "inactive-menu"), true);
 assert.equal(isProjectSlugClaimed(projects, "lunch-menu", "project-a"), false);
 assert.equal(isProjectSlugClaimed(projects, ""), false);
 assert.equal(isProjectSlugClaimed({ malformed: { slug: 10, previousSlugs: [null, 4] } }, "10"), false);
+assert.equal(isProjectSlugClaimed(new Proxy({}, {
+    ownKeys() {
+        throw new Error("blocked");
+    },
+}), "safe-slug"), true);
+assert.equal(isProjectSlugClaimed({
+    malformed: Object.defineProperty({}, "slug", {
+        enumerable: true,
+        get() {
+            throw new Error("blocked");
+        },
+    }),
+}, "safe-slug"), true);
 
 assert.equal(
     resolveAvailableProjectSlug(projects, "fresh-menu", "stable-id"),
     "fresh-menu",
+);
+assert.equal(
+    resolveAvailableProjectSlug(projects, "", "localized-project-id"),
+    "menu",
+    "non-Latin names that slugify to empty must still receive a canonical slug",
+);
+assert.equal(
+    resolveAvailableProjectSlug({
+        existing: { slug: "menu" },
+    }, "", "localized-project-id"),
+    "menu-localized-project-id",
+    "empty-slug fallbacks must remain collision-safe",
+);
+assert.equal(
+    resolveAvailableProjectSlug(projects, "  Fresh / Menu  ", "stable-id"),
+    "fresh-menu",
+    "the allocator must never return a non-canonical proposed slug",
 );
 assert.equal(
     resolveAvailableProjectSlug(projects, "lunch-menu", "stable-id"),
@@ -56,6 +86,20 @@ assert.equal(isRecentlyDeletedProjectSlugReservation({
 assert.equal(isRecentlyDeletedProjectSlugReservation({
     deleted: false,
     deletedAt: recentDeletion,
+    slug: "lunch",
+}, "lunch", cutoffMillis), false);
+assert.equal(isRecentlyDeletedProjectSlugReservation(
+    new Proxy({} as never, {
+        getOwnPropertyDescriptor() {
+            throw new Error("blocked");
+        },
+    }),
+    "lunch",
+    cutoffMillis,
+), true);
+assert.equal(isRecentlyDeletedProjectSlugReservation({
+    deleted: true,
+    deletedAt: new Proxy(new Date(cutoffMillis + 1), {}),
     slug: "lunch",
 }, "lunch", cutoffMillis), false);
 assert.equal(isRecentlyDeletedProjectSlugReservation({

@@ -245,6 +245,11 @@ assert.ok(
         && helpCenterSearchRoute.includes('if (bodyResult.ok === false) return withSearchResponseHeaders(bodyResult.response);'),
     'Help Center search helper responses must retain the protected private response policy',
 );
+assert.ok(
+    helpCenterSearchRoute.includes('projectSearchConversationHistory(context)')
+        && helpCenterSearchRoute.includes("record.role !== 'user' && record.role !== 'assistant'"),
+    'Help Center search must project validated conversation history into an exact core-search DTO',
+);
 
 const messageReferences = fs.readFileSync(
     path.resolve(__dirname, '../../src/components/templates/main-app/helpChat/MessageReferences.tsx'),

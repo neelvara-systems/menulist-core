@@ -1,4 +1,9 @@
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
+import {
+    getPublicAnalyticsAttributionToken,
+    getPublicAnalyticsPath,
+    getPublicAnalyticsUrl,
+} from '@lib/website/publicAnalyticsContext';
 
 type PlausibleWindow = Window & {
     gtag?: (...args: unknown[]) => void;
@@ -16,15 +21,43 @@ const MENULIST_ANALYTICS_CONSENT_KEY = 'menulist_website_analytics_consent_v1';
 const ANSWERLATTICE_ANALYTICS_CONSENT_KEY = 'answerlattice_website_analytics_consent_v1';
 const DEFAULT_MARKETING_EVENT_PARAM_MAX_LENGTH = 160;
 const MARKETING_EVENT_PARAM_MAX_LENGTH_BY_KEY: Record<string, number> = {
+    destination: 320,
     entry_page: 320,
     link_url: 320,
-    referrer: 300,
+    page_path: 320,
     target_url: 320,
     utm_medium: 80,
     utm_source: 80,
 };
+const PUBLIC_ANALYTICS_URL_PARAM_KEYS = new Set(['destination', 'link_url', 'target_url']);
+const PUBLIC_ANALYTICS_PATH_PARAM_KEYS = new Set(['entry_page', 'page_path']);
+const PUBLIC_ANALYTICS_ATTRIBUTION_PARAM_KEYS = new Set([
+    'referrer_group',
+    'utm_medium',
+    'utm_source',
+]);
+const OMITTED_PUBLIC_ANALYTICS_PARAM_KEYS = new Set(['referrer', 'referrer_host']);
 const reportedPlausibleConsentStorageFailures = new Set<string>();
 const runtimeConsentByWebsite: Partial<Record<PublicWebsiteKind, PublicWebsiteAnalyticsConsentChoice>> = {};
+const MAX_PLAUSIBLE_SCRIPT_SOURCE_LENGTH = 2048;
+
+export function normalizePlausibleScriptSource(value: unknown): string | undefined {
+    if (typeof value !== 'string' || !value || value.length > MAX_PLAUSIBLE_SCRIPT_SOURCE_LENGTH) {
+        return undefined;
+    }
+
+    try {
+        if (value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')) {
+            const relativeUrl = new URL(value, 'https://public-analytics.invalid');
+            return `${relativeUrl.pathname}${relativeUrl.search}`;
+        }
+        const url = new URL(value);
+        if (url.protocol !== 'https:' || url.username || url.password) return undefined;
+        return url.toString();
+    } catch {
+        return undefined;
+    }
+}
 
 function normalizeEventName(eventName?: string | null): string | undefined {
     const normalized = eventName?.trim();
@@ -37,6 +70,19 @@ function stripAnalyticsControlCharacters(value: string): string {
 
 function getMarketingEventParamMaxLength(key: string): number {
     return MARKETING_EVENT_PARAM_MAX_LENGTH_BY_KEY[key] || DEFAULT_MARKETING_EVENT_PARAM_MAX_LENGTH;
+}
+
+function normalizeMarketingEventStringParam(key: string, value: string): string | undefined {
+    if (OMITTED_PUBLIC_ANALYTICS_PARAM_KEYS.has(key)) return undefined;
+    if (PUBLIC_ANALYTICS_URL_PARAM_KEYS.has(key)) return getPublicAnalyticsUrl(value);
+    if (PUBLIC_ANALYTICS_PATH_PARAM_KEYS.has(key)) return getPublicAnalyticsPath(value);
+    if (PUBLIC_ANALYTICS_ATTRIBUTION_PARAM_KEYS.has(key)) {
+        return getPublicAnalyticsAttributionToken(value);
+    }
+
+    const boundedValue = stripAnalyticsControlCharacters(value)
+        .slice(0, getMarketingEventParamMaxLength(key));
+    return boundedValue || undefined;
 }
 
 export function getBoundedMarketingEventParams(
@@ -52,8 +98,7 @@ export function getBoundedMarketingEventParams(
                 return Number.isFinite(value) ? ([key, value] as const) : null;
             }
 
-            const boundedValue = stripAnalyticsControlCharacters(value)
-                .slice(0, getMarketingEventParamMaxLength(key));
+            const boundedValue = normalizeMarketingEventStringParam(key, value);
             return boundedValue ? ([key, boundedValue] as const) : null;
         })
         .filter((entry): entry is readonly [string, string | number | boolean] => Boolean(entry));

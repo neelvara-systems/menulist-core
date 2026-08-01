@@ -1012,7 +1012,7 @@ contains(
     'arrayBuffer.byteLength > maxBytes',
     'response.body.getReader()',
     'totalBytes > maxBytes',
-    'await reader.cancel().catch(() => undefined)',
+    'await reader.cancel().catch((): undefined => undefined)',
   ],
   'App-server bounded response-body helper enforces header, fallback, and streaming byte caps',
 );
@@ -1258,7 +1258,7 @@ ordered(
   [
     'const uploadAndCreateJob = async (',
     'if (!canUseMenuExtraction) {',
-    'const uploadPromises = filesToProcess.map',
+    'const uploadPromises: Array<Promise<MenuUploadSettlement>> = admittedFiles.map',
   ],
   'Desktop extraction permission guard runs before Storage uploads',
 );
@@ -1292,6 +1292,26 @@ ordered(
     'const writeResult = await updateStore({',
   ],
   'Desktop business identity suggestions require store-management permission before writes',
+);
+contains(
+  'scripts/verification/test-menu-intake-identity-suggestion-acceptance.ts',
+  ['ambiguous business type'],
+  'Menu intake business-type suggestion acceptance behavior regression exists',
+);
+contains(
+  'package.json',
+  ['test:menu-intake-identity-suggestion-acceptance'],
+  'Menu intake business-type suggestion acceptance regression is registered',
+);
+contains(
+  'src/lib/menu-intake-identity/suggestionAcceptance.ts',
+  ['export function normalizeBusinessTypeSuggestion'],
+  'Menu intake business-type suggestions use the exact canonical runtime boundary',
+);
+notContains(
+  'src/lib/menu-intake-identity/suggestionAcceptance.ts',
+  ['normalizeComparable(businessType.value).includes(raw)'],
+  'Menu intake business-type suggestions do not use ambiguous substring matching',
 );
 
 notContains(
@@ -1441,6 +1461,29 @@ contains(
   'Mobile menu upload sheet uses bounded diagnostics, acknowledged upload-created project writes, and generic retry text',
 );
 
+contains(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    'const selectedFilesRef = useRef<SelectedUploadFile[]>([]);',
+    'selectedFilesRef.current.forEach((file) => {',
+    'selectedFilesRef.current = next;',
+    'mergeBusinessIdentityUpdatesForCurrentStore(',
+    '{ storeId: expectedStoreId, tenantId: expectedTenantId }',
+    'type PreparedFileUploadResult =',
+  ],
+  'Mobile upload keeps preview ownership through selection changes, scopes late store settlement, and types partial upload results',
+);
+
+notContains(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    /\}, \[selectedFiles\]\);/,
+    /setStoreDetails\(\(previous:\s*any\)/,
+    /step === 'uploading'(?:(?!step === 'error')[\s\S])*onClick=\{onClose\}/,
+  ],
+  'Mobile upload does not revoke retained previews, merge late cross-scope identity updates, or present a false cancel action during non-cancellable processing',
+);
+
 ordered(
   'src/components/mobile/sheets/MenuUploadSheet.tsx',
   [
@@ -1572,7 +1615,7 @@ contains(
     'publicMenuDrafts/${draftToken}/',
     'MENU_EXTRACTION_SOURCES.PUBLIC_CREATE_MENU',
     'const userRateLimitHash = hashPublicRateLimitValue(userId);',
-    'const draftRateLimitHash = hashPublicRateLimitValue(draftId);',
+    'const draftRateLimitHash = hashPublicRateLimitValue(normalizedDraftId);',
     'key: `public-menu-entry-status:${userRateLimitHash}:${draftRateLimitHash}`',
     'statusOnly',
     'resultReady',
@@ -1808,9 +1851,9 @@ contains(
   [
     "t('CreateMenu.previewFailedFallback')",
     'handlePreviewDraftResponseStatus',
-    'const previewFailure = handlePreviewDraftResponseStatus(res);',
+    'const previewFailure = handlePreviewDraftResponseStatus(res, signal);',
     'if (previewFailure) return previewFailure;',
-    'const fullPreviewFailure = handlePreviewDraftResponseStatus(res);',
+    'const fullPreviewFailure = handlePreviewDraftResponseStatus(res, signal);',
     'if (fullPreviewFailure) return fullPreviewFailure;',
     'res.status === 401',
     'res.status === 410',
@@ -1889,7 +1932,7 @@ contains(
     'public_create_menu_preview_response_invalid',
     'public_create_menu_preview_claim_response_parse_failed',
     'public_create_menu_preview_claim_response_invalid',
-    'isDraftStatus(data.status)',
+    'normalizePublicCreateMenuPreviewDraft(payload)',
     'data?.success !== true',
     'isNonEmptyResponseString(data.menuUrl)',
   ],
@@ -1983,9 +2026,9 @@ contains(
 	    'normalizeCreateMenuSuccessUrl',
 	    'public_create_menu_success_business_name_invalid',
 	    'public_create_menu_success_url_invalid',
-	    "const rawMenuUrl = searchParams.get('menuUrl') || '';",
-	    "const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';",
-	    "const rawBusinessName = searchParams.get('name') || '';",
+		    "const rawMenuUrl = searchParams?.get('menuUrl') || '';",
+		    "const rawOfficialPageUrl = searchParams?.get('officialPageUrl') || '';",
+		    "const rawBusinessName = searchParams?.get('name') || '';",
 	    'normalizeCreateMenuSuccessBusinessName(rawBusinessName, defaultBusinessName)',
 	    "normalizeCreateMenuSuccessUrl('menuUrl', rawMenuUrl)",
 	    "normalizeCreateMenuSuccessUrl('officialPageUrl', rawOfficialPageUrl)",
@@ -2377,6 +2420,8 @@ contains(
   [
     'MENU_LINK_IMPORT_MAX_BODY_BYTES',
     'readBoundedJsonBody(request, MENU_LINK_IMPORT_MAX_BODY_BYTES)',
+    'function resolveTargetLanguages(projectData: unknown)',
+    'const codes: unknown[] =',
     'normalizeMenuExtractionProjectId',
     'const MenuExtractionProjectIdSchema = z.string()',
     'projectId: MenuExtractionProjectIdSchema',
@@ -3351,7 +3396,9 @@ contains(
   'scripts/verification/test-messaging-session-cleanup-emulator.ts',
   [
     'A stale quarantine snapshot must not overwrite a concurrent valid state update',
-    'lastUpdateTime: staleSnapshot.updateTime',
+    'const staleSnapshotUpdateTime = staleSnapshot.updateTime',
+    'assert.ok(staleSnapshotUpdateTime',
+    'lastUpdateTime: staleSnapshotUpdateTime',
     'assert.equal((await staleQuarantineRef.get()).get("state"), "COLLECTING_INPUT")',
   ],
   'Messaging cleanup emulator proves stale quarantine cannot overwrite concurrent valid state',
@@ -3486,9 +3533,12 @@ contains(
     'db.collection(`projects/${core.tenantId}/${core.storeId}`).doc(projectId)',
     'doc(normalizedSessionId)',
     'const projectFiles = sessionData.extractedProjectFiles;',
+    'validateMessagingPublishProjectFiles(sessionData.extractedProjectFiles)',
 	    'timeZone: currency.timezone,',
 	    'files: projectFiles',
+	    'lastPublishedAt: publishedAt,',
 	    'DB_COLLECTIONS.PLATFORM_SUMMARY',
+	    'buildSummaryProjectPayload(projectId, {',
 	    'slug: projectSlug',
 	    'runStorePublicTruthPostCommitEffects({',
 	    'revalidate: (tag) => revalidateTag(tag, { expire: 0 })',
@@ -3518,13 +3568,27 @@ contains(
     'function normalizeExtractedProjectFiles',
     'source.extractedProjectFiles',
     'buildFallbackProjectFiles',
+    'validateMessagingPublishProjectFiles(extractedProjectFiles).valid',
+    'projectScope.tId !== tenantId',
+    'projectScope.sId !== storeId',
     'active: source.active !== false',
     'deleted: source.deleted === true',
     'normalizeProjectFileIndex(source.index, fallbackIndex)',
     "index === 0 ? { message: '', data: extractedMenuData } : null",
     'extractedProjectFiles: session.extractedProjectFiles',
+    'extractedBusinessInfoAddress: session.extractedBusinessInfoAddress',
   ],
   'Messaging publish session boundary preserves renderer-ready project files and legacy fallback',
+);
+
+contains(
+  'functions/src/messagingOnboarding/publishedResultBoundary.ts',
+  [
+    'normalizePublishedProjectScope(value.projectId)',
+    'projectScope.tenantId !== tenantId',
+    'projectScope.storeId !== storeId',
+  ],
+  'Messaging confirmation delivery rejects cross-scope persisted publish results',
 );
 
 ordered(
@@ -3849,9 +3913,10 @@ contains(
     'const handleReset = async () => {',
     'const resetPatch = {',
     'files: [],',
-    'overrides: { items: {}, categories: {}, attributes: {} }',
+    '...(isLinkedProject ? { overrides: { items: {}, categories: {}, attributes: {} } } : {})',
     'mutateProject({ ...activeProject, ...resetPatch }, false);',
-    'const resetResult = await updateProject(resetPatch);',
+    'const resetResult = await updateProjectWithoutLoader(resetPatch, {',
+    'expectedScope: operationScope,',
     'assertProjectUpdateSucceeded(',
     'projects_page_reset_project_update_rejected',
     'mutateProject();',

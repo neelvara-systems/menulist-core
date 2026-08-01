@@ -83,6 +83,16 @@ async function run(): Promise<void> {
     assert.equal(ticket?.widgetEscalation?.replyEmail, 'user@example.com');
     assert.deepEqual(ticket?.escalationContext?.triggerTypes, ['explicit_user_request']);
     assert.equal(ticket?.escalationContext?.query, 'Why can I not connect Slack?');
+    assert.equal(
+        ticket?.escalationContext?.productContext,
+        undefined,
+        'legacy search-history context must not be copied into a durable support ticket',
+    );
+    assert.equal(
+        ticket?.contextKeys,
+        undefined,
+        'transient request context must not become a durable ticket classification',
+    );
     assert.equal(ticket?.messages?.length, 1);
 
     const updatedHistory = (await db.collection('aiSearchHistory').doc('history-1').get()).data();
@@ -102,6 +112,12 @@ async function run(): Promise<void> {
     assert.equal(replay.created, false);
     assert.equal((await db.collection('supportTickets').get()).size, 1, 'replay must not duplicate the support ticket');
     assert.equal((await db.collection('answerlattice_signalEvents').get()).size, 1, 'replay must not duplicate the escalation signal');
+    const escalationSignal = (await db.collection('answerlattice_signalEvents').limit(1).get()).docs[0]?.data();
+    assert.equal(
+        escalationSignal?.metadata?.contextKey,
+        undefined,
+        'transient request context must not be copied into a durable escalation signal',
+    );
 
     await db.collection('aiSearchHistory').doc('history-resolved').set(history({
         isGood: true,

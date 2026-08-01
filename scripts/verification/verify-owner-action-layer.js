@@ -30,6 +30,7 @@ function forbidToken(source, token, label) {
 const packageJson = read('package.json');
 const features = read('src/config/features.ts');
 const helper = read('src/lib/ownerActions/buildOwnerActionLayer.ts');
+const boundaryTest = read('scripts/verification/test-owner-action-layer-boundary.ts');
 const desktopDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
 const mobileDashboard = read('src/components/mobile/screens/MobileDashboardScreen.tsx');
 const readme = read('__docs__/owner-action-layer/README.md');
@@ -55,6 +56,9 @@ requireToken(
 
 [
   'export function buildOwnerActionLayer',
+  'isPublishedMenuProject(project)',
+  'normalizeStarterActivationTimestamp',
+  'hasNonEmptyString(storeDetails?.customDomain)',
   "id: 'set_customer_link'",
   "id: 'set_hours'",
   "id: 'publish_menu'",
@@ -68,6 +72,13 @@ requireToken(
   'menuPresence',
   'latestConfirmedLabel',
 ].forEach((token) => requireToken(helper, token, 'owner action helper'));
+
+[
+  'active: false',
+  'deleted: true',
+  "assert.equal(result.primaryAction.id, 'publish_menu')",
+  "assert.equal(malformedStoreTruth.placement.confirmedCount, 1)",
+].forEach((token) => requireToken(boundaryTest, token, 'owner action boundary test'));
 
 [
   'buildOwnerActionLayer',

@@ -18,6 +18,14 @@ const AUTH_SESSION_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 let clientSessionCache: LoginUserType | null = null;
 let clientSessionCacheAt = 0;
 let clientSessionRequest: Promise<LoginUserType | null> | null = null;
+let clientSessionGeneration = 0;
+
+export const clearClientSessionCache = (): void => {
+    clientSessionGeneration += 1;
+    clientSessionCache = null;
+    clientSessionCacheAt = 0;
+    clientSessionRequest = null;
+};
 
 const readClientSessionResponseJson = async (response: Response): Promise<unknown> => {
     try {
@@ -148,20 +156,37 @@ const getActiveSession = async () => {
     }
 
     if (clientSessionRequest) {
+        const joinedRequest = clientSessionRequest;
+        const joinedGeneration = clientSessionGeneration;
         logAuthDiagnostic('auth_session_request_joined', {
             ...getBoundedAuthStringContext('pathname', window.location.pathname),
             ...getBoundedAuthStringContext('hostname', window.location.hostname),
         }, { developmentOnly: true });
-        return getCurrentClientSessionScope(await clientSessionRequest);
+        const joinedSession = await joinedRequest;
+        if (
+            joinedGeneration !== clientSessionGeneration
+            || clientSessionRequest !== joinedRequest
+        ) {
+            return null;
+        }
+        return getCurrentClientSessionScope(joinedSession);
     }
 
     logAuthDiagnostic('auth_session_fetch_start', {
         ...getBoundedAuthStringContext('pathname', window.location.pathname),
         ...getBoundedAuthStringContext('hostname', window.location.hostname),
     }, { developmentOnly: true });
-    clientSessionRequest = getClientSessionFromApi();
+    const requestGeneration = clientSessionGeneration;
+    const request = getClientSessionFromApi();
+    clientSessionRequest = request;
     try {
-        const session = await clientSessionRequest;
+        const session = await request;
+        if (
+            requestGeneration !== clientSessionGeneration
+            || clientSessionRequest !== request
+        ) {
+            return null;
+        }
         clientSessionCache = session;
         clientSessionCacheAt = Date.now();
         const effectiveSession = getCurrentClientSessionScope(session);
@@ -174,7 +199,9 @@ const getActiveSession = async () => {
         });
         throw error;
     } finally {
-        clientSessionRequest = null;
+        if (clientSessionRequest === request) {
+            clientSessionRequest = null;
+        }
     }
 };
 

@@ -9,7 +9,10 @@ import {
     ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
     requireAnswerlatticePermission,
 } from '@lib/answerlattice/accessControl';
-import { getAnswerlatticeCompletedWeeklyWindows } from '@lib/answerlattice/analyticsIntelligenceContracts';
+import {
+    getAnswerlatticeCompletedWeeklyWindows,
+    getAnswerlatticeWeeklyInsightWriteDecision,
+} from '@lib/answerlattice/analyticsIntelligenceContracts';
 import {
     type AnswerlatticeChatAnalyticsDay,
     parseAnswerlatticeChatAnalyticsDay,
@@ -22,6 +25,7 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { withAuth } from '@/middleware/auth';
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
+import type { Session } from 'next-auth';
 
 const WEEKLY_NARRATIVE_LOCAL_ENDPOINT = '/api/analytics/weekly-narrative/generate-local';
 const WEEKLY_NARRATIVE_DAYS = 7;
@@ -90,7 +94,7 @@ const aggregateWeeklyNarrativeDays = (
 };
 
 const getWeeklyNarrativeRouteLogContext = (
-    session: any,
+    session: Session,
     metadata: {
         currentDays?: number;
         previousDays?: number;
@@ -112,7 +116,7 @@ const hashPayload = (value: unknown): string => (
     createHash('sha256').update(JSON.stringify(value)).digest('hex')
 );
 
-async function generateWeeklyNarrativeLocally(request: NextRequest, session: any) {
+async function generateWeeklyNarrativeLocally(request: NextRequest, session: Session) {
     let weekStartForLog: string | undefined;
     let weekEndForLog: string | undefined;
 
@@ -143,13 +147,20 @@ async function generateWeeklyNarrativeLocally(request: NextRequest, session: any
             ),
             limit: 2,
             window: 60,
+            failClosedOnProviderError: true,
         });
         if (!rateLimit.allowed) {
             const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+            const providerUnavailable = rateLimit.reason === 'provider_unavailable';
             return NextResponse.json(
-                { error: 'Too many requests. Please try again later.', retryAfter: waitSeconds },
                 {
-                    status: 429,
+                    error: providerUnavailable
+                        ? 'Weekly digest is temporarily unavailable. Please try again.'
+                        : 'Too many requests. Please try again later.',
+                    retryAfter: waitSeconds,
+                },
+                {
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
                         ...ANSWERLATTICE_PRIVATE_RESPONSE_HEADERS,
                         'Retry-After': String(waitSeconds),
@@ -293,22 +304,32 @@ async function generateWeeklyNarrativeLocally(request: NextRequest, session: any
             .doc(String(sId))
             .collection(DB_COLLECTIONS.AI)
             .doc('weekly');
-        const currentInsight = await weeklyRef.get();
-        const written = currentInsight.get('sourceHash') !== sourceHash;
-        if (written) {
-            await weeklyRef.set({
+        const writeDecision = await answerlatticeFirestoreAdmin.runTransaction(async (transaction) => {
+            const currentInsight = await transaction.get(weeklyRef);
+            const decision = getAnswerlatticeWeeklyInsightWriteDecision(
+                currentInsight.exists ? currentInsight.data() : null,
+                { sourceHash, weekEnd },
+            );
+            if (decision === 'invalid') throw new Error('weekly_narrative_write_decision_invalid');
+            if (decision === 'write') transaction.set(weeklyRef, {
                 ...payload,
                 tId,
                 sId,
                 sourceHash,
                 generatedAt: FieldValue.serverTimestamp(),
             });
-        }
+            return decision;
+        });
+        const written = writeDecision === 'write';
 
         return NextResponse.json(
             {
                 success: true,
-                message: written ? 'Weekly digest refreshed.' : 'Weekly digest is already current.',
+                message: written
+                    ? 'Weekly digest refreshed.'
+                    : writeDecision === 'superseded'
+                        ? 'A newer weekly digest is already current.'
+                        : 'Weekly digest is already current.',
                 data: {
                     weekStart,
                     weekEnd,

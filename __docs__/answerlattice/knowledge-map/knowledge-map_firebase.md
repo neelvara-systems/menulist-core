@@ -49,6 +49,10 @@ The public article and category reads already occur for the article page. The ma
 - One-hop rendering only.
 - Existing scheduler caps remain authoritative.
 - Graph summary is written only when source data changes.
+- Because the graph is loaded only by exact document ID, automatic indexing is
+  disabled for `graph` and `interactionRules` in both maintained Firestore
+  index manifests. This reduces index-entry storage and graph-rebuild write
+  amplification without changing reads or query behavior.
 - A governance mutation does not add a map-specific write. Existing source-version invalidation makes the next map load report stale until the nightly rebuild.
 - Public map structure is not persisted.
 - Entity URL focus and canonical-answer handoff are browser navigation only;

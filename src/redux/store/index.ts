@@ -1,12 +1,21 @@
 import { Action, ThunkAction, configureStore } from "@reduxjs/toolkit";
 import { windowRef } from "@util/window";
-import { persistReducer, persistStore } from "redux-persist";
+import {
+  FLUSH,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+  REHYDRATE,
+  persistReducer,
+  persistStore,
+} from "redux-persist";
 import rootReducer from "../slices";
 import storage from "./customStorage";
 
 const persistConfig = {
   key: "nextjs",
-  whitelist: ["auth", "clientThemeConfig"], // make sure it does not clash with server keys
+  whitelist: ["clientThemeConfig"],
   storage,
 };
 
@@ -14,7 +23,11 @@ const persistedReducer = persistReducer(persistConfig, rootReducer);
 
 export const reduxStore = configureStore({
   reducer: persistedReducer,
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware({ serializableCheck: false })
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+    serializableCheck: {
+      ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+    },
+  }),
 });
 
 export const reduxPersistor = windowRef() ? persistStore(reduxStore) : null;

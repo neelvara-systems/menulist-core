@@ -1,12 +1,13 @@
 # SignalDesk Source Policy Test Cases
 
 **Status:** Current executable coverage
-**Last verified:** July 21, 2026
+**Last verified:** July 29, 2026
 
 ## Commands
 
 ```bash
 npm run verify:signaldesk
+npm run test:signaldesk:source-policy-contracts
 npm run test:signaldesk:source-policy-boundary
 npm run test:signaldesk:source-data-lifecycle
 env -u GOOGLE_APPLICATION_CREDENTIALS GCLOUD_PROJECT=demo-signaldesk-source-import firebase emulators:exec --only firestore --project demo-signaldesk-source-import --config firebase-signaldesk.json "env -u GOOGLE_APPLICATION_CREDENTIALS SIGNALDESK_E2E_FOCUS=source-import node scripts/verification/e2e-signaldesk-local.js"
@@ -19,6 +20,9 @@ npm run typecheck
 | Case | Expected |
 | --- | --- |
 | Missing, malformed, foreign, expired, or review-required policy | Operation fails closed. |
+| Throwing persisted document or timestamp getter | Stable `SOURCE_POLICY_SHAPE_INVALID`; arbitrary getter detail is not exposed. |
+| Path-shaped or whitespace-mutated persisted policy/run/template reference | Dependent projection or operation fails closed before a Firestore reference is constructed. |
+| Undeclared persisted private field | Omitted from the normalized policy projection. |
 | Evidence disabled but import/storage/personalization/contact requested | Schema or use guard rejects. |
 | Contact enabled without bounded access method/channel/field | Schema rejects. |
 | Provider policy missing provider or provider refresh | Schema rejects. |

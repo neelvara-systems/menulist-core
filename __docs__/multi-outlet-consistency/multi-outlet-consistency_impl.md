@@ -12,7 +12,15 @@
 
 > **Launch Boundary:** This technical blueprint records Multi-Outlet implementation source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
 
-> **July 16, 2026 authority and scale checkpoint:** Active lifecycle routes recheck current master permission, store/tenant status, and compact `storesList` membership inside their transactions. Creation reads current master projects and summary in the same transaction, excludes linked/deleted/`localOnly` projects, caps replication at 200 master projects, and requires a valid creator user-access update. Linked outlet saves require the caller, target outlet, and master to remain active canonical tenant members and refuse blocked entities or inactive/deleted/local-only master menus. Chain identity propagation derives targets from canonical `storesList`, cross-checks each current store document, and commits master/outlet/summary values together. Public render resolution fails closed on cross-tenant, same-store, inactive, or deleted master references.
+> **July 29, 2026 persisted authority checkpoint:** Active lifecycle routes recheck current master permission, store/tenant status, and compact `storesList` membership inside their transactions. Membership rows use exact canonical positive safe-integer IDs; exponent, leading-zero, whitespace-mutated, decimal, malformed activity, and malformed master values cannot alias a store. Persisted master outlet policy is projected through one runtime boundary: absent legacy flags inherit conservative defaults, known supplied flags must be booleans, and malformed/accessor-backed policy fails closed before save, provider work, promotion, or persistence. Creation reads current master projects and summary in the same transaction, excludes linked/deleted/`localOnly` projects, caps replication at 200 master projects, and requires a valid creator user-access update. Linked outlet saves require the caller, target outlet, and master to remain active canonical tenant members and refuse blocked entities or inactive/deleted/local-only master menus. Chain identity propagation derives targets from canonical `storesList`, cross-checks each current store document, and commits master/outlet/summary values together. Public render resolution fails closed on cross-tenant, same-store, inactive, or deleted master references.
+
+> **July 29, 2026 resolver structure checkpoint:** render-time inheritance
+> additionally requires an exact cache-key/project identity, one non-linked
+> master file, at most one outlet file, unique safe item/category IDs, plain
+> override maps, and `L_I_` / `L_C_` identity for every store-only entity.
+> Invalid legacy structure returns an unresolved outlet instead of flattening
+> multiple files, duplicating local truth, chaining masters or publishing
+> unprefixed ghost entities.
 
 > **July 28 persisted-alias checkpoint:** Shared `storesSummary` projection requires all supplied `tenantId`/`tId` aliases to agree and all supplied `storeId`/`sId` aliases to agree with the canonical map key. Outlet-policy transactions apply the same exact tenant-alias admission to the transaction-current store. Numeric/string compatibility for the same positive ID remains supported; conflicting or malformed aliases fail closed rather than selecting the first truthy value.
 
@@ -439,6 +447,13 @@ async function generateUniqueProjectId(
 | `src/lib/multiOutlet/resolveProject.ts` | Resolved menu builder    |
 | `src/lib/multiOutlet/masterUtils.ts`    | Master project utilities |
 | `src/lib/multiOutlet/overrideUtils.ts`  | Override application     |
+
+The override helper contract covers every field in the authoritative
+`ItemOverride` and `CategoryOverride` types. Category application includes
+`orderIndex`; item-empty detection includes `description` and `images`, where
+an explicitly empty image list is still a real clear-images override. These
+helpers remain safe even when invoked through the public multi-outlet barrel,
+independent of the active resolver's equivalent inline merge.
 | `src/lib/multiOutlet/molEvents.ts`      | MOL event logging        |
 | `src/database/multiOutlet/index.ts`     | DAL for multi-outlet ops |
 

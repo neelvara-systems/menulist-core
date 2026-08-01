@@ -7,10 +7,12 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/
 import { isResponseBodyTooLargeError, readResponseUint8ArrayWithLimit } from "@lib/security/boundedResponseBody";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
-import { AssetsCategoryType } from "@type/assets";
+import { AssetsCategoryType, CraftBuilderAssetsTypesType } from "@type/assets";
 import { getBase64, getBase64Length, removeObjRef } from "@util/utils";
 import { Button, Flex, Input, Popconfirm, Select, Switch, Tag, Typography, Upload } from "antd";
-import { useEffect, useState } from "react";
+import type { RcFile } from "antd/es/upload";
+import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LuPen, LuRefreshCcw, LuSave, LuUpload, LuX } from "react-icons/lu";
 import { MdOutlineDelete } from "react-icons/md";
 import { emptyDetailsData } from ".";
@@ -18,7 +20,50 @@ import styles from './styles.module.scss';
 const { Text } = Typography;
 const { Search } = Input;
 
-const emptyFileData = { textContent: "", name: "", size: 0, type: "", src: null, compressed: { size: 0, src: "" } }
+export type PlatformAssetModalType = "" | "Category" | "Item" | "Sub Category";
+
+export type PlatformAssetModalState = {
+    active: boolean;
+    data: AssetsCategoryType | null;
+    type: PlatformAssetModalType;
+};
+
+export type PlatformAssetModalResponse = AssetsCategoryType | {
+    catId?: string | number;
+    subCatId?: string | number;
+    type: "deleted";
+};
+
+type DetailsModalProps = {
+    activeAssetsType: CraftBuilderAssetsTypesType;
+    modalData: PlatformAssetModalState;
+    onClose: (state: PlatformAssetModalState) => void;
+    onSubmit: (data: PlatformAssetModalResponse) => void;
+    activeCategory: AssetsCategoryType;
+    activeSubCategory: AssetsCategoryType;
+};
+
+type SelectedAssetFile = {
+    textContent: string;
+    name: string;
+    size: number;
+    type: string;
+    src: string | null;
+    compressed: { size: number; src: string };
+};
+
+type PlatformAssetMutation = AssetsCategoryType & {
+    newPreview?: string | null;
+};
+
+const emptyFileData: SelectedAssetFile = {
+    textContent: "",
+    name: "",
+    size: 0,
+    type: "",
+    src: null,
+    compressed: { size: 0, src: "" },
+};
 const PLATFORM_ASSET_REMOTE_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 const PLATFORM_ASSET_REMOTE_IMAGE_ALLOWED_MIME_TYPES = new Set([
     "image/gif",
@@ -103,7 +148,7 @@ const getPlatformAssetRemoteImageErrorMessage = (error: unknown) => {
     return PLATFORM_ASSET_REMOTE_IMAGE_FAILED_MESSAGE;
 };
 
-function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCategory, activeSubCategory }) {
+function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCategory, activeSubCategory }: DetailsModalProps) {
 
     const [activeDetails, setActiveDetails] = useState<AssetsCategoryType>(emptyDetailsData)
     const [tagValue, setTagValue] = useState('')
@@ -111,22 +156,30 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
     const dispatch = useAppDispatch()
     const [showSVGModal, setShowSVGModal] = useState(false);
     const [deployedUrl, setDeployedUrl] = useState('');
+    const [fileReadInFlight, setFileReadInFlight] = useState(false);
+    const [mutationInFlight, setMutationInFlight] = useState(false);
+    const fileReadEpochRef = useRef(0);
+    const mutationInFlightRef = useRef(false);
 
     useEffect(() => {
+        fileReadEpochRef.current += 1;
         setTagValue("");
         setSelectedFile(emptyFileData)
         setDeployedUrl("")
         setActiveDetails(modalData.data || emptyDetailsData)
     }, [modalData])
 
-    const onChangeValue = (from, value) => {
+    const onChangeValue = <Key extends keyof AssetsCategoryType>(
+        from: Key,
+        value: AssetsCategoryType[Key],
+    ) => {
         const categoryDataCopy = removeObjRef(activeDetails);
         categoryDataCopy[from] = value;
         setTagValue("")
         setActiveDetails(categoryDataCopy)
     }
 
-    const onClickTag = (tag) => {
+    const onClickTag = (tag: string) => {
         const tags = activeDetails.tags.split(',');
         let index = tags.findIndex((t) => tag == t);
         if (index != -1) {
@@ -143,11 +196,12 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
     const onSaveCategory = async () => {
         dispatch(startLoader("onSaveCategory"))
         try {
-            if (Boolean(activeDetails?.id)) {
+            const originalData = modalData.data;
+            if (Boolean(activeDetails?.id) && originalData) {
                 const changedData: any = {};
-                if (activeDetails.active !== modalData.data.active) changedData.active = activeDetails.active;
-                if (activeDetails.name !== modalData.data.name) changedData.name = activeDetails.name;
-                if (activeDetails.tags !== modalData.data.tags) changedData.tags = activeDetails.tags;
+                if (activeDetails.active !== originalData.active) changedData.active = activeDetails.active;
+                if (activeDetails.name !== originalData.name) changedData.name = activeDetails.name;
+                if (activeDetails.tags !== originalData.tags) changedData.tags = activeDetails.tags;
                 if (selectedFile.src) {
                     changedData.newPreview = selectedFile.src;
                     changedData.preview = activeDetails.preview
@@ -181,7 +235,11 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
         try {
             if (!Boolean(activeCategory?.id)) throw new Error('platform_asset_parent_missing');
 
-            const changedData: any = activeDetails;
+            const changedData: PlatformAssetMutation = {
+                ...activeDetails,
+                subCategories: activeDetails.subCategories || [],
+                items: activeDetails.items || [],
+            };
             if (selectedFile.src) {
                 changedData.newPreview = selectedFile.src;
                 changedData.preview = activeDetails.preview
@@ -189,7 +247,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
             };
             if (activeDetails.id) {
                 updatedData = await updateAssetsSubCategory(activeAssetsType, changedData, activeCategory)
-                const newCats = activeCategory.subCategories.map((subcategory) => (
+                const newCats = (activeCategory.subCategories || []).map((subcategory) => (
                     subcategory.id === activeDetails.id
                         ? {
                             ...activeDetails,
@@ -206,7 +264,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                     id: new Date().getTime(),
                     previewType: normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType),
                 }, String(activeCategory.id))
-                onSubmit({ ...activeCategory, subCategories: [...activeCategory.subCategories, updatedData] });
+                onSubmit({ ...activeCategory, subCategories: [...(activeCategory.subCategories || []), updatedData] });
                 dispatch(showSuccessToast("Sub Category added !"))
             }
         } catch (error) {
@@ -222,7 +280,11 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
 
     const onSaveItem = async () => {
         let updatedData = activeDetails;
-        const changedData: any = activeDetails;
+        const changedData: PlatformAssetMutation = {
+            ...activeDetails,
+            subCategories: activeDetails.subCategories || [],
+            items: activeDetails.items || [],
+        };
         dispatch(startLoader("onSaveItem"))
         try {
             if (selectedFile.src) {
@@ -234,11 +296,11 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
             if (activeDetails.id) {
                 updatedData = await updateAssetsItem(activeAssetsType, changedData, activeCategory, activeSubCategory)
                 if (Boolean(activeSubCategory?.id)) {
-                    activeCategoryCpy.subCategories = activeCategoryCpy.subCategories.map((subcategory) => (
+                    activeCategoryCpy.subCategories = (activeCategoryCpy.subCategories || []).map((subcategory) => (
                         subcategory.id === activeSubCategory.id
                             ? {
                                 ...subcategory,
-                                items: subcategory.items.map((item) => (
+                                items: (subcategory.items || []).map((item) => (
                                     item.id == activeDetails.id
                                         ? { ...activeDetails, preview: updatedData?.preview || activeDetails.preview }
                                         : item
@@ -247,7 +309,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                             : subcategory
                     ));
                 } else {
-                    activeCategoryCpy.items = activeCategoryCpy.items.map((item) => (
+                    activeCategoryCpy.items = (activeCategoryCpy.items || []).map((item) => (
                         item.id == activeDetails.id
                             ? {
                                 ...activeDetails,
@@ -266,13 +328,13 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                     previewType: normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType),
                 }, activeCategory, activeSubCategory)
                 if (Boolean(activeSubCategory?.id)) {
-                    activeCategoryCpy.subCategories = activeCategoryCpy.subCategories.map((subcategory) => (
+                    activeCategoryCpy.subCategories = (activeCategoryCpy.subCategories || []).map((subcategory) => (
                         subcategory.id === activeSubCategory.id
-                            ? { ...subcategory, items: [...subcategory.items, updatedData] }
+                            ? { ...subcategory, items: [...(subcategory.items || []), updatedData] }
                             : subcategory
                     ));
                 } else {
-                    activeCategoryCpy.items = [...activeCategoryCpy.items, updatedData];
+                    activeCategoryCpy.items = [...(activeCategoryCpy.items || []), updatedData];
                 }
                 onSubmit({ ...activeCategoryCpy });
                 dispatch(showSuccessToast("Item added !"))
@@ -290,12 +352,23 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
     }
 
     const onSave = async () => {
-        if (modalData.type == 'Category') await onSaveCategory()
-        else if (modalData.type == 'Sub Category') await onSaveSubCategory()
-        else if (modalData.type == 'Item') await onSaveItem()
+        if (mutationInFlightRef.current || fileReadInFlight) return;
+        mutationInFlightRef.current = true;
+        setMutationInFlight(true);
+        try {
+            if (modalData.type == 'Category') await onSaveCategory()
+            else if (modalData.type == 'Sub Category') await onSaveSubCategory()
+            else if (modalData.type == 'Item') await onSaveItem()
+        } finally {
+            mutationInFlightRef.current = false;
+            setMutationInFlight(false);
+        }
     }
 
     const onDelete = async () => {
+        if (mutationInFlightRef.current || fileReadInFlight) return;
+        mutationInFlightRef.current = true;
+        setMutationInFlight(true);
         dispatch(startLoader("onDelete"))
         try {
             if (modalData.type == 'Category') {
@@ -306,20 +379,20 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                 await deleteAssetsSubCategory(activeAssetsType, activeDetails, activeCategory);
                 onSubmit({
                     ...activeCategory,
-                    subCategories: activeCategory.subCategories.filter((category) => category.id != activeDetails.id),
+                    subCategories: (activeCategory.subCategories || []).filter((category) => category.id != activeDetails.id),
                 });
                 dispatch(showSuccessToast("Category deleted !"))
             } else if (modalData.type == 'Item') {
                 await deleteAssetsItem(activeAssetsType, activeDetails, activeCategory, activeSubCategory);
                 const activeCategoryCpy = removeObjRef(activeCategory);
                 if (Boolean(activeSubCategory?.id)) {
-                    activeCategoryCpy.subCategories = activeCategoryCpy.subCategories.map((subcategory) => (
+                    activeCategoryCpy.subCategories = (activeCategoryCpy.subCategories || []).map((subcategory) => (
                         subcategory.id === activeSubCategory.id
-                            ? { ...subcategory, items: subcategory.items.filter((item) => item.id != activeDetails.id) }
+                            ? { ...subcategory, items: (subcategory.items || []).filter((item) => item.id != activeDetails.id) }
                             : subcategory
                     ));
                 } else {
-                    activeCategoryCpy.items = activeCategoryCpy.items.filter((item) => item.id != activeDetails.id);
+                    activeCategoryCpy.items = (activeCategoryCpy.items || []).filter((item) => item.id != activeDetails.id);
                 }
                 onSubmit({ ...activeCategoryCpy });
                 dispatch(showSuccessToast("Item deleted !"))
@@ -332,6 +405,8 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
             });
         } finally {
             dispatch(stopLoader("onDelete"))
+            mutationInFlightRef.current = false;
+            setMutationInFlight(false);
         }
     }
 
@@ -352,28 +427,49 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
         setShowSVGModal(false)
     }
 
-    const handleFileChange = (info: any) => {
-        const file = info.file;
-        if (file.status === 'done') {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const { originFileObj } = file;
-                const content = e.target?.result as string;
-                const base64 = await getBase64(originFileObj);
-                const data = {
-                    name: originFileObj.name,
-                    size: originFileObj.size,
-                    type: originFileObj.type.includes("svg") ? 'image/svg+xml' : originFileObj.type,
+    const readSelectedFile = async (file: RcFile) => {
+        const readEpoch = fileReadEpochRef.current + 1;
+        fileReadEpochRef.current = readEpoch;
+        setFileReadInFlight(true);
+        try {
+            const mimeType = normalizePlatformAssetRemoteImageMimeType(file.type);
+            assertPlatformAssetRemoteImageMimeType(mimeType);
+            if (file.size > PLATFORM_ASSET_REMOTE_IMAGE_MAX_BYTES) {
+                throw new Error(PLATFORM_ASSET_REMOTE_IMAGE_TOO_LARGE_MESSAGE);
+            }
+            const [base64, textContent] = await Promise.all([
+                getBase64(file),
+                mimeType === "image/svg+xml" ? file.text() : Promise.resolve(""),
+            ]);
+            if (fileReadEpochRef.current !== readEpoch) return;
+            setSelectedFile({
+                name: file.name,
+                size: file.size,
+                type: mimeType,
+                src: base64,
+                textContent,
+                compressed: {
+                    size: getBase64Length(base64),
                     src: base64,
-                    textContent: content,
-                    compressed: {
-                        size: getBase64Length(base64),
-                        src: base64
-                    }
-                }
-                setSelectedFile(data)
-            };
-            reader.readAsText(file.originFileObj);
+                },
+            });
+        } catch (error) {
+            if (fileReadEpochRef.current !== readEpoch) return;
+            logRuntimeFailure('platform_asset_local_image_read_failed', error, {
+                fileSize: file.size,
+                ...getBoundedRuntimeStringContext('fileType', file.type),
+            });
+            dispatch(showErrorToast(
+                error instanceof Error
+                && (
+                    error.message === PLATFORM_ASSET_REMOTE_IMAGE_TOO_LARGE_MESSAGE
+                    || error.message === PLATFORM_ASSET_REMOTE_IMAGE_UNSUPPORTED_MESSAGE
+                )
+                    ? error.message
+                    : "Unable to read the selected image.",
+            ));
+        } finally {
+            if (fileReadEpochRef.current === readEpoch) setFileReadInFlight(false);
         }
     };
 
@@ -411,7 +507,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                 size: imageBytes.byteLength,
                 type: mimeType,
                 name: imageUrl.pathname.split('/').pop() || 'fetchedImage',
-                textContent: content,
+                textContent: content ?? "",
                 compressed: {
                     size: getBase64Length(dataUrl),
                     src: dataUrl
@@ -432,10 +528,14 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
     };
 
 
-    const ImageUploader = ({ icon, text }) => {
+    const ImageUploader = ({ icon, text }: { icon: ReactNode; text: string }) => {
         return <Upload
             accept="image/*"
-            onChange={handleFileChange}
+            beforeUpload={(file) => {
+                void readSelectedFile(file);
+                return false;
+            }}
+            disabled={fileReadInFlight || mutationInFlight}
             showUploadList={false}
         >
             <Button icon={icon} size="large" type="primary">
@@ -466,10 +566,10 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                 <Button key="Cancel" icon={<LuX />} type="default" onClick={() => onClose({ active: false, data: null, type: "" })}>Cancel</Button>,
                 <>
                     {activeDetails.id && <Popconfirm title="Are you sure to delete" onConfirm={onDelete}>
-                        <Button icon={<MdOutlineDelete />} ghost danger type="primary">Dalete</Button>
+                        <Button disabled={mutationInFlight || fileReadInFlight} icon={<MdOutlineDelete />} ghost danger type="primary">Delete</Button>
                     </Popconfirm>}
                 </>,
-                <Button key="Save" icon={<LuSave />} type="primary" onClick={onSave}>Save</Button>
+                <Button disabled={mutationInFlight || fileReadInFlight} key="Save" icon={<LuSave />} type="primary" onClick={onSave}>Save</Button>
             ]}
             width={500}
         >

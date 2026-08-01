@@ -18,5 +18,10 @@
 | AC-12 | desktop/mobile acknowledgement succeeds | banner/progress state refreshes without another read |
 | AC-13 | SignalDesk workflow scan | no MenuList starter/presence mutations |
 | AC-14 | route scan | no public Activation Concierge or SignalDesk website route |
+| AC-15 | starter row has missing/malformed deadline | workspace and public surfaces fail closed as expired |
+| AC-16 | malformed truthy `activePlanType` | does not bypass starter expiry |
+| AC-17 | valid Firebase seconds/nanoseconds timestamp | admitted with millisecond precision |
+| AC-18 | persisted object exposes timestamp methods only | methods are not invoked; value is rejected |
+| AC-19 | compact count receives malformed evidence timestamps | matches detailed summary and counts zero |
 
 Run `npm run verify:menulist-activation-concierge`, `npm run verify:menu-setup-progress-boundary`, and `npm run verify:menu-presence-monitor-boundary`.

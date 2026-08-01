@@ -12,5 +12,5 @@ interface WidgetPageProps {
 
 export default async function WidgetPage(props: WidgetPageProps) {
     const params = await props.params;
-    return <WidgetClient apiKey={params.apiKey} />;
+    return <WidgetClient key={params.apiKey} apiKey={params.apiKey} />;
 }

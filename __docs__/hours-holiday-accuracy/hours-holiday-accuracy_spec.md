@@ -2,11 +2,11 @@
 
 **Status:** Implemented source contract
 
-**Last verified:** July 23, 2026
+**Last verified:** July 30, 2026
 
 ## Current Source Boundary
 
-Current runtime covers owner-set weekly working hours, public open/closed status, Today quick-hours edits, and time-slot presets. Holiday calendars and date-specific exception managers are not shipped; unscheduled closures must use Temporary Status or today's hours until a source-backed exception runtime exists.
+Current runtime covers owner-set weekly working hours, exact-date special hours, public open/closed status, Today quick-hours edits, and time-slot presets. Automatic holiday calendars are not shipped; owners explicitly choose each special date.
 
 ## Owner Outcome
 
@@ -24,6 +24,16 @@ The owner maintains regular weekly truth in one place. Customers see a status de
 6. Malformed configured current-day truth must show `Hours not available`, not a guessed open state.
 7. Missing hours must not produce an open claim.
 8. Existing comma-separated ranges remain readable for legacy safety. Current owner editors remain single-window and must preserve untouched ranges rather than silently flatten them.
+9. Missing or invalid timezone metadata must use the shared deterministic `UTC` fallback on every owner and public surface; no surface may substitute a product-region default or the runtime-local clock.
+
+### Special hours
+
+1. `specialHours` is a store-document map with at most 64 valid Gregorian `YYYY-MM-DD` keys.
+2. Each entry contains strict normalized hours or an empty string for closed all day, plus an optional whitespace-normalized public label of at most 80 characters.
+3. A special entry replaces the regular schedule for that complete store-local date.
+4. A current-date exception suppresses previous-day overnight carry. Without a current-date exception, a valid prior-date overnight range may carry normally.
+5. Exact-date evaluation, next opening, urgent boundaries, OBP/menu output, owner messages, API output, and structured data must use the same normalized source.
+6. Invalid special-hour shapes must fail in the DAL and be omitted by public projection/read boundaries.
 
 ### Owner mutation
 
@@ -35,6 +45,8 @@ The owner maintains regular weekly truth in one place. Customers see a status de
 6. Successful hours writes stamp `hoursLastUpdatedAt` and use the existing public cache and Digital Screen invalidation path.
 7. Every owner save captures the initiating tenant/store. Desktop/mobile drafts remount on a scope change, duplicate same-scope writes are rejected, and delayed success/failure/loading state cannot settle into another store.
 8. Optimistic mobile rollback must match both the initiating tenant/store and the exact `hoursLastUpdatedAt` written by that attempt so it cannot erase a newer valid update.
+9. Desktop and mobile special-date writes must acknowledge the store write before success, update `hoursLastUpdatedAt`, and invalidate public store/project tags through the existing DAL.
+10. Mobile Today must show the effective exception. If today already has a special entry, its quick edit updates that date instead of silently changing the hidden weekly value.
 
 ### Time-slot presets and categories
 
@@ -56,13 +68,15 @@ The owner maintains regular weekly truth in one place. Customers see a status de
 2. OBP today/all-hours displays must never echo malformed raw values.
 3. Structured data must omit invalid ranges and emit each valid historical range separately.
 4. Current public status must refresh at minute-level boundaries on live owner/public surfaces that remain mounted.
+5. OBP must visibly render upcoming special dates before weekly rows, and JSON-LD must project the same dates via `specialOpeningHoursSpecification`.
+6. Public API and browser client projections must expose only normalized special-hour entries.
 
 ## Explicit Non-Goals
 
 - Holiday calendars or automatic public-holiday closure.
-- Date-specific special-hours exceptions.
 - Google Business Profile hours synchronization.
-- A second hours document, scheduler, API route, or owner setting.
+- Promotions, price scheduling, booking calendars, or a general business calendar.
+- A second hours document, scheduler, new API route, or provider call.
 - A preset reference index, separate cascade collection, scheduled worker, or unbounded queue without measured scale evidence. The store-local recovery marker is part of the required consistency contract.
 
 ## Acceptance Evidence
@@ -74,4 +88,7 @@ The owner maintains regular weekly truth in one place. Customers see a status de
 - An unrelated profile save produces no `workingHours` patch.
 - Failed mobile writes restore previous truth and do not show saved copy.
 - Invalid values are rejected at the store DAL and omitted from public structured data.
+- Missing/invalid timezone parity produces the same status on public menu and OBP paths.
 - Preset overlap behavior is identical on desktop and mobile.
+- An all-day exact-date closure overrides otherwise-open weekly hours.
+- An exact-date opening range overrides weekly hours and appears consistently in OBP, menu status, API output, owner messages, and structured data.

@@ -139,7 +139,7 @@ async function run(): Promise<void> {
     const numericStringBalance = createAccounting('numeric_string_balance_001');
     await assert.rejects(
         () => numericStringBalance.beforeAiProviderCall(),
-        /credit balance is invalid/,
+        AnswerlatticeSupportSearchCapacityError,
         'numeric-string subscription balances must not authorize Answerlattice provider work',
     );
 
@@ -148,7 +148,7 @@ async function run(): Promise<void> {
     const fractionalBalance = createAccounting('fractional_balance_001');
     await assert.rejects(
         () => fractionalBalance.beforeAiProviderCall(),
-        /credit balance is invalid/,
+        AnswerlatticeSupportSearchCapacityError,
         'fractional subscription balances must not authorize Answerlattice provider work',
     );
 
@@ -186,6 +186,55 @@ async function run(): Promise<void> {
         (await staleCapacitySnapshot.ref.get()).data()?.monthlyCredits,
         0,
         'a stale preloaded subscription must not reset credits after current scope changed',
+    );
+
+    await seedSubscription(2);
+    const expiredCapacitySnapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
+    const expiredCapacitySubscription = {
+        ...(expiredCapacitySnapshot.data() as FirestoreSubscriptionDoc),
+        id: expiredCapacitySnapshot.id,
+    };
+    await expiredCapacitySnapshot.ref.set({
+        cycleEndDate: Timestamp.fromMillis(Date.now() - 60_000),
+    }, { merge: true });
+    const expiredCapacity = await checkAnswerlatticeAICapacity(
+        scope,
+        'answerlattice_support_search',
+        1,
+        expiredCapacitySubscription,
+    );
+    assert.equal(expiredCapacity.allowed, false, 'an expired current subscription must fail before provider admission');
+    assert.equal(
+        (await expiredCapacitySnapshot.ref.get()).data()?.monthlyCredits,
+        2,
+        'an expired current subscription must not reset or debit credits',
+    );
+
+    await seedSubscription(2);
+    const expiredReservationSnapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get();
+    const expiredReservationSubscription = {
+        ...(expiredReservationSnapshot.data() as FirestoreSubscriptionDoc),
+        id: expiredReservationSnapshot.id,
+    };
+    await expiredReservationSnapshot.ref.set({
+        cycleEndDate: Timestamp.fromMillis(Date.now() - 60_000),
+    }, { merge: true });
+    const operationCountBeforeExpiredReservation = await operationCount();
+    await assert.rejects(
+        () => reserveAnswerlatticeAiOperationCapacity({
+            action: 'answerlattice_support_search',
+            idempotencyKey: 'support-search:help_center:expired_reservation_001',
+            scope,
+            subscription: expiredReservationSubscription,
+            unitsToReserve: 1,
+        }),
+        /active Answerlattice subscription is required/,
+        'transaction-current expiry must block reservation before any credit or operation write',
+    );
+    assert.equal(
+        await operationCount(),
+        operationCountBeforeExpiredReservation,
+        'rejected expired reservations must not create operation rows',
     );
 
     await seedSubscription(2);

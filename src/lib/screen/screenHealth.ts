@@ -4,6 +4,7 @@ import {
 } from "./screenTimestamp";
 
 const RECENT_SCREEN_WINDOW_MS = 36 * 60 * 60 * 1000;
+const MAX_SCREEN_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export type DigitalScreenHealthState = "link_ready" | "recent" | "stale";
 
@@ -38,7 +39,15 @@ export function getDigitalScreenHealth(
         };
     }
 
-    const ageMs = Math.max(0, nowMs - date.getTime());
+    const ageMs = nowMs - date.getTime();
+    if (ageMs < -MAX_SCREEN_CLOCK_SKEW_MS) {
+        return {
+            detail: "TV time needs checking",
+            state: "stale",
+            summary: "Check TV",
+        };
+    }
+
     const detail = formatSeenDetail(date, nowMs);
     if (ageMs <= RECENT_SCREEN_WINDOW_MS) {
         return {

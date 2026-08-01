@@ -111,7 +111,7 @@ export const POST = withAuth(async (_request: NextRequest, session) => {
             if (!identity) throw new Error('answerlattice_integration_test_config_scope_invalid');
             transaction.set(configRef, identity, { merge: true });
             return { ...current, ...identity };
-        }).catch((error) => {
+        }).catch((error: unknown): null => {
             if (error instanceof IntegrationTestConfigOwnershipError) {
                 return null;
             }

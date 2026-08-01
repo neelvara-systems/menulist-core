@@ -29,7 +29,7 @@ export const GET = withAuth(async (request, session) => {
             session.user.email,
             session.user.resellerProfileId,
         );
-        if (!isActiveResellerProfileForSession({
+        if (!profileData || !isActiveResellerProfileForSession({
             actorId: resellerId,
             profile: profileData,
             sessionEmail: session.user.email,

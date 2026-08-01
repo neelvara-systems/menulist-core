@@ -370,13 +370,6 @@ export const COUNTER_STICKER_TEMPLATES: Record<CounterStickerTemplate, string> =
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Screen Confidence Threshold (Higher than campaigns)
- * Screens are public-facing; embarrassment cost is higher
- * Per spec: FR-12 - Screen confidence threshold = 0.7
- */
-export const SCREEN_CONFIDENCE_THRESHOLD = 0.7; // vs 0.6 for campaigns
-
-/**
  * Availability Reliability (Internal heuristic, no UI)
  * Used to exclude volatile items from screens
  * high → safe for screens
@@ -411,6 +404,7 @@ export interface ScreenStoreInfo {
     name: string;
     logoUrl?: string;
     menuQrUrl: string;
+    accentColor?: string;
     currencyCode?: string;
     currencySymbol?: string;
     locale?: string;

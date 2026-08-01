@@ -1,6 +1,7 @@
 "use client";
 
 import ErrorReportButton from "@/components/shared/debug/ErrorReportButton";
+import { getBoundedErrorStringField } from "@lib/monitoring/boundedLogContext";
 import { getDefaultErrorPageTheme, readPersistedErrorPageTheme } from "@lib/runtime/errorPageTheme";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { useEffect, useState } from "react";
@@ -10,9 +11,10 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    const digest = getBoundedErrorStringField(error, 'digest');
     logRuntimeFailure('global_error_boundary_rendered', error, {
-      hasDigest: Boolean(error?.digest),
-      ...getBoundedRuntimeStringContext('digest', error?.digest),
+      hasDigest: Boolean(digest),
+      ...getBoundedRuntimeStringContext('digest', digest),
     });
     setTheme(readPersistedErrorPageTheme('global-error-boundary'));
     setMounted(true);

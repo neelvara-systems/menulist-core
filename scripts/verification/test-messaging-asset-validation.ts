@@ -114,11 +114,16 @@ assert.equal(unknownBusinessType.detected_business_type.type_confidence, "low");
 
 const strictIndexProjection = normalizeMenuIntakeIdentityResult({
   valid_menu_files: [[1], "2", 3],
-  invalid_files: [],
+  invalid_files: [3],
   languages: Array.from({ length: 12 }, (_, index) => `lang-${index}`),
   summary: "x".repeat(400),
 }, 3);
-assert.deepEqual(strictIndexProjection.validation.validMenuFileIndexes, [2, 3]);
+assert.deepEqual(
+  strictIndexProjection.validation.validMenuFileIndexes,
+  [2],
+  "an invalid classification must take precedence over a conflicting valid classification",
+);
+assert.deepEqual(strictIndexProjection.validation.invalidFileIndexes, [3]);
 assert.equal(strictIndexProjection.identity.languages.length, 8);
 assert.equal(strictIndexProjection.validation.summary.length, 240);
 

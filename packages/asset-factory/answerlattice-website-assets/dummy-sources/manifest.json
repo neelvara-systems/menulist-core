@@ -3,7 +3,7 @@
   "height": 1200,
   "assets": [
     {
-      "file": "answerlattice-home-hero-workspace.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-home-hero-workspace.png",
       "source": "answerlattice-home-hero-workspace.svg",
       "width": 1440,
       "height": 1200,
@@ -13,7 +13,7 @@
       "scene": "workspace"
     },
     {
-      "file": "answerlattice-widget-runtime.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-widget-runtime.png",
       "source": "answerlattice-widget-runtime.svg",
       "width": 1440,
       "height": 1200,
@@ -23,7 +23,7 @@
       "scene": "widget"
     },
     {
-      "file": "answerlattice-product-preview-activation.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-preview-activation.png",
       "source": "answerlattice-product-preview-activation.svg",
       "width": 1440,
       "height": 1200,
@@ -33,7 +33,7 @@
       "scene": "checklist"
     },
     {
-      "file": "answerlattice-product-preview-surfaces.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-preview-surfaces.png",
       "source": "answerlattice-product-preview-surfaces.svg",
       "width": 1440,
       "height": 1200,
@@ -43,7 +43,7 @@
       "scene": "surfaces"
     },
     {
-      "file": "answerlattice-product-preview-widget.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-preview-widget.png",
       "source": "answerlattice-product-preview-widget.svg",
       "width": 1440,
       "height": 1200,
@@ -53,7 +53,7 @@
       "scene": "install"
     },
     {
-      "file": "answerlattice-product-preview-feedback.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-preview-feedback.png",
       "source": "answerlattice-product-preview-feedback.svg",
       "width": 1440,
       "height": 1200,
@@ -63,7 +63,7 @@
       "scene": "board"
     },
     {
-      "file": "answerlattice-product-preview-governance.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-preview-governance.png",
       "source": "answerlattice-product-preview-governance.svg",
       "width": 1440,
       "height": 1200,
@@ -73,7 +73,7 @@
       "scene": "governance"
     },
     {
-      "file": "answerlattice-product-area-launch-setup.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-area-launch-setup.png",
       "source": "answerlattice-product-area-launch-setup.svg",
       "width": 1440,
       "height": 1200,
@@ -83,7 +83,7 @@
       "scene": "checklist"
     },
     {
-      "file": "answerlattice-product-area-widget.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-area-widget.png",
       "source": "answerlattice-product-area-widget.svg",
       "width": 1440,
       "height": 1200,
@@ -93,7 +93,7 @@
       "scene": "widget"
     },
     {
-      "file": "answerlattice-product-area-support-control.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-area-support-control.png",
       "source": "answerlattice-product-area-support-control.svg",
       "width": 1440,
       "height": 1200,
@@ -103,7 +103,7 @@
       "scene": "help"
     },
     {
-      "file": "answerlattice-product-area-governance.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-product-area-governance.png",
       "source": "answerlattice-product-area-governance.svg",
       "width": 1440,
       "height": 1200,
@@ -113,7 +113,7 @@
       "scene": "governance"
     },
     {
-      "file": "answerlattice-feature-team-access.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-team-access.png",
       "source": "answerlattice-feature-team-access.svg",
       "width": 1440,
       "height": 1200,
@@ -123,7 +123,7 @@
       "scene": "table"
     },
     {
-      "file": "answerlattice-feature-knowledge-intake.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-knowledge-intake.png",
       "source": "answerlattice-feature-knowledge-intake.svg",
       "width": 1440,
       "height": 1200,
@@ -133,7 +133,7 @@
       "scene": "intake"
     },
     {
-      "file": "answerlattice-feature-knowledge-base.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-knowledge-base.png",
       "source": "answerlattice-feature-knowledge-base.svg",
       "width": 1440,
       "height": 1200,
@@ -143,7 +143,7 @@
       "scene": "help"
     },
     {
-      "file": "answerlattice-feature-faq-management.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-faq-management.png",
       "source": "answerlattice-feature-faq-management.svg",
       "width": 1440,
       "height": 1200,
@@ -153,7 +153,7 @@
       "scene": "faq"
     },
     {
-      "file": "answerlattice-feature-changelog.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-changelog.png",
       "source": "answerlattice-feature-changelog.svg",
       "width": 1440,
       "height": 1200,
@@ -163,7 +163,7 @@
       "scene": "timeline"
     },
     {
-      "file": "answerlattice-feature-tickets.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-tickets.png",
       "source": "answerlattice-feature-tickets.svg",
       "width": 1440,
       "height": 1200,
@@ -173,7 +173,7 @@
       "scene": "tickets"
     },
     {
-      "file": "answerlattice-feature-support-board.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-support-board.png",
       "source": "answerlattice-feature-support-board.svg",
       "width": 1440,
       "height": 1200,
@@ -183,7 +183,7 @@
       "scene": "board"
     },
     {
-      "file": "answerlattice-feature-feedback-review.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-feedback-review.png",
       "source": "answerlattice-feature-feedback-review.svg",
       "width": 1440,
       "height": 1200,
@@ -193,7 +193,7 @@
       "scene": "board"
     },
     {
-      "file": "answerlattice-feature-workflow-notifications.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-workflow-notifications.png",
       "source": "answerlattice-feature-workflow-notifications.svg",
       "width": 1440,
       "height": 1200,
@@ -203,7 +203,7 @@
       "scene": "notifications"
     },
     {
-      "file": "answerlattice-feature-proactive-help.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-feature-proactive-help.png",
       "source": "answerlattice-feature-proactive-help.svg",
       "width": 1440,
       "height": 1200,
@@ -213,7 +213,7 @@
       "scene": "proactive"
     },
     {
-      "file": "answerlattice-demo-surface-billing.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-demo-surface-billing.png",
       "source": "answerlattice-demo-surface-billing.svg",
       "width": 1440,
       "height": 1200,
@@ -223,7 +223,7 @@
       "scene": "demo"
     },
     {
-      "file": "answerlattice-demo-surface-onboarding.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-demo-surface-onboarding.png",
       "source": "answerlattice-demo-surface-onboarding.svg",
       "width": 1440,
       "height": 1200,
@@ -233,7 +233,7 @@
       "scene": "demo"
     },
     {
-      "file": "answerlattice-demo-surface-settings.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-demo-surface-settings.png",
       "source": "answerlattice-demo-surface-settings.svg",
       "width": 1440,
       "height": 1200,
@@ -243,7 +243,7 @@
       "scene": "demo"
     },
     {
-      "file": "answerlattice-demo-surface-release.png",
+      "file": "public/answerlattice-website-assets/dummy/answerlattice-demo-surface-release.png",
       "source": "answerlattice-demo-surface-release.svg",
       "width": 1440,
       "height": 1200,
@@ -251,6 +251,46 @@
       "title": "Release page",
       "detail": "Usage-limit release triggers stale-answer review.",
       "scene": "demo"
+    },
+    {
+      "file": "public/answerlattice-owner-decision-system.webp",
+      "source": "answerlattice-owner-decision-system.svg",
+      "width": 1440,
+      "height": 1200,
+      "group": "Owner decision system",
+      "title": "What deserves review today",
+      "detail": "A bounded brief sends the owner to the exact answer, release, or map context that needs a decision.",
+      "scene": "owner-decision"
+    },
+    {
+      "file": "public/answerlattice-knowledge-map.webp",
+      "source": "answerlattice-knowledge-map.svg",
+      "width": 1440,
+      "height": 1200,
+      "group": "Knowledge Map",
+      "title": "Product truth, organized for review",
+      "detail": "A curated product hierarchy shows answer coverage, drift, and review state without exposing the raw graph.",
+      "scene": "knowledge-map"
+    },
+    {
+      "file": "public/answerlattice-release-assurance.webp",
+      "source": "answerlattice-release-assurance.svg",
+      "width": 1440,
+      "height": 1200,
+      "group": "Release assurance",
+      "title": "Check support before activation",
+      "detail": "Release impact and Answer Tests expose affected approved answers, stale guidance, and safe abstention paths.",
+      "scene": "release-assurance"
+    },
+    {
+      "file": "public/answerlattice-article-topic-map.webp",
+      "source": "answerlattice-article-topic-map.svg",
+      "width": 1440,
+      "height": 1200,
+      "group": "Hosted help",
+      "title": "Understand a guide at a glance",
+      "detail": "Published article headings become an accessible topic path with approved summaries and related guides.",
+      "scene": "topic-map"
     }
   ]
 }

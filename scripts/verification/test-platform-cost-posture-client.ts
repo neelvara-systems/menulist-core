@@ -107,6 +107,18 @@ async function run(): Promise<void> {
 
     globalThis.fetch = (async () => jsonResponse({ error: 'private details' }, 500)) as typeof fetch;
     await expectFixedFailure(() => getPlatformCostPosture(30));
+
+    globalThis.fetch = (async () => {
+      throw new TypeError('private network details');
+    }) as typeof fetch;
+    await expectFixedFailure(() => getPlatformCostPosture(30));
+
+    const abortError = new Error('cancelled');
+    abortError.name = 'AbortError';
+    globalThis.fetch = (async () => {
+      throw abortError;
+    }) as typeof fetch;
+    await assert.rejects(() => getPlatformCostPosture(30), (error: unknown) => error === abortError);
   } finally {
     globalThis.fetch = originalFetch;
   }

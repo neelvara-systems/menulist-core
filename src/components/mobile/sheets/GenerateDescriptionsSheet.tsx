@@ -4,6 +4,7 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { AICapacityError } from '@services/ai/capacityError';
+import type { DescriptionAction } from '@services/ai/description/descriptionUtils';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useEffect, useMemo, useState } from 'react';
@@ -84,7 +85,7 @@ export default function GenerateDescriptionsSheet({
         ) * CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE
     ), [governance, projectData]);
 
-    const handleDescriptionRequest = async (action: string) => {
+    const handleDescriptionRequest = async (action: DescriptionAction) => {
         setIsProcessing(true);
         setProcessedCount(0);
 

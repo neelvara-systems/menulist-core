@@ -1,6 +1,9 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import {
+    answerlatticeAdminApp,
+    answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { admin } from '@lib/firebase/firebaseAdminCompat';
 import type {
     AnswerlatticeProductSurface,
@@ -17,7 +20,10 @@ import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { isAnswerlatticeChangelogEntryPublished } from '@lib/answerlattice/changelogContracts';
 import type { ChangelogEntry, ChangelogPage } from '@type/changelog';
 import type { SupportTicketType } from '@type/supportTicket';
-import { getAnswerlatticeSupportTicketDisplayId } from '@lib/answerlattice/supportTicketLifecycle';
+import {
+    getAnswerlatticeSupportTicketDisplayId,
+    parseAnswerlatticeSupportTicketDocument,
+} from '@lib/answerlattice/supportTicketLifecycle';
 import {
     ANSWERLATTICE_PRODUCT_SURFACE_LIMIT,
     buildPublicRelatedContent,
@@ -56,7 +62,7 @@ type SummaryCacheEntry = {
 const summaryCache = new Map<string, SummaryCacheEntry>();
 
 const getAnswerlatticeDb = () => {
-    if (!answerlatticeFirestoreAdmin || typeof answerlatticeFirestoreAdmin.collection !== 'function') {
+    if (!answerlatticeAdminApp) {
         throw new Error('Answerlattice Firestore Admin is not configured');
     }
     return answerlatticeFirestoreAdmin;
@@ -180,19 +186,23 @@ async function loadRecentChangelogEntries(tId: number, sId: number): Promise<Arr
 async function loadRecentTickets(tId: number, sId: number): Promise<SupportTicketType[]> {
     const snapshot = await getAnswerlatticeDb()
         .collection(DB_COLLECTIONS.SUPPORT_TICKETS)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('tId', '==', tId)
         .where('sId', '==', sId)
         .where('deleted', '==', false)
         .orderBy('createdOn', 'desc')
-        .limit(MAX_TICKETS_FOR_SUMMARY)
+        .limit(MAX_TICKETS_FOR_SUMMARY + 1)
         .get();
 
+    assertSummarySourceWithinLimit(snapshot, MAX_TICKETS_FOR_SUMMARY, 'support ticket');
+
     return snapshot.docs
-        .map(doc => ({
-            ...doc.data(),
+        .map(doc => parseAnswerlatticeSupportTicketDocument({
             id: doc.id,
-            displayId: getAnswerlatticeSupportTicketDisplayId(doc.id),
-        } as SupportTicketType))
+            value: doc.data(),
+            scope: { tId, sId },
+        }))
+        .filter((ticket): ticket is SupportTicketType => ticket !== null)
         .sort((a, b) => getTimestampMillis(b.createdOn) - getTimestampMillis(a.createdOn));
 }
 
@@ -332,7 +342,8 @@ export async function resolveRelatedContentForSearch(params: {
 }> {
     if (!params.context) return { retrievalContext: params.context };
 
-    const summary = await getProductSurfaceContentSummaryServer(params.tId, params.sId).catch(() => null);
+    const summary = await getProductSurfaceContentSummaryServer(params.tId, params.sId)
+        .catch((): null => null);
     const surface = resolveSurfaceContentForContext(summary, params.context, params.target || 'helpWidget');
     return {
         relatedContent: buildPublicRelatedContent(surface),

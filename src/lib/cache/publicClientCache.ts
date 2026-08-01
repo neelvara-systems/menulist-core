@@ -12,12 +12,28 @@ type PendingPublicCacheRevalidation = {
     rerunRequested: boolean;
 };
 
-type PublicCacheRevalidationOptions = {
+export type PublicCacheRevalidationOptions = {
     projectId?: string | number | null;
     touchScreen?: boolean;
 };
 
+type PublicCacheRevalidationRequest = {
+    context: string;
+    options: PublicCacheRevalidationOptions;
+};
+
 const pendingRevalidations = new Map<string, PendingPublicCacheRevalidation>();
+
+export const mergePendingPublicCacheRevalidation = (
+    current: PublicCacheRevalidationRequest,
+    incoming: PublicCacheRevalidationRequest,
+): PublicCacheRevalidationRequest => {
+    if (current.options.touchScreen === true && incoming.options.touchScreen !== true) {
+        return current;
+    }
+
+    return incoming;
+};
 
 const sanitizePublicCacheContext = (context: string): string => {
     const value = String(context || 'publicClientCache').trim();
@@ -114,9 +130,13 @@ export const revalidatePublicClientCache = async (
 
     const pending = pendingRevalidations.get(normalizedStoreId);
     if (pending) {
+        const merged = mergePendingPublicCacheRevalidation(
+            { context: pending.context, options: pending.options },
+            { context, options },
+        );
         pending.rerunRequested = true;
-        pending.context = context;
-        pending.options = options;
+        pending.context = merged.context;
+        pending.options = merged.options;
         return pending.promise;
     }
 

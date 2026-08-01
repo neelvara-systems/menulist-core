@@ -85,9 +85,9 @@ const getTemplateRegistryLocalErrorMessage = (error: unknown): string | null => 
     return isTemplateRegistryLocalErrorCode(code) ? TEMPLATE_REGISTRY_LOCAL_ERROR_MESSAGES[code] : null;
 };
 
-const throwTemplateRegistryLocalError = (code: TemplateRegistryLocalErrorCode): never => {
+function throwTemplateRegistryLocalError(code: TemplateRegistryLocalErrorCode): never {
     throw new TemplateRegistryLocalError(code);
-};
+}
 
 const isTemplateRegistryLocalError = (error: unknown, code?: TemplateRegistryLocalErrorCode): boolean => (
     error instanceof TemplateRegistryLocalError
@@ -356,9 +356,9 @@ const getTemplateRegistryErrorMessage = (error: unknown, fallback: string) => {
     return fallback;
 };
 
-const throwTemplateRegistryError = (error: unknown, fallback: string): never => {
+function throwTemplateRegistryError(error: unknown, fallback: string): never {
     throw new Error(getTemplateRegistryErrorMessage(error, fallback));
-};
+}
 
 const readIndexRecords = (
     value: unknown,

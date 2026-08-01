@@ -2,7 +2,10 @@
 
 import assert from 'node:assert/strict';
 import { normalizePublicMenuDraftExtractedData } from '../../src/data/shared/publicMenuDraftData';
-import { validateMessagingPublishMenu } from '../../src/lib/messaging-onboarding/publishValidationBoundary';
+import {
+  validateMessagingPublishMenu,
+  validateMessagingPublishProjectFiles,
+} from '../../src/lib/messaging-onboarding/publishValidationBoundary';
 
 function validate(value: unknown) {
   const menu = normalizePublicMenuDraftExtractedData(value);
@@ -48,5 +51,40 @@ assert.equal(validate({
     attributes: [{ active: false, id: 'large', name: { en: 'Large' }, price: '199' }],
   }],
 }).valid, false, 'Inactive variant prices must not satisfy the price gate');
+
+const validRendererFile = {
+  active: true,
+  deleted: false,
+  extractedData: {
+    data: normalizePublicMenuDraftExtractedData({
+      categories: [baseCategory],
+      items: [{ ...baseItem, price: '199' }],
+    }),
+  },
+};
+assert(validRendererFile.extractedData.data);
+assert.equal(
+  validateMessagingPublishProjectFiles([validRendererFile]).valid,
+  true,
+  'The persisted renderer file graph must independently satisfy publish admission',
+);
+assert.equal(
+  validateMessagingPublishProjectFiles([{
+    ...validRendererFile,
+    extractedData: {
+      data: normalizePublicMenuDraftExtractedData({
+        categories: [baseCategory],
+        items: [{ ...baseItem }],
+      }),
+    },
+  }]).valid,
+  false,
+  'A valid aggregate must not hide an unpriced renderer file graph',
+);
+assert.equal(
+  validateMessagingPublishProjectFiles([{ ...validRendererFile, deleted: true }]).valid,
+  false,
+  'Deleted renderer files must not satisfy publish admission',
+);
 
 console.log('Messaging publish validation boundary verification passed.');

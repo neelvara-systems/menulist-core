@@ -14,6 +14,7 @@ import {
     withSignalDeskPrivateHeaders,
 } from "@lib/signaldesk/apiGuards";
 import { recordSignalDeskMobileActionBlockedServer } from "@lib/signaldesk/server";
+import { normalizeSignalDeskDocumentId } from "@lib/signaldesk/documentIdBoundary";
 import {
     SignalDeskSourcePolicyCreateSchema,
     SignalDeskSourcePolicyRenewSchema,
@@ -173,13 +174,21 @@ const ActionEnvelopeSchema = z.object({
     payload: z.unknown().default({}),
 });
 
+const signalDeskDocumentIdSchema = (maxLength = 180, minLength = 3) => z.string()
+    .min(minLength)
+    .max(maxLength)
+    .refine(
+        (value) => normalizeSignalDeskDocumentId(value, maxLength) !== null,
+        "Invalid document identity",
+    );
+
 const TargetSchema = z.object({
-    targetId: z.string().trim().min(3).max(160),
+    targetId: signalDeskDocumentIdSchema(160),
 });
 
 const DraftSchema = z.object({
-    targetId: z.string().trim().min(3).max(160),
-    templateId: z.string().trim().min(3).max(160).optional(),
+    targetId: signalDeskDocumentIdSchema(160),
+    templateId: signalDeskDocumentIdSchema(160).optional(),
 });
 
 const ApprovalRejectionReasonSchema = z.enum([
@@ -194,7 +203,7 @@ const ApprovalRejectionReasonSchema = z.enum([
 ]);
 
 const ReviewApprovalSchema = z.object({
-    approvalId: z.string().trim().min(3).max(160),
+    approvalId: signalDeskDocumentIdSchema(160),
     reason: z.string().trim().max(500).optional(),
     rejectionReason: ApprovalRejectionReasonSchema.optional(),
     status: z.enum(["approved", "rejected"]),
@@ -208,7 +217,7 @@ const ReviewApprovalSchema = z.object({
 });
 
 const ExportMessageSchema = z.object({
-    approvalId: z.string().trim().min(3).max(160),
+    approvalId: signalDeskDocumentIdSchema(160),
 });
 
 const ManualContactSchema = z.object({
@@ -217,12 +226,12 @@ const ManualContactSchema = z.object({
     occurredAt: z.string().datetime({ offset: true }),
     result: z.enum(["contacted", "no-answer", "wrong-contact", "requested-later", "declined", "introduced"]),
     route: z.enum(["email-export", "partner-intro"]),
-    sourcePolicyId: z.string().trim().min(3).max(160),
-    targetId: z.string().trim().min(3).max(160),
+    sourcePolicyId: signalDeskDocumentIdSchema(160),
+    targetId: signalDeskDocumentIdSchema(160),
 });
 
 const CaptureReplySchema = z.object({
-    conversationId: z.string().trim().min(3).max(200),
+    conversationId: signalDeskDocumentIdSchema(200),
     idempotencyKey: z.string().trim().min(8).max(180),
     message: z.string().trim().min(1).max(4000),
 }).strict();
@@ -235,9 +244,12 @@ const RecordOutcomeSchema = z.object({
     ownerQualifiedAt: z.string().datetime({ offset: true }).optional(),
     ownerReviewedAt: z.string().datetime({ offset: true }).optional(),
     source: z.enum(["manual", "demand-signal"]),
-    sourceEventId: z.string().trim().regex(/^demand_[a-f0-9]{32}$/).optional(),
+    sourceEventId: signalDeskDocumentIdSchema(180).refine(
+        (value) => /^demand_[a-f0-9]{32}$/.test(value),
+        "Invalid demand source identity",
+    ).optional(),
     surfaces: z.array(z.enum(["qr", "whatsapp", "google-profile", "instagram", "website", "print", "other"])).max(7).default([]),
-    targetId: z.string().trim().min(3).max(160),
+    targetId: signalDeskDocumentIdSchema(160),
 }).strict().superRefine((value, context) => {
     if (value.source === "demand-signal" && !value.sourceEventId) {
         context.addIssue({ code: z.ZodIssueCode.custom, message: "Demand source event is required", path: ["sourceEventId"] });
@@ -252,24 +264,27 @@ const RecordOutcomeSchema = z.object({
 });
 
 const RouteTokenSchema = z.object({
-    actionId: z.string().trim().min(3).max(160).optional(),
+    actionId: signalDeskDocumentIdSchema(160).optional(),
     channel: z.enum(["email", "manual", "qr", "share", "claim"]),
-    ctaId: z.string().trim().max(180).optional(),
+    ctaId: signalDeskDocumentIdSchema(180).optional(),
     idempotencyKey: z.string().trim().min(8).max(180),
-    targetId: z.string().trim().min(3).max(160),
-    templateId: z.string().trim().max(160).optional(),
+    targetId: signalDeskDocumentIdSchema(160),
+    templateId: signalDeskDocumentIdSchema(160).optional(),
 }).strict();
 
 const RevokeRouteTokenSchema = z.object({
     reason: z.string().trim().min(3).max(500),
-    routeTokenId: z.string().trim().regex(/^route_[a-f0-9]{32}$/),
+    routeTokenId: signalDeskDocumentIdSchema(180).refine(
+        (value) => /^route_[a-f0-9]{32}$/.test(value),
+        "Invalid route token identity",
+    ),
 });
 
 const CaptureDemandSignalSchema = z.object({
     idempotencyKey: z.string().trim().min(8).max(180),
     signalType: z.enum(["qr_scan", "link_click", "share", "claim_attempt", "referral"]),
     sourceSurface: z.enum(["menu", "qr", "website", "manual", "other"]),
-    targetId: z.string().trim().min(3).max(160).optional(),
+    targetId: signalDeskDocumentIdSchema(160).optional(),
     targetName: z.string().trim().max(180).optional(),
 }).strict().superRefine((value, context) => {
     if (!value.targetId && value.targetName) {
@@ -284,13 +299,13 @@ const SourceProviderRunSchema = z.object({
     maxResults: z.number().int().min(1).max(30).default(10),
     provider: z.enum(["google-places", "foursquare", "apify", "fhrs-fhis"]),
     query: z.string().trim().min(3).max(180),
-    sourcePolicyId: z.string().trim().min(3).max(160),
+    sourcePolicyId: signalDeskDocumentIdSchema(160),
 });
 
 const AiAssistSchema = z.object({
     idempotencyKey: z.string().trim().min(8).max(180),
     instruction: z.string().trim().max(500).optional(),
-    targetId: z.string().trim().min(3).max(160),
+    targetId: signalDeskDocumentIdSchema(160),
     task: z.enum(["score", "evidence", "draft", "reply-classification", "approval-packet", "weekly-strategist", "vendor-audit"]),
 });
 
@@ -298,14 +313,14 @@ const AiVolumeBatchSchema = z.object({
     idempotencyKey: z.string().trim().min(8).max(180),
     instruction: z.string().trim().max(500).optional(),
     maxEstimatedCostUsd: z.number().min(0.01).max(5),
-    targetIds: z.array(z.string().trim().min(3).max(160)).min(1).max(5)
+    targetIds: z.array(signalDeskDocumentIdSchema(160)).min(1).max(5)
         .refine((targetIds) => new Set(targetIds).size === targetIds.length, "Target IDs must be unique"),
     tasks: z.array(z.enum(["score", "evidence", "draft", "reply-classification"])).min(1).max(3)
         .refine((tasks) => new Set(tasks).size === tasks.length, "Tasks must be unique"),
 });
 
 const AiShadowReviewSchema = z.object({
-    aiRunId: z.string().trim().min(3).max(180),
+    aiRunId: signalDeskDocumentIdSchema(180),
     decision: z.enum(["accepted", "edited", "rejected", "held"]),
     founderAttentionMinutes: z.number().int().min(0).max(1440),
     reason: z.string().trim().max(500).optional(),
@@ -320,12 +335,12 @@ const AiShadowReviewSchema = z.object({
 });
 
 const ChannelActionSchema = z.object({
-    approvalId: z.string().trim().min(3).max(160),
+    approvalId: signalDeskDocumentIdSchema(160),
     channel: z.enum(["email", "whatsapp", "instagram", "messenger"]),
 });
 
 const ProviderSendActionSchema = z.object({
-    approvalId: z.string().trim().min(3).max(160),
+    approvalId: signalDeskDocumentIdSchema(160),
     channel: z.literal("email"),
 });
 
@@ -336,7 +351,7 @@ const ChannelWindowStateSchema = z.object({
     reason: z.string().trim().max(500).optional(),
     source: z.enum(["inbound", "opt-in", "ad-click", "template", "manual"]),
     status: z.enum(["open", "closed", "expired", "blocked", "needs-template"]),
-    targetId: z.string().trim().min(3).max(160).optional(),
+    targetId: signalDeskDocumentIdSchema(160).optional(),
 });
 
 const ProviderIdSchema = z.enum([
@@ -416,7 +431,7 @@ const EnrichmentWaterfallSchema = z.object({
     providerOrder: z.array(ProviderIdSchema).min(1).max(12),
     requestedField: z.enum(["email", "phone", "company", "website", "evidence"]),
     retentionDays: z.number().int().min(1).max(365),
-    sourcePolicyId: z.string().trim().max(160).optional(),
+    sourcePolicyId: signalDeskDocumentIdSchema(160).optional(),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
     stopCondition: z.enum(["first-verified", "first-candidate", "manual-review"]),
     verificationRequired: z.boolean(),
@@ -432,28 +447,28 @@ const EnrichmentWaterfallSchema = z.object({
 const AudienceSegmentSchema = z.object({
     criteriaSummary: z.string().trim().min(2).max(500),
     idempotencyKey: z.string().trim().min(8).max(180),
-    marketPodId: z.string().trim().max(160).optional(),
+    marketPodId: signalDeskDocumentIdSchema(160).optional(),
     name: z.string().trim().min(2).max(120),
-    sourcePolicyId: z.string().trim().max(160).optional(),
+    sourcePolicyId: signalDeskDocumentIdSchema(160).optional(),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
     triggerType: z.enum(["demand-signal", "source-run", "outcome", "manual", "website-evidence"]),
 });
 
 const MarketPodRecommendationSchema = z.object({
-    marketPodId: z.string().trim().min(3).max(160).optional(),
+    marketPodId: signalDeskDocumentIdSchema(160).optional(),
 });
 
 const MarketPodReviewSchema = z.object({
     decision: z.enum(["approved", "held", "rejected"]),
     idempotencyKey: z.string().trim().min(8).max(180),
-    marketPodId: z.string().trim().min(3).max(160),
+    marketPodId: signalDeskDocumentIdSchema(160),
     reason: z.string().trim().min(3).max(500),
 });
 
 const ProviderSourceRetentionRefreshSchema = z.object({
     idempotencyKey: z.string().trim().min(8).max(180),
     notes: z.string().trim().max(500).optional(),
-    providerSourceRetentionId: z.string().trim().min(3).max(180),
+    providerSourceRetentionId: signalDeskDocumentIdSchema(180),
     status: z.enum(["refreshed", "refresh-due", "expired", "blocked"]),
 });
 
@@ -525,11 +540,14 @@ const GrowthMissionDaySchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).re
 
 const DailyGrowthMissionSchema = z.object({
     day: GrowthMissionDaySchema.optional(),
-    marketPodId: z.string().trim().min(1).max(160).optional(),
+    marketPodId: signalDeskDocumentIdSchema(160, 1).optional(),
 });
 
 const GrowthMissionReviewSchema = z.object({
-    growthMissionId: z.string().trim().regex(/^growth_mission_\d{4}-\d{2}-\d{2}$/).max(180),
+    growthMissionId: signalDeskDocumentIdSchema(180).refine(
+        (value) => /^growth_mission_\d{4}-\d{2}-\d{2}$/.test(value),
+        "Invalid growth mission identity",
+    ),
     ownerDecision: z.enum(["approved", "hold", "redirected", "completed"]),
     ownerDecisionNote: z.string().trim().max(800).optional(),
     status: z.enum(["draft", "ready", "approved", "held", "completed"]).optional(),
@@ -584,21 +602,24 @@ const ExperimentReadbackPlanSchema = z.object({
 
 const ExperimentCardSchema = z.object({
     channel: z.enum(["email", "manual", "content", "partner", "referral", "other"]),
-    contentAssetId: z.string().trim().max(180).optional(),
-    ctaId: z.string().trim().max(180).optional(),
+    contentAssetId: z.string().refine((value) => normalizeSignalDeskDocumentId(value) !== null).optional(),
+    ctaId: z.string().refine((value) => normalizeSignalDeskDocumentId(value) !== null).optional(),
     expectedOutcome: z.string().trim().min(2).max(240),
     hypothesis: z.string().trim().min(5).max(500),
-    marketPodId: z.string().trim().max(160).optional(),
+    marketPodId: z.string().refine((value) => normalizeSignalDeskDocumentId(value, 160) !== null).optional(),
     proofAssetSummary: z.string().trim().max(500).optional(),
     readbackPlan: ExperimentReadbackPlanSchema,
-    sourcePolicyId: z.string().trim().max(180).optional(),
+    sourcePolicyId: z.string().refine((value) => normalizeSignalDeskDocumentId(value) !== null).optional(),
     status: z.enum(["planned", "active", "paused", "completed", "stopped"]).optional(),
     stopRule: z.string().trim().min(5).max(500),
     targetCount: z.number().int().min(1).max(500),
 });
 
 const ExperimentReviewSchema = z.object({
-    experimentCardId: z.string().trim().min(3).max(180),
+    experimentCardId: z.string().refine((value) => {
+        const normalized = normalizeSignalDeskDocumentId(value);
+        return normalized !== null && normalized.length >= 3;
+    }),
     ownerDecision: z.enum(["repeat", "narrow", "stop", "hold", "complete"]),
     resultSummary: z.string().trim().min(2).max(1000),
     status: z.enum(["planned", "active", "paused", "completed", "stopped"]).optional(),
@@ -608,9 +629,9 @@ const OfferCtaSchema = z.object({
     activationSurface: z.enum(["claim", "upload", "preview", "qr", "whatsapp", "google-profile", "manual"]),
     approvedAsk: z.string().trim().min(5).max(500),
     blockedClaims: z.array(z.string().trim().min(2).max(180)).max(10).default([]),
-    ctaId: z.string().trim().max(180).optional(),
-    marketPodId: z.string().trim().max(160).optional(),
-    offerCtaId: z.string().trim().max(180).optional(),
+    ctaId: z.string().refine((value) => normalizeSignalDeskDocumentId(value) !== null).optional(),
+    marketPodId: z.string().refine((value) => normalizeSignalDeskDocumentId(value, 160) !== null).optional(),
+    offerCtaId: z.string().refine((value) => normalizeSignalDeskDocumentId(value) !== null).optional(),
     proofMatchRule: z.string().trim().min(5).max(500),
     segment: z.enum(["restaurant-owner", "agency-partner", "trust-partner", "local-operator", "general"]),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
@@ -622,7 +643,7 @@ const ReplyPlaybookSchema = z.object({
     escalationRequired: z.boolean(),
     intent: z.enum(["send-details", "pricing", "who-are-you", "not-now", "wrong-person", "stop", "call-me", "interested", "other"]),
     nextRoute: z.enum(["self-serve-preview", "manual-reply", "suppress", "schedule-follow-up", "founder-review"]),
-    playbookId: z.string().trim().max(180).optional(),
+    playbookId: signalDeskDocumentIdSchema(180).optional(),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
     suppressionRequired: z.boolean(),
     title: z.string().trim().min(2).max(160),
@@ -640,16 +661,16 @@ const ReplyPlaybookSchema = z.object({
 const RevenueAccountQualificationSchema = z.object({
     locationType: z.enum(["single-location", "headquarters", "branch"]),
     organizationName: z.string().trim().max(160).optional(),
-    targetId: z.string().trim().min(3).max(180),
+    targetId: signalDeskDocumentIdSchema(180),
 });
 
 const CommercialOpportunitySchema = z.object({
-    commercialOfferId: z.string().trim().max(180).optional(),
+    commercialOfferId: signalDeskDocumentIdSchema(180).optional(),
     expectedCloseAt: z.string().datetime().optional(),
     founderAttentionMinutes: z.number().int().min(0).max(100000),
     nextAction: z.string().trim().min(3).max(500),
     nextActionDueAt: z.string().datetime().optional(),
-    opportunityId: z.string().trim().min(3).max(180),
+    opportunityId: signalDeskDocumentIdSchema(180),
     probabilityPercent: z.number().int().min(0).max(100),
     stage: z.enum(["qualified", "discovery", "offer", "decision", "lost", "nurture"]),
     stalledReason: z.string().trim().max(500).optional(),
@@ -661,13 +682,13 @@ const CommercialOpportunitySchema = z.object({
 const CommercialOfferSchema = z.object({
     allowedDiscountBps: z.number().int().min(0).max(10000),
     billingCadence: z.enum(["one-time", "monthly", "annual"]),
-    commercialOfferId: z.string().trim().max(180).optional(),
+    commercialOfferId: signalDeskDocumentIdSchema(180).optional(),
     contents: z.array(z.string().trim().min(1).max(240)).min(1).max(30),
     currency: z.string().trim().regex(/^[A-Za-z]{3}$/),
     eligibilitySummary: z.string().trim().min(3).max(1000),
     founderApprovalConditions: z.array(z.string().trim().min(1).max(300)).min(1).max(20),
     name: z.string().trim().min(2).max(160),
-    offerCtaId: z.string().trim().max(180).optional(),
+    offerCtaId: signalDeskDocumentIdSchema(180).optional(),
     priceMinor: z.number().int().min(0).max(1000000000),
     status: z.enum(["active", "inactive", "hold", "blocked"]),
     version: z.number().int().min(1).max(10000),
@@ -684,23 +705,23 @@ const CommercialOfferSchema = z.object({
 });
 
 const OperatingEnvelopeSchema = z.object({
-    budgetPolicyId: z.string().trim().max(180).optional(),
+    budgetPolicyId: signalDeskDocumentIdSchema(180).optional(),
     channel: z.enum(["email", "manual", "content", "partner", "referral"]),
-    commercialOfferId: z.string().trim().min(3).max(180),
+    commercialOfferId: signalDeskDocumentIdSchema(180),
     dailyVolumeCap: z.number().int().min(1).max(500),
     expiresAt: z.string().datetime(),
     fallbackAction: z.enum(["hold", "pause", "founder-review"]),
-    marketPodId: z.string().trim().min(3).max(180),
+    marketPodId: signalDeskDocumentIdSchema(180),
     maxCostUsd: z.number().min(0).max(1000000),
     name: z.string().trim().min(2).max(160),
-    operatingEnvelopeId: z.string().trim().max(180).optional(),
+    operatingEnvelopeId: signalDeskDocumentIdSchema(180).optional(),
     requestedApprovalMode: z.enum(["manual", "recommendation-only", "prepare-and-approve-each", "approve-batch", "approve-sample", "exception-only"]),
-    senderDomainId: z.string().trim().max(180).optional(),
-    sourcePolicyIds: z.array(z.string().trim().min(3).max(180)).min(1).max(10),
+    senderDomainId: signalDeskDocumentIdSchema(180).optional(),
+    sourcePolicyIds: z.array(signalDeskDocumentIdSchema(160)).min(1).max(10),
     startsAt: z.string().datetime(),
     status: z.enum(["draft", "shadow", "approved", "held", "paused", "expired"]),
     stopConditions: z.array(z.string().trim().min(3).max(300)).min(1).max(20),
-    templateIds: z.array(z.string().trim().min(3).max(180)).min(1).max(10),
+    templateIds: z.array(signalDeskDocumentIdSchema(160)).min(1).max(10),
     totalVolumeCap: z.number().int().min(1).max(5000),
     version: z.number().int().min(1).max(10000),
 }).superRefine((value, context) => {
@@ -716,47 +737,47 @@ const OperatingEnvelopeSchema = z.object({
 });
 
 const ActivationWatchSchema = z.object({
-    targetId: z.string().trim().min(3).max(180),
+    targetId: signalDeskDocumentIdSchema(180),
 });
 
 const SourceQualitySnapshotSchema = z.object({
-    sourcePolicyId: z.string().trim().max(160).optional(),
-    sourceRunId: z.string().trim().max(160).optional(),
+    sourcePolicyId: signalDeskDocumentIdSchema(160).optional(),
+    sourceRunId: signalDeskDocumentIdSchema(160).optional(),
 });
 
 const ResearchAgentRunSchema = z.object({
     city: z.string().trim().max(120).optional(),
     country: z.string().trim().max(120).optional(),
     idempotencyKey: z.string().trim().min(8).max(180),
-    marketPodId: z.string().trim().max(180).optional(),
+    marketPodId: signalDeskDocumentIdSchema(180).optional(),
     maxResults: z.number().int().min(1).max(30).default(10),
     prompt: z.string().trim().min(5).max(600),
     provider: z.enum(["google-places", "apify", "fhrs-fhis"]).optional(),
     researchType: z.enum(["business-prospect", "market-map", "partner-list"]).default("business-prospect"),
-    sourcePolicyId: z.string().trim().min(3).max(180),
+    sourcePolicyId: signalDeskDocumentIdSchema(180),
 });
 
 const RunWaterfallSchema = z.object({
     idempotencyKey: z.string().trim().min(8).max(180),
-    targetId: z.string().trim().min(3).max(160),
-    waterfallId: z.string().trim().min(3).max(160),
+    targetId: signalDeskDocumentIdSchema(160),
+    waterfallId: signalDeskDocumentIdSchema(160),
 });
 
 const ApprovalPacketSchema = z.object({
-    approvalId: z.string().trim().min(3).max(160).optional(),
-    targetId: z.string().trim().min(3).max(160).optional(),
+    approvalId: signalDeskDocumentIdSchema(160).optional(),
+    targetId: signalDeskDocumentIdSchema(160).optional(),
 }).refine((value) => Boolean(value.approvalId) !== Boolean(value.targetId), {
     message: "Exactly one approval or target is required",
 });
 
 const SequencerHandoffSchema = z.object({
-    approvalId: z.string().trim().min(3).max(160),
+    approvalId: signalDeskDocumentIdSchema(160),
     provider: z.enum(["owned-email", "smartlead", "instantly", "lemlist"]),
-    senderDomainId: z.string().trim().max(160).optional(),
+    senderDomainId: signalDeskDocumentIdSchema(160).optional(),
 });
 
 const OwnedSequenceStepSchema = z.object({
-    sequencerHandoffId: z.string().trim().min(3).max(180),
+    sequencerHandoffId: signalDeskDocumentIdSchema(180),
 });
 
 const ContentAudienceSchema = z.enum(["restaurant-owner", "agency-partner", "trust-partner", "local-operator", "general"]);
@@ -799,9 +820,9 @@ const ContentHttpUrlSchema = z.string().trim().url().max(500).superRefine((value
 });
 
 const ContentSourceSchema = z.object({
-    contentSourceId: z.string().trim().min(1).max(180).optional(),
+    contentSourceId: z.string().refine((value) => normalizeSignalDeskDocumentId(value) !== null).optional(),
     defaultAudience: ContentAudienceSchema,
-    defaultMarketPodId: z.string().trim().max(160).nullable().optional(),
+    defaultMarketPodId: z.string().refine((value) => normalizeSignalDeskDocumentId(value, 160) !== null).nullable().optional(),
     idempotencyKey: z.string().trim().min(8).max(180),
     sourceType: ContentSourceTypeSchema,
     sourceUrl: ContentHttpUrlSchema.optional(),
@@ -811,16 +832,16 @@ const ContentSourceSchema = z.object({
 
 const ContentAssetSchema = z.object({
     canonicalMessage: z.string().trim().min(10).max(2000),
-    contentAssetId: z.string().trim().max(180).optional(),
-    ctaId: z.string().trim().max(160).optional(),
+    contentAssetId: signalDeskDocumentIdSchema(180).optional(),
+    ctaId: signalDeskDocumentIdSchema(160).optional(),
     idempotencyKey: z.string().trim().min(8).max(180),
-    marketPodId: z.string().trim().max(160).optional(),
+    marketPodId: signalDeskDocumentIdSchema(160).optional(),
     primaryAudience: ContentAudienceSchema,
     proofLevel: z.enum(["owned", "customer-proof", "market-research", "internal-note"]),
-    proofPermissionId: z.string().trim().max(180).optional(),
+    proofPermissionId: signalDeskDocumentIdSchema(180).optional(),
     proofScopes: z.array(PublicProofScopeSchema).max(6).default([]),
     riskNotes: z.array(z.string().trim().max(240)).max(6).default([]),
-    sourceId: z.string().trim().max(180).optional(),
+    sourceId: signalDeskDocumentIdSchema(180).optional(),
     sourceNotes: z.string().trim().max(800).optional(),
     sourceType: ContentSourceTypeSchema,
     sourceUrl: ContentHttpUrlSchema.optional(),
@@ -842,7 +863,7 @@ const ContentAssetSchema = z.object({
 });
 
 const ContentAssetReviewSchema = z.object({
-    contentAssetId: z.string().trim().min(3).max(180),
+    contentAssetId: signalDeskDocumentIdSchema(180),
     idempotencyKey: z.string().trim().min(8).max(180),
     reason: z.string().trim().min(3).max(500),
     status: z.enum(["ready", "hold", "archived"]),
@@ -854,27 +875,27 @@ const ProofPermissionSchema = z.object({
     grantedAt: z.string().datetime({ offset: true }).optional(),
     idempotencyKey: z.string().trim().min(8).max(180),
     notes: z.string().trim().max(500).optional(),
-    proofPermissionId: z.string().trim().max(180).optional(),
+    proofPermissionId: signalDeskDocumentIdSchema(180).optional(),
     scopes: z.array(ProofPermissionScopeSchema).min(1).max(8),
     status: z.enum(["active", "hold", "revoked", "expired"]),
-    targetId: z.string().trim().min(3).max(160),
+    targetId: signalDeskDocumentIdSchema(160),
 });
 
 const ContentDistributionDraftSchema = z.object({
     channels: z.array(ContentChannelSchema).min(1).max(8),
-    contentAssetId: z.string().trim().min(3).max(180),
+    contentAssetId: signalDeskDocumentIdSchema(180),
     idempotencyKey: z.string().trim().min(8).max(180),
 });
 
 const ContentDraftReviewSchema = z.object({
     approvalStatus: z.enum(["approved", "rejected", "hold"]),
-    contentDraftId: z.string().trim().min(3).max(180),
+    contentDraftId: signalDeskDocumentIdSchema(180),
     idempotencyKey: z.string().trim().min(8).max(180),
     reviewReason: z.string().trim().max(500).optional(),
 });
 
 const ContentDraftScheduleSchema = z.object({
-    contentDraftId: z.string().trim().min(3).max(180),
+    contentDraftId: signalDeskDocumentIdSchema(180),
     idempotencyKey: z.string().trim().min(8).max(180),
     // Historical claims may contain a pre-hardening string; the server validates
     // new writes only after durable replay has been checked.
@@ -886,8 +907,8 @@ const ContentPerformanceSchema = z.object({
     activations: z.number().int().min(0).max(100000),
     channel: ContentChannelSchema,
     clicks: z.number().int().min(0).max(100000000),
-    contentAssetId: z.string().trim().min(3).max(180),
-    contentDraftId: z.string().trim().max(180).optional(),
+    contentAssetId: signalDeskDocumentIdSchema(180),
+    contentDraftId: signalDeskDocumentIdSchema(180).optional(),
     currentListSubmissions: z.number().int().min(0).max(100000),
     engagementQuality: z.enum(["high", "medium", "low"]),
     idempotencyKey: z.string().trim().min(8).max(180),
@@ -916,39 +937,39 @@ const TrustPartnerNicheTestSchema = z.object({
     angle: z.string().trim().min(2).max(240),
     intendedAttempts: z.number().int().min(1).max(5),
     idempotencyKey: z.string().trim().min(8).max(180).optional(),
-    marketPodId: z.string().trim().max(160).optional(),
+    marketPodId: signalDeskDocumentIdSchema(160).optional(),
     nicheName: z.string().trim().min(2).max(160),
-    partnerIds: z.array(z.string().trim().min(3).max(180)).max(5).default([]),
+    partnerIds: z.array(signalDeskDocumentIdSchema(180)).max(5).default([]),
 });
 
 const TrustPartnerBriefSchema = z.object({
     approvedClaims: z.array(z.string().trim().min(2).max(240)).min(1).max(8),
     bannedClaims: z.array(z.string().trim().min(2).max(240)).min(1).max(8),
-    ctaId: z.string().trim().max(160).optional(),
-    dealId: z.string().trim().max(180).optional(),
+    ctaId: signalDeskDocumentIdSchema(160).optional(),
+    dealId: signalDeskDocumentIdSchema(180).optional(),
     disclosureText: z.string().trim().min(5).max(500),
     onePageBrief: z.string().trim().min(20).max(2000),
-    partnerId: z.string().trim().min(3).max(180),
+    partnerId: signalDeskDocumentIdSchema(180),
 });
 
 const TrustPartnerDealSchema = z.object({
     approvalStatus: z.enum(["approved", "rejected", "blocked"]),
-    budgetPolicyId: z.string().trim().max(180).optional(),
+    budgetPolicyId: signalDeskDocumentIdSchema(180).optional(),
     deliverableCount: z.number().int().min(1).max(10),
     dueDate: z.string().trim().max(80).optional(),
     flatFeeUsd: z.number().min(0).max(100000),
     founderApproved: z.boolean(),
-    nicheTestId: z.string().trim().max(180).optional(),
-    partnerId: z.string().trim().min(3).max(180),
+    nicheTestId: signalDeskDocumentIdSchema(180).optional(),
+    partnerId: signalDeskDocumentIdSchema(180),
     pricingModel: z.enum(["flat-fee", "per-view", "barter"]),
 });
 
 const TrustPartnerDeliverableSchema = z.object({
-    dealId: z.string().trim().max(180).optional(),
+    dealId: signalDeskDocumentIdSchema(180).optional(),
     disclosurePresent: z.boolean(),
     dueDate: z.string().trim().max(80).optional(),
     idempotencyKey: z.string().trim().min(8).max(180).optional(),
-    partnerId: z.string().trim().min(3).max(180),
+    partnerId: signalDeskDocumentIdSchema(180),
     postUrl: ContentHttpUrlSchema.optional(),
     reviewState: z.enum(["pending", "approved", "risk", "rejected"]),
     status: z.enum(["scheduled", "submitted", "live", "missed", "paused"]),
@@ -959,19 +980,19 @@ const TrustPartnerMetricsSchema = z.object({
     commentQuality: z.enum(["high", "medium", "low"]),
     comments: z.number().int().min(0).max(100000000),
     currentListSubmissions: z.number().int().min(0).max(100000),
-    deliverableId: z.string().trim().max(180).optional(),
+    deliverableId: signalDeskDocumentIdSchema(180).optional(),
     idempotencyKey: z.string().trim().min(8).max(180),
     ownerLeads: z.number().int().min(0).max(100000),
-    partnerId: z.string().trim().min(3).max(180),
+    partnerId: signalDeskDocumentIdSchema(180),
     views: z.number().int().min(0).max(100000000),
 });
 
 const TrustPartnerRenewalSchema = z.object({
     evidenceSummary: z.string().trim().min(5).max(1000),
     idempotencyKey: z.string().trim().min(8).max(180).optional(),
-    nicheTestId: z.string().trim().max(180).optional(),
+    nicheTestId: signalDeskDocumentIdSchema(180).optional(),
     ownerDecision: z.enum(["approved", "rejected", "pending"]).optional(),
-    partnerId: z.string().trim().min(3).max(180),
+    partnerId: signalDeskDocumentIdSchema(180),
     recommendation: z.enum(["renew", "hold", "cut", "retest"]),
 });
 
@@ -980,8 +1001,8 @@ const TeamMemberSchema = z.object({
     email: z.string().trim().email().max(180),
     name: z.string().trim().max(120).optional(),
     role: z.enum(["founder-admin", "growth-manager", "operator", "compliance-reviewer", "readonly-analyst"]),
-    teamMemberId: z.string().trim().max(180).optional(),
-    userId: z.string().trim().max(180).optional(),
+    teamMemberId: signalDeskDocumentIdSchema(180).optional(),
+    userId: signalDeskDocumentIdSchema(180).optional(),
 });
 
 const permissionForAction = (action: z.infer<typeof ActionEnvelopeSchema>["action"]): SignalDeskPermission => {
@@ -1697,7 +1718,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if ("response" in accessResult) return withSignalDeskPrivateHeaders(accessResult.response);
 
     if (isSignalDeskMobileRequest(request)) {
-        const actionClass = SIGNALDESK_MOBILE_ACTION_CLASS[envelope.data.action] || "configure";
+        const mobileAction = ActionEnvelopeSchema.shape.action.parse(envelope.data.action);
+        const actionClass = SIGNALDESK_MOBILE_ACTION_CLASS[mobileAction] || "configure";
         await recordSignalDeskMobileActionBlockedServer({
             access: accessResult.access,
             action: envelope.data.action,

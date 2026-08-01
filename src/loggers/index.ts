@@ -12,13 +12,13 @@ import { logger as newLogger } from '@lib/monitoring/logger';
 
 // Re-export types for backward compatibility
 export type ApplicationLogType = {
-    label: any;
-    data: any;
-    createdOn?: any;
+    label: unknown;
+    data: unknown;
+    createdOn?: unknown;
     vscodeLink?: string;
     filePath?: string,
-    logId?: any,
-    type: any,
+    logId?: unknown,
+    type: LogType,
     createdBy?: string;
     modifiedBy?: string;
     role?: string;
@@ -30,7 +30,7 @@ export type ApplicationLogType = {
     message?: string;
     name?: string;
     stack?: string;
-    userAgent?: any
+    userAgent?: unknown
 }
 
 export const LOGS_TYPE = [
@@ -48,11 +48,11 @@ export type LogType = 'info' | 'warn' | 'error' | 'trace' | 'debug' | 'log';
  * Legacy logger wrapper - maintains old API but uses new Sentry-based logger
  */
 const logger = {
-    debug: (label: string, data?: any) => newLogger.debug(label, data),
-    info: (label: string, data?: any) => newLogger.info(label, data),
-    log: (label: string, data?: any) => newLogger.log(label, data),
-    warn: (label: string, data?: any) => newLogger.warn(label, data),
-    error: (label: string, data?: any) => {
+    debug: (label: string, data?: unknown) => newLogger.debug(label, data),
+    info: (label: string, data?: unknown) => newLogger.info(label, data),
+    log: (label: string, data?: unknown) => newLogger.log(label, data),
+    warn: (label: string, data?: unknown) => newLogger.warn(label, data),
+    error: (label: string, data?: unknown) => {
         // Old API: error(label, data)
         // New API: error(message, error, context)
         // Map old to new
@@ -62,21 +62,7 @@ const logger = {
             newLogger.error(label, undefined, data);
         }
     },
-    trace: (label: string, data?: any) => newLogger.trace(label, data),
+    trace: (label: string, data?: unknown) => newLogger.trace(label, data),
 };
 
 export default logger;
-
-const getFileLink = (originalStackTrace) => {
-    let vscodeLink = "";
-    let filePath = "";
-    const callerLine = originalStackTrace[2]; // Adjust the index based on where you want to capture the stack trace
-    if (callerLine) {
-        filePath = callerLine.split("/./src")[1]
-        filePath = filePath?.substring(0, filePath.length - 1);
-        if (filePath) {
-            vscodeLink = `vscode://file//Users/danny/Projects/EcomsAi/dashboard/src/${filePath}`;
-        }
-    }
-    return { filePath, vscodeLink };
-};

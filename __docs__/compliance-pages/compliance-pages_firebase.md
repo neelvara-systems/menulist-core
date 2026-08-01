@@ -8,6 +8,10 @@
 
 ---
 
+July 29 owner response scope hardening is Firebase-cost neutral. Authenticated GET and successful mutation envelopes now include the session-derived tenant/store identity; desktop and mobile owner editors require that exact scope and a runtime-valid page DTO before accepting content. Mobile browser-memory cache/request/listener state is exact-scope partitioned, and desktop stale settlements fail closed. This changes no Firestore reads/writes/deletes for valid operations, persisted document shape, rules, indexes, Storage operations, Cloud Functions, cache invalidations, public rendering, or Firebase deployment target.
+
+---
+
 ## Collections
 
 | Collection | Type | Purpose |

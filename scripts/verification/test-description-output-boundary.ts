@@ -13,6 +13,8 @@ import {
     chunkDescriptionItems,
     DESCRIPTION_ITEM_PAYLOAD_BYTES_PER_REQUEST,
     DESCRIPTION_OUTPUT_CELLS_PER_REQUEST,
+    type DescriptionFileData,
+    type DescriptionMergeData,
     mergeDescription,
     prepareDescriptionPayload,
 } from '../../src/services/ai/description/descriptionUtils';
@@ -115,7 +117,7 @@ const payloadData = {
         { id: 'ready', name: { en: 'Ready' }, category: 'cat_1', description: { en: 'A complete description.' }, descriptionSource: 'ai' },
         { id: 'unnamed', name: { en: '' }, category: 'cat_1', description: {} },
     ],
-};
+} satisfies DescriptionFileData & DescriptionMergeData;
 assert.deepEqual(getDescriptionGenerationStats({
     files: [{
         extractedData: { data: payloadData },
@@ -196,8 +198,8 @@ assert.equal(boundedDescriptionPrompt.includes('d'.repeat(1_000)), true);
 const mergedDescriptionData = mergeDescription(payloadData, {
     missing: { en: 'Generated description.', fr: 'Description generee.' },
 });
-assert.equal(mergedDescriptionData.items.find((item: any) => item.id === 'missing')?.description?.fr, 'Description generee.');
-assert.equal(mergedDescriptionData.items.find((item: any) => item.id === 'missing')?.descriptionSource, 'ai');
+assert.equal(mergedDescriptionData.items.find((item) => item.id === 'missing')?.description?.fr, 'Description generee.');
+assert.equal(mergedDescriptionData.items.find((item) => item.id === 'missing')?.descriptionSource, 'ai');
 const normalizedPrototypeNamedResult = normalizeDescriptionGenerationResult(
     JSON.parse('{"__proto__":{"en":"Safely merged description."}}'),
     ['__proto__'],
@@ -205,10 +207,12 @@ const normalizedPrototypeNamedResult = normalizeDescriptionGenerationResult(
 );
 assert.equal(Object.prototype.hasOwnProperty.call(normalizedPrototypeNamedResult, '__proto__'), true);
 assert.equal(Object.getPrototypeOf(normalizedPrototypeNamedResult), Object.prototype);
-const prototypeNamedItemData = mergeDescription({
-    categories: [],
-    items: [{ id: '__proto__', name: { en: 'Safe item' }, description: {} }],
-}, normalizedPrototypeNamedResult);
+assert.ok(normalizedPrototypeNamedResult);
+const prototypeNamedSource: DescriptionMergeData = {
+    items: [{ id: '__proto__', description: {} }],
+};
+const prototypeNamedItemData = mergeDescription(prototypeNamedSource, normalizedPrototypeNamedResult);
+assert.ok(prototypeNamedItemData.items[0].description);
 assert.equal(prototypeNamedItemData.items[0].description.en, 'Safely merged description.');
 assert.equal(Object.getPrototypeOf(prototypeNamedItemData.items[0].description), Object.prototype);
 

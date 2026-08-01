@@ -65,6 +65,7 @@ const mobileHours = read('src/components/mobile/screens/MobileHoursScreen.tsx');
 const mobileDashboard = read('src/components/mobile/screens/MobileDashboardScreen.tsx');
 const mobileHistory = read('src/components/mobile/screens/MobileTodayHistoryScreen.tsx');
 const pastActivityHook = read('src/hooks/usePastActivity.ts');
+const campaignDal = read('src/database/campaigns/index.ts');
 const ownerDashboardDoc = read('__docs__/projects/owner-dashboard.md');
 const obpImplDoc = read('__docs__/official-business-page/official-business-page_impl.md');
 const obpFirebaseDoc = read('__docs__/official-business-page/official-business-page_firebase.md');
@@ -73,6 +74,12 @@ const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const changelog = read('__docs__/changelog.md');
+
+requireToken(
+  ownerDashboardDb,
+  'return await apiCallComposer<OwnerDashboardData>(',
+  'legacy owner dashboard exact fallback projection',
+);
 
 requireToken(
   packageJson,
@@ -389,6 +396,11 @@ requireOrder(
   'sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);',
   'return activityDate >= sevenDaysAgo;',
 ].forEach((token) => requireToken(pastActivityHook, token, 'past activity hook'));
+const campaignHistoryBlock = (campaignDal.split('export const getCampaignHistory')[1] || '')
+  .split('// ═══════════════════════════════════════════════════════════════\n// CAMPAIGN ACTIONS')[0] || '';
+requireToken(campaignHistoryBlock, "throw new Error('campaign_history_limit_invalid')", 'campaign history input rejection');
+forbidToken(campaignHistoryBlock, 'return [];', 'campaign history silent failure fallback');
+forbidToken(campaignHistoryBlock, 'campaign_history_load_failed', 'campaign history duplicate swallowed-error log');
 
 [
   'Current Runtime Boundary',

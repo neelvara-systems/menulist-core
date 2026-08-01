@@ -150,10 +150,11 @@ export const normalizeCachedCanonicalAnswer = (
     let sourceVersions: AnswerlatticeCacheSourceVersions | undefined;
     if (source.sourceVersions !== undefined) {
         if (!source.sourceVersions || typeof source.sourceVersions !== 'object' || Array.isArray(source.sourceVersions)) return null;
+        const rawSourceVersions = source.sourceVersions as Record<string, unknown>;
         sourceVersions = {};
         for (const sourceKey of Object.values(ANSWERLATTICE_CACHE_SOURCES)) {
-            if (source.sourceVersions[sourceKey] === undefined) continue;
-            const version = normalizeCacheVersion(source.sourceVersions[sourceKey]);
+            if (rawSourceVersions[sourceKey] === undefined) continue;
+            const version = normalizeCacheVersion(rawSourceVersions[sourceKey]);
             if (!version) return null;
             sourceVersions[sourceKey] = version;
         }

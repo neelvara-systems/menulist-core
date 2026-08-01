@@ -18,8 +18,8 @@ import { getBoundedSecurityStringContext, logSecurityFailure } from './securityD
  * Convert base64 data URL to ArrayBuffer
  */
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-    // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-    const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+    const base64Data = getValidatedBase64Payload(base64);
+    if (!base64Data) throw new Error('Invalid base64 image payload');
 
     // Decode base64 to binary string
     const binaryString = atob(base64Data);
@@ -31,6 +31,31 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
     }
 
     return bytes.buffer;
+}
+
+function getValidatedBase64Payload(base64: string): string | null {
+    const commaIndex = base64.indexOf(',');
+    const payload = commaIndex >= 0 ? base64.slice(commaIndex + 1) : base64;
+    if (
+        !payload
+        || payload.length % 4 === 1
+        || !/^[a-z0-9+/]*={0,2}$/i.test(payload)
+        || (payload.includes('=') && !/={1,2}$/.test(payload))
+    ) {
+        return null;
+    }
+    return payload;
+}
+
+function normalizeImageMimeType(value: string): string {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'image/jpg' ? 'image/jpeg' : normalized;
+}
+
+function dataUrlMimeType(value: string): string | null {
+    if (!value.startsWith('data:')) return null;
+    const match = value.match(/^data:([^;,]+);base64,/i);
+    return match ? normalizeImageMimeType(match[1]) : '';
 }
 
 /**
@@ -96,7 +121,16 @@ export function validateMagicBytes(
         }
 
         // Normalize MIME type
-        const mimeType = expectedMimeType.toLowerCase() as keyof typeof FILE_SIGNATURES;
+        const mimeType = normalizeImageMimeType(expectedMimeType) as keyof typeof FILE_SIGNATURES;
+        const declaredDataUrlType = typeof base64OrArrayBuffer === 'string'
+            ? dataUrlMimeType(base64OrArrayBuffer)
+            : null;
+        if (declaredDataUrlType !== null && declaredDataUrlType !== mimeType) {
+            return {
+                valid: false,
+                error: 'Data URL type does not match the expected image type',
+            };
+        }
 
         // Check if we support this MIME type
         if (!FILE_SIGNATURES[mimeType]) {
@@ -171,6 +205,17 @@ export function validateFileSize(
     sizeInBytes: number,
     maxSizeInMB: number = 10
 ): { valid: boolean; error?: string } {
+    if (
+        !Number.isSafeInteger(sizeInBytes)
+        || !Number.isFinite(maxSizeInMB)
+        || sizeInBytes <= 0
+        || maxSizeInMB <= 0
+    ) {
+        return {
+            valid: false,
+            error: 'File size is invalid',
+        };
+    }
     const maxBytes = maxSizeInMB * 1024 * 1024;
 
     if (sizeInBytes > maxBytes) {
@@ -178,13 +223,6 @@ export function validateFileSize(
         return {
             valid: false,
             error: `File too large: ${sizeInMB}MB. Maximum allowed: ${maxSizeInMB}MB.`
-        };
-    }
-
-    if (sizeInBytes === 0) {
-        return {
-            valid: false,
-            error: 'File is empty (0 bytes)'
         };
     }
 
@@ -219,10 +257,11 @@ export async function validateImageFile(options: {
     maxSizeMB?: number;
 }): Promise<{ valid: boolean; error?: string }> {
     const { base64, mimeType, size, maxSizeMB = 10 } = options;
+    const normalizedMimeType = normalizeImageMimeType(mimeType);
 
     // 1. Validate MIME type (whitelist)
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    if (!allowedTypes.includes(mimeType.toLowerCase())) {
+    if (!allowedTypes.map(normalizeImageMimeType).includes(normalizedMimeType)) {
         return {
             valid: false,
             error: `Invalid file type: ${mimeType}. Only JPEG, PNG, WebP, and GIF are allowed.`
@@ -234,9 +273,16 @@ export async function validateImageFile(options: {
     if (!sizeValidation.valid) {
         return sizeValidation;
     }
+    const decodedSize = getBase64FileSize(base64);
+    if (decodedSize <= 0 || decodedSize !== size) {
+        return {
+            valid: false,
+            error: 'File size does not match the image content',
+        };
+    }
 
     // 3. Validate magic bytes (actual file content)
-    const magicBytesValidation = validateMagicBytes(base64, mimeType);
+    const magicBytesValidation = validateMagicBytes(base64, normalizedMimeType);
     if (!magicBytesValidation.valid) {
         return magicBytesValidation;
     }
@@ -248,14 +294,14 @@ export async function validateImageFile(options: {
  * Get file size from base64 string
  */
 export function getBase64FileSize(base64: string): number {
-    // Remove data URL prefix if present
-    const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+    const base64Data = getValidatedBase64Payload(base64);
+    if (!base64Data) return 0;
 
     // Calculate size (base64 is ~1.37x original size)
     const padding = base64Data.endsWith('==') ? 2 : base64Data.endsWith('=') ? 1 : 0;
-    const sizeInBytes = (base64Data.length * 0.75) - padding;
+    const sizeInBytes = Math.floor((base64Data.length * 3) / 4) - padding;
 
-    return Math.round(sizeInBytes);
+    return sizeInBytes;
 }
 
 /**

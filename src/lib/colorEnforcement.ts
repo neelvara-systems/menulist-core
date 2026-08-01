@@ -16,8 +16,10 @@
  * @returns Relative luminance value between 0 and 1
  */
 export function getLuminance(hex: string): number {
-  // Remove # if present
-  const cleanHex = hex.replace('#', '');
+  if (typeof hex !== 'string') return Number.NaN;
+  const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex);
+  if (!match) return Number.NaN;
+  const cleanHex = match[1];
   
   // Convert 3-digit hex to 6-digit
   const fullHex = cleanHex.length === 3
@@ -103,5 +105,5 @@ export function isWCAGCompliant(
  */
 export function getContrastRatioString(color1: string, color2: string): string {
   const ratio = getContrastRatio(color1, color2);
-  return `${ratio.toFixed(2)}:1`;
+  return Number.isFinite(ratio) ? `${ratio.toFixed(2)}:1` : 'invalid';
 }

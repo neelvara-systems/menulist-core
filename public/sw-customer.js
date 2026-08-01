@@ -37,6 +37,27 @@
 const OFFLINE_URL = '/offline';
 const OFFLINE_CACHE = 'customer-app-offline-v1';
 const NAVIGATION_TIMEOUT_MS = 8000;
+const RETIRED_MENULIST_CACHE_NAMES = new Set([
+    'auth-pages',
+    'firebase-images',
+    'google-fonts',
+    'menulist-screen-v1',
+    'owner-dashboard-pages',
+    'owner-google-font-files',
+    'owner-google-font-styles',
+    'screen-pages',
+    'start-url',
+    'static-assets',
+]);
+const RETIRED_MENULIST_CACHE_PREFIXES = [
+    'serwist-precache-',
+    'workbox-precache-',
+];
+
+const isRetiredMenuListCache = (cacheName) => (
+    RETIRED_MENULIST_CACHE_NAMES.has(cacheName)
+    || RETIRED_MENULIST_CACHE_PREFIXES.some((prefix) => cacheName.startsWith(prefix))
+);
 
 const fetchNavigationWithTimeout = async (request) => {
     const controller = new AbortController();
@@ -74,7 +95,7 @@ self.addEventListener('activate', (event) => {
             const keys = await caches.keys();
             await Promise.all(
                 keys
-                    .filter((key) => key !== OFFLINE_CACHE)
+                    .filter((key) => key !== OFFLINE_CACHE && isRetiredMenuListCache(key))
                     .map((key) => caches.delete(key)),
             );
             await self.clients.claim();

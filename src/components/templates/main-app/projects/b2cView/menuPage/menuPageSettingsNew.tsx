@@ -81,7 +81,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 design: {
                     ...projectData?.config?.design,
                     menu: {
-                        ...projectData?.config?.design?.menu,
+                        ...menuDesign,
                         mood,
                         layout: getPreferredMenuLayoutForMood(mood),
                     },
@@ -100,7 +100,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 design: {
                     ...projectData?.config?.design,
                     menu: {
-                        ...projectData?.config?.design?.menu,
+                        ...menuDesign,
                         layout,
                     },
                 },
@@ -117,7 +117,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 design: {
                     ...projectData?.config?.design,
                     menu: {
-                        ...projectData?.config?.design?.menu,
+                        ...menuDesign,
                         ...patch.menu,
                     },
                     brand: {
@@ -137,7 +137,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 design: {
                     ...projectData?.config?.design,
                     menu: {
-                        ...projectData?.config?.design?.menu,
+                        ...menuDesign,
                         showImages: show,
                     },
                 },
@@ -153,7 +153,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 design: {
                     ...projectData?.config?.design,
                     menu: {
-                        ...projectData?.config?.design?.menu,
+                        ...menuDesign,
                         showItemPrices: show,
                     },
                 },
@@ -169,7 +169,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 design: {
                     ...projectData?.config?.design,
                     menu: {
-                        ...projectData?.config?.design?.menu,
+                        ...menuDesign,
                         showCategoryTabs: show,
                     },
                 },
@@ -185,7 +185,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 design: {
                     ...projectData?.config?.design,
                     menu: {
-                        ...projectData?.config?.design?.menu,
+                        ...menuDesign,
                         showCategoryIcons: show,
                     },
                 },
@@ -201,7 +201,7 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
                 design: {
                     ...projectData?.config?.design,
                     menu: {
-                        ...projectData?.config?.design?.menu,
+                        ...menuDesign,
                         backgroundImage,
                     },
                 },

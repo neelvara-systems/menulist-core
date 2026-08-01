@@ -12,7 +12,7 @@ import { LuPlus, LuTrash2 } from 'react-icons/lu';
 const { Title, Text } = Typography;
 
 interface BusinessAttributesTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const BusinessAttributesTab = forwardRef<HTMLDivElement, BusinessAttributesTabProps>(

@@ -8,26 +8,63 @@ import { toggleAppSettingsPanel } from '@reduxSlices/clientThemeConfig';
 import { showErrorToast, showSuccessToast } from '@reduxSlices/toast';
 import { Avatar, Badge, Modal, Popconfirm, Space, theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
-import { Fragment, useState } from 'react';
+import { Fragment, type ReactNode, useState } from 'react';
 import { LuKeyboard, LuLogOut, LuSettings2, LuUser } from 'react-icons/lu';
+import type { AuthSessionUserType } from '@/types/loginUser';
 import styles from './profileActionsModal.module.scss';
 import UserProfileModal from './userProfileModal';
 
-function ProfileActionsModal({ children, userData = { name: "", email: "", image: "" }, onOpenAppearance = undefined }) {
+type ProfileActionUser = Partial<Pick<
+    AuthSessionUserType,
+    | 'displayEmail'
+    | 'email'
+    | 'image'
+    | 'loginUsername'
+    | 'name'
+    | 'phone'
+    | 'phoneUsername'
+    | 'staffAuthMode'
+    | 'staffLoginId'
+>>;
+
+type ProfileActionsModalProps = {
+    children: ReactNode;
+    onOpenAppearance?: () => void;
+    userData?: ProfileActionUser;
+};
+
+type ProfileAction = {
+    danger?: boolean;
+    description?: string;
+    icon: ReactNode;
+    key: 'appearance' | 'keyboardShortcuts' | 'profile' | 'signOut';
+    onClick: () => void;
+    title: string;
+};
+
+type ProfileActionSection = {
+    items: ProfileAction[];
+    title?: string;
+};
+
+function ProfileActionsModal({
+    children,
+    userData = { name: '', email: '', image: '' },
+    onOpenAppearance,
+}: ProfileActionsModalProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
     const [showShortcutsModal, setShowShortcutsModal] = useState(false)
     const [showProfileModal, setShowProfileModal] = useState(false)
     const { token } = theme.useToken();
-    const router = useRouter();
     const dispatch = useAppDispatch()
     const t = useTranslations('ProfileActions');
-    const userLoginLabel = (userData as any)?.staffAuthMode === 'owner_passcode'
-        ? `Staff ID: ${(userData as any)?.staffLoginId || (userData as any)?.loginUsername || ''}`
-        : (userData as any)?.displayEmail || (userData as any)?.phone || (userData as any)?.phoneUsername || userData.email;
+    const userLoginLabel = userData.staffAuthMode === 'owner_passcode'
+        ? `Staff ID: ${userData.staffLoginId || userData.loginUsername || ''}`
+        : userData.displayEmail || userData.phone || userData.phoneUsername || userData.email || '';
 
-    const MENU_SECTIONS = [
+    const MENU_SECTIONS: ProfileActionSection[] = [
         {
             items: [
                 { key: "profile", title: t('myProfile'), icon: <LuUser />, onClick: () => FEATURE_FLAGS.ENABLE_USER_PROFILE && setShowProfileModal(true), description: t('myProfileDesc') },
@@ -47,16 +84,11 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
         }
     ]
 
-    const closeModalForceFully = () => {
-        const ele: any = document.getElementById("modal-close-btn");
-        ele && ele.click();
-    }
-
     const handleClose = () => {
-        closeModalForceFully()
+        setIsOpen(false)
     }
 
-    const onClickAction = (action) => {
+    const onClickAction = (action: ProfileAction) => {
         // Check if this is the logout action
         if (action.key === "signOut") {
             setShowLogoutConfirm(true);
@@ -68,16 +100,16 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
         }
     }
 
-    const logoutUser = () => {
+    const logoutUser = async (): Promise<void> => {
         setIsLoading(true);
-        signOutSession()
-            .then(() => {
-                dispatch(showSuccessToast(t('logoutSuccess')))
-                setIsLoading(false);
-            }).catch(() => {
-                dispatch(showErrorToast(t('logoutFailed')))
-                setIsLoading(false);
-            })
+        try {
+            await signOutSession()
+            dispatch(showSuccessToast(t('logoutSuccess')))
+        } catch {
+            dispatch(showErrorToast(t('logoutFailed')))
+        } finally {
+            setIsLoading(false);
+        }
     }
     const renderProfileActions = () => {
         return <div className={styles.profileActionsWrap}>
@@ -157,6 +189,8 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
     return (
         <Fragment>
             <Popconfirm
+                open={isOpen}
+                onOpenChange={setIsOpen}
                 okText={undefined}
                 placement="bottomRight"
                 destroyOnHidden
@@ -173,8 +207,8 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
             <Modal
                 title={t('confirmLogout')}
                 open={showLogoutConfirm}
-                onOk={() => {
-                    logoutUser();
+                onOk={async () => {
+                    await logoutUser();
                     setShowLogoutConfirm(false);
                     handleClose();
                 }}

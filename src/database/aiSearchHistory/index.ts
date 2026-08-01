@@ -5,6 +5,7 @@ import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/search
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/sessionUserDocumentId';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { AiSearchHistory } from '@type/aiSearchHistory';
 import { doc, runTransaction, Timestamp } from 'firebase/firestore';
@@ -55,8 +56,11 @@ export const updateAiSearchHistoryWithFeedback = async (data: Partial<AiSearchHi
             if (!searchHistoryId) throw new Error('ai_search_history_feedback_missing_id');
             const session = await getActiveSession();
             const scope = resolveAnswerlatticeSessionScope(session);
-            const actorId = String(session?.user?.id || session?.uId || '').trim();
-            const actorName = String(session?.user?.name || session?.user?.email || '').trim();
+            const actorId = resolveCurrentSessionUserDocumentId(session);
+            const actorName = [session?.user?.name, session?.user?.email]
+                .filter((value): value is string => typeof value === 'string')
+                .map((value) => value.trim())
+                .find(Boolean) || '';
             if (!scope || !actorId || actorId.length > 180 || !actorName) {
                 throw new Error('ai_search_history_feedback_scope_missing');
             }

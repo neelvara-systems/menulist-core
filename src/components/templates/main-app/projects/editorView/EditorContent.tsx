@@ -44,12 +44,12 @@ interface EditorContentProps {
     file: ProjectFileType;
     setUpdatedFileData: any;
     selectedLanguages: string[];
-    setIsImageModalOpen: (itemData: ExtractedDataItem, from: string) => void;
+    setIsImageModalOpen: (itemData: ExtractedDataItem & { fileId?: string }, from: string) => void;
     projectData: Project;
     onImageUpload: (
         selectedItem: ItemForDropdown,
         imagesToUpload: UserUploadedFileType[],
-    ) => void;
+    ) => Promise<void>;
     searchTerm?: string;
     filters?: EditorFilters;
     selectedItemId?: string | null;
@@ -767,7 +767,10 @@ export function EditorContent({
                 selectedLanguages={selectedLanguages}
                 projectData={projectData}
                 onImageUpload={onImageUpload}
-                openAddImageModal={(itemData) => setIsImageModalOpen(itemData, "item")}
+                openAddImageModal={(itemData) => setIsImageModalOpen(
+                    { ...itemData, fileId: file.uid },
+                    "item",
+                )}
                 setUpdatedFileData={setUpdatedFileData}
                 fileData={file}
             />

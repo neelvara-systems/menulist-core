@@ -341,14 +341,15 @@ const GrowthOSPage = () => {
             return;
         }
         try {
-            if (navigator.share) {
+            const usedNativeShare = typeof navigator.share === 'function';
+            if (usedNativeShare) {
                 await navigator.share({ text: output.text });
             } else {
                 const copied = await copyToClipboard(output.text);
                 if (!copied) throw new Error("desktop_growthos_share_fallback_copy_failed");
             }
             await recordUse(output, "share");
-            notification.success({ message: navigator.share ? "Shared" : "Copied", placement: "bottomRight" });
+            notification.success({ message: usedNativeShare ? "Shared" : "Copied", placement: "bottomRight" });
         } catch (error) {
             if (error instanceof DOMException && error.name === "AbortError") return;
             logGrowthOSClientFailure("desktop_growthos_share_failed", error, "share", output, {

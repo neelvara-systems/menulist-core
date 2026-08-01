@@ -2745,6 +2745,22 @@ async function assertRevenueOperatingLayer() {
     status: "approved",
     version: 1,
   }), "OPERATING_ENVELOPE_DUPLICATE_REFERENCE");
+  await expectRejects("Path-shaped operating-envelope source policy", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    name: "Revenue E2E path-shaped source policy envelope",
+    requestedApprovalMode: "approve-batch",
+    sourcePolicyIds: [`${sourcePolicy.sourcePolicyId}/foreign`],
+    status: "approved",
+    version: 1,
+  }), "OPERATING_ENVELOPE_SOURCE_POLICY_ID_INVALID");
+  await expectRejects("Whitespace-mutated operating-envelope template", () => upsertSignalDeskOperatingEnvelopeServer(access, {
+    ...envelopeInput,
+    name: "Revenue E2E whitespace template envelope",
+    requestedApprovalMode: "approve-batch",
+    status: "approved",
+    templateIds: [" template_current_list_intro_v1"],
+    version: 1,
+  }), "OPERATING_ENVELOPE_TEMPLATE_ID_INVALID");
   await expectRejects("Immutable operating envelope version", () => upsertSignalDeskOperatingEnvelopeServer(access, {
     ...envelopeInput,
     maxCostUsd: 40,
@@ -3835,6 +3851,10 @@ async function assertExperimentAndOfferAuthorityIntegrity() {
     upsertSignalDeskOfferCtaServer(access, offerInput),
     upsertSignalDeskOfferCtaServer(access, offerInput),
   ]);
+  await expectRejects("Path-shaped offer CTA ID", () => upsertSignalDeskOfferCtaServer(access, {
+    ...offerInput,
+    offerCtaId: "offers/offer_1",
+  }), "OFFER_CTA_ID_INVALID");
   assert(offer.offerCtaId === offerId && offer.status === "active", "Controlled offer CTA was not activated");
   assert(offerReplay.offerCtaId === offerId && offerReplay.status === "active", "Concurrent exact offer save did not converge");
   const offerAuditCountAfter = await expectCollectionCount(SIGNALDESK_COLLECTIONS.AUDIT_EVENTS, (data) => (
@@ -3905,6 +3925,15 @@ async function assertExperimentAndOfferAuthorityIntegrity() {
     targetCount: 5,
   };
   const experiment = await createSignalDeskExperimentCardServer(access, experimentInput);
+  await expectRejects("Path-shaped experiment authority ID", () => createSignalDeskExperimentCardServer(access, {
+    ...experimentInput,
+    contentAssetId: "assets/content_asset_1",
+  }), "EXPERIMENT_CONTENT_ASSET_ID_INVALID");
+  await expectRejects("Path-shaped experiment review ID", () => reviewSignalDeskExperimentCardServer(access, {
+    experimentCardId: "experiments/experiment_1",
+    ownerDecision: "hold",
+    resultSummary: "Invalid path-shaped document identity.",
+  }), "EXPERIMENT_CARD_ID_INVALID");
   assert(experiment.status === "active" && experiment.ownerDecision === "pending", "Controlled experiment did not become active");
   assert(experiment.proofAssetSummary === "Experiment authority proof asset", "Experiment proof summary did not derive from validated asset truth");
   assert(experiment.readbackPlan?.version === "signaldesk-experiment-readback-v1", "Experiment readback plan was not versioned");
@@ -4766,6 +4795,13 @@ async function assertProviderEvaluationAndTrustPartnerAccounting() {
     nicheName: "Operator advocates",
     partnerIds: [partner.partnerId],
   });
+  await expectRejects("Path-shaped trust-partner niche identity", () => createSignalDeskTrustPartnerNicheTestServer(access, {
+    angle: "A path-shaped partner identity must fail before a Firestore read.",
+    idempotencyKey: "trust-partner-niche-path-boundary-v1",
+    intendedAttempts: 1,
+    nicheName: "Invalid partner path",
+    partnerIds: [`${partner.partnerId}/foreign`],
+  }), "TRUST_PARTNER_ID_INVALID");
   const nicheReplay = await createSignalDeskTrustPartnerNicheTestServer(access, {
     angle: "Current-list proof through trusted operators.",
     idempotencyKey: "trust-partner-niche-accounting-v1",
@@ -4912,6 +4948,16 @@ async function assertProviderEvaluationAndTrustPartnerAccounting() {
   const renewal = await reviewSignalDeskTrustPartnerRenewalServer(access, renewalInput);
   const renewalReplay = await reviewSignalDeskTrustPartnerRenewalServer(access, renewalInput);
   assert(renewalReplay.decisionId === renewal.decisionId, "Trust-partner renewal replay did not return the original decision");
+  await expectRejects("Path-shaped trust-partner renewal partner", () => reviewSignalDeskTrustPartnerRenewalServer(access, {
+    ...renewalInput,
+    idempotencyKey: "trust-partner-renewal-partner-path-v1",
+    partnerId: `${partner.partnerId}/foreign`,
+  }), "TRUST_PARTNER_ID_INVALID");
+  await expectRejects("Whitespace-mutated trust-partner renewal niche", () => reviewSignalDeskTrustPartnerRenewalServer(access, {
+    ...renewalInput,
+    idempotencyKey: "trust-partner-renewal-niche-whitespace-v1",
+    nicheTestId: ` ${niche.nicheTestId}`,
+  }), "TRUST_PARTNER_NICHE_TEST_ID_INVALID");
   await expectRejects("Unsupported trust-partner renewal recommendation", () => reviewSignalDeskTrustPartnerRenewalServer(access, {
     ...renewalInput,
     idempotencyKey: "trust-partner-renewal-mismatch-v1",
@@ -6748,6 +6794,9 @@ async function assertMobileReadOnlyContract() {
 }
 
 async function assertWebhookAndDncFixtures(targetId) {
+  const checkpoint = (name) => {
+    activeE2eCheckpoint = `webhook-dnc:${name}`;
+  };
   const payload = {
     email: "owner+happy@example.invalid",
     event: "email.reply",
@@ -6758,6 +6807,7 @@ async function assertWebhookAndDncFixtures(targetId) {
   const headers = new Headers({ "x-signaldesk-webhook-secret": process.env.SIGNALDESK_EMAIL_WEBHOOK_SECRET });
   const messageCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, () => true);
   const suppressionCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.SUPPRESSION_LEDGER, () => true);
+  checkpoint("initial-email");
   const first = await processSignalDeskProviderWebhook({
     provider: "email",
     rawBody: JSON.stringify(payload),
@@ -6780,6 +6830,7 @@ async function assertWebhookAndDncFixtures(targetId) {
   assert(afterDuplicateMessages === afterFirstMessages, "Duplicate webhook created another message");
   assert(afterDuplicateSuppressions === afterFirstSuppressions, "Duplicate webhook created another suppression");
 
+  checkpoint("prepare-atomic-target");
   const atomicPolicy = await createPolicy("Atomic webhook", {
     allowedContactChannels: ["email", "manual", "whatsapp"],
   });
@@ -6818,6 +6869,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     targetId: atomicTargetId,
   };
   const atomicMessageCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, () => true);
+  checkpoint("concurrent-email");
   const concurrentResults = await Promise.all([
     processSignalDeskProviderWebhook({ provider: "email", rawBody: JSON.stringify(atomicPayload), requestHeaders: headers }),
     processSignalDeskProviderWebhook({ provider: "email", rawBody: JSON.stringify(atomicPayload), requestHeaders: headers }),
@@ -6895,6 +6947,7 @@ async function assertWebhookAndDncFixtures(targetId) {
   await seedDeliveryAuthority("whatsapp", "wa_outbound_fixture", whatsAppTargetId, whatsAppTargetName);
   await seedDeliveryAuthority("email", "email_status_shared_message", atomicTargetId, atomicTargetName);
 
+  checkpoint("delivery-status");
   const providerMessageCountBeforeStatus = await expectCollectionCount(SIGNALDESK_COLLECTIONS.MESSAGES, (data) => data.targetId === whatsAppTargetId);
   const atomicPhoneIdentitySnap = await db.collection(SIGNALDESK_COLLECTIONS.CONTACT_IDENTITIES)
     .where("targetId", "==", whatsAppTargetId)
@@ -6967,6 +7020,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     }],
   };
   const batchedRawBody = JSON.stringify(batchedPayload);
+  checkpoint("whatsapp-batch");
   const atomicTargetBeforeBatch = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(whatsAppTargetId).get();
   const parsedAtomicTargetBeforeBatch = parseSignalDeskTargetSummaryDocument(atomicTargetBeforeBatch.data(), atomicTargetBeforeBatch.id);
   assert(
@@ -7029,6 +7083,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     }],
   };
   const instagramRawBody = JSON.stringify(instagramPayload);
+  checkpoint("instagram-inbound");
   const instagramResult = await processSignalDeskProviderWebhook({
     provider: "instagram",
     rawBody: instagramRawBody,
@@ -7082,6 +7137,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     }],
   };
   const messengerRawBody = JSON.stringify(messengerPayload);
+  checkpoint("messenger-inbound");
   const messengerResult = await processSignalDeskProviderWebhook({
     provider: "messenger",
     rawBody: messengerRawBody,
@@ -7096,6 +7152,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     eventId: "unknown_dnc_fixture",
     message: "Stop. Do not contact me again.",
   };
+  checkpoint("unknown-email-dnc");
   const unknownDncResult = await processSignalDeskProviderWebhook({
     provider: "email",
     rawBody: JSON.stringify(unknownDncPayload),
@@ -7128,6 +7185,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     }],
   };
   const unknownWhatsAppRawBody = JSON.stringify(unknownWhatsAppPayload);
+  checkpoint("unknown-whatsapp-dnc");
   const unknownWhatsAppResult = await processSignalDeskProviderWebhook({
     provider: "whatsapp",
     rawBody: unknownWhatsAppRawBody,
@@ -7171,6 +7229,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     message: "No, not interested.",
     targetId: atomicTargetId,
   };
+  checkpoint("idempotency-conflict");
   await processSignalDeskProviderWebhook({ provider: "email", rawBody: JSON.stringify(idempotencyPayload), requestHeaders: headers });
   await expectRejects("Webhook event ID cannot bind changed facts", () => processSignalDeskProviderWebhook({
     provider: "email",
@@ -7198,6 +7257,7 @@ async function assertWebhookAndDncFixtures(targetId) {
   assert(!orderedEmailIdentitySnap.empty, "Ordered webhook fixture lost its email identity");
   const orderedEmail = String(orderedEmailIdentitySnap.docs[0].data().value || "");
   const newestTimestamp = Math.floor(Date.now() / 1000);
+  checkpoint("out-of-order-email");
   await processSignalDeskProviderWebhook({
     provider: "email",
     rawBody: JSON.stringify({ email: orderedEmail, event: "email.reply", eventId: "ordered_newest_fixture", message: "Yes, interested.", targetId: orderedTargetId, timestamp: newestTimestamp }),
@@ -7216,6 +7276,7 @@ async function assertWebhookAndDncFixtures(targetId) {
   assert(staleMessageSnap.data()?.isOutOfOrder === true, "Out-of-order webhook was not preserved as historical evidence");
 
   const sharedExternalId = "apify_shared_provider_event";
+  checkpoint("provider-scoped-event-id");
   const providerEventCountBefore = await expectCollectionCount(SIGNALDESK_COLLECTIONS.WEBHOOK_EVENTS, () => true);
   const emailShared = await processSignalDeskProviderWebhook({
     provider: "email",
@@ -7237,6 +7298,7 @@ async function assertWebhookAndDncFixtures(targetId) {
     requestHeaders: headers,
   }), "signaldesk_webhook_target_conflict");
 
+  checkpoint("direct-dnc");
   const directDnc = await captureSignalDeskReplyServer(access, {
     conversationId: await replyConversationIdFor(targetId),
     idempotencyKey: `reply-dnc-${targetId}`,
@@ -7416,6 +7478,8 @@ async function assertOutcomeIntegrityAndProofPermissions() {
   await expectRejects("Conflicting content-source key reuse", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, title: "Changed content source" }), "CONTENT_SOURCE_IDEMPOTENCY_CONFLICT");
   await expectRejects("Mutable content-source URL", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, idempotencyKey: `content-source-url-${targetId}`, sourceUrl: "https://menulist.ai/other" }), "CONTENT_SOURCE_PROVENANCE_IMMUTABLE");
   await expectRejects("Malformed content-source URL", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, contentSourceId: undefined, idempotencyKey: `content-source-url-invalid-${targetId}`, sourceUrl: "javascript:alert(1)" }), "Content URL must be a valid credential-free HTTP(S) URL");
+  await expectRejects("Path-shaped content-source ID", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, contentSourceId: "sources/content_source_1", idempotencyKey: `content-source-id-invalid-${targetId}` }), "CONTENT_SOURCE_ID_INVALID");
+  await expectRejects("Path-shaped content-source pod ID", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, contentSourceId: undefined, defaultMarketPodId: "pods/market_pod_1", idempotencyKey: `content-source-pod-id-invalid-${targetId}`, title: "Invalid pod path source" }), "CONTENT_SOURCE_MARKET_POD_ID_INVALID");
   await expectRejects("Missing content-source pod", () => upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, contentSourceId: undefined, defaultMarketPodId: "pod_missing", idempotencyKey: `content-source-pod-missing-${targetId}`, title: "Missing pod source" }), "Market pod not found");
   const sourceHeldPodId = `pod_source_held_${hashValue(targetId).slice(0, 12)}`;
   await db.collection(SIGNALDESK_COLLECTIONS.MARKET_PODS).doc(sourceHeldPodId).set({ marketPodId: sourceHeldPodId, pId: "SD", reviewDecision: "held", status: "hold" });
@@ -7432,9 +7496,22 @@ async function assertOutcomeIntegrityAndProofPermissions() {
   const legacySource = await upsertSignalDeskContentSourceServer(access, { ...contentSourceInput, contentSourceId: undefined, idempotencyKey: `content-source-legacy-${targetId}`, sourceType: "blog", sourceUrl: legacySourceUrl, title: legacySourceTitle });
   assert(legacySource.contentSourceId === legacySourceId, "Content-source v2 identity abandoned a matching legacy document");
   const malformedSourceRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_SOURCES).doc(`source_malformed_${hashValue(targetId).slice(0, 12)}`);
+  const pathReferenceSourceRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_SOURCES).doc(`source_path_reference_${hashValue(targetId).slice(0, 12)}`);
   await malformedSourceRef.set({ contentSourceId: malformedSourceRef.id, defaultAudience: "restaurant-owner", pId: "SD", sourceType: "proof-page", sourceUrl: "javascript:alert(1)", status: "active", title: "Malformed persisted source", updatedAt: timestampNow() });
+  await pathReferenceSourceRef.set({
+    contentSourceId: pathReferenceSourceRef.id,
+    defaultAudience: "restaurant-owner",
+    defaultMarketPodId: "marketPods/foreign",
+    pId: "SD",
+    sourceType: "proof-page",
+    sourceUrl: "https://example.test/path-reference-source",
+    status: "active",
+    title: "Path-reference persisted source",
+    updatedAt: timestampNow(),
+  });
   const contentWorkspace = await loadSignalDeskWorkspaceServer(access, "content");
   assert(!contentWorkspace.workspace.contentSources.some((source) => source.contentSourceId === malformedSourceRef.id), "Malformed persisted content source reached the workspace");
+  assert(!contentWorkspace.workspace.contentSources.some((source) => source.contentSourceId === pathReferenceSourceRef.id), "Path-shaped persisted source authority reached the workspace");
   assert(contentWorkspace.workspace.targets.some((target) => target.targetId === targetId), "Founder content workspace omitted proof-permission targets");
   const operatorContentWorkspace = await loadSignalDeskWorkspaceServer({
     ...access,
@@ -7442,7 +7519,7 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     role: "operator",
   }, "content");
   assert(operatorContentWorkspace.workspace.targets.length === 0, "Content workspace exposed proof-permission targets without configure authority");
-  await malformedSourceRef.delete();
+  await Promise.all([malformedSourceRef.delete(), pathReferenceSourceRef.delete()]);
   const invalidHeadRefs = Array.from({ length: 31 }, (_, index) => (
     db.collection(SIGNALDESK_COLLECTIONS.CONTENT_SOURCES).doc(`source_invalid_head_${index}_${hashValue(targetId).slice(0, 8)}`)
   ));
@@ -7781,11 +7858,17 @@ async function assertOutcomeIntegrityAndProofPermissions() {
   assert(untouchedMismatchedLegacySnap.data()?.createdAt?.toMillis?.() === mismatchedLegacyCreatedAt.toMillis(), "Mismatched legacy content asset creation time changed during v2 creation");
 
   const malformedAssetRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_ASSETS).doc(`content_asset_malformed_${hashValue(targetId).slice(0, 12)}`);
+  const pathReferenceAssetRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_ASSETS).doc(`content_asset_path_reference_${hashValue(targetId).slice(0, 12)}`);
   const wrongProductAssetRef = db.collection(SIGNALDESK_COLLECTIONS.CONTENT_ASSETS).doc(`content_asset_wrong_product_${hashValue(targetId).slice(0, 12)}`);
   await malformedAssetRef.set(contentAssetFixture(malformedAssetRef.id, { title: "x" }));
+  await pathReferenceAssetRef.set(contentAssetFixture(pathReferenceAssetRef.id, {
+    sourceId: "contentSources/foreign",
+    title: "Path-reference content asset",
+  }));
   await wrongProductAssetRef.set(contentAssetFixture(wrongProductAssetRef.id, { pId: "ML", title: "Wrong-product content asset" }));
   const assetShapeWorkspace = await loadSignalDeskWorkspaceServer(access, "content");
   assert(!assetShapeWorkspace.workspace.contentAssets.some((item) => item.contentAssetId === malformedAssetRef.id), "Malformed persisted content asset reached the workspace");
+  assert(!assetShapeWorkspace.workspace.contentAssets.some((item) => item.contentAssetId === pathReferenceAssetRef.id), "Path-shaped persisted content-asset authority reached the workspace");
   assert(!assetShapeWorkspace.workspace.contentAssets.some((item) => item.contentAssetId === wrongProductAssetRef.id), "Wrong-product persisted content asset reached the workspace");
   await expectRejects("Malformed persisted content asset consumer", () => generateSignalDeskContentDistributionDraftsServer(access, {
     channels: ["short-video"],
@@ -7797,7 +7880,7 @@ async function assertOutcomeIntegrityAndProofPermissions() {
     contentAssetId: wrongProductAssetRef.id,
     idempotencyKey: `content-drafts-wrong-product-asset-${targetId}`,
   }), "CONTENT_ASSET_SHAPE_INVALID");
-  await Promise.all([malformedAssetRef.delete(), wrongProductAssetRef.delete()]);
+  await Promise.all([malformedAssetRef.delete(), pathReferenceAssetRef.delete(), wrongProductAssetRef.delete()]);
 
   const riskHeldAsset = await createSignalDeskContentAssetServer(access, {
     ...ownedAssetInput,
@@ -8119,7 +8202,11 @@ async function assertOutcomeIntegrityAndProofPermissions() {
   await expectRejects("Redirected content-review claim", () => reviewSignalDeskContentDistributionDraftServer(access, contentReviewInput), "CONTENT_REVIEW_IDEMPOTENCY_CONFLICT");
   await contentReviewClaimRef.set(contentReviewClaim);
   const queueAfterContentReview = await db.collection(SIGNALDESK_COLLECTIONS.QUEUE_SUMMARIES).doc(SIGNALDESK_SUMMARY_DOCS.QUEUES).get();
-  assert(Number(queueAfterContentReview.data()?.humanReview || 0) === humanReviewBeforeContentReview - 1, "Concurrent content review did not settle the human-review queue exactly once");
+  assert(
+    Number(queueAfterContentReview.data()?.humanReview || 0)
+        === Math.max(0, humanReviewBeforeContentReview - 1),
+    "Concurrent content review did not settle the human-review queue exactly once with a zero floor",
+  );
   assert(queueAfterContentReview.data()?.queueSummaryId === SIGNALDESK_SUMMARY_DOCS.QUEUES, "Content review recreated queue truth without canonical identity");
   assert(projectSignalDeskQueueDocument(queueAfterContentReview.data(), queueAfterContentReview.id), "Content-review-created queue truth was unreadable by the overview projector");
   await expectRejects("Conflicting content review key reuse", () => reviewSignalDeskContentDistributionDraftServer(access, { ...contentReviewInput, approvalStatus: "rejected" }), "CONTENT_REVIEW_IDEMPOTENCY_CONFLICT");
@@ -8939,6 +9026,11 @@ async function assertContentAuthorityPublishedRemovalReconciliation() {
 async function assertSignedOutcomeBridge() {
   const policy = await createPolicy("Signed outcome bridge");
   const targetId = await importOne(policy.sourcePolicyId, "SignedBridge", { currentListUrl: "" });
+  await expectRejects("Path-shaped reply conversation identity", () => captureSignalDeskReplyServer(access, {
+    conversationId: `conversation/${targetId}`,
+    idempotencyKey: `reply-path-boundary-${targetId}`,
+    message: "This must fail before a Firestore read.",
+  }), "REPLY_CONVERSATION_ID_INVALID");
   const fabricatedConversationRef = db.collection(SIGNALDESK_COLLECTIONS.CONVERSATION_SUMMARIES)
     .doc(`conv_fabricated_${hashValue(targetId).slice(0, 20)}`);
   await fabricatedConversationRef.set({
@@ -8969,11 +9061,39 @@ async function assertSignedOutcomeBridge() {
   assert(importedTarget.data()?.sourceRunId, "Imported target lost its source-run lineage");
   await scoreSignalDeskTargetServer(access, targetId);
   await createSignalDeskEvidenceServer(access, targetId);
-  await captureSignalDeskReplyServer(access, {
+  const interestedReply = await captureSignalDeskReplyServer(access, {
     conversationId: await replyConversationIdFor(targetId),
     idempotencyKey: `reply-route-${targetId}`,
     message: "Yes, please prepare the owner review route.",
   });
+  const interestedTarget = await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId).get();
+  assert(
+    interestedTarget.data()?.latestConversationId === interestedReply.conversationId,
+    "Interested reply did not project its exact conversation onto the target",
+  );
+  await expectRejects("Path-shaped route-token target", () => createSignalDeskRouteTokenServer(access, {
+    channel: "email",
+    idempotencyKey: `route-token-path-target-${targetId}`,
+    targetId: `${targetId}/foreign`,
+  }), "OUTBOUND_TARGET_ID_INVALID");
+  await expectRejects("Path-shaped route-token source action", () => createSignalDeskRouteTokenServer(access, {
+    actionId: `${interestedReply.conversationId}/foreign`,
+    channel: "email",
+    idempotencyKey: `route-token-path-action-${targetId}`,
+    targetId,
+  }), "ROUTE_TOKEN_SOURCE_ACTION_INVALID");
+  await expectRejects("Whitespace-mutated route-token CTA", () => createSignalDeskRouteTokenServer(access, {
+    channel: "email",
+    ctaId: " cta_private_preview_v1",
+    idempotencyKey: `route-token-space-cta-${targetId}`,
+    targetId,
+  }), "ROUTE_TOKEN_CTA_ID_INVALID");
+  await expectRejects("Path-shaped route-token template", () => createSignalDeskRouteTokenServer(access, {
+    channel: "email",
+    idempotencyKey: `route-token-path-template-${targetId}`,
+    targetId,
+    templateId: "template_current_list_intro_v1/foreign",
+  }), "ROUTE_TOKEN_TEMPLATE_ID_INVALID");
   await db.collection(SIGNALDESK_COLLECTIONS.TARGET_SUMMARIES).doc(targetId).set({
     suppressionStatus: "suppressed",
     updatedAt: timestampNow(),
@@ -9010,7 +9130,7 @@ async function assertSignedOutcomeBridge() {
   assert(!storedRoute.data()?.token, "Raw invitation token was stored in Firestore");
   assert(storedRoute.data()?.tokenHash === hashValue(route.token), "Stored invitation token hash does not match");
   assert(storedRoute.data()?.scope === SIGNALDESK_OUTCOME_ROUTE_SCOPE, "Signed bridge route token scope was not stored");
-  assert(storedRoute.data()?.sourceActionId === importedTarget.data()?.latestConversationId, "Signed bridge route token did not retain its exact interested-conversation attribution");
+  assert(storedRoute.data()?.sourceActionId === interestedReply.conversationId, "Signed bridge route token did not retain its exact interested-conversation attribution");
   assert(storedRoute.data()?.revokedAt === null, "New signed bridge route token was created revoked");
   await expectRejects("Invented route-token source action", () => createSignalDeskRouteTokenServer(access, {
     actionId: "invented_owner_action",
@@ -9072,6 +9192,18 @@ async function assertSignedOutcomeBridge() {
   await expectRejects("Unknown outcome bridge payload field", () => processSignalDeskOutcomeBridge({
     rawBody: unknownFieldRawBody,
     requestHeaders: signedOutcomeHeaders(unknownFieldRawBody),
+  }), "Invalid SignalDesk outcome bridge payload");
+  const pathTargetPayload = { ...payload, targetId: `${targetId}/foreign` };
+  const pathTargetRawBody = JSON.stringify(pathTargetPayload);
+  await expectRejects("Path-shaped outcome bridge target", () => processSignalDeskOutcomeBridge({
+    rawBody: pathTargetRawBody,
+    requestHeaders: signedOutcomeHeaders(pathTargetRawBody),
+  }), "Invalid SignalDesk outcome bridge payload");
+  const paddedTargetPayload = { ...payload, targetId: ` ${targetId}` };
+  const paddedTargetRawBody = JSON.stringify(paddedTargetPayload);
+  await expectRejects("Whitespace-mutated outcome bridge target", () => processSignalDeskOutcomeBridge({
+    rawBody: paddedTargetRawBody,
+    requestHeaders: signedOutcomeHeaders(paddedTargetRawBody),
   }), "Invalid SignalDesk outcome bridge payload");
   await expectRejects("Invalid outcome bridge signature", () => processSignalDeskOutcomeBridge({
     rawBody,

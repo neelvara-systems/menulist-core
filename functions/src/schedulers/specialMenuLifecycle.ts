@@ -1,6 +1,10 @@
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
-import { resolveNextSpecialMenuTransitionAt } from '../sharedData/specialMenuSchedule';
+import {
+    normalizeSpecialMenuInstant,
+    normalizeSpecialMenuScheduleRange,
+    resolveNextSpecialMenuTransitionAt,
+} from '../sharedData/specialMenuSchedule';
 
 type SpecialMenuSchedulerAction = 'activate' | 'expire';
 
@@ -99,27 +103,20 @@ function normalizeProjectId(value: unknown, tId: string, sId: string): string | 
 function normalizeSpecialMenuMetadata(value: unknown): SpecialMenuMetadata | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const candidate = value as Partial<SpecialMenuMetadata>;
+    const schedule = normalizeSpecialMenuScheduleRange(candidate.startsAt, candidate.endsAt);
+    const activatedAt = candidate.activatedAt === undefined
+        ? undefined
+        : normalizeSpecialMenuInstant(candidate.activatedAt);
+    const deactivatedAt = candidate.deactivatedAt === undefined
+        ? undefined
+        : normalizeSpecialMenuInstant(candidate.deactivatedAt);
     if (
         typeof candidate.baseProjectId !== 'string'
         || (candidate.mode !== 'replace' && candidate.mode !== 'overlay')
-        || typeof candidate.startsAt !== 'string'
-        || candidate.startsAt.length > 64
-        || !Number.isFinite(Date.parse(candidate.startsAt))
-        || typeof candidate.endsAt !== 'string'
-        || candidate.endsAt.length > 64
-        || !Number.isFinite(Date.parse(candidate.endsAt))
-        || Date.parse(candidate.endsAt) <= Date.parse(candidate.startsAt)
+        || !schedule
         || !SPECIAL_MENU_STATUSES.has(candidate.status as SpecialMenuStatus)
-        || (candidate.activatedAt !== undefined && (
-            typeof candidate.activatedAt !== 'string'
-            || candidate.activatedAt.length > 64
-            || !Number.isFinite(Date.parse(candidate.activatedAt))
-        ))
-        || (candidate.deactivatedAt !== undefined && (
-            typeof candidate.deactivatedAt !== 'string'
-            || candidate.deactivatedAt.length > 64
-            || !Number.isFinite(Date.parse(candidate.deactivatedAt))
-        ))
+        || (candidate.activatedAt !== undefined && !activatedAt)
+        || (candidate.deactivatedAt !== undefined && !deactivatedAt)
         || (
             typeof candidate.displayName !== 'string'
             && (!candidate.displayName || typeof candidate.displayName !== 'object' || Array.isArray(candidate.displayName))
@@ -127,7 +124,13 @@ function normalizeSpecialMenuMetadata(value: unknown): SpecialMenuMetadata | nul
     ) {
         return null;
     }
-    return candidate as SpecialMenuMetadata;
+    return {
+        ...candidate,
+        endsAt: schedule.endsAt,
+        startsAt: schedule.startsAt,
+        ...(activatedAt ? { activatedAt } : {}),
+        ...(deactivatedAt ? { deactivatedAt } : {}),
+    } as SpecialMenuMetadata;
 }
 
 function resolveDisplayName(value: SpecialMenuMetadata['displayName']): string {

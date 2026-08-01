@@ -2,25 +2,32 @@
 
 import { Alert, Button, Card, Input, Space, Tag, Typography, notification, theme } from 'antd';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import {
+    getOwnerComplianceScope,
+    isOwnerComplianceMutationScopeAcknowledged,
+    normalizeOwnerComplianceLoadResponse,
+    type OwnerCompliancePageData,
+    type OwnerCompliancePagesState,
+    type OwnerComplianceScope,
+} from '@lib/compliance/ownerComplianceResponseBoundary';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getBoundedErrorNumberAtPath } from '@lib/monitoring/boundedLogContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LuExternalLink, LuFileText, LuLoader, LuRotateCcw } from 'react-icons/lu';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
 
 const { Text, Title, Paragraph } = Typography;
 
 type ComplianceTab = 'privacy' | 'terms' | 'refund';
-type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
-type CompliancePagesState = Record<ComplianceTab, CompliancePageData>;
 type ComplianceMutationAction = 'save' | 'reset';
 type ComplianceApiMutationAction = 'override' | 'reset';
 type ComplianceMutationResponse = {
     action?: unknown;
+    storeId?: unknown;
     success?: boolean;
+    tenantId?: unknown;
     type?: unknown;
 };
-type ComplianceLoadResponse = Partial<CompliancePagesState>;
 
 const DESKTOP_COMPLIANCE_MUTATION_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 const DESKTOP_COMPLIANCE_LOAD_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
@@ -57,6 +64,7 @@ function isSuccessfulComplianceMutationResponse(
     value: ComplianceMutationResponse | null,
     type: ComplianceTab,
     action: ComplianceMutationAction,
+    expectedScope: OwnerComplianceScope,
 ): value is ComplianceMutationResponse & {
     action: ComplianceApiMutationAction;
     success: true;
@@ -66,7 +74,8 @@ function isSuccessfulComplianceMutationResponse(
         value
         && value.success === true
         && value.type === type
-        && value.action === getExpectedComplianceApiMutationAction(action),
+        && value.action === getExpectedComplianceApiMutationAction(action)
+        && isOwnerComplianceMutationScopeAcknowledged(value, expectedScope)
     );
 }
 
@@ -81,14 +90,6 @@ function buildComplianceMutationResponseLogContext(
         hasExpectedAction: result?.action === getExpectedComplianceApiMutationAction(action),
         hasExpectedType: result?.type === type,
         success: result?.success === true,
-    };
-}
-
-function normalizeCompliancePages(data: ComplianceLoadResponse): CompliancePagesState {
-    return {
-        privacy: data.privacy || null,
-        refund: data.refund || null,
-        terms: data.terms || null,
     };
 }
 
@@ -123,7 +124,7 @@ async function readDesktopComplianceLoadResponseJson(
     type: ComplianceTab,
     domain?: string,
     pageUrl?: string,
-): Promise<ComplianceLoadResponse | null> {
+): Promise<unknown | null> {
     try {
         const payload = await readJsonResponseWithLimit<unknown>(
             response,
@@ -142,7 +143,7 @@ async function readDesktopComplianceLoadResponseJson(
             );
             return null;
         }
-        return payload as ComplianceLoadResponse;
+        return payload;
     } catch (error) {
         logBusinessSettingsFailure(
             'desktop_compliance_pages_load_response_parse_failed',
@@ -158,11 +159,22 @@ async function readDesktopComplianceLoadResponseJson(
     }
 }
 
-export default function CompliancePagesSection({ domain }: { domain?: string }) {
+export default function CompliancePagesSection({
+    domain,
+    storeId,
+    tenantId,
+}: {
+    domain?: string;
+    storeId?: unknown;
+    tenantId?: unknown;
+}) {
+    const scope = useMemo(() => getOwnerComplianceScope(tenantId, storeId), [storeId, tenantId]);
+    const currentScopeKeyRef = useRef(scope?.key);
+    currentScopeKeyRef.current = scope?.key;
     const [activeTab, setActiveTab] = useState<ComplianceTab>('privacy');
-    const [privacyData, setPrivacyData] = useState<CompliancePageData>(null);
-    const [termsData, setTermsData] = useState<CompliancePageData>(null);
-    const [refundData, setRefundData] = useState<CompliancePageData>(null);
+    const [privacyData, setPrivacyData] = useState<OwnerCompliancePageData>(null);
+    const [termsData, setTermsData] = useState<OwnerCompliancePageData>(null);
+    const [refundData, setRefundData] = useState<OwnerCompliancePageData>(null);
     const [customText, setCustomText] = useState('');
     const [loadingData, setLoadingData] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -176,13 +188,16 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
     const pageLabel = labelMap[activeTab];
     const pageUrl = domain ? `https://${domain}/${activeTab}` : `/${activeTab}`;
 
-    const applyCompliancePages = (pages: CompliancePagesState) => {
+    const applyCompliancePages = (pages: OwnerCompliancePagesState) => {
         setPrivacyData(pages.privacy);
         setTermsData(pages.terms);
         setRefundData(pages.refund);
     };
 
-    const loadCompliancePages = async (): Promise<CompliancePagesState | null> => {
+    const loadCompliancePages = async (
+        expectedScope: OwnerComplianceScope | null,
+    ): Promise<OwnerCompliancePagesState | null> => {
+        if (!expectedScope) return null;
         try {
             const response = await fetch('/api/compliance', AUTH_BROWSER_REQUEST_POLICY);
             if (!response.ok) {
@@ -195,7 +210,8 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
             }
             const data = await readDesktopComplianceLoadResponseJson(response, activeTab, domain, pageUrl);
             if (!data) return null;
-            const pages = normalizeCompliancePages(data);
+            const pages = normalizeOwnerComplianceLoadResponse(data, expectedScope);
+            if (!pages || currentScopeKeyRef.current !== expectedScope.key) return null;
             applyCompliancePages(pages);
             return pages;
         } catch (error) {
@@ -209,12 +225,20 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
     };
 
     useEffect(() => {
+        let active = true;
+        setPrivacyData(null);
+        setTermsData(null);
+        setRefundData(null);
+        setLoadingData(Boolean(scope));
         const fetchData = async () => {
-            await loadCompliancePages();
-            setLoadingData(false);
+            await loadCompliancePages(scope);
+            if (active) setLoadingData(false);
         };
         void fetchData();
-    }, []);
+        return () => {
+            active = false;
+        };
+    }, [scope]);
 
     const handleOpenPage = () => {
         try {
@@ -238,6 +262,11 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
     };
 
     const handleSave = async () => {
+        const expectedScope = scope;
+        if (!expectedScope) {
+            notification.error({ message: 'Failed to save.' });
+            return;
+        }
         if (!customText || customText.trim().length < 100) {
             notification.error({ message: 'Content must be at least 100 characters.' });
             return;
@@ -264,7 +293,7 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
                 notification.error({ message: 'Failed to save.' });
                 return;
             }
-            if (!isSuccessfulComplianceMutationResponse(result, activeTab, 'save')) {
+            if (!isSuccessfulComplianceMutationResponse(result, activeTab, 'save', expectedScope)) {
                 logBusinessSettingsFailure(
                     'desktop_compliance_page_response_invalid',
                     createComplianceStatusError('desktop_compliance_page_save_response_invalid', response.status),
@@ -273,7 +302,7 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
                 notification.error({ message: 'Failed to save.' });
                 return;
             }
-            const refreshed = await loadCompliancePages();
+            const refreshed = await loadCompliancePages(expectedScope);
             if (!refreshed) {
                 notification.error({ message: 'Failed to save.' });
                 return;
@@ -293,6 +322,11 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
     };
 
     const handleReset = async () => {
+        const expectedScope = scope;
+        if (!expectedScope) {
+            notification.error({ message: 'Failed to reset.' });
+            return;
+        }
         setResetting(true);
         try {
             const response = await fetch('/api/compliance', {
@@ -314,7 +348,7 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
                 notification.error({ message: 'Failed to reset.' });
                 return;
             }
-            if (!isSuccessfulComplianceMutationResponse(result, activeTab, 'reset')) {
+            if (!isSuccessfulComplianceMutationResponse(result, activeTab, 'reset', expectedScope)) {
                 logBusinessSettingsFailure(
                     'desktop_compliance_page_response_invalid',
                     createComplianceStatusError('desktop_compliance_page_reset_response_invalid', response.status),
@@ -323,7 +357,7 @@ export default function CompliancePagesSection({ domain }: { domain?: string }) 
                 notification.error({ message: 'Failed to reset.' });
                 return;
             }
-            const refreshed = await loadCompliancePages();
+            const refreshed = await loadCompliancePages(expectedScope);
             if (!refreshed) {
                 notification.error({ message: 'Failed to reset.' });
                 return;

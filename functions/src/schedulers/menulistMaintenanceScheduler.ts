@@ -683,13 +683,6 @@ async function runMessagingSessionCleanup(): Promise<MaintenanceTaskResult> {
 }
 
 async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
-    if (!isFunctionFeatureEnabled('ENABLE_PUBLIC_MENU_ENTRY')) {
-        return {
-            activity: false,
-            details: { enabled: false, deletedDrafts: 0, deletedFiles: 0, preservedClaimedFiles: 0, errors: 0 },
-        };
-    }
-
     const snapshot = await db
         .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
         .where('expiresAt', '<', Timestamp.now())

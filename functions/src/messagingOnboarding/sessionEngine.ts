@@ -584,7 +584,7 @@ function buildRoutingExpiryUpdate(
   state: MessagingOnboardingState,
   stateHistory: readonly StateHistoryEntry[],
   now: Timestamp,
-): Record<string, unknown> {
+) {
   const expiryHistory: StateHistoryEntry[] = [];
   if (state === "VALIDATING_ASSETS" || state === "PROCESSING_MENU" || state === "PUBLISHING") {
     expiryHistory.push({

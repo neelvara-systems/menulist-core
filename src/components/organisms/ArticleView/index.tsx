@@ -43,6 +43,7 @@ import { secureError } from '@lib/security/secureLogger';
 import { formatViewCountShort, getUserViewCount } from '@lib/viewCount';
 import FeedbackSection from '@molecules/FeedbackSection';
 import { EditorContent, useEditor } from '@tiptap/react';
+import type { Content } from '@tiptap/core';
 import type { AnswerlatticeReadableArticle } from '@lib/answerlattice/publicContentBoundary';
 import { Badge, Breadcrumb, Button, Card, Divider, Flex, Grid, message, theme, Tooltip, Typography } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -51,6 +52,14 @@ import { LuCalendar, LuCheck, LuClock, LuEye, LuFolderOpen, LuLink, LuTag } from
 const { Title, Text } = Typography;
 
 type ArticleViewLogContext = Record<string, boolean | number | string | null | undefined>;
+const isEditorContent = (value: unknown): value is Content => (
+    typeof value === 'string'
+    || Array.isArray(value)
+    || (Boolean(value) && typeof value === 'object')
+);
+const normalizeArticleEditorContent = (value: unknown): Content => (
+    isEditorContent(value) ? value : ''
+);
 const ARTICLE_VIEW_LINK_COPY_DOCUMENT_UNAVAILABLE = 'article_view_link_copy_document_unavailable';
 const ARTICLE_VIEW_LINK_COPY_FALLBACK_FAILED = 'article_view_link_copy_fallback_failed';
 
@@ -165,11 +174,12 @@ const ArticleView: React.FC<ArticleViewProps> = ({
 
     // Memoize extensions to prevent infinite re-renders
     const extensions = useMemo(() => getTiptapExtensions({ isEditable: false, placeholder: 'Empty content' }), []);
+    const editorContent = useMemo(() => normalizeArticleEditorContent(article.content), [article.content]);
 
     const editor = useEditor({
         editable: false,
         extensions,
-        content: article.content,
+        content: editorContent,
         immediatelyRender: false,
         editorProps: {
             attributes: {
@@ -181,8 +191,8 @@ const ArticleView: React.FC<ArticleViewProps> = ({
 
     useEffect(() => {
         if (!editor) return;
-        editor.commands.setContent(article.content, false);
-    }, [article.content, editor]);
+        editor.commands.setContent(editorContent, false);
+    }, [editorContent, editor]);
 
     // Generate slug for anchor link
     const slug = normalizeHelpCenterRouteSegment(article.title);

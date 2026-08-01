@@ -143,8 +143,12 @@ function verifyWebsiteSocialMetadataBoundary() {
     'MENULIST_SITE_IMAGE_ALT',
     'siteName: "MenuList"',
     'card: "summary_large_image"',
-    'title: completedOpenGraph?.title || metadata.title',
-    'description: completedOpenGraph?.description || metadata.description',
+    "const twitterTitle = typeof completedOpenGraph?.title === 'string'",
+    "typeof metadata.title === 'string'",
+    "const twitterDescription = typeof completedOpenGraph?.description === 'string'",
+    "typeof metadata.description === 'string'",
+    '...(twitterTitle ? { title: twitterTitle } : {})',
+    '...(twitterDescription ? { description: twitterDescription } : {})',
   ].forEach((token) => assertIncludes(helper, token, 'MenuList website social metadata completion'));
 
   for (const relativePath of metadataPages) {
@@ -844,9 +848,13 @@ function verifyWebsiteAnalyticsBoundary() {
   const publicCookieConsentBanner = read('src/components/shared/publicCookieConsent/PublicCookieConsentBanner.tsx');
   const googleAnalytics = read('src/components/website/GoogleAnalytics.tsx');
   const plausibleHelper = read('src/lib/website/plausible.ts');
+  const plausibleScript = read('src/components/shared/analytics/PlausibleAnalyticsScript.tsx');
+  const publicAnalyticsContext = read('src/lib/website/publicAnalyticsContext.ts');
   const clarityAnalytics = read('src/components/website/ClarityAnalytics.tsx');
   const resourceAnalytics = read('src/components/website/resources/ResourceAnalytics.tsx');
   const resourceTrackedLink = read('src/components/website/resources/ResourceTrackedLink.tsx');
+  const articleSection = read('src/components/website/resources/ArticleSection.tsx');
+  const marketingClickTracker = read('src/components/website/WebsiteMarketingClickTracker.tsx');
   const resourceArticleSection = read('src/components/website/resources/ArticleSection.tsx');
   const mainWebsiteImpl = read('__docs__/main-website/main-website_impl.md');
   const mainWebsiteContent = read('__docs__/main-website/main-website_content.md');
@@ -963,6 +971,63 @@ function verifyWebsiteAnalyticsBoundary() {
     'const boundedParams = getBoundedMarketingEventParams(params);',
     "analyticsWindow.gtag('event', normalizedEventName, boundedParams);",
   ].forEach((token) => assertIncludes(plausibleHelper, token, 'Public website Google marketing event payload boundary'));
+  [
+    'normalizePlausibleScriptSource',
+    "if (url.protocol !== 'https:' || url.username || url.password) return undefined;",
+  ].forEach((token) => assertIncludes(plausibleHelper, token, 'Public website Plausible script-source boundary'));
+  assertIncludes(
+    plausibleScript,
+    'normalizePlausibleScriptSource',
+    'Public website Plausible component script-source admission',
+  );
+  [
+    'getPublicAnalyticsAttributionToken',
+    'getPublicAnalyticsPath',
+    'getPublicAnalyticsReferrerGroup',
+    'getPublicAnalyticsSessionEntryPage',
+    "sameOrigin ? `${url.origin}${url.pathname || '/'}` : url.origin",
+  ].forEach((token) => assertIncludes(publicAnalyticsContext, token, 'Public resource analytics context minimization'));
+  [
+    'referrer: document.referrer',
+    'referrer_host:',
+    'target_url: window.location.href',
+    '`${window.location.pathname}${window.location.search}`',
+  ].forEach((token) => assertNotIncludes(resourceAnalytics, token, 'Public resource analytics raw browser context'));
+  [
+    'getPublicAnalyticsAttributionToken',
+    'getPublicAnalyticsReferrerGroup',
+    'getPublicAnalyticsSessionEntryPage',
+    'getPublicAnalyticsUrl',
+  ].forEach((token) => assertIncludes(resourceTrackedLink, token, 'Public resource link-click analytics minimization'));
+  [
+    'referrer: document.referrer',
+    'referrer_host:',
+    '`${window.location.pathname}${window.location.search}`',
+    'target_url: href',
+  ].forEach((token) => assertNotIncludes(resourceTrackedLink, token, 'Public resource link-click raw browser context'));
+  assertIncludes(
+    articleSection,
+    'target_url: getPublicAnalyticsUrl(window.location.href)',
+    'Public resource checklist analytics URL minimization',
+  );
+  [
+    'link_url: getPublicAnalyticsUrl(url?.href)',
+    'page_path: getPublicAnalyticsPagePath()',
+  ].forEach((token) => assertIncludes(marketingClickTracker, token, 'Public marketing click URL minimization'));
+  [
+    'link_url: url?.href',
+    'target_url: window.location.href',
+  ].forEach((token) => assertNotIncludes(
+    `${articleSection}\n${marketingClickTracker}`,
+    token,
+    'Public click/checklist analytics raw URL exclusion',
+  ));
+  [
+    "const OMITTED_PUBLIC_ANALYTICS_PARAM_KEYS = new Set(['referrer', 'referrer_host']);",
+    "const PUBLIC_ANALYTICS_URL_PARAM_KEYS = new Set(['destination', 'link_url', 'target_url']);",
+    "const PUBLIC_ANALYTICS_PATH_PARAM_KEYS = new Set(['entry_page', 'page_path']);",
+    'normalizeMarketingEventStringParam',
+  ].forEach((token) => assertIncludes(plausibleHelper, token, 'Central public marketing payload minimization'));
   assertNotIncludes(
     plausibleHelper,
     "analyticsWindow.gtag('event', normalizedEventName, params);",
@@ -1025,7 +1090,7 @@ function verifyWebsiteAnalyticsBoundary() {
   );
   assertIncludes(
     mainWebsiteImpl,
-    'Resource GA4 custom-event payloads are bounded through `trackGoogleMarketingEvent`',
+    'Resource GA4 page-view, link-click, checklist-copy, and delegated website-click',
     'Main website implementation resource analytics payload boundary',
   );
   assertIncludes(
@@ -1106,7 +1171,7 @@ function verifyDocsBoundary() {
     'No public form, extraction, publishing, pricing/payment, owner data, Firebase rule/index, Cloud Function, dependency, production build, Vercel deployment, or domain contract changed',
   ].forEach((token) => assertIncludes(mainWebsiteReadme, token, 'Main website owner-journey canonical boundary'));
   [
-    '`WebsiteProductPathProvider` is the canonical browser routing boundary',
+    '`WebsiteProductPathProvider` remains the browser routing boundary for canonical website paths',
     'Cancelled/paused subscriptions keep the purchased plan mirror only through a valid paid `cycleEndDate`',
     '**Alias-safe resource switching:**',
   ].forEach((token) => assertIncludes(mainWebsiteImpl, token, 'Main website alias and paid-cycle implementation docs'));
@@ -1116,7 +1181,7 @@ function verifyDocsBoundary() {
     'Protected owner pages emit `noindex, nofollow, nocache`',
   ].forEach((token) => assertIncludes(mainWebsiteImpl, token, 'Main website owner-journey implementation docs'));
   [
-    'Website alias and legal truth note (July 16, 2026)',
+    'Website alias and legal truth note (updated July 29, 2026)',
     'Generated-output use stays subject to input rights, applicable law, and provider terms',
     'Do not promise all-plan features or fixed 30-day deletion',
   ].forEach((token) => assertIncludes(mainWebsiteContent, token, 'Main website legal content governance'));
@@ -1125,7 +1190,7 @@ function verifyDocsBoundary() {
     'The language trigger exposes `aria-expanded` and `aria-haspopup`',
     '--text-muted: #64748b',
   ].forEach((token) => assertIncludes(mainWebsiteDesignSystem, token, 'Main website alias accessibility design governance'));
-  assertIncludes(mainWebsiteMarketing, 'Legal, billing, and alias truth note (July 16, 2026)', 'Main website marketing runtime-truth boundary');
+  assertIncludes(mainWebsiteMarketing, 'Legal, billing, and alias truth note (updated July 29, 2026)', 'Main website marketing runtime-truth boundary');
   assertIncludes(productionAudit, 'Main Website, Legal, I18n/SEO And Paid-Cycle Truth', 'Production audit item 30 website boundary');
   assertIncludes(changelog, 'Main Website Alias, Legal And Paid-Cycle Truth Boundary', 'Changelog item 30 website boundary');
   assertIncludes(productionAudit, 'Main Website Truth And Owner Journey Audit', 'Production audit website owner-journey boundary');

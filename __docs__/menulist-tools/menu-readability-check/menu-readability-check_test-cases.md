@@ -22,6 +22,7 @@
 | Input | Expected status |
 | --- | --- |
 | No pasted source text | `missing_basics` |
+| URL path contains order/book/call words but pasted source and owner selection contain no action | Customer action remains missing |
 | Very short text | `missing_basics` |
 | Usable text with items but no prices/action | `unclear` |
 | Usable text with categories, items, prices, descriptions, action, and valid link | `ready` |

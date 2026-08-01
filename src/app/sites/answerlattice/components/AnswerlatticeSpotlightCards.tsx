@@ -13,7 +13,7 @@ const SPOTLIGHT_CARD_SELECTOR = [
     ".al-objections__card",
 ].join(", ");
 
-export default function AnswerlatticeSpotlightCards() {
+export default function AnswerlatticeSpotlightCards(): null {
     useEffect(() => {
         const finePointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
         let frame = 0;

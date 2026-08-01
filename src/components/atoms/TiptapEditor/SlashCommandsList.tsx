@@ -1,5 +1,7 @@
+import type { Editor, Range } from '@tiptap/core';
+import { getNextSlashCommandIndex } from '@lib/editor/slashCommandNavigation';
 import { Flex, List, Typography, theme } from 'antd';
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useState, type ReactNode } from 'react';
 import {
     LuCheckSquare,
     LuHeading1,
@@ -16,101 +18,115 @@ export interface SlashCommandsListRef {
 
 const { Text } = Typography;
 
-const getSuggestionItems = ({ query }: { query: string }) => {
+export interface SlashCommandContext {
+    editor: Editor;
+    range: Range;
+}
+
+export interface SlashCommandItem {
+    command: (context: SlashCommandContext) => void;
+    icon: ReactNode;
+    title: string;
+}
+
+export interface SlashCommandsListProps {
+    command: (item: SlashCommandItem) => void;
+    items: SlashCommandItem[];
+}
+
+const getSuggestionItems = ({ query }: { editor: Editor; query: string }): SlashCommandItem[] => {
     return [
         {
             title: 'Heading 1',
             icon: <LuHeading1 size={18} />,
-            command: ({ editor, range }) => {
+            command: ({ editor, range }: SlashCommandContext) => {
                 editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run();
             },
         },
         {
             title: 'Heading 2',
             icon: <LuHeading2 size={18} />,
-            command: ({ editor, range }) => {
+            command: ({ editor, range }: SlashCommandContext) => {
                 editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run();
             },
         },
         {
             title: 'Heading 3',
             icon: <LuHeading3 size={18} />,
-            command: ({ editor, range }) => {
+            command: ({ editor, range }: SlashCommandContext) => {
                 editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run();
             },
         },
         {
             title: 'Bullet List',
             icon: <LuList size={18} />,
-            command: ({ editor, range }) => {
+            command: ({ editor, range }: SlashCommandContext) => {
                 editor.chain().focus().deleteRange(range).toggleBulletList().run();
             },
         },
         {
             title: 'Numbered List',
             icon: <LuListOrdered size={18} />,
-            command: ({ editor, range }) => {
+            command: ({ editor, range }: SlashCommandContext) => {
                 editor.chain().focus().deleteRange(range).toggleOrderedList().run();
             },
         },
         {
             title: 'Task List',
             icon: <LuCheckSquare size={18} />,
-            command: ({ editor, range }) => {
+            command: ({ editor, range }: SlashCommandContext) => {
                 editor.chain().focus().deleteRange(range).toggleTaskList().run();
             },
         },
         {
             title: 'Blockquote',
             icon: <LuTextQuote size={18} />,
-            command: ({ editor, range }) => {
+            command: ({ editor, range }: SlashCommandContext) => {
                 editor.chain().focus().deleteRange(range).toggleBlockquote().run();
             },
         },
     ].filter(item => item.title.toLowerCase().startsWith(query.toLowerCase())).slice(0, 10);
 };
 
-const SlashCommandsList = forwardRef<SlashCommandsListRef, any>((props, ref) => {
+const SlashCommandsList = forwardRef<SlashCommandsListRef, SlashCommandsListProps>((props, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const { token } = theme.useToken();
 
-    const selectItem = (index: number) => {
+    const selectItem = (index: number): boolean => {
         const item = props.items[index];
 
         if (item) {
             props.command(item);
+            return true;
         }
+        return false;
     };
 
-    const upHandler = () => {
-        setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length);
+    const moveSelection = (direction: -1 | 1): boolean => {
+        const nextIndex = getNextSlashCommandIndex(selectedIndex, props.items.length, direction);
+        if (nextIndex === null) return false;
+        setSelectedIndex(nextIndex);
+        return true;
     };
 
-    const downHandler = () => {
-        setSelectedIndex((selectedIndex + 1) % props.items.length);
-    };
-
-    const enterHandler = () => {
-        selectItem(selectedIndex);
-    };
+    const upHandler = () => moveSelection(-1);
+    const downHandler = () => moveSelection(1);
+    const enterHandler = () => selectItem(selectedIndex);
 
     useEffect(() => setSelectedIndex(0), [props.items]);
 
     useImperativeHandle(ref, () => ({
         onKeyDown: ({ event }) => {
             if (event.key === 'ArrowUp') {
-                upHandler();
-                return true;
+                return upHandler();
             }
 
             if (event.key === 'ArrowDown') {
-                downHandler();
-                return true;
+                return downHandler();
             }
 
             if (event.key === 'Enter') {
-                enterHandler();
-                return true;
+                return enterHandler();
             }
 
             return false;
@@ -130,7 +146,7 @@ const SlashCommandsList = forwardRef<SlashCommandsListRef, any>((props, ref) => 
                 boxShadow: token.boxShadowSecondary,
                 padding: 4,
             }}
-            renderItem={(item: any, index: number) => (
+            renderItem={(item: SlashCommandItem, index: number) => (
                 <List.Item
                     onClick={() => selectItem(index)}
                     style={{

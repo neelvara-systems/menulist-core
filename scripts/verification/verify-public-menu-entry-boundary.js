@@ -47,6 +47,8 @@ const publicDraftId = read('src/lib/public-menu-entry/publicDraftId.ts');
 const previewPage = read('src/app/(website)/create-menu/preview/[draftId]/page.tsx');
 const previewClient = read('src/app/(website)/create-menu/PreviewClient.tsx');
 const successClient = read('src/app/(website)/create-menu/success/CreateMenuSuccessClient.tsx');
+const successUrl = read('src/lib/publicCreateMenu/successUrl.ts');
+const previewDraftResponse = read('src/lib/publicCreateMenu/previewDraftResponse.ts');
 const lastClaimHandoff = read('src/lib/publicCreateMenu/lastClaimHandoff.ts');
 const maintenance = read('functions/src/schedulers/menulistMaintenanceScheduler.ts');
 const readme = read('__docs__/public-menu-entry/README.md');
@@ -213,14 +215,28 @@ requireToken(previewPage, 'if (!draftId) notFound();', 'Public Menu Entry previe
   'public_create_menu_claim_session_refresh_failed',
   'serializePublicCreateMenuLastClaimHandoff({',
   'public_create_menu_claim_handoff_storage_failed',
+  'const claimInFlightRef = useRef(false);',
+  'if (claimInFlightRef.current) return;',
+  'const controller = new AbortController();',
+  'controller.abort();',
+  'if (refreshTimer !== null) clearTimeout(refreshTimer);',
+  'normalizePublicCreateMenuPreviewDraft(payload)',
 ].forEach((token) => requireToken(previewClient, token, 'Public Menu Entry preview/claim client'));
 requireOrder(previewClient, [
   'if (attempts >= CREATE_MENU_PREVIEW_MAX_POLLS)',
   'attempts += 1;',
   'setPollCount(attempts);',
-  'const status = await fetchDraft();',
+  'const status = await fetchDraft(controller.signal);',
 ], 'Public Menu Entry poll cap before each status read');
 forbidToken(previewClient, '[fetchDraft, pollCount', 'Public Menu Entry preview polling');
+forbidToken(previewClient, 'extractedBusinessProfile?: any', 'Public Menu Entry preview response contract');
+
+[
+  'export function normalizePublicCreateMenuPreviewDraft',
+  'normalizePublicMenuDraftExtractedData(source.extractedData)',
+  'normalizeExtractedBusinessProfile(source.extractedBusinessProfile)',
+  'normalizeHexColor(source.detectedBrandAccentColor)',
+].forEach((token) => requireToken(previewDraftResponse, token, 'Public Menu Entry browser response boundary'));
 
 [
   'CREATE_MENU_SUCCESS_SESSION_REFRESH_TIMEOUT_MS = 3_000',
@@ -231,7 +247,22 @@ forbidToken(previewClient, '[fetchDraft, pollCount', 'Public Menu Entry preview 
   'resolveStorePermissionSessionScope(session)',
   'claim.tenantId !== sessionScope.tenantScope.numericId',
   'claim.storeId !== sessionScope.storeScope.numericId',
+  'isPublicCreateMenuSuccessHostname(parsed.hostname)',
+  "'unexpected_host'",
+  'const signalKey = `${claim.tenantId}:${claim.storeId}:${signal}`;',
+  'recordedSignalsRef.current.add(signalKey);',
+  'recordedSignalsRef.current.delete(signalKey);',
+  'window.sessionStorage.removeItem(PUBLIC_CREATE_MENU_LAST_CLAIM_KEY);',
+  'const copiedTimerRef = useRef<number | null>(null);',
+  'window.clearTimeout(copiedTimerRef.current);',
+  'const dashboardHandoffInFlightRef = useRef(false);',
+  'if (refreshTimer !== null) clearTimeout(refreshTimer);',
 ].forEach((token) => requireToken(successClient, token, 'Public Menu Entry success handoff'));
+[
+  "import { PLATFORM_DOMAIN } from '@constant/urls';",
+  'normalizedHostname === normalizedPlatformDomain',
+  'normalizedHostname.endsWith(`.${normalizedPlatformDomain}`)',
+].forEach((token) => requireToken(successUrl, token, 'Public Menu Entry success URL host boundary'));
 [
   'PUBLIC_CREATE_MENU_LAST_CLAIM_KEY',
   'version: 1',
@@ -257,6 +288,7 @@ const cleanupStart = maintenance.indexOf('async function runPublicMenuDraftClean
 const cleanupEnd = maintenance.indexOf('async function deleteExpiredDocs', cleanupStart);
 const cleanupSource = maintenance.slice(cleanupStart, cleanupEnd);
 forbidToken(cleanupSource, ".where('claimed', '==', false)", 'Public Menu Entry draft cleanup');
+forbidToken(cleanupSource, "isFunctionFeatureEnabled('ENABLE_PUBLIC_MENU_ENTRY')", 'Public Menu Entry retention-independent draft cleanup');
 
 for (const [source, label] of [
   [readme, 'Public Menu Entry README'],

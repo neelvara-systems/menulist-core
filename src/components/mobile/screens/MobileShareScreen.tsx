@@ -1804,6 +1804,7 @@ export default function MobileShareScreen({
                         storeName={data.storeName}
                         timeZone={storeDetails?.timeZone}
                         workingHours={storeDetails?.workingHours}
+                        specialHours={storeDetails?.specialHours}
                     />
                 </Flex>
             ) : null}

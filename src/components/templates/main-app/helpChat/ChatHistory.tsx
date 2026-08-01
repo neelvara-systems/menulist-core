@@ -11,7 +11,7 @@ import SessionCard from './SessionCard';
 const { Text } = Typography;
 
 interface ChatHistoryProps {
-    sessions: ChatSession[];
+    sessions: Array<ChatSession & { id: string }>;
     activeSessionId: string | null;
     onSessionClick: (sessionId: string) => void;
     onNewChat: () => void;
@@ -34,9 +34,9 @@ const ChatHistory = ({ sessions, activeSessionId, onSessionClick, onNewChat, mod
     const [renameValue, setRenameValue] = useState('');
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-    const handleRenameStart = (session: ChatSession) => {
+    const handleRenameStart = (session: ChatSession & { id: string }) => {
         setRenamingSessionId(session.id);
-        setRenameValue(session.title);
+        setRenameValue(session.title ?? '');
     };
 
     // Handle rename save

@@ -23,6 +23,7 @@ import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { trackBeforeNavigate } from '@lib/analytics/trackBeforeNavigate';
 import { trackOBPMenuClick, trackProjectSwitch } from '@lib/analytics/unified';
 import { LuBookOpen } from 'react-icons/lu';
+import OBPPublicImage from './OBPPublicImage';
 import styles from './obp.module.scss';
 
 export interface OBPMenuCTAProjectEntry {
@@ -143,7 +144,7 @@ export default function OBPMenuCTA({
             { tenantId, sessionId: getSessionId(), storeTimeZone, businessDayEndTime, includeLocation },
         );
 
-        return Promise.all([menuClick, projectSwitch]).then(() => undefined);
+        return Promise.all([menuClick, projectSwitch]).then((): undefined => undefined);
     };
 
     // Safety rail: no projects list → render classic "View Menu" button.
@@ -181,7 +182,15 @@ export default function OBPMenuCTA({
                 <span className={styles.menuButtonContent}>
                     {primary.projectImage ? (
                         <span className={styles.menuButtonThumb}>
-                            <img alt={primary.name} src={primary.projectImage} />
+                            <OBPPublicImage
+                                alt={primary.name}
+                                src={primary.projectImage}
+                                fallback={(
+                                    <span className={styles.menuButtonThumbFallback} aria-hidden="true">
+                                        <LuBookOpen size={20} />
+                                    </span>
+                                )}
+                            />
                         </span>
                     ) : (
                         <span className={styles.menuButtonThumbFallback} aria-hidden="true">
@@ -195,7 +204,7 @@ export default function OBPMenuCTA({
     }
 
     return (
-        <div className={styles.projectCards}>
+        <div className={`${styles.projectCards} ${projects.length > 4 ? styles.projectCardsDense : ''}`}>
             {projects.map((project, index) => {
                 const href = withOBPEntrySource(project.url);
                 return (
@@ -211,7 +220,15 @@ export default function OBPMenuCTA({
                     >
                         {project.projectImage ? (
                             <span className={styles.projectCardThumb}>
-                                <img alt={project.name} src={project.projectImage} />
+                                <OBPPublicImage
+                                    alt={project.name}
+                                    src={project.projectImage}
+                                    fallback={(
+                                        <span className={styles.projectCardThumbFallback} aria-hidden="true">
+                                            <LuBookOpen size={34} />
+                                        </span>
+                                    )}
+                                />
                             </span>
                         ) : (
                             <span className={styles.projectCardThumbFallback} aria-hidden="true">

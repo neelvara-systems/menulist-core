@@ -7,7 +7,7 @@ const { Title } = Typography;
 const { TextArea } = Input;
 
 interface LocationInfoTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const LocationInfoTab = forwardRef<HTMLDivElement, LocationInfoTabProps>(({ scrollRef }, ref) => {

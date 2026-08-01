@@ -14,6 +14,7 @@
 import QRCode from 'qrcode';
 import { resolveMenuKitBrandTokens } from '../brandTokens';
 import { getOfferingLabels } from '../businessTypeLabels';
+import { truncateCanvasText } from '../canvasPrimitives';
 import { PreloadedLogo } from '../imageLoader';
 import { drawMenuListAttribution, MENU_LIST_ATTRIBUTION_TEXT } from '../platformAttribution';
 import { MenuKitInput } from '../types';
@@ -91,13 +92,7 @@ export async function generateTakeawayCard(input: TakeawayInput): Promise<Blob> 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
 
-    // Truncate long names
-    let displayName = storeName;
-    while (ctx.measureText(displayName).width > textMaxW && displayName.length > 3) {
-        displayName = displayName.slice(0, -1);
-    }
-    if (displayName !== storeName) displayName += '\u2026';
-    ctx.fillText(displayName, textX, contentY);
+    ctx.fillText(truncateCanvasText(ctx, storeName, textMaxW), textX, contentY);
 
     // "SAVE OUR MENU" / "SAVE OUR SERVICES"
     ctx.font = 'bold 30px system-ui, -apple-system, sans-serif';
@@ -113,7 +108,7 @@ export async function generateTakeawayCard(input: TakeawayInput): Promise<Blob> 
     if (shortLink) {
         ctx.font = '20px system-ui, -apple-system, sans-serif';
         ctx.fillStyle = brand.muted;
-        ctx.fillText(shortLink, textX, contentY + 140);
+        ctx.fillText(truncateCanvasText(ctx, shortLink, textMaxW), textX, contentY + 140);
     }
 
     // Bottom branding — tiny, right-aligned

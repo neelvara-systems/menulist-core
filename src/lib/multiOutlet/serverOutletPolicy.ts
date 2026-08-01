@@ -6,9 +6,9 @@ import {
     normalizeMultiOutletProjectId,
 } from "@lib/multiOutlet/projectIdBoundary";
 import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
+import { normalizePersistedOutletPolicy } from "@lib/multiOutlet/outletPolicyBoundary";
 import { resolveStorePermissionScopeDocumentIdAliases } from "@lib/permissions/scopeDocumentId";
 import {
-    DEFAULT_OUTLET_POLICY,
     LOCAL_CATEGORY_PREFIX,
     LOCAL_ITEM_PREFIX,
     type OutletPolicy,
@@ -125,10 +125,8 @@ export async function getLinkedOutletPolicyBlockReason({
     ) {
         return "Store access is required";
     }
-    const policy: OutletPolicy = {
-        ...DEFAULT_OUTLET_POLICY,
-        ...(masterStoreSnap.data()?.outletPolicy || {}),
-    };
+    const policy = normalizePersistedOutletPolicy(masterStoreSnap.data()?.outletPolicy);
+    if (!policy) return "Store access is required";
 
     return getPolicyBlockReason(policy, action, itemIds.filter(Boolean), categoryIds.filter(Boolean));
 }

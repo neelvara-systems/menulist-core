@@ -41,9 +41,13 @@ export const emitMenuListAnswerlatticeWorkflowEvent = (
     eventName: MenuListAnswerlatticeEvent,
 ): boolean => {
     if (typeof window === 'undefined') return false;
-    return (window as MenuListAnswerlatticeRuntimeWindow)
-        .AnswerlatticeWidget
-        ?.emitWorkflowEvent?.(eventName) === true;
+    try {
+        return (window as MenuListAnswerlatticeRuntimeWindow)
+            .AnswerlatticeWidget
+            ?.emitWorkflowEvent?.(eventName) === true;
+    } catch {
+        return false;
+    }
 };
 
 export const isVerifiedMenuPublishResult = (

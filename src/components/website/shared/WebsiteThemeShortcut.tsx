@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useTheme } from '../shadcn/theme-provider';
 
 function isInputTarget(target: EventTarget | null) {
@@ -14,7 +14,7 @@ function isInputTarget(target: EventTarget | null) {
   return isTextInput || isEditable;
 }
 
-export default function WebsiteThemeShortcut() {
+export default function WebsiteThemeShortcut(): ReactNode {
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {

@@ -191,7 +191,7 @@ assertIncludes(summaryRoute, 'getPublicTruthMonitorSessionScope', 'summary route
 assertIncludes(summaryRoute, 'const sessionScope = getPublicTruthMonitorSessionScope(session);', 'summary route normalized session scope');
 assertIncludes(summaryRoute, 'verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request)', 'summary route normalized tenant access');
 assertIncludes(summaryRoute, 'readAuthorizedPublicTruthMonitorSummaryServer({', 'summary route transaction-authorized summary read');
-assertIncludes(summaryRoute, 'authorizeStore: (storeData) => {', 'summary route transaction-current permission callback');
+assertIncludes(summaryRoute, 'authorizeStore: async (storeData) => {', 'summary route transaction-current permission callback');
 assertIncludes(summaryRoute, 'sessionScope.storeScope.numericId', 'summary route normalized store permission scope');
 assertIncludes(summaryRoute, 'tenantId: sessionScope.tenantScope.documentId', 'summary route transaction-current tenant scope');
 assertNotIncludes(summaryRoute, 'Number(session.sId)', 'summary route must not loose-coerce store scope');
@@ -221,7 +221,7 @@ assertIncludes(refreshRoute, 'readPublicTruthMonitorProjectSummariesServer(sessi
 assertIncludes(refreshRoute, 'tId: sessionScope.tenantScope.documentId', 'refresh route normalized project read tenant scope');
 assertIncludes(refreshRoute, 'storeId: sessionScope.storeScope.documentId', 'refresh route normalized summary write scope');
 assertIncludes(refreshRoute, 'tenantId: sessionScope.tenantScope.documentId', 'refresh route transaction-current tenant scope');
-assertIncludes(refreshRoute, 'authorizeStore: (currentStoreData) => {', 'refresh route transaction-current permission callback');
+assertIncludes(refreshRoute, 'authorizeStore: async (currentStoreData) => {', 'refresh route transaction-current permission callback');
 assertNotIncludes(refreshRoute, 'Number(session.sId)', 'refresh route must not loose-coerce store scope');
 assertNotIncludes(refreshRoute, 'Number(session.tId)', 'refresh route must not loose-coerce tenant scope');
 assertIncludes(summaryRoute, 'failClosedOnProviderError: true', 'summary route fail-closed rate limit');
@@ -242,7 +242,7 @@ assertIncludes(serverDal, 'transaction.get(subscriptionRef)', 'server DAL reads 
 assertIncludes(serverDal, 'transaction.get(tenantRef)', 'server DAL reads current tenant inside transaction');
 assertIncludes(serverDal, 'transaction.get(summaryRef)', 'server DAL reads current summary inside transaction');
 assertIncludes(serverDal, 'isCurrentPublicTruthMonitorStoreScope({', 'server DAL current ownership and lifecycle guard');
-assertIncludes(serverDal, '|| !params.authorizeStore(storeData!)', 'server DAL current permission guard');
+assertIncludes(serverDal, '|| !await params.authorizeStore(storeData!)', 'server DAL current permission guard');
 assertIncludes(serverDal, '|| !params.authorizeSubscription(subscriptionData, storeData!)', 'server DAL current entitlement guard');
 assertIncludes(serverDal, 'transaction.set(summaryRef', 'server DAL writes summary inside transaction');
 

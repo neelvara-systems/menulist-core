@@ -22,6 +22,9 @@
 - When `Create new menu` is chosen, create the new project, refresh/select it, and attach the processing job to that project.
 - After the owner continues in the current project, show detected business details as checkboxes when they differ from current store truth.
 - Save only selected identity fields and keep skipped fields unchanged.
+- After the acknowledged write, merge selected fields into browser context
+  only when the same tenant and store are still active; a late response after
+  a location/account switch must leave the new context untouched.
 - Process only valid menu/list files. Ignored non-menu files are removed from temporary storage.
 - Use large touch targets and simple actions.
 - Keep extraction job flow unchanged after confirmation.

@@ -17,6 +17,6 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
     {
         label: 'Review approved answers',
         href: '/product/knowledge-governance',
-        description: 'Use Knowledge Map, Product Friction Evidence, Answer Tests, and release impact to review approved answers and keep support truth current.',
+        description: 'Use Knowledge Map, Product Friction Evidence, release impact, and evidence-backed answer tests before support becomes official.',
     },
 ];

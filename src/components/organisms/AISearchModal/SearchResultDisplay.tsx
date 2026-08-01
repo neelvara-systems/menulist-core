@@ -17,7 +17,7 @@ import { SearchDisplayResultReferenceType } from './types';
 interface SearchResultDisplayProps {
     state: SearchState;
     isTyping: boolean;
-    answerContainerRef: React.RefObject<HTMLDivElement>;
+    answerContainerRef: React.RefObject<HTMLDivElement | null>;
     handleSkipTyping: () => void;
     handleRegenerate: () => void;
 }
@@ -136,7 +136,7 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                                                 <List.Item.Meta
                                                     avatar={<CategoryIcon icon={item.category.icon} />}
                                             title={<a href={articleHref} target="_blank" rel="noopener noreferrer">{item.article.title || `Reference ${index + 1}`}</a>}
-                                            description={`${item.category.title} / ${item.section.title}`}
+                                            description={`${item.category.title} / ${item.section?.title ?? 'General'}`}
                                         />
                                     </List.Item>
                                     {isExpanded && resolvedArticle && (
@@ -166,7 +166,7 @@ export default function SearchResultDisplay({ state, isTyping, answerContainerRe
                 answer={state.data.craftedAnswer}
                 onRegenerate={handleRegenerate}
                 isTyping={isTyping}
-                searchHistoryId={state.data?.searchHistoryId}
+                searchHistoryId={state.data?.searchHistoryId ?? null}
             />
 
             {/* Display additional information */}

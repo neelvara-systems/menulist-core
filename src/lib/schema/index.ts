@@ -16,6 +16,7 @@ import {
 } from '@data/shared/businessTypes';
 import { normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from '@lib/obp/publicLinks';
 import { parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
+import { normalizeSpecialHours } from '@lib/hours/specialHours';
 import { getActiveTempStatus } from '@lib/tempStatus/statusBoundary';
 import { normalizePhoneNumberForStorage, type PhoneNumberStorageInput } from '@lib/phone/phoneNumber';
 
@@ -288,6 +289,58 @@ export function buildOpeningHours(storeData: any) {
         ));
 
     return specs.length > 0 ? specs : undefined;
+}
+
+/**
+ * Build exact-date overrides for schema.org `specialOpeningHoursSpecification`.
+ * A closed date omits `opens`/`closes`, which schema.org defines as closed.
+ */
+export function buildSpecialOpeningHours(storeData: any) {
+    const specialHours = normalizeSpecialHours(storeData?.specialHours);
+    if (!specialHours) return undefined;
+
+    const specs = Object.entries(specialHours).flatMap(([date, entry]) => {
+        const ranges = parseWorkingHoursRanges(entry.hours);
+        if (!ranges.length) {
+            return [{
+                '@type': 'OpeningHoursSpecification' as const,
+                validFrom: date,
+                validThrough: date,
+            }];
+        }
+        return ranges.map((range) => ({
+            '@type': 'OpeningHoursSpecification' as const,
+            closes: range.endTime,
+            opens: range.startTime,
+            validFrom: date,
+            validThrough: date,
+        }));
+    });
+
+    return specs.length ? specs : undefined;
+}
+
+/**
+ * Compose persisted date-specific hours with an active whole-business
+ * temporary closure. A temporary closure replaces only its own local date;
+ * future and past date-specific entries remain available to consumers.
+ */
+export function buildEffectiveSpecialOpeningHours(
+    storeData: any,
+    now = new Date(),
+) {
+    const specialHours = buildSpecialOpeningHours(storeData) || [];
+    const temporaryClosure = buildTempStatusSchema(
+        storeData?.tempStatus,
+        storeData?.timeZone,
+        now,
+    );
+    if (!temporaryClosure) return specialHours.length ? specialHours : undefined;
+
+    return [
+        ...specialHours.filter((entry) => entry.validFrom !== temporaryClosure.validFrom),
+        temporaryClosure,
+    ];
 }
 
 /**

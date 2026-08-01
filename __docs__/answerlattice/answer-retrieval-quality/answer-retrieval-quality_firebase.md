@@ -28,7 +28,7 @@ There is no new listener, collection fanout, scheduled task, provider call, Stor
 
 ## Rules, indexes, and deployment
 
-No Firestore rule, Firestore index, or Storage rule changed. Browser clients still cannot write canonical truth directly; governance remains server-owned. The dedicated Functions public-citation projector used by context-bundle repair changed, so the maintained `answerlattice-qa` Functions target must be deployed after the existing Firebase CLI authentication/project-access blocker is removed. Local source/build proof does not establish that deployment.
+No Firestore rule, Firestore index, or Storage rule changed. Browser clients still cannot write canonical truth directly; governance remains server-owned. The dedicated Functions public-citation projector used by context-bundle repair now rejects the complete IPv6 link-local and deprecated site-local ranges, so the maintained `answerlattice-qa` `answerlatticeNightly` and `triggerAnswerlatticeNightly` targets must be deployed after the existing Firebase CLI authentication/project-access blocker is removed. Local source/build proof does not establish that deployment.
 
 ## Retention and deletion
 

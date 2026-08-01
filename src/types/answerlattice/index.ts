@@ -22,7 +22,8 @@ import type { SourceContext } from "@type/multiProduct";
 import type { Content } from "@tiptap/core";
 
 export interface AnswerlatticeDocumentIdentity {
-    pId?: ProductId;
+    /** Persisted Answerlattice documents are always product-partitioned as AL. */
+    pId: Extract<ProductId, 'AL'>;
     sourceContext?: SourceContext;
     traceId?: string;
     requestId?: string;
@@ -506,8 +507,10 @@ export interface AnswerlatticeRelease extends AnswerlatticeDocumentIdentity {
     entityChanges: string[];     // entityIds modified in this release
     status: AnswerlatticeReleaseStatus;
     requestFingerprint?: string;
+    impactFingerprint?: string;
     activation?: {
         requestId: string;
+        impactFingerprint: string;
         startedAt: Timestamp;
         leaseExpiresAt: Timestamp;
     };

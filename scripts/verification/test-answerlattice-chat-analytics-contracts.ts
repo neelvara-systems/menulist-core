@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
     getAnswerlatticeChatWorkspaceScopeKey,
     getAnswerlatticeAnalyticsQueryWindow,
+    getAnswerlatticeTrailingAnalyticsQueryWindow,
     isAnswerlatticeChatWorkspaceScopeAcknowledgement,
     normalizeAnswerlatticeAnalyticsDays,
     normalizeAnswerlatticeAnalyticsPageSize,
@@ -10,6 +11,7 @@ import {
 } from '../../src/lib/answerlattice/chatAnalyticsContracts';
 import {
     getAnswerlatticeCompletedWeeklyWindows,
+    getAnswerlatticeWeeklyInsightWriteDecision,
     getAnswerlatticeWeeklySummaryFreshness,
     parseAnswerlatticeFeedbackIntelligence,
     parseAnswerlatticeWeeklySummary,
@@ -293,6 +295,25 @@ assert.equal(getAnswerlatticeAnalyticsQueryWindow({
     start: new Date('2026-04-12T00:00:00.000Z'),
     end: new Date('2026-07-11T00:00:00.000Z'),
 }, now), null, 'more than 90 inclusive analytics days must fail closed');
+assert.deepEqual(getAnswerlatticeTrailingAnalyticsQueryWindow(30, new Date('2026-03-01T12:00:00.000Z')), {
+    startDateKey: '2026-01-31',
+    endDateKey: '2026-03-01',
+    historicalEndDateKey: '2026-02-28',
+    historicalStartDateKey: '2026-01-31',
+    includesToday: true,
+    dayCount: 30,
+    todayDateKey: '2026-03-01',
+});
+assert.deepEqual(getAnswerlatticeTrailingAnalyticsQueryWindow(1, now), {
+    startDateKey: '2026-07-11',
+    endDateKey: '2026-07-11',
+    historicalEndDateKey: null,
+    historicalStartDateKey: null,
+    includesToday: true,
+    dayCount: 1,
+    todayDateKey: '2026-07-11',
+});
+assert.equal(getAnswerlatticeTrailingAnalyticsQueryWindow(30, new Date('invalid')), null);
 
 const scope = { tenantId: 11, storeId: 101 };
 assert.deepEqual(getAnswerlatticeCompletedWeeklyWindows(new Date('2026-07-11T23:59:59.999Z')), {
@@ -309,6 +330,36 @@ assert.deepEqual(getAnswerlatticeCompletedWeeklyWindows(new Date('2024-03-01T00:
 });
 assert.equal(getAnswerlatticeCompletedWeeklyWindows(new Date('invalid')), null);
 assert.equal(getAnswerlatticeCompletedWeeklyWindows(new Date('2026-07-11T00:00:00.000Z'), 32), null);
+const weeklySourceHash = 'a'.repeat(64);
+assert.equal(getAnswerlatticeWeeklyInsightWriteDecision(null, {
+    sourceHash: weeklySourceHash,
+    weekEnd: '2026-07-10',
+}), 'write');
+assert.equal(getAnswerlatticeWeeklyInsightWriteDecision({
+    sourceHash: weeklySourceHash,
+    weekEnd: '2026-07-10',
+}, {
+    sourceHash: weeklySourceHash,
+    weekEnd: '2026-07-10',
+}), 'current');
+assert.equal(getAnswerlatticeWeeklyInsightWriteDecision({
+    sourceHash: 'b'.repeat(64),
+    weekEnd: '2026-07-17',
+}, {
+    sourceHash: weeklySourceHash,
+    weekEnd: '2026-07-10',
+}), 'superseded');
+assert.equal(getAnswerlatticeWeeklyInsightWriteDecision({
+    sourceHash: 'b'.repeat(64),
+    weekEnd: 'malformed',
+}, {
+    sourceHash: weeklySourceHash,
+    weekEnd: '2026-07-10',
+}), 'write');
+assert.equal(getAnswerlatticeWeeklyInsightWriteDecision(null, {
+    sourceHash: 'not-a-hash',
+    weekEnd: '2026-07-10',
+}), 'invalid');
 const generatedAt = { seconds: 1_720_000_000, nanoseconds: 0 };
 const validWeekly = {
     pId: 'AL',

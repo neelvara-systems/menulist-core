@@ -297,7 +297,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
             const data = await readMobileOutletActionResponse(res, buildMobileLocationLogContext('deactivate_outlet', {
                 ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
             }));
-            if (!isOutletDeactivateResponse(data)) {
+            if (!isOutletDeactivateResponse(data, outletStoreId)) {
                 const invalidResponseError = createMultiOutletStatusError('mobile_location_deactivate_response_invalid', res.status);
                 logMultiOutletFailure('mobile_location_deactivate_response_invalid', invalidResponseError, buildMobileLocationLogContext('deactivate_outlet', {
                     responseOk: res.ok,
@@ -402,7 +402,7 @@ function MobileLocationsScreenContent({ onBack, onOpenBilling }: MobileLocations
                 ...getBoundedMultiOutletStringContext('outletStoreId', submittedTarget.storeId),
                 ...getBoundedMultiOutletStringContext('proposedSlug', submittedSlug),
             }));
-            if (!isOutletRenameResponse(data)) {
+            if (!isOutletRenameResponse(data, submittedTarget.storeId, submittedSlug)) {
                 const invalidResponseError = createMultiOutletStatusError('mobile_location_rename_response_invalid', res.status);
                 logMultiOutletFailure('mobile_location_rename_response_invalid', invalidResponseError, buildMobileLocationLogContext('rename_outlet', {
                     responseOk: res.ok,

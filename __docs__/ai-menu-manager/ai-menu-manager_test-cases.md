@@ -295,6 +295,19 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 ### AMM-PLAN-003: Prepare Intent Is Not Execution Authority
 
 **Given** the planner returns `prepare_action` for `item_price_update` with a selected-context item ID and new price.
+
+**And** the normalized route must correlate `prepare_action`, mutation,
+approval, and action-type presence exactly; any inverse combination is
+rejected before materialization or card construction.
+
+**And** the browser must runtime-validate the bounded planner JSON rather than
+trust a generic TypeScript response cast. Missing routes, blank owner copy,
+unknown provider/tool values, oversized collections, invalid action types, and
+contradictory safety fields fall back without producing an owner card.
+
+**And** approved mutation patches reject undeclared top-level/design data,
+duplicate/blank/whitespace target IDs, per-item update keys outside the
+declared targets, and missing per-target updates when no shared update exists.
 **Then** MenuList materializes an owner-readable command and structured entity context.
 **And** the deterministic resolver must reproduce a compatible registered action before a proposal card is created.
 **And** the provider cannot supply the project patch, approval level, execution directive, receipt, or completion state.
@@ -951,11 +964,23 @@ Disabling `ENABLE_AI_MENU_MANAGER_RULES` stops rule suggestion and rule executio
 
 ## Regression Tests
 
+- Recovered or tampered approval patches with correct field names but invalid
+  values fail closed before execution: object prices, string booleans,
+  malformed localized maps, non-manual description sources, invalid
+  durations, notes, decision-block values, layouts, moods, display flags and
+  colors are rejected.
+- Design preset keys are required for preset actions and rejected on direct
+  layout, mood, visibility and color actions.
+- Persisted proposal timestamps with throwing `toDate` access, Date proxies or
+  throwing legacy seconds fields fail closed without aborting recovery.
 - Suggestion chooser selection fills the composer and does not prepare a card until the owner presses Send.
 - Empty-state starter cards prioritize frequent daily operations: Store closed today, Change working hours, and a contextual sold-out item when available. They fill the composer or open a second-layer suggestion choice and do not prepare a card until the owner presses Send.
 - Suggestion chooser groups are contextual to the selected menu and include quick fixes, promotion, photos/content, style, and publish/import where relevant.
 - Suggestion chooser supports a two-layer guided flow for settings-style work: the owner first chooses the action area, then chooses the exact option such as Premium & Minimal, Grid layout, Closed today, Copy screen link, or Download feedback QR.
 - Moving between suggestion layers is local UI state only and creates zero Firebase reads or writes.
+- Malformed/hostile persisted project access and project file sets beyond the
+  canonical cap produce no contextual quick-fix or attention rows; desktop
+  and mobile retain static safe navigation suggestions.
 - Work on context picker selection fills no card by itself and creates zero Firebase reads or writes.
 - Work on > Item supports multi-select. Selecting three items and sending "increase price by 10" creates one bulk price proposal with old/new rows for the selected items only.
 - Work on > Category supports one selected category. Sending "deactivate" creates a category visibility proposal for that category; sending "increase price by 10" creates a category-scoped bulk price proposal.
@@ -1025,6 +1050,9 @@ Required implementation checks:
 - every protected route has auth, tenant validation, Zod validation, and rate limiting where required.
 - project writes preserve cache invalidation.
 - compact session/proposal arrays enforce max lengths.
+- timeline projection rejects malformed message/card/receipt identities,
+  contains hostile arrays/accessors, and safely ignores invalid Date,
+  Firestore Timestamp or legacy seconds values.
 - deterministic command uses the loaded snapshot for immediate duplicate suppression and a current-session transaction read for concurrency-safe merge; completion and cancel also merge against a transaction-local session read.
 - retry-safe command/proposal/approval paths do not duplicate writes.
 - active inbox loading does not scan historical sessions.

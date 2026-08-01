@@ -4,6 +4,7 @@ import {
     readResponseUint8ArrayWithLimit,
 } from "@lib/security/boundedResponseBody";
 import { UserUploadedFileType } from "@type/common";
+import { validateMagicBytes } from "@lib/security/magicBytesValidator";
 
 const MAX_AI_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024;
 const SUPPORTED_AI_IMAGE_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
@@ -36,7 +37,7 @@ function getProjectStorageBucketFallback(): string {
 }
 
 function parseImageDataUrl(dataUrl: string): { base64ImageData: string; mimeType: string } {
-    const match = dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([\s\S]+)$/i);
+    const match = dataUrl.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,([A-Za-z0-9+/]*={0,2})$/i);
     if (!match) {
         throw new Error("Invalid image data URL format.");
     }
@@ -45,8 +46,14 @@ function parseImageDataUrl(dataUrl: string): { base64ImageData: string; mimeType
     const base64ImageData = match[2];
     assertSupportedMimeType(mimeType);
 
-    if (!base64ImageData || getApproximateBase64Bytes(base64ImageData) > MAX_AI_REFERENCE_IMAGE_BYTES) {
+    if (!base64ImageData || base64ImageData.length % 4 === 1) {
+        throw new Error("Invalid source image.");
+    }
+    if (getApproximateBase64Bytes(base64ImageData) > MAX_AI_REFERENCE_IMAGE_BYTES) {
         throw new Error("Image is too large.");
+    }
+    if (!validateMagicBytes(dataUrl, mimeType).valid) {
+        throw new Error("Invalid source image.");
     }
 
     return { base64ImageData, mimeType };
@@ -134,6 +141,10 @@ export const getImageAsBase64 = async (
             throw new Error("Unable to read source image.");
         }
 
+        const exactImageBuffer = Uint8Array.from(imageBytes).buffer;
+        if (!validateMagicBytes(exactImageBuffer, mimeType).valid) {
+            throw new Error("Invalid source image.");
+        }
         base64ImageData = Buffer.from(imageBytes).toString('base64');
     } else if (referanceImage.url && typeof referanceImage.url === 'string' && referanceImage.url.startsWith('data:')) {
         ({ base64ImageData, mimeType } = parseImageDataUrl(referanceImage.url));

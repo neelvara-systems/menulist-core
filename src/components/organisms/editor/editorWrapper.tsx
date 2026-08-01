@@ -1,6 +1,7 @@
 import { Flex } from 'antd'
+import type { ReactNode } from 'react';
 
-function EditorWrapper({ children, gap = 10 }) {
+function EditorWrapper({ children, gap = 10 }: { children: ReactNode; gap?: number }) {
 
     return (
 

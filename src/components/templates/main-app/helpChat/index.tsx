@@ -14,6 +14,7 @@ import FeedbackModal from './FeedbackModal';
 import { useChatData } from './hooks/useChatData';
 import { useChatHandlers } from './hooks/useChatHandlers';
 import { ChatMode } from './types';
+import type { ChatSession } from '@type/chatSession';
 
 const { Text } = Typography;
 
@@ -122,14 +123,14 @@ function HelpChatScoped({ open, onClose, productContext, loggedInSession }: Help
 
     const chatHistoryNode = (
         <ChatHistory
-            sessions={chatSessions.filter(s => s.id !== null)}
-            activeSessionId={activeSessionId}
+            sessions={chatSessions.filter((session): session is ChatSession & { id: string } => typeof session.id === 'string')}
+            activeSessionId={activeSessionId ?? null}
             onSessionClick={isMobile ? handleMobileSessionClick : handlers.handleSessionClick}
             onNewChat={isMobile ? handleMobileNewChat : handlers.handleNewChat}
             mode={currentMode}
             onModeChange={handlers.handleModeChange}
-            hasMessages={activeSession?.messages.length > 0 || false}
-            disableModeToggle={activeSession?.mode === 'assistant' && (activeSession?.messages.length > 0)}
+            hasMessages={(activeSession?.messages?.length ?? 0) > 0}
+            disableModeToggle={activeSession?.mode === 'assistant' && (activeSession.messages?.length ?? 0) > 0}
             onRenameSession={handlers.handleRenameSession}
             onDeleteSession={handlers.handleDeleteSession}
             onClearAllData={handlers.handleClearAllData}

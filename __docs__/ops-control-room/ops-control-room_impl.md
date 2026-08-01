@@ -1,7 +1,12 @@
 # Internal Ops Control Room And Platform Monitoring — Implementation
 
 **Status:** Implemented; code is the primary source
-**Last updated:** July 16, 2026
+**Last updated:** July 29, 2026
+
+Platform-alert classification treats the shared trigger registry as the
+fallback authority. Only admitted product, category, and severity overrides
+are projected; malformed stored values fall back to the trigger entry and
+cannot downgrade a critical alert or invent an operator-facing union value.
 
 ## Current authorization
 

@@ -1,6 +1,6 @@
 # Product Friction Evidence
 
-**Status:** Implemented and Feature 13 source-hardened on July 18, 2026. QA deployment and hosted readback remain pending authenticated Firebase access.
+**Status:** Implemented, source-hardened, and extended with a zero-Firebase-cost owner evidence brief on July 30, 2026. QA deployment and hosted readback of the underlying summaries remain pending authenticated Firebase access.
 
 Product Friction Evidence turns bounded support events and canonical-answer fallbacks into a compact review queue for active product entities. It helps a founder decide which product areas and approved answers need investigation. It does not measure product health, customer satisfaction, answer accuracy, or verified resolution.
 
@@ -19,7 +19,8 @@ defect, user-experience problem, or customer-journey failure.
 5. A complete UTC seven-day window ending yesterday is compared with the prior seven days.
 6. All admitted entities contribute to totals; the owner view retains the top ten review areas and up to five emerging topics.
 7. An optional weekly provider call can write an advisory review summary after strict output validation and a source-snapshot recheck.
-8. The owner reviews underlying evidence before changing product behavior or approved answers.
+8. The owner can choose a non-causal review path and prepare a deterministic Markdown evidence brief from the already-loaded entity summary.
+9. The owner reviews underlying evidence before changing product behavior or approved answers.
 
 ## Metric Meaning
 
@@ -41,8 +42,12 @@ defect, user-experience problem, or customer-journey failure.
 - Preserve a selected Daily Brief entity, provide a read-only Knowledge Map
   handoff for each ranked area, and render validated entity-specific advisory
   actions as review links rather than mutations: implemented.
-- Validate workflow hierarchy, release comparison, and owner-confirmed reason
-  classification with real founder workspaces before development.
+- Let the owner copy or download a bounded evidence brief for product,
+  engineering, or knowledge review without adding a saved product-problem
+  object, integration call, or automatic diagnosis: implemented.
+- Validate workflow hierarchy, release comparison, persisted decision memory,
+  and owner-confirmed root-cause classification with real founder workspaces
+  before development.
 - Do not add session replay, product-event tracking, funnel analytics,
   automatic root-cause claims, or autonomous fixes.
 
@@ -64,7 +69,9 @@ defect, user-experience problem, or customer-journey failure.
 - `src/lib/answerlattice/analyticsIntelligenceContracts.ts`
 - `src/database/answerlattice/frictionStats.ts`
 - `src/hooks/answerlattice/useFrictionInsights.ts`
+- `src/lib/answerlattice/frictionEvidenceBrief.ts`
 - `src/components/templates/answerlattice/governance/FrictionTab.tsx`
+- `src/components/templates/answerlattice/governance/FrictionEvidenceBriefDrawer.tsx`
 - `scripts/verification/test-answerlattice-support-metrics-contracts.ts`
 
 ## Documents

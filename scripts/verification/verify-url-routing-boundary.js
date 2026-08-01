@@ -38,6 +38,12 @@ function assertNotIncludes(content, needle, label) {
   assert(!content.includes(needle), `${label} must not include ${needle}`);
 }
 
+assertNotIncludes(
+  read('src/config/features.ts'),
+  'ENABLE_STORED_SLUGS',
+  'Stored-slug permanence must not be represented by a no-op rollback flag',
+);
+
 function assertOrder(content, first, second, label) {
   const firstIndex = content.indexOf(first);
   const secondIndex = content.indexOf(second);
@@ -497,11 +503,14 @@ function verifyPublicPathSegmentBoundary() {
   ].forEach((token) => assertIncludes(reservedSlugs, token, 'Reserved outlet slug boundary'));
 
   [
-    'publicOutletSlug: normalizePublicOutletSlug(outlet.outletSlug)',
-    'outlet.publicOutletSlug',
-  ].forEach((token) => assertIncludes(brandObp, token, 'Brand OBP public outlet slug boundary'));
+    "return [{ ...outlet, publicPath: 'menu' }];",
+    'const publicOutletSlug = normalizePublicOutletSlug(outlet.outletSlug);',
+    '? [{ ...outlet, publicPath: publicOutletSlug }]',
+    'outlet.publicPath',
+  ].forEach((token) => assertIncludes(brandObp, token, 'Brand OBP public location path boundary'));
   assertNotIncludes(brandObp, '${baseUrl}/${outlet.outletSlug}', 'Brand OBP raw outlet slug href');
   assertNotIncludes(brandObp, '!!o?.outletSlug', 'Brand OBP truthy-only outlet slug filter');
+  assertNotIncludes(brandObp, '`store-${outlet.storeId}`', 'Brand OBP synthetic outlet path fallback');
 
   [
     'const publicOutletSlug = isOutletSurface ? normalizePublicOutletSlug(store?.outletSlug) : null;',

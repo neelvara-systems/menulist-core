@@ -23,6 +23,7 @@ import {
     isMenuListSubscriptionInExpectedEntitlementScope,
 } from "@lib/billing/menuListSubscriptionEntitlementBoundary";
 import { getProductSubscriptionBillingScope } from "@lib/billing/productSubscriptionScopeBoundary";
+import { getExactMasterStoreIdFromList } from "@lib/billing/masterStoreBoundary";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
 
@@ -42,7 +43,7 @@ type TimestampLike = {
 };
 
 const isTimestampLike = (value: unknown): value is TimestampLike => (
-    value
+    Boolean(value)
     && typeof value === "object"
     && typeof (value as Partial<TimestampLike>).toDate === "function"
     && typeof (value as Partial<TimestampLike>).seconds === "number"
@@ -127,10 +128,21 @@ export const updateSubscriptionServer = async (
     const subscriptionRef = getSubscriptionDocRefServer(subscriptionId);
     await firestoreAdmin.runTransaction(async (transaction) => {
         const snapshot = await transaction.get(subscriptionRef);
-        if (!snapshot.exists || !getMenuListSubscriptionEntitlementScope(snapshot.data())) {
+        const current = snapshot.data();
+        const currentScope = snapshot.exists
+            ? getMenuListSubscriptionEntitlementScope(current)
+            : null;
+        if (!currentScope) {
             throw new Error('MenuList subscription does not match the requested product and scope.');
         }
-        transaction.set(subscriptionRef, composeServerSubscriptionPayload(data), { merge: true });
+        const update = composeServerSubscriptionPayload(data);
+        if (!isMenuListSubscriptionInExpectedEntitlementScope(
+            { ...current, ...update },
+            currentScope,
+        )) {
+            throw new Error('MenuList subscription scope is immutable.');
+        }
+        transaction.set(subscriptionRef, update, { merge: true });
     });
 };
 
@@ -215,39 +227,7 @@ export const confirmManualSubscriptionPaymentServer = async (params: {
 };
 
 const getMasterStoreIdFromList = (storesList?: MinimalStoreDataType[]): number | null => {
-    if (!storesList?.length) return null;
-
-    const normalizedStores = storesList
-        .map((store) => {
-            const storeId = Number(store?.storeId);
-            return Number.isSafeInteger(storeId) && storeId > 0
-                ? { store, storeId }
-                : null;
-        })
-        .filter((store): store is { store: MinimalStoreDataType; storeId: number } => Boolean(store));
-
-    const explicitMaster = normalizedStores.find(({ store }) => (
-        store?.isMaster === true
-        || store?.storeDetails?.isMaster === true
-    ));
-    if (explicitMaster) return explicitMaster.storeId;
-
-    // Legacy tenants may have store.isMaster=true while tenants.storesList
-    // missed the same marker. If all outlets are explicitly isMaster:false,
-    // the remaining active unflagged store is the master without another read.
-    const activeStores = normalizedStores.filter(({ store }) => (
-        (store as any)?.active !== false
-        && store?.storeDetails?.active !== false
-    ));
-    if (activeStores.length === 1) return activeStores[0].storeId;
-
-    const unflaggedActiveStores = activeStores.filter(({ store }) => (
-        store?.isMaster !== false
-        && store?.storeDetails?.isMaster !== false
-    ));
-    if (unflaggedActiveStores.length === 1) return unflaggedActiveStores[0].storeId;
-
-    return null;
+    return getExactMasterStoreIdFromList(storesList);
 };
 
 const fetchSubscriptionRawServer = async (
@@ -264,7 +244,7 @@ const fetchSubscriptionRawServer = async (
     const activeSnapshot = await collectionRef
         .where("pId", "==", DEFAULT_PRODUCT_ID)
         .where("productId", "==", DEFAULT_PRODUCT_ID)
-        .where("status", "in", ["active", "past_due", "cancelled", "paused"])
+        .where("status", "in", ["active", "cancelled", "paused"])
         .where("cycleEndDate", ">=", now)
         .where("tenantId", "==", tenantScope.numericId)
         .where("tId", "==", tenantScope.numericId)
@@ -283,26 +263,24 @@ const fetchSubscriptionRawServer = async (
             : null;
     }
 
-    for (const status of ["paused", "pending"]) {
-        const fallbackSnapshot = await collectionRef
-            .where("pId", "==", DEFAULT_PRODUCT_ID)
-            .where("productId", "==", DEFAULT_PRODUCT_ID)
-            .where("status", "==", status)
-            .where("tenantId", "==", tenantScope.numericId)
-            .where("tId", "==", tenantScope.numericId)
-            .where("storeId", "==", storeScope.numericId)
-            .where("sId", "==", storeScope.numericId)
-            .limit(1)
-            .get();
-
-        if (!fallbackSnapshot.empty) {
-            const docSnap = fallbackSnapshot.docs[0];
-            const subscription = { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
-            const scope = getMenuListSubscriptionEntitlementScope(subscription);
-            return scope?.tenantId === tenantScope.numericId && scope.storeId === storeScope.numericId
-                ? subscription
-                : null;
-        }
+    const pastDueSnapshot = await collectionRef
+        .where("pId", "==", DEFAULT_PRODUCT_ID)
+        .where("productId", "==", DEFAULT_PRODUCT_ID)
+        .where("status", "==", "past_due")
+        .where("tenantId", "==", tenantScope.numericId)
+        .where("tId", "==", tenantScope.numericId)
+        .where("storeId", "==", storeScope.numericId)
+        .where("sId", "==", storeScope.numericId)
+        .orderBy("cycleEndDate", "desc")
+        .limit(1)
+        .get();
+    if (!pastDueSnapshot.empty) {
+        const docSnap = pastDueSnapshot.docs[0];
+        const subscription = { ...(docSnap.data() as FirestoreSubscriptionDoc), id: docSnap.id };
+        const scope = getMenuListSubscriptionEntitlementScope(subscription);
+        return scope?.tenantId === tenantScope.numericId && scope.storeId === storeScope.numericId
+            ? subscription
+            : null;
     }
 
     return null;
@@ -313,10 +291,12 @@ const expireIfGracePeriodEndedServer = async (
 ): Promise<FirestoreSubscriptionDoc | null> => {
     const expectedScope = getMenuListSubscriptionEntitlementScope(sub);
     if (!expectedScope) return null;
-    if (!sub.pastDueSinceAt) return sub;
+    if (sub.status !== "past_due") return sub;
+    if (!sub.pastDueSinceAt) return null;
 
     const initialGracePeriod = getGracePeriodInfo(sub.pastDueSinceAt);
-    if (!initialGracePeriod.hasKnownGracePeriod || initialGracePeriod.remainingDays > 0) return sub;
+    if (!initialGracePeriod.hasKnownGracePeriod) return null;
+    if (initialGracePeriod.remainingDays > 0) return sub;
 
     if (!validateTransition(sub.status, "expired", "server:grace-period-auto-expire")) {
         return sub;
@@ -341,7 +321,10 @@ const expireIfGracePeriodEndedServer = async (
         }
 
         const gracePeriod = getGracePeriodInfo(current.pastDueSinceAt);
-        if (!gracePeriod.hasKnownGracePeriod || gracePeriod.remainingDays > 0) {
+        if (!gracePeriod.hasKnownGracePeriod) {
+            return { expired: false, subscription: null };
+        }
+        if (gracePeriod.remainingDays > 0) {
             return { expired: false, subscription: current };
         }
         if (!validateTransition(current.status, "expired", "server:grace-period-auto-expire")) {

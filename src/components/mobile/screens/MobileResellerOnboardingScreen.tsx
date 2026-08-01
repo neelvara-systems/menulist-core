@@ -463,9 +463,9 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                     <Card title="Business details">
                         <Flex gap={10} vertical>
                             <Input onChange={(value) => updateDraft('businessName', value)} placeholder="Business name" value={draft.businessName} />
-                            <Select onChange={(value) => updateDraft('businessType', value)} options={businessTypeOptions} placeholder="Business type" value={draft.businessType} />
+                            <Select onChange={(value: string) => updateDraft('businessType', value)} options={businessTypeOptions} placeholder="Business type" value={draft.businessType} />
                             <Select
-                                onChange={(value) => {
+                                onChange={(value: string) => {
                                     updateDraft('ownerCountryCode', value);
                                     updateDraft('ownerDialCode', getDialCodeForCountry(value));
                                 }}

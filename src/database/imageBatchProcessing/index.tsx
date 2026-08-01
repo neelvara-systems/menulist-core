@@ -1,6 +1,19 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS, type BatchImageGenerationJobStatusType } from "@constant/AI";
 import { DB_COLLECTIONS } from "@constant/database";
-import { collection, getDoc, limit, orderBy, query, runTransaction, serverTimestamp, setDoc, Timestamp, where } from "@firebase/firestore";
+import {
+    collection,
+    type DocumentData,
+    getDoc,
+    limit,
+    orderBy,
+    query,
+    runTransaction,
+    serverTimestamp,
+    setDoc,
+    Timestamp,
+    type UpdateData,
+    where,
+} from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import {
@@ -242,8 +255,10 @@ export const updateImageBatchProcessingJob = async (data: ImageBatchOwnerUpdate,
             // Prepare the update data
             const updateData = await requestBodyComposer(processedData, { isNew: false });
 
-            const finalUpdateData: Record<string, unknown> = { ...updateData };
-            finalUpdateData.modifiedOn = serverTimestamp();
+            const finalUpdateData: UpdateData<DocumentData> = {
+                ...updateData,
+                modifiedOn: serverTimestamp(),
+            };
 
             const docRef = await getDocRef(jobId, { tId: projectScope.tId, sId: projectScope.sId });
             await runTransaction(firebaseClient, async (transaction) => {

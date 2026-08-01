@@ -5,6 +5,7 @@ import { LuCopy } from 'react-icons/lu';
 import type { WebsiteResourceSection } from '@/content/websiteResources/types';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { trackGoogleMarketingEvent, trackPlausibleEvent } from '@lib/website/plausible';
+import { getPublicAnalyticsUrl } from '@lib/website/publicAnalyticsContext';
 
 interface ArticleSectionProps {
     articleCluster: string;
@@ -27,7 +28,7 @@ function trackChecklistCopy(articleSlug: string, articleCluster: string, section
         cluster: articleCluster,
         section: sectionId,
         slug: articleSlug,
-        target_url: window.location.href,
+        target_url: getPublicAnalyticsUrl(window.location.href),
     });
 }
 

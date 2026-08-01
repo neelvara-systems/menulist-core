@@ -28,8 +28,8 @@ export default function MobileHelpScreen({ initialTab, onBack }: MobileHelpScree
     const { token } = theme.useToken();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const requestedTab = searchParams.get('tab');
-    const pathSegments = useMemo(() => pathname.split('/').filter(Boolean), [pathname]);
+    const requestedTab = searchParams?.get('tab');
+    const pathSegments = useMemo(() => (pathname ?? '').split('/').filter(Boolean), [pathname]);
     const isDirectHelpCenterRoute = pathSegments[0] === 'help-center';
     const requestedPathTab = pathSegments[0] === 'help-center' ? pathSegments[1] : null;
     const requestedArticleId = requestedPathTab === 'kb' && pathSegments[2] === 'articles' ? pathSegments[3] : undefined;

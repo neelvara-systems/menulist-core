@@ -1,5 +1,7 @@
 import type { Project } from '@template/main-app/projects/types/project.types';
 import type { StoreDataType } from '@type/platform/store';
+import { isPublishedMenuProject } from '@lib/menuPresence/presenceReadiness';
+import { normalizeStarterActivationTimestamp } from '@lib/onboarding/starterActivation';
 
 export type OwnerActionTone = 'attention' | 'ready' | 'stable';
 
@@ -47,7 +49,7 @@ export interface OwnerActionLayerSummary {
 
 interface BuildOwnerActionLayerInput {
     now?: Date;
-    project?: (Project & Record<string, any>) | null;
+    project?: Project | null;
     storeDetails?: Partial<StoreDataType> | null;
 }
 
@@ -60,9 +62,14 @@ const PLACEMENT_SURFACES = [
 const PLACEMENT_STALE_DAYS = 45;
 
 function hasWorkingHours(storeDetails?: Partial<StoreDataType> | null): boolean {
+    const workingHours = storeDetails?.workingHours;
     return Boolean(
-        storeDetails?.workingHours
-        && Object.values(storeDetails.workingHours as Record<string, unknown>).some(Boolean),
+        workingHours
+        && typeof workingHours === 'object'
+        && !Array.isArray(workingHours)
+        && Object.values(workingHours).some((value) => (
+            typeof value === 'string' && value.trim().length > 0
+        )),
     );
 }
 
@@ -85,31 +92,38 @@ function action(input: OwnerActionItem): OwnerActionItem {
     return input;
 }
 
+function hasNonEmptyString(value: unknown): boolean {
+    return typeof value === 'string' && value.trim().length > 0;
+}
+
 export function buildOwnerActionLayer({
     now = new Date(),
     project,
     storeDetails,
 }: BuildOwnerActionLayerInput): OwnerActionLayerSummary {
-    const hasProject = Boolean(project?.projectId);
-    const menuPublished = Boolean(project?.lastPublishedAt);
-    const menuVisible = project ? project.active !== false : true;
-    const publicLinkReady = Boolean(storeDetails?.customDomain || storeDetails?.subdomain);
+    const hasProject = hasNonEmptyString(project?.projectId);
+    const menuPublished = isPublishedMenuProject(project);
+    const menuVisible = project ? project.active !== false && project.deleted !== true : true;
+    const publicLinkReady = hasNonEmptyString(storeDetails?.customDomain)
+        || hasNonEmptyString(storeDetails?.subdomain);
     const hoursReady = hasWorkingHours(storeDetails);
-    const feedbackReady = Boolean(storeDetails) && storeDetails.feedbackEnabled !== false;
-    const presence = (storeDetails?.menuPresence || {}) as Record<string, string | undefined>;
+    const feedbackReady = storeDetails ? storeDetails.feedbackEnabled !== false : false;
     const confirmedPlacements = PLACEMENT_SURFACES
-        .map((surface) => ({ ...surface, timestamp: presence[surface.key] }))
-        .filter((surface) => Boolean(surface.timestamp));
+        .map((surface) => ({
+            ...surface,
+            timestamp: normalizeStarterActivationTimestamp(storeDetails?.menuPresence?.[surface.key]),
+        }))
+        .filter((surface): surface is typeof surface & { timestamp: string } => Boolean(surface.timestamp));
     const latestConfirmedTimestamp = confirmedPlacements
-        .map((surface) => surface.timestamp as string)
-        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+        .map((surface) => surface.timestamp)
+        .sort((a, b) => b.localeCompare(a))[0];
     const latestConfirmedDays = daysSince(latestConfirmedTimestamp, now);
     const placement: OwnerPlacementProof = {
         confirmedCount: confirmedPlacements.length,
         latestConfirmedLabel: formatPlacementAge(latestConfirmedTimestamp, now),
         latestConfirmedTimestamp,
         missingLabels: PLACEMENT_SURFACES
-            .filter((surface) => !presence[surface.key])
+            .filter((surface) => !confirmedPlacements.some((confirmed) => confirmed.key === surface.key))
             .map((surface) => surface.label),
         stale: latestConfirmedDays !== null && latestConfirmedDays > PLACEMENT_STALE_DAYS,
     };

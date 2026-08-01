@@ -109,6 +109,7 @@ This loop is the default for every non-trivial repo request. The user does not n
 - **MenuList**: Canonical public business truth infrastructure for SMB restaurants
 - **Answerlattice**: Governed Answer Infrastructure for SaaS Support (separate product)
 - **Website Asset Operating System**: Internal-only, separate-product-style asset architecture for MenuList/Answerlattice website media; never public by default
+- **Security Operating System**: Internal-only, separate-product-style security evidence architecture for the portfolio; never a public scanner or autonomous remediation service
 - **3-Product Separation**: MenuList vs GrowthOS vs KitStamp - never merge
 - **Infrastructure Identity**: MenuList is public utility, not SaaS software
 
@@ -291,6 +292,7 @@ Do not casually modify these files. If a task requires changes here, read the se
 - **Public Cache Invalidation**: Any code path that writes public-facing `projects` or `stores` truth must invalidate the public menu/OBP cache. Client/browser DAL paths must use `src/lib/cache/publicClientCache.ts`; server/API paths must revalidate `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. This applies to desktop, mobile, direct Firestore writes, API routes, special menus, PWA/customer app settings, and multi-outlet propagation/override flows.
 - **Website Auto-Sync**: If a feature changes public/customer-visible capability, check whether website copy, help docs, and output surfaces need updating.
 - **Website Asset Operating System Boundary**: Website asset generation, audits, briefs, manifests, and media review belong under `packages/asset-factory/` and `__docs__/website-asset-operating-system/`. Keep it internal-only unless a later explicit product-extraction decision creates a public runtime. It may read MenuList and Answerlattice website/docs/assets, but it must not write product data, create owner-facing UI, expose public routes, or blur into GrowthOS/KitStamp.
+- **Security Operating System Boundary**: Portfolio security profiles, surface maps, verifier evidence, grouped manual-selection bundles, provenance reviews, and local registry audits belong under `packages/security-os/`, `__docs__/security/security-operating-system/`, and `.agents/skills/security-os/`. Keep SecurityOS internal-only and read-only by default. Evidence bundles are planning aids and must never auto-execute their commands. SecurityOS may map owned source, rules, docs, and verifiers, but must not upload source/findings, scan production or third-party targets, auto-fix, auto-deploy, expose a public route, or treat mapped evidence as a passing security result. External scanners require a separate license, data-flow, credential, cost, and provenance decision.
 
 ---
 

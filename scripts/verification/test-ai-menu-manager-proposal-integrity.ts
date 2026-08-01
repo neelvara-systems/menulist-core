@@ -139,6 +139,31 @@ function run(): void {
     }, proposalId), null);
     assert.equal(normalizeAiMenuManagerProposalSnapshot({
         ...pending,
+        createdAt: Object.defineProperty({}, 'toDate', {
+            get() {
+                throw new Error('bad timestamp getter');
+            },
+        }),
+    }, proposalId), null, 'throwing Timestamp method access must fail closed');
+    assert.equal(normalizeAiMenuManagerProposalSnapshot({
+        ...pending,
+        createdAt: new Proxy(new Date('2026-07-13T10:00:00.000Z'), {
+            get(target, property, receiver) {
+                if (property === 'getTime') throw new Error('bad Date getter');
+                return Reflect.get(target, property, receiver);
+            },
+        }),
+    }, proposalId), null, 'Date proxies must fail closed');
+    assert.equal(normalizeAiMenuManagerProposalSnapshot({
+        ...pending,
+        createdAt: Object.defineProperty({}, 'seconds', {
+            get() {
+                throw new Error('bad seconds getter');
+            },
+        }),
+    }, proposalId), null, 'throwing legacy timestamp fields must fail closed');
+    assert.equal(normalizeAiMenuManagerProposalSnapshot({
+        ...pending,
         status: 'executing',
         cardPayload: { ...pending.cardPayload, status: 'approved' },
         executionStatus: 'locked',

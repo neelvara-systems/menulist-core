@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
+import uploadBase64ToStorage, { type SupportedFileType } from "@database/storage/uploadBase64ToStorage";
 import { collection, getDocs, limit, query, where } from "@firebase/firestore";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import {
@@ -11,6 +11,7 @@ import { normalizeStoreSwitchStoreId } from "@lib/multiOutlet/storeSwitchAccess"
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import { createRuntimeId } from "@lib/runtime/randomId";
 import { removeDangerousKeys } from "@lib/security/sanitizeObject";
 import { objectNullCheck } from "@util/utils";
 import type { PlatformBlockDetails } from "@type/platform/blocking";
@@ -44,6 +45,18 @@ export type PlatformUserRecord = {
     storeIds: number[];
     stores: UserStoreMappingType[];
     tenantId?: number;
+};
+
+export type PlatformUserMutation = Partial<PlatformUserRecord> & {
+    additionalDocuments?: Array<{
+        label?: string;
+        size?: number;
+        type: SupportedFileType;
+        url: string;
+    }>;
+    id: string;
+    imageToUpdate?: string;
+    imageType?: SupportedFileType;
 };
 
 const getCollectionRef = () => {
@@ -185,11 +198,14 @@ export const getUserByTenantId = (tenantId: unknown) => {
 }
 
 
-const uploadImage = async (data, type = '') => {
+const uploadImage = async (
+    data: Pick<PlatformUserMutation, 'id' | 'imageToUpdate' | 'imageType'>,
+    type = '',
+): Promise<string> => {
 
-    let newUrl: any = '';
-    let imageType: any = data.imageType;
-    let imageToUpdate: any = data.imageToUpdate;
+    let newUrl = '';
+    const imageType = data.imageType;
+    const imageToUpdate = data.imageToUpdate;
     const docId = data.id;
 
     if (imageToUpdate) {
@@ -206,22 +222,43 @@ const uploadImage = async (data, type = '') => {
     } else return ''
 }
 
-const updateUser = async (data) => {
+const updateUser = async (input: PlatformUserMutation): Promise<PlatformUserMutation> => {
+    const data: PlatformUserMutation = {
+        ...input,
+        ...(input.additionalDocuments
+            ? { additionalDocuments: input.additionalDocuments.map((document) => ({ ...document })) }
+            : {}),
+    };
 
-    //upload user profile image
-    if (data.imageToUpdate) {
-        const newUrl = await uploadImage(data)
+    // Upload-only fields must never cross the Firestore document boundary.
+    const imageToUpdate = data.imageToUpdate;
+    const imageType = data.imageType;
+    delete data.imageToUpdate;
+    delete data.imageType;
+    if (imageToUpdate) {
+        if (!isDataUrl(imageToUpdate)) {
+            throw new Error("INVALID_PLATFORM_USER_PROFILE_IMAGE");
+        }
+        const newUrl = await uploadImage({
+            id: data.id,
+            imageToUpdate,
+            imageType,
+        });
         data.profileImage = newUrl;
-        delete data.imageToUpdate;
-        delete data.imageType;
     }
 
     //upload additional documents files
-    const additionalFileToUpload = data.additionalDocuments?.filter(doc => isDataUrl(doc.url)) || [];
-    if (additionalFileToUpload.length) {
-        for (let i = 0; i < data.additionalDocuments.length; i++) {
-            if (isDataUrl(data.additionalDocuments[i].url)) {
-                data.additionalDocuments[i].url = await uploadImage({ imageType: data.additionalDocuments[i].type, imageToUpdate: data.additionalDocuments[i].url }, 'additionalDocuments')
+    const additionalDocuments = data.additionalDocuments;
+    const additionalFileToUpload = additionalDocuments?.filter((document) => isDataUrl(document.url)) || [];
+    if (additionalDocuments && additionalFileToUpload.length) {
+        for (let i = 0; i < additionalDocuments.length; i++) {
+            const document = additionalDocuments[i];
+            if (isDataUrl(document.url)) {
+                document.url = await uploadImage({
+                    id: createRuntimeId(`${data.id}-${i}`),
+                    imageType: document.type,
+                    imageToUpdate: document.url,
+                }, 'additionalDocuments')
             }
         }
     }
@@ -232,7 +269,7 @@ const updateUser = async (data) => {
     return data;
 }
 
-export const updatePlatformUser = async (data: any) => {
+export const updatePlatformUser = async (data: PlatformUserMutation) => {
     return await apiCallComposer(
         async () => {
             return await updateUser(data);

@@ -56,10 +56,13 @@ const MENU_LINK_IMPORT_MAX_BODY_BYTES = 8 * 1024;
 const MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED = 'menu_link_import_storage_cleanup_failed';
 const MENU_LINK_IMPORT_PERSISTENCE_PROBE_FAILED = 'menu_link_import_persistence_probe_failed';
 
-function resolveTargetLanguages(projectData: any): Array<{ code: string; name: string }> {
-    const codes = Array.isArray(projectData?.languages) && projectData.languages.length
-        ? projectData.languages
-        : [projectData?.defaultLanguage || 'en'];
+function resolveTargetLanguages(projectData: unknown): Array<{ code: string; name: string }> {
+    const projectRecord = projectData && typeof projectData === 'object' && !Array.isArray(projectData)
+        ? projectData as Record<string, unknown>
+        : {};
+    const codes: unknown[] = Array.isArray(projectRecord.languages) && projectRecord.languages.length
+        ? projectRecord.languages
+        : [typeof projectRecord.defaultLanguage === 'string' ? projectRecord.defaultLanguage : 'en'];
     const dedupedCodes: string[] = Array.from(
         new Set(codes
             .filter((code: unknown): code is string => typeof code === 'string')

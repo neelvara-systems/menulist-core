@@ -186,14 +186,14 @@ export const getTicketTableColumns = ({ token, onView, onEdit, onDelete, onResto
             dataIndex: 'status',
             key: 'status',
             width: 120,
-            render: (status) => {
-                const config = {
-                    [SUPPORT_TICKET_STATUS.OPEN]: { color: 'blue', text: 'Open' },
-                    [SUPPORT_TICKET_STATUS.IN_PROGRESS]: { color: 'orange', text: 'In Progress' },
-                    [SUPPORT_TICKET_STATUS.RESOLVED]: { color: 'green', text: 'Resolved' },
-                    [SUPPORT_TICKET_STATUS.CLOSED]: { color: 'default', text: 'Closed' },
+            render: (status: SupportTicketType['status']) => {
+                const config: Partial<Record<SupportTicketType['status'], { text: string }>> = {
+                    [SUPPORT_TICKET_STATUS.OPEN]: { text: 'Open' },
+                    [SUPPORT_TICKET_STATUS.IN_PROGRESS]: { text: 'In Progress' },
+                    [SUPPORT_TICKET_STATUS.RESOLVED]: { text: 'Resolved' },
+                    [SUPPORT_TICKET_STATUS.CLOSED]: { text: 'Closed' },
                 };
-                const { color, text } = config[status] || { color: 'default', text: status };
+                const { text } = config[status] || { text: status };
                 return (
                     <Badge status={status === SUPPORT_TICKET_STATUS.RESOLVED ? 'success' : status === SUPPORT_TICKET_STATUS.CLOSED ? 'default' : 'processing'} text={text} />
                 );
@@ -205,8 +205,8 @@ export const getTicketTableColumns = ({ token, onView, onEdit, onDelete, onResto
             dataIndex: 'priority',
             key: 'priority',
             width: 100,
-            render: (priority) => {
-                const config = {
+            render: (priority: SupportTicketType['priority']) => {
+                const config: Record<SupportTicketType['priority'], { color: string; dot: string }> = {
                     [SUPPORT_TICKET_PRIORITY.HIGH]: { color: token.colorError, dot: '⬤' },
                     [SUPPORT_TICKET_PRIORITY.NORMAL]: { color: token.colorWarning, dot: '⬤' },
                     [SUPPORT_TICKET_PRIORITY.LOW]: { color: token.colorSuccess, dot: '⬤' },

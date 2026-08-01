@@ -14,15 +14,10 @@ import { FUNCTION_MAX_INSTANCES, FUNCTION_OPTIONS, SECRET_GROUPS } from '../conf
 import { isFunctionFeatureEnabled } from '../constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '../constants/user';
 import { checkRateLimit, RATE_LIMIT_CONFIGS } from '../lib/rateLimit';
-import { embedArticleWorkerLogic } from '../logic/embedArticleWorker';
 import { normalizeMapsPlaceCheckInput, runMapsPlaceCheck } from '../logic/mapsPlaceCheck';
-import { publishApprovedJobLogic } from '../logic/publishApprovedJob';
-import { regenerateEmbeddingLogic } from '../logic/regenerateEmbedding';
+import { isPublishVerificationScopeAuthorized } from '../monitoring/publishVerification';
 import { isSafeModeActive } from '../monitoring/safeMode';
-import {
-    EmbedArticleType,
-    IngestionJobCategoriesMap,
-} from '../types';
+import { normalizeOwnerNotificationDocumentId } from '../sharedData/ownerNotificationDeliveryBoundary';
 import {
     hasCallableTenantStoreAccess,
     parseCallableTenantStoreScope,
@@ -41,6 +36,7 @@ const SHARED_KB_EMBED_TASK_OPTIONS = {
         maxDispatchesPerSecond: 3,
     },
 };
+const ANSWERLATTICE_CALLABLE_MOVED = 'ANSWERLATTICE_CALLABLE_MOVED_TO_SEPARATE_RUNTIME';
 
 function getRequesterRole(request: { auth?: { token?: Record<string, any> } }): string {
     return String(request.auth?.token?.platformRole || request.auth?.token?.role || '');
@@ -54,14 +50,6 @@ function assertAuthenticatedAccount(request: { auth?: { token?: Record<string, a
     const token = request.auth.token || {};
     if (token.active === false || token.isVerified === false || token.deleted === true) {
         throw new HttpsError('permission-denied', 'Account is not allowed to perform this action.');
-    }
-}
-
-function assertPlatformOwner(request: { auth?: { token?: Record<string, any> } }, action: string) {
-    assertAuthenticatedAccount(request, action);
-
-    if (getRequesterRole(request) !== ECOMSAI_PLATFORM_USER_ROLE) {
-        throw new HttpsError('permission-denied', `Only platform owners can ${action}.`);
     }
 }
 
@@ -101,6 +89,22 @@ function assertTenantStoreAccess(
     }
 }
 
+export async function assertCurrentMapsPlaceCheckScope(
+    request: { auth?: { token?: Record<string, any> } },
+    tenantId: string,
+    storeId: string,
+): Promise<void> {
+    assertTenantStoreAccess(request, tenantId, storeId, 'check public place evidence');
+
+    const userId = normalizeOwnerNotificationDocumentId(request.auth?.token?.uId);
+    if (
+        !userId
+        || !await isPublishVerificationScopeAuthorized(storeId, tenantId, userId)
+    ) {
+        throw new HttpsError('permission-denied', 'You do not have access to this store.');
+    }
+}
+
 function hashRateLimitValue(value: unknown): string {
     const hashSecret = process.env.NEXTAUTH_SECRET
         || process.env.UPSTASH_REDIS_REST_TOKEN
@@ -112,68 +116,33 @@ function hashRateLimitValue(value: unknown): string {
         .slice(0, 40);
 }
 
-function assertFirestoreDocumentId(value: unknown, fieldName: string): string {
-    const id = typeof value === 'string' ? value.trim() : '';
-    if (id !== value || !id || id.length > 180 || id === '.' || id === '..' || id.includes('/') || /^__.*__$/.test(id)) {
-        throw new HttpsError('invalid-argument', `${fieldName} must be a valid Firestore document ID.`);
-    }
-    return id;
-}
-
-function getSharedKbTaskContext(articleData: EmbedArticleType, jobId: string): Record<string, string | number | boolean> {
-    return {
-        jobIdLength: jobId.length,
-        articleIdLength: articleData.id?.length || 0,
-        categoryTitleLength: articleData.categoryTitle?.length || 0,
-        hasSectionTitle: Boolean(articleData.sectionTitle),
-    };
-}
-
 // ═══════════════════════════════════════════════════════════════
 // KB INGESTION — Shared callable functions
 // ═══════════════════════════════════════════════════════════════
 
 // STEP 6 (PART 2) - The Worker - Triggered by the Task Queue
-export const embedArticleWorker = onTaskDispatched(SHARED_KB_EMBED_TASK_OPTIONS, async (request) => {
-    const data = request.data;
-    const logger = functions.logger;
-    const { articleData, embeddingRunId, jobId } = data as {
-        articleData?: EmbedArticleType;
-        embeddingRunId?: string;
-        jobId?: string;
-    };
-
-    if (!articleData?.id || !jobId) {
-        throw new HttpsError('invalid-argument', 'Missing required payload: articleData.id, jobId.');
-    }
-
-    logger.info('[embedArticleWorker] Worker starting to re-embed article.', getSharedKbTaskContext(articleData, jobId));
-    await embedArticleWorkerLogic(articleData, jobId, {
-        embeddingRunId,
-        retryCount: request.retryCount,
-        finalAttempt: request.retryCount >= 2,
+export const embedArticleWorker = onTaskDispatched(SHARED_KB_EMBED_TASK_OPTIONS, async () => {
+    functions.logger.warn('[embedArticleWorker] Answerlattice task ignored in MenuList runtime', {
+        failureCode: ANSWERLATTICE_CALLABLE_MOVED,
     });
 });
 
 // ON-SAVE HOOK - Triggered by the client UI
-export const regenerateEmbedding = onCall(FUNCTION_OPTIONS.aiCallable, async (request) => {
-    assertPlatformOwner(request, 'regenerate knowledge-base embeddings');
-
-    const articleId = assertFirestoreDocumentId(request.data?.articleId, 'articleId');
-    return regenerateEmbeddingLogic(articleId);
+export const regenerateEmbedding = onCall(FUNCTION_OPTIONS.callableLight, async () => {
+    throw new HttpsError(
+        'failed-precondition',
+        'This Answerlattice operation has moved to the isolated Answerlattice runtime.',
+        { code: ANSWERLATTICE_CALLABLE_MOVED },
+    );
 });
 
 // STEP 6 & 7 (PART 1) - The Orchestrator - Triggered by the client UI
-export const publishApprovedJobFn = onCall(FUNCTION_OPTIONS.aiCallable, async (request) => {
-    assertPlatformOwner(request, 'publish approved knowledge-base jobs');
-
-    const { finalCategories }: { finalCategories: IngestionJobCategoriesMap } = request.data;
-    const jobId = assertFirestoreDocumentId(request.data?.jobId, 'jobId');
-    if (!finalCategories) {
-        throw new HttpsError('invalid-argument', 'Missing required payload: jobId, finalCategories.');
-    }
-
-    return publishApprovedJobLogic(jobId, finalCategories);
+export const publishApprovedJobFn = onCall(FUNCTION_OPTIONS.callableLight, async () => {
+    throw new HttpsError(
+        'failed-precondition',
+        'This Answerlattice operation has moved to the isolated Answerlattice runtime.',
+        { code: ANSWERLATTICE_CALLABLE_MOVED },
+    );
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -212,7 +181,7 @@ export const mapsPlaceCheck = onCall(
     },
     async (request) => {
         const input = normalizeMapsPlaceCheckInput(request.data);
-        assertTenantStoreAccess(request, input.tenantId, input.storeId, 'check public place evidence');
+        await assertCurrentMapsPlaceCheckScope(request, input.tenantId, input.storeId);
 
         if (!isFunctionFeatureEnabled('ENABLE_PUBLIC_TRUTH_MAPS_PLACE_CHECK')) {
             throw new HttpsError('failed-precondition', 'Maps place check is not enabled.');

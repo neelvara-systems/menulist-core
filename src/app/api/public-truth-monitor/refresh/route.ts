@@ -95,7 +95,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             storeData,
@@ -160,8 +160,8 @@ export const POST = withAuth(async (request, session) => {
                         tenantId: sessionScope.tenantScope.numericId,
                     }).allowed
                 ),
-                authorizeStore: (currentStoreData) => {
-                    finalPermissionError = requireAnyStorePermissionForStoreData(
+                authorizeStore: async (currentStoreData) => {
+                    finalPermissionError = await requireAnyStorePermissionForStoreData(
                         request,
                         session,
                         currentStoreData,

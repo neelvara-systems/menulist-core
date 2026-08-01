@@ -33,7 +33,11 @@ const copyAiSearchAnswerToClipboard = async (answer: string): Promise<void> => {
 
 export default function ActionButtons({ answer, onRegenerate, isTyping, searchHistoryId }: ActionButtonsProps) {
     const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
-    const [feedbackData, setFeedbackData] = useState({
+    const [feedbackData, setFeedbackData] = useState<{
+        isGood: boolean;
+        reasons: string[];
+        comments: string;
+    }>({
         isGood: false,
         reasons: [],
         comments: ''

@@ -26,19 +26,94 @@ import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescript
 import { normalizeOBPExternalHttpsUrl } from '@lib/obp/publicLinks';
 import { normalizeOBPPublicPhotoUrls } from '@lib/obp/publicPhotos';
 import { normalizeStarterActivationTimestamp } from '@lib/onboarding/starterActivation';
+import { normalizePublicOutletSlug } from '@lib/publicRouting/pathSegments';
 import {
     buildAddress,
     buildAmenityFeatures,
+    buildEffectiveSpecialOpeningHours,
     buildPublicCatalogUrlSchema,
     buildGeoCoordinates,
     buildOpeningHours,
     buildSchemaPriceRange,
     buildSchemaTelephone,
     buildSameAs,
-    buildTempStatusSchema,
     getSchemaType,
     isFoodBusinessCategory,
 } from '@lib/schema';
+
+export interface BrandOBPSchemaLocation {
+    addressLine?: unknown;
+    city?: unknown;
+    name?: unknown;
+    publicPath: string;
+}
+
+interface BrandOBPSchemaInput {
+    brandName: string;
+    canonicalUrl: string;
+    language?: string;
+    locations: BrandOBPSchemaLocation[];
+    logo?: unknown;
+    modifiedOn?: unknown;
+}
+
+export function generateBrandOBPSchema({
+    brandName,
+    canonicalUrl,
+    language = 'en',
+    locations,
+    logo,
+    modifiedOn,
+}: BrandOBPSchemaInput) {
+    const normalizedBaseUrl = canonicalUrl.replace(/\/+$/, '');
+    const normalizedLogo = normalizeOBPPublicPhotoUrls([logo])[0];
+    const dateModified = normalizeOBPSchemaModifiedOn(modifiedOn);
+    const publicLocations = locations.flatMap((location) => {
+        const normalizedPublicPath = location.publicPath === 'menu'
+            ? 'menu'
+            : normalizePublicOutletSlug(location.publicPath);
+        const locationName = getLocalizedText(
+            location.name,
+            language,
+            getPrimaryLocalizedLanguage(location.name, language),
+            '',
+        ).trim();
+        if (!locationName || !normalizedPublicPath) return [];
+
+        const locationUrl = `${normalizedBaseUrl}/${normalizedPublicPath}`;
+        const address = [location.addressLine, location.city]
+            .find((value): value is string => typeof value === 'string' && Boolean(value.trim()))
+            ?.trim();
+
+        return [{
+            '@type': 'LocalBusiness',
+            '@id': `${locationUrl}#business`,
+            name: locationName.replace(/ - Main Store$/, ''),
+            url: locationUrl,
+            ...(address && { address }),
+        }];
+    });
+
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        '@id': `${normalizedBaseUrl}#organization`,
+        name: brandName,
+        url: normalizedBaseUrl,
+        mainEntityOfPage: {
+            '@type': 'WebPage',
+            '@id': normalizedBaseUrl,
+        },
+        ...(normalizedLogo && { logo: normalizedLogo }),
+        ...(publicLocations.length > 0 && { location: publicLocations }),
+        ...(dateModified && { dateModified }),
+        publisher: {
+            '@type': 'Organization',
+            name: 'MenuList',
+            url: 'https://www.menulist.ai',
+        },
+    };
+}
 
 export function generateOBPSchema(
     storeData: any,
@@ -67,6 +142,7 @@ export function generateOBPSchema(
     const address = buildAddress(storeData);
     const geo = buildGeoCoordinates(storeData);
     const openingHours = buildOpeningHours(storeData);
+    const specialOpeningHours = buildEffectiveSpecialOpeningHours(storeData);
     const sameAs = buildSameAs(storeData);
     const telephone = buildSchemaTelephone({
         countryCode: storeData?.countryCode,
@@ -75,7 +151,6 @@ export function generateOBPSchema(
         phone: storeData?.phone,
     });
     const priceRange = buildSchemaPriceRange(storeData?.priceRange);
-    const tempStatusHours = buildTempStatusSchema(storeData?.tempStatus, storeData?.timeZone);
     const schemaType = getSchemaType(storeData?.businessType, storeData?.businessCategory);
     const menuUrl = options.hasPublishedMenu
         ? (options.menuUrl || buildMenuUrl(canonicalUrl))
@@ -120,13 +195,12 @@ export function generateOBPSchema(
         ),
         url: canonicalUrl,
         ...(telephone && { telephone }),
-        ...(storeData?.email && { email: storeData.email }),
         ...(storeData?.currencyCode && { currenciesAccepted: storeData.currencyCode }),
         ...(priceRange && { priceRange }),
         ...(address && { address }),
         ...(geo && { geo }),
         ...(openingHours && { openingHoursSpecification: openingHours }),
-        ...(tempStatusHours && { specialOpeningHoursSpecification: tempStatusHours }),
+        ...(specialOpeningHours && { specialOpeningHoursSpecification: specialOpeningHours }),
         ...(sameAs && { sameAs }),
         ...(amenityFeatures && { amenityFeature: amenityFeatures }),
         ...(paymentAccepted && { paymentAccepted }),
@@ -135,8 +209,8 @@ export function generateOBPSchema(
         }),
         ...buildPublicCatalogUrlSchema(menuUrl, storeData?.businessType, storeData?.businessCategory, catalogName),
         ...buildPotentialActions(
-            reservationUrl,
-            orderUrl,
+            reservationUrl ?? undefined,
+            orderUrl ?? undefined,
         ),
         ...(dateModified && { dateModified }),
         ...(storeData?.cuisineTypes?.length && { servesCuisine: storeData.cuisineTypes }),
@@ -159,7 +233,36 @@ export function generateOBPSchema(
 }
 
 export function normalizeOBPSchemaModifiedOn(value: unknown): string | undefined {
-    return normalizeStarterActivationTimestamp(value) || undefined;
+    const normalized = normalizeStarterActivationTimestamp(value);
+    if (normalized) return normalized;
+    if (!value || typeof value !== 'object') return undefined;
+
+    try {
+        const timestamp = value as {
+            toDate?: () => unknown;
+            toMillis?: () => unknown;
+        };
+        const millis = typeof timestamp.toMillis === 'function'
+            ? timestamp.toMillis()
+            : undefined;
+        if (typeof millis === 'number' && Number.isFinite(millis) && millis > 0) {
+            return new Date(millis).toISOString();
+        }
+
+        if (typeof timestamp.toDate === 'function') {
+            const date = timestamp.toDate();
+            if (date instanceof Date) {
+                const dateMillis = Date.prototype.getTime.call(date);
+                if (Number.isFinite(dateMillis) && dateMillis > 0) {
+                    return new Date(dateMillis).toISOString();
+                }
+            }
+        }
+    } catch {
+        return undefined;
+    }
+
+    return undefined;
 }
 
 function buildMenuUrl(canonicalUrl: string): string {

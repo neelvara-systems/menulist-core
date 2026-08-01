@@ -50,6 +50,8 @@ MenuList proves the integration contract on real product workflows without addin
 
 The canonical target/event registry is `src/lib/answerlattice/referenceClients/menuListGuidedResolution.ts`. Product code imports that registry instead of duplicating string identifiers.
 
+The registry's emission helper is fail-contained: optional widget runtime failure returns `false` and never changes MenuList mutation success, cleanup, or owner feedback.
+
 ## Product Boundary
 
 This is not:

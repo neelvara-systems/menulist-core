@@ -234,6 +234,10 @@ async function verifyRulesUnitSemantics() {
     await testEnv.withSecurityRulesDisabled(async (context) => {
       const firestore = context.firestore();
       await Promise.all([
+        ...rawCollections.map((collectionName) => setDoc(
+          doc(firestore, collectionName, `${collectionName}_doc`),
+          { pId: "SD" },
+        )),
         setDoc(doc(firestore, "signaldeskTeamMembers/active-member"), {
           active: true,
           email: "active-member@example.invalid",
@@ -315,14 +319,8 @@ async function verifyRulesUnitSemantics() {
         setDoc(doc(firestore, "signaldeskOperatingEnvelopes/envelope_summary"), { pId: "SD", operatingEnvelopeId: "envelope_summary" }),
         setDoc(doc(firestore, "signaldeskActivationWatches/watch_summary"), { pId: "SD", activationWatchId: "watch_summary" }),
         setDoc(doc(firestore, "signaldeskProofPermissions/proof_permission"), { pId: "SD", proofPermissionId: "proof_permission" }),
-        setDoc(doc(firestore, "signaldeskRouteTokens/route_token"), { pId: "SD", tokenHash: "hash-only" }),
         setDoc(doc(firestore, "signaldeskRevenueControlSummaries/current"), { pId: "SD", revenueAccountCount: 1 }),
         setDoc(doc(firestore, "signaldeskTargetSummaries/target_summary"), { pId: "SD", targetId: "target_summary" }),
-        setDoc(doc(firestore, "signaldeskTargets/target_detail"), { pId: "SD", targetId: "target_detail" }),
-        setDoc(doc(firestore, "signaldeskMessages/message_detail"), { pId: "SD", messageId: "message_detail" }),
-        setDoc(doc(firestore, "signaldeskImportRows/import_row"), { pId: "SD", rowId: "import_row" }),
-        setDoc(doc(firestore, "signaldeskSuppressionLedger/suppression"), { pId: "SD", suppressionId: "suppression" }),
-        setDoc(doc(firestore, "signaldeskContactIdentities/contact_identity"), { pId: "SD", identityId: "contact_identity" }),
         setDoc(doc(firestore, "signaldeskAuditEvents/audit_event"), { pId: "SD", action: "seeded" }),
         setDoc(doc(firestore, "signaldeskAiOperationLedger/ai_ledger"), { pId: "SD", operation: "seeded" }),
       ]);
@@ -443,14 +441,7 @@ async function verifyRulesUnitSemantics() {
     await assertFails(setDoc(doc(platformAdmin.firestore(), "signaldeskAuditEvents/client_write"), { pId: "SD" }));
     await assertFails(setDoc(doc(platformAdmin.firestore(), "signaldeskAiOperationLedger/client_write"), { pId: "SD" }));
 
-    for (const collectionName of [
-      "signaldeskTargets",
-      "signaldeskImportRows",
-      "signaldeskMessages",
-      "signaldeskSuppressionLedger",
-      "signaldeskContactIdentities",
-      "signaldeskRouteTokens",
-    ]) {
+    for (const collectionName of rawCollections) {
       await assertFails(getDoc(doc(activeMember.firestore(), `${collectionName}/${collectionName}_doc`)));
       await assertFails(getDocs(collection(activeMember.firestore(), collectionName)));
       await assertFails(getDoc(doc(platformAdmin.firestore(), `${collectionName}/${collectionName}_doc`)));

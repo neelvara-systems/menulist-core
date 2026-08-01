@@ -321,6 +321,10 @@ function normalizeLanguages(value: unknown): PublicMenuDraftLanguage[] {
     if (languages.size >= PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_LANGUAGES) break;
   }
   if (!languages.has("en")) {
+    if (languages.size >= PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_LANGUAGES) {
+      const lastLanguageCode = Array.from(languages.keys()).at(-1);
+      if (lastLanguageCode) languages.delete(lastLanguageCode);
+    }
     languages.set("en", { code: "en", name: "English", isPrimary: languages.size === 0 });
   }
   const normalized = Array.from(languages.values()).slice(0, PUBLIC_MENU_DRAFT_DATA_LIMITS.MAX_LANGUAGES);

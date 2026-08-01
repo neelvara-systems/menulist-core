@@ -227,7 +227,11 @@ export async function logFailedLogin(
         // Auto-extract IP and User-Agent from request if provided
         let finalMetadata = metadata;
         if (request && !metadata) {
-            finalMetadata = getRequestMetadata(request);
+            const requestMetadata = getRequestMetadata(request);
+            finalMetadata = {
+                ...(requestMetadata.ip ? { ip: requestMetadata.ip } : {}),
+                ...(requestMetadata.userAgent ? { userAgent: requestMetadata.userAgent } : {}),
+            };
         }
         const persistedMetadata = getSecurityEventMetadata(finalMetadata);
         const operationNowMs = Date.now();
@@ -371,7 +375,11 @@ export async function logSuccessfulLogin(
         // Auto-extract IP and User-Agent from request if provided
         let finalMetadata = metadata;
         if (request && !metadata) {
-            finalMetadata = getRequestMetadata(request);
+            const requestMetadata = getRequestMetadata(request);
+            finalMetadata = {
+                ...(requestMetadata.ip ? { ip: requestMetadata.ip } : {}),
+                ...(requestMetadata.userAgent ? { userAgent: requestMetadata.userAgent } : {}),
+            };
         }
         const persistedMetadata = getSecurityEventMetadata(finalMetadata);
         const nowMs = Date.now();

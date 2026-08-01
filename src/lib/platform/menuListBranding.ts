@@ -13,7 +13,8 @@ export type MenuListAttributionPolicy = {
 };
 
 export function normalizeMenuListPlanType(value: unknown): string | null {
-    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    if (typeof value !== 'string' || value.length > 160) return null;
+    const normalized = value.trim().toLowerCase();
     return normalized || null;
 }
 

@@ -48,21 +48,24 @@ const SEMANTIC_ATTRIBUTES: SemanticAttribute[] = [
  * Get all semantic attributes.
  */
 export function getAllSemanticAttributes(): SemanticAttribute[] {
-    return SEMANTIC_ATTRIBUTES;
+    return SEMANTIC_ATTRIBUTES.map((attribute) => ({ ...attribute }));
 }
 
 /**
  * Get semantic attributes by group.
  */
 export function getAttributesByGroup(group: SemanticAttributeGroup): SemanticAttribute[] {
-    return SEMANTIC_ATTRIBUTES.filter(a => a.group === group);
+    return SEMANTIC_ATTRIBUTES
+        .filter(a => a.group === group)
+        .map((attribute) => ({ ...attribute }));
 }
 
 /**
  * Look up a semantic attribute by ID.
  */
 export function getSemanticAttributeById(id: string): SemanticAttribute | undefined {
-    return SEMANTIC_ATTRIBUTES.find(a => a.id === id);
+    const attribute = SEMANTIC_ATTRIBUTES.find(a => a.id === id);
+    return attribute ? { ...attribute } : undefined;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -95,7 +98,17 @@ export function extractStoreSemanticProfile(
     }
 
     for (const attr of SEMANTIC_ATTRIBUTES) {
-        if (attr.storeField && businessAttributes[attr.storeField] === true) {
+        let enabled = false;
+        try {
+            enabled = Boolean(
+                attr.storeField
+                && Object.prototype.hasOwnProperty.call(businessAttributes, attr.storeField)
+                && Reflect.get(businessAttributes, attr.storeField) === true
+            );
+        } catch {
+            enabled = false;
+        }
+        if (enabled) {
             attributeIds.push(attr.id);
             byGroup[attr.group].push(attr.id);
         }

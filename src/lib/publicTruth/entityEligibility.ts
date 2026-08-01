@@ -6,6 +6,45 @@ export type MenuListPublicEntityIdentity = {
     numericId: number;
 };
 
+type SafeLifecycleRead = Readonly<{ ok: boolean; value?: unknown }>;
+
+const readLifecycleValue = (value: unknown, key: string): SafeLifecycleRead => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return { ok: false };
+    try {
+        return { ok: true, value: Reflect.get(value, key) };
+    } catch {
+        return { ok: false };
+    }
+};
+
+const isOptionalBoolean = (value: unknown): boolean => (
+    value === undefined || typeof value === 'boolean'
+);
+
+const hasValidLifecycleShape = (entity: object): boolean => {
+    const active = readLifecycleValue(entity, 'active');
+    const deleted = readLifecycleValue(entity, 'deleted');
+    const blocked = readLifecycleValue(entity, 'blocked');
+    const tenantBlocked = readLifecycleValue(entity, 'tenantBlocked');
+    const blockDetails = readLifecycleValue(entity, 'blockDetails');
+    if (
+        !active.ok
+        || !deleted.ok
+        || !blocked.ok
+        || !tenantBlocked.ok
+        || !blockDetails.ok
+        || !isOptionalBoolean(active.value)
+        || !isOptionalBoolean(deleted.value)
+        || !isOptionalBoolean(blocked.value)
+        || !isOptionalBoolean(tenantBlocked.value)
+    ) {
+        return false;
+    }
+    if (blockDetails.value === undefined) return true;
+    const nestedBlocked = readLifecycleValue(blockDetails.value, 'blocked');
+    return nestedBlocked.ok && isOptionalBoolean(nestedBlocked.value);
+};
+
 export function normalizeMenuListPublicEntityIdentityAliases(
     values: readonly unknown[],
 ): MenuListPublicEntityIdentity | null {
@@ -34,7 +73,8 @@ export function normalizeMenuListPublicEntityIdentityAliases(
 export function isMenuListPublicEntityEligible(value: unknown): boolean {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const entity = value as Record<string, unknown>;
-    return entity.active !== false
+    return hasValidLifecycleShape(entity)
+        && entity.active !== false
         && entity.deleted !== true
         && !isPlatformEntityBlocked(entity);
 }

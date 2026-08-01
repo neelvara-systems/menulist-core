@@ -8,7 +8,7 @@ import {
     requireAnswerlatticePermission,
 } from '@lib/answerlattice/accessControl';
 import { normalizeAnswerlatticeSubscriptionId } from '@lib/answerlattice/billingDocumentIdBoundary';
-import { isAnswerlatticeSubscriptionInScope } from '@lib/answerlattice/billingScopeBoundary';
+import { projectActiveAnswerlatticeSubscriptionForRead } from '@lib/answerlattice/subscriptionReadBoundary';
 import {
     getAnswerlatticeSecurityLogContext,
     getBoundedAnswerlatticeStringContext,
@@ -19,7 +19,10 @@ import {
     normalizeAnswerlatticeScopeDocumentId,
     resolveAnswerlatticeSessionScope,
 } from '@lib/answerlattice/sessionScope';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import {
+    answerlatticeAdminApp,
+    answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { getBoundedErrorStringField } from '@lib/monitoring/boundedLogContext';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -301,37 +304,11 @@ export async function requireAnswerlatticeKnowledgeIntakeContext(
     };
 }
 
-const toMillis = (value: any): number | null => {
-    if (!value) return null;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.toDate === 'function') return value.toDate().getTime();
-    if (value instanceof Date) return value.getTime();
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') {
-        const parsed = Date.parse(value);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-    if (typeof value.seconds === 'number') {
-        return value.seconds * 1000;
-    }
-    return null;
-};
-
-const hasActiveSubscriptionWindow = (subscription: Record<string, any> | null | undefined): boolean => {
-    if (!subscription || typeof subscription !== 'object') return false;
-    const status = String(subscription.status || '').toLowerCase();
-    if (!['active', 'trialing'].includes(status)) return false;
-
-    const endMs = toMillis(subscription.subscriptionEndDate || subscription.cycleEndDate || subscription.currentPeriodEnd);
-    if (!endMs) return true;
-    return endMs > Date.now();
-};
-
 async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<{ allowed: true } | { allowed: false; status: number; message: string }> {
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') {
+    if (!answerlatticeAdminApp) {
         return { allowed: false, status: 503, message: 'Answerlattice Firebase is not configured.' };
     }
+    const db = answerlatticeFirestoreAdmin;
 
     const storeSnap = await db.collection(DB_COLLECTIONS.STORES).doc(String(sId)).get();
     if (!storeSnap.exists) {
@@ -351,11 +328,12 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     if (normalizedSummarySubscriptionId) {
         const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(normalizedSummarySubscriptionId).get();
         if (subscriptionSnap.exists) {
-            const subscription = subscriptionSnap.data() || {};
-            if (
-                isAnswerlatticeSubscriptionInScope(subscription, { tId, sId })
-                && hasActiveSubscriptionWindow(subscription)
-            ) {
+            if (projectActiveAnswerlatticeSubscriptionForRead(
+                subscriptionSnap.data(),
+                subscriptionSnap.id,
+                tId,
+                sId,
+            )) {
                 return { allowed: true };
             }
         }
@@ -364,18 +342,20 @@ async function hasActiveAnswerlatticeLicense(tId: number, sId: number): Promise<
     const subscriptionSnap = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
         .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
         .where('productId', '==', PRODUCT_IDS.ANSWERLATTICE)
-        .where('tenantId', '==', Number(tId))
-        .where('storeId', '==', Number(sId))
-        .where('tId', '==', Number(tId))
-        .where('sId', '==', Number(sId))
+        .where('tenantId', '==', tId)
+        .where('storeId', '==', sId)
+        .where('tId', '==', tId)
+        .where('sId', '==', sId)
         .limit(5)
         .get();
     const activeSubscription = subscriptionSnap.docs
-        .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
-        .find((subscription: Record<string, any>) => (
-            isAnswerlatticeSubscriptionInScope(subscription, { tId, sId })
-            && hasActiveSubscriptionWindow(subscription)
-        ));
+        .map(doc => projectActiveAnswerlatticeSubscriptionForRead(
+            doc.data(),
+            doc.id,
+            tId,
+            sId,
+        ))
+        .find(Boolean);
     if (activeSubscription) {
         return { allowed: true };
     }

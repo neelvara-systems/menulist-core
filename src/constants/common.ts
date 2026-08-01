@@ -50,7 +50,13 @@ export const BACKGROUND_IMAGES_TYPES = {
     SQUARE: 'square',
 }
 
-export const AVAILABLE_LANGUAGES: any = [
+export interface AvailableLanguage {
+    readonly value: string;
+    readonly label: string;
+    readonly languageLabel?: string;
+}
+
+export const AVAILABLE_LANGUAGES = [
     {
         value: 'en',
         label: 'English',
@@ -63,10 +69,10 @@ export const AVAILABLE_LANGUAGES: any = [
     },
     {
         value: 'ar',
-        label: 'Arebic',
+        label: 'Arabic',
         languageLabel: 'عربي',
     },
-];
+] as const satisfies readonly AvailableLanguage[];
 
 export const DEFAULT_PRIMARY_FONT = "poppins"
 export const DEFAULT_LIGHT_COLOR = '#1E40AF'; // Professional blue for light mode

@@ -35,7 +35,6 @@ import { getClientIp, hashPublicRateLimitValue } from "src/middleware/publicApi"
 const TOKEN_RATE_LIMIT_WINDOW_SECONDS = 60 * 60;
 const TOKEN_RATE_LIMIT_ATTEMPTS = 4;
 const SCREEN_TOKEN_PATTERN = /^[a-z0-9_-]{6,24}$/i;
-const STORE_ID_PATTERN = /^\d+$/;
 const SCREEN_SEEN_MAX_BODY_BYTES = 1024;
 
 const cachedSeenResponse = () => NextResponse.json({ ok: true, cached: true });
@@ -168,9 +167,10 @@ export async function POST(request: NextRequest) {
 
         const token = typeof body.token === 'string' ? body.token.trim() : '';
         const rawStoreId = body.storeId;
-        const normalizedStoreId = typeof rawStoreId === 'string' || typeof rawStoreId === 'number'
-            ? String(rawStoreId).trim()
-            : '';
+        const suppliedStoreScope = rawStoreId == null
+            ? null
+            : normalizeStorePermissionScopeDocumentId(rawStoreId);
+        const normalizedStoreId = suppliedStoreScope?.documentId || '';
         logContext = {
             ...logContext,
             directStoreLookup: Boolean(normalizedStoreId),
@@ -183,11 +183,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
         }
 
-        if (rawStoreId != null && typeof rawStoreId !== 'string' && typeof rawStoreId !== 'number') {
-            return NextResponse.json({ error: 'Invalid store' }, { status: 400 });
-        }
-
-        if (rawStoreId != null && normalizedStoreId && !STORE_ID_PATTERN.test(normalizedStoreId)) {
+        if (rawStoreId != null && !suppliedStoreScope) {
             return NextResponse.json({ error: 'Invalid store' }, { status: 400 });
         }
 

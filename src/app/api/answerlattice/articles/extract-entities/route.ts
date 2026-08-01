@@ -437,7 +437,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         frequency: { articles: 1, tickets: 0, chat: 0 },
                         description: candidate.description,
                         status: 'pending',
-                        pId: PRODUCT_IDS.ANSWERLATTICE,
                     },
                     sourceArticleId: article.id,
                 });

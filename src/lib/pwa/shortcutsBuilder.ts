@@ -45,10 +45,28 @@ function withEntrySource(
   entrySource: string,
   activeLanguage?: string | null,
 ): string {
-  // Preserve existing query string if any.
   const localizedUrl = appendPublicLanguageParam(url, activeLanguage);
-  const sep = localizedUrl.includes('?') ? '&' : '?';
-  return `${localizedUrl}${sep}entry_source=shortcut-${entrySource}`;
+  try {
+    const parsed = new URL(localizedUrl, 'https://menulist.ai');
+    parsed.searchParams.set('entry_source', `shortcut-${entrySource}`);
+    return localizedUrl.startsWith('/')
+      ? `${parsed.pathname}${parsed.search}${parsed.hash}`
+      : parsed.toString();
+  } catch {
+    return localizedUrl;
+  }
+}
+
+function readOwnText(info: unknown, key: keyof ShortcutStoreInfo): string {
+  if (!info || typeof info !== 'object' || Array.isArray(info)) return '';
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(info, key);
+    return descriptor && 'value' in descriptor && typeof descriptor.value === 'string'
+      ? descriptor.value.trim()
+      : '';
+  } catch {
+    return '';
+  }
 }
 
 /**
@@ -61,8 +79,8 @@ export function buildShortcuts(
   const t = createPublicCustomerTranslator(activeLanguage);
   const shortcuts: ManifestShortcut[] = [];
 
-  const menuPath = info.menuPath?.trim();
-  if (menuPath) {
+  const menuPath = readOwnText(info, 'menuPath');
+  if (menuPath.startsWith('/') && !menuPath.startsWith('//')) {
     shortcuts.push({
       name: t('menu.menuOffering'),
       short_name: t('menu.menuOffering'),
@@ -71,7 +89,7 @@ export function buildShortcuts(
     });
   }
 
-  if (info.phone) {
+  if (readOwnText(info, 'phone')) {
     shortcuts.push({
       name: t('menu.call'),
       short_name: t('menu.call'),
@@ -82,7 +100,7 @@ export function buildShortcuts(
     });
   }
 
-  if (info.mapsUrl) {
+  if (readOwnText(info, 'mapsUrl')) {
     shortcuts.push({
       name: t('menu.directions'),
       short_name: t('menu.directions'),
@@ -91,7 +109,7 @@ export function buildShortcuts(
     });
   }
 
-  if (info.whatsappNumber) {
+  if (readOwnText(info, 'whatsappNumber')) {
     shortcuts.push({
       name: t('menu.whatsApp'),
       short_name: t('menu.whatsApp'),
@@ -100,7 +118,7 @@ export function buildShortcuts(
     });
   }
 
-  if (info.reservationUrl) {
+  if (readOwnText(info, 'reservationUrl')) {
     shortcuts.push({
       name: t('menu.reserve'),
       short_name: t('menu.reserve'),
@@ -110,7 +128,7 @@ export function buildShortcuts(
     });
   }
 
-  if (info.orderUrl) {
+  if (readOwnText(info, 'orderUrl')) {
     shortcuts.push({
       name: t('menu.order'),
       short_name: t('menu.order'),

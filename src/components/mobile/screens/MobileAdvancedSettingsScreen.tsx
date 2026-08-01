@@ -3,6 +3,7 @@
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
+import type { StoreDataType } from '@type/platform/store';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -32,7 +33,18 @@ type FeedbackDraft = {
     feedbackEnabled: boolean;
 };
 
-function getInitialFeedbackDraft(storeDetails: any): FeedbackDraft {
+type AdvancedSettingsStoreUpdate = Partial<Pick<
+    StoreDataType,
+    'feedbackDefaults' | 'feedbackEnabled' | 'socialMedia'
+>>;
+
+const ADVANCED_SETTINGS_STORE_UPDATE_KEYS = [
+    'feedbackDefaults',
+    'feedbackEnabled',
+    'socialMedia',
+] as const satisfies readonly (keyof AdvancedSettingsStoreUpdate)[];
+
+function getInitialFeedbackDraft(storeDetails: StoreDataType | null): FeedbackDraft {
     return {
         collectComment: storeDetails?.feedbackDefaults?.collectComment ?? true,
         collectCommentRequired: storeDetails?.feedbackDefaults?.collectCommentRequired ?? false,
@@ -190,7 +202,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
         [storeDetails]
     );
 
-    const saveField = async (updates: Record<string, any>) => {
+    const saveField = async (updates: AdvancedSettingsStoreUpdate): Promise<boolean> => {
         if (!storeDetails?.storeId || saveInFlightRef.current) return false;
         const sourceStoreDetails = storeDetails;
         const expectedStoreId = sourceStoreDetails.storeId;
@@ -208,7 +220,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                 'mobile_advanced_settings_store_update_rejected',
             );
             if (!isMountedRef.current) return true;
-            setStoreDetails((currentStoreDetails: typeof storeDetails) => {
+            setStoreDetails((currentStoreDetails) => {
                 if (
                     currentStoreDetails?.storeId !== expectedStoreId
                     || currentStoreDetails?.tenantId !== expectedTenantId
@@ -216,12 +228,18 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
                     return currentStoreDetails;
                 }
 
-                const settledUpdates: Record<string, any> = {};
-                Object.entries(updates).forEach(([key, value]) => {
-                    if (currentStoreDetails[key] === sourceStoreDetails[key]) {
-                        settledUpdates[key] = value;
-                    }
-                });
+                const settledUpdates = ADVANCED_SETTINGS_STORE_UPDATE_KEYS.reduce<AdvancedSettingsStoreUpdate>(
+                    (settled, key) => {
+                        if (
+                            Object.prototype.hasOwnProperty.call(updates, key)
+                            && currentStoreDetails[key] === sourceStoreDetails[key]
+                        ) {
+                            return { ...settled, [key]: updates[key] };
+                        }
+                        return settled;
+                    },
+                    {},
+                );
 
                 return Object.keys(settledUpdates).length > 0
                     ? { ...currentStoreDetails, ...settledUpdates }
@@ -476,7 +494,7 @@ function MobileAdvancedSettingsScreenContent({ onBack, mode = 'all' }: MobileAdv
     };
 
     const handleSave = async () => {
-        const updates: Record<string, any> = {};
+        const updates: AdvancedSettingsStoreUpdate = {};
 
         if (showSocial && isSocialDirty) {
             updates.socialMedia = socialMedia;

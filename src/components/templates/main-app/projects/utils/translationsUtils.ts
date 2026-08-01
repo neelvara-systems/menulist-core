@@ -1,6 +1,7 @@
 import { AICapacityError } from "@services/ai/capacityError";
 import { InheritanceState } from "@type/multiOutlet.types";
 import { removeObjRef } from "@util/utils";
+import { normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import getTranslations from "../generateTranslations";
 import { ExtractedDataCategory, ExtractedDataItem, LanguageActionType, LanguageType, Project, ProjectFileType } from '../types';
 import {
@@ -27,6 +28,12 @@ export interface TranslationGovernanceOptions {
     /** Category inheritance states from resolved project */
     categoryStates?: Record<string, InheritanceState>;
 }
+
+const requireTranslationProjectId = (projectData: Project): string => {
+    const projectId = projectData.projectId?.trim();
+    if (!projectId) throw new Error('menu_translation_project_identity_missing');
+    return projectId;
+};
 
 const getTranslationLogContext = (
     projectData: Project,
@@ -326,9 +333,10 @@ export const translateFile = async (
 ) => {
     const prevData = removeObjRef(projectData)
 
-    if (!prevData.languages.includes(targetLanguage.code)) {
-        prevData.languages.push(targetLanguage.code)
-    };
+    prevData.languages = normalizeProjectLanguages([
+        ...(prevData.languages ?? []),
+        targetLanguage.code,
+    ]);
 
     if (file.extractedData?.data) {
         // Multi-outlet: Pass governance to filter out inherited items
@@ -338,7 +346,13 @@ export const translateFile = async (
             sourceLanguage.code,
             governance
         );
-        if (Object.keys(translatableStringsJSON).length === 0) return { updatedProject: prevData, message: `No new translatable data found for language ${targetLanguage.name} (${targetLanguage.code})`, messageType: 'warning' };
+        if (Object.keys(translatableStringsJSON).length === 0) {
+            return {
+                updatedProject: prevData,
+                message: `No new translatable data found for language ${targetLanguage.name} (${targetLanguage.code})`,
+                messageType: 'warning',
+            };
+        }
 
         try {
             const translations = await getTranslations({
@@ -346,14 +360,14 @@ export const translateFile = async (
                 targetLang: targetLanguage,
                 sourceLang: sourceLanguage,
                 action,
-                projectId: projectData.projectId,
+                projectId: requireTranslationProjectId(projectData),
                 fileId: file.uid
             });
             if (translations) {
                 const updated = {
                     ...prevData,
                     files: prevData.files?.map(f =>
-                        f.uid === file.uid
+                        f.uid === file.uid && f.extractedData?.data
                             ? {
                                 ...f,
                                 extractedData: {
@@ -474,7 +488,7 @@ export const translateCategory = async (
             targetLang: targetLanguage,
             sourceLang: sourceLanguage,
             action,
-            projectId: projectData.projectId,
+            projectId: requireTranslationProjectId(projectData),
             fileId: file.uid
         });
 
@@ -531,7 +545,13 @@ export const translateItem = async (projectData: Project, file: ProjectFileType,
 
     if (file.extractedData?.data) {
         const translatableStringsJSON = extractItemTranslatableStringsJSON(item, sourceLanguage.code);
-        if (Object.keys(translatableStringsJSON).length === 0) return { updatedProject: prevData, message: `No new translatable data found for language ${targetLanguage.name} (${targetLanguage.code})`, messageType: 'warning' };
+        if (Object.keys(translatableStringsJSON).length === 0) {
+            return {
+                updatedItem: item,
+                message: `No new translatable data found for language ${targetLanguage.name} (${targetLanguage.code})`,
+                messageType: 'warning',
+            };
+        }
 
         try {
             const translations = await getTranslations({
@@ -539,7 +559,7 @@ export const translateItem = async (projectData: Project, file: ProjectFileType,
                 targetLang: targetLanguage,
                 sourceLang: sourceLanguage,
                 action,
-                projectId: projectData.projectId,
+                projectId: requireTranslationProjectId(projectData),
                 fileId: file.uid
             });
 

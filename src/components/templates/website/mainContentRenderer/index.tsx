@@ -6,6 +6,7 @@ import PreviewNavigationGuard from "@/components/shared/PreviewNavigationGuard"
 import { DeviceTypes, PageType } from "@template/main-app/projects/b2cView/types"
 import { PrecomputedDecisionBlocks, Project, ProjectSummaryData } from "@template/main-app/projects/types"
 import { StoreDataType } from "@type/platform/store"
+import { resolvePublicMenuAccentColor } from "@lib/obp/accentColor"
 
 interface MainContentRendererProps {
   activeDeviceType: DeviceTypes;
@@ -43,7 +44,10 @@ function MainContentRenderer({
   previewMode
 }: MainContentRendererProps) {
 
-  const brandAccentColor = projectData?.config?.design?.brand?.accentColor;
+  const brandAccentColor = resolvePublicMenuAccentColor(
+    projectData?.config?.design?.brand?.accentColor,
+    storeDetails?.publicPresence,
+  ) || undefined;
   const menuDesign = resolveMenuDesignConfig(projectData?.config?.design?.menu);
   const previewProjectSlug = projectData.slug || 'menu';
   const previewMenuInfo = {

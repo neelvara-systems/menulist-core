@@ -36,6 +36,23 @@ export type BusinessIdentitySuggestion = {
     };
 };
 
+export function mergeBusinessIdentityUpdatesForCurrentStore<
+    T extends { storeId: number; tenantId: number },
+>(
+    previous: T | null,
+    expected: Pick<T, 'storeId' | 'tenantId'>,
+    updates: Partial<T>,
+): T | null {
+    if (
+        !previous
+        || previous.storeId !== expected.storeId
+        || previous.tenantId !== expected.tenantId
+    ) {
+        return previous;
+    }
+    return { ...previous, ...updates };
+}
+
 type StoreIdentitySuggestionSource = Partial<StoreDataType> & {
     address?: string;
 };
@@ -48,7 +65,7 @@ function normalizeComparable(value: unknown): string {
     return normalizeValue(value).toLowerCase();
 }
 
-function normalizeBusinessType(value: unknown): string | null {
+export function normalizeBusinessTypeSuggestion(value: unknown): string | null {
     const raw = normalizeComparable(value);
     if (!raw) return null;
 
@@ -56,15 +73,7 @@ function normalizeBusinessType(value: unknown): string | null {
         normalizeComparable(businessType.value) === raw ||
         normalizeComparable(businessType.label) === raw
     );
-    if (exact) return exact.value;
-
-    const partial = BUSINESS_TYPES.find((businessType) =>
-        normalizeComparable(businessType.value).includes(raw) ||
-        normalizeComparable(businessType.label).includes(raw) ||
-        raw.includes(normalizeComparable(businessType.value)) ||
-        raw.includes(normalizeComparable(businessType.label))
-    );
-    return partial?.value || null;
+    return exact?.value || null;
 }
 
 function normalizeLanguageList(value: unknown): string[] {
@@ -128,7 +137,7 @@ export function buildBusinessIdentitySuggestions(
         value: result.identity.address,
     });
 
-    const businessType = normalizeBusinessType(result.identity.businessType);
+    const businessType = normalizeBusinessTypeSuggestion(result.identity.businessType);
     if (businessType) {
         addSuggestion(suggestions, {
             currentValue: storeDetails.businessType,

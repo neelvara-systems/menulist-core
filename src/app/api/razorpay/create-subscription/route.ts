@@ -235,6 +235,7 @@ export const POST = withAuth(async (request, session) => {
             quantity: requestedQuantity = 1,
             replacementForSubscriptionId,
         } = validation.data;
+        const resolvedUserType = userType ?? "B2C";
         const name = session?.user?.name || '';
         const email = session?.user?.email || '';
         const remainingCredits = 0;
@@ -300,16 +301,16 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // 3. Find Plan Details from Local Constants
-        const plans = getBillingPlansForProduct(productId, userType || "B2C");
+        const plans = getBillingPlansForProduct(productId, resolvedUserType);
         const selectedPlan = plans.find((p) => p.planId === planId && p.billingInterval === interval);
 
         if (!selectedPlan) {
             return NextResponse.json({ error: "Plan not found." }, { status: 404 });
         }
 
-        const priceKey = `price${currency.toUpperCase()}`;
-        const unitAmount = selectedPlan[priceKey].price;
-        const monthlyCredits = selectedPlan[priceKey].monthlyCredits;
+        const selectedPrice = currency === 'USD' ? selectedPlan.priceUSD : selectedPlan.priceINR;
+        const unitAmount = selectedPrice.price;
+        const monthlyCredits = selectedPrice.monthlyCredits;
 
         if (typeof unitAmount !== "number" || typeof monthlyCredits !== "number") {
             return NextResponse.json({ error: "Plan price not available." }, { status: 400 });
@@ -447,7 +448,7 @@ export const POST = withAuth(async (request, session) => {
                 storeId: String(storeId),
                 tenantId: String(tenantId),
                 unitAmount,
-                userType,
+                userType: resolvedUserType,
             },
         };
         const checkoutClaim = await claimBillingCheckoutLease(checkoutLeaseIdentity);
@@ -467,7 +468,7 @@ export const POST = withAuth(async (request, session) => {
             price: unitAmount,
             currency,
             interval,
-            userType,
+            userType: resolvedUserType,
             planId,
         });
 
@@ -529,7 +530,7 @@ export const POST = withAuth(async (request, session) => {
             tenantId,
             storeId,
             userId,
-            userType,
+            userType: resolvedUserType,
             planId,
             quantity,
             interval,
@@ -559,7 +560,7 @@ export const POST = withAuth(async (request, session) => {
                 storeId,
                 tenantId,
                 unitAmount,
-                userType,
+                userType: resolvedUserType,
             }),
         });
         let razorpaySubscription: any;
@@ -641,7 +642,7 @@ export const POST = withAuth(async (request, session) => {
             tId: tenantId,
             sId: storeId,
             planType: interval,
-            userType,
+            userType: resolvedUserType,
             currency,
             amount: unitAmount,
             status: "pending",
@@ -709,7 +710,7 @@ export const POST = withAuth(async (request, session) => {
             subscriptionPersisted = true;
         } catch (persistenceError) {
             const persistedSubscription = await getProductSubscriptionById(productId, razorpaySubscription.id)
-                .catch(() => null);
+                .catch((): null => null);
             if (persistedSubscription?.providerSubscriptionId === razorpaySubscription.id) {
                 subscriptionPersisted = true;
             } else {

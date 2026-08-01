@@ -1,7 +1,7 @@
 # MenuList Activation Concierge - Implementation
 
 **Status:** Local source complete
-**Last reviewed:** July 22, 2026
+**Last reviewed:** July 29, 2026
 
 ## Decision implemented
 
@@ -23,6 +23,14 @@ Use existing screens first, no new route, and SignalDesk remains observer-only.
 `buildStarterActivationSummary()` counts only allowlisted keys with valid Date/ISO/Firestore-like timestamps and deduplicates a presence/action pair. It returns total, target, remaining, MenuList-recorded count, owner-confirmed count, and labeled evidence. It does not read Firebase.
 
 The global starter banner and desktop/mobile Presence Monitor consume this summary. Menu Setup Progress uses the same `activated` result for the starter placement step.
+
+Starter workspace and public-surface access fail closed unless the starter row
+has a valid future `activationDeadline`. Missing or malformed deadlines are
+expired, not an open-ended legacy trial. Paid public access requires either the
+exact paid status or a bounded non-empty plan string; arbitrary truthy persisted
+values do not bypass expiry. Timestamp projection accepts primitive Date/ISO/
+millisecond values and Firestore `seconds`/`nanoseconds` data fields without
+executing methods supplied by persisted objects.
 
 ## Separation
 

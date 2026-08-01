@@ -11,6 +11,7 @@ import {
     doc,
     getDoc,
     runTransaction,
+    serverTimestamp,
     setDoc,
     Timestamp,
     updateDoc,
@@ -232,9 +233,20 @@ async function run(): Promise<void> {
             contextKey: 'billing.overview',
             surfaceId: 'billing',
             surfaceLabel: 'Billing',
+            surfaceAssignedBy: 'support-permission-1',
+            surfaceAssignedAt: serverTimestamp(),
+            modifiedBy: 'support-permission-1',
+            modifiedOn: serverTimestamp(),
+        }));
+        await assertFails(updateDoc(doc(supportPermissionDb, 'feedback', 'general-1'), {
             surfaceAssignedBy: 'support-1',
+            modifiedBy: 'support-1',
+            modifiedOn: serverTimestamp(),
+        }));
+        await assertFails(updateDoc(doc(supportPermissionDb, 'feedback', 'general-1'), {
+            surfaceAssignedBy: 'support-permission-1',
             surfaceAssignedAt: NOW,
-            modifiedBy: 'Support Owner',
+            modifiedBy: 'support-permission-1',
             modifiedOn: NOW,
         }));
         await assertFails(updateDoc(doc(supportDb, 'feedback', 'general-1'), {

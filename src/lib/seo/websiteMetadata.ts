@@ -31,15 +31,25 @@ export function completeWebsiteMetadata(metadata: Metadata): Metadata {
       }
     : undefined;
 
+  const twitterTitle = typeof completedOpenGraph?.title === 'string'
+    ? completedOpenGraph.title
+    : typeof metadata.title === 'string'
+      ? metadata.title
+      : undefined;
+  const twitterDescription = typeof completedOpenGraph?.description === 'string'
+    ? completedOpenGraph.description
+    : typeof metadata.description === 'string'
+      ? metadata.description
+      : undefined;
+
   return {
     ...metadata,
     openGraph: completedOpenGraph,
     twitter: {
       card: "summary_large_image",
-      title: completedOpenGraph?.title || metadata.title,
-      description: completedOpenGraph?.description || metadata.description,
+      ...(twitterTitle ? { title: twitterTitle } : {}),
+      ...(twitterDescription ? { description: twitterDescription } : {}),
       images: [MENULIST_SITE_IMAGE],
-      ...metadata.twitter,
     },
   };
 }

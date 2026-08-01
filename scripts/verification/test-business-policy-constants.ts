@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { RESERVED_SUBDOMAINS, isReservedSubdomain } from '../../src/constants/reservedSlugs';
 import { RESERVED_SUBDOMAINS as ROUTING_RESERVED_SUBDOMAINS } from '../../src/constants/urls';
+import { AVAILABLE_LANGUAGES } from '../../src/constants/common';
 import PlatformFeaturesList, { commonFeaturesList } from '../../src/data/PlatformFeaturesList';
 import { B2BplansList, B2CplansList } from '../../src/data/PlatformPlansList';
 import {
@@ -23,6 +24,16 @@ for (const productHostLabel of [
     assert.equal(isReservedSubdomain(productHostLabel), true);
     assert.equal(ROUTING_RESERVED_SUBDOMAINS.includes(productHostLabel), true);
 }
+
+assert.deepEqual(
+    AVAILABLE_LANGUAGES.map(({ label, value }) => ({ label, value })),
+    [
+        { label: 'English', value: 'en' },
+        { label: 'Hindi', value: 'hi' },
+        { label: 'Arabic', value: 'ar' },
+    ],
+    'the exported language registry must remain precisely typed and use valid public labels',
+);
 
 for (const plans of [B2CplansList, B2BplansList]) {
     const monthlyByPlan = new Map(
@@ -61,7 +72,7 @@ for (const planType of ['B2C', 'B2B'] as const) {
                 true,
                 `${planType} feature ${feature.id} must define active plan ${planId}`,
             );
-            assert.notEqual(feature.values[planId], undefined);
+            assert.notEqual(Reflect.get(feature.values, planId), undefined);
         }
     }
 }

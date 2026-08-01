@@ -7,7 +7,7 @@ const { Title, Text } = Typography;
 
 interface SectionPaneProps {
     isLoading: boolean;
-    selectedCategory: KnowledgeBaseCategory;
+    selectedCategory: KnowledgeBaseCategory | null;
     selectedSection: KnowledgeBaseSection | null;
     onSectionSelect: (section: KnowledgeBaseSection) => void;
     onAddSection: () => void;
@@ -60,7 +60,7 @@ function SectionPane({
                 <PaneHeader
                     title={selectedCategory?.title}
                     buttonText=""
-                    onButtonClick={null}
+                    onButtonClick={undefined}
                 />
                 <PaneContent
                     from="Section"

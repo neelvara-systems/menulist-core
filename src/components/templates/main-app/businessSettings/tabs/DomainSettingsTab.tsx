@@ -21,7 +21,7 @@ const DESKTOP_DOMAIN_SETTINGS_COPY_UNAVAILABLE = 'desktop_domain_settings_copy_u
 const DESKTOP_DOMAIN_SETTINGS_COPY_FALLBACK_FAILED = 'desktop_domain_settings_copy_fallback_failed';
 
 interface DomainSettingsTabProps {
-    scrollRef?: React.RefObject<HTMLDivElement>;
+    scrollRef?: React.RefObject<HTMLDivElement | null>;
     storeDetails?: any;
     onStoreStateUpdate?: (updates: any) => void;
     onStoreUpdate?: (updates: any) => void | Promise<void>;

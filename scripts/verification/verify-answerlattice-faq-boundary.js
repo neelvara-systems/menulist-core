@@ -163,6 +163,13 @@ assert(retrieval.includes("value.status !== 'published'"), 'FAQ citations must r
 assert(retrieval.includes('value.active !== true'), 'FAQ citations must require explicit active article truth');
 assert(faqDal.includes('source: existingSource || ANSWERLATTICE_FAQ_SOURCE.MANUAL'), 'FAQ provenance must be system-derived and immutable during authoring');
 assert(faqDal.includes("throw new Error('Publish the linked article before publishing this FAQ.')"), 'linked FAQ publication must require active published article truth');
+assert(faqDal.includes('existing.tId !== scope.tId'), 'FAQ mutation must require exact persisted tenant scope');
+assert(faqDal.includes('existing.sId !== scope.sId'), 'FAQ mutation must require exact persisted workspace scope');
+assert(faqDal.includes("throw new Error('FAQ has an invalid stored article link and cannot be archived safely.')"), 'FAQ archive must fail closed on a corrupt article mirror');
+assert(faqDal.includes("throw new Error('Invalid Answerlattice FAQ status filter')"), 'FAQ management status filters must fail closed');
+assert(!faqDal.includes('normalizeAnswerlatticeScopeDocumentId(existing.tId)'), 'FAQ mutation must not coerce persisted tenant scope');
+assert(faqDal.includes('projectManagedFaqDocuments(snapshot.docs, scope)'), 'FAQ management reads must project persisted rows through runtime admission');
+assert(!faqDal.includes("({ ...item.data(), id: item.id } as AnswerlatticeFaq)"), 'FAQ management reads must not cast raw persisted rows');
 assert(!faqDal.includes('export const updateFaqFeedback'), 'FAQ feedback must not retain a direct browser Firestore counter writer');
 assert(!faqManagement.includes('name="source"'), 'FAQ editor must expose source provenance as read-only');
 assert(faqManagement.includes("getContentFeedbackForEntry('faq', selectedFaq.id)"), 'FAQ review must expose bounded audited reaction details');

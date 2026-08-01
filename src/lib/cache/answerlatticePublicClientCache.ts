@@ -5,8 +5,6 @@ import { secureError } from '@lib/security/secureLogger';
 const ANSWERLATTICE_PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS = 4000;
 const ANSWERLATTICE_PUBLIC_CACHE_CONTEXT_MAX_LENGTH = 64;
 
-const pendingRevalidations = new Map<string, Promise<void>>();
-
 const ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES = {
     bad_status: 'answerlattice_public_cache_revalidation_bad_status',
     request_failed: 'answerlattice_public_cache_revalidation_request_failed',
@@ -16,6 +14,14 @@ type AnswerlatticePublicCacheScope = {
     tId?: string | number | null;
     sId?: string | number | null;
 };
+
+type PendingAnswerlatticePublicCacheRevalidation = {
+    context: string;
+    promise: Promise<void>;
+    rerunRequested: boolean;
+};
+
+const pendingRevalidations = new Map<string, PendingAnswerlatticePublicCacheRevalidation>();
 
 const normalizeSegmentList = (segments?: AnswerlatticePublicCacheSegment | AnswerlatticePublicCacheSegment[]) => {
     const list = Array.isArray(segments) ? segments : [segments || 'all'];
@@ -63,6 +69,64 @@ const logAnswerlatticePublicClientCacheFailure = (
     );
 };
 
+const executeAnswerlatticePublicClientCacheRevalidation = async (
+    scope: AnswerlatticePublicCacheScope | null | undefined,
+    normalizedSegments: AnswerlatticePublicCacheSegment[],
+    context: string,
+    throwOnFailure: boolean,
+): Promise<void> => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+        controller.abort();
+    }, ANSWERLATTICE_PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS);
+
+    try {
+        const response = await fetch('/api/revalidate/answerlattice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal: controller.signal,
+            body: JSON.stringify({
+                tId: scope?.tId ?? undefined,
+                sId: scope?.sId ?? undefined,
+                segments: normalizedSegments,
+            }),
+        });
+
+        if (!response.ok) {
+            if (process.env.NODE_ENV !== 'production') {
+                logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'bad_status', {
+                    responseStatus: response.status,
+                });
+            }
+            if (throwOnFailure) {
+                throw new Error(ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.bad_status);
+            }
+        }
+    } catch (error) {
+        if (
+            throwOnFailure
+            && error instanceof Error
+            && error.message === ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.bad_status
+        ) {
+            throw error;
+        }
+        if (process.env.NODE_ENV !== 'production') {
+            logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'request_failed', {
+                errorName: getBoundedErrorName(error) || typeof error,
+            });
+        }
+        if (throwOnFailure) {
+            throw new Error(ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.request_failed);
+        }
+    } finally {
+        window.clearTimeout(timeout);
+    }
+};
+
 export const revalidateAnswerlatticePublicClientCache = async (
     scope?: AnswerlatticePublicCacheScope | null,
     segments: AnswerlatticePublicCacheSegment | AnswerlatticePublicCacheSegment[] = 'all',
@@ -83,63 +147,44 @@ export const revalidateAnswerlatticePublicClientCache = async (
 
     const pending = pendingRevalidations.get(key);
     if (pending) {
-        return pending;
+        pending.context = context;
+        pending.rerunRequested = true;
+        return pending.promise;
     }
 
-    const revalidation = (async () => {
-        const controller = new AbortController();
-        const timeout = window.setTimeout(() => {
-            controller.abort();
-        }, ANSWERLATTICE_PUBLIC_CACHE_REVALIDATION_TIMEOUT_MS);
-
+    const entry: PendingAnswerlatticePublicCacheRevalidation = {
+        context,
+        promise: Promise.resolve(),
+        rerunRequested: false,
+    };
+    entry.promise = (async () => {
+        let strictFailure: unknown;
         try {
-            const response = await fetch('/api/revalidate/answerlattice', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin',
-                cache: 'no-store',
-                signal: controller.signal,
-                body: JSON.stringify({
-                    tId: scope?.tId ?? undefined,
-                    sId: scope?.sId ?? undefined,
-                    segments: normalizedSegments,
-                }),
-            });
+            do {
+                const iterationContext = entry.context;
+                entry.rerunRequested = false;
+                try {
+                    await executeAnswerlatticePublicClientCacheRevalidation(
+                        scope,
+                        normalizedSegments,
+                        iterationContext,
+                        options.throwOnFailure === true,
+                    );
+                } catch (error) {
+                    strictFailure ??= error;
+                }
+            } while (entry.rerunRequested);
 
-            if (!response.ok) {
-                if (process.env.NODE_ENV !== 'production') {
-                    logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'bad_status', {
-                        responseStatus: response.status,
-                    });
-                }
-                if (options.throwOnFailure) {
-                    throw new Error(ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.bad_status);
-                }
-            }
-        } catch (error) {
-            if (
-                options.throwOnFailure
-                && error instanceof Error
-                && error.message === ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.bad_status
-            ) {
-                throw error;
-            }
-            if (process.env.NODE_ENV !== 'production') {
-                logAnswerlatticePublicClientCacheFailure(context, scope, normalizedSegments.length, 'request_failed', {
-                    errorName: getBoundedErrorName(error) || typeof error,
-                });
-            }
-            if (options.throwOnFailure) {
-                throw new Error(ANSWERLATTICE_PUBLIC_CACHE_FAILURE_CODES.request_failed);
+            if (strictFailure) {
+                throw strictFailure;
             }
         } finally {
-            window.clearTimeout(timeout);
-            pendingRevalidations.delete(key);
+            if (pendingRevalidations.get(key) === entry) {
+                pendingRevalidations.delete(key);
+            }
         }
     })();
 
-    pendingRevalidations.set(key, revalidation);
-    return revalidation;
+    pendingRevalidations.set(key, entry);
+    return entry.promise;
 };

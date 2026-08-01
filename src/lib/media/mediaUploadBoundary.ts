@@ -3,6 +3,7 @@ import {
     type MediaImageType,
     type MediaImageVariantId,
 } from './imageProfiles';
+import { getDataUrlBlob } from './mediaStorage';
 
 export interface MediaUploadBlobCandidate {
     blob: Blob;
@@ -22,6 +23,46 @@ export type MediaUploadDelete = (url: string) => MediaUploadDeleteResult;
 
 const MEDIA_UPLOAD_CLEANUP_ATTEMPTS = 2;
 
+const bytesToHex = (bytes: Uint8Array): string => (
+    Array.from(bytes)
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('')
+);
+
+async function sha256Bytes(value: ArrayBuffer): Promise<string> {
+    if (typeof crypto === 'undefined' || !crypto.subtle) {
+        throw new Error('prepared_media_hash_unavailable');
+    }
+    return bytesToHex(new Uint8Array(await crypto.subtle.digest('SHA-256', value)));
+}
+
+export async function getMediaBlobChecksum(blob: Blob): Promise<string> {
+    return sha256Bytes(await blob.arrayBuffer());
+}
+
+export async function getMediaTextChecksum(value: string): Promise<string> {
+    if (typeof TextEncoder === 'undefined') {
+        throw new Error('prepared_media_hash_unavailable');
+    }
+    return sha256Bytes(new TextEncoder().encode(value).buffer as ArrayBuffer);
+}
+
+export async function assertMediaBlobMatchesDataUrl(blob: Blob, dataUrl: string): Promise<void> {
+    let dataUrlBlob: Blob;
+    try {
+        dataUrlBlob = getDataUrlBlob(dataUrl);
+    } catch {
+        throw new Error('prepared_media_blob_data_url_mismatch');
+    }
+    const [blobChecksum, dataUrlChecksum] = await Promise.all([
+        getMediaBlobChecksum(blob),
+        getMediaBlobChecksum(dataUrlBlob),
+    ]);
+    if (blobChecksum !== dataUrlChecksum) {
+        throw new Error('prepared_media_blob_data_url_mismatch');
+    }
+}
+
 export function normalizeMediaUploadMimeType(value: unknown): string {
     if (typeof value !== 'string') return '';
     const normalized = value.trim().toLowerCase();
@@ -32,6 +73,7 @@ export function resolvePreparedMediaIdentity({
     blobFingerprint,
     mediaChecksum,
     mediaId,
+    preparedDataUrlChecksum,
     preparedChecksum,
     preparedMediaId,
     profile,
@@ -39,13 +81,21 @@ export function resolvePreparedMediaIdentity({
     blobFingerprint: string;
     mediaChecksum?: string;
     mediaId?: string;
+    preparedDataUrlChecksum?: string;
     preparedChecksum?: string;
     preparedMediaId?: string;
     profile: MediaImageType;
 }): { checksum: string; mediaId: string } {
     const normalizedFingerprint = blobFingerprint.trim();
     const normalizedPreparedChecksum = preparedChecksum?.trim() || '';
+    const normalizedPreparedDataUrlChecksum = preparedDataUrlChecksum?.trim() || '';
     const normalizedProvidedChecksum = mediaChecksum?.trim() || '';
+    if (
+        normalizedPreparedChecksum
+        && normalizedPreparedDataUrlChecksum !== normalizedPreparedChecksum
+    ) {
+        throw new Error('prepared_media_checksum_mismatch');
+    }
     const checksum = normalizedPreparedChecksum || normalizedFingerprint;
     if (!/^[a-f0-9]{8,128}$/i.test(checksum)) throw new Error('prepared_media_checksum_invalid');
     if (normalizedProvidedChecksum && normalizedProvidedChecksum !== checksum) {

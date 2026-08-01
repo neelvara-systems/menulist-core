@@ -214,6 +214,17 @@ function getValidUntil(days: number): Timestamp {
 
 Do not claim current autonomous generation from this legacy module. Any future reactivation requires an explicit product decision and must transactionally update or clear eligibility in the same authoritative path that creates, changes, resolves, or invalidates the prepared Today action. New supported physical identity output belongs to Menu Kit and Print Menu Surfaces instead.
 
+The legacy desktop/mobile download consumers can still render an already
+populated compatibility summary. Both generators therefore pass `qrUrl`
+through `normalizePhysicalSurfaceQrUrl()` immediately on entry. Only a
+credential-free absolute HTTPS URL of at most 4,096 characters reaches the QR
+encoder; invalid values reject the download. Counter-sticker canvas encoding
+also rejects explicitly when `toBlob()` returns `null`.
+
+The snippets below document the original layout algorithm. The current source
+files are authoritative for URL admission, branding, QR quiet zone, logo
+handling, attribution, and failure behavior.
+
 ---
 
 ## Frontend: PDF Generator

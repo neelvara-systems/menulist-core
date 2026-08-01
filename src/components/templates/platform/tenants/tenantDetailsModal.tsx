@@ -17,32 +17,74 @@ import { removeObjRef } from '@util/utils';
 import { Button, Divider, Flex, Input, message, Select, Switch, Tag, Typography } from 'antd'; // Import Ant Design components
 import { useFormatter } from 'next-intl';
 import { Fragment, memo, useEffect, useRef, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { LuPlus, LuTrash, LuUpload, LuUploadCloud, LuX } from 'react-icons/lu';
 import { TbEdit, TbMail, TbPhoneCall } from 'react-icons/tb';
+import type { PlatformCounterSnapshot } from '@lib/platform/platformCounterAllocator';
+import type { PlatformStoreModalState } from '../stores/storeDetailsModal';
+import type { PlatformTenantModalState } from '.';
 const { Text } = Typography
 
-function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreModal }) {
+const createEmptyTenantDraft = (): TenantDataType => ({
+    active: true,
+    deleted: false,
+    email: '',
+    name: '',
+    storesList: [],
+    tenantKey: '',
+});
 
-    const fileInputRef = useRef(null);
-    const [selectedFile, setSelectedFile] = useState<UserUploadedFileType>({ name: "", size: 0, type: "", url: null })
+const createEmptySelectedFile = (): UserUploadedFileType => ({
+    name: '',
+    size: 0,
+    type: '',
+});
+
+type TenantDetailsModalProps = {
+    modalData: PlatformTenantModalState;
+    closeModal: (updatedTenant?: TenantDataType) => void;
+    platformSummary: PlatformCounterSnapshot | null;
+    setStoreModal: Dispatch<SetStateAction<PlatformStoreModalState>>;
+};
+
+type TenantMutationDraft = Partial<TenantDataType> & {
+    imageToUpdate?: string;
+    imageType?: string | null;
+};
+
+function TenantDetailsModal({ modalData, closeModal, platformSummary: _platformSummary, setStoreModal }: TenantDetailsModalProps) {
+
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [selectedFile, setSelectedFile] = useState<UserUploadedFileType>(
+        createEmptySelectedFile,
+    );
     const [tenantData, setTenantData] = useState<TenantDataType | null>(null);
+    const [mutationInFlight, setMutationInFlight] = useState(false);
+    const mutationInFlightRef = useRef(false);
+    const scopeKey = `${modalData.active ? 'open' : 'closed'}:${String(modalData.data?.tenantId ?? 'new')}`;
+    const scopeKeyRef = useRef(scopeKey);
     const format = useFormatter();
 
     useEffect(() => {
+        scopeKeyRef.current = scopeKey;
+        setSelectedFile(createEmptySelectedFile());
         if (modalData.active) {
-            setTenantData(modalData.data)
+            setTenantData(modalData.data ? removeObjRef(modalData.data) : createEmptyTenantDraft())
         } else {
             setTenantData(null)
         }
-    }, [modalData])
+    }, [modalData, scopeKey])
 
-    const closeDrawer = (updated = null) => {
+    const closeDrawer = (updated?: TenantDataType) => {
         closeModal(updated)
-        setSelectedFile({ name: "", size: 0, type: "", url: null })
+        setSelectedFile(createEmptySelectedFile())
     }
 
     const addUpdateTenantDetails = async (updatedTenant: TenantDataType) => {
-        let updatedChanges: any = updatedTenant;
+        if (mutationInFlightRef.current) return;
+        mutationInFlightRef.current = true;
+        setMutationInFlight(true);
+        let updatedChanges: TenantMutationDraft = { ...updatedTenant };
 
         try {
             if (updatedTenant.tenantId || updatedTenant.tenantId == ECOMSAI_PLATFORM_TENANT_ID) {
@@ -55,15 +97,26 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
                     updatedChanges.tenantId = updatedTenant.tenantId;
                     delete updatedChanges.storesList;
                     if ('name' in updatedChanges) {
+                        if (typeof updatedChanges.name !== 'string') {
+                            throw new Error('platform_tenant_name_invalid');
+                        }
                         updatedChanges.tenantKey = updatedChanges.name.toLowerCase().replaceAll(" ", "_");
                     }
-                    const savedTenantDetails = await updateTenant(updatedChanges);
+                    const savedTenantDetails = await updateTenant({
+                        ...updatedChanges,
+                        tenantId: updatedTenant.tenantId,
+                    });
                     assertTenantUpdateSucceeded(
                         savedTenantDetails,
                         updatedTenant.tenantId,
                         'platform_tenant_update_rejected',
                     );
-                    closeDrawer({ ...updatedTenant, ...savedTenantDetails })
+                    closeDrawer({
+                        ...updatedTenant,
+                        ...(typeof savedTenantDetails.logo === 'string' ? { logo: savedTenantDetails.logo } : {}),
+                    })
+                } else {
+                    closeDrawer(updatedTenant);
                 }
             } else {
 
@@ -78,32 +131,62 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
                     savedTenantDetails.tenantId,
                     'platform_tenant_create_rejected',
                 );
-                closeDrawer(savedTenantDetails)
+                const savedTenantId = Number(savedTenantDetails.tenantId ?? savedTenantDetails.id);
+                if (!Number.isSafeInteger(savedTenantId) || savedTenantId < 0) {
+                    throw new Error('platform_tenant_create_rejected');
+                }
+                const savedTenantRecord: Record<string, unknown> = savedTenantDetails;
+                closeDrawer({
+                    ...updatedTenant,
+                    ...(typeof savedTenantRecord.logo === 'string' ? { logo: savedTenantRecord.logo } : {}),
+                    storesList: [],
+                    tenantId: savedTenantId,
+                })
             }
         } catch (error) {
             logRuntimeFailure('platform_tenant_save_failed', error);
             message.error('Failed to save tenant');
+        } finally {
+            mutationInFlightRef.current = false;
+            setMutationInFlight(false);
         }
     }
 
-    const handleFileChange = async (selectedFile: UserUploadedFileType) => {
-        setSelectedFile(selectedFile)
+    const handleFileChange = async (nextSelectedFile: UserUploadedFileType) => {
+        if (scopeKeyRef.current !== scopeKey) return;
+        setSelectedFile(nextSelectedFile)
     };
 
-    const onChangeValue = (from: string, value: any) => {
-        let tenantCopy = removeObjRef(tenantData)
-        if (!tenantCopy) tenantCopy = {}
+    const onChangeValue = <Key extends keyof TenantDataType>(
+        from: Key,
+        value: TenantDataType[Key],
+    ) => {
+        if (!tenantData) return
+        const tenantCopy = removeObjRef(tenantData)
         tenantCopy[from] = value
         setTenantData(tenantCopy)
     }
 
-    const onClickStore = (store: MinimalStoreDataType) => {
-        getStoreById(store.storeId).then((storeDetails) => {
-            setStoreModal({ active: true, data: storeDetails, tenantData: tenantData })
-        })
+    const onClickStore = async (store: MinimalStoreDataType) => {
+        const requestScopeKey = scopeKey;
+        try {
+            const storeDetails = await getStoreById(store.storeId);
+            if (
+                scopeKeyRef.current !== requestScopeKey
+                || !tenantData
+                || !storeDetails
+                || storeDetails.tenantId !== tenantData.tenantId
+            ) return;
+            setStoreModal({ active: true, data: storeDetails, tenantData })
+        } catch (error) {
+            logRuntimeFailure('platform_tenant_store_load_failed', error, {
+                storeId: store.storeId,
+            });
+            message.error('Failed to load store');
+        }
     }
 
-    const resolveStoreName = (store: any) => {
+    const resolveStoreName = (store: MinimalStoreDataType) => {
         return getStoreContextName(store, `Store ${store?.storeId ?? ''}`);
     }
 
@@ -114,18 +197,28 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
             <DrawerElement
                 title={isUpdateFlow ? `Update Tenant` : 'Add Tenant · ID assigned safely when saved'}
                 open={Boolean(modalData.active)}
-                onClose={() => closeDrawer(null)}
+                onClose={() => closeDrawer()}
                 footerActions={[
-                    <Button type="default" onClick={() => closeDrawer(null)} icon={<LuX />} key="Cancel">Cancel</Button>,
-                    <>{isUpdateFlow && <Button type="default" icon={<LuTrash />} danger onClick={() => addUpdateTenantDetails({ ...tenantData, deleted: true })} key="Delete">Delete</Button>}</>,
-                    <>{isUpdateFlow && <Button type="primary" ghost icon={<LuPlus />} key="Store" onClick={() => setStoreModal({ active: true, data: null, tenantData: tenantData })}>Add Store</Button>}</>,
-                    <Button type="primary" icon={<LuUploadCloud />} onClick={() => addUpdateTenantDetails(tenantData)} key="Update">{isUpdateFlow ? "Update" : "Add"}</Button>,
+                    <Button type="default" disabled={mutationInFlight} onClick={() => closeDrawer()} icon={<LuX />} key="Cancel">Cancel</Button>,
+                    <>{isUpdateFlow && tenantData && <Button disabled={mutationInFlight} type="default" icon={<LuTrash />} danger onClick={() => addUpdateTenantDetails({ ...tenantData, deleted: true })} key="Delete">Delete</Button>}</>,
+                    <>{isUpdateFlow && tenantData && <Button disabled={mutationInFlight} type="primary" ghost icon={<LuPlus />} key="Store" onClick={() => setStoreModal({ active: true, data: null, tenantData })}>Add Store</Button>}</>,
+                    <Button
+                        type="primary"
+                        icon={<LuUploadCloud />}
+                        disabled={!tenantData || mutationInFlight}
+                        onClick={() => {
+                            if (tenantData) void addUpdateTenantDetails(tenantData);
+                        }}
+                        key="Update"
+                    >
+                        {isUpdateFlow ? "Update" : "Add"}
+                    </Button>,
                 ]}
                 width={450}
             >
                 <Flex vertical gap={20}>
 
-                    <Flex onClick={() => fileInputRef.current.click()}>
+                    <Flex onClick={() => fileInputRef.current?.click()}>
                         <Text style={{ minWidth: 150 }}>Logo</Text>
                         {selectedFile.url ? <img alt="Selected tenant logo preview" src={selectedFile.url} style={{ width: "auto", height: 100 }} /> :
                             <>
@@ -140,9 +233,9 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
                         <Text>{tenantData?.tenantId}</Text>
                     </Flex>}
 
-                    {tenantData?.createdBy && <Flex>
+                    {tenantData?.createdBy && tenantData.createdOn && <Flex>
                         <Text style={{ minWidth: 150 }}>Created By</Text>
-                        <Text>{tenantData?.createdBy}, <br /> {getFormatedDateAndTime(format, new Date(tenantData?.createdOn))}</Text>
+                        <Text>{tenantData.createdBy}, <br /> {getFormatedDateAndTime(format, tenantData.createdOn)}</Text>
                     </Flex>}
                     <Saperator />
 
@@ -284,11 +377,6 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
                     </Flex>
 
                     <Flex>
-                        <Text style={{ minWidth: 150 }}>Phone Prefix</Text>
-                        <Input placeholder="Phone Prefix" value={tenantData?.countryCode || ""} onChange={(e) => onChangeValue('countryCode', e.target.value)} />
-                    </Flex>
-
-                    <Flex>
                         <Text style={{ minWidth: 150 }}>Currency Symbol</Text>
                         <Input placeholder="Currency Symbol" value={tenantData?.currencySymbol || ""} onChange={(e) => onChangeValue('currencySymbol', e.target.value)} />
                     </Flex>
@@ -341,7 +429,7 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
                         })}
                     </Flex>}
 
-                    {modalData.active && <ImageUploadInput onUploadFile={handleFileChange} fileInputRef={fileInputRef} />}
+                    {modalData.active && <ImageUploadInput key={scopeKey} onUploadFile={handleFileChange} fileInputRef={fileInputRef} />}
                 </Flex>
             </DrawerElement>
         </Flex>

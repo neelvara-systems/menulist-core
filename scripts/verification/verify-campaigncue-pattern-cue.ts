@@ -5,7 +5,9 @@ import {
     buildCampaignCuePatternCueBrief,
     buildCampaignCuePatternCueObservation,
     getLatestCampaignCuePatternCueSource,
+    inferCampaignCuePatternCuePlatform,
     isCampaignCuePatternCueObservation,
+    isCampaignCuePatternCueSourceInput,
     normalizeCampaignCuePatternCueUrl,
 } from "@lib/campaigncue/patternCue";
 import { isCampaignCueDecisionSourceInput } from "@lib/campaigncue/operatingLoop";
@@ -93,6 +95,24 @@ assert.equal(observation.rightsStatus, "reference_only");
 assert.ok(observation.candidateHooks.every((hook) => hook.includes("Green Table Cafe") || hook.includes("Lunch Combo")));
 assert.equal(JSON.stringify(observation).includes("SECRET_SOURCE_PHRASE"), false, "raw transcript must not be persisted in the observation");
 assert.equal(isCampaignCuePatternCueObservation(observation), true);
+assert.equal(inferCampaignCuePatternCuePlatform("not a URL"), "other");
+
+let patternCueCoercionAttempted = false;
+assert.equal(isCampaignCuePatternCueObservation({
+    ...observation,
+    platform: {
+        toString() {
+            patternCueCoercionAttempted = true;
+            throw new Error("persisted enum values must not be coerced");
+        },
+    },
+}), false);
+assert.equal(patternCueCoercionAttempted, false);
+assert.equal(isCampaignCuePatternCueObservation(new Proxy({}, {
+    get() {
+        throw new Error("persisted pattern traversal must be contained");
+    },
+})), false);
 
 assert.equal(normalizeCampaignCuePatternCueUrl("http://instagram.com/reel/example"), null);
 assert.equal(normalizeCampaignCuePatternCueUrl("https://localhost/reel/example"), null);
@@ -148,6 +168,9 @@ const patternSource: CampaignCueSourceInput = {
 assert.equal(isCampaignCueDecisionSourceInput(patternSource), false, "inspiration must not satisfy business decision readiness");
 assert.equal(getLatestCampaignCuePatternCueSource([patternSource])?.id, patternSource.id);
 assert.equal(getLatestCampaignCuePatternCueSource([{ ...patternSource, status: "needs_review" }]), undefined);
+assert.equal(isCampaignCuePatternCueSourceInput(undefined), false);
+assert.equal(isCampaignCuePatternCueSourceInput(null), false);
+assert.equal(isCampaignCuePatternCueSourceInput(patternSource), true);
 assert.match(buildCampaignCuePatternCueBrief(patternSource), /Original hook options/);
 assert.match(buildCampaignCuePatternCueBrief(patternSource), /do not copy/i);
 

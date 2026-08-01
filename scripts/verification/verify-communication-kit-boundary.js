@@ -80,14 +80,15 @@ const messageTemplates = read('src/lib/communication/messageTemplates.ts');
   'Staff Daily Replies',
   'getOfferingLabels',
   'getLocalizedText',
-  'communication_kit_today_hours_timezone_fallback_failed',
   'communication_kit_today_hours_range_invalid',
   'MAX_COMMUNICATION_KIT_TODAY_HOURS_DIAGNOSTICS',
-  'reportedCommunicationKitTodayHoursTimezoneFailures',
   'reportedCommunicationKitTodayHoursRangeFailures',
   'parseCommunicationKitTimeToMinutes',
-  "getBoundedRuntimeStringContext('timeZone', timeZone)",
-  "fallbackPolicy: 'browser_local_day'",
+  'getStoreDayKey',
+  'getStoreLocalDateKey',
+  'getSpecialHoursEntry',
+  'specialHours?: StoreSpecialHours',
+  'const specialEntry = getSpecialHoursEntry(specialHours, getStoreLocalDateKey(timeZone, now));',
   "getBoundedRuntimeStringContext('dayKey', dayKey)",
   'todayValueLength: todayValue.length',
   'return { hours: null, isClosed: false };',
@@ -98,6 +99,8 @@ const messageTemplates = read('src/lib/communication/messageTemplates.ts');
   'setDoc(',
   'addDoc(',
   'updateDoc(',
+  'reportedCommunicationKitTodayHoursTimezoneFailures',
+  "fallbackPolicy: 'browser_local_day'",
   '    } catch {\n        dayIndex = new Date().getDay();\n    }',
 ].forEach((token) => forbidToken(messageTemplates, token, 'message templates'));
 
@@ -227,7 +230,14 @@ const menuKitGenerator = read('src/lib/menu-kit/menuKitGenerator.ts');
   'shareBrowserFile',
   'Promise<BrowserFileShareResult>',
   'MENU_KIT_ASSET_DEFINITIONS',
+  'normalizeMenuKitInput',
+  'enrichedInput: { ...normalizedInput, menuUrl: validatedUrl, _logo: logo }',
+  'buildPrintInstructions(prepared.enrichedInput.storeName, labels)',
 ].forEach((token) => requireToken(menuKitGenerator, token, 'Menu Kit generator'));
+[
+  'enrichedInput: { ...input, menuUrl: validatedUrl, _logo: logo }',
+  'buildPrintInstructions(input.storeName, labels)',
+].forEach((token) => forbidToken(menuKitGenerator, token, 'Menu Kit generator'));
 
 const browserFileShare = read('src/lib/export/browserFileShare.ts');
 [
@@ -249,8 +259,8 @@ const printableRenderer = read('src/lib/printable-asset-templates/renderPrintabl
   'renderPrintableAssetDownloadFiles',
   'generateMenuKitAsset',
   'generateMenuKit',
-  "input.assetTypeId === 'complete_menu_kit'",
-  "input.assetTypeId === 'print_menu'",
+  "admittedInput.assetTypeId === 'complete_menu_kit'",
+  "admittedInput.assetTypeId === 'print_menu'",
 ].forEach((token) => requireToken(printableRenderer, token, 'printable asset renderer'));
 
 const customerReadme = read('__docs__/customer-communication-kit/README.md');

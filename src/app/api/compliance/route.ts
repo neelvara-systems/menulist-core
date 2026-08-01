@@ -106,6 +106,8 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
     if (!inputs) {
         return NextResponse.json({
+            storeId: sId,
+            tenantId: tId,
             privacy: null,
             terms: null,
             missingData: true,
@@ -122,6 +124,8 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     const overrides = await getComplianceOverridesServer(sId, tId);
 
     return NextResponse.json({
+        storeId: sId,
+        tenantId: tId,
         privacy: {
             content: composeComplianceContent(systemPrivacy, overrides?.privacyOverride),
             customContent: overrides?.privacyOverride || '',
@@ -221,7 +225,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({
             action,
+            storeId: sId,
             success: true,
+            tenantId: tId,
             type,
             refreshPending,
             message: `${pageLabel} updated with your custom content.`,
@@ -234,7 +240,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         return NextResponse.json({
             action,
+            storeId: sId,
             success: true,
+            tenantId: tId,
             type,
             refreshPending,
             message: `${pageLabel} reset to default.`,

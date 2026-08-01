@@ -23,8 +23,7 @@
 
 | Operation                     | Collection                       | Trigger                            | Frequency                  | Docs Read                                   | Indexed? |
 | ----------------------------- | -------------------------------- | ---------------------------------- | -------------------------- | ------------------------------------------- | -------- |
-| Create special menu           | `projects/{tId}/{sId}`           | Owner clicks "Create Special Menu" | ~2/store/month             | 2 (base project + summary)                  | Yes      |
-| Validate no conflict          | `platformSummary/projects_{sId}` | Before creation                    | ~2/store/month             | 1 (summary doc has all projects)            | N/A      |
+| Create special menu           | project + summary + store        | Owner clicks "Create Special Menu" | ~2/store/month             | 3 (base project + summary + canonical store) | Yes      |
 | List special menus            | project summary + `stores/{sId}` | Dashboard/mobile cache miss         | Owner usage                | 2 in parallel; SWR dedupes for 30 seconds   | N/A      |
 | Resolver check                | `stores/{sId}`                   | Every public page view             | Per page view              | 0 (store data already fetched + cached 60s) | N/A      |
 | Resolver load special project | `projects/{tId}/{sId}`           | When special menu is active        | Per page view (cached 60s) | 1 (cached via `unstable_cache`)             | Yes      |
@@ -38,7 +37,7 @@
 - **`specialMenuNextTransitionAt` is the due-work index.** Client create/edit/lifecycle/delete paths and Admin transitions recompute it from fresh summary truth. The precise scheduler does not scan every store or project.
 - **The existing global `storesSummary` read remains the recovery path.** Its per-store nightly summary read backfills missing markers for schedules created before the marker contract and catches missed transitions.
 - **Transactions preserve correctness under contention** — baseline counts below can increase when Firestore retries, but failed attempts do not publish partial project/store/summary state.
-- **A different active pointer costs one exact read only on that exceptional path.** A live scoped active project still blocks; a missing, malformed, inactive, cancelled, expired, or ended target is repaired in the same activation transaction. Normal activation keeps its existing read count.
+- **A different active pointer costs one exact read only on that exceptional path.** Immediate create, active schedule edit, and activation block only a live scoped target; missing, malformed, cross-scope, inactive, cancelled, expired, future, or ended targets are replaced in the same transaction.
 
 ---
 
@@ -104,8 +103,8 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 
 | DAL Function                 | File                             | Firebase Operations       |
 | ---------------------------- | -------------------------------- | ------------------------- |
-| `createSpecialMenuProject()` | `src/database/projects/index.ts` | scheduled: 2R + 2W; immediate: 3R + 3W transaction |
-| `updateSpecialMenuProject()` | `src/database/projects/index.ts` | 3R + 2-3W transaction     |
+| `createSpecialMenuProject()` | `src/database/projects/index.ts` | 3R + 2-3W transaction; +1 exact read for an immediate different-pointer check |
+| `updateSpecialMenuProject()` | `src/database/projects/index.ts` | 3R + 2-3W transaction; +1 exact read for an active different-pointer check |
 | `activateSpecialMenu()`      | `src/database/projects/index.ts` | 3R + 2-3W transaction; +1 exact read only for a different-pointer check |
 | `deactivateSpecialMenu()`    | `src/database/projects/index.ts` | 3R + 2-3W transaction     |
 | `cancelSpecialMenu()`        | `src/database/projects/index.ts` | 3-4R + 2-3W including best-effort store preflight/repair |
@@ -147,8 +146,8 @@ The design avoids per-store high-frequency scans and new collections. Measure qu
 2. **Implemented: summary due marker** — `specialMenuNextTransitionAt` is maintained by client and Admin transactions, queried by the consolidated scheduler, and backfilled/repaired by the nightly path.
 3. **Implemented: lazy cleanup** — expired/cancelled projects remain as audit history; no cleanup collection or scheduled delete job.
 4. **Implemented: storage-light overlays** — new overlays do not duplicate base category/item rows, and runtime namespacing requires no mapping document or extra read/write.
-5. **Implemented: bounded stale-pointer recovery** — activation validates only the exact different pointer target, avoiding both a collection scan and permanent retries against dead state.
+5. **Implemented: bounded stale-pointer recovery** — immediate create, active edit, and activation validate only the exact different pointer target, avoiding both a collection scan and permanent owner/scheduler retries against dead state.
 
 ---
 
-**Last Updated:** July 16, 2026
+**Last Updated:** July 30, 2026

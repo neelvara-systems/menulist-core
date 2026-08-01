@@ -2,6 +2,7 @@
 
 const {
     applyLateDailyCorrection,
+    assertCurrentPlatformAnalyticsAuthority,
     cleanupOldDocuments,
     updateSummaryDocument,
 } = require('../../functions/lib/aggregateCustomerAnalytics.js');
@@ -66,6 +67,52 @@ async function clearAnalytics(): Promise<void> {
         snapshot.docs.slice(offset, offset + 400).forEach((document) => batch.delete(document.ref));
         await batch.commit();
     }
+}
+
+async function verifyCurrentPlatformAnalyticsAuthority(): Promise<void> {
+    const userId = 'analytics-platform-owner';
+    const userRef = firestoreAdmin.collection('users').doc(userId);
+    const auth = {
+        uid: userId,
+        token: { platformRole: 'PLATFORM' },
+    };
+
+    await userRef.set({
+        active: true,
+        authDisabled: false,
+        blocked: false,
+        deleted: false,
+        isVerified: true,
+        platformRole: 'PLATFORM',
+    });
+    await assertCurrentPlatformAnalyticsAuthority(firestoreAdmin, auth);
+
+    for (const invalidCurrentUser of [
+        { platformRole: 'USER' },
+        { platformRole: 'PLATFORM', active: false },
+        { platformRole: 'PLATFORM', authDisabled: true },
+        { platformRole: 'PLATFORM', blocked: true },
+        { platformRole: 'PLATFORM', deleted: true },
+        { platformRole: 'PLATFORM', isVerified: false },
+    ]) {
+        await userRef.set(invalidCurrentUser);
+        let rejected = false;
+        try {
+            await assertCurrentPlatformAnalyticsAuthority(firestoreAdmin, auth);
+        } catch (error) {
+            rejected = (error as { code?: unknown }).code === 'permission-denied';
+        }
+        assert(rejected, 'stale platform claim must not bypass current persisted user authority');
+    }
+
+    await userRef.delete();
+    let missingRejected = false;
+    try {
+        await assertCurrentPlatformAnalyticsAuthority(firestoreAdmin, auth);
+    } catch (error) {
+        missingRejected = (error as { code?: unknown }).code === 'permission-denied';
+    }
+    assert(missingRejected, 'deleted platform user must fail closed');
 }
 
 async function verifyExplicitSettlementDate(): Promise<void> {
@@ -351,6 +398,7 @@ async function verifyAtomicOBPLifetimeSettlement(): Promise<void> {
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
+    await verifyCurrentPlatformAnalyticsAuthority();
     assert(
         normalizeDashboardAnalyticsRowForTest({ date: '2026-07-10', totalViews: 2 }) !== null,
         'valid compact dashboard row must pass',

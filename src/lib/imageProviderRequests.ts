@@ -50,3 +50,19 @@ export const buildImageProviderUrl = (
 
     return url.toString();
 };
+
+export const normalizeImageProviderResultUrl = (
+    value: unknown,
+    allowedHosts: readonly string[],
+): string | null => {
+    if (typeof value !== 'string' || value.length > 2_048) return null;
+    try {
+        const url = new URL(value);
+        if (url.protocol !== 'https:' || url.username || url.password) return null;
+        const hostname = url.hostname.toLowerCase();
+        if (!allowedHosts.some((host) => hostname === host || hostname.endsWith(`.${host}`))) return null;
+        return url.toString();
+    } catch {
+        return null;
+    }
+};

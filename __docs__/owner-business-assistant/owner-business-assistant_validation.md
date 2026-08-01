@@ -67,6 +67,13 @@ Action workflow collections are removed from the active model. The remaining Bus
 
 Business Health thread privacy now requires exact tenant/store/actor alias agreement and exact persisted actor ownership on both append and read. Store permission alone cannot disclose or mutate another staff member's conversation. Thread responses project bounded allowlisted metadata, messages, source IDs, and suggested-question fields; injected legacy/private fields are omitted. Focused session-scope behavior, Business Health source, MenuList tenant-safety, exact TypeScript, and scoped lint are the local gates.
 
+The owner answer boundary is also runtime-enforced in both directions.
+`answerResponseBoundary.ts` admits only the documented answer, source-fact,
+artifact, follow-up, cache, and route-metric shapes. The API refuses an invalid
+or unknown-field-bearing public payload, while the browser refuses the same
+payload after the 32KB response cap. A TypeScript assertion alone is not
+treated as response validation.
+
 The scheduler regression now proves that current-health, same-day snapshot, and analytics-index writes are replacements, while the multi-location store map remains merged. This prevents stale optional analytics, teaser, project-summary, and legacy fields from surviving a later authoritative rebuild without increasing the write count.
 
 The same focused verifier now feeds storage-only and unknown fields, malformed arrays, wrong tenant identity, and mismatched Redis packet identity into the shared runtime boundary. Valid documents are projected to the exact health/analytics contract; invalid Firestore documents fall back before response composition, and invalid cache packets become misses. This prevents Firestore TTL metadata or legacy fields from crossing the server/client response boundary.

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback, type CSSProperties, type ReactNode } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FEATURE_FLAGS } from '@config/features';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -370,6 +370,14 @@ const isScrollPositionRecord = (value: unknown): value is Record<string, ScrollP
     });
 };
 
+const pruneScrollPositions = (
+    positions: Record<string, ScrollPositionEntry>,
+): Record<string, ScrollPositionEntry> => Object.fromEntries(
+    Object.entries(positions)
+        .sort((left, right) => right[1].updatedAt - left[1].updatedAt)
+        .slice(0, MAX_SCROLL_POSITION_DOCS),
+);
+
 const isExpandedFoldersRecord = (value: unknown): value is Record<string, boolean> => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const entries = Object.entries(value);
@@ -430,7 +438,7 @@ const removeSessionStorageValue = (key: string) => {
 const isMyCodexDocumentResponse = (value: unknown): value is MyCodexDocumentResponse => (
     isPlainRecord(value)
     && typeof value.markdown === 'string'
-    && (value.sourcePath === undefined || typeof value.sourcePath === 'string')
+    && (value.sourcePath === undefined || isBoundedReaderString(value.sourcePath, 4096))
 );
 
 const getMyCodexDocumentResponseLogContext = (
@@ -655,7 +663,12 @@ export default function MyCodexClientContainer({
     const activeSpeechElementRef = useRef<HTMLElement | null>(null);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
     const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+    const wakeLockRequestGenerationRef = useRef(0);
+    const wakeLockRequestInFlightRef = useRef<number | null>(null);
     const wakeLockMessageShownRef = useRef(false);
+    const audioPreparationGenerationRef = useRef(0);
+    const audioPreparationControllerRef = useRef<AbortController | null>(null);
+    const screenshotInFlightRef = useRef(false);
     const speakSpeechChunkRef = useRef<(index: number) => void>(() => undefined);
     const scrollPositionsRef = useRef<Record<string, ScrollPositionEntry>>({});
     const scrollSaveTimerRef = useRef<number | null>(null);
@@ -1209,14 +1222,14 @@ export default function MyCodexClientContainer({
             const progress = scrollableDistance > 0 ? Math.min(100, Math.max(0, (scrollTop / scrollableDistance) * 100)) : 0;
             if (scrollTop < 120) return;
 
-            scrollPositionsRef.current = {
+            scrollPositionsRef.current = pruneScrollPositions({
                 ...scrollPositionsRef.current,
                 [currentPath]: {
                     y: Math.round(scrollTop),
                     progress: Math.round(progress),
                     updatedAt: Date.now(),
                 },
-            };
+            });
 
             if (scrollSaveTimerRef.current !== null) return;
 
@@ -1328,7 +1341,27 @@ export default function MyCodexClientContainer({
         showActionStatus(wasQueued ? 'Removed from queue' : 'Added to queue', wasQueued ? 'info' : 'success');
     };
 
+    const cancelAudioPreparation = useCallback(() => {
+        audioPreparationGenerationRef.current += 1;
+        audioPreparationControllerRef.current?.abort();
+        audioPreparationControllerRef.current = null;
+    }, []);
+
+    const beginAudioPreparation = useCallback(() => {
+        cancelAudioPreparation();
+        const generation = audioPreparationGenerationRef.current;
+        const controller = new AbortController();
+        audioPreparationControllerRef.current = controller;
+        return { controller, generation };
+    }, [cancelAudioPreparation]);
+
+    const isCurrentAudioPreparation = useCallback((generation: number) => (
+        audioPreparationGenerationRef.current === generation
+    ), []);
+
     const releaseWakeLock = useCallback(async () => {
+        wakeLockRequestGenerationRef.current += 1;
+        wakeLockRequestInFlightRef.current = null;
         const currentWakeLock = wakeLockRef.current;
         wakeLockRef.current = null;
 
@@ -1363,8 +1396,20 @@ export default function MyCodexClientContainer({
             return;
         }
 
+        if (wakeLockRequestInFlightRef.current !== null) return;
+        const requestGeneration = wakeLockRequestGenerationRef.current + 1;
+        wakeLockRequestGenerationRef.current = requestGeneration;
+        wakeLockRequestInFlightRef.current = requestGeneration;
+
         try {
             const wakeLock = await nav.wakeLock.request('screen');
+            if (
+                wakeLockRequestGenerationRef.current !== requestGeneration
+                || !keepScreenAwake
+            ) {
+                await wakeLock.release().catch((): undefined => undefined);
+                return;
+            }
             wakeLockRef.current = wakeLock;
             setIsWakeLockSupported(true);
             setWakeLockActive(true);
@@ -1372,16 +1417,21 @@ export default function MyCodexClientContainer({
             wakeLock.addEventListener('release', () => {
                 if (wakeLockRef.current === wakeLock) {
                     wakeLockRef.current = null;
+                    setWakeLockActive(false);
                 }
-                setWakeLockActive(false);
             }, { once: true });
         } catch {
+            if (wakeLockRequestGenerationRef.current !== requestGeneration) return;
             wakeLockRef.current = null;
             setWakeLockActive(false);
             setWakeLockUnavailable(true);
             if (!wakeLockMessageShownRef.current) {
                 showActionStatus('Keep-awake could not start on this device', 'info');
                 wakeLockMessageShownRef.current = true;
+            }
+        } finally {
+            if (wakeLockRequestInFlightRef.current === requestGeneration) {
+                wakeLockRequestInFlightRef.current = null;
             }
         }
     }, [keepScreenAwake, showActionStatus]);
@@ -1394,6 +1444,7 @@ export default function MyCodexClientContainer({
     }, []);
 
     const endSpeechSession = useCallback((shouldCancel = true) => {
+        cancelAudioPreparation();
         speechSessionRef.current += 1;
 
         if (shouldCancel && 'speechSynthesis' in window) {
@@ -1408,7 +1459,7 @@ export default function MyCodexClientContainer({
         setSpeechProgress({ current: 0, total: 0 });
         clearSpeechHighlight();
         void releaseWakeLock();
-    }, [clearSpeechHighlight, releaseWakeLock]);
+    }, [cancelAudioPreparation, clearSpeechHighlight, releaseWakeLock]);
 
     const getSpeechVoice = useCallback(() => {
         if (speechVoices.length === 0) return null;
@@ -1594,22 +1645,27 @@ export default function MyCodexClientContainer({
     }, [isSpeechSupported, showActionStatus]);
 
     const readCurrentPage = useCallback(() => {
+        cancelAudioPreparation();
         startSpeechQueue(
             getSpeechChunksForElements(getReadableSpeechElements()),
             'No readable page content found'
         );
-    }, [getReadableSpeechElements, getSpeechChunksForElements, startSpeechQueue]);
+    }, [cancelAudioPreparation, getReadableSpeechElements, getSpeechChunksForElements, startSpeechQueue]);
 
     const removeFavoriteDocument = useCallback((favoritePath: string) => {
         setFavoriteDocs((previous) => previous.filter((entry) => entry.path !== favoritePath));
         showActionStatus('Removed from favorites', 'info');
     }, [showActionStatus]);
 
-    const fetchFavoriteDocumentMarkdown = useCallback(async (entry: ReaderDocEntry) => {
+    const fetchFavoriteDocumentMarkdown = useCallback(async (
+        entry: ReaderDocEntry,
+        signal?: AbortSignal,
+    ) => {
         const response = await fetch(buildUrl(`/api/document?path=${encodeURIComponent(entry.path)}`), {
             cache: 'no-store',
             credentials: 'same-origin',
             redirect: 'manual',
+            signal,
         });
 
         const payload = await readMyCodexDocumentResponse(response, entry);
@@ -1620,8 +1676,11 @@ export default function MyCodexClientContainer({
         return payload.markdown;
     }, [buildUrl]);
 
-    const getSpeechChunksForFavoriteDocument = useCallback(async (entry: ReaderDocEntry) => {
-        const markdown = await fetchFavoriteDocumentMarkdown(entry);
+    const getSpeechChunksForFavoriteDocument = useCallback(async (
+        entry: ReaderDocEntry,
+        signal?: AbortSignal,
+    ) => {
+        const markdown = await fetchFavoriteDocumentMarkdown(entry, signal);
         return getSpeechChunksForMarkdown(markdown, entry.title);
     }, [fetchFavoriteDocumentMarkdown]);
 
@@ -1633,14 +1692,20 @@ export default function MyCodexClientContainer({
             return;
         }
 
+        const preparation = beginAudioPreparation();
         try {
             showActionStatus('Preparing favorite', 'info');
-            const chunks = await getSpeechChunksForFavoriteDocument(entry);
+            const chunks = await getSpeechChunksForFavoriteDocument(entry, preparation.controller.signal);
+            if (!isCurrentAudioPreparation(preparation.generation)) return;
+            audioPreparationControllerRef.current = null;
             startSpeechQueue(chunks, 'No readable content found');
-        } catch {
+        } catch (error) {
+            if (!isCurrentAudioPreparation(preparation.generation)) return;
+            audioPreparationControllerRef.current = null;
+            if (error instanceof DOMException && error.name === 'AbortError') return;
             showActionStatus('Could not load favorite', 'error');
         }
-    }, [getSpeechChunksForFavoriteDocument, isSpeechSupported, showActionStatus, startSpeechQueue]);
+    }, [beginAudioPreparation, getSpeechChunksForFavoriteDocument, isCurrentAudioPreparation, isSpeechSupported, showActionStatus, startSpeechQueue]);
 
     const readFavoriteDocumentsQueue = useCallback(async (entries = favoriteDocs) => {
         if (!IS_AUDIO_READER_ENABLED) return;
@@ -1655,6 +1720,7 @@ export default function MyCodexClientContainer({
             return;
         }
 
+        const preparation = beginAudioPreparation();
         showActionStatus(`Preparing ${entries.length} favorite${entries.length === 1 ? '' : 's'}`, 'info');
 
         const selectedEntries = entries.slice(0, MAX_AUDIO_QUEUE_DOCUMENTS);
@@ -1665,7 +1731,8 @@ export default function MyCodexClientContainer({
         for (let entryIndex = 0; entryIndex < selectedEntries.length; entryIndex += 1) {
             const entry = selectedEntries[entryIndex];
             try {
-                const chunks = await getSpeechChunksForFavoriteDocument(entry);
+                const chunks = await getSpeechChunksForFavoriteDocument(entry, preparation.controller.signal);
+                if (!isCurrentAudioPreparation(preparation.generation)) return;
                 const documentCharacters = chunks.reduce((total, chunk) => total + chunk.text.length, 0);
                 if (queuedCharacters + documentCharacters > MAX_AUDIO_QUEUE_CHARACTERS) {
                     failedDocuments += selectedEntries.length - entryIndex;
@@ -1673,17 +1740,21 @@ export default function MyCodexClientContainer({
                 }
                 allChunks.push(...chunks);
                 queuedCharacters += documentCharacters;
-            } catch {
+            } catch (error) {
+                if (!isCurrentAudioPreparation(preparation.generation)) return;
+                if (error instanceof DOMException && error.name === 'AbortError') return;
                 failedDocuments += 1;
             }
         }
 
+        if (!isCurrentAudioPreparation(preparation.generation)) return;
+        audioPreparationControllerRef.current = null;
         if (failedDocuments > 0 && allChunks.length > 0) {
             showActionStatus(`${failedDocuments} favorite${failedDocuments === 1 ? '' : 's'} skipped`, 'info');
         }
 
         startSpeechQueue(allChunks, failedDocuments > 0 ? 'No readable favorites loaded' : 'No readable favorites found');
-    }, [favoriteDocs, getSpeechChunksForFavoriteDocument, isSpeechSupported, showActionStatus, startSpeechQueue]);
+    }, [beginAudioPreparation, favoriteDocs, getSpeechChunksForFavoriteDocument, isCurrentAudioPreparation, isSpeechSupported, showActionStatus, startSpeechQueue]);
 
     const readQueueDocuments = useCallback(async (entries = queueDocs) => {
         if (!IS_AUDIO_READER_ENABLED) return;
@@ -1698,6 +1769,7 @@ export default function MyCodexClientContainer({
             return;
         }
 
+        const preparation = beginAudioPreparation();
         showActionStatus(`Preparing ${entries.length} queued doc${entries.length === 1 ? '' : 's'}`, 'info');
 
         const selectedEntries = entries.slice(0, MAX_AUDIO_QUEUE_DOCUMENTS);
@@ -1708,7 +1780,8 @@ export default function MyCodexClientContainer({
         for (let entryIndex = 0; entryIndex < selectedEntries.length; entryIndex += 1) {
             const entry = selectedEntries[entryIndex];
             try {
-                const chunks = await getSpeechChunksForFavoriteDocument(entry);
+                const chunks = await getSpeechChunksForFavoriteDocument(entry, preparation.controller.signal);
+                if (!isCurrentAudioPreparation(preparation.generation)) return;
                 const documentCharacters = chunks.reduce((total, chunk) => total + chunk.text.length, 0);
                 if (queuedCharacters + documentCharacters > MAX_AUDIO_QUEUE_CHARACTERS) {
                     failedDocuments += selectedEntries.length - entryIndex;
@@ -1716,17 +1789,21 @@ export default function MyCodexClientContainer({
                 }
                 allChunks.push(...chunks);
                 queuedCharacters += documentCharacters;
-            } catch {
+            } catch (error) {
+                if (!isCurrentAudioPreparation(preparation.generation)) return;
+                if (error instanceof DOMException && error.name === 'AbortError') return;
                 failedDocuments += 1;
             }
         }
 
+        if (!isCurrentAudioPreparation(preparation.generation)) return;
+        audioPreparationControllerRef.current = null;
         if (failedDocuments > 0 && allChunks.length > 0) {
             showActionStatus(`${failedDocuments} queued doc${failedDocuments === 1 ? '' : 's'} skipped`, 'info');
         }
 
         startSpeechQueue(allChunks, failedDocuments > 0 ? 'No readable queued docs loaded' : 'No readable queued docs found');
-    }, [getSpeechChunksForFavoriteDocument, isSpeechSupported, queueDocs, showActionStatus, startSpeechQueue]);
+    }, [beginAudioPreparation, getSpeechChunksForFavoriteDocument, isCurrentAudioPreparation, isSpeechSupported, queueDocs, showActionStatus, startSpeechQueue]);
 
     const pauseSpeech = useCallback(() => {
         if (!isSpeechSupported || !('speechSynthesis' in window)) return;
@@ -1795,7 +1872,8 @@ export default function MyCodexClientContainer({
         textarea.setSelectionRange(0, textarea.value.length);
 
         try {
-            return document.execCommand('copy');
+            if (document.execCommand('copy')) return true;
+            throw new Error('mycodex_clipboard_copy_rejected');
         } finally {
             textarea.remove();
         }
@@ -2067,8 +2145,9 @@ export default function MyCodexClientContainer({
     };
 
     const copyDocumentScreenshot = async () => {
-        if (!readerCaptureRef.current || isCopyingScreenshot) return;
+        if (!readerCaptureRef.current || isCopyingScreenshot || screenshotInFlightRef.current) return;
 
+        screenshotInFlightRef.current = true;
         setIsCopyingScreenshot(true);
         try {
             const { blob, truncated } = await createScreenshotBlob(readerCaptureRef.current);
@@ -2093,6 +2172,7 @@ export default function MyCodexClientContainer({
         } catch {
             showActionStatus('Could not capture screenshot', 'error');
         } finally {
+            screenshotInFlightRef.current = false;
             setIsCopyingScreenshot(false);
         }
     };
@@ -2124,7 +2204,7 @@ export default function MyCodexClientContainer({
     const documentActionButtonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 transition-colors hover:border-sky-300 hover:text-sky-700 active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:border-sky-700 dark:hover:text-sky-300';
 
     // Helper to traverse and remove alert prefixes in component
-    const removePrefixFromChild = (child: any, prefix: string): any => {
+    const removePrefixFromChild = (child: ReactNode, prefix: string): ReactNode => {
         if (!child) return child;
         if (typeof child === 'string') {
             if (child.trim().startsWith(prefix)) {
@@ -2132,22 +2212,22 @@ export default function MyCodexClientContainer({
             }
             return child;
         }
-        if (child.props && child.props.children) {
+        if (React.isValidElement<{ children?: ReactNode }>(child) && child.props.children) {
             const children = React.Children.map(child.props.children, (c) => removePrefixFromChild(c, prefix));
-            return React.cloneElement(child, { ...child.props, children });
+            return React.cloneElement(child, undefined, children);
         }
         return child;
     };
 
     // Custom ReactMarkdown render components
-    const customComponents = useMemo(() => ({
-        blockquote: ({ children }: any) => {
+    const customComponents = useMemo<Components>(() => ({
+        blockquote: ({ children }) => {
             let textContent = '';
-            const findText = (node: any) => {
+            const findText = (node: ReactNode) => {
                 if (!node) return;
                 if (typeof node === 'string') {
                     textContent += node;
-                } else if (node.props && node.props.children) {
+                } else if (React.isValidElement<{ children?: ReactNode }>(node) && node.props.children) {
                     React.Children.forEach(node.props.children, findText);
                 }
             };
@@ -2192,7 +2272,7 @@ export default function MyCodexClientContainer({
                 </blockquote>
             );
         },
-        a: ({ href, children, node: _node, ...props }: any) => {
+        a: ({ href, children, node: _node, ...props }) => {
             if (!href) return <a {...props}>{children}</a>;
 
             let targetHref = href;
@@ -2236,19 +2316,19 @@ export default function MyCodexClientContainer({
             );
         },
         // Auto-assign IDs to headings so they can be scrolled to via jump links
-        h1: ({ children, node: _node, ...props }: any) => {
+        h1: ({ children, node: _node, ...props }) => {
             const id = createHeadingId(getNodeText(children));
             return <h1 id={id} {...props}>{children}</h1>;
         },
-        h2: ({ children, node: _node, ...props }: any) => {
+        h2: ({ children, node: _node, ...props }) => {
             const id = createHeadingId(getNodeText(children));
             return <h2 id={id} {...props}>{children}</h2>;
         },
-        h3: ({ children, node: _node, ...props }: any) => {
+        h3: ({ children, node: _node, ...props }) => {
             const id = createHeadingId(getNodeText(children));
             return <h3 id={id} {...props}>{children}</h3>;
         },
-        table: ({ children, node: _node, ...props }: any) => (
+        table: ({ children, node: _node, ...props }) => (
             <div className="mycodex-scroll-block" role="region" aria-label="Scrollable table">
                 <table {...props}>{children}</table>
             </div>

@@ -8,6 +8,7 @@ import {
     updateSessionInternalNote,
 } from '@database/chatSessions';
 import { getAnswerlatticeCustomerIdentity } from '@lib/answerlattice/customerIdentity';
+import { getAnswerlatticeInternalNotePlainText } from '@lib/answerlattice/chatSessionContracts';
 import { ChatMessage, ChatSession } from '@type/chatSession';
 import { Avatar, Button, Card, Descriptions, Divider, Flex, Input, message, Statistic, Tag, theme, Typography } from 'antd';
 import { useEffect, useState } from 'react';
@@ -31,7 +32,11 @@ function ConversationDrawer({ open, session, scope, onClose }: ConversationDrawe
     // Initialize internal note when session changes
     useEffect(() => {
         if (session) {
-            setInternalNote(session.internalNotes?.[0]?.content || '');
+            setInternalNote(
+                session.internalNotes?.[0]?.content
+                    ? getAnswerlatticeInternalNotePlainText(session.internalNotes[0].content)
+                    : '',
+            );
         } else {
             setInternalNote('');
         }
@@ -126,7 +131,7 @@ function ConversationDrawer({ open, session, scope, onClose }: ConversationDrawe
             lines.push('---');
             lines.push('');
             lines.push('**Internal Note:**');
-            lines.push(session.internalNotes[0].content);
+            lines.push(getAnswerlatticeInternalNotePlainText(session.internalNotes[0].content));
         }
 
         return lines.join('\n');
@@ -295,9 +300,9 @@ function ConversationDrawer({ open, session, scope, onClose }: ConversationDrawe
                                 )}
                                 {message.feedback.reasonsToImprove && message.feedback.reasonsToImprove.length > 0 && (
                                     <Flex gap={4} wrap="wrap">
-                                        {message.feedback.reasonsToImprove.map((reason: any, i: number) => (
+                                        {message.feedback.reasonsToImprove.map((reason, i) => (
                                             <Tag key={i} style={{ fontSize: 10, padding: '0 6px', height: 18 }}>
-                                                {reason.label || reason}
+                                                {reason.label || reason.value}
                                             </Tag>
                                         ))}
                                     </Flex>

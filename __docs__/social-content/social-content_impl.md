@@ -8,6 +8,25 @@
 
 > **Launch boundary:** This implementation note is social-content source evidence, not current production certification. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, Today/mobile/browser QA, campaign AI provider smoke where enabled, and deploy evidence for the target environment.
 
+## July 29, 2026 - Weekly Growth Pack Runtime Input Boundary
+
+The paused Weekly Growth Pack now runtime-projects the already-loaded
+store/project/campaign truth before constructing owner copy. Business, project,
+campaign subject, staff, status, timing, inactive-item and URL values accept
+only their governed scalar/array shapes; persisted accessors are not executed,
+strings and counts are bounded, and only credential-free public HTTPS menu URLs
+reach WhatsApp, Google, Instagram or public-link output. Malformed state falls
+back to the existing neutral copy instead of throwing or exposing object
+coercions. Clipboard input containing only whitespace fails as `empty_text`.
+
+Verification: `npm run test:today-weekly-growth-pack-boundary`,
+`npm run verify:owner-dashboard-today-boundary`, and
+`npm run verify:public-business-truth`.
+
+Firebase cost impact: `$0.00`. The repair remains a pure already-loaded
+projection/browser copy path and adds no read, write, provider, cache, rule,
+index, Function or deployment behavior.
+
 ## June 29, 2026 - Today WhatsApp Handoff Hardening
 
 Today campaign WhatsApp actions keep the same owner flow: build the generated WhatsApp message, try to open WhatsApp, and fall back to copying the message. The handoff opens the generated URL with `noopener,noreferrer` and records a bounded `today_campaign_whatsapp_open_failed` diagnostic if the browser blocks or throws before the clipboard fallback completes. Copy success requires Clipboard API success or acknowledged textarea fallback success; browsers that expose Clipboard API but reject writes fall through to the textarea fallback before failure.

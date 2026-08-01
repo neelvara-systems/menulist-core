@@ -49,7 +49,7 @@ type StoreSitemapSeed = {
     storeId: string;
     isMaster: boolean;
     tenantId: number;
-    modifiedOn: Date;
+    modifiedOn?: Date;
     publicStore: Record<string, any>;
 };
 
@@ -65,7 +65,7 @@ type ProjectSitemapEntry = {
 type OutletSitemapEntry = {
     outletSlug: string;
     storeId: string;
-    modifiedOn: Date;
+    modifiedOn?: Date;
     publicStore: Record<string, any>;
 };
 
@@ -146,13 +146,23 @@ const logTenantSitemapFailure = (
     });
 };
 
-const readModifiedOn = (raw: any): Date => {
-    if (raw?.toDate) return raw.toDate();
+const readModifiedOn = (raw: unknown): Date | undefined => {
+    if (
+        raw
+        && typeof raw === 'object'
+        && 'toDate' in raw
+        && typeof raw.toDate === 'function'
+    ) {
+        const converted = raw.toDate();
+        return converted instanceof Date && Number.isFinite(converted.getTime())
+            ? converted
+            : undefined;
+    }
     if (typeof raw === 'string') {
         const parsed = new Date(raw);
-        if (!isNaN(parsed.getTime())) return parsed;
+        if (Number.isFinite(parsed.getTime())) return parsed;
     }
-    return new Date();
+    return undefined;
 };
 
 const serializeTimestampLike = (raw: any): string | null => {

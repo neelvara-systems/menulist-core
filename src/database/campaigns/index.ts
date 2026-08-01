@@ -25,12 +25,13 @@ import {
     removeCampaignFromToday,
 } from "@lib/campaigns/campaignActionState";
 import { normalizeOwnerSlideCaption, normalizeScreenImageUrl } from "@lib/screen/screenContent";
+import { isDigitalScreenManagementResponse } from "@lib/screen/screenManagementContracts";
 import type {
     DigitalScreenManagementMutation,
-    DigitalScreenManagementResponse,
     DigitalScreenOwnerStateTransport,
 } from "@lib/screen/screenManagementContracts";
 import { filterExpiredSlides, getOwnerUploadExpiry, isValidScreenToken } from "@lib/screen/utils";
+import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { secureError } from "@lib/security/secureLogger";
 import { createRandomIdSegment } from "@lib/runtime/randomId";
 import {
@@ -56,6 +57,7 @@ const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
 const DIGITAL_SCREEN_MAX_UPLOADS = FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS;
 const DIGITAL_SCREEN_UPLOAD_EXPIRY_DAYS = FEATURE_FLAGS.DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS;
 const CAMPAIGN_HISTORY_MAX_RESULTS = 100;
+const DIGITAL_SCREEN_MANAGEMENT_RESPONSE_MAX_BYTES = 64 * 1024;
 
 const getLogErrorName = (error: unknown): string => getBoundedErrorName(error) || typeof error;
 
@@ -290,19 +292,28 @@ export function assertCampaignSkipSucceeded(
 // DOCUMENT REFERENCES
 // ═══════════════════════════════════════════════════════════════
 
-type CampaignSessionScope = Pick<LoginUserType, 'tId' | 'sId'>;
+type CampaignSessionScope = LoginUserType & {
+    sId: number;
+    tId: number;
+};
 
-const requireCampaignSessionScope = (session: LoginUserType | null): LoginUserType => {
+const requireCampaignSessionScope = (session: LoginUserType | null): CampaignSessionScope => {
     if (
         !session
+        || typeof session.tId !== 'number'
         || !Number.isSafeInteger(session.tId)
         || session.tId <= 0
+        || typeof session.sId !== 'number'
         || !Number.isSafeInteger(session.sId)
         || session.sId <= 0
     ) {
         throw new Error('campaign_session_scope_invalid');
     }
-    return session;
+    return {
+        ...session,
+        sId: session.sId,
+        tId: session.tId,
+    };
 };
 
 const getCampaignsCollectionRef = (session: CampaignSessionScope) => {
@@ -374,7 +385,6 @@ export const getTodayCampaigns = async (): Promise<TodayScreenData | null> => {
                 // Summary is stale, return empty
                 return {
                     today: normalizedToday,
-                    staffPrompt: undefined
                 };
             }
 
@@ -437,50 +447,36 @@ export const getCampaignHistory = async (
 ): Promise<Campaign[]> => {
     return await apiCallComposer(
         async () => {
-            try {
-                const session = requireCampaignSessionScope(await getActiveSession());
-                if (!Number.isSafeInteger(limitCount) || limitCount < 1 || limitCount > CAMPAIGN_HISTORY_MAX_RESULTS) {
-                    throw new Error('campaign_history_limit_invalid');
-                }
-                const normalizedProjectId = projectId
-                    ? requireCampaignDocumentId(projectId, 'project_id')
-                    : null;
-                const collectionRef = getCampaignsCollectionRef(session);
-                const q = normalizedProjectId
-                    ? query(
-                        collectionRef,
-                        where("projectId", "==", normalizedProjectId),
-                        orderBy("updatedAt", "desc"),
-                        limit(limitCount)
-                    )
-                    : query(
-                        collectionRef,
-                        orderBy("updatedAt", "desc"),
-                        limit(limitCount)
-                    );
-
-                const snapshot = await getDocs(q);
-                return snapshot.docs
-                    .map((campaignDoc) => projectCampaignRecord(campaignDoc.data(), {
-                        campaignId: campaignDoc.id,
-                        sId: session.sId,
-                        tId: session.tId,
-                    }))
-                    .filter((campaign): campaign is Campaign => campaign !== null)
-                    .filter(campaign => ["completed", "skipped", "suggested"].includes(campaign.status));
-            } catch (error) {
-                secureError(
-                    "[Campaigns] Campaign history load failed",
-                    new Error("campaign_history_load_failed"),
-                    {
-                        limitCount,
-                        hasProjectId: Boolean(projectId),
-                        projectIdLength: String(projectId || "").length,
-                        errorName: getLogErrorName(error),
-                    },
-                );
-                return [];
+            const session = requireCampaignSessionScope(await getActiveSession());
+            if (!Number.isSafeInteger(limitCount) || limitCount < 1 || limitCount > CAMPAIGN_HISTORY_MAX_RESULTS) {
+                throw new Error('campaign_history_limit_invalid');
             }
+            const normalizedProjectId = projectId
+                ? requireCampaignDocumentId(projectId, 'project_id')
+                : null;
+            const collectionRef = getCampaignsCollectionRef(session);
+            const q = normalizedProjectId
+                ? query(
+                    collectionRef,
+                    where("projectId", "==", normalizedProjectId),
+                    orderBy("updatedAt", "desc"),
+                    limit(limitCount)
+                )
+                : query(
+                    collectionRef,
+                    orderBy("updatedAt", "desc"),
+                    limit(limitCount)
+                );
+
+            const snapshot = await getDocs(q);
+            return snapshot.docs
+                .map((campaignDoc) => projectCampaignRecord(campaignDoc.data(), {
+                    campaignId: campaignDoc.id,
+                    sId: session.sId,
+                    tId: session.tId,
+                }))
+                .filter((campaign): campaign is Campaign => campaign !== null)
+                .filter(campaign => ["completed", "skipped", "suggested"].includes(campaign.status));
         },
         { limitCount, projectId: projectId || null },
         "getCampaignHistory"
@@ -831,8 +827,11 @@ async function callDigitalScreenManagementApi(
         throw new Error(`digital_screen_management_request_failed_${response.status}`);
     }
 
-    const result = await response.json() as Partial<DigitalScreenManagementResponse>;
-    if (result.success !== true) {
+    const result = await readJsonResponseWithLimit<unknown>(
+        response,
+        DIGITAL_SCREEN_MANAGEMENT_RESPONSE_MAX_BYTES,
+    );
+    if (!isDigitalScreenManagementResponse(result)) {
         throw new Error("digital_screen_management_response_invalid");
     }
     return result.screen ? hydrateDigitalScreenOwnerState(result.screen) : null;
@@ -1009,7 +1008,7 @@ export const uploadScreenSlide = async (
 
             // Generate unique slide ID
             const slideId = `upload-${Date.now()}-${createRandomIdSegment(9)}`;
-            let imageUrl = data.url;
+            let imageUrl = typeof data.url === 'string' ? normalizeScreenImageUrl(data.url) : '';
 
             // Upload prepared media to immutable profile-aware Storage path
             if (data.blob || isDataUrl(data.url)) {
@@ -1026,8 +1025,9 @@ export const uploadScreenSlide = async (
                     tenantId: session.tId,
                     variant: 'full',
                 });
-                imageUrl = uploaded.primaryUrl;
+                imageUrl = normalizeScreenImageUrl(uploaded.primaryUrl);
             }
+            if (!imageUrl) throw new Error('digital_screen_slide_image_invalid');
 
             // Create slide object
             const newSlide: ScreenSlide = {

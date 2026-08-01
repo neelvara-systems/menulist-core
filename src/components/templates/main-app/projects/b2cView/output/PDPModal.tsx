@@ -41,6 +41,14 @@ import { menuBottomSheetMotion, menuDialogMotion, menuSpringTransition } from '.
 type ItemShareMethod = 'native_share' | 'copy_link';
 const PUBLIC_MENU_PDP_ITEM_SHARE_CLIPBOARD_UNAVAILABLE = 'public_menu_pdp_item_share_clipboard_unavailable';
 const PUBLIC_MENU_PDP_ITEM_SHARE_COPY_FALLBACK_FAILED = 'public_menu_pdp_item_share_copy_fallback_failed';
+const PDP_FOCUSABLE_SELECTOR = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+].join(',');
 
 interface PDPModalProps {
     item: any;
@@ -198,7 +206,11 @@ function PDPModal({
     const [category, setCategory] = useState<ExtractedDataCategory>();
     const [mounted, setMounted] = useState(false);
     const [isMobileSheet, setIsMobileSheet] = useState(false);
+    const dialogRef = useRef<HTMLDivElement | null>(null);
+    const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+    const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
     const imageTouchStartXRef = useRef<number | null>(null);
+    const isOpen = Boolean(item);
     const primaryLanguage = projectData?.defaultLanguage || projectData?.languages?.[0] || 'en';
     const images = useMemo(() => normalizePublicMenuImages(item?.images), [item?.images]);
     const imageCount = images.length;
@@ -256,7 +268,7 @@ function PDPModal({
     }, []);
 
     useEffect(() => {
-        if (!item || typeof window === 'undefined') return;
+        if (!isOpen || typeof window === 'undefined') return;
 
         const html = document.documentElement;
         const body = document.body;
@@ -306,7 +318,30 @@ function PDPModal({
             restoreScrollPosition();
             window.requestAnimationFrame(() => onClosed?.());
         };
-    }, [item?.id, onClosed]);
+    }, [isOpen, onClosed]);
+
+    useEffect(() => {
+        if (!isOpen || typeof window === 'undefined') return;
+
+        const activeElement = document.activeElement;
+        previouslyFocusedElementRef.current = activeElement instanceof HTMLElement
+            ? activeElement
+            : null;
+        const focusFrame = window.requestAnimationFrame(() => {
+            closeButtonRef.current?.focus({ preventScroll: true });
+        });
+
+        return () => {
+            window.cancelAnimationFrame(focusFrame);
+            const focusTarget = previouslyFocusedElementRef.current;
+            previouslyFocusedElementRef.current = null;
+            window.requestAnimationFrame(() => {
+                if (focusTarget?.isConnected) {
+                    focusTarget.focus({ preventScroll: true });
+                }
+            });
+        };
+    }, [isOpen]);
 
     useEffect(() => {
         if (item) {
@@ -395,28 +430,58 @@ function PDPModal({
     }, [shareStatus]);
 
     useEffect(() => {
-        if (!item) return;
+        if (!isOpen) return;
 
         const targetUrl = images[currentImageIndex]?.url;
         if (targetUrl && loadedImageUrls.has(targetUrl) && displayedImageIndex !== currentImageIndex) {
             setDisplayedImageIndex(currentImageIndex);
         }
-    }, [currentImageIndex, displayedImageIndex, images, item, loadedImageUrls]);
+    }, [currentImageIndex, displayedImageIndex, images, isOpen, loadedImageUrls]);
 
     useEffect(() => {
-        if (!item) return;
+        if (!isOpen) return;
 
         const handleKeyDown = (event: KeyboardEvent) => {
             if (isImageViewerOpen) return;
 
             if (event.key === 'Escape') {
+                event.preventDefault();
                 onClose();
+                return;
+            }
+
+            if (event.key === 'Tab' && dialogRef.current) {
+                const focusableElements = Array.from(
+                    dialogRef.current.querySelectorAll<HTMLElement>(PDP_FOCUSABLE_SELECTOR),
+                ).filter((element) => (
+                    element.getAttribute('aria-hidden') !== 'true'
+                    && element.getClientRects().length > 0
+                ));
+                if (focusableElements.length === 0) {
+                    event.preventDefault();
+                    dialogRef.current.focus({ preventScroll: true });
+                    return;
+                }
+
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+                const activeElement = document.activeElement;
+                if (!dialogRef.current.contains(activeElement)) {
+                    event.preventDefault();
+                    (event.shiftKey ? lastElement : firstElement).focus();
+                } else if (event.shiftKey && activeElement === firstElement) {
+                    event.preventDefault();
+                    lastElement.focus();
+                } else if (!event.shiftKey && activeElement === lastElement) {
+                    event.preventDefault();
+                    firstElement.focus();
+                }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isImageViewerOpen, item, onClose]);
+    }, [isImageViewerOpen, isOpen, onClose]);
 
     const safeTags = useMemo(() => sanitizePdpTags(item?.tags), [item?.tags]);
 
@@ -448,6 +513,17 @@ function PDPModal({
             nutritionInfo.servingSize ? t('menu.serving', { value: String(nutritionInfo.servingSize) }) : '',
             ].filter(Boolean)
         : [];
+    const hasStructuredMetadata = (
+        allergens.length > 0
+        || dietaryTags.length > 0
+        || Boolean(spiceLevel)
+        || Boolean(duration)
+        || Boolean(targetAudience)
+        || Boolean(skillLevel)
+        || Boolean(materials)
+        || Boolean(warranty)
+        || nutritionBadges.length > 0
+    );
     const handleImageTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
         imageTouchStartXRef.current = event.touches[0]?.clientX ?? null;
     };
@@ -603,6 +679,7 @@ function PDPModal({
                 <>
                     {/* Backdrop */}
                     <motion.div
+                        aria-hidden="true"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -619,6 +696,7 @@ function PDPModal({
 
                     {/* Modal */}
                     <motion.div
+                        ref={dialogRef}
                         dir={languageDirection}
                         lang={language}
                         initial={isMobileSheet ? menuBottomSheetMotion.initial : menuDialogMotion.initial}
@@ -627,6 +705,7 @@ function PDPModal({
                         transition={menuSpringTransition}
                         className="fixed z-[60] flex items-center justify-center"
                         role="dialog"
+                        tabIndex={-1}
                         aria-modal="true"
                         aria-label={getModalText(item.name, t('menu.menuItemDetails'))}
                         style={{
@@ -682,9 +761,10 @@ function PDPModal({
                                     </button>
                                 )}
                                 <button
+                                    ref={closeButtonRef}
                                     type="button"
                                     onClick={onClose}
-                                    className="rounded-full transition-opacity hover:opacity-80"
+                                    className="rounded-full transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                                     aria-label={t('menu.closeItemDetails')}
                                     style={stickyCloseButtonStyle}
                                 >
@@ -923,7 +1003,7 @@ function PDPModal({
                                 )}
 
                                 {/* Structured Metadata Badges — render owner-provided details when present */}
-                                {(allergens.length || dietaryTags.length || spiceLevel || duration || targetAudience || skillLevel || materials || warranty || nutritionBadges.length) && (
+                                {hasStructuredMetadata && (
                                     <div
                                         className="flex flex-wrap gap-1.5 mb-4"
                                         style={{

@@ -5,10 +5,10 @@ import {
 } from '../../src/lib/analytics/browserState';
 import {
   ANALYTICS_QUEUE_MAX_ENTRIES,
+  canMergeAnalyticsUpdateData,
   getAnalyticsQueueKey,
   mergeAnalyticsUpdateData,
   normalizePersistedAnalyticsQueue,
-  subtractFlushedAnalyticsData,
 } from '../../src/lib/analytics/queueBoundary';
 import type { AnalyticsWriteValue } from '../../src/lib/analytics/writePolicy';
 import { buildGA4DefaultEventParameters, normalizeGA4CommerceItems } from '../../src/lib/analytics/ga4Boundary';
@@ -126,27 +126,57 @@ mergeAnalyticsUpdateData(merged, {
 assert(merged.totalViews === 5, 'queued numeric counters must merge additively');
 assert(merged.totalClicks === 1, 'new queued numeric counters must survive');
 assert(merged['itemNames.item_1'] === 'Lunch Special', 'latest queued label must win');
-
-const remaining = subtractFlushedAnalyticsData(
-  {
-    totalViews: 5,
-    totalClicks: 1,
-    'itemNames.item_1': 'Lunch Special',
-    'itemNames.item_2': 'Dinner',
-  },
-  {
-    totalViews: 2,
-    totalClicks: 1,
-    'itemNames.item_1': 'Lunch',
-  },
-);
-assert(remaining.totalViews === 3, 'in-flight numeric events must remain after snapshot drain');
-assert(!('totalClicks' in remaining), 'delivered numeric counter must be drained');
 assert(
-  remaining['itemNames.item_1'] === 'Lunch Special',
-  'a label changed during an in-flight flush must remain queued',
+  canMergeAnalyticsUpdateData(
+    Object.fromEntries(Array.from({ length: 100 }, (_, index) => [`searchTerms.term_${index}`, 1])),
+    { 'searchTerms.one_more': 1 },
+  ) === false,
+  'live queue merge must reject payloads wider than the public route contract',
 );
-assert(remaining['itemNames.item_2'] === 'Dinner', 'new in-flight label must remain queued');
+assert(
+  canMergeAnalyticsUpdateData({ totalViews: 1 }, { totalClicks: 1 }) === true,
+  'live queue merge must retain deliverable payloads within the route field cap',
+);
+
+const restoredSplitDelivery = normalizePersistedAnalyticsQueue([[
+  'split-delivery',
+  {
+    ...validQueued,
+    deliveryId: 'b'.repeat(32),
+    updateData: { totalViews: 3 },
+    eventCount: 1,
+    activeDelivery: {
+      deliveryId: 'a'.repeat(32),
+      updateData: { totalViews: 2 },
+      eventCount: 1,
+    },
+  },
+]], now);
+assert(restoredSplitDelivery.length === 1, 'split active/pending analytics delivery must restore');
+assert(
+  restoredSplitDelivery[0].activeDelivery?.deliveryId === 'a'.repeat(32)
+  && restoredSplitDelivery[0].activeDelivery?.updateData.totalViews === 2,
+  'the receipted in-flight payload must retain its exact delivery ID and counters',
+);
+assert(
+  restoredSplitDelivery[0].deliveryId === 'b'.repeat(32)
+  && restoredSplitDelivery[0].updateData.totalViews === 3,
+  'new counters must remain under a different pending delivery ID',
+);
+assert(
+  normalizePersistedAnalyticsQueue([[
+    'malformed-active-delivery',
+    {
+      ...validQueued,
+      activeDelivery: {
+        deliveryId: 'bad',
+        updateData: { totalViews: 2 },
+        eventCount: 1,
+      },
+    },
+  ]], now).length === 0,
+  'malformed persisted active delivery state must fail closed',
+);
 
 const milestone = normalizeAnalyticsSessionMilestoneState({
   menuSession: true,

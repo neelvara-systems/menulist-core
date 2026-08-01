@@ -8,6 +8,7 @@
  */
 
 import { getPublicBaseUrl, normalizeBaseUrl } from '@constant/urls';
+import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { generateBrandedQrCodeDataUrl, type BrandedQrCodeOptions } from '@lib/utils/qrCode';
 import QRCode from 'qrcode';
 /**
@@ -28,7 +29,20 @@ export interface QrCodeOptions {
  * Get the base URL for the application
  */
 const getBaseUrl = (baseUrlOverride?: string): string => {
-    return normalizeBaseUrl(baseUrlOverride) || getPublicBaseUrl();
+    const fallback = normalizeBaseUrl(getPublicBaseUrl());
+    if (!baseUrlOverride) return fallback;
+    try {
+        const candidate = new URL(normalizeBaseUrl(baseUrlOverride));
+        if (
+            !['http:', 'https:'].includes(candidate.protocol)
+            || candidate.username
+            || candidate.password
+            || !candidate.hostname
+        ) return fallback;
+        return candidate.origin;
+    } catch {
+        return fallback;
+    }
 };
 
 /**
@@ -43,8 +57,10 @@ export function getFeedbackUrl(
     source?: 'feedback_qr' | 'menu_footer' | 'direct_link',
     baseUrlOverride?: string,
 ): string {
+    const normalizedProjectId = normalizeGuestFeedbackProjectId(projectId);
+    if (!normalizedProjectId) throw new Error('Invalid feedback project ID');
     const baseUrl = getBaseUrl(baseUrlOverride);
-    const base = `${baseUrl}/feedback/${projectId}`;
+    const base = `${baseUrl}/feedback/${normalizedProjectId}`;
     return source ? `${base}?source=${source}` : base;
 }
 

@@ -113,6 +113,8 @@ const buildStoredEntry = (
     existing?: Record<string, any>,
 ) => {
     const now = Timestamp.now();
+    const existingLikes = existing?.likes;
+    const existingDislikes = existing?.dislikes;
     return ({
     id: entryId,
     title: input.title,
@@ -127,8 +129,12 @@ const buildStoredEntry = (
     files: input.files,
     entityChanges: input.entityChanges,
     releaseId: input.releaseId || null,
-    likes: Number.isSafeInteger(existing?.likes) && existing.likes >= 0 ? existing.likes : 0,
-    dislikes: Number.isSafeInteger(existing?.dislikes) && existing.dislikes >= 0 ? existing.dislikes : 0,
+    likes: Number.isSafeInteger(existingLikes) && typeof existingLikes === "number" && existingLikes >= 0
+        ? existingLikes
+        : 0,
+    dislikes: Number.isSafeInteger(existingDislikes) && typeof existingDislikes === "number" && existingDislikes >= 0
+        ? existingDislikes
+        : 0,
     createdOn: existing?.createdOn || now,
     createdBy: existing?.createdBy || actor.label,
     modifiedOn: now,
@@ -257,7 +263,7 @@ async function createEntry(
         let pageId = pageIdForNumber(1);
         let pageNumber = 1;
         let pageRef = changelogCollection(access).doc(pageId);
-        let pageData: Record<string, unknown> = {
+        let pageData: FirebaseFirestore.UpdateData<FirebaseFirestore.DocumentData> = {
             pId: PRODUCT_IDS.ANSWERLATTICE,
             tId: access.scope.tenantId,
             sId: access.scope.storeId,

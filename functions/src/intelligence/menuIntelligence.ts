@@ -20,6 +20,7 @@
  */
 
 import { Timestamp } from 'firebase-admin/firestore';
+import { MENU_INTELLIGENCE_POLICY } from '../sharedData/menuIntelligencePolicy';
 import { AggregatedAnalytics, parseAggregatedAnalytics } from './shared/analyticsAggregator';
 import { ExtractedItem, isSafeIntelligenceItemId, parseExtractedItems } from './shared/itemExtractor';
 import { calculateEngagementRate } from './shared/scoreNormalizer';
@@ -154,10 +155,10 @@ export interface MenuIntelligenceState {
 // ═══════════════════════════════════════════════════════════════
 
 const CONFIDENCE_THRESHOLDS = {
-    CONFIDENT: 0.65,      // High confidence - can auto-promote
-    CAUTIOUS: 0.35,       // Low confidence - reduces priority (never hides)
-    MIN_VIEWS: 10,        // Minimum views for meaningful confidence
-    MIN_STABLE_DAYS: 3,   // Days required for auto-promote
+    CONFIDENT: MENU_INTELLIGENCE_POLICY.confidentThreshold,
+    CAUTIOUS: MENU_INTELLIGENCE_POLICY.cautiousThreshold,
+    MIN_VIEWS: MENU_INTELLIGENCE_POLICY.minimumViews,
+    MIN_STABLE_DAYS: MENU_INTELLIGENCE_POLICY.minimumStableDays,
 };
 
 const TIME_SLOTS = {
@@ -169,7 +170,7 @@ const TIME_SLOTS = {
 
 const TTL_HOURS = 48;
 const MAX_AUDIT_LOG_ENTRIES = 50;
-const CALIBRATION_LOCK_DAY = 21;
+const CALIBRATION_LOCK_DAY = MENU_INTELLIGENCE_POLICY.calibrationLockDay;
 const FATIGUE_THRESHOLD_DAYS = 5;  // Days of consecutive high exposure before suppression
 const SUPPRESSION_DURATION_DAYS = 2;  // How long to suppress fatigued items
 

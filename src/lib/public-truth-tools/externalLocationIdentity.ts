@@ -8,6 +8,35 @@ export const EXTERNAL_LOCATION_IDENTITY_SCHEMA_VERSION = 'menulist.external-loca
 
 const MAX_PROVIDER_LOCATION_ID_LENGTH = 2048;
 
+const readOwnDataField = (value: unknown, key: string): unknown => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const snapshotSources = (value: unknown): unknown[] => {
+  if (!Array.isArray(value)) return [];
+  try {
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    const length = lengthDescriptor && 'value' in lengthDescriptor
+      ? lengthDescriptor.value
+      : undefined;
+    if (!Number.isSafeInteger(length) || length < 0) return [];
+    const sources: unknown[] = [];
+    for (let index = 0; index < Math.min(length, 8); index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (descriptor && 'value' in descriptor) sources.push(descriptor.value);
+    }
+    return sources;
+  } catch {
+    return [];
+  }
+};
+
 const normalizeIsoTimestamp = (value: unknown): string | null => {
   if (typeof value !== 'string' || !value.trim()) return null;
   const parsed = new Date(value);
@@ -57,17 +86,16 @@ export function buildMapsPlaceCheckIdentityBinding(
   confirmedAt: string,
 ): ExternalLocationIdentityBinding | null {
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
-  const record = candidate as Record<string, unknown>;
-  const sources = Array.isArray(record.sources)
-    ? record.sources.slice(0, 8).filter((source) => source && typeof source === 'object' && !Array.isArray(source))
-    : [];
+  const sources = snapshotSources(readOwnDataField(candidate, 'sources'))
+    .filter((source) => source && typeof source === 'object' && !Array.isArray(source));
   const attributableSource = sources.find((source) => {
-    const sourceRecord = source as Record<string, unknown>;
-    return normalizeProviderLocationId(sourceRecord.placeId)
-      && normalizeOBPGoogleMapsUrl(sourceRecord.uri);
-  }) as Record<string, unknown> | undefined;
-  const providerLocationId = normalizeProviderLocationId(attributableSource?.placeId);
-  const providerUri = normalizeOBPGoogleMapsUrl(attributableSource?.uri);
+    return normalizeProviderLocationId(readOwnDataField(source, 'placeId'))
+      && normalizeOBPGoogleMapsUrl(readOwnDataField(source, 'uri'));
+  });
+  const providerLocationId = normalizeProviderLocationId(
+    readOwnDataField(attributableSource, 'placeId'),
+  );
+  const providerUri = normalizeOBPGoogleMapsUrl(readOwnDataField(attributableSource, 'uri'));
   const normalizedConfirmedAt = normalizeIsoTimestamp(confirmedAt);
 
   if (!providerLocationId || !providerUri || !normalizedConfirmedAt) return null;
@@ -87,29 +115,31 @@ export function normalizeExternalLocationIdentityBinding(
   value: unknown,
 ): ExternalLocationIdentityBinding | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const record = value as Record<string, unknown>;
-  if (!isExternalLocationIdentityProvider(record.provider)) return null;
-  if (record.confirmationStatus !== 'owner_confirmed') return null;
+  const provider = readOwnDataField(value, 'provider');
+  const confirmationStatus = readOwnDataField(value, 'confirmationStatus');
+  const source = readOwnDataField(value, 'source');
+  if (!isExternalLocationIdentityProvider(provider)) return null;
+  if (confirmationStatus !== 'owner_confirmed') return null;
   if (
-    record.source !== 'owner_maps_link'
-    && record.source !== 'maps_place_check'
-    && record.source !== 'gbp_connection'
+    source !== 'owner_maps_link'
+    && source !== 'maps_place_check'
+    && source !== 'gbp_connection'
   ) {
     return null;
   }
   if (
-    (record.provider === 'google_maps' && record.source === 'gbp_connection')
-    || (record.provider === 'google_business_profile' && record.source !== 'gbp_connection')
+    (provider === 'google_maps' && source === 'gbp_connection')
+    || (provider === 'google_business_profile' && source !== 'gbp_connection')
   ) {
     return null;
   }
 
-  const providerLocationId = normalizeProviderLocationId(record.providerLocationId);
-  const providerUri = record.provider === 'google_maps'
-    ? normalizeOBPGoogleMapsUrl(record.providerUri)
+  const providerLocationId = normalizeProviderLocationId(readOwnDataField(value, 'providerLocationId'));
+  const providerUri = provider === 'google_maps'
+    ? normalizeOBPGoogleMapsUrl(readOwnDataField(value, 'providerUri'))
     : null;
-  const confirmedAt = normalizeIsoTimestamp(record.confirmedAt);
-  const resolution = record.resolution;
+  const confirmedAt = normalizeIsoTimestamp(readOwnDataField(value, 'confirmedAt'));
+  const resolution = readOwnDataField(value, 'resolution');
 
   if (
     !confirmedAt
@@ -118,9 +148,9 @@ export function normalizeExternalLocationIdentityBinding(
     return null;
   }
   if (
-    record.source === 'owner_maps_link'
+    source === 'owner_maps_link'
     && (
-      record.provider !== 'google_maps'
+      provider !== 'google_maps'
       || providerLocationId
       || !providerUri
       || resolution !== 'provider_uri'
@@ -129,9 +159,9 @@ export function normalizeExternalLocationIdentityBinding(
     return null;
   }
   if (
-    record.source === 'maps_place_check'
+    source === 'maps_place_check'
     && (
-      record.provider !== 'google_maps'
+      provider !== 'google_maps'
       || !providerLocationId
       || !providerUri
       || resolution !== 'provider_location_id'
@@ -140,9 +170,9 @@ export function normalizeExternalLocationIdentityBinding(
     return null;
   }
   if (
-    record.source === 'gbp_connection'
+    source === 'gbp_connection'
     && (
-      record.provider !== 'google_business_profile'
+      provider !== 'google_business_profile'
       || !providerLocationId
       || resolution !== 'provider_location_id'
     )
@@ -151,12 +181,12 @@ export function normalizeExternalLocationIdentityBinding(
   }
 
   return {
-    provider: record.provider,
+    provider,
     ...(providerLocationId ? { providerLocationId } : {}),
     ...(providerUri ? { providerUri } : {}),
     resolution,
     confirmationStatus: 'owner_confirmed',
-    source: record.source,
+    source,
     confirmedAt,
   };
 }

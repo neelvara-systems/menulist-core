@@ -108,11 +108,19 @@ export default async function AnswerlatticeFounderLaunchKitPage() {
                 </section>
 
                 <section className="px-6 py-16">
-                    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2">
+                    <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
                         <article className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6">
                             <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">For one founder</p>
                             <h2 className="mt-3 text-2xl font-bold text-white">Prove one product before expanding.</h2>
                             <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">Use real product sources and historical questions. Measure review time, answer correctness, explicit resolution, and recontact before adding broader automation.</p>
+                        </article>
+                        <article className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6">
+                            <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">When support ownership grows</p>
+                            <h2 className="mt-3 text-2xl font-bold text-white">Add operating depth only when it is needed.</h2>
+                            <p className="mt-4 text-sm leading-relaxed text-[#a0a0c0]">Keep the founder launch path small. Add team roles, notifications, selected Support Board work, release review, and deeper governance when another person or a material answer risk requires them.</p>
+                            <AnswerlatticeLink basePath={basePath} href="/resources/answerlattice-operating-guide" className="mt-5 inline-flex min-h-11 items-center rounded-xl border border-white/[0.1] px-4 py-2 text-sm font-semibold text-[#d6d6ef] transition hover:border-teal-300/25 hover:text-white">
+                                Open operating guide
+                            </AnswerlatticeLink>
                         </article>
                         <article className="rounded-[1.5rem] border border-white/[0.08] bg-white/[0.025] p-6">
                             <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">For studios</p>

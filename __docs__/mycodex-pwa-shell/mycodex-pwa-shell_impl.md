@@ -54,7 +54,23 @@ MyCodex reader state is browser-local and scoped with `mycodex:*` keys. The shel
 | Audio follow-reading scroll | `mycodex:audio-autoscroll` |
 | Audio keep-screen-awake preference | `mycodex:audio-wake-lock` |
 
-The hydration guard in `MyCodexClientContainer` prevents first-render defaults from resetting stored values during PWA relaunches or mobile browser refreshes. Storage access is failure-contained so browsers that block `localStorage` or `sessionStorage` keep the in-memory defaults and remain readable. Missing numeric values are not coerced to zero. Persisted document strings/timestamps and scroll-position keys/numbers are bounded before they enter state.
+The hydration guard in `MyCodexClientContainer` prevents first-render defaults from resetting stored values during PWA relaunches or mobile browser refreshes. Storage access is failure-contained so browsers that block `localStorage` or `sessionStorage` keep the in-memory defaults and remain readable. Missing numeric values are not coerced to zero. Persisted document strings/timestamps and scroll-position keys/numbers are bounded before they enter state. Scroll-position writes retain only the 200 most recently updated documents, so the runtime cannot grow beyond the same admission cap and invalidate the complete record on the next launch.
+
+Audio preparation owns an abort controller and generation. Replacing playback,
+stopping, changing documents, or unmounting cancels outstanding favorite/queue
+document reads and rejects late completions before they can start speech on a
+different page. Wake-lock acquisition has the same release generation and
+single in-flight boundary; a lock that resolves after stop/disable is released
+without becoming active.
+
+Screenshot export claims an immediate ref-backed single-flight lock before
+canvas work. Clipboard copy reports success only after the modern API resolves
+or the legacy `execCommand('copy')` returns `true`; a false legacy result uses
+the existing visible error path.
+
+The document API response projector bounds optional source paths to the same
+4,096-character reader contract. ReactMarkdown render transforms use the
+library `Components` and React-node contracts rather than broad `any` values.
 
 MyCodex client navigation path boundary: `MyCodexClientContainer.buildUrl()` trims browser-local reader targets, requires an absolute same-origin path, and collapses empty, external, protocol-relative, control-character, raw-backslash, and encoded-backslash targets to `/`, then applies the local `/__mycodex` route when needed. This keeps favorite, queue, recent, continue-reading, previous/next, and document-tree navigation on the MyCodex origin even if browser-local reader state is malformed.
 

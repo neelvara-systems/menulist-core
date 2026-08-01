@@ -13,9 +13,22 @@ import {
     scoreSurfaceRouteForContextPath,
 } from '@lib/answerlattice/productSurfaceContent';
 import { AnswerlatticeContextSchema } from '@lib/validation/contextSchema';
-import { validateAnswerlatticePageContext } from '../../packages/answerlattice-web/src';
+import {
+    normalizeAnswerlatticeScriptSrc,
+    validateAnswerlatticePageContext,
+} from '../../packages/answerlattice-web/src';
 
 const scope = { tId: 7, sId: 9 };
+assert.equal(
+    normalizeAnswerlatticeScriptSrc('https://answerlattice.com/widget/v1/answerlattice-widget.js'),
+    'https://answerlattice.com/widget/v1/answerlattice-widget.js',
+);
+assert.equal(normalizeAnswerlatticeScriptSrc('/widget/v1/answerlattice-widget.js'), '/widget/v1/answerlattice-widget.js');
+assert.equal(normalizeAnswerlatticeScriptSrc('//attacker.example/widget.js'), null);
+assert.equal(normalizeAnswerlatticeScriptSrc('http://attacker.example/widget.js'), null);
+assert.equal(normalizeAnswerlatticeScriptSrc('data:text/javascript,alert(1)'), null);
+assert.equal(normalizeAnswerlatticeScriptSrc('javascript:alert(1)'), null);
+assert.equal(normalizeAnswerlatticeScriptSrc('https://user:password@answerlattice.com/widget.js'), null);
 assert.equal(getAnswerlatticeProductSurfaceTimestampMillis('2026-07-26T00:00:00.000Z'), 1785024000000);
 assert.equal(getAnswerlatticeProductSurfaceTimestampMillis({ seconds: 1, nanoseconds: 500_000_000 }), 1500);
 assert.equal(getAnswerlatticeProductSurfaceTimestampMillis({ seconds: '1', nanoseconds: 0 }), null);

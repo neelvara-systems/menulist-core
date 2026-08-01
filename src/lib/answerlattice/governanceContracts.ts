@@ -12,7 +12,10 @@ import {
     normalizeAnswerlatticeResolvedEntityId,
 } from './governanceIdBoundary';
 
-const FirestoreDocumentIdSchema = z.string().trim().min(1).max(180);
+const FirestoreDocumentIdSchema = z.string()
+    .min(1)
+    .max(180)
+    .refine(value => value.trim() === value, 'Document ids must not contain surrounding whitespace');
 const EvidenceDocumentIdSchema = FirestoreDocumentIdSchema.refine(isValidFirestoreDocumentId, 'Invalid evidence document id');
 const CanonicalAnswerIdSchema = FirestoreDocumentIdSchema.refine(
     value => normalizeAnswerlatticeCanonicalAnswerId(value) === value,
@@ -27,7 +30,12 @@ const ResolvedEntityIdSchema = FirestoreDocumentIdSchema.refine(
     'Invalid resolved entity id',
 );
 
-const OptionalScopeIdsSchema = z.array(ResolvedEntityIdSchema).max(50).optional();
+const uniqueIds = (values: string[]) => new Set(values).size === values.length;
+
+const OptionalScopeIdsSchema = z.array(ResolvedEntityIdSchema)
+    .max(50)
+    .refine(uniqueIds, 'Scope ids must be unique')
+    .optional();
 
 const PublicCitationUrlSchema = z.string()
     .trim()
@@ -53,7 +61,10 @@ export const AnswerlatticeCanonicalEvidenceSchema = z.object({
 }).strict();
 
 export const AnswerlatticeCanonicalScopeSchema = z.object({
-    entityIds: z.array(ResolvedEntityIdSchema).min(1).max(25),
+    entityIds: z.array(ResolvedEntityIdSchema)
+        .min(1)
+        .max(25)
+        .refine(uniqueIds, 'Entity ids must be unique'),
     planIds: OptionalScopeIdsSchema,
     roleIds: OptionalScopeIdsSchema,
     stateIds: OptionalScopeIdsSchema,
@@ -66,7 +77,25 @@ export const AnswerlatticeCanonicalProductBindingSchema = z.object({
         from: z.number().int().positive().max(999_999_999),
         to: z.number().int().positive().max(999_999_999).nullable().optional(),
     }).strict(),
-}).strict();
+}).strict().superRefine((binding, context) => {
+    if (binding.lastValidatedInVersion < binding.introducedInVersion) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Last validated version cannot precede the introduced version',
+            path: ['lastValidatedInVersion'],
+        });
+    }
+    if (
+        binding.applicableVersions.to != null
+        && binding.applicableVersions.to < binding.applicableVersions.from
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Applicable version end cannot precede its start',
+            path: ['applicableVersions', 'to'],
+        });
+    }
+});
 
 export const AnswerlatticeCanonicalContentSchema = z.object({
     structuredSummary: z.string().trim().min(1).max(500),
@@ -101,6 +130,44 @@ export const AnswerlatticeCanonicalProposalAnswerSchema = z.object({
     }
 });
 
+export type AnswerlatticeCanonicalProposalAnswer = {
+    title: string;
+    status: 'active' | 'needs_review' | 'deprecated' | 'archived';
+    answerType: 'explanation' | 'navigation' | 'procedure';
+    scope: {
+        entityIds: string[];
+        planIds?: string[];
+        roleIds?: string[];
+        stateIds?: string[];
+    };
+    productBinding: {
+        introducedInVersion: number;
+        lastValidatedInVersion: number;
+        applicableVersions: {
+            from: number;
+            to?: number | null;
+        };
+    };
+    content: {
+        structuredSummary: string;
+        detailedExplanation: string;
+        edgeCases?: string;
+        constraints?: string;
+        procedure?: z.infer<typeof AnswerlatticeProcedureSchema>;
+    };
+    evidence?: {
+        sourceIds: string[];
+        citations: Array<{
+            id?: string;
+            title: string;
+            url: string;
+            sourceId?: string;
+        }>;
+    };
+};
+
+const StoredOpaqueRequestIdSchema = z.string().min(8).max(80);
+
 const AnswerlatticeMutationSuggestedChangeSchema = z.object({
     structuredSummary: z.string().trim().min(1).max(500).optional(),
     detailedExplanation: z.string().trim().min(1).max(24_000).optional(),
@@ -122,11 +189,11 @@ const AnswerlatticeMutationSuggestedChangeSchema = z.object({
     draftEntityContext: z.string().trim().max(500).optional(),
     draftPromptVersion: z.string().trim().max(120).optional(),
     draftProcessingRun: z.object({
-        id: z.string().trim().min(8).max(80),
+        id: StoredOpaqueRequestIdSchema,
         startedAt: z.unknown(),
         leaseExpiresAt: z.unknown(),
     }).strict().nullable().optional(),
-    lastDraftRequestId: z.string().trim().min(8).max(80).optional(),
+    lastDraftRequestId: StoredOpaqueRequestIdSchema.optional(),
     reviewReason: z.string().trim().max(4_000).optional(),
     rollbackAuditLogId: MutationProposalIdSchema.optional(),
     proposedContent: AnswerlatticeCanonicalContentSchema.optional(),
@@ -152,7 +219,7 @@ export const AnswerlatticeStoredMutationProposalSchema = z.object({
     pId: z.literal(PRODUCT_IDS.ANSWERLATTICE),
     tId: z.number().int().positive(),
     sId: z.number().int().positive(),
-    targetAnswerId: z.string().trim().max(180).refine(
+    targetAnswerId: z.string().max(180).refine(
         value => value === '' || normalizeAnswerlatticeCanonicalAnswerId(value) === value,
         'Invalid target answer id',
     ),
@@ -169,7 +236,7 @@ export const AnswerlatticeStoredMutationProposalSchema = z.object({
     confidenceScore: z.number().min(0).max(1),
     status: z.enum(['pending_review', 'approved', 'rejected', 'implemented']),
     implementedAnswerId: CanonicalAnswerIdSchema.optional(),
-    requestId: z.string().trim().max(80).optional(),
+    requestId: StoredOpaqueRequestIdSchema.optional(),
     requestFingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     implementedOn: z.unknown().optional(),
     impactTracked: z.boolean().optional(),
@@ -181,7 +248,7 @@ export const AnswerlatticeStoredMutationProposalSchema = z.object({
     }).strict().optional(),
 }).passthrough();
 
-const RequestIdSchema = z.string().trim().min(8).max(80).regex(/^[A-Za-z0-9_-]+$/);
+const RequestIdSchema = z.string().min(8).max(80).regex(/^[A-Za-z0-9_-]+$/);
 
 export const AnswerlatticeGovernanceEditedContentSchema = z.object({
     title: z.string().trim().min(1).max(180).optional(),
@@ -195,6 +262,20 @@ export const AnswerlatticeGovernanceEditedContentSchema = z.object({
 }).strict();
 
 export type AnswerlatticeGovernanceEditedContent = z.infer<typeof AnswerlatticeGovernanceEditedContentSchema>;
+
+export type AnswerlatticeGovernanceAction =
+    | { action: 'propose_create'; requestId: string; answer: AnswerlatticeCanonicalProposalAnswer }
+    | { action: 'propose_update'; requestId: string; answerId: string; answer: AnswerlatticeCanonicalProposalAnswer }
+    | {
+        action: 'approve_proposal';
+        proposalId: string;
+        editedContent?: AnswerlatticeGovernanceEditedContent;
+    }
+    | { action: 'reject_proposal'; proposalId: string }
+    | { action: 'mark_implemented'; proposalId: string }
+    | { action: 'evaluate_drift' }
+    | { action: 'validate_drift'; answerId: string }
+    | { action: 'merge_entities'; requestId: string; survivorId: string; mergedId: string };
 
 const AnswerlatticeGovernanceActionBaseSchema = z.discriminatedUnion('action', [
     z.object({
@@ -247,56 +328,6 @@ export const AnswerlatticeGovernanceActionSchema = AnswerlatticeGovernanceAction
         }
     },
 ) as z.ZodType<AnswerlatticeGovernanceAction>;
-
-export type AnswerlatticeCanonicalProposalAnswer = {
-    title: string;
-    status: 'active' | 'needs_review' | 'deprecated' | 'archived';
-    answerType: 'explanation' | 'navigation' | 'procedure';
-    scope: {
-        entityIds: string[];
-        planIds?: string[];
-        roleIds?: string[];
-        stateIds?: string[];
-    };
-    productBinding: {
-        introducedInVersion: number;
-        lastValidatedInVersion: number;
-        applicableVersions: {
-            from: number;
-            to?: number | null;
-        };
-    };
-    content: {
-        structuredSummary: string;
-        detailedExplanation: string;
-        edgeCases?: string;
-        constraints?: string;
-        procedure?: unknown;
-    };
-    evidence?: {
-        sourceIds: string[];
-        citations: Array<{
-            id?: string;
-            title: string;
-            url: string;
-            sourceId?: string;
-        }>;
-    };
-};
-
-export type AnswerlatticeGovernanceAction =
-    | { action: 'propose_create'; requestId: string; answer: AnswerlatticeCanonicalProposalAnswer }
-    | { action: 'propose_update'; requestId: string; answerId: string; answer: AnswerlatticeCanonicalProposalAnswer }
-    | {
-        action: 'approve_proposal';
-        proposalId: string;
-        editedContent?: AnswerlatticeGovernanceEditedContent;
-    }
-    | { action: 'reject_proposal'; proposalId: string }
-    | { action: 'mark_implemented'; proposalId: string }
-    | { action: 'evaluate_drift' }
-    | { action: 'validate_drift'; answerId: string }
-    | { action: 'merge_entities'; requestId: string; survivorId: string; mergedId: string };
 
 export type AnswerlatticeGovernanceActionResult = {
     success: true;

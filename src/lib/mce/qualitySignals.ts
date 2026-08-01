@@ -15,8 +15,6 @@
  * @see __docs__/menu-quality-signals/menu-quality-signals_impl.md
  */
 
-import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
-import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
 import { getMissingProjectPublicContentGaps } from '@lib/localization/projectContent';
 import { parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
@@ -31,15 +29,17 @@ export interface QualitySignal {
     actionRoute?: string;
 }
 
-export function normalizePriceForReview(price: string | undefined): string {
-    if (!price) return '';
+export function normalizePriceForReview(price: unknown): string {
+    if (typeof price !== 'string') return '';
     return price.replace(/[^0-9.]/g, '').trim();
 }
 
-export function isPriceOutlierReviewed(item: Pick<ExtractedDataItem, 'price' | 'qualityReview'>): boolean {
-    const reviewedPrice = item.qualityReview?.priceOutlierReviewedPrice?.trim();
+export function isPriceOutlierReviewed(item: unknown): boolean {
+    const qualityReview = readOwnField(item, 'qualityReview');
+    const rawReviewedPrice = readOwnField(qualityReview, 'priceOutlierReviewedPrice');
+    const reviewedPrice = typeof rawReviewedPrice === 'string' ? rawReviewedPrice.trim() : '';
     if (!reviewedPrice) return false;
-    return reviewedPrice === normalizePriceForReview(item.price);
+    return reviewedPrice === normalizePriceForReview(readOwnField(item, 'price'));
 }
 
 const MAX_VISIBLE_SIGNALS = 4;
@@ -59,32 +59,60 @@ const SIGNAL_PRIORITY: Record<string, number> = {
 const REPAIR_MENU_SIGNAL_IDS = new Set(['descriptions', 'categoryIcons', 'translations', 'projectContent']);
 
 interface ComputeQualitySignalsOptions {
-    projectPublicContent?: any;
+    projectPublicContent?: unknown;
     showCategoryIcons?: boolean;
     showItemPrices?: boolean;
+}
+
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readOwnField(value: unknown, key: string): unknown {
+    if (!isRecord(value)) return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
 }
 
 /**
  * Flatten all items from all files' extractedData into a single array.
  */
-function getAllItems(files: ProjectFileType[] | undefined): ExtractedDataItem[] {
-    if (!files) return [];
-    const items: ExtractedDataItem[] = [];
-    for (const file of files) {
-        if (file.extractedData?.data?.items) {
-            items.push(...file.extractedData.data.items);
+function getAllItems(files: unknown): UnknownRecord[] {
+    if (!Array.isArray(files)) return [];
+    const items: UnknownRecord[] = [];
+    try {
+        for (const file of files) {
+            const data = readOwnField(readOwnField(file, 'extractedData'), 'data');
+            const fileItems = readOwnField(data, 'items');
+            if (Array.isArray(fileItems)) {
+                items.push(...fileItems.filter(isRecord));
+            }
         }
+    } catch {
+        return [];
     }
     return items;
 }
 
-function getAllCategories(files: ProjectFileType[] | undefined): ExtractedDataCategory[] {
-    if (!files) return [];
-    const categories: ExtractedDataCategory[] = [];
-    for (const file of files) {
-        if (file.extractedData?.data?.categories) {
-            categories.push(...file.extractedData.data.categories);
+function getAllCategories(files: unknown): UnknownRecord[] {
+    if (!Array.isArray(files)) return [];
+    const categories: UnknownRecord[] = [];
+    try {
+        for (const file of files) {
+            const data = readOwnField(readOwnField(file, 'extractedData'), 'data');
+            const fileCategories = readOwnField(data, 'categories');
+            if (Array.isArray(fileCategories)) {
+                categories.push(...fileCategories.filter(isRecord));
+            }
         }
+    } catch {
+        return [];
     }
     return categories;
 }
@@ -92,36 +120,48 @@ function getAllCategories(files: ProjectFileType[] | undefined): ExtractedDataCa
 /**
  * Get primary language code from the first file's languages array.
  */
-function getPrimaryLang(files: ProjectFileType[] | undefined, projectLanguages?: string[]): string {
-    if (projectLanguages?.length) {
-        return projectLanguages[0] || 'en';
+function getPrimaryLang(files: unknown, projectLanguages?: unknown): string {
+    if (Array.isArray(projectLanguages)) {
+        const firstProjectLanguage = projectLanguages.find((language) => (
+            typeof language === 'string' && Boolean(language.trim())
+        ));
+        if (typeof firstProjectLanguage === 'string') return firstProjectLanguage.trim();
     }
 
-    if (!files) return 'en';
-    for (const file of files) {
-        const langs = file.extractedData?.data?.languages;
-        if (langs && langs.length > 0) {
-            const primary = langs.find(l => l.isPrimary);
-            return primary?.code || langs[0].code || 'en';
+    if (!Array.isArray(files)) return 'en';
+    try {
+        for (const file of files) {
+            const data = readOwnField(readOwnField(file, 'extractedData'), 'data');
+            const languages = readOwnField(data, 'languages');
+            if (!Array.isArray(languages)) continue;
+            const languageRecords = languages.filter(isRecord);
+            const primary = languageRecords.find((language) => readOwnField(language, 'isPrimary') === true);
+            const primaryCode = readOwnField(primary, 'code');
+            if (typeof primaryCode === 'string' && primaryCode.trim()) return primaryCode.trim();
+            const fallbackCode = readOwnField(languageRecords[0], 'code');
+            if (typeof fallbackCode === 'string' && fallbackCode.trim()) return fallbackCode.trim();
         }
+    } catch {
+        return 'en';
     }
     return 'en';
 }
 
-function isDescriptionMissing(item: ExtractedDataItem, languages: string[]): boolean {
-    if (!item.description) return true;
+function isDescriptionMissing(item: UnknownRecord, languages: string[]): boolean {
+    const description = readOwnField(item, 'description');
+    if (!isRecord(description)) return true;
     return languages.some((lang) => {
-        const text = item.description?.[lang];
-        return !text?.trim();
+        const text = readOwnField(description, lang);
+        return typeof text !== 'string' || !text.trim();
     });
 }
 
-function isImageMissing(item: ExtractedDataItem): boolean {
-    return normalizePublicMenuImages(item.images).length === 0;
+function isImageMissing(item: UnknownRecord): boolean {
+    return normalizePublicMenuImages(readOwnField(item, 'images')).length === 0;
 }
 
-function hasCategoryIcon(category: ExtractedDataCategory): boolean {
-    const icon = category?.icon;
+function hasCategoryIcon(category: UnknownRecord): boolean {
+    const icon = readOwnField(category, 'icon');
 
     if (typeof icon === 'string') {
         return icon.trim().length > 0;
@@ -129,7 +169,7 @@ function hasCategoryIcon(category: ExtractedDataCategory): boolean {
 
     if (icon && typeof icon === 'object') {
         return ['icon', 'value', 'name'].some((key) => {
-            const candidate = (icon as Record<string, unknown>)[key];
+            const candidate = readOwnField(icon, key);
             return typeof candidate === 'string' && candidate.trim().length > 0;
         });
     }
@@ -137,82 +177,102 @@ function hasCategoryIcon(category: ExtractedDataCategory): boolean {
     return false;
 }
 
-function isPriceMissing(item: ExtractedDataItem): boolean {
-    if (item.attributes && item.attributes.length > 0) return false;
-    return !item.price?.trim();
+function isPriceMissing(item: UnknownRecord): boolean {
+    const attributes = readOwnField(item, 'attributes');
+    if (Array.isArray(attributes) && attributes.length > 0) return false;
+    const price = readOwnField(item, 'price');
+    return typeof price !== 'string' || !price.trim();
 }
 
 function hasLocalizedValue(value: unknown, languageCode: string): boolean {
-    if (!value || typeof value !== 'object') return false;
-    const localizedValue = (value as Record<string, unknown>)[languageCode];
+    const localizedValue = readOwnField(value, languageCode);
     return typeof localizedValue === 'string' && localizedValue.trim().length > 0;
 }
 
 function collectLocalizedLanguageCodes(value: unknown, unique: Set<string>): void {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    if (!isRecord(value)) return;
 
-    for (const [languageCode, localizedValue] of Object.entries(value as Record<string, unknown>)) {
-        if (typeof localizedValue === 'string' && localizedValue.trim().length > 0) {
-            unique.add(languageCode);
+    try {
+        for (const [languageCode, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
+            if ('value' in descriptor && typeof descriptor.value === 'string' && descriptor.value.trim().length > 0) {
+                unique.add(languageCode);
+            }
         }
+    } catch {
+        return;
     }
 }
 
-function isTranslationMissing(item: ExtractedDataItem, primaryLang: string, allLangs: string[]): boolean {
+function isTranslationMissing(item: UnknownRecord, primaryLang: string, allLangs: string[]): boolean {
     if (allLangs.length <= 1) return false;
 
     return allLangs
         .filter((lang) => lang !== primaryLang)
         .some((lang) => {
-            if (hasLocalizedValue(item.name, primaryLang) && !hasLocalizedValue(item.name, lang)) {
+            const itemName = readOwnField(item, 'name');
+            const itemDescription = readOwnField(item, 'description');
+            if (hasLocalizedValue(itemName, primaryLang) && !hasLocalizedValue(itemName, lang)) {
                 return true;
             }
 
-            if (hasLocalizedValue(item.description, primaryLang) && !hasLocalizedValue(item.description, lang)) {
+            if (hasLocalizedValue(itemDescription, primaryLang) && !hasLocalizedValue(itemDescription, lang)) {
                 return true;
             }
 
-            return (item.attributes || []).some((attribute) => (
-                hasLocalizedValue(attribute?.name, primaryLang) && !hasLocalizedValue(attribute?.name, lang)
+            const attributes = readOwnField(item, 'attributes');
+            return (Array.isArray(attributes) ? attributes.filter(isRecord) : []).some((attribute) => (
+                hasLocalizedValue(readOwnField(attribute, 'name'), primaryLang)
+                && !hasLocalizedValue(readOwnField(attribute, 'name'), lang)
             ));
         });
 }
 
-function getAllLanguageCodes(files: ProjectFileType[] | undefined, projectLanguages?: string[]): string[] {
-    if (projectLanguages?.length) {
-        return Array.from(new Set(projectLanguages.filter(Boolean)));
+function getAllLanguageCodes(files: unknown, projectLanguages?: unknown): string[] {
+    if (Array.isArray(projectLanguages)) {
+        const normalized = projectLanguages
+            .filter((value): value is string => typeof value === 'string')
+            .map((value) => value.trim())
+            .filter(Boolean);
+        if (normalized.length) return Array.from(new Set(normalized));
     }
 
     const unique = new Set<string>();
 
-    if (!files) return Array.from(unique);
+    if (!Array.isArray(files)) return Array.from(unique);
 
-    for (const file of files) {
-        const langs = file.extractedData?.data?.languages || [];
-        langs.forEach((lang) => {
-            if (lang?.code) unique.add(lang.code);
-        });
-
-        const categories = file.extractedData?.data?.categories || [];
-        categories.forEach((category: ExtractedDataCategory) => {
-            collectLocalizedLanguageCodes(category?.name, unique);
-        });
-
-        const items = file.extractedData?.data?.items || [];
-        items.forEach((item) => {
-            collectLocalizedLanguageCodes(item?.name, unique);
-            collectLocalizedLanguageCodes(item?.description, unique);
-            (item?.attributes || []).forEach((attribute) => {
-                collectLocalizedLanguageCodes(attribute?.name, unique);
+    try {
+        for (const file of files) {
+            const data = readOwnField(readOwnField(file, 'extractedData'), 'data');
+            const languages = readOwnField(data, 'languages');
+            (Array.isArray(languages) ? languages.filter(isRecord) : []).forEach((language) => {
+                const code = readOwnField(language, 'code');
+                if (typeof code === 'string' && code.trim()) unique.add(code.trim());
             });
-        });
+
+            const categories = readOwnField(data, 'categories');
+            (Array.isArray(categories) ? categories.filter(isRecord) : []).forEach((category) => {
+                collectLocalizedLanguageCodes(readOwnField(category, 'name'), unique);
+            });
+
+            const items = readOwnField(data, 'items');
+            (Array.isArray(items) ? items.filter(isRecord) : []).forEach((item) => {
+                collectLocalizedLanguageCodes(readOwnField(item, 'name'), unique);
+                collectLocalizedLanguageCodes(readOwnField(item, 'description'), unique);
+                const attributes = readOwnField(item, 'attributes');
+                (Array.isArray(attributes) ? attributes.filter(isRecord) : []).forEach((attribute) => {
+                    collectLocalizedLanguageCodes(readOwnField(attribute, 'name'), unique);
+                });
+            });
+        }
+    } catch {
+        return [];
     }
 
     return Array.from(unique);
 }
 
-function parsePrice(price: string | undefined): number {
-    return parseSingleMenuPrice(price) ?? NaN;
+function parsePrice(price: unknown): number {
+    return typeof price === 'string' ? (parseSingleMenuPrice(price) ?? NaN) : NaN;
 }
 
 function median(values: number[]): number {
@@ -222,15 +282,17 @@ function median(values: number[]): number {
     return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-function countPriceOutliers(activeItems: ExtractedDataItem[]): number {
+function countPriceOutliers(activeItems: UnknownRecord[]): number {
     const catPrices: Record<string, number[]> = {};
 
     for (const item of activeItems) {
-        if (item.attributes && item.attributes.length > 0) continue;
+        const attributes = readOwnField(item, 'attributes');
+        if (Array.isArray(attributes) && attributes.length > 0) continue;
         if (isPriceOutlierReviewed(item)) continue;
-        const price = parsePrice(item.price);
+        const price = parsePrice(readOwnField(item, 'price'));
         if (isNaN(price) || price <= 0) continue;
-        const catId = item.category || 'uncategorized';
+        const category = readOwnField(item, 'category');
+        const catId = typeof category === 'string' && category.trim() ? category.trim() : 'uncategorized';
         if (!catPrices[catId]) catPrices[catId] = [];
         catPrices[catId].push(price);
     }
@@ -257,8 +319,8 @@ function countPriceOutliers(activeItems: ExtractedDataItem[]): number {
  * @returns Array of QualitySignal
  */
 export function computeQualitySignals(
-    files: ProjectFileType[] | undefined,
-    projectLanguages?: string[],
+    files: unknown,
+    projectLanguages?: string[] | unknown,
     options?: ComputeQualitySignalsOptions
 ): QualitySignal[] {
     const allItems = getAllItems(files);
@@ -267,8 +329,8 @@ export function computeQualitySignals(
 
     const lang = getPrimaryLang(files, projectLanguages);
     const allLanguages = getAllLanguageCodes(files, projectLanguages);
-    const activeItems = allItems.filter(item => item.active !== false);
-    const activeCategories = allCategories.filter((category) => category.active !== false);
+    const activeItems = allItems.filter(item => readOwnField(item, 'active') !== false);
+    const activeCategories = allCategories.filter((category) => readOwnField(category, 'active') !== false);
     const showItemPrices = options?.showItemPrices !== false;
     const signals: QualitySignal[] = [];
 
@@ -335,7 +397,7 @@ export function computeQualitySignals(
     }
 
     // Signal 4: Hidden/inactive items (active: false means customers can't see them)
-    const hiddenItems = allItems.filter(item => item.active === false);
+    const hiddenItems = allItems.filter(item => readOwnField(item, 'active') === false);
     if (hiddenItems.length > 0) {
         signals.push({
             id: 'hidden',

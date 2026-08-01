@@ -134,9 +134,10 @@ function extractCategories(projectData: unknown): ExtractedCategory[] {
 function getActiveFiles(projectData: unknown): UnknownRecord[] {
     const files = getRecord(projectData)?.files;
     if (!Array.isArray(files)) return [];
-    return files
-        .map(getRecord)
-        .filter((file): file is UnknownRecord => Boolean(file) && file.active !== false && !file.deleted);
+    return files.flatMap((value) => {
+        const file = getRecord(value);
+        return file && file.active !== false && !file.deleted ? [file] : [];
+    });
 }
 
 function getPrimaryLanguage(projectData: unknown): string {
@@ -165,8 +166,9 @@ function getPrimaryLanguage(projectData: unknown): string {
     }
 
     for (const item of extractItems(projectData)) {
-        if (!item.name || typeof item.name === "string") continue;
-        const firstLanguage = Object.keys(item.name).find((language) => item.name?.[language]?.trim());
+        const localizedName = item.name;
+        if (!localizedName || typeof localizedName === "string") continue;
+        const firstLanguage = Object.keys(localizedName).find((language) => localizedName[language]?.trim());
         if (firstLanguage) return firstLanguage;
     }
 

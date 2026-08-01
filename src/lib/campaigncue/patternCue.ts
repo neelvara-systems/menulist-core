@@ -61,11 +61,15 @@ export const normalizeCampaignCuePatternCueUrl = (value: string): string | null 
 };
 
 export const inferCampaignCuePatternCuePlatform = (sourceUrl: string): CampaignCuePatternCuePlatform => {
-    const hostname = new URL(sourceUrl).hostname.toLowerCase();
-    if (hostname === "youtu.be" || hostname.endsWith(".youtube.com") || hostname === "youtube.com") return "youtube";
-    if (hostname.endsWith(".instagram.com") || hostname === "instagram.com") return "instagram";
-    if (hostname.endsWith(".tiktok.com") || hostname === "tiktok.com") return "tiktok";
-    return "other";
+    try {
+        const hostname = new URL(sourceUrl).hostname.toLowerCase();
+        if (hostname === "youtu.be" || hostname.endsWith(".youtube.com") || hostname === "youtube.com") return "youtube";
+        if (hostname.endsWith(".instagram.com") || hostname === "instagram.com") return "instagram";
+        if (hostname.endsWith(".tiktok.com") || hostname === "tiktok.com") return "tiktok";
+        return "other";
+    } catch {
+        return "other";
+    }
 };
 
 const classifyHook = (text: string): CampaignCuePatternCueHookType => {
@@ -229,20 +233,20 @@ const isBoundedStringList = (value: unknown, maxItems: number) => (
     && value.every((item) => typeof item === "string" && item.trim().length > 0 && item.length <= 600)
 );
 
-export const isCampaignCuePatternCueObservation = (
+const isCampaignCuePatternCueObservationUnsafe = (
     value: unknown,
 ): value is CampaignCuePatternCueObservation => {
     if (!isRecord(value) || value.schemaVersion !== CAMPAIGNCUE_PATTERN_CUE_SCHEMA_VERSION) return false;
     if (typeof value.sourceUrl !== "string" || !normalizeCampaignCuePatternCueUrl(value.sourceUrl)) return false;
     if (typeof value.sourceHash !== "string" || !/^[a-f0-9]{24}$/.test(value.sourceHash)) return false;
-    if (!["instagram", "tiktok", "youtube", "other"].includes(String(value.platform))) return false;
-    if (!["reference_only", "owner_authorized"].includes(String(value.rightsStatus))) return false;
-    if (!["deterministic", "model_candidate"].includes(String(value.analysisMode))) return false;
-    if (!["question", "curiosity", "demonstration", "offer", "story", "direct_benefit"].includes(String(value.hookType))) return false;
-    if (!["talking_head", "demonstration", "montage", "screen_recording", "mixed"].includes(String(value.format))) return false;
-    if (!["calm", "steady", "fast"].includes(String(value.pacing))) return false;
-    if (!["under_15_seconds", "15_to_30_seconds", "31_to_60_seconds", "over_60_seconds", "unknown"].includes(String(value.durationBand))) return false;
-    if (!["book", "call", "message", "visit", "link", "comment", "none"].includes(String(value.ctaPattern))) return false;
+    if (typeof value.platform !== "string" || !["instagram", "tiktok", "youtube", "other"].includes(value.platform)) return false;
+    if (typeof value.rightsStatus !== "string" || !["reference_only", "owner_authorized"].includes(value.rightsStatus)) return false;
+    if (typeof value.analysisMode !== "string" || !["deterministic", "model_candidate"].includes(value.analysisMode)) return false;
+    if (typeof value.hookType !== "string" || !["question", "curiosity", "demonstration", "offer", "story", "direct_benefit"].includes(value.hookType)) return false;
+    if (typeof value.format !== "string" || !["talking_head", "demonstration", "montage", "screen_recording", "mixed"].includes(value.format)) return false;
+    if (typeof value.pacing !== "string" || !["calm", "steady", "fast"].includes(value.pacing)) return false;
+    if (typeof value.durationBand !== "string" || !["under_15_seconds", "15_to_30_seconds", "31_to_60_seconds", "over_60_seconds", "unknown"].includes(value.durationBand)) return false;
+    if (typeof value.ctaPattern !== "string" || !["book", "call", "message", "visit", "link", "comment", "none"].includes(value.ctaPattern)) return false;
     return isBoundedStringList(value.structure, 8)
         && isBoundedStringList(value.visualBeats, 8)
         && isBoundedStringList(value.candidateHooks, 4)
@@ -253,8 +257,22 @@ export const isCampaignCuePatternCueObservation = (
         && (value.ownerTakeaway === undefined || (typeof value.ownerTakeaway === "string" && value.ownerTakeaway.length <= CAMPAIGNCUE_PATTERN_CUE_MAX_TAKEAWAY_LENGTH));
 };
 
-export const isCampaignCuePatternCueSourceInput = (input: CampaignCueSourceInput) => (
-    input.sourceType === "inspiration_pattern" && isCampaignCuePatternCueObservation(input.patternCue)
+export const isCampaignCuePatternCueObservation = (
+    value: unknown,
+): value is CampaignCuePatternCueObservation => {
+    try {
+        return isCampaignCuePatternCueObservationUnsafe(value);
+    } catch {
+        return false;
+    }
+};
+
+export const isCampaignCuePatternCueSourceInput = (
+    input: CampaignCueSourceInput | null | undefined,
+): input is CampaignCueSourceInput => (
+    Boolean(input)
+    && input?.sourceType === "inspiration_pattern"
+    && isCampaignCuePatternCueObservation(input.patternCue)
 );
 
 export const getLatestCampaignCuePatternCueSource = (

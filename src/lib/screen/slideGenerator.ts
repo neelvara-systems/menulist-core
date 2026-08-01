@@ -7,11 +7,11 @@
 import {
     DigitalScreenState,
     MenuItemForSlide,
-    SCREEN_CONFIDENCE_THRESHOLD,
     ScreenSlide,
     ScreenStoreInfo,
     TodayCampaignSummary
 } from "@type/campaigns";
+import { FEATURE_FLAGS } from "@config/features";
 import { generateBrandFallback, generateEvergreenSlides } from "./evergreenSlides";
 import { normalizeOwnerSlideCaption, normalizeScreenImageUrl } from "./screenContent";
 import { filterExpiredSlides } from "./utils";
@@ -64,7 +64,10 @@ export function generateScreenSlides(input: SlideGeneratorInput): ScreenSlide[] 
 
     // Layer 2: Campaign Slides
     // Per spec: Time-scoped, availability-checked, confidence >= 0.7
-    if (todayCampaign && todayCampaign.confidence >= SCREEN_CONFIDENCE_THRESHOLD) {
+    if (
+        todayCampaign
+        && todayCampaign.confidence >= FEATURE_FLAGS.DIGITAL_SCREENS_CONFIDENCE_THRESHOLD
+    ) {
         const campaignSlide = createCampaignSlide(todayCampaign, menuItems);
         if (campaignSlide) {
             slides.push(campaignSlide);

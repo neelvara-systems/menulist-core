@@ -5,6 +5,7 @@ import {
     isReviewedWebsiteResourceLocale,
 } from '@/content/websiteResources/routing';
 import { defaultTimezone } from '@lib/localization/config';
+import type { AbstractIntlMessages } from 'next-intl';
 import { notFound } from 'next/navigation';
 import arSA from 'public/locales/menulist.ai/ar-SA.json';
 import bnIN from 'public/locales/menulist.ai/bn-IN.json';
@@ -22,7 +23,7 @@ type LocaleLayoutProps = {
     }>;
 };
 
-const localeMessages: Record<string, Record<string, unknown>> = {
+const localeMessages: Record<string, AbstractIntlMessages> = {
     'hi-IN': hiIN,
     'ta-IN': taIN,
     'te-IN': teIN,
@@ -33,9 +34,9 @@ const localeMessages: Record<string, Record<string, unknown>> = {
 };
 
 function deepMergeMessages(
-    source: Record<string, unknown>,
-    target: Record<string, unknown>,
-): Record<string, unknown> {
+    source: AbstractIntlMessages,
+    target: AbstractIntlMessages,
+): AbstractIntlMessages {
     const result = { ...source };
 
     for (const key of Object.keys(target)) {
@@ -46,13 +47,8 @@ function deepMergeMessages(
             && targetValue
             && typeof sourceValue === 'object'
             && typeof targetValue === 'object'
-            && !Array.isArray(sourceValue)
-            && !Array.isArray(targetValue)
         ) {
-            result[key] = deepMergeMessages(
-                sourceValue as Record<string, unknown>,
-                targetValue as Record<string, unknown>,
-            );
+            result[key] = deepMergeMessages(sourceValue, targetValue);
         } else {
             result[key] = targetValue;
         }
@@ -61,7 +57,7 @@ function deepMergeMessages(
     return result;
 }
 
-function getMessagesForLocale(locale: string): Record<string, unknown> {
+function getMessagesForLocale(locale: string): AbstractIntlMessages {
     const selectedMessages = localeMessages[locale];
     if (!selectedMessages) return enUS;
 

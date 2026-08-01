@@ -49,7 +49,11 @@ assertIncludes(worker, "self.addEventListener('activate'", 'retired owner cache 
 const registration = read('src/components/ServiceWorkerRegister.tsx');
 [
   "deploymentStage.stage !== 'preview'",
-  'await currentRegistration?.update();',
+  'const pathname = usePathname();',
+  '}, [pathname]);',
+  'serviceWorkerReconciliationQueue',
+  'isExactServiceWorkerRegistration(reg, absoluteTargetUrl, absoluteTargetScope)',
+  'await currentRegistration.update();',
   '/^\\/assets(?:\\/|$)/',
   '/^\\/business-health(?:\\/|$)/',
   '/^\\/forgot-password(?:\\/|$)/',

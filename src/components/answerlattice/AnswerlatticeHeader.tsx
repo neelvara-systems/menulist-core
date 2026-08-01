@@ -75,7 +75,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
     const isCollapsed = useAppSelector(getSidebarState);
     const isDarkMode = useAppSelector(getDarkModeState);
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname);
+    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
     const canUseManagementSurfaces = access?.canUseManagement ?? canUseAnswerlatticeManagement(session);
 
     const canShowNavItem = useCallback((nav: AnswerlatticeNavItem) => {
@@ -96,13 +96,13 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
 
     const selectedRoute = useMemo(() => {
         const governancePathTab = getAnswerlatticeGovernanceTabFromPathname(normalizedPathname);
-        const legacyGovernanceTab = normalizedPathname === ANSWERLATTICE_ROUTES.GOVERNANCE ? searchParams.get('tab') : null;
+        const legacyGovernanceTab = normalizedPathname === ANSWERLATTICE_ROUTES.GOVERNANCE ? searchParams?.get('tab') : null;
         const activeGovernanceTab = governancePathTab || (isAnswerlatticeGovernanceTab(legacyGovernanceTab) ? legacyGovernanceTab : null);
         const widgetPathTab = getAnswerlatticeWidgetTabFromPathname(normalizedPathname);
-        const legacyWidgetTab = normalizedPathname === ANSWERLATTICE_ROUTES.WIDGET ? searchParams.get('tab') : null;
+        const legacyWidgetTab = normalizedPathname === ANSWERLATTICE_ROUTES.WIDGET ? searchParams?.get('tab') : null;
         const activeWidgetTab = widgetPathTab || (isAnswerlatticeWidgetTab(legacyWidgetTab) ? legacyWidgetTab : null);
         const teamPathTab = getAnswerlatticeTeamTabFromPathname(normalizedPathname);
-        const legacyTeamTab = normalizedPathname === ANSWERLATTICE_ROUTES.TEAM ? searchParams.get('tab') : null;
+        const legacyTeamTab = normalizedPathname === ANSWERLATTICE_ROUTES.TEAM ? searchParams?.get('tab') : null;
         const activeTeamTab = teamPathTab || (isAnswerlatticeTeamTab(legacyTeamTab) ? legacyTeamTab : null);
 
         if (activeGovernanceTab) return getAnswerlatticeGovernanceRoute(activeGovernanceTab);

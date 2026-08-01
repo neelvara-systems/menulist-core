@@ -41,22 +41,87 @@ export type DateLike = Timestamp | Date | string | number | {
     _seconds?: number;
 } | null | undefined;
 
+const invalidDate = (): Date => new Date(Number.NaN);
+
+const getDataProperty = (value: object, keys: readonly string[]): unknown => {
+    for (const key of keys) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+            return descriptor.value;
+        }
+    }
+    return undefined;
+};
+
+const getPrototypeDataMethod = (
+    value: object,
+    key: string,
+): ((this: object) => unknown) | null => {
+    let current: object | null = value;
+    for (let depth = 0; current && depth < 8; depth += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(current, key);
+        if (descriptor) {
+            return Object.prototype.hasOwnProperty.call(descriptor, 'value')
+                && typeof descriptor.value === 'function'
+                ? descriptor.value as (this: object) => unknown
+                : null;
+        }
+        current = Object.getPrototypeOf(current);
+    }
+    return null;
+};
+
+const isValidDateObject = (value: unknown): value is Date => {
+    if (!(value instanceof Date)) return false;
+    try {
+        return Number.isFinite(Date.prototype.getTime.call(value));
+    } catch {
+        return false;
+    }
+};
+
 /**
  * Normalise any date-like value (Timestamp, ISO string, Date, serialised
  * Firestore Timestamp {seconds, nanoseconds}) into a plain JS Date.
  */
 export const toDate = (value: DateLike): Date => {
-    if (value === null || value === undefined || value === '') return new Date(Number.NaN);
-    if (value instanceof Timestamp) return value.toDate();
-    if (typeof (value as any).toDate === 'function') return (value as any).toDate();
-    if (value instanceof Date) return value;
-    if (typeof value === 'string') return new Date(value);
-    if (typeof value === 'number') return new Date(value);
-    // Serialised Firestore Timestamp from API (plain object)
-    const seconds = (value as any).seconds ?? (value as any)._seconds;
-    const nanoseconds = (value as any).nanoseconds ?? (value as any)._nanoseconds ?? 0;
-    if (seconds !== undefined) return new Date(seconds * 1000 + nanoseconds / 1_000_000);
-    return new Date(value as any);
+    try {
+        if (value === null || value === undefined || value === '') return invalidDate();
+        if (value instanceof Date) return isValidDateObject(value) ? value : invalidDate();
+        if (value instanceof Timestamp) {
+            const converted = value.toDate();
+            return isValidDateObject(converted) ? converted : invalidDate();
+        }
+        if (typeof value === 'string' || typeof value === 'number') {
+            const converted = new Date(value);
+            return isValidDateObject(converted) ? converted : invalidDate();
+        }
+        if (typeof value !== 'object' || Array.isArray(value)) return invalidDate();
+
+        const toDateMethod = getPrototypeDataMethod(value, 'toDate');
+        if (toDateMethod) {
+            const converted = toDateMethod.call(value);
+            return isValidDateObject(converted) ? converted : invalidDate();
+        }
+
+        // Serialised Firestore Timestamp from API (plain data properties only).
+        const seconds = getDataProperty(value, ['seconds', '_seconds']);
+        const nanoseconds = getDataProperty(value, ['nanoseconds', '_nanoseconds']) ?? 0;
+        if (
+            typeof seconds !== 'number'
+            || !Number.isFinite(seconds)
+            || typeof nanoseconds !== 'number'
+            || !Number.isInteger(nanoseconds)
+            || nanoseconds < 0
+            || nanoseconds > 999_999_999
+        ) {
+            return invalidDate();
+        }
+        const converted = new Date(seconds * 1000 + nanoseconds / 1_000_000);
+        return isValidDateObject(converted) ? converted : invalidDate();
+    } catch {
+        return invalidDate();
+    }
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -272,6 +337,31 @@ const zonedDateTimeToUtc = (
     return new Date(utcGuess - secondOffset);
 };
 
+const matchesZonedDateTime = (
+    date: Date,
+    {
+        day,
+        hour,
+        minute,
+        month,
+        year,
+    }: {
+        day: number;
+        hour: number;
+        minute: number;
+        month: number;
+        year: number;
+    },
+    timeZone?: string,
+): boolean => {
+    const parts = getZonedParts(date, timeZone);
+    return Number(parts.year) === year
+        && Number(parts.month) === month
+        && Number(parts.day) === day
+        && Number(parts.hour === '24' ? '0' : parts.hour) === hour
+        && Number(parts.minute) === minute;
+};
+
 const isValidCalendarDate = (year: number, month: number, day: number): boolean => {
     if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
     if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return false;
@@ -303,7 +393,10 @@ export const fromNativeDateInputValue = (value: string, timeZone?: string): stri
     const month = Number(match[2]);
     const day = Number(match[3]);
     if (!isValidCalendarDate(year, month, day)) return '';
-    return zonedDateTimeToUtc(year, month, day, 0, 0, timeZone).toISOString();
+    const converted = zonedDateTimeToUtc(year, month, day, 0, 0, timeZone);
+    return matchesZonedDateTime(converted, { day, hour: 0, minute: 0, month, year }, timeZone)
+        ? converted.toISOString()
+        : '';
 };
 
 export const fromNativeDateTimeInputValue = (value: string, timeZone?: string): string => {
@@ -316,7 +409,10 @@ export const fromNativeDateTimeInputValue = (value: string, timeZone?: string): 
     const hour = Number(match[4]);
     const minute = Number(match[5]);
     if (!isValidCalendarDate(year, month, day) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return '';
-    return zonedDateTimeToUtc(year, month, day, hour, minute, timeZone).toISOString();
+    const converted = zonedDateTimeToUtc(year, month, day, hour, minute, timeZone);
+    return matchesZonedDateTime(converted, { day, hour, minute, month, year }, timeZone)
+        ? converted.toISOString()
+        : '';
 };
 
 // ═══════════════════════════════════════════════════════════════

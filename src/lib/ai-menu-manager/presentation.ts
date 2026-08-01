@@ -12,22 +12,62 @@ export type AiMenuManagerTimelineMessage = {
     text: string;
 };
 
+function readField(value: unknown, key: string): unknown {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) return undefined;
+    try {
+        return Reflect.get(value, key);
+    } catch {
+        return undefined;
+    }
+}
+
+function snapshotArray<T>(value: T[] | undefined, maxItems: number): T[] {
+    if (!Array.isArray(value)) return [];
+    try {
+        return Array.from(value).slice(0, maxItems);
+    } catch {
+        return [];
+    }
+}
+
+function readBoundedText(value: unknown, maxLength: number): string {
+    return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function projectDate(value: unknown): Date | null {
+    try {
+        if (!(value instanceof Date)) return null;
+        const millis = Date.prototype.getTime.call(value);
+        return Number.isFinite(millis) ? new Date(millis) : null;
+    } catch {
+        return null;
+    }
+}
+
 function toDate(value: unknown): Date | null {
     if (!value) return null;
-    if (value instanceof Date) return value;
-    if (typeof value === 'number') {
+    const directDate = projectDate(value);
+    if (directDate) return directDate;
+    if (typeof value === 'number' && Number.isFinite(value)) {
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? null : date;
     }
-    if (typeof value === 'string') {
+    if (typeof value === 'string' && value.length <= 64) {
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? null : date;
     }
-    if (typeof (value as { toDate?: unknown })?.toDate === 'function') {
-        return (value as { toDate: () => Date }).toDate();
+    const toDateMethod = readField(value, 'toDate');
+    if (typeof toDateMethod === 'function') {
+        try {
+            return projectDate(Reflect.apply(toDateMethod, value, []));
+        } catch {
+            return null;
+        }
     }
-    if (typeof (value as { seconds?: unknown })?.seconds === 'number') {
-        return new Date((value as { seconds: number }).seconds * 1000);
+    const seconds = readField(value, 'seconds');
+    if (typeof seconds === 'number' && Number.isFinite(seconds)) {
+        const date = new Date(seconds * 1000);
+        return Number.isNaN(date.getTime()) ? null : date;
     }
     return null;
 }
@@ -56,20 +96,22 @@ function getUpdatedLabel(value: unknown) {
 
 export function getAiMenuManagerProjectStatusLine(project?: Project | null) {
     if (!project) return '';
-    const status = project.deleted === true
+    const status = readField(project, 'deleted') === true
         ? 'Deleted menu'
-        : project.active === false || project.outletStatus === 'inactive'
+        : readField(project, 'active') === false || readField(project, 'outletStatus') === 'inactive'
             ? 'Hidden from customers'
             : 'Active menu';
-    const projectTimestamps = project as Project & { modifiedOn?: unknown; updatedAt?: unknown };
-    const updated = getUpdatedLabel(projectTimestamps.modifiedOn || projectTimestamps.updatedAt);
+    const updated = getUpdatedLabel(
+        readField(project, 'modifiedOn') || readField(project, 'updatedAt'),
+    );
     return [status, updated].filter(Boolean).join(' · ');
 }
 
 export function shouldShowAiMenuManagerApprovalReason(card: AiMenuManagerCardPayload) {
-    return card.kind === 'unsupported'
+    const approvalPolicy = readField(card, 'approvalPolicy');
+    return readField(card, 'kind') === 'unsupported'
         || ['high_confirm', 'bulk_confirm', 'destructive_confirm', 'external_confirm']
-            .includes(card.approvalPolicy.level);
+            .includes(readBoundedText(readField(approvalPolicy, 'level'), 40));
 }
 
 export function buildAiMenuManagerTimeline(params: {
@@ -77,47 +119,57 @@ export function buildAiMenuManagerTimeline(params: {
     activeCards?: AiMenuManagerCardPayload[];
     receipts?: AiMenuManagerReceipt[];
 }): AiMenuManagerTimelineMessage[] {
-    const activeCardTitles = new Set((params.activeCards || []).map((card) => card.title.trim()));
-    const activeCardMessages = new Set((params.activeCards || []).map((card) => card.message.trim()));
-    const timeline = (params.compactMessages || []).reduce<AiMenuManagerTimelineMessage[]>((messages, entry) => {
-        if (entry.role === 'system') return messages;
+    const activeCards = snapshotArray(params.activeCards, 20);
+    const activeCardTitles = new Set(activeCards.map((card) => readBoundedText(readField(card, 'title'), 2_000)).filter(Boolean));
+    const activeCardMessages = new Set(activeCards.map((card) => readBoundedText(readField(card, 'message'), 2_000)).filter(Boolean));
+    const timeline = snapshotArray(params.compactMessages, 100).reduce<AiMenuManagerTimelineMessage[]>((messages, entry) => {
+        const rawRole = readField(entry, 'role');
+        if (rawRole === 'system') return messages;
+        if (rawRole !== 'owner' && rawRole !== 'menu_manager') return messages;
+        const text = readBoundedText(readField(entry, 'text'), 4_000);
+        const messageId = readBoundedText(readField(entry, 'messageId'), 240);
+        if (!text || !messageId) return messages;
 
-        const role = entry.role === 'owner' ? 'owner' : 'menu_manager';
-        const kind = entry.kind || 'reply';
+        const role = rawRole;
+        const rawKind = readField(entry, 'kind');
+        const kind = rawKind === 'receipt' || rawKind === 'status' ? rawKind : 'reply';
         if (
             role === 'menu_manager'
             && kind === 'reply'
             && (
-                activeCardTitles.has(entry.text.trim())
-                || activeCardMessages.has(entry.text.trim())
+                activeCardTitles.has(text)
+                || activeCardMessages.has(text)
             )
         ) {
             return messages;
         }
 
         const previous = messages[messages.length - 1];
-        if (previous?.role === role && previous.text === entry.text && previous.kind === kind) {
+        if (previous?.role === role && previous.text === text && previous.kind === kind) {
             return messages;
         }
 
         messages.push({
-            id: entry.messageId,
+            id: messageId,
             kind,
             role,
-            text: entry.text,
+            text,
         });
         return messages;
     }, []);
 
     const visibleMessageIds = new Set(timeline.map((entry) => entry.id));
-    [...(params.receipts || [])].reverse().forEach((receipt) => {
-        const messageId = `${receipt.receiptId}_manager`;
+    snapshotArray(params.receipts, 100).reverse().forEach((receipt) => {
+        const receiptId = readBoundedText(readField(receipt, 'receiptId'), 240);
+        const text = readBoundedText(readField(receipt, 'message'), 4_000);
+        if (!receiptId || !text) return;
+        const messageId = `${receiptId}_manager`;
         if (visibleMessageIds.has(messageId)) return;
         timeline.push({
             id: messageId,
             kind: 'receipt',
             role: 'menu_manager',
-            text: receipt.message,
+            text,
         });
     });
 

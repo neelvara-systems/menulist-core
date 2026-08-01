@@ -1,4 +1,5 @@
 import { buildWhatsAppPhoneParam as buildCanonicalWhatsAppPhoneParam } from "@lib/phone/phoneNumber";
+import { SIGNIN_URL } from "@constant/urls";
 
 export type StaffLoginDetailsShareInput = {
     countryCode?: string;
@@ -10,23 +11,49 @@ export type StaffLoginDetailsShareInput = {
     signInUrl?: string;
 };
 
-export const getStaffSignInUrl = () => (
-    typeof window === 'undefined'
-        ? '/signin'
-        : `${window.location.origin}/signin`
+const normalizeShareLine = (value: unknown, fallback: string, maxLength: number): string => {
+    if (typeof value !== 'string') return fallback;
+    const normalized = value
+        .replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return normalized ? normalized.slice(0, maxLength) : fallback;
+};
+
+const isLocalDevelopmentHost = (hostname: string): boolean => (
+    hostname === 'localhost'
+    || hostname === '127.0.0.1'
+    || hostname.startsWith('192.168.')
 );
+
+export const getStaffSignInUrl = () => {
+    if (
+        typeof window !== 'undefined'
+        && isLocalDevelopmentHost(window.location.hostname.toLowerCase())
+    ) {
+        return `${window.location.origin}/signin`;
+    }
+    return SIGNIN_URL;
+};
 
 export const buildStaffLoginDetailsText = ({
     productName = 'MenuList',
     signInUrl = getStaffSignInUrl(),
     staffLoginId,
     temporaryPasscode,
-}: StaffLoginDetailsShareInput) => [
-    `${productName} staff login details`,
-    `Staff ID: ${staffLoginId}`,
-    `Passcode: ${temporaryPasscode}`,
-    `Sign in: ${signInUrl}`,
-].join('\n');
+}: StaffLoginDetailsShareInput) => {
+    const safeProductName = normalizeShareLine(productName, 'MenuList', 80);
+    const safeStaffLoginId = normalizeShareLine(staffLoginId, 'Unavailable', 160);
+    const safeTemporaryPasscode = normalizeShareLine(temporaryPasscode, 'Unavailable', 160);
+    const safeSignInUrl = normalizeShareLine(signInUrl, SIGNIN_URL, 2048);
+
+    return [
+        `${safeProductName} staff login details`,
+        `Staff ID: ${safeStaffLoginId}`,
+        `Passcode: ${safeTemporaryPasscode}`,
+        `Sign in: ${safeSignInUrl}`,
+    ].join('\n');
+};
 
 export const buildWhatsAppShareUrl = (details: StaffLoginDetailsShareInput) => {
     const phoneParam = buildWhatsAppPhoneParam(details);
@@ -48,7 +75,7 @@ export async function shareStaffLoginDetails(details: StaffLoginDetailsShareInpu
     try {
         await (navigator as Navigator & { share: (data: { title?: string; text?: string }) => Promise<void> }).share({
             text: buildStaffLoginDetailsText(details),
-            title: `${details.productName || 'MenuList'} staff login details`,
+            title: `${normalizeShareLine(details.productName, 'MenuList', 80)} staff login details`,
         });
         return 'shared';
     } catch (error) {

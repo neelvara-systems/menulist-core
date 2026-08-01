@@ -15,7 +15,10 @@ The checked-in `public/sw.js` is a generated artifact. It is not edited by hand 
 - registers the owner worker on maintained owner/auth paths and standalone platform launches;
 - registers the minimal customer worker only on tenant origins;
 - registers MyCodex’s separate worker only on its product host;
-- removes wrong workers;
+- re-runs reconciliation after App Router pathname changes, with serialized
+  settlement so an older route decision cannot become the final worker state;
+- requires both the exact worker script and root scope, and removes wrong-
+  script or wrong-scope registrations;
 - removes owner workers in development/preview;
 - preserves the production owner worker on normal platform website visits;
 - asks an existing correct registration to check for an update.

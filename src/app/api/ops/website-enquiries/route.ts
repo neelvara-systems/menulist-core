@@ -48,19 +48,32 @@ const WebsiteEnquiryQuerySchema = z.object({
 });
 
 function cleanOpsText(value: unknown, max = 260): string {
-  return String(value || '')
+  const text = typeof value === 'string' || typeof value === 'number'
+    ? String(value)
+    : '';
+  return text
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
 }
 
-function toIso(value: any): string | null {
+function toIso(value: unknown): string | null {
   if (!value) return null;
   try {
-    if (typeof value.toDate === 'function') return value.toDate().toISOString();
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000).toISOString();
     if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'object') {
+      const toDate = Reflect.get(value, 'toDate');
+      if (typeof toDate === 'function') {
+        const date = Reflect.apply(toDate, value, []);
+        return date instanceof Date && !Number.isNaN(date.getTime()) ? date.toISOString() : null;
+      }
+      const seconds = Reflect.get(value, 'seconds');
+      if (typeof seconds === 'number' && Number.isFinite(seconds)) {
+        const date = new Date(seconds * 1000);
+        return Number.isNaN(date.getTime()) ? null : date.toISOString();
+      }
+    }
     if (typeof value === 'string' || typeof value === 'number') {
       const date = new Date(value);
       return Number.isNaN(date.getTime()) ? null : date.toISOString();
@@ -87,9 +100,7 @@ function getKind(data: FirebaseFirestore.DocumentData): WebsiteEnquiryKind {
 
 function getTopic(value: unknown): WebsiteEnquiryTopic {
   const normalized = cleanOpsText(value, 40);
-  return TOPICS.includes(normalized as WebsiteEnquiryTopic)
-    ? normalized as WebsiteEnquiryTopic
-    : 'general';
+  return TOPICS.find((topic) => topic === normalized) || 'general';
 }
 
 function serializeEnquiry(

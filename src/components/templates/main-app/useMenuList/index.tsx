@@ -161,8 +161,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     const searchParams = useSearchParams();
     // T4-N-03: QR card labels + descriptions routed through i18n.
     const t = useTranslations('UseMenuList');
-    const projectIdQuery = searchParams.get('projectId') || '';
-    const focusQuery = searchParams.get('focus') || '';
+    const projectIdQuery = searchParams?.get('projectId') || '';
+    const focusQuery = searchParams?.get('focus') || '';
     const [pageState, setPageState] = useState<PageState>('loading');
     const [data, setData] = useState<UseMenuListData | null>(null);
     const [generatingKit, setGeneratingKit] = useState(false);
@@ -1349,6 +1349,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                         address={buildStoreAddress(storeDetails)}
                         phone={storeDetails.phoneNumber || undefined}
                         workingHours={storeDetails.workingHours}
+                        specialHours={storeDetails.specialHours}
                         timeZone={storeDetails.timeZone}
                         themeToken={themeToken}
                     />

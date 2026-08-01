@@ -28,6 +28,17 @@ Draft preparation is transaction-authoritative and replay-safe. The selected tar
 
 Human approval is also transaction-authoritative. The decision transaction requires the pending approval's draft and packet to exist and agree on target, approval, and evidence identity; the target must still point to that exact pair as latest. It then revalidates current source rights, suppression/lifecycle/prior-contact state, target segment/action, and unsupported claims before changing approval/draft/packet/target truth or decrementing queues. Rejection remains available to close a pending review unit even when its optional packet/draft is incomplete, while approval always fails closed.
 
+All Firestore document identities pass one SignalDesk boundary before reference
+construction. The boundary preserves the submitted value exactly, rejects
+leading/trailing whitespace, slash/path forms, reserved IDs and values longer
+than 180 characters (160 for bounded registries), and is enforced in protected
+action schemas, the signed outcome bridge, exported workflow entry points and
+the server workflow. Persisted DTOs, replay claims and workspace projectors use
+the same non-coercive identity rule: malformed optional references invalidate
+their containing row instead of being trimmed into different authority.
+Closed-enum document IDs such as channel-specific control records remain
+internally derived.
+
 Client-side SignalDesk DAL failures use fixed internal-tool copy for overview load, workspace load, action run, and pause updates. Route response text from `src/app/api/signaldesk/*` is not rethrown into the UI. Overview, workspace, action, and kill-switch callers parse route responses through a 1 MB bounded reader, require the documented `{ data }` envelope, and guard overview/workspace shapes before replacing local state. Malformed, oversized, rejected, or wrong-shape route responses now log `signaldesk_client_response_parse_failed`, `signaldesk_client_response_rejected`, or `signaldesk_client_response_invalid` with operation, response status, mobile-client state, and bounded action/section/scope presence/length metadata before preserving the same fixed UI failure copy. The runtime still preserves the existing access, rate-limit, mobile-readonly, and provider-send gates. Overview, workspace, action, kill-switch, and lower-level overview-load failures use `signaldesk_*_failed` diagnostics with bounded user/action/section/scope metadata and source error name/code/status only. Shared API guard security events for validation failures, permission failures, rate limits, and invalid JSON now use `getSignalDeskSecurityLogContext()` over bounded route metadata plus endpoint/method/action/permission/feature presence-length fields instead of raw `buildSecurityContext()` output.
 
 ## Investment-Control Runtime Added

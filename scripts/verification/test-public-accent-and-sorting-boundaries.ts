@@ -4,6 +4,7 @@ import { APP_THEME_COLOR } from '../../src/constants/common';
 import {
     normalizePublicAccentColor,
     resolveOBPAccentColor,
+    resolvePublicMenuAccentColor,
 } from '../../src/lib/obp/accentColor';
 import { buildManifest } from '../../src/lib/pwa/manifestGenerator';
 import { buildMobileAppSchema } from '../../src/lib/pwa/schemaJsonLd';
@@ -19,6 +20,10 @@ assert.equal(normalizePublicAccentColor({ toString: () => '#123456' }), null);
 assert.equal(resolveOBPAccentColor({ accentColor: '#ABC' }), '#aabbcc');
 assert.equal(resolveOBPAccentColor({ accentColor: 'not-a-color' }), '#111');
 assert.equal(resolveOBPAccentColor(null), '#111');
+assert.equal(resolvePublicMenuAccentColor('#123456', { accentColor: '#abcdef' }), '#123456');
+assert.equal(resolvePublicMenuAccentColor(undefined, { accentColor: '#ABC' }), '#aabbcc');
+assert.equal(resolvePublicMenuAccentColor('invalid', { accentColor: 'invalid' }, '#0aF'), '#00aaff');
+assert.equal(resolvePublicMenuAccentColor(undefined, null), null);
 
 const manifest = buildManifest({
     backgroundColor: 'url(https://attacker.invalid/background)',

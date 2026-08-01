@@ -31,6 +31,7 @@ function verifyRuntimePolicy() {
   const { filterAnalyticsUpdateData } = require(path.join(ROOT, 'src/lib/analytics/writePolicy.ts'));
   const {
     normalizeAnalyticsDashboardReadModel,
+    normalizeAnalyticsData,
     normalizeAnalyticsDateKey,
     normalizeAnalyticsProjectId,
     normalizeAnalyticsScopeDocumentId,
@@ -102,9 +103,21 @@ function verifyRuntimePolicy() {
     totalViews: 4,
     viewsByDevice: { mobile: 4 },
     itemNames: { item_1: 'Lunch' },
+    lastUpdated: { toDate: () => new Date('2026-07-11T10:00:00.000Z') },
   });
   assert(normalizedDay?.date === '2026-07-11', 'daily analytics must normalize localDate to UI date');
   assert(normalizedDay?.totalViews === 4, 'daily analytics numeric field must survive');
+  assert(
+    normalizedDay?.lastUpdated === '2026-07-11T10:00:00.000Z',
+    'daily analytics timestamp must project to a JSON-safe ISO value',
+  );
+  assert(
+    normalizeDailyAnalytics({
+      date: '2026-07-11',
+      lastUpdated: { toDate: () => { throw new Error('malformed timestamp'); } },
+    })?.lastUpdated === undefined,
+    'throwing persisted timestamp adapter must fail closed',
+  );
   assert(
     normalizeDailyAnalytics({ date: '2026-07-11', viewsByDevice: { mobile: 'forged' } })?.viewsByDevice === undefined,
     'malformed daily analytics map must fail closed',
@@ -129,6 +142,24 @@ function verifyRuntimePolicy() {
       daily30d: [],
     }, '1', '101', 'project_1') === null,
     'cross-store analytics dashboard read model must fail',
+  );
+  assert(
+    normalizeAnalyticsData({
+      summary: { lifetimeTotalViews: 2, lastUpdated: '2026-07-11T10:00:00.000Z' },
+      daily: [{ date: '2026-07-11', totalViews: 2, lastUpdated: '2026-07-11T10:00:00.000Z' }],
+    })?.daily[0]?.lastUpdated === '2026-07-11T10:00:00.000Z',
+    'JSON-rehydrated analytics cache must retain its exact ISO timestamp',
+  );
+  assert(
+    normalizeAnalyticsData({
+      summary: null,
+      daily: [{ date: '2026-07-11', totalViews: 'forged' }],
+    })?.daily[0]?.totalViews === undefined,
+    'analytics cache must normalize malformed optional counters instead of trusting generic types',
+  );
+  assert(
+    normalizeAnalyticsData({ summary: null, daily: [{ date: 'not-a-date' }] }) === null,
+    'analytics cache with malformed required rows must fail closed',
   );
   assert(
     normalizeOBPDailyReadDocument({
@@ -268,9 +299,16 @@ function verifySourceBoundaries() {
   assertIncludes(clientDal, "if (typeof window === 'undefined') return false;", 'browser-only analytics admission');
   assertNotIncludes(clientDal, 'setDoc(dailyDocRef', 'browser analytics direct Firestore mutation');
   assertNotIncludes(clientDal, 'writeAnalyticsEventNow', 'browser analytics dead direct writer');
-  assertIncludes(clientDal, 'subtractFlushedAnalyticsData(current.updateData, flushedData)', 'analytics in-flight snapshot drain');
-  assertIncludes(clientDal, 'const flushedDeliveryId = queued.deliveryId;', 'analytics retry-stable delivery identity');
-  assertIncludes(clientDal, 'current.deliveryId = createRandomIdSegment(32);', 'analytics post-acknowledgement delivery identity rotation');
+  assertIncludes(clientDal, 'if (!queued.activeDelivery) {', 'analytics exact in-flight delivery snapshot boundary');
+  assertIncludes(clientDal, 'deliveryId: queued.deliveryId,', 'analytics retry-stable delivery identity snapshot');
+  assertIncludes(clientDal, 'queued.deliveryId = createRandomIdSegment(32);', 'analytics pending delivery identity rotation before network work');
+  assertIncludes(clientDal, 'queued.updateData = {};', 'analytics pending counters separated from in-flight delivery');
+  assertIncludes(clientDal, 'activeDelivery.deliveryId,', 'analytics retry reuses exact in-flight delivery identity');
+  assertIncludes(clientDal, 'current.activeDelivery = undefined;', 'analytics active delivery clears only after acknowledgement');
+  assertIncludes(queueBoundary, 'activeDelivery?: AnalyticsDeliverySnapshot;', 'analytics persisted split delivery contract');
+  assertIncludes(clientDal, 'if (!canMergeAnalyticsUpdateData(existing.updateData, policyData)) {', 'analytics live queue field-cap admission');
+  assertNotIncludes(clientDal, 'if (mergedFieldCount > 200)', 'analytics undeliverable 200-field queue allowance');
+  assertIncludes(queueBoundary, 'size <= ANALYTICS_QUEUE_MAX_FIELDS;', 'analytics live/persisted route field-cap parity');
   assertIncludes(clientDal, 'isRetryableAnalyticsFlushError', 'analytics retry classification');
   assertIncludes(clientDal, 'current.retryCount >= ANALYTICS_QUEUE_MAX_RETRY_COUNT', 'analytics bounded retry count');
   assertIncludes(clientDal, 'normalizePersistedAnalyticsQueue(', 'analytics persisted queue DTO admission');
@@ -385,6 +423,10 @@ function verifySourceBoundaries() {
   assertIncludes(serverWrite, 'localDate: analyticsDateKey,', 'Admin analytics settlement date field');
   assertIncludes(rules, 'match /analyticsDeliveryReceipts/{receiptId}', 'analytics delivery receipt server-only rules boundary');
   assertIncludes(analyticsHook, 'return `analytics:${type}:${JSON.stringify(parts)}`;', 'analytics collision-safe browser cache key');
+  assertIncludes(analyticsHook, 'const cached = getCachedData<unknown>', 'analytics local cache enters as unknown');
+  assertIncludes(analyticsHook, 'normalizeAnalyticsData,', 'analytics local cache uses its DTO boundary');
+  assertIncludes(analyticsHook, 'removeCachedData(cacheKey);', 'analytics malformed local cache is evicted');
+  assertNotIncludes(analyticsHook, 'getCachedData<T>', 'analytics hook must not trust generic local-cache data');
   assertNotIncludes(analyticsHook, 'parts.filter(Boolean).join', 'analytics ambiguous browser cache key');
   assert(
     packageJson.scripts['verify:analytics-write-boundary'] === 'node scripts/verification/verify-analytics-write-boundary.js && npm run test:analytics:browser-boundary && npm run test:analytics:normalizer && npm run test:analytics:admin-write && npm run test:analytics:owner-action-receipts && npm run test:analytics:rules',

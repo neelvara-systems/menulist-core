@@ -8,6 +8,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { AUTH_BROWSER_REQUEST_POLICY } from "@lib/auth/browserRequestPolicy";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { isDataUrl } from "@lib/media/mediaStorage";
+import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/scopeDocumentId";
 import { createRuntimeId } from "@lib/runtime/randomId";
 import { logRuntimeDiagnostic, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
@@ -17,6 +18,7 @@ import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import type { TenantDataType } from "@type/platform/tenant";
 
 const COLLECTION = DB_COLLECTIONS.TENANTS;
+const MAX_TENANT_DOCUMENTS = 1000;
 const TENANT_NAME_RESPONSE_MAX_BYTES = 32 * 1024;
 type TenantMutationInput = Record<string, unknown> & {
     imageToUpdate?: unknown;
@@ -113,7 +115,9 @@ const getCollectionRef = () => {
 }
 
 const getDocRef = (docId: string | number) => {
-    return doc(firebaseClient, `${COLLECTION}`, `${docId}`)
+    const scope = normalizeStorePermissionScopeDocumentId(docId);
+    if (!scope) throw new Error('tenant_document_id_invalid');
+    return doc(firebaseClient, COLLECTION, scope.documentId);
 }
 
 const isTenantDataType = (value: unknown): value is TenantDataType & { id: string } => {
@@ -141,6 +145,11 @@ export const normalizeTenantListDocument = (
     documentId: string,
     value: Record<string, unknown>,
 ): (TenantDataType & { id: string }) | null => {
+    const documentScope = normalizeStorePermissionScopeDocumentId(documentId);
+    const embeddedScope = value.tenantId === undefined || value.tenantId === null
+        ? documentScope
+        : normalizeStorePermissionScopeDocumentId(value.tenantId);
+    if (!documentScope || embeddedScope?.numericId !== documentScope.numericId) return null;
     const storesList = (Array.isArray(value.storesList) ? value.storesList : [])
         .flatMap((entry) => {
             if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return [];
@@ -161,6 +170,7 @@ export const normalizeTenantListDocument = (
         id: documentId,
         name: typeof value.name === 'string' ? value.name : '',
         storesList,
+        tenantId: documentScope.numericId,
         tenantKey: typeof value.tenantKey === 'string' ? value.tenantKey : '',
     };
     return isTenantDataType(candidate) ? candidate : null;
@@ -169,7 +179,17 @@ export const normalizeTenantListDocument = (
 export const getAllTenants = async () => {
     return await apiCallComposer(
         async () => {
-            const querySnapshot = await getDocs(await getCollectionRef());
+            const querySnapshot = await getDocs(query(
+                getCollectionRef(),
+                limit(MAX_TENANT_DOCUMENTS + 1),
+            ));
+            if (querySnapshot.size > MAX_TENANT_DOCUMENTS) {
+                logRuntimeDiagnostic('tenant_document_limit_exceeded', {
+                    documentCount: querySnapshot.size,
+                    documentLimit: MAX_TENANT_DOCUMENTS,
+                });
+                throw new Error('tenant_document_limit_exceeded');
+            }
             const list: Array<TenantDataType & { id: string }> = [];
             querySnapshot.forEach((tenantDocument) => {
                 const tenant = normalizeTenantListDocument(tenantDocument.id, tenantDocument.data());

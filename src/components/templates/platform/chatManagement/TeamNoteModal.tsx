@@ -7,6 +7,7 @@ import {
     type AnswerlatticeChatSessionScope,
     updateSessionInternalNote,
 } from '@database/chatSessions';
+import type { ChatInternalNoteContent } from '@type/chatSession';
 import { Button, Flex, message, Modal, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
@@ -19,17 +20,17 @@ interface TeamNoteModalProps {
     onClose: () => void;
     sessionId: string | null;
     scope: AnswerlatticeChatSessionScope;
-    initialNote?: any; // TipTap JSON content
+    initialNote?: ChatInternalNoteContent;
     noteMetadata?: {
         lastEditedBy?: string;
         lastEditedByName?: string;
         lastEditedAt?: Timestamp;
     };
-    onSave?: (noteJson: any) => void; // Callback to update parent state
+    onSave?: (noteJson: ChatInternalNoteContent) => void;
 }
 
 function TeamNoteModal({ open, onClose, sessionId, scope, initialNote, noteMetadata, onSave }: TeamNoteModalProps) {
-    const [noteContent, setNoteContent] = useState<any>(null);
+    const [noteContent, setNoteContent] = useState<ChatInternalNoteContent | null>(null);
     const [savingNote, setSavingNote] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const saveOwnerRef = useRef(0);
@@ -63,7 +64,7 @@ function TeamNoteModal({ open, onClose, sessionId, scope, initialNote, noteMetad
     }, [open, initialNote]);
 
     const handleSaveNote = async () => {
-        if (!sessionId || saveInProgressRef.current) return;
+        if (!sessionId || !noteContent || saveInProgressRef.current) return;
 
         saveInProgressRef.current = true;
         const actionOwner = ++saveOwnerRef.current;

@@ -37,7 +37,10 @@ import {
     buildAiMenuManagerPosSetupInfo,
     withAiMenuManagerShareSource,
 } from './localExportUrls';
-import { resolveDomainConversationCommand } from './domainConversationRouter';
+import {
+    normalizeAiMenuManagerCommandText,
+    resolveDomainConversationCommand,
+} from './domainConversationRouter';
 
 export interface AiMenuManagerResolvedCommand {
     actionType: AiMenuManagerActionType;
@@ -58,12 +61,7 @@ const PRICE_WORDS = /\b(?:make|set|change|update|price|rate|cost|to|now|is|rs|in
 const MAX_SPECIAL_NOTE_LENGTH = 140;
 
 function normalizeText(value = '') {
-    return value
-        .toLowerCase()
-        .replace(/[₹]/g, ' rs ')
-        .replace(/[^a-z0-9\s.]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+    return normalizeAiMenuManagerCommandText(value);
 }
 
 function cleanItemName(value: string) {
@@ -2089,14 +2087,25 @@ const MOBILE_MORE_FLOW_MATCHES: MobileMoreFlowMatch[] = [
         title: 'Open working hours',
         summaryTitle: 'Working hours',
         where: 'More > Working Hours',
-        message: 'Use the existing Working Hours screen to edit opening and closing times.',
-        keywords: [/\bworking hours\b/, /\bopening hours\b/, /\bbusiness hours\b/, /\bclosing time\b/, /\bopen time\b/, /\bclose time\b/],
+        message: 'Use the existing Working Hours screen for regular weekly hours and planned date-specific special hours.',
+        keywords: [
+            /\bworking hours\b/,
+            /\bopening hours\b/,
+            /\bbusiness hours\b/,
+            /\bclosing time\b/,
+            /\bopen time\b/,
+            /\bclose time\b/,
+            /\bspecial hours\b/,
+            /\bholiday hours\b/,
+            /\bspecial date\b/,
+        ],
         guideTitle: 'Choose working-hours change',
         guideMessage: 'Pick the working-hours change Menu Manager should prepare.',
         guideWhen: (normalized) => !NAVIGATE_TO_MORE_WORDS.test(normalized)
-            && !/\b(today|tomorrow|weekday|weekdays|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|closed|close|open from|to \d)\b/.test(normalized),
+            && !/\b(today|tomorrow|special|holiday|weekday|weekdays|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|closed|close|open from|to \d)\b/.test(normalized),
         suggestedReplies: [
             { label: 'Today only', prompt: 'Change working hours for today', helper: 'One-day hours change' },
+            { label: 'Special date', prompt: 'Set special hours for a date', helper: 'Planned closure or different hours' },
             { label: 'All weekdays', prompt: 'Change working hours for all weekdays', helper: 'Monday to Friday' },
             { label: 'Weekend', prompt: 'Change working hours for weekend', helper: 'Saturday and Sunday' },
             { label: 'Closed today', prompt: 'Set temporary status: closed today', helper: 'Use temporary status instead' },
@@ -2128,15 +2137,15 @@ const MOBILE_MORE_FLOW_MATCHES: MobileMoreFlowMatch[] = [
         title: 'Open temporary status',
         summaryTitle: 'Temporary status',
         where: 'More > Temporary Status',
-        message: 'Use the existing Temporary Status screen for holiday, closed today, special hours, and temporary banners.',
-        keywords: [/\btemporary status\b/, /\btemporarily closed\b/, /\bclosed today\b/, /\bholiday\b/, /\bspecial hours\b/, /\bstatus banner\b/],
+        message: 'Use the existing Temporary Status screen for live interruptions, closed today, holiday notices, and temporary banners.',
+        keywords: [/\btemporary status\b/, /\btemporarily closed\b/, /\bclosed today\b/, /\bholiday\b/, /\bstatus banner\b/],
         guideTitle: 'Choose temporary status',
         guideMessage: 'Pick the temporary status Menu Manager should prepare.',
-        guideWhen: (normalized) => !/\b(closed today|holiday|special hours|back open|open again|clear|remove)\b/.test(normalized),
+        guideWhen: (normalized) => !/\b(closed today|holiday|back open|open again|clear|remove)\b/.test(normalized),
         suggestedReplies: [
             { label: 'Closed today', prompt: 'Set temporary status: closed today', helper: 'Customers see you are closed today' },
             { label: 'Holiday', prompt: 'Set temporary status: holiday', helper: 'Use existing holiday status flow' },
-            { label: 'Special hours', prompt: 'Set temporary status: special hours', helper: 'Choose custom hours in existing flow' },
+            { label: 'Temporary notice', prompt: 'Set temporary status notice', helper: 'Show a short live update' },
             { label: 'Back open', prompt: 'Clear temporary status', helper: 'Remove temporary public status' },
         ],
         warnings: ['Temporary public status must use the guarded temp-status API.'],

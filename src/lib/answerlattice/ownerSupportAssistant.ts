@@ -77,6 +77,7 @@ const SUMMARY_CACHE_MAX_ENTRIES = 300;
 const SCHEDULED_SUMMARY_STALE_AFTER_MS = 48 * 60 * 60 * 1_000;
 const SUMMARY_TIMESTAMP_FUTURE_TOLERANCE_MS = 5 * 60 * 1_000;
 const summaryCache = new Map<string, { expiresAt: number; value: SummaryPacketValue }>();
+const summaryLoadsInFlight = new Map<string, Promise<SummaryPacketValue>>();
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -265,12 +266,8 @@ const getSourceHealth = (
     };
 };
 
-const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacket> => {
+const readSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacketValue> => {
     const key = `${tId}:${sId}`;
-    const cached = summaryCache.get(key);
-    if (cached && cached.expiresAt > Date.now()) return { ...cached.value, cacheHit: true };
-    if (cached) summaryCache.delete(key);
-
     const db = answerlatticeFirestoreAdmin;
     const refs = [
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`coverage_${tId}_${sId}`),
@@ -327,7 +324,25 @@ const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacke
         if (firstKey) summaryCache.delete(firstKey);
     }
     summaryCache.set(key, { value, expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS });
-    return { ...value, cacheHit: false };
+    return value;
+};
+
+const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacket> => {
+    const key = `${tId}:${sId}`;
+    const cached = summaryCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return { ...cached.value, cacheHit: true };
+    if (cached) summaryCache.delete(key);
+
+    const currentLoad = summaryLoadsInFlight.get(key);
+    if (currentLoad) return { ...(await currentLoad), cacheHit: true };
+
+    const load = readSummaryPacket(tId, sId);
+    summaryLoadsInFlight.set(key, load);
+    try {
+        return { ...(await load), cacheHit: false };
+    } finally {
+        if (summaryLoadsInFlight.get(key) === load) summaryLoadsInFlight.delete(key);
+    }
 };
 
 const buildMetrics = (packet: SummaryPacket): AnswerlatticeOwnerAssistantBrief['metrics'] => ({

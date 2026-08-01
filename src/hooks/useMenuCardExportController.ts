@@ -285,6 +285,10 @@ export default function useMenuCardExportController({
                 ? await loadProjectData(selectedProject.projectId)
                 : await getProjectDataWithoutLoader(selectedProject.projectId);
             if (!mounted) return;
+            if (!data) {
+                setLoading(false);
+                return;
+            }
             projectDataCacheRef.current[selectedProject.projectId] = data;
             setProjectData(data);
             setLoadedProjectId(selectedProject.projectId);

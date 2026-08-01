@@ -78,6 +78,8 @@ export type AnswerlatticeCompletedWeeklyWindows = {
     previousWeekEnd: string;
 };
 
+export type AnswerlatticeWeeklyInsightWriteDecision = 'current' | 'invalid' | 'superseded' | 'write';
+
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const SEVERITIES = new Set(['low', 'medium', 'high']);
 
@@ -117,6 +119,25 @@ export function getAnswerlatticeCompletedWeeklyWindows(
     const previousWeekEnd = shiftUtcDateKey(weekStart, -1);
     const previousWeekStart = shiftUtcDateKey(previousWeekEnd, -(days - 1));
     return { weekStart, weekEnd, previousWeekStart, previousWeekEnd };
+}
+
+export function getAnswerlatticeWeeklyInsightWriteDecision(
+    current: unknown,
+    candidate: { sourceHash: unknown; weekEnd: unknown },
+): AnswerlatticeWeeklyInsightWriteDecision {
+    const candidateWeekEnd = normalizeDateKey(candidate.weekEnd);
+    const candidateSourceHash = typeof candidate.sourceHash === 'string'
+        && /^[a-f0-9]{64}$/.test(candidate.sourceHash)
+        ? candidate.sourceHash
+        : null;
+    if (!candidateWeekEnd || !candidateSourceHash) return 'invalid';
+    if (!isRecord(current)) return 'write';
+
+    const currentWeekEnd = normalizeDateKey(current.weekEnd);
+    if (currentWeekEnd && currentWeekEnd > candidateWeekEnd) return 'superseded';
+    return currentWeekEnd === candidateWeekEnd && current.sourceHash === candidateSourceHash
+        ? 'current'
+        : 'write';
 }
 
 const normalizeText = (value: unknown, maxLength: number): string | null => {

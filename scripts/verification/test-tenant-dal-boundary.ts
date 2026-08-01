@@ -14,6 +14,7 @@ const normalized = normalizeTenantListDocument('14', {
 
 assert.ok(normalized, 'legacy tenant should normalize');
 assert.equal(normalized.id, '14');
+assert.equal(normalized.tenantId, 14);
 assert.equal(normalized.active, true);
 assert.equal(normalized.deleted, false);
 assert.equal(normalized.email, '');
@@ -28,13 +29,31 @@ assert.deepEqual(normalized.storesList.map((store) => ({
     storeKey: 'main_store',
 }]);
 
+const defaulted = normalizeTenantListDocument('15', {
+    storesList: [],
+    tenantKey: 'invalid',
+});
+assert.ok(defaulted);
+assert.equal(defaulted.name, '', 'missing presentation fields should receive deterministic safe defaults');
+
 assert.equal(
-    normalizeTenantListDocument('invalid', {
+    normalizeTenantListDocument('14', {
         storesList: [],
-        tenantKey: 'invalid',
-    }).name,
-    '',
-    'missing presentation fields should receive deterministic safe defaults',
+        tenantId: 15,
+        tenantKey: 'conflicting',
+    }),
+    null,
+    'embedded tenant identity must agree with the authoritative document ID',
+);
+
+assert.equal(
+    normalizeTenantListDocument('014', {
+        storesList: [],
+        tenantId: 14,
+        tenantKey: 'noncanonical',
+    }),
+    null,
+    'noncanonical tenant document IDs must fail closed',
 );
 
 process.stdout.write('Tenant DAL boundary tests passed.\n');

@@ -3,6 +3,7 @@
 import path from 'path';
 import {
   allAssetSlots,
+  getAssetBriefPath,
   getBrandContextPath,
   listKnownSlotIds,
   loadManifest,
@@ -47,7 +48,7 @@ function buildBrief(slotId: string): string {
     throw new Error(`Missing brand context file: ${brandContextPath}`);
   }
 
-  const outputPath = entry?.brief || `packages/asset-factory/briefs/${slot.id}.md`;
+  const outputPath = getAssetBriefPath(slot.id, entry?.brief);
   const files = entry?.files ? Object.entries(entry.files) : [];
   const existingFiles = files.length
     ? files.map(([role, repoPath]) => `- ${role}: ${repoPath}`).join('\n')
@@ -120,7 +121,7 @@ ${slot.autonomyLevel === 1
 
 function writeBrief(slotId: string): string {
   const manifest = loadManifest();
-  const outputPath = manifest.assets[slotId]?.brief || `packages/asset-factory/briefs/${slotId}.md`;
+  const outputPath = getAssetBriefPath(slotId, manifest.assets[slotId]?.brief);
   writeText(outputPath, buildBrief(slotId));
   return outputPath;
 }

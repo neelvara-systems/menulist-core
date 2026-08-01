@@ -1,7 +1,7 @@
 # SignalDesk Source Policy Implementation
 
 **Status:** Runtime-backed; lifecycle deployment evidence pending
-**Last verified:** July 21, 2026
+**Last verified:** July 29, 2026
 
 ## Source Files
 
@@ -43,6 +43,16 @@ Contact data has a second durable authority layer in the outbound-contact contra
 ## Workspace Projection
 
 Policies are parsed strictly, malformed or foreign documents are logged and omitted, sorted by update time, and capped to the latest 30 valid rows. The bounded corruption scan may inspect up to four 100-document pages so malformed recent rows do not immediately starve valid policy truth. This is suitable for the low-cardinality policy registry; renewal avoids creating a new policy for an unchanged authority basis.
+
+Persisted parsing projects only declared public policy fields. Timestamp
+conversion and document property access are contained so hostile or corrupted
+values fail with the stable `SOURCE_POLICY_SHAPE_INVALID` contract rather than
+leaking an arbitrary getter exception into an import, provider, scoring, or
+workspace reader. Persisted policy, target, run, template and operating-envelope
+document references must also preserve their exact stored value and pass the
+SignalDesk document-ID boundary. A whitespace-mutated or path-shaped reference
+invalidates the complete dependent record instead of being normalized into a
+different Firestore authority.
 
 ## Source-Data Lifecycle
 

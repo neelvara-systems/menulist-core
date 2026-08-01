@@ -80,7 +80,12 @@ import {
     logRuntimeFailure,
 } from "@lib/runtime/runtimeDiagnostics";
 import { getCreativeEditorDraftStorageKey } from "@lib/browserStorage/creativeEditorDraft";
+import { validateMagicBytes } from "@lib/security/magicBytesValidator";
 import { creativeEditorDocumentSchema } from "@lib/validation/creativeEditorTemplateSchemas";
+import {
+    isCreativeEditorRasterDataUrl,
+    isSafeCreativeEditorNetworkImageSource,
+} from "./imageSourceBoundary";
 import {
     buildCreativeEditorArrowElement,
     buildCreativeEditorEggElement,
@@ -769,6 +774,10 @@ const TEMPLATE_THUMBNAIL_PRESET: ExportBundlePreset = {
     width: 260,
 };
 const TEMPLATE_THUMBNAIL_MAX_DATA_URL_CHARS = 180_000;
+const CREATIVE_EDITOR_JSON_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+const CREATIVE_EDITOR_RASTER_IMPORT_MAX_BYTES = 1_400_000;
+const CREATIVE_EDITOR_FABRIC_IMPORT_MAX_OBJECTS = 300;
+const CREATIVE_EDITOR_FABRIC_IMPORT_MAX_NODES = 5_000;
 
 const CAMPAIGN_STARTER_ACTIONS: CampaignStarterAction[] = [
     {
@@ -1350,6 +1359,61 @@ const parseCreativeEditorDocument = (value: unknown): CreativeEditorDocument | n
     return parsed.success ? parsed.data : null;
 };
 
+const isSafeCurrentImageSource = (value: string) => {
+    const trimmed = value.trim();
+    return Boolean(
+        trimmed
+        && (
+            isCreativeEditorRasterDataUrl(trimmed)
+            || isSafeCreativeEditorNetworkImageSource(trimmed, window.location.origin)
+        )
+    );
+};
+
+const isSafeImportedImageSource = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    if (isCreativeEditorRasterDataUrl(trimmed)) {
+        const mimeType = trimmed.slice(5, trimmed.indexOf(";")).toLowerCase();
+        return validateMagicBytes(trimmed, mimeType).valid;
+    }
+    return isSafeCreativeEditorNetworkImageSource(trimmed, window.location.origin);
+};
+
+const importedDocumentHasUnsafeImageSource = (documentValue: CreativeEditorDocument) => {
+    const elements = [
+        ...documentValue.elements,
+        ...(documentValue.pages || []).flatMap((page) => page.elements),
+    ];
+    return elements.some((element) => (
+        element.type === "image" && !isSafeImportedImageSource(element.src)
+    ));
+};
+
+const isSafeFabricImportPayload = (payload: unknown) => {
+    const stack: unknown[] = [payload];
+    let fabricObjectCount = 0;
+    let visitedNodeCount = 0;
+    while (stack.length) {
+        const value = stack.pop();
+        visitedNodeCount += 1;
+        if (visitedNodeCount > CREATIVE_EDITOR_FABRIC_IMPORT_MAX_NODES) return false;
+        if (Array.isArray(value)) {
+            stack.push(...value);
+            continue;
+        }
+        if (!value || typeof value !== "object") continue;
+        const record = value as Record<string, unknown>;
+        if (typeof record.type === "string") {
+            fabricObjectCount += 1;
+            if (fabricObjectCount > CREATIVE_EDITOR_FABRIC_IMPORT_MAX_OBJECTS) return false;
+        }
+        if (typeof record.src === "string" && !isSafeImportedImageSource(record.src)) return false;
+        stack.push(...Object.values(record));
+    }
+    return true;
+};
+
 const parsePolygonPoints = (value: string) => value
     .split(/\n+/)
     .map((line) => line.trim())
@@ -1465,6 +1529,17 @@ export default function CreativeEditor({
     const zoomRef = useRef(zoom);
     const rightPanelModeRef = useRef<RightPanelMode>("properties");
     const isLoadingRef = useRef(false);
+    const loadDocumentGenerationRef = useRef(0);
+    const loadDocumentQueueRef = useRef<Promise<void>>(Promise.resolve());
+    const fileImportInFlightRef = useRef(false);
+    const documentRevisionRef = useRef(0);
+    const operationSequenceRef = useRef(0);
+    const aiToolOperationRef = useRef(0);
+    const designCueOperationRef = useRef(0);
+    const designCueApplyOperationRef = useRef(0);
+    const exportOperationRef = useRef(0);
+    const templateSaveOperationRef = useRef(0);
+    const clipboardOperationRef = useRef(0);
     const clipboardRef = useRef<fabric.FabricObject | fabric.ActiveSelection | null>(null);
     const historyRef = useRef<CreativeEditorDocument[]>([initialEditorDocument]);
     const historyLabelsRef = useRef<string[]>(["Opened design"]);
@@ -2107,42 +2182,59 @@ export default function CreativeEditor({
     }
 
     async function loadDocument(documentSnapshot: CreativeEditorDocument, nextSelectedId = selectedIdRef.current) {
-        const fabricApi = fabricApiRef.current;
-        const canvas = fabricCanvasRef.current;
-        if (!fabricApi || !canvas) return;
-        isLoadingRef.current = true;
-        try {
-            await loadDocumentIntoFabricCanvas({
-                canvas,
-                documentValue: documentSnapshot,
-                fabricApi,
-                productLabel,
-                selectedId: nextSelectedId,
-                showCanvasWatermark: chromeMode === "full",
-                viewportSize: getStageViewportSize(),
-            });
-            canvasElementRef.current?.setAttribute("data-creative-object-count", String(canvas.getObjects().length));
-            const active = canvas.getActiveObject() as CreativeFabricObject | undefined;
-            setSelectedId(active?.id && isEditableFabricObject(active) ? active.id : nextSelectedId || "");
-            const page = documentSnapshot.pages?.find((item) => item.id === documentSnapshot.activePageId);
-            if (page?.locked) {
-                canvas.discardActiveObject();
-                canvas.selection = false;
-                canvas.getObjects().forEach((object) => {
-                    if (isEditableFabricObject(object)) {
-                        object.selectable = false;
-                        object.evented = false;
-                    }
+        const generation = loadDocumentGenerationRef.current + 1;
+        loadDocumentGenerationRef.current = generation;
+        const executeLoad = async () => {
+            if (generation !== loadDocumentGenerationRef.current) return;
+            const fabricApi = fabricApiRef.current;
+            const canvas = fabricCanvasRef.current;
+            if (!fabricApi || !canvas) return;
+            isLoadingRef.current = true;
+            try {
+                await loadDocumentIntoFabricCanvas({
+                    canvas,
+                    documentValue: documentSnapshot,
+                    fabricApi,
+                    productLabel,
+                    selectedId: nextSelectedId,
+                    showCanvasWatermark: chromeMode === "full",
+                    viewportSize: getStageViewportSize(),
                 });
-                setSelectedId("");
+                if (
+                    generation !== loadDocumentGenerationRef.current
+                    || fabricCanvasRef.current !== canvas
+                ) return;
+                canvasElementRef.current?.setAttribute("data-creative-object-count", String(canvas.getObjects().length));
+                const active = canvas.getActiveObject() as CreativeFabricObject | undefined;
+                setSelectedId(active?.id && isEditableFabricObject(active) ? active.id : nextSelectedId || "");
+                const page = documentSnapshot.pages?.find((item) => item.id === documentSnapshot.activePageId);
+                if (page?.locked) {
+                    canvas.discardActiveObject();
+                    canvas.selection = false;
+                    canvas.getObjects().forEach((object) => {
+                        if (isEditableFabricObject(object)) {
+                            object.selectable = false;
+                            object.evented = false;
+                        }
+                    });
+                    setSelectedId("");
+                }
+                scheduleFloatingSelectionToolbarRefresh();
+                refreshWorkspaceViewportMetrics();
+            } catch (error) {
+                if (generation !== loadDocumentGenerationRef.current) return;
+                showCreativeEditorFailure("creative_editor_canvas_load_failed", error, "Canvas could not load.");
+            } finally {
+                if (generation === loadDocumentGenerationRef.current) {
+                    isLoadingRef.current = false;
+                }
             }
-            scheduleFloatingSelectionToolbarRefresh();
-            refreshWorkspaceViewportMetrics();
-        } catch (error) {
-            showCreativeEditorFailure("creative_editor_canvas_load_failed", error, "Canvas could not load.");
-        } finally {
-            isLoadingRef.current = false;
-        }
+        };
+        const queuedLoad = loadDocumentQueueRef.current
+            .catch((): void => undefined)
+            .then(executeLoad);
+        loadDocumentQueueRef.current = queuedLoad;
+        await queuedLoad;
     }
 
     function convertGroupToActiveSelection(
@@ -2198,11 +2290,17 @@ export default function CreativeEditor({
                 updatedAt: new Date().toISOString(),
             },
         };
-        documentRef.current = stamped;
-        setDocumentValue(stamped);
+        const validated = parseCreativeEditorDocument(stamped);
+        if (!validated) {
+            setNotice("That change contains an invalid value and was not applied.");
+            return;
+        }
+        documentRevisionRef.current += 1;
+        documentRef.current = validated;
+        setDocumentValue(validated);
         setSelectedId(nextSelectedId);
-        if (recordHistory) pushHistory(stamped, historyLabel);
-        if (reloadCanvas) void loadDocument(stamped, nextSelectedId);
+        if (recordHistory) pushHistory(validated, historyLabel);
+        if (reloadCanvas) void loadDocument(validated, nextSelectedId);
     }
 
     function shouldReloadCanvasForSelectedPatch(
@@ -2330,7 +2428,7 @@ export default function CreativeEditor({
         object.name = element.name;
         object.creativeEditorType = element.type;
         object.editorGuide = element.editorGuide;
-        object.excludeFromExport = element.excludeFromExport;
+        object.excludeFromExport = element.excludeFromExport ?? false;
         object.printFrameId = element.printFrameId;
         object.printFrameLocked = element.printFrameLocked;
         object.sourceRefs = element.sourceRefs;
@@ -2413,12 +2511,15 @@ export default function CreativeEditor({
         if (!canvas || isLoadingRef.current) return;
         releaseActiveGroupForPersistence(canvas);
         const next = syncActivePageSnapshot(serializeFabricCanvasToDocument(canvas, documentRef.current));
-        documentRef.current = next;
-        setDocumentValue(next);
+        if (!parseCreativeEditorDocument(next)) {
+            setNotice("The canvas produced an invalid value. The last valid design was restored.");
+            void loadDocument(documentRef.current, selectedIdRef.current);
+            return;
+        }
         const active = canvas.getActiveObject() as CreativeFabricObject | undefined;
-        setSelectedId(active?.id && isEditableFabricObject(active) ? active.id : selectedIdRef.current);
+        const nextSelectedId = active?.id && isEditableFabricObject(active) ? active.id : selectedIdRef.current;
+        commitDocument(next, recordHistory, nextSelectedId, false, historyLabel);
         scheduleFloatingSelectionToolbarRefresh();
-        if (recordHistory) pushHistory(next, historyLabel);
     }
 
     useEffect(() => {
@@ -2563,7 +2664,8 @@ export default function CreativeEditor({
                 scheduleFloatingSelectionToolbarRefresh();
             });
             canvas.on("path:created", handlePathCreated);
-            void loadDocument(initialEditorDocument, initialEditorDocument.elements[0]?.id || "").then(() => {
+            const bootstrapDocument = documentRef.current;
+            void loadDocument(bootstrapDocument, bootstrapDocument.elements[0]?.id || "").then(() => {
                 if (!cancelled) {
                     fitZoomToStage();
                     setFabricReady(true);
@@ -2574,6 +2676,15 @@ export default function CreativeEditor({
         });
         return () => {
             cancelled = true;
+            loadDocumentGenerationRef.current += 1;
+            fileImportInFlightRef.current = false;
+            operationSequenceRef.current += 1;
+            aiToolOperationRef.current = 0;
+            designCueOperationRef.current = 0;
+            designCueApplyOperationRef.current = 0;
+            exportOperationRef.current = 0;
+            templateSaveOperationRef.current = 0;
+            clipboardOperationRef.current = 0;
             if (floatingToolbarFrameRef.current !== null) {
                 window.cancelAnimationFrame(floatingToolbarFrameRef.current);
                 floatingToolbarFrameRef.current = null;
@@ -2612,6 +2723,14 @@ export default function CreativeEditor({
     }, [documentValue.title, workspaceViewport.height, workspaceViewport.left, workspaceViewport.top, workspaceViewport.width]);
 
     useEffect(() => {
+        documentRevisionRef.current += 1;
+        operationSequenceRef.current += 1;
+        aiToolOperationRef.current = 0;
+        designCueOperationRef.current = 0;
+        designCueApplyOperationRef.current = 0;
+        exportOperationRef.current = 0;
+        templateSaveOperationRef.current = 0;
+        clipboardOperationRef.current = 0;
         documentRef.current = initialEditorDocument;
         historyRef.current = [initialEditorDocument];
         historyLabelsRef.current = ["Opened design"];
@@ -3334,10 +3453,18 @@ export default function CreativeEditor({
             setNotice(disabledReason);
             return;
         }
+        if (aiToolOperationRef.current) {
+            setNotice("Wait for the current AI tool to finish.");
+            return;
+        }
+        const operationId = operationSequenceRef.current + 1;
+        operationSequenceRef.current = operationId;
+        aiToolOperationRef.current = operationId;
         setAiToolBusyId(action.id);
         setNotice("");
         try {
             const latestDocument = getLatestDocumentFromCanvas();
+            const requestRevision = documentRevisionRef.current;
             const result = await onAiToolAction?.({
                 action,
                 actionId: action.id,
@@ -3347,6 +3474,11 @@ export default function CreativeEditor({
                 selectedText,
                 sourceLabel,
             });
+            if (aiToolOperationRef.current !== operationId) return;
+            if (documentRevisionRef.current !== requestRevision) {
+                setNotice("The design changed while the tool was running. Run it again.");
+                return;
+            }
             const safeResult = result || {
                 findings: [
                     {
@@ -3360,6 +3492,7 @@ export default function CreativeEditor({
             setAiToolResult({ action, result: safeResult });
             setNotice(safeResult.notice || `${action.label} complete.`);
         } catch (error) {
+            if (aiToolOperationRef.current !== operationId) return;
             showCreativeEditorFailure("creative_editor_ai_tool_failed", error, "Tool failed.", {
                 actionId: action.id,
             });
@@ -3377,7 +3510,10 @@ export default function CreativeEditor({
                 },
             });
         } finally {
-            setAiToolBusyId("");
+            if (aiToolOperationRef.current === operationId) {
+                aiToolOperationRef.current = 0;
+                setAiToolBusyId("");
+            }
         }
     };
 
@@ -3399,10 +3535,18 @@ export default function CreativeEditor({
             setNotice("Design Cue is not connected for this product surface.");
             return;
         }
+        if (designCueOperationRef.current || designCueApplyOperationRef.current) {
+            setNotice("Wait for the current Design Cue request to finish.");
+            return;
+        }
+        const operationId = operationSequenceRef.current + 1;
+        operationSequenceRef.current = operationId;
+        designCueOperationRef.current = operationId;
         setDesignCueBusy(true);
         setNotice("");
         try {
             const latestDocument = getLatestDocumentFromCanvas();
+            const requestRevision = documentRevisionRef.current;
             const selectedContext = getDesignCueSelectedContext(latestDocument);
             const patchSet = await onDesignCueRequest({
                 ...request,
@@ -3411,16 +3555,25 @@ export default function CreativeEditor({
                 selectedText: selectedContext.selectedText,
                 target: request.target || selectedContext.target,
             });
+            if (designCueOperationRef.current !== operationId) return;
+            if (documentRevisionRef.current !== requestRevision) {
+                setNotice("The design changed while Design Cue was reviewing it. Try again.");
+                return;
+            }
             lastDesignCueRequestRef.current = request;
             setDesignCuePatchSet(patchSet);
             setNotice(patchSet.summary || "Design Cue review is ready.");
         } catch (error) {
+            if (designCueOperationRef.current !== operationId) return;
             showCreativeEditorFailure("creative_editor_design_cue_failed", error, "Design Cue failed.", {
                 commandId: request.commandId,
                 source: request.source,
             });
         } finally {
-            setDesignCueBusy(false);
+            if (designCueOperationRef.current === operationId) {
+                designCueOperationRef.current = 0;
+                setDesignCueBusy(false);
+            }
         }
     };
 
@@ -3466,27 +3619,51 @@ export default function CreativeEditor({
             setNotice("Design Cue apply is not connected for this product surface.");
             return;
         }
+        if (designCueApplyOperationRef.current || designCueOperationRef.current) {
+            setNotice("Wait for the current Design Cue change to finish.");
+            return;
+        }
+        const operationId = operationSequenceRef.current + 1;
+        operationSequenceRef.current = operationId;
+        designCueApplyOperationRef.current = operationId;
         setDesignCueBusy(true);
         setNotice("");
         try {
             const latestDocument = getLatestDocumentFromCanvas();
+            const requestRevision = documentRevisionRef.current;
+            const requestedPatchSet = designCuePatchSet;
             const result = await onDesignCueApply({
                 document: latestDocument,
-                patchSet: designCuePatchSet,
+                patchSet: requestedPatchSet,
             });
+            if (designCueApplyOperationRef.current !== operationId) return;
+            if (
+                documentRevisionRef.current !== requestRevision
+                || designCuePatchSet !== requestedPatchSet
+            ) {
+                setNotice("The design changed before the reviewed change finished. Review it again.");
+                return;
+            }
             if (result.appliedOperationCount > 0) {
                 commitDocument(result.document, true, result.selectedElementId || selectedIdRef.current, true, "Applied Design Cue");
             }
             setDesignCuePatchSet(null);
             setNotice(result.notice || "Design Cue change applied.");
         } catch (error) {
+            if (designCueApplyOperationRef.current !== operationId) return;
             showCreativeEditorFailure("creative_editor_design_cue_apply_failed", error, "Design Cue apply failed.");
         } finally {
-            setDesignCueBusy(false);
+            if (designCueApplyOperationRef.current === operationId) {
+                designCueApplyOperationRef.current = 0;
+                setDesignCueBusy(false);
+            }
         }
     };
 
     const cancelDesignCuePatchSet = () => {
+        operationSequenceRef.current += 1;
+        designCueApplyOperationRef.current = 0;
+        setDesignCueBusy(false);
         setDesignCuePatchSet(null);
         setNotice("Design Cue change cancelled.");
     };
@@ -3497,15 +3674,28 @@ export default function CreativeEditor({
         const element = current.elements.find((item) => item.id === selectedIdRef.current);
         if (!element || element.locked || element.printFrameLocked) return;
         if (!selectedElementPatchHasChanges(element, patch)) return;
-        const nextElement = { ...element, ...patch } as CreativeEditorElement;
-        const reloadCanvas = shouldReloadCanvasForSelectedPatch(element, patch);
-        const didPatchCanvas = reloadCanvas ? false : applySelectedElementPatchToFabricObject(nextElement);
-        commitDocument({
+        const candidate = {
             ...current,
             elements: current.elements.map((item) => (
-                item.id === element.id ? nextElement : item
+                item.id === element.id ? { ...element, ...patch } as CreativeEditorElement : item
             )),
-        }, true, element.id, reloadCanvas || !didPatchCanvas, describeSelectedPatch(element, patch));
+        };
+        const validatedCandidate = parseCreativeEditorDocument(candidate);
+        if (!validatedCandidate) {
+            setNotice("That change contains an invalid value and was not applied.");
+            return;
+        }
+        const nextElement = validatedCandidate.elements.find((item) => item.id === element.id);
+        if (!nextElement) return;
+        const reloadCanvas = shouldReloadCanvasForSelectedPatch(element, patch);
+        const didPatchCanvas = reloadCanvas ? false : applySelectedElementPatchToFabricObject(nextElement);
+        commitDocument(
+            validatedCandidate,
+            true,
+            element.id,
+            reloadCanvas || !didPatchCanvas,
+            describeSelectedPatch(element, patch),
+        );
     };
 
     const updateCanvas = (patch: Partial<CreativeEditorDocument["canvas"]>) => {
@@ -4270,9 +4460,7 @@ export default function CreativeEditor({
         setNotice(active?.locked ? "Page locked." : "Page unlocked.");
     };
 
-    const adoptImportedFabricObjects = () => {
-        const canvas = fabricCanvasRef.current;
-        if (!canvas) return;
+    const adoptImportedFabricObjects = (canvas: fabric.Canvas) => {
         canvas.getObjects().filter(isEditableFabricObject).forEach((object, index) => {
             const editable = object as CreativeFabricObject;
             editable.id = editable.id || buildCreativeEditorId("layer");
@@ -4296,31 +4484,66 @@ export default function CreativeEditor({
     };
 
     const importFabricJson = async (payload: unknown) => {
-        const canvas = fabricCanvasRef.current;
-        if (!canvas) throw new Error("Canvas is still loading.");
-        await new Promise<void>((resolve) => {
-            canvas.loadFromJSON(payload, () => {
-                adoptImportedFabricObjects();
-                canvas.renderAll();
-                resolve();
-            });
+        const fabricApi = fabricApiRef.current;
+        if (!fabricApi || !fabricCanvasRef.current) throw new Error("Canvas is still loading.");
+        const requestRevision = documentRevisionRef.current;
+        const importCanvasElement = document.createElement("canvas");
+        const importCanvas = new fabricApi.Canvas(importCanvasElement, {
+            renderOnAddRemove: false,
         });
-        const next = serializeFabricCanvasToDocument(canvas, {
-            ...documentRef.current,
-            id: buildCreativeEditorId("cedoc"),
-            title: "Imported design",
+        importCanvas.setDimensions({
+            height: documentRef.current.canvas.height,
+            width: documentRef.current.canvas.width,
         });
-        commitDocument(next, true, next.elements[0]?.id || "", true, "Imported design");
-        setNotice("Design imported.");
+        try {
+            await importCanvas.loadFromJSON(payload as Record<string, unknown>);
+            adoptImportedFabricObjects(importCanvas);
+            importCanvas.renderAll();
+            if (documentRevisionRef.current !== requestRevision) {
+                setNotice("The design changed while the file was loading. Import it again.");
+                return;
+            }
+            const next = parseCreativeEditorDocument(serializeFabricCanvasToDocument(importCanvas, {
+                ...documentRef.current,
+                id: buildCreativeEditorId("cedoc"),
+                title: "Imported design",
+            }));
+            if (!next) {
+                setNotice("This Fabric file contains invalid design values.");
+                return;
+            }
+            commitDocument(next, true, next.elements[0]?.id || "", true, "Imported design");
+            setNotice("Design imported.");
+        } finally {
+            importCanvas.dispose();
+        }
     };
 
     const importJsonFile = async (file: File) => {
+        if (fileImportInFlightRef.current) {
+            setNotice("Wait for the current import to finish.");
+            return;
+        }
+        if (file.size > CREATIVE_EDITOR_JSON_IMPORT_MAX_BYTES) {
+            setNotice("Use a JSON design smaller than 5 MB.");
+            return;
+        }
+        fileImportInFlightRef.current = true;
+        const startingDocumentRevision = documentRevisionRef.current;
         setNotice("");
         try {
             const text = await readFileAsText(file);
+            if (documentRevisionRef.current !== startingDocumentRevision) {
+                setNotice("The design changed while the file was loading. Import it again.");
+                return;
+            }
             const payload = JSON.parse(text) as unknown;
             const parsedDocument = parseCreativeEditorDocument(payload);
             if (parsedDocument) {
+                if (importedDocumentHasUnsafeImageSource(parsedDocument)) {
+                    setNotice("Imported designs may use PNG, JPG, WebP, or GIF image sources only.");
+                    return;
+                }
                 const next: CreativeEditorDocument = normalizeCreativeEditorDocumentPages({
                     ...parsedDocument,
                     productContext: documentRef.current.productContext,
@@ -4334,16 +4557,28 @@ export default function CreativeEditor({
                 return;
             }
             if (payload && typeof payload === "object" && "objects" in payload) {
+                if (!isSafeFabricImportPayload(payload)) {
+                    setNotice("This Fabric file is too complex or contains an unsafe image source.");
+                    return;
+                }
                 await importFabricJson(payload);
                 return;
             }
             setNotice("This JSON file is not an editor design.");
         } catch (error) {
             showCreativeEditorFailure("creative_editor_design_import_failed", error, "Design import failed.");
+        } finally {
+            fileImportInFlightRef.current = false;
         }
     };
 
     const importImageFile = async (file: File) => {
+        if (file.size > CREATIVE_EDITOR_RASTER_IMPORT_MAX_BYTES) {
+            setNotice("Use an image smaller than 1.4 MB.");
+            return;
+        }
+        const startingDocumentId = documentRef.current.id;
+        const startingPageId = documentRef.current.activePageId;
         setNotice("");
         try {
             if (!RASTER_IMAGE_MIME_TYPES.has(file.type)) {
@@ -4351,6 +4586,17 @@ export default function CreativeEditor({
                 return;
             }
             const dataUrl = await readFileAsDataUrl(file);
+            if (!validateMagicBytes(dataUrl, file.type).valid) {
+                setNotice("The selected file does not contain a valid raster image.");
+                return;
+            }
+            if (
+                documentRef.current.id !== startingDocumentId
+                || documentRef.current.activePageId !== startingPageId
+            ) {
+                setNotice("The page changed while the image was loading. Add it again.");
+                return;
+            }
             addElement(buildCreativeEditorImageElement({
                 name: file.name.replace(/\.[^.]+$/, "") || "Imported image",
                 src: dataUrl,
@@ -4367,6 +4613,13 @@ export default function CreativeEditor({
 
     const replaceSelectedImageFile = async (file: File) => {
         if (!allowRasterImports || selectedElement?.type !== "image" || selectedElement.locked) return;
+        if (file.size > CREATIVE_EDITOR_RASTER_IMPORT_MAX_BYTES) {
+            setNotice("Use an image smaller than 1.4 MB.");
+            return;
+        }
+        const targetElementId = selectedElement.id;
+        const startingDocumentId = documentRef.current.id;
+        const startingPageId = documentRef.current.activePageId;
         setNotice("");
         try {
             if (!RASTER_IMAGE_MIME_TYPES.has(file.type)) {
@@ -4374,6 +4627,18 @@ export default function CreativeEditor({
                 return;
             }
             const dataUrl = await readFileAsDataUrl(file);
+            if (!validateMagicBytes(dataUrl, file.type).valid) {
+                setNotice("The selected file does not contain a valid raster image.");
+                return;
+            }
+            if (
+                documentRef.current.id !== startingDocumentId
+                || documentRef.current.activePageId !== startingPageId
+                || selectedIdRef.current !== targetElementId
+            ) {
+                setNotice("The selected image changed while the file was loading. Replace it again.");
+                return;
+            }
             updateSelected({
                 alt: file.name.replace(/\.[^.]+$/, "") || selectedElement.alt,
                 name: file.name.replace(/\.[^.]+$/, "") || selectedElement.name,
@@ -4510,6 +4775,7 @@ export default function CreativeEditor({
         if (historyIndexRef.current <= 0) return;
         const undoneLabel = historyLabelsRef.current[historyIndexRef.current] || "last change";
         historyIndexRef.current -= 1;
+        documentRevisionRef.current += 1;
         const next = historyRef.current[historyIndexRef.current];
         const nextLabel = historyLabelsRef.current[historyIndexRef.current] || "Opened design";
         documentRef.current = next;
@@ -4524,6 +4790,7 @@ export default function CreativeEditor({
     const redo = () => {
         if (historyIndexRef.current >= historyRef.current.length - 1) return;
         historyIndexRef.current += 1;
+        documentRevisionRef.current += 1;
         const next = historyRef.current[historyIndexRef.current];
         const nextLabel = historyLabelsRef.current[historyIndexRef.current] || "Changed design";
         documentRef.current = next;
@@ -4547,7 +4814,7 @@ export default function CreativeEditor({
             return callback();
         } finally {
             if (watermark) {
-                watermark.visible = previousVisible;
+                watermark.visible = previousVisible ?? true;
                 canvas?.requestRenderAll();
             }
         }
@@ -4587,9 +4854,16 @@ export default function CreativeEditor({
         if (!canvas) return documentRef.current;
         releaseActiveGroupForPersistence(canvas);
         const latestDocument = syncActivePageSnapshot(serializeFabricCanvasToDocument(canvas, documentRef.current));
-        documentRef.current = latestDocument;
-        setDocumentValue(latestDocument);
-        return latestDocument;
+        const validated = parseCreativeEditorDocument(latestDocument);
+        if (!validated) {
+            setNotice("The canvas produced an invalid value. The last valid design was restored.");
+            void loadDocument(documentRef.current, selectedIdRef.current);
+            return documentRef.current;
+        }
+        documentRevisionRef.current += 1;
+        documentRef.current = validated;
+        setDocumentValue(validated);
+        return validated;
     };
 
     const buildFabricExport = async (type: "png" | "svg"): Promise<CreativeEditorExportResult> => {
@@ -4665,6 +4939,13 @@ export default function CreativeEditor({
     };
 
     const copyPngToClipboard = async () => {
+        if (clipboardOperationRef.current) {
+            setNotice("Wait for the current clipboard copy to finish.");
+            return;
+        }
+        const operationId = operationSequenceRef.current + 1;
+        operationSequenceRef.current = operationId;
+        clipboardOperationRef.current = operationId;
         setNotice("");
         try {
             const dataUrl = buildCurrentPngDataUrl();
@@ -4674,25 +4955,44 @@ export default function CreativeEditor({
             }
             const blob = await dataUrlToBlob(dataUrl);
             await navigator.clipboard.write([new ClipboardItem({ [blob.type || "image/png"]: blob })]);
+            if (clipboardOperationRef.current !== operationId) return;
             setNotice("PNG copied to clipboard.");
         } catch (error) {
+            if (clipboardOperationRef.current !== operationId) return;
             showCreativeEditorFailure("creative_editor_png_clipboard_copy_failed", error, "Clipboard copy failed.");
+        } finally {
+            if (clipboardOperationRef.current === operationId) {
+                clipboardOperationRef.current = 0;
+            }
         }
     };
 
     const copyBase64ToClipboard = async () => {
+        if (clipboardOperationRef.current) {
+            setNotice("Wait for the current clipboard copy to finish.");
+            return;
+        }
+        const operationId = operationSequenceRef.current + 1;
+        operationSequenceRef.current = operationId;
+        clipboardOperationRef.current = operationId;
         setNotice("");
         let dataUrl = "";
         try {
             dataUrl = buildCurrentPngDataUrl();
             await copyRuntimeTextToClipboard(dataUrl);
+            if (clipboardOperationRef.current !== operationId) return;
             setNotice("Base64 PNG copied.");
         } catch (error) {
+            if (clipboardOperationRef.current !== operationId) return;
             showCreativeEditorFailure("creative_editor_base64_clipboard_copy_failed", error, "Base64 copy failed.", {
                 base64TextLength: dataUrl.length,
                 hasClipboardWrite: hasRuntimeClipboardWrite(),
                 hasCopyFallback: hasRuntimeCopyFallback(),
             });
+        } finally {
+            if (clipboardOperationRef.current === operationId) {
+                clipboardOperationRef.current = 0;
+            }
         }
     };
 
@@ -4785,7 +5085,7 @@ export default function CreativeEditor({
             });
         }
         imageElements.forEach((element) => {
-            if (!element.src || UNSAFE_OWNER_IMAGE_URL_PATTERN.test(element.src)) {
+            if (!isSafeCurrentImageSource(element.src)) {
                 issues.push({
                     actionLabel: "Select",
                     detail: `${element.name} needs a safe image source.`,
@@ -4882,6 +5182,13 @@ export default function CreativeEditor({
     });
 
     const downloadExportBundle = async () => {
+        if (exportOperationRef.current) {
+            setNotice("Wait for the current export to finish.");
+            return;
+        }
+        const operationId = operationSequenceRef.current + 1;
+        operationSequenceRef.current = operationId;
+        exportOperationRef.current = operationId;
         setNotice("");
         try {
             const latestDocument = getLatestDocumentFromCanvas();
@@ -4891,18 +5198,33 @@ export default function CreativeEditor({
             const baseFilename = buildCreativeEditorFilename(latestDocument, "png").replace(/\.png$/i, "");
             await Promise.all(EXPORT_BUNDLE_PRESETS.map(async (preset) => {
                 const resized = await resizePngDataUrl(sourceDataUrl, preset, latestDocument.canvas.backgroundColor);
+                if (exportOperationRef.current !== operationId) return;
                 triggerDownload(resized, `${baseFilename}-${preset.id}-${preset.width}x${preset.height}.png`);
             }));
+            if (exportOperationRef.current !== operationId) return;
             setNotice("Export bundle downloaded.");
         } catch (error) {
+            if (exportOperationRef.current !== operationId) return;
             showCreativeEditorFailure("creative_editor_export_bundle_failed", error, "Export bundle failed.");
+        } finally {
+            if (exportOperationRef.current === operationId) {
+                exportOperationRef.current = 0;
+            }
         }
     };
 
     const runExport = async (type: CreativeEditorExportFormat) => {
+        if (exportOperationRef.current) {
+            setNotice("Wait for the current export to finish.");
+            return null;
+        }
+        const operationId = operationSequenceRef.current + 1;
+        operationSequenceRef.current = operationId;
+        exportOperationRef.current = operationId;
         setNotice("");
         if (disabledExportFormats.includes(type)) {
             setNotice(`${type.toUpperCase()} export is not available for this document.`);
+            exportOperationRef.current = 0;
             return null;
         }
         try {
@@ -4915,18 +5237,31 @@ export default function CreativeEditor({
             if (shouldPauseForReadiness(issues)) return null;
             const result = await buildFabricExport(type);
             await onExport?.(result);
+            if (exportOperationRef.current !== operationId) return null;
             setNotice("Asset downloaded.");
             return result;
         } catch (error) {
+            if (exportOperationRef.current !== operationId) return null;
             showCreativeEditorFailure("creative_editor_export_failed", error, "Export failed.", {
                 exportType: type,
             });
             return null;
+        } finally {
+            if (exportOperationRef.current === operationId) {
+                exportOperationRef.current = 0;
+            }
         }
     };
 
     const saveTemplate = async () => {
         if (!onTemplateSave) return;
+        if (templateSaveOperationRef.current) {
+            setNotice("Wait for the current template save to finish.");
+            return;
+        }
+        const operationId = operationSequenceRef.current + 1;
+        operationSequenceRef.current = operationId;
+        templateSaveOperationRef.current = operationId;
         setNotice("");
         try {
             const latestDocument = getLatestDocumentFromCanvas();
@@ -4943,9 +5278,15 @@ export default function CreativeEditor({
                 }
             }
             const result = await onTemplateSave({ document: latestDocument, previewDataUrl });
+            if (templateSaveOperationRef.current !== operationId) return;
             setNotice(result && "notice" in result ? result.notice || "Template saved." : "Template saved.");
         } catch (error) {
+            if (templateSaveOperationRef.current !== operationId) return;
             showCreativeEditorFailure("creative_editor_template_save_failed", error, "Template save failed.");
+        } finally {
+            if (templateSaveOperationRef.current === operationId) {
+                templateSaveOperationRef.current = 0;
+            }
         }
     };
 

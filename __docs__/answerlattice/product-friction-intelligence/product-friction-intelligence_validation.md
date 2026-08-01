@@ -1,6 +1,6 @@
 # Product Friction Evidence External Proposal Validation
 
-Reviewed: 2026-07-28
+Reviewed: 2026-07-30
 
 This review compares the attached `Customer Friction Map` proposal with current
 Answerlattice code, compact summaries, security boundaries, and Firebase cost
@@ -57,6 +57,53 @@ The strongest owner value is:
 
 These items require real-client mapping and decision evidence before code.
 
+## July 30 Product-Owner Expansion Review
+
+The later `Product Friction and Change Control Layer` proposal correctly
+identified the value of moving a factual friction packet into the owner's
+existing product or knowledge workflow. It did not justify its proposed
+command center, durable product-problem lifecycle, automatic root-cause
+taxonomy, affected-user counts, severity model, release causation, Promise
+Ledger, automatic customer messaging, or new primary navigation.
+
+The admitted implementation is narrower:
+
+- one ranked entity from the already-loaded compact snapshot;
+- one explicitly owner-selected review path, including a non-confirming known
+  limitation review, that is not stored as diagnosis;
+- one deterministic, capped Markdown evidence brief;
+- browser-local copy and download;
+- fixed evidence limitations;
+- zero new Firebase or provider operations.
+
+This closes the practical handoff gap without claiming that Answerlattice has
+product analytics, unique-user evidence, issue-delivery state, or causal proof.
+Linear, GitHub, and other execution systems continue to own engineering work.
+The owner can manually attach the brief there without Answerlattice claiming
+that delivery occurred.
+
+### Expansion Decision Reconciliation
+
+| Proposed expansion | Current owner path | Decision |
+|---|---|---|
+| Product Friction Command Center | Daily Brief and Product Friction Evidence | Do not add another command center. Keep the existing bounded priority and evidence surfaces. |
+| Product Problem Briefs | Browser-local Friction Evidence Brief | Admit only the deterministic, read-only packet. Do not add product-problem documents, PRDs, status, assignees, or lifecycle state. |
+| Release Guard | Release impact preview, drift review, and release-scoped Answer Tests | Existing bounded scope is sufficient. Do not claim dependency completeness or release causation. |
+| Post-release relief review | Existing completed-window evidence and release records | Validation only. A later bounded comparison requires real owner demand and must remain correlation, not an automatic 7/14/30-day causal workflow. |
+| Customer Promise Ledger | None | Reject. CRM obligations, delivery commitments, and customer communication state are outside governed-answer infrastructure. |
+| Automatic customer close-the-loop | None | Reject automatic sending. Any future output must remain an owner-approved draft or export, not an outbound messaging system. |
+| Proactive friction prevention | Predictive Support | Already covered by owner-reviewed, exact-page, bounded triggers. Engagement is not proof of resolution. |
+| Product Decision Memory | Releases, proposals, audit logs, and answer history | Validate a demonstrated recall gap before adding any new record type. |
+| Ask Answerlattice | Owner Support Assistant | Keep deterministic summary-backed intents. Do not create a generic chat-with-analytics or transcript system. |
+| GitHub and Linear integrations | Controlled outbound workflow adapters | Do not broaden delivery or persistence until repeated owner evidence proves the handoff problem. The local evidence brief remains the safe default. |
+| Native helpdesk or Jira ingestion | No admitted connector | Keep deferred until the connector admission rule is satisfied by three paying workspaces requesting the same read-only provider. |
+| Problems and Promises navigation | No route or navigation entry | Reject. These labels would establish unsupported product systems and duplicate existing owner paths. |
+
+The only implementation correction admitted by this reconciliation is the
+non-confirming **Review known limitation** path. It asks the owner to verify
+whether a constraint is intentional and approved; it does not persist a
+classification or assert that the product behavior is correct.
+
 ## Rejected Scope
 
 - session replay;
@@ -67,6 +114,9 @@ These items require real-client mapping and decision evidence before code.
 - causal release claims;
 - automatic product or knowledge changes;
 - a second friction collection or map snapshot family.
+- durable product-problem, promise, decision-memory, or customer-closure
+  systems;
+- automatic issue creation or outbound customer communication.
 
 ## Final Decision
 
@@ -75,4 +125,7 @@ hardening pass is justified because it uses already-retained evidence and helps
 the owner interpret why an entity ranked highly. The bounded Knowledge Map
 handoff is also justified because it preserves the same governed entity without
 copying metrics or authority. The larger journey-map vision is a
-customer-validation question, not approved implementation scope.
+customer-validation question, not approved implementation scope. A local
+evidence brief is also admitted because it reuses that same bounded summary,
+adds no persistence or paid operation, and keeps the owner's selection
+explicitly separate from measured facts.

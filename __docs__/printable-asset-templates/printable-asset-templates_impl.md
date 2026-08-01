@@ -170,6 +170,21 @@ This extends the current `src/lib/print-assets/printAssetCatalog.ts:26` model wi
 
 Single printable assets support PDF and image downloads from the same selected template. The owner-facing preview is image-first and uses real generated output: table tent, single table card, entrance poster, counter sticker, feedback QR, campaign flyer, gift certificate, front/back business card, ID card, invitation, postcard, product tag, and campaign poster use generated Creative Editor PNG previews; Print Menu renders the generated menu PDF first page as PNG. Desktop Print Menu must read the full selected project only when needed, use the no-loader DAL helper, and cache that project data for repeated template preview/download actions. The existing PDF.js CDN-first preview loader is bounded to five seconds and then falls back to the pinned local `pdfjs-dist` dependency, so an offline/stalled CDN cannot leave preview generation pending indefinitely. Editor-backed PNG export is wrapped into print-size PDF with `jsPDF` for PDF output. Business Card image export uses `renderPrintableAssetEditorDocumentFiles()` to render separate front and back PNG files from the same side-by-side editor document, while PDF remains one paired print handoff file. Complete Menu Kit remains ZIP-only.
 
+Renderer admission is strict even though catalog lookup remains compatibility-
+friendly for owner UI copy. Both the single-result and multi-file renderer
+adapters require an exact registered `assetTypeId` and an output format listed
+by that asset before QR, canvas, PDF, ZIP, editor, or browser side effects
+begin. Unknown IDs must not inherit the Table Tent lookup fallback, and
+ZIP-only assets must reject PDF/image requests.
+
+All default/editor render entry points also use
+`normalizePrintableAssetRenderInput()` before document construction. The
+projector requires exact asset/template IDs, a canonical HTTPS credential-free
+menu URL and bounded business identity; derives the displayed short link from
+that URL; bounds contact/business/project fields; admits only HTTPS
+credential-free feedback/OBP URLs; and admits only credential-free HTTP(S)
+logo URLs. Unknown/accessor-backed fields are not coerced into output.
+
 ### Editor Document Contract
 
 `editorDocumentAdapter.ts` owns the print-template-to-editor mapping:
@@ -182,6 +197,12 @@ Single printable assets support PDF and image downloads from the same selected t
 
 Document rules:
 
+- Persisted platform/user documents are parsed through the canonical Creative
+  Editor runtime schema before rehydration or export. They must retain
+  `productContext.productId = "menulist"` and, except for the normalized
+  two-face Business Card compatibility path, their canvas must exactly match
+  the selected asset's governed pixel dimensions. Generic schema-valid
+  10,000-pixel canvases cannot reach printable rasterization.
 - QR layers are locked and carry source refs for menu/feedback URL.
 - QR layers use a four-module quiet zone. Do not reduce `margin` below 4 or rely only on the surrounding white panel.
 - Short-link layers are locked and carry source refs for the current project URL.
@@ -317,6 +338,7 @@ No Cloud Function flag is needed because generation is client-side.
 
 ```bash
 npm run verify:menu-card-export
+npm run test:print-asset-catalog-boundary
 node scripts/verification/verify-printable-asset-templates.js
 npx eslint --max-warnings=0 src/lib/printable-asset-templates src/components/templates/main-app/printableAssetTemplates src/components/mobile/screens/MobileShareScreen.tsx src/components/mobile/screens/MobileMoreScreen.tsx src/components/mobile/MobileShell.tsx
 npx tsc --noEmit --incremental false

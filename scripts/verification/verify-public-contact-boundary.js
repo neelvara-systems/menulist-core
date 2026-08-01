@@ -82,7 +82,9 @@ requireTokens(boundary, [
 requireTokens(publicApi, [
   'type PublicRateLimitOptions',
   'failurePolicy: options.failClosed ? \'closed\' : \'open\'',
+  'failClosedOnProviderError: options.failClosed,',
   'if (!options.failClosed) return null;',
+  "if (result.reason === 'provider_unavailable') {",
   'status: 503,',
   'const TURNSTILE_PROVIDER_TIMEOUT_MS = 8_000;',
   'const controller = new AbortController();',

@@ -115,7 +115,7 @@ async function main(): Promise<void> {
     let reuseSaveAttempts = 0;
     const reusingFile: AdminImmutableStorageFile = {
         async getMetadata() {
-            return [expectedMetadata];
+            return [expectedMetadata, undefined];
         },
         async save() {
             reuseSaveAttempts += 1;
@@ -146,7 +146,7 @@ async function main(): Promise<void> {
             customMetadata,
             file: {
                 async getMetadata() {
-                    return [{ ...expectedMetadata, size: buffer.length + 1 }];
+                    return [{ ...expectedMetadata, size: buffer.length + 1 }, undefined];
                 },
                 async save() {
                     throw Object.assign(new Error('already exists'), { code: 412 });

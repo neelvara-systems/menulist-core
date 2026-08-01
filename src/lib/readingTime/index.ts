@@ -6,6 +6,36 @@
 const WORDS_PER_MINUTE = 225; // Average adult reading speed
 const IMAGE_READ_TIME = 12; // Seconds per image (viewing time)
 const CODE_BLOCK_TIME = 15; // Seconds per code block (scanning time)
+const MAX_TIPTAP_NODES = 100_000;
+
+const readOwnDataField = (value: unknown, key: string): unknown => {
+    if (!value || typeof value !== 'object') return undefined;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+const snapshotArray = (value: unknown): unknown[] => {
+    if (!Array.isArray(value)) return [];
+    try {
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+        const length = lengthDescriptor && 'value' in lengthDescriptor
+            ? lengthDescriptor.value
+            : undefined;
+        if (!Number.isSafeInteger(length) || length < 0 || length > MAX_TIPTAP_NODES) return [];
+        const entries: unknown[] = [];
+        for (let index = 0; index < length; index += 1) {
+            const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+            if (descriptor && 'value' in descriptor) entries.push(descriptor.value);
+        }
+        return entries;
+    } catch {
+        return [];
+    }
+};
 
 /**
  * Strips HTML tags and counts words in plain text
@@ -46,39 +76,35 @@ const countCodeBlocks = (html: string): number => {
 /**
  * Calculates reading time from Tiptap JSON content
  */
-export const calculateReadingTimeFromTiptap = (content: any): number => {
+export const calculateReadingTimeFromTiptap = (content: unknown): number => {
     if (!content) return 0;
     
     let wordCount = 0;
     let imageCount = 0;
     let codeBlockCount = 0;
     
-    const traverseNode = (node: any) => {
-        if (!node) return;
-        
-        // Count text content
-        if (node.type === 'text' && node.text) {
-            const words = node.text.split(/\s+/).filter((word: string) => word.length > 0);
-            wordCount += words.length;
+    const pending: unknown[] = [content];
+    const visited = new WeakSet<object>();
+    let inspectedNodes = 0;
+    while (pending.length && inspectedNodes < MAX_TIPTAP_NODES) {
+        const node = pending.pop();
+        if (!node || typeof node !== 'object' || visited.has(node)) continue;
+        visited.add(node);
+        inspectedNodes += 1;
+
+        const type = readOwnDataField(node, 'type');
+        const text = readOwnDataField(node, 'text');
+        if (type === 'text' && typeof text === 'string') {
+            wordCount += text.split(/\s+/).filter((word) => word.length > 0).length;
         }
-        
-        // Count images
-        if (node.type === 'image') {
-            imageCount++;
+        if (type === 'image') imageCount += 1;
+        if (type === 'codeBlock') codeBlockCount += 1;
+
+        const children = snapshotArray(readOwnDataField(node, 'content'));
+        for (let index = children.length - 1; index >= 0; index -= 1) {
+            pending.push(children[index]);
         }
-        
-        // Count code blocks
-        if (node.type === 'codeBlock') {
-            codeBlockCount++;
-        }
-        
-        // Traverse child nodes
-        if (node.content && Array.isArray(node.content)) {
-            node.content.forEach(traverseNode);
-        }
-    };
-    
-    traverseNode(content);
+    }
     
     // Calculate reading time
     const textTime = Math.ceil(wordCount / WORDS_PER_MINUTE);
@@ -110,15 +136,16 @@ export const calculateReadingTimeFromHtml = (html: string): number => {
  * Formats reading time into human-readable string
  */
 export const formatReadingTime = (minutes: number): string => {
-    if (minutes < 1) return '< 1 min read';
-    if (minutes === 1) return '1 min read';
-    return `${minutes} min read`;
+    if (!Number.isFinite(minutes) || minutes < 1) return '< 1 min read';
+    const wholeMinutes = Math.ceil(minutes);
+    if (wholeMinutes === 1) return '1 min read';
+    return `${wholeMinutes} min read`;
 };
 
 /**
  * Main function: Calculate and format reading time from any content
  */
-export const getReadingTime = (content: any): string => {
+export const getReadingTime = (content: unknown): string => {
     let minutes = 0;
     
     if (typeof content === 'string') {

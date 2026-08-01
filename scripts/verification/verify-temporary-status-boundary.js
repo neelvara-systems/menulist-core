@@ -114,10 +114,10 @@ if (!(firestoreIndexes.fieldOverrides || []).some((entry) => (
   'documentId.length <= TEMP_STATUS_SESSION_DOCUMENT_ID_MAX_LENGTH',
   'isValidFirestoreDocumentId(documentId)',
   'const { tId: rawTenantId, sId: rawStoreId } = session',
-  'const rawUserId = session.uId || session.user?.id;',
+  'resolveCurrentSessionUserDocumentId(session)',
   'const tenantId = normalizeSessionDocumentId(rawTenantId);',
   'const storeId = normalizeSessionDocumentId(rawStoreId);',
-  'const userId = normalizeSessionDocumentId(rawUserId);',
+  'const userId = normalizeSessionDocumentId(resolveCurrentSessionUserDocumentId(session));',
   'const sessionScope = resolveStorePermissionSessionScope(session);',
   'sessionScope.tenantScope.documentId !== tenantId',
   'sessionScope.storeScope.documentId !== storeId',
@@ -125,7 +125,7 @@ if (!(firestoreIndexes.fieldOverrides || []).some((entry) => (
   'PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE',
   "getRateLimitForFeature('DATA_WRITE')",
   'failClosedOnProviderError: true',
-  "hashPublicRateLimitValue(userId || 'unknown')",
+  'hashPublicRateLimitValue(userId)',
   'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
   'key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`',
   'const TEMP_STATUS_ACTION_MAX_BODY_BYTES = 4 * 1024;',
@@ -140,7 +140,7 @@ if (!(firestoreIndexes.fieldOverrides || []).some((entry) => (
   'isTempStatusMutationScopeCurrent({',
   'transaction.update(storeRef, storeUpdate);',
   'if (transactionPermissionError) return transactionPermissionError;',
-  'createdBy: userId || null',
+  'createdBy: userId',
   'admin.firestore.FieldValue.delete()',
   'runStorePublicTruthPostCommitEffects({',
   "touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus')",
@@ -181,6 +181,11 @@ forbidToken(route, 'console.error', 'Temporary Status route diagnostics');
   '!isUnavailableEntity(store)',
   '!isUnavailableEntity(tenant)',
   'isPlatformEntityBlocked(entity)',
+  '!hasValidLifecycleState(entity)',
+  '!isOptionalBoolean(entity.active)',
+  '!isOptionalBoolean(entity.deleted)',
+  '!isOptionalBoolean(entity.blocked)',
+  '!isOptionalBoolean(entity.tenantBlocked)',
 ].forEach((token) => requireToken(serverMutationScope, token, 'Temporary Status transaction-current scope helper'));
 
 [
@@ -369,14 +374,18 @@ forbidToken(publicBusinessApi, 'tempStatus: storeData.tempStatus ? {', 'Public b
 ].forEach((token) => requireToken(publicBusinessProjection, token, 'Public business Temporary Status projection'));
 
 [
-  'buildTempStatusSchema(storeData?.tempStatus, storeData?.timeZone)',
-  'specialOpeningHoursSpecification: tempStatusHours',
+  'buildEffectiveSpecialOpeningHours(storeData)',
+  'specialOpeningHoursSpecification: specialOpeningHours',
 ].forEach((token) => {
   requireToken(obpSchema, token, 'OBP schema Temporary Status output');
   requireToken(clientMenuPage, token, 'Client menu schema Temporary Status output');
 });
+forbidToken(obpSchema, 'specialOpeningHoursSpecification: tempStatusHours', 'OBP schema destructive Temporary Status overwrite');
+forbidToken(clientMenuPage, 'specialOpeningHoursSpecification: tempStatusHours', 'Client menu schema destructive Temporary Status overwrite');
 
 [
+  'export function buildEffectiveSpecialOpeningHours(',
+  '...specialHours.filter((entry) => entry.validFrom !== temporaryClosure.validFrom)',
   "activeStatus.type !== 'closed_today'",
   'validThrough: today',
   'description: activeStatus.message',

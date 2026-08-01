@@ -311,9 +311,9 @@ export const POST = withAuth(async (request, session) => {
 
             logger.security('Onboarding Input Validation Failed', {
                 ...getBoundedSecurityRouteContext(session, request),
-                endpoint: '/api/onboarding/create-subscription',
                 error: ONBOARDING_SUBSCRIPTION_VALIDATION_FAILED_CODE,
                 ...getOnboardingSubscriptionValidationContext(body, errorMsg, userId),
+                endpoint: '/api/onboarding/create-subscription',
             }, 'critical');
 
             return NextResponse.json({
@@ -346,8 +346,10 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Plan not found." }, { status: 404 });
         }
 
-        const priceKey = `price${currency.toUpperCase()}`;
-        const selectedPrice = resolveOnboardingPlanPrice(selectedPlan[priceKey]);
+        const priceKey = currency === 'USD' ? 'priceUSD' : 'priceINR';
+        const selectedPrice = resolveOnboardingPlanPrice(
+            currency === 'USD' ? selectedPlan.priceUSD : selectedPlan.priceINR,
+        );
         if (!selectedPrice) {
             logger.error(
                 '[Onboarding] Selected plan has no purchasable price',
@@ -607,7 +609,7 @@ export const POST = withAuth(async (request, session) => {
         try {
             await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);
         } catch (persistenceError) {
-            const persistedSubscription = await getSubscriptionById(razorpaySubscription.id).catch(() => null);
+            const persistedSubscription = await getSubscriptionById(razorpaySubscription.id).catch((): null => null);
             if (!isMatchingPersistedOnboardingSubscription({
                 planId,
                 providerSubscriptionId: razorpaySubscription.id,

@@ -59,15 +59,34 @@ async function run(): Promise<void> {
                 storesList: [{ active: true, isMaster: true, name: 'Store One', storeId: 101 }],
                 tenantId: 1,
             });
+            await setDoc(doc(db, 'stores/101'), {
+                name: 'Store One',
+                specialHours: {},
+                storeId: 101,
+                tenantId: 1,
+            });
+            await setDoc(doc(db, 'stores/102'), {
+                name: 'Store Two',
+                specialHours: {},
+                storeId: 102,
+                tenantId: 1,
+            });
+            await setDoc(doc(db, 'stores/201'), {
+                name: 'Foreign Store',
+                specialHours: {},
+                storeId: 201,
+                tenantId: 2,
+            });
             for (const segments of [
                 ...STORE_ONE_PATHS,
                 ...STORE_TWO_PATHS,
                 ...SERVER_ONLY_STORE_ONE_PATHS,
                 ...SERVER_ONLY_STORE_TWO_PATHS,
             ]) {
+                const resourcePath = segments.join('/');
                 await setDoc(doc(db, segments.join('/')), {
-                    marker: segments.join('/'),
-                    sId: segments.includes('102') ? 102 : 101,
+                    marker: resourcePath,
+                    sId: resourcePath.split('/').includes('102') ? 102 : 101,
                     tId: 1,
                 });
             }
@@ -96,6 +115,12 @@ async function run(): Promise<void> {
                 sId: 101,
                 tId: 1,
             });
+            await setDoc(doc(db, 'projects/1/101/1-misbound-101'), {
+                files: [{}],
+                projectId: '1-misbound-101',
+                sId: 102,
+                tId: 1,
+            });
             await setDoc(doc(db, 'projects/1/102/1-master-102'), {
                 files: [{}],
                 projectId: '1-master-102',
@@ -105,6 +130,12 @@ async function run(): Promise<void> {
             await setDoc(doc(db, 'projects/1/102/1-multi-master-102'), {
                 files: [{}, {}],
                 projectId: '1-multi-master-102',
+                sId: 102,
+                tId: 1,
+            });
+            await setDoc(doc(db, 'projects/1/102/1-empty-master-102'), {
+                files: [],
+                projectId: '1-empty-master-102',
                 sId: 102,
                 tId: 1,
             });
@@ -127,6 +158,18 @@ async function run(): Promise<void> {
                 projectId: '2-master-201',
                 sId: 201,
                 tId: 2,
+            });
+            await setDoc(doc(db, 'projects/1-legacy-101'), {
+                files: [{}],
+                projectId: '1-legacy-101',
+                sId: 101,
+                tId: 1,
+            });
+            await setDoc(doc(db, 'projects/1-legacy-102'), {
+                files: [{}],
+                projectId: '1-legacy-102',
+                sId: 102,
+                tId: 1,
             });
             await setDoc(doc(db, 'projectsData/1/101/1-legacy-alias-101'), {
                 projectId: '1-legacy-alias-101',
@@ -193,6 +236,40 @@ async function run(): Promise<void> {
             role: 'PLATFORM',
             uId: 'platform-operator',
         }).firestore();
+
+        await assertSucceeds(getDoc(doc(storeOneDb, 'stores/101')));
+        await assertFails(getDoc(doc(storeOneDb, 'stores/102')));
+        await assertSucceeds(getDoc(doc(multiStoreDb, 'stores/102')));
+        await assertFails(getDoc(doc(foreignTenantDb, 'stores/101')));
+        await assertSucceeds(getDoc(doc(platformDb, 'stores/101')));
+        await assertSucceeds(updateDoc(doc(storeOneDb, 'stores/101'), {
+            hoursLastUpdatedAt: '2026-12-20T00:00:00.000Z',
+            specialHours: {
+                '2026-12-25': { hours: '', label: 'Holiday closure' },
+            },
+        }));
+        await assertFails(updateDoc(doc(storeOneDb, 'stores/102'), {
+            specialHours: {
+                '2026-12-25': { hours: '', label: 'Cross-store write' },
+            },
+        }));
+        await assertFails(updateDoc(doc(foreignTenantDb, 'stores/101'), {
+            specialHours: {
+                '2026-12-25': { hours: '', label: 'Cross-tenant write' },
+            },
+        }));
+
+        await assertSucceeds(getDoc(doc(storeOneDb, 'projects/1/101/1-outlet-101')));
+        await assertFails(getDoc(doc(storeOneDb, 'projects/1/102/1-master-102')));
+        await assertSucceeds(getDoc(doc(multiStoreDb, 'projects/1/102/1-master-102')));
+        await assertFails(getDoc(doc(foreignTenantDb, 'projects/1/101/1-outlet-101')));
+        await assertSucceeds(getDoc(doc(platformDb, 'projects/1/102/1-master-102')));
+        await assertFails(getDoc(doc(storeOneDb, 'projects/1/101/1-misbound-101')));
+        await assertSucceeds(getDoc(doc(storeOneDb, 'projects/1-legacy-101')));
+        await assertFails(getDoc(doc(storeOneDb, 'projects/1-legacy-102')));
+        await assertSucceeds(getDoc(doc(multiStoreDb, 'projects/1-legacy-102')));
+        await assertFails(getDoc(doc(foreignTenantDb, 'projects/1-legacy-101')));
+        await assertSucceeds(getDoc(doc(platformDb, 'projects/1-legacy-102')));
 
         for (let index = 0; index < STORE_ONE_PATHS.length; index += 1) {
             const storeOnePath = STORE_ONE_PATHS[index];
@@ -314,7 +391,14 @@ async function run(): Promise<void> {
             sId: 102,
             tId: 1,
         }));
-        await assertSucceeds(setDoc(doc(storeOneDb, 'projects/1/101/1-created-linked-101'), {
+        await assertFails(setDoc(doc(storeOneDb, 'projects/1/101/1-created-linked-101'), {
+            files: [{}],
+            masterProjectId: '1-master-102',
+            projectId: '1-created-linked-101',
+            sId: 101,
+            tId: 1,
+        }));
+        await assertSucceeds(setDoc(doc(multiStoreDb, 'projects/1/101/1-created-linked-101'), {
             files: [{}],
             masterProjectId: '1-master-102',
             projectId: '1-created-linked-101',
@@ -360,7 +444,11 @@ async function run(): Promise<void> {
             tId: 1,
         }));
         await assertFails(deleteDoc(doc(storeOneDb, 'projectsMetadata/1/101/1-legacy-metadata-101')));
-        await assertSucceeds(updateDoc(doc(storeOneDb, 'projects/1/101/1-outlet-101'), {
+        await assertFails(updateDoc(doc(storeOneDb, 'projects/1/101/1-outlet-101'), {
+            masterProjectId: '1-master-102',
+            overrides: {},
+        }));
+        await assertSucceeds(updateDoc(doc(multiStoreDb, 'projects/1/101/1-outlet-101'), {
             masterProjectId: '1-master-102',
             overrides: {},
         }));
@@ -372,6 +460,9 @@ async function run(): Promise<void> {
         }));
         await assertFails(updateDoc(doc(storeOneDb, 'projects/1/101/1-invalid-link-101'), {
             masterProjectId: '1-multi-master-102',
+        }));
+        await assertFails(updateDoc(doc(multiStoreDb, 'projects/1/101/1-invalid-link-101'), {
+            masterProjectId: '1-empty-master-102',
         }));
         await assertFails(updateDoc(doc(storeOneDb, 'projects/1/101/1-invalid-link-101'), {
             masterProjectId: '1-deleted-master-102',

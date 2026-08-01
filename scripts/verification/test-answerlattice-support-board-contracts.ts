@@ -73,6 +73,11 @@ assertIncludes(
 assertIncludes(sync, 'existing.pId !== PRODUCT_ID || existing.tId !== tId || existing.sId !== sId', 'deterministic card scope conflict guard');
 assertIncludes(sync, 'support-board summary identity conflicts with an existing document scope', 'summary identity conflict guard');
 assertIncludes(dal, "where('pId', '==', 'AL')", 'client board product partition');
+assertIncludes(dal, 'projectAnswerlatticeSupportBoardCard(item.data(), {', 'persisted board list projection');
+assertIncludes(dal, 'projectAnswerlatticeSupportBoardSummary(snapshot.data(), {', 'persisted board summary projection');
+assertIncludes(dal, "throw new Error('Support board card state is invalid')", 'persisted mutation-state rejection');
+assertNotIncludes(dal, 'snapshot.data() as AnswerlatticeSupportBoardCard', 'unchecked persisted board-card cast');
+assertNotIncludes(dal, 'as AnswerlatticeSupportBoardSummary', 'unchecked persisted board-summary cast');
 assertIncludes(sync, 'loadAnswerlatticeSupportBoardCoreCounts', 'nightly exact core counts');
 assertIncludes(sync, 'sb_source_${tId}_${sId}_${digest}', 'shared deterministic source-card identity');
 assertIncludes(evidence, "answerSource === 'faq'", 'successful FAQ exclusion');

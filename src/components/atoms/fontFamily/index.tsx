@@ -8,8 +8,9 @@ import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FontPresetsType } from '@type/assets';
 import { addFontFaceStyle } from '@util/utils';
 import { Divider, Flex, Select, Typography } from 'antd';
+import type { SelectProps } from 'antd';
 import FontFaceObserver from 'fontfaceobserver';
-import { useContext, useEffect } from 'react';
+import { useContext, useEffect, type CSSProperties } from 'react';
 const { Text } = Typography
 
 // Default browser fonts grouped by category
@@ -69,25 +70,32 @@ const DEFAULT_BROWSER_FONTS = [
     { name: 'Default Monospace', family: 'monospace', group: 'Generic Families' }
 ];
 
-export default function FontFamily({ value, onChange, showLabel = false, style = {} }) {
+interface FontFamilyProps {
+    onChange: (field: 'fontFamily', value: string) => void;
+    showLabel?: boolean;
+    style?: CSSProperties;
+    value?: string;
+}
+
+export default function FontFamily({ value, onChange, showLabel = false, style = {} }: FontFamilyProps) {
 
     const dispatch = useAppDispatch()
     const isDark = useAppSelector(getDarkModeState);
     const { fontsList, setFontsList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
 
     useEffect(() => {
-        if (fontsList?.length > 0) return;
+        if (fontsList !== null) return;
         getFontPresets().then((res) => {
-            if (Boolean(res)) {
+            if (Array.isArray(res)) {
                 setFontsList(res);
                 addFontFaceStyle(res)
             }
         }).catch((error) => {
             logRuntimeFailure('font_family_presets_load_failed', error);
         })
-    }, [])
+    }, [fontsList, setFontsList])
 
-    const onChangeValue = (fontCode) => {
+    const onChangeValue = (fontCode: string) => {
         if (!fontCode) return;
 
         // Check if it's a default browser font by checking against our defined array
@@ -105,8 +113,8 @@ export default function FontFamily({ value, onChange, showLabel = false, style =
         font.load(null, 150000).then(() => {
             onChange('fontFamily', fontCode)
             dispatch(stopLoader("FontFamily:onChangeValue"))
-        }).catch((err) => {
-            logRuntimeFailure('font_family_load_failed', err, {
+        }).catch((error: unknown) => {
+            logRuntimeFailure('font_family_load_failed', error, {
                 ...getBoundedRuntimeStringContext('fontCode', fontCode),
             });
             dispatch(stopLoader("FontFamily:onChangeValue"))
@@ -114,26 +122,28 @@ export default function FontFamily({ value, onChange, showLabel = false, style =
     }
 
     const getFontsList = () => {
-        const fonts: any[] = [];
+        const fonts: NonNullable<SelectProps<string>['options']> = [];
 
         // Add custom fonts from the database
-        (fontsList?.sort((a, b) => a.index - b.index))?.map((fontDetails: FontPresetsType) => {
-            fonts.push(
-                {
-                    label: <>
-                        <Flex style={{ width: "100%", padding: "2px 0" }} align="center" justify="center">
-                            {isDark ?
-                                <img alt={`${fontDetails.code} font preview`} style={{ width: "auto", height: "100%", maxHeight: "20px" }} src={fontDetails.whiteTextUrl} />
-                                :
-                                <img alt={`${fontDetails.code} font preview`} style={{ width: "auto", height: "100%", maxHeight: "20px" }} src={fontDetails.blackTextUrl} />
-                            }
-                        </Flex>
-                    </>,
-                    value: fontDetails.code,
-                    group: 'Custom Fonts'
-                },
-            )
-        })
+        [...(fontsList || [])]
+            .sort((a, b) => a.index - b.index)
+            .forEach((fontDetails: FontPresetsType) => {
+                fonts.push(
+                    {
+                        label: <>
+                            <Flex style={{ width: "100%", padding: "2px 0" }} align="center" justify="center">
+                                {isDark ?
+                                    <img alt={`${fontDetails.code} font preview`} style={{ width: "auto", height: "100%", maxHeight: "20px" }} src={fontDetails.whiteTextUrl} />
+                                    :
+                                    <img alt={`${fontDetails.code} font preview`} style={{ width: "auto", height: "100%", maxHeight: "20px" }} src={fontDetails.blackTextUrl} />
+                                }
+                            </Flex>
+                        </>,
+                        value: fontDetails.code,
+                        group: 'Custom Fonts'
+                    },
+                )
+            })
 
         // Add divider if there are custom fonts
         if (fonts.length > 0) {

@@ -125,8 +125,8 @@ export default function AnswerlatticeTeamAccess({ initialTab }: AnswerlatticeTea
     const isMobile = screens.md !== true;
     const { access, refresh: refreshAccess } = useAnswerlatticeAccess();
     const currentHostname = typeof window === 'undefined' ? undefined : window.location.hostname;
-    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname);
-    const legacyRequestedTab = searchParams.get('tab');
+    const normalizedPathname = normalizeAnswerlatticeRoutePathname(pathname ?? '');
+    const legacyRequestedTab = searchParams?.get('tab');
     const requestedTab = (
         isAnswerlatticeTeamTab(initialTab)
             ? initialTab

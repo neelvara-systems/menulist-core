@@ -123,7 +123,7 @@ export const useTicketCache = (options?: { audience?: AnswerlatticeCacheAudience
         options?.onCacheMiss?.();
 
         try {
-            const tickets = options.includeDeleted
+            const tickets = options?.includeDeleted
                 ? await getSupportTickets(true)
                 : await getStoresTickets();
 

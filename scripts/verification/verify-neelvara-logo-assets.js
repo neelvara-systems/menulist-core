@@ -221,6 +221,9 @@ async function main() {
   assert(styles.includes('.nv-prism-source-mark'), 'Legacy bento visual must use the source-mark class');
   assert(bento.includes('className="nv-prism-source-mark"'), 'Legacy bento visual must use the master Neelvara mark');
   assert(!bento.includes('<span />'), 'Legacy bento visual must not reconstruct the retired three-panel mark');
+  assert(bento.includes('const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);'), 'Neelvara reference tabs must retain roving focus refs');
+  assert(bento.includes('tabRefs.current[nextIndex]?.focus();'), 'Neelvara Arrow-key tab selection must move focus with active state');
+  assert(bento.includes('tabIndex={active ? 0 : -1}'), 'Neelvara reference tabs must retain one active tab stop');
   for (const color of APPROVED_COLORS) {
     assert(styles.toUpperCase().includes(color), `Neelvara stylesheet is missing supplied color ${color}`);
   }

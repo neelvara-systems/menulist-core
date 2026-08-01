@@ -6,6 +6,7 @@ import GlobalLanguagesList from '@data/languages';
 import TIMEZONES_LIST from '@data/timeZones';
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import type { StoreDataType } from '@type/platform/store';
 import countryData from '@atoms/phoneNumberInput/countryData';
 import { normalizeStoreLanguagePolicy } from '@lib/localization/languagePolicy';
 import { resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
@@ -41,7 +42,7 @@ interface MobileLocaleSettingsScreenProps {
     onOpenBusinessCopySetup?: () => void;
 }
 
-function getInitialLocaleForm(storeDetails: any) {
+function getInitialLocaleForm(storeDetails: StoreDataType | null) {
     const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(storeDetails);
     return {
         activeLanguages: normalizedLanguagePolicy.activeLanguages,
@@ -256,7 +257,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         </Flex>
                         <Text type="secondary">{tBusiness('timeZoneHelper')}</Text>
                         <Select
-                            onChange={(value) => setFormData((previous) => ({ ...previous, timeZone: value }))}
+                            onChange={(value: string) => setFormData((previous) => ({ ...previous, timeZone: value }))}
                             options={TIMEZONES_LIST.map((item) => ({ label: item.label, value: item.tzCode }))}
                             placeholder={tBusiness('selectTimeZone')}
                             value={formData.timeZone}
@@ -272,7 +273,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         </Flex>
                         <Text type="secondary">{tBusiness('businessDayEndTimeHelper')}</Text>
                         <Select
-                            onChange={(value) => setFormData((previous) => ({ ...previous, businessDayEndTime: value }))}
+                            onChange={(value: string) => setFormData((previous) => ({ ...previous, businessDayEndTime: value }))}
                             options={BUSINESS_DAY_END_OPTIONS}
                             placeholder={tBusiness('selectBusinessDayEndTime')}
                             value={formData.businessDayEndTime}
@@ -285,7 +286,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         <Text type="secondary">{tBusiness('dateFormat')}</Text>
                         <Text type="secondary">{tBusiness('dateFormatHelper')}</Text>
                         <Select
-                            onChange={(value) => setFormData((previous) => ({ ...previous, dateFormat: value }))}
+                            onChange={(value: string) => setFormData((previous) => ({ ...previous, dateFormat: value }))}
                             options={DATE_FORMATS.map((item) => ({ label: format.dateTime(now, item.value), value: item.label }))}
                             placeholder={tBusiness('selectDateFormat')}
                             value={formData.dateFormat}
@@ -298,7 +299,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         <Text type="secondary">{tBusiness('timeFormat')}</Text>
                         <Text type="secondary">{tBusiness('timeFormatHelper')}</Text>
                         <Select
-                            onChange={(value) => setFormData((previous) => ({ ...previous, timeFormat: value }))}
+                            onChange={(value: string) => setFormData((previous) => ({ ...previous, timeFormat: value }))}
                             options={TIME_FORMATS.map((item) => ({ label: `${format.dateTime(now, item.value)} (${item.labelHelper})`, value: item.label }))}
                             placeholder={tBusiness('selectTimeFormat')}
                             value={formData.timeFormat}
@@ -353,7 +354,7 @@ function MobileLocaleSettingsScreenContent({ onBack, onOpenBusinessCopySetup }: 
                         </Flex>
                         <Text type="secondary">{tBusiness('defaultLanguageHelper')}</Text>
                         <Select
-                            onChange={(value) => setFormData((previous) => ({ ...previous, defaultLanguage: value }))}
+                            onChange={(value: string) => setFormData((previous) => ({ ...previous, defaultLanguage: value }))}
                             options={availableDefaultLanguages}
                             placeholder={tBusiness('selectDefaultLanguage')}
                             value={formData.defaultLanguage}

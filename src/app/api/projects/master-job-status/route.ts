@@ -5,6 +5,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
 import {
     requireAnyStorePermissionForStoreData,
     resolveStorePermissionSessionScope,
@@ -73,18 +74,6 @@ const applyMasterJobStatusRateLimit = async (session: any) => {
     );
 };
 
-const parseSafeProjectId = (projectId: string) => {
-    const parts = projectId.split("-");
-    const parsed = {
-        tId: Number(parts[0]),
-        sId: Number(parts[parts.length - 1]),
-    };
-    if (!Number.isSafeInteger(parsed.tId) || parsed.tId <= 0 || !Number.isSafeInteger(parsed.sId) || parsed.sId <= 0) {
-        return null;
-    }
-    return parsed;
-};
-
 export const GET = withAuth(async (request: NextRequest, session) => {
     if (!FEATURE_FLAGS.ENABLE_MULTI_OUTLET) {
         return NextResponse.json({ error: "Multi-outlet disabled" }, { status: 403 });
@@ -103,7 +92,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         }
 
         const { masterProjectId, outletProjectId } = validation.data;
-        const masterRef = parseSafeProjectId(masterProjectId);
+        const masterRef = normalizeMultiOutletProjectId(masterProjectId);
         if (!masterRef) {
             return NextResponse.json({ error: "Invalid project reference" }, { status: 400 });
         }
@@ -127,7 +116,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             sessionStore,
@@ -143,7 +132,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 return NextResponse.json({ error: "Outlet project required" }, { status: 400 });
             }
 
-            const outletRef = parseSafeProjectId(outletProjectId);
+            const outletRef = normalizeMultiOutletProjectId(outletProjectId);
             if (!outletRef || outletRef.tId !== tenantId || outletRef.sId !== sessionStoreId) {
                 return NextResponse.json({ error: "Invalid outlet project reference" }, { status: 400 });
             }

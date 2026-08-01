@@ -172,7 +172,7 @@ export const useChangelogCache = () => {
             logHookFailure('answerlattice_changelog_cache_fetch_failed', error, {
                 forceRefresh: false,
                 hadCachedChangelog: Boolean(scopedChangelog),
-                cachedEntryCount: scopedChangelog?.entries?.length || 0,
+                cachedEntryCount: 0,
             });
             return null;
         }

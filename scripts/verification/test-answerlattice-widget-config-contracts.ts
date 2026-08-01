@@ -112,6 +112,20 @@ assert.ok(loader.includes('data.capabilities.contextBundles !== Boolean(nextBund
 assert.ok(loader.indexOf('data.capabilities.contextBundles !== Boolean(nextBundleConfig)') < loader.indexOf('if (!applyRuntimeAuthorization(runtimeAuthorization))'));
 assert.ok(loader.includes('Number.isSafeInteger(value.bundleVersion)'));
 assert.ok(loader.includes('Number.isSafeInteger(expiresAt)'));
+assert.ok(loader.includes("if (!/^-?\\d+$/.test(rawValue)) return fallback;"));
+assert.ok(loader.includes('if (!Number.isSafeInteger(value)) return fallback;'));
+assert.ok(!loader.includes("parseInt(script.getAttribute(name) || '', 10)"));
+assert.ok(
+    loader.indexOf('window.__answerlatticeWidget = true;')
+        > loader.indexOf("!/^al_[A-Za-z0-9_-]{20,128}$/.test(apiKey)"),
+    'an invalid first script must not poison later valid widget initialization',
+);
+assert.ok(loader.includes('page: function (ctx) { window.AnswerlatticeWidget.setContext(ctx); }'));
+assert.ok(!loader.includes('page: function (ctx) { this.setContext(ctx); }'));
+assert.ok(loader.includes("emitEvent('context', { context: copyProductContext() });"));
+assert.ok(loader.includes("emitEvent('identify', { visitor: copyVisitorContext() });"));
+assert.ok(loader.includes('getContext: function () { return copyProductContext(); }'));
+assert.ok(loader.includes('getVisitor: function () { return copyVisitorContext(); }'));
 assert.ok(embedClient.includes("event.data?.type !== 'answerlattice-widget-bootstrap'"));
 assert.ok(embedClient.includes('event.source !== window.parent'));
 assert.ok(embedClient.includes('rawApiKey !== nextApiKey || !WIDGET_KEY_PATTERN.test(nextApiKey)'));

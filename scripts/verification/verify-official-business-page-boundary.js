@@ -44,13 +44,18 @@ function verifyPackageScript() {
   const pkg = JSON.parse(read('package.json'));
   assert(
     pkg.scripts['verify:official-business-page-boundary']
-      === 'node scripts/verification/verify-official-business-page-boundary.js && npm run test:obp-i18n-boundary',
-    'package.json must expose the OBP source and i18n behavior gates',
+      === 'node scripts/verification/verify-official-business-page-boundary.js && npm run test:obp-i18n-boundary && npm run test:obp-freshness-timestamp-boundary',
+    'package.json must expose the OBP source, i18n and freshness behavior gates',
   );
   assert(
     pkg.scripts['test:obp-i18n-boundary']
       === 'ts-node --compiler-options \'{"module":"CommonJS","target":"ES2022"}\' -r tsconfig-paths/register scripts/verification/test-obp-i18n-boundary.ts',
     'package.json must expose test:obp-i18n-boundary',
+  );
+  assert(
+    pkg.scripts['test:obp-freshness-timestamp-boundary']
+      === 'ts-node --compiler-options \'{"module":"CommonJS"}\' -r tsconfig-paths/register scripts/verification/test-obp-freshness-timestamp-boundary.ts',
+    'package.json must expose test:obp-freshness-timestamp-boundary',
   );
 }
 
@@ -160,6 +165,12 @@ function verifyOwnerMutationBoundary() {
   const resolvedSurface = read('src/app/client/obp/OBPResolvedSurface.tsx');
   const actions = read('src/app/client/obp/OBPActions.tsx');
   const visualCompletion = read('src/lib/visualProfile/visualProfileCompletion.ts');
+  const obpSchema = read('src/app/client/obp/schema.ts');
+  const publicMenuPage = read('src/app/client/[[...slug]]/page.tsx');
+  const basicInfoTab = read('src/components/templates/main-app/businessSettings/tabs/BasicInfoTab.tsx');
+  const publicImage = read('src/app/client/obp/OBPPublicImage.tsx');
+  const menuCta = read('src/app/client/obp/OBPMenuCTA.tsx');
+  const obpStyles = read('src/app/client/obp/obp.module.scss');
 
   assertIncludes(locationTab, 'name="addressLine"', 'desktop canonical address field');
   assertIncludes(locationTab, 'name="postalCode"', 'desktop canonical postal field');
@@ -171,7 +182,8 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(businessSettings, 'normalizeOwnerPublicPresenceLinks(changesToUpload.publicPresence)', 'desktop owner public-link boundary');
   assertIncludes(mobileBasic, "storeDetails?.geo?.latitude !== undefined", 'mobile zero latitude hydration');
   assertIncludes(mobileBasic, 'normalizeGeoCoordinateDraft(formData.latitude, formData.longitude)', 'mobile shared geo boundary');
-  assertIncludes(mobileBasic, 'Object.entries(optimisticUpdates).every(([key, value]) => previous?.[key] === value)', 'mobile exact optimistic rollback ownership');
+  assertIncludes(mobileBasic, 'MOBILE_BASIC_STORE_UPDATE_KEYS', 'mobile exact optimistic store-key registry');
+  assertIncludes(mobileBasic, 'ownsMobileBasicOptimisticValues(previous, optimisticUpdates)', 'mobile exact optimistic rollback ownership');
   assertIncludes(mobileBasic, '? { ...previous, ...previousOptimisticValues }', 'mobile canonical field rollback projection');
   assertIncludes(mobileOfficial, 'normalizeOwnerPublicPresenceLinks(publicPresenceDraft)', 'mobile owner public-link boundary');
   assertIncludes(mobileOfficial, 'businessCopyMeta: previousBusinessCopyMeta', 'mobile optimistic metadata rollback');
@@ -194,13 +206,31 @@ function verifyOwnerMutationBoundary() {
   assertIncludes(b2cView, 'obpPhotoDeleteQueueRef.current = failedPhotoDeletes', 'embedded synchronous cleanup retry ref');
 
   assertIncludes(obpContent, '.limit(FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1)', 'single-outlet OBP bounded tenant read');
+  assertIncludes(obpContent, '() => withTimeout(countActiveStoresForTenant(storeData.tenantId))', 'single-outlet OBP retryable tenant count');
+  assertIncludes(obpContent, 'throw error;', 'OBP read failures propagate to the public error boundary');
+  assertNotIncludes(obpContent, 'return { hasMenu: false, defaultSlug: undefined, projects: [] } as ObpMenuInfo', 'OBP failure must not become a false missing-menu state');
+  assertNotIncludes(obpContent, 'return 1;', 'OBP failure must not become a false single-location state');
   assertIncludes(brandContent, '.limit(FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1)', 'brand OBP bounded tenant read');
+  assertIncludes(brandContent, "return [{ ...outlet, publicPath: 'menu' }];", 'brand OBP master-location canonical menu route');
+  assertIncludes(brandContent, 'generateBrandOBPSchema({', 'brand OBP structured-data projection');
+  assertIncludes(brandContent, '<JsonLdScript id="brand-obp-schema-jsonld"', 'brand OBP structured-data render');
+  assertIncludes(brandContent, '<OBPPublicImage', 'brand OBP failed-image fallback');
+  assertIncludes(resolvedSurface, '<OBPPublicImage', 'single-location OBP failed-image fallback');
+  assertIncludes(publicImage, 'failedSrc === src', 'OBP image failure state is source-specific');
+  assertIncludes(publicImage, 'image.naturalWidth === 0', 'OBP pre-hydration image failure recovery');
+  assertIncludes(menuCta, 'projects.length > 4 ? styles.projectCardsDense', 'many-menu mobile density boundary');
+  assertIncludes(obpStyles, '.projectCardsDense', 'many-menu responsive presentation');
+  assertIncludes(obpStyles, 'min-height: 44px;', 'mobile language touch target');
   assertIncludes(resolvedSurface, 'normalizeGeoCoordinateDraft(params.geo?.latitude, params.geo?.longitude)', 'public map shared geo boundary');
   assertIncludes(resolvedSurface, 'const safeCallHref = buildTelHref({', 'public safe call admission');
   assertIncludes(resolvedSurface, 'const safeWhatsAppPhoneParam = buildWhatsAppPhoneParam({', 'public safe WhatsApp admission');
   assertIncludes(actions, '{showCall && callHref && (', 'OBP action nonempty call href guard');
   assertIncludes(actions, '{showWhatsApp && whatsappHref && (', 'OBP action nonempty WhatsApp href guard');
   assertIncludes(visualCompletion, 'const photoCount = new Set(', 'visual completion unique gallery count');
+  assertNotIncludes(obpSchema, 'storeData?.email', 'OBP schema account-email disclosure boundary');
+  assertIncludes(obpSchema, "normalizePublicOutletSlug(location.publicPath)", 'brand schema public-path admission');
+  assertNotIncludes(publicMenuPage, 'storeData?.email', 'menu schema account-email disclosure boundary');
+  assertNotIncludes(basicInfoTab, 'Public contact:', 'owner preview hidden-email claim boundary');
 }
 
 function verifyPublicRenderingBoundary() {

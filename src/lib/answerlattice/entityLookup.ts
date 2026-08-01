@@ -1,6 +1,9 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
-import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
+import {
+    answerlatticeAdminApp,
+    answerlatticeFirestoreAdmin,
+} from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { normalizeAnswerlatticeResolvedEntityId } from './governanceIdBoundary';
 import {
@@ -28,11 +31,10 @@ const MAX_LEGACY_INDEX_READS = 40;
 const MAX_ENTITY_OPTIONS = 10;
 
 const getAnswerlatticeAdminDb = () => {
-    const db = answerlatticeFirestoreAdmin as any;
-    if (!db || typeof db.collection !== 'function') {
+    if (!answerlatticeAdminApp) {
         throw new Error('Answerlattice Firebase is not configured');
     }
-    return db;
+    return answerlatticeFirestoreAdmin;
 };
 
 export function normalizeAnswerlatticeEntityLookupQuery(queryText: string): string {
@@ -92,7 +94,7 @@ const getEntityDocsById = async (
     );
     const entities = new Map<string, AnswerlatticeEntity>();
 
-    docs.forEach((doc: any) => {
+    docs.forEach((doc) => {
         if (!doc.exists) return;
         try {
             const entity = parseAnswerlatticeRetrievalEntity({ ...(doc.data() || {}), id: doc.id }, scope);
@@ -134,6 +136,7 @@ export async function searchAnswerlatticeEntityLookupOptions(
 
     const snapshot = prefixSnapshot.empty
         ? await indexRef
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .limit(MAX_LEGACY_INDEX_READS)
@@ -141,7 +144,7 @@ export async function searchAnswerlatticeEntityLookupOptions(
         : prefixSnapshot;
 
     const ranked = snapshot.docs
-        .map((doc: any) => {
+        .map((doc) => {
             try {
                 return parseAnswerlatticeRetrievalSearchIndex({ ...(doc.data() || {}), id: doc.id }, exactScope);
             } catch {

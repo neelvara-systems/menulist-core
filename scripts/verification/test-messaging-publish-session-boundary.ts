@@ -8,6 +8,7 @@ import {
   getMessagingPublishSourceFingerprint,
   normalizeMessagingPublishSession,
 } from '../../src/lib/messaging-onboarding/publishSessionBoundary';
+import { normalizeMessagingPublishedResult } from '../../functions/src/messagingOnboarding/publishedResultBoundary';
 import { validateMessagingPublishMenu } from '../../src/lib/messaging-onboarding/publishValidationBoundary';
 
 const SESSION_ID = 'publish-boundary-session';
@@ -201,11 +202,35 @@ function main(): void {
     getMessagingPublishSourceFingerprint(normalized),
     getMessagingPublishSourceFingerprint(changedMenu),
   );
+  const changedAddress = normalizeMessagingPublishSession({
+    ...source,
+    extractedBusinessInfo: { address: '99 Changed Road' },
+  }, SESSION_ID, BUCKET);
+  assert(changedAddress);
+  assert.notEqual(
+    getMessagingPublishSourceFingerprint(normalized),
+    getMessagingPublishSourceFingerprint(changedAddress),
+    'A concurrent source-address change must invalidate a claimed publish',
+  );
 
   assert.equal(normalizeMessagingPublishSession({
     ...source,
     uploads: [{ ...source.uploads[0], storagePath: 'messagingOnboarding/other/session.png' }],
   }, SESSION_ID, BUCKET), null);
+  assert.equal(normalizeMessagingPublishSession({
+    ...source,
+    extractedProjectFiles: [{
+      ...source.extractedProjectFiles[0],
+      extractedData: {
+        data: {
+          categories: source.extractedMenuData.categories,
+          items: [{ ...source.extractedMenuData.items[0], price: undefined }],
+          languages: source.extractedMenuData.languages,
+        },
+        message: 'unpriced renderer truth',
+      },
+    }],
+  }, SESSION_ID, BUCKET), null, 'Aggregate menu truth must not hide an unpublishable renderer graph');
 
   const oversizedItems = Array.from({ length: 500 }, (_, index) => ({
     category: 'cat-1',
@@ -275,6 +300,27 @@ function main(): void {
     'A committed publish must remain replayable after heavy project-file state is pruned',
   );
   assert.equal(getMessagingCommittedPublishResult(source, SESSION_ID, BUCKET), null);
+  assert.equal(normalizeMessagingPublishSession({
+    ...source,
+    publishedResult: {
+      dashboardUrl: 'https://menulist.ai/signin',
+      projectId: '9-default-8',
+      publicUrl: 'https://demo.menulist.ai',
+      storeId: 2,
+      tenantId: 1,
+      userId: 'owner-1',
+    },
+    state: 'LIVE',
+    stateHistory: [...source.stateHistory, { state: 'LIVE', timestamp: new Date() }],
+  }, SESSION_ID, BUCKET), null, 'Published project identity must match its tenant/store result');
+  assert.equal(normalizeMessagingPublishedResult({
+    dashboardUrl: 'https://menulist.ai/signin',
+    projectId: '9-default-8',
+    publicUrl: 'https://demo.menulist.ai',
+    storeId: 2,
+    tenantId: 1,
+    userId: 'owner-1',
+  }), null, 'Functions delivery must reject cross-scope published project identity');
   assert.equal(normalizeMessagingPublishSession({
     ...source,
     publishedResult: { publicUrl: 'javascript:alert(1)' },

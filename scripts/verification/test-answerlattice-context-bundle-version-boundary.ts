@@ -216,6 +216,20 @@ for (const sensitiveQueryKey of ['accessToken', 'apiKey', 'clientSecret', 'refre
         url: `https://docs.example.com/private?${sensitiveQueryKey}=secret`,
     }]), [], `Functions public citation projection must reject ${sensitiveQueryKey}`);
 }
+for (const privateIpv6Url of [
+    'http://[fe80::1]/internal',
+    'http://[fe90::1]/internal',
+    'http://[fea0::1]/internal',
+    'http://[febf::1]/internal',
+    'http://[fec0::1]/internal',
+    'http://[feff::1]/internal',
+]) {
+    assert.deepEqual(normalizeAnswerlatticeFunctionPublicCitations([{
+        id: 'blocked-private-ipv6',
+        title: 'Private IPv6 address',
+        url: privateIpv6Url,
+    }]), [], `Functions public citation projection must reject ${privateIpv6Url}`);
+}
 assert.deepEqual(normalizeAnswerlatticeFunctionPublicCitations([{
     id: 'public-monkey-guide',
     title: 'Monkey guide',

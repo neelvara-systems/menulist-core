@@ -263,6 +263,9 @@
 10. Monitor sessions in Firebase Console: `messagingOnboardingSessions`
 11. Open preview URL in browser, verify menu rendering, approve & publish
 12. Verify tenant/store/project/project summary created and public cache tags revalidated
+13. Verify the store, project and project-summary entry share a valid
+    `lastPublishedAt`, and that `publishedResult.projectId` encodes the same
+    tenant/store IDs before accepting confirmation delivery or replay.
 
 ## June 11, 2026 Production-Readiness Audit Notes
 

@@ -32,7 +32,11 @@ import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
-import { ANSWERLATTICE_FAQ_SOURCE, ANSWERLATTICE_FAQ_STATUS } from '@type/answerlattice';
+import {
+    ANSWERLATTICE_FAQ_SOURCE,
+    ANSWERLATTICE_FAQ_STATUS,
+    type AnswerlatticeFaq,
+} from '@type/answerlattice';
 import { type KnowledgeBaseArticleType } from '@type/knowledgeBase';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
@@ -51,6 +55,17 @@ type BoundedFaqProviderResponseText = {
     originalLength: number;
     text: string;
     truncated: boolean;
+};
+
+type AnswerlatticeGeneratedFaqDocument = Omit<
+    AnswerlatticeFaq,
+    'publishedOn' | 'lastReviewedOn' | 'reviewRequestedOn' | 'createdOn' | 'modifiedOn'
+> & {
+    publishedOn: null;
+    lastReviewedOn: null;
+    reviewRequestedOn: Timestamp;
+    createdOn: Timestamp;
+    modifiedOn: Timestamp;
 };
 
 class FaqGenerationConflictError extends Error {
@@ -354,7 +369,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             const now = Timestamp.now();
             const actor = String(session.user?.name || session.user?.email || userIdForLog || 'unknown');
             const actorId = userIdForLog;
-            const nextFaqs = uniqueFaqs.map((faq, index) => {
+            const nextFaqs = uniqueFaqs.map<AnswerlatticeGeneratedFaqDocument>((faq, index) => {
                 const ref = db.collection(DB_COLLECTIONS.ANSWERLATTICE_FAQS).doc();
                 return {
                     id: ref.id,

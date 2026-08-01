@@ -195,7 +195,7 @@ export default function BackgroundSettings({ config, onUpdate, previewAccentColo
             setIsBackgroundAdjustOpen(false);
             handleChange('backgroundImage', '');
         },
-        itemRender: () => null
+        itemRender: (): null => null
     };
 
     const handleImageUpload = async (file: File) => {

@@ -1,4 +1,5 @@
 import { SIGNALDESK_PRODUCT_CODE } from "@constant/signaldesk/product";
+import { normalizeSignalDeskDocumentId } from "@lib/signaldesk/documentIdBoundary";
 import type {
     SignalDeskAiScoreSummary,
     SignalDeskResearchRunSummary,
@@ -106,7 +107,10 @@ export const SignalDeskTargetImportSchema = z.object({
     idempotencyKey: z.string().trim().min(8).max(180),
     rows: z.array(SignalDeskTargetImportRowSchema).min(1).max(50),
     sourceName: z.string().trim().min(2).max(160),
-    sourcePolicyId: z.string().trim().min(3).max(160),
+    sourcePolicyId: z.string().min(3).max(160).refine(
+        (value) => normalizeSignalDeskDocumentId(value, 160) !== null,
+        "Source policy ID is invalid.",
+    ),
 }).strict();
 
 export const SignalDeskManualTargetImportSchema = SignalDeskTargetImportSchema.superRefine((value, context) => {
@@ -173,6 +177,13 @@ const timestampToIso = (value: unknown): string | null => {
 };
 
 const nullableText = (maximum: number) => z.string().trim().max(maximum).nullable().optional();
+const documentId = (maximum = 160, minimum = 3) => z.string().min(minimum).max(maximum).refine(
+    (value) => normalizeSignalDeskDocumentId(value, maximum) !== null,
+    "Persisted document ID is invalid.",
+);
+const nullableDocumentId = (maximum = 160, minimum = 3) => (
+    documentId(maximum, minimum).nullable().optional()
+);
 const trustedSourceProviders = [
     "google-places",
     "foursquare",
@@ -198,9 +209,9 @@ const targetSummarySchema = z.object({
     currentListUrl: nullableHttpUrl,
     displayName: z.string().trim().min(2).max(180),
     fitScore: boundedScore.optional(),
-    latestApprovalId: nullableText(160),
-    latestConversationId: nullableText(160),
-    latestDraftId: nullableText(160),
+    latestApprovalId: nullableDocumentId(160),
+    latestConversationId: nullableDocumentId(160),
+    latestDraftId: nullableDocumentId(160),
     latestManualContactAt: z.unknown().optional(),
     latestManualContactResult: z.enum(["contacted", "no-answer", "wrong-contact", "requested-later", "declined", "introduced"]).nullable().optional(),
     latestManualContactRoute: z.enum(["email-export", "partner-intro"]).nullable().optional(),
@@ -216,11 +227,11 @@ const targetSummarySchema = z.object({
     riskScore: boundedScore.optional(),
     segment: targetSegment,
     sourceConfidence: targetConfidence,
-    sourcePolicyId: nullableText(160),
-    sourceRunId: nullableText(160),
+    sourcePolicyId: nullableDocumentId(160),
+    sourceRunId: nullableDocumentId(160),
     status: targetStatus,
     suppressionStatus: targetSuppression,
-    targetId: z.string().trim().min(3).max(160),
+    targetId: documentId(160),
     updatedAt: z.unknown(),
     website: nullableHttpUrl,
 });
@@ -295,9 +306,9 @@ const targetScoreSchema = z.object({
     pId: z.literal(SIGNALDESK_PRODUCT_CODE),
     reasons: z.array(z.string().trim().min(1).max(240)).min(1).max(20),
     riskScore: boundedScore,
-    scoreId: z.string().trim().min(3).max(160),
+    scoreId: documentId(160),
     segment: targetSegment,
-    targetId: z.string().trim().min(3).max(160),
+    targetId: documentId(160),
     workerType: z.literal("target_score"),
     workerVersion: z.literal("rules-v1"),
 }).passthrough();
@@ -512,8 +523,8 @@ const sourceRunSchema = z.object({
     importedCount: z.number().int().min(1).max(50),
     pId: z.literal(SIGNALDESK_PRODUCT_CODE),
     sourceName: z.string().trim().min(2).max(160),
-    sourcePolicyId: z.string().trim().min(3).max(160),
-    sourceRunId: z.string().trim().min(3).max(160),
+    sourcePolicyId: documentId(160),
+    sourceRunId: documentId(160),
     status: z.enum(["completed", "partial", "blocked"]),
     suppressedCount: nonNegativeInteger,
     updatedAt: z.unknown(),
@@ -564,17 +575,17 @@ const researchRunSchema = z.object({
     enrichmentColumns: z.array(z.string().trim().min(1).max(120)).max(30),
     failCount: nonNegativeInteger,
     idempotencyKeyHash: nullableText(128),
-    marketPodId: nullableText(160),
+    marketPodId: nullableDocumentId(160),
     maxResults: z.number().int().min(1).max(30),
     normalizedQuery: z.string().trim().min(1).max(500),
     pId: z.literal(SIGNALDESK_PRODUCT_CODE),
     passCount: nonNegativeInteger,
     prompt: z.string().trim().min(1).max(2_000),
     provider: researchProvider,
-    providerRunIds: z.array(z.string().trim().min(1).max(160)).max(20),
-    researchRunId: z.string().trim().min(3).max(160),
+    providerRunIds: z.array(documentId(160, 1)).max(20),
+    researchRunId: documentId(160),
     researchType: z.enum(["business-prospect", "market-map", "partner-list"]),
-    sourcePolicyId: nullableText(160),
+    sourcePolicyId: nullableDocumentId(160),
     sourceTransparency: z.array(z.string().trim().min(1).max(500)).max(30),
     status: z.enum(["queued", "running", "completed", "blocked"]),
     tableRowCount: nonNegativeInteger,
@@ -656,13 +667,13 @@ const researchRowSchema = z.object({
     recommendedCta: z.string().trim().max(500),
     recommendedMessageAngle: z.string().trim().max(1_000),
     recommendedNextAction: z.enum(["score", "evidence", "hold", "partner-review", "pod-review"]),
-    researchRowId: z.string().trim().min(3).max(160),
-    researchRunId: z.string().trim().min(3).max(160),
+    researchRowId: documentId(160),
+    researchRunId: documentId(160),
     routePermissionState: z.enum(["permissioned", "research_only", "blocked", "review_required", "expired"]),
-    sourcePolicyId: nullableText(160),
+    sourcePolicyId: nullableDocumentId(160),
     sourceRefs: z.array(z.string().trim().min(1).max(500)).max(30),
-    sourceRunId: nullableText(160),
-    targetId: nullableText(160),
+    sourceRunId: nullableDocumentId(160),
+    targetId: nullableDocumentId(160),
     updatedAt: z.unknown(),
     website: nullableHttpUrl,
 });

@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 
-import * as firebaseAdminSdk from 'firebase-admin';
+import { deleteApp, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import {
     getCustomDomainClaimDocumentId,
     isCustomDomainUnavailableError,
@@ -37,12 +38,12 @@ async function run(): Promise<void> {
     assert(isReservedCustomDomainClaimCandidate('surfaceos.app'), 'declared future product roots must be reserved');
     assert(!isReservedCustomDomainClaimCandidate('owner.example.com'), 'unrelated owner domains must remain available');
 
-    const app = firebaseAdminSdk.apps.length
-        ? firebaseAdminSdk.app()
-        : firebaseAdminSdk.initializeApp({ projectId: PROJECT_ID });
-    const db = app.firestore();
-    const now = firebaseAdminSdk.firestore.Timestamp.fromMillis(Date.now());
-    const expiresAt = firebaseAdminSdk.firestore.Timestamp.fromMillis(now.toMillis() + 60_000);
+    const app = getApps().length
+        ? getApp()
+        : initializeApp({ projectId: PROJECT_ID });
+    const db = getFirestore(app);
+    const now = Timestamp.fromMillis(Date.now());
+    const expiresAt = Timestamp.fromMillis(now.toMillis() + 60_000);
 
     let reservationSequence = 0;
     const reserve = (
@@ -118,7 +119,7 @@ async function run(): Promise<void> {
             transaction,
             continued,
             now,
-            firebaseAdminSdk.firestore.Timestamp.fromMillis(now.toMillis() + 60_000),
+            Timestamp.fromMillis(now.toMillis() + 60_000),
         );
     });
     let sameOwnerReleaseOverlapBlocked = false;
@@ -159,7 +160,7 @@ async function run(): Promise<void> {
     const expiredClaimRef = db.collection('platformSummary').doc(getCustomDomainClaimDocumentId(expiredDomain));
     await expiredClaimRef.set({
         customDomain: expiredDomain,
-        expiresAt: firebaseAdminSdk.firestore.Timestamp.fromMillis(now.toMillis() - 1),
+        expiresAt: Timestamp.fromMillis(now.toMillis() - 1),
         status: 'reserved',
         storeId: '105',
         tId: '205',
@@ -172,7 +173,7 @@ async function run(): Promise<void> {
         .doc(getCustomDomainClaimDocumentId(expiredReleaseDomain));
     await expiredReleaseRef.set({
         customDomain: expiredReleaseDomain,
-        expiresAt: firebaseAdminSdk.firestore.Timestamp.fromMillis(now.toMillis() - 1),
+        expiresAt: Timestamp.fromMillis(now.toMillis() - 1),
         reservationId: 'expired-release-operation',
         status: 'releasing',
         storeId: '107',
@@ -194,7 +195,7 @@ async function run(): Promise<void> {
     }
     assert(duplicateLegacyBlocked, 'duplicate legacy rows must remain fail-closed instead of choosing a winner');
 
-    await app.delete();
+    await deleteApp(app);
     process.stdout.write('Custom domain claim transaction tests passed.\n');
 }
 

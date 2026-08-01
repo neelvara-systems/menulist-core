@@ -1,6 +1,7 @@
 'use client';
 
 import Script from 'next/script';
+import { normalizePlausibleScriptSource } from '@lib/website/plausible';
 
 const DEFAULT_PLAUSIBLE_SCRIPT_SRC = 'https://plausible.io/js/script.js';
 
@@ -18,7 +19,10 @@ export default function PlausibleAnalyticsScript({
     if (process.env.NODE_ENV === 'development') return null;
     if (!domain) return null;
 
-    const resolvedScriptSrc = scriptSrc || DEFAULT_PLAUSIBLE_SCRIPT_SRC;
+    const resolvedScriptSrc = normalizePlausibleScriptSource(
+        scriptSrc || DEFAULT_PLAUSIBLE_SCRIPT_SRC,
+    );
+    if (!resolvedScriptSrc) return null;
 
     return (
         <>

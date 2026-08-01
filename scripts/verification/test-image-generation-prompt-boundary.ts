@@ -71,5 +71,14 @@ assert.equal(
     generateImageEditingPromptFromIndex('Restaurant', editConfig, { name: 'Lunch' }),
     'the compatibility prompt module must use the one authoritative image-editing selector',
 );
+assert.equal(
+    generateImageEditingPromptFromIndex('Restaurant', {
+        prompt: 'Place the dish in a bright dining room.',
+        promptImages: [],
+        referanceImage: null,
+    }, { name: 'Lunch' }),
+    null,
+    'a missing edit feature must fail closed instead of entering business-specific prompt lookup',
+);
 
 process.stdout.write('Image generation prompt boundary tests passed.\n');

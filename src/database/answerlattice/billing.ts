@@ -11,6 +11,11 @@ import {
 } from '@lib/answerlattice/billingScopeBoundary';
 import { getAnswerlatticeScopeLogContext, logAnswerlatticeFailure } from '@lib/answerlattice/diagnostics';
 import { isAnswerlatticeStoreInScope } from '@lib/answerlattice/sessionScope';
+import {
+    getAnswerlatticeSubscriptionTimestampMillis,
+    isAnswerlatticeSubscriptionCurrent,
+    projectAnswerlatticeSubscriptionForRead,
+} from '@lib/answerlattice/subscriptionReadBoundary';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
@@ -26,57 +31,17 @@ const getSubscriptionDocumentRef = (subscriptionId: string) => {
     return doc(answerlatticeFirebaseClient, DB_COLLECTIONS.SUBSCRIPTIONS, normalizedSubscriptionId);
 };
 
-const toMillis = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.seconds === 'number') return value.seconds * 1000;
-    if (value instanceof Date) return value.getTime();
-    return Number(value) || 0;
-};
-
 const normalizeSubscription = (
-    data: Record<string, any>,
+    data: unknown,
     id: string,
     tenantId: number,
     storeId: number,
-): FirestoreSubscriptionDoc => ({
-    ...data,
+): FirestoreSubscriptionDoc | null => projectAnswerlatticeSubscriptionForRead(
+    data,
     id,
-    providerSubscriptionId: data.providerSubscriptionId || id,
-    pId: data.pId ?? data.productId,
-    productId: data.productId ?? data.pId,
-    tId: tenantId,
-    sId: storeId,
     tenantId,
     storeId,
-    amount: Number.isFinite(Number(data.amount)) ? Number(data.amount) : 0,
-    quantity: Number.isFinite(Number(data.quantity)) && Number(data.quantity) > 0 ? Number(data.quantity) : 1,
-    monthlyCreditsAllowance: Number.isFinite(Number(data.monthlyCreditsAllowance)) && Number(data.monthlyCreditsAllowance) >= 0 ? Number(data.monthlyCreditsAllowance) : 0,
-    monthlyCredits: Number.isFinite(Number(data.monthlyCredits)) && Number(data.monthlyCredits) >= 0 ? Number(data.monthlyCredits) : 0,
-    topUpCredits: Number.isFinite(Number(data.topUpCredits)) && Number(data.topUpCredits) >= 0 ? Number(data.topUpCredits) : 0,
-    currency: data.currency || 'INR',
-    status: data.status || 'pending',
-    planType: data.planType || 'MONTH',
-    planName: data.planName || 'Answerlattice Plan',
-    planId: data.planId || '',
-    paymentMethod: data.paymentMethod || { type: '', brand: '', last4: '', upiId: '', upiTransactionId: '' },
-    statuses: Array.isArray(data.statuses) ? data.statuses : [],
-    billingHistory: Array.isArray(data.billingHistory) ? data.billingHistory : [],
-    shortUrl: data.shortUrl || '',
-} as FirestoreSubscriptionDoc);
-
-const isCurrentSubscription = (subscription: FirestoreSubscriptionDoc): boolean => {
-    if (['pending', 'paused', 'past_due'].includes(String(subscription.status))) return true;
-    if (subscription.status === 'active') {
-        const cycleEndMs = toMillis(subscription.cycleEndDate);
-        return !cycleEndMs || cycleEndMs >= Date.now();
-    }
-    if (subscription.status === 'cancelled') {
-        const cycleEndMs = toMillis(subscription.cycleEndDate);
-        return Boolean(cycleEndMs && cycleEndMs >= Date.now());
-    }
-    return false;
-};
+);
 
 const fetchSubscriptionFromStoreSummary = async (
     tenantId: number,
@@ -102,20 +67,24 @@ const fetchSubscriptionFromStoreSummary = async (
             tenantId,
             storeId,
         );
-        return isCurrentSubscription(summarySubscription) ? summarySubscription : null;
+        return summarySubscription && isAnswerlatticeSubscriptionCurrent(summarySubscription)
+            ? summarySubscription
+            : null;
     }
 
     const subscriptionSnapshot = await getDoc(getSubscriptionDocumentRef(subscriptionId));
     if (!subscriptionSnapshot.exists()) {
         if (!isAnswerlatticeSubscriptionInScope(summary, { tId: tenantId, sId: storeId })) return null;
         const summarySubscription = normalizeSubscription(summary, subscriptionId, tenantId, storeId);
-        return isCurrentSubscription(summarySubscription) ? summarySubscription : null;
+        return summarySubscription && isAnswerlatticeSubscriptionCurrent(summarySubscription)
+            ? summarySubscription
+            : null;
     }
 
     const subscriptionData = subscriptionSnapshot.data();
     if (!isAnswerlatticeSubscriptionInScope(subscriptionData, { tId: tenantId, sId: storeId })) return null;
     const subscription = normalizeSubscription(subscriptionData, subscriptionSnapshot.id, tenantId, storeId);
-    return isCurrentSubscription(subscription) ? subscription : null;
+    return subscription && isAnswerlatticeSubscriptionCurrent(subscription) ? subscription : null;
 };
 
 const fetchAnswerlatticeSubscriptionRaw = async (
@@ -139,8 +108,12 @@ const fetchAnswerlatticeSubscriptionRaw = async (
     const subscriptions = fallbackSnapshot.docs
         .filter((docSnap) => isAnswerlatticeSubscriptionInScope(docSnap.data(), { tId: tenantId, sId: storeId }))
         .map((docSnap) => normalizeSubscription(docSnap.data(), docSnap.id, tenantId, storeId))
-        .filter(isCurrentSubscription)
-        .sort((a, b) => toMillis(b.cycleEndDate) - toMillis(a.cycleEndDate));
+        .filter((subscription): subscription is FirestoreSubscriptionDoc => Boolean(subscription))
+        .filter(isAnswerlatticeSubscriptionCurrent)
+        .sort((a, b) => (
+            (getAnswerlatticeSubscriptionTimestampMillis(b.cycleEndDate) || 0)
+            - (getAnswerlatticeSubscriptionTimestampMillis(a.cycleEndDate) || 0)
+        ));
 
     if (subscriptions.length) {
         return subscriptions[0];

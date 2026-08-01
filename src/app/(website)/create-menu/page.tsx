@@ -36,7 +36,7 @@ export const metadata: Metadata = completeWebsiteMetadata({
 
 export default function CreateMenuPage(
     props: {
-        searchParams?: Promise<Record<string, string | string[] | undefined>>;
+        searchParams: Promise<Record<string, string | string[] | undefined>>;
     }
 ) {
     const searchParams = use(props.searchParams);

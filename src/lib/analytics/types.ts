@@ -95,7 +95,8 @@ export interface DailyAnalytics {
   };
 
   // Metadata
-  lastUpdated?: Date;
+  /** JSON-safe ISO timestamp for the owner dashboard and browser cache. */
+  lastUpdated?: string;
 }
 
 export interface AnalyticsSummary {
@@ -153,7 +154,8 @@ export interface AnalyticsSummary {
   };
 
   // Metadata
-  lastUpdated?: Date;
+  /** JSON-safe ISO timestamp for the owner dashboard and browser cache. */
+  lastUpdated?: string;
   lastAggregatedDate?: string; // YYYY-MM-DD
 }
 

@@ -30,6 +30,8 @@ const AI_MODEL = GEMINI_MODELS.IMAGE_GEN;
 const ACTION = AI_ACTIONS_TYPES.IMAGE_EDITING;
 const LOG_FILE = "image-editing.log"
 const IMAGE_EDITING_AI_MAX_BODY_BYTES = 64 * 1024 * 1024;
+const getPendingAiTransactionId = (): string | null => null;
+const getEmptyAiClientResponse = (): unknown => null;
 
 const getImageEditingConfigLogSummary = (config: Record<string, any> | undefined | null) => ({
     hasPrompt: typeof config?.prompt === 'string' && config.prompt.length > 0,
@@ -250,7 +252,7 @@ export const POST = withAuth(async (request, session) => {
 
         // Update the transaction object with calculated values and other details
         const transactionObject = {
-            transactionId: null,
+            transactionId: getPendingAiTransactionId(),
             action: ACTION,
             unitsConsumed: 0,
             itemSummary: getImageItemDetailsLogSummary(itemDetails as Record<string, any>),
@@ -258,7 +260,7 @@ export const POST = withAuth(async (request, session) => {
             projectId,
             fileId,
             processingTime,
-            clientResponse: null,// imageEditGemeiniResponse?.images?.map((image: { base64: string; mimeType: string }) => image.mimeType),
+            clientResponse: getEmptyAiClientResponse(),// imageEditGemeiniResponse?.images?.map((image: { base64: string; mimeType: string }) => image.mimeType),
             model: AI_MODEL,
             promptTokenCount: imageEditGemeiniResponse?.response?.usageMetadata?.promptTokenCount,//Number of tokens in the prompt.
             candidatesTokenCount: imageEditGemeiniResponse?.response?.usageMetadata?.candidatesTokenCount,//Total number of tokens across the generated candidates.

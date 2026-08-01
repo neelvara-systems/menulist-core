@@ -1,7 +1,7 @@
 # Answerlattice — Self-Sellable Product Strategy and Task List
 
 > **Status:** Active operating strategy
-> **Last Updated:** 2026-07-11
+> **Last Updated:** 2026-07-31
 > **Owner:** Answerlattice Product
 > **Audience:** Product, Engineering, Website, Sales
 > **Doctrine:** Must follow `doctrine/01-core-doctrine.md`, `02-non-goals-charter.md`, and `03-infrastructure-freeze-v1.md`
@@ -18,9 +18,11 @@ Answerlattice should position itself as:
 
 The durable category is:
 
-> **Support Knowledge Infrastructure for small SaaS teams.**
+> **Support Knowledge Infrastructure for founder-led SaaS and product teams.**
 
 This keeps Answerlattice aligned with the locked doctrine: knowledge is the spine, canonical answers come before generation, and tickets/chat remain fallback signal sources rather than the product center.
+
+Solo technical founders remain the primary first-use ICP. The product must also support a small team or a bounded product/support group inside a larger company without exposing that operating depth to every new founder. The progression is Start, Coordinate, and Govern over one product model; it is not three products, automatic maturity scoring, or a new workspace-mode field.
 
 Website and campaign copy may refer to "vibe-coded" SaaS only as an SEO or campaign wedge. The core brand should use "AI-built SaaS", "AI-native SaaS founders", "solo founders", and "small SaaS teams" so the product stays credible for serious operators and does not sound like a prototype-only tool.
 
@@ -62,17 +64,21 @@ Answerlattice should win this gap:
 
 ## Target Customers
 
-Answerlattice should focus on non-enterprise customers:
+Answerlattice should focus first on founder-led and self-serve customers:
 
 - solo SaaS founders
 - AI-native SaaS founders shipping quickly with AI-assisted development
 - fast-built SaaS products
 - micro-SaaS owners
-- small teams under 20 people
+- small product and support teams
 - dev studios and agencies launching many SaaS products
 - SaaS products before they hire a support team
 
-Answerlattice should not optimize the first product experience for enterprise procurement, large support teams, complex agent routing, or compliance-heavy governance.
+Answerlattice may also serve a bounded product, support, and engineering group inside a company of up to roughly 100 people when the operating need is governed support truth for a product. Company headcount is not the admission rule, and the full company should not need workspace access.
+
+Answerlattice should not optimize the first product experience for enterprise procurement, large support teams, complex agent routing, workforce management, or compliance-heavy governance. It must not claim SAML, SCIM, contractual service levels, public certifications, or contact-center operations that are not verified.
+
+The maintained progressive operating contract is [AnswerLattice Progressive Adoption Operating Guide](./progressive-adoption-operating-guide.md).
 
 ---
 
@@ -222,6 +228,13 @@ Build only when the work increases at least one of:
 - drift detection
 - mutation proposal quality
 - owner trust in support correctness
+
+Do not force deeper controls on the primary ICP:
+
+- a solo founder starts with one product, ten priority questions, a verified widget, safe fallback, and Daily Brief;
+- a small team adds protected roles, qualified notifications, selected Support Board work, release review, and broader Answer Tests;
+- a larger product group adds stricter permissions, critical tests, release assurance, exports, and audit evidence;
+- all three depths use the same entities, canonical answers, Product Surfaces, summaries, and governance transactions.
 
 ---
 

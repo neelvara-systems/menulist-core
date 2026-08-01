@@ -31,6 +31,19 @@ const ENTITY_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_ENTITIES;
 const RELATION_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_ENTITY_RELATIONS;
 const SEARCH_INDEX_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX;
 
+type AnswerlatticeWritableEntityStatus = 'active' | 'beta';
+
+export type AnswerlatticeEntityCreateInput = Omit<AnswerlatticeEntity, 'id' | 'pId' | 'status'>
+    & { status: AnswerlatticeWritableEntityStatus };
+
+export type AnswerlatticeEntityUpdateInput = Omit<
+    Partial<AnswerlatticeEntity>,
+    'pId' | 'sId' | 'status' | 'tId' | 'type'
+> & {
+    id: string;
+    status?: AnswerlatticeWritableEntityStatus;
+};
+
 const getActiveScope = async (expected?: { tId?: unknown; sId?: unknown }) => {
     const session = await getActiveSession();
     const scope = resolveAnswerlatticeSessionScope(session);
@@ -95,8 +108,11 @@ export const getEntityById = async (entityId: string) => apiCallComposer(
     'getEntityById',
 );
 
-export const addEntity = async (data: Omit<AnswerlatticeEntity, 'id'>) => apiCallComposer(
+export const addEntity = async (data: AnswerlatticeEntityCreateInput) => apiCallComposer(
     async () => {
+        if (data.status !== 'active' && data.status !== 'beta') {
+            throw new Error('Invalid entity create status');
+        }
         await getActiveScope({ tId: data.tId, sId: data.sId });
         const result = await runAnswerlatticeOntologyAction({
             action: 'create_entity',
@@ -105,7 +121,7 @@ export const addEntity = async (data: Omit<AnswerlatticeEntity, 'id'>) => apiCal
                 name: data.name,
                 slug: data.slug,
                 description: data.description,
-                status: data.status === 'beta' ? 'beta' : 'active',
+                status: data.status,
                 ...(data.aliases ? { aliases: data.aliases } : {}),
                 currentVersion: data.currentVersion,
             },
@@ -116,10 +132,18 @@ export const addEntity = async (data: Omit<AnswerlatticeEntity, 'id'>) => apiCal
     'addEntity',
 );
 
-export const updateEntity = async (data: Partial<AnswerlatticeEntity> & { id: string }) => apiCallComposer(
+export const updateEntity = async (data: AnswerlatticeEntityUpdateInput) => apiCallComposer(
     async () => {
         const normalized = normalizeAnswerlatticeResolvedEntityId(data.id);
-        if (!normalized || data.type !== undefined || data.tId !== undefined || data.sId !== undefined || data.pId !== undefined) {
+        const untrustedData = data as Partial<AnswerlatticeEntity>;
+        if (
+            !normalized
+            || (data.status !== undefined && data.status !== 'active' && data.status !== 'beta')
+            || untrustedData.type !== undefined
+            || untrustedData.tId !== undefined
+            || untrustedData.sId !== undefined
+            || untrustedData.pId !== undefined
+        ) {
             throw new Error('Invalid entity update');
         }
         await getActiveScope();
@@ -127,7 +151,7 @@ export const updateEntity = async (data: Partial<AnswerlatticeEntity> & { id: st
             name: data.name,
             slug: data.slug,
             description: data.description,
-            status: data.status === 'active' || data.status === 'beta' ? data.status : undefined,
+            status: data.status,
             aliases: data.aliases,
             currentVersion: data.currentVersion,
         }).filter(([, value]) => value !== undefined)) as AnswerlatticeOntologyEntityChanges;
@@ -196,7 +220,7 @@ export const getRelationsForEntity = async (tId: number, sId: number, entityId: 
     'getRelationsForEntity',
 );
 
-export const addEntityRelation = async (data: Omit<AnswerlatticeEntityRelation, 'id'>) => apiCallComposer(
+export const addEntityRelation = async (data: Omit<AnswerlatticeEntityRelation, 'id' | 'pId'>) => apiCallComposer(
     async () => {
         await getActiveScope({ tId: data.tId, sId: data.sId });
         const result = await runAnswerlatticeOntologyAction({
@@ -243,7 +267,7 @@ export const getEntitySearchIndex = async (tId: number, sId: number) => apiCallC
     'getEntitySearchIndex',
 );
 
-export const upsertEntitySearchIndex = async (data: Omit<AnswerlatticeEntitySearchIndex, 'id'> & { id?: string }) => apiCallComposer(
+export const upsertEntitySearchIndex = async (data: Omit<AnswerlatticeEntitySearchIndex, 'id' | 'pId'> & { id?: string }) => apiCallComposer(
     async () => {
         await getActiveScope({ tId: data.tId, sId: data.sId });
         const result = await runAnswerlatticeOntologyAction({

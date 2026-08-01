@@ -19,13 +19,14 @@ import {
     type MultiOutletLogContext,
 } from "@lib/multiOutlet/diagnostics";
 import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
+import { isMultiOutletTenantStoreListEntryInScope } from "@lib/multiOutlet/projectIdBoundary";
+import { normalizePersistedOutletPolicy } from "@lib/multiOutlet/outletPolicyBoundary";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
-import { DEFAULT_OUTLET_POLICY } from "@type/multiOutlet.types";
 import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -127,7 +128,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const storeData = storeSnap.data()!;
-        const permissionError = requireAnyStorePermissionForStoreData(
+        const permissionError = await requireAnyStorePermissionForStoreData(
             request,
             session,
             storeData,
@@ -158,7 +159,7 @@ export const POST = withAuth(async (request, session) => {
             ) {
                 throw new OutletPolicyScopeChangedError();
             }
-            const freshPermissionError = requireAnyStorePermissionForStoreData(
+            const freshPermissionError = await requireAnyStorePermissionForStoreData(
                 request,
                 session,
                 freshStore,
@@ -171,16 +172,20 @@ export const POST = withAuth(async (request, session) => {
             const storesList = Array.isArray(freshTenantSnap.data()?.storesList)
                 ? freshTenantSnap.data()?.storesList
                 : [];
-            const currentStoreSummary = storesList.find((store: any) => (
-                Number(store?.storeId) === Number(storeId)
+            const currentStoreSummary = storesList.find((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })
             ));
-            const hasMasterStore = storesList.some((store: any) => store?.isMaster === true);
+            const hasMasterStore = storesList.some((store: unknown) => (
+                isMultiOutletTenantStoreListEntryInScope(store, { isMaster: true })
+            ));
             const masterListRepairNeeded = freshStore.isMaster === true && !hasMasterStore;
             const masterPromoted = (
                 freshStore.isMaster !== true
                 && !hasMasterStore
                 && storesList.length === 1
-                && Number(storesList[0]?.storeId) === Number(storeId)
+                && isMultiOutletTenantStoreListEntryInScope(storesList[0], {
+                    storeId: Number(storeId),
+                })
             );
             if (freshStore.isMaster !== true && !masterPromoted) {
                 throw new OutletPolicyScopeChangedError();
@@ -196,10 +201,9 @@ export const POST = withAuth(async (request, session) => {
             ) {
                 throw new OutletPolicyScopeChangedError();
             }
-            const mergedPolicy = {
-                ...(freshStore.outletPolicy || DEFAULT_OUTLET_POLICY),
-                ...v.data.policy,
-            };
+            const currentPolicy = normalizePersistedOutletPolicy(freshStore.outletPolicy);
+            if (!currentPolicy) throw new OutletPolicyScopeChangedError();
+            const mergedPolicy = { ...currentPolicy, ...v.data.policy };
             const shouldMarkCurrentStoreAsMasterInTenant = masterPromoted || masterListRepairNeeded;
             tx.set(storeRef, {
                 ...(masterPromoted ? { isMaster: true } : {}),
@@ -209,8 +213,8 @@ export const POST = withAuth(async (request, session) => {
 
             if (shouldMarkCurrentStoreAsMasterInTenant) {
                 tx.update(tenantRef, {
-                    storesList: storesList.map((store: any) => (
-                        Number(store?.storeId) === Number(storeId)
+                    storesList: storesList.map((store: unknown) => (
+                        isMultiOutletTenantStoreListEntryInScope(store, { storeId: Number(storeId) })
                             ? { ...store, isMaster: true }
                             : store
                     )),

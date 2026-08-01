@@ -30,6 +30,12 @@
 | Symlink outside `__docs__` or Markdown source over 4 MiB | The source is not resolved or returned; symbolic links are absent from the document tree. |
 | Desktop reader | Layout remains unchanged. |
 | Direct `/sites/mycodex` or descendant request | Fixed no-store, noindex 404; internal rewrite namespace is not addressable. |
+| Save scroll progress for more than 200 documents | Only the 200 most recently updated positions persist; the next launch retains the valid record. |
+| Start favorite/queue audio, then stop or navigate before fetch completion | Pending reads abort and no old document begins speaking on the replacement page. |
+| Disable/stop keep-awake while a wake-lock request is pending | A late acquired lock is immediately released and does not reactivate the indicator. |
+| Rapid screenshot-copy taps | Only one canvas/clipboard/share flow runs. |
+| Legacy clipboard API returns `false` | The reader shows the copy failure state and never reports success. |
+| Document API returns an oversized source path | The browser projector rejects the response before it enters reader state. |
 
 ## Automated Boundary
 

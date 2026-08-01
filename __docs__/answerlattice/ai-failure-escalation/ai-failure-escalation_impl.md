@@ -1,7 +1,7 @@
 # AI Failure Escalation - Implementation
 
-> **Version:** 2.3.0
-> **Last Updated:** 2026-07-20
+> **Version:** 2.3.1
+> **Last Updated:** 2026-07-29
 > **Status:** Explicit widget path implemented; automatic evaluator flag off
 
 ## Active Widget Runtime
@@ -63,8 +63,12 @@ The automatic evaluator:
 - treats an empty result or safe knowledge-base refusal as an empty outcome;
 - sorts up to 50 admitted used references and retains the actual best five for decision/context;
 - bounds context values, entity IDs, tokens, and candidates before returning ticket metadata;
+- normalizes optional entity-debug telemetry independently, so malformed legacy
+  tokens/candidates are omitted without converting a valid empty/refusal
+  escalation into `NO_ESCALATION`;
 - validates the projected escalation context with a strict bounded schema;
-- returns `NO_ESCALATION` on malformed evidence or evaluator failure;
+- returns `NO_ESCALATION` on malformed required decision evidence or evaluator
+  failure;
 - returns no suggestion for a healthy source-backed RAG answer after an ordinary canonical miss;
 - does not accept `sessionFailureCount` or any other browser-owned repeated-failure authority.
 

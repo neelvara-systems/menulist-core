@@ -22,6 +22,11 @@ export interface ItemPhotoReadinessResult {
     title: string;
 }
 
+export interface ItemPhotoPreparationContext {
+    itemId: string | null;
+    revision: number;
+}
+
 interface SampledImageStats {
     averageLight: number;
     centerContrast: number;
@@ -41,6 +46,15 @@ export const ITEM_PHOTO_CAPTURE_MODES: ItemPhotoCaptureModeConfig[] = [
         label: 'Closer',
     },
 ];
+
+export function isItemPhotoPreparationContextCurrent(
+    started: ItemPhotoPreparationContext,
+    current: ItemPhotoPreparationContext,
+): boolean {
+    return started.itemId !== null
+        && started.itemId === current.itemId
+        && started.revision === current.revision;
+}
 
 function loadDataUrlImage(dataUrl: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {

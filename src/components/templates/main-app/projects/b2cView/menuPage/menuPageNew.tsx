@@ -15,7 +15,11 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import TempStatusBanner from '@atoms/TempStatusBanner';
 import TrustSignals from '@atoms/TrustSignals';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
-import { isCategoryVisibleByTime } from '@hook/useTimedCategories';
+import {
+    formatTimeForDisplay,
+    getNextSlotOccurrence,
+    isCategoryVisibleByTime,
+} from '@hook/useTimedCategories';
 import { AnalyticsContext } from '@template/website/clientWebsite/AnalyticsContext';
 import { getAnalyticsTrackingContext, getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { getResolvedAnalyticsPreferences, isDecisionBlockAnalyticsEnabled } from '@lib/analytics/preferences';
@@ -50,6 +54,10 @@ import { getMenuItemImageAltText } from '@lib/media/altText';
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl } from '@lib/obp/publicLinks';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
 import { formatMenuPrice, parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
+import {
+    resolvePublicMenuCurrencyCode,
+    resolvePublicMenuCurrencySymbol,
+} from '@lib/pricing/publicCurrency';
 import { getActivePublicItemPriceAttributes, getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
 import { getActiveTempStatus } from '@lib/tempStatus/statusBoundary';
 import { slugify } from '@lib/utils/slugify';
@@ -337,8 +345,11 @@ function MenuPageNew({
                 return t('menu.offeringsPlural');
         }
     }, [resolvedBusinessCategory, t]);
-    const currencySymbol = storeDetails?.currencySymbol || '₹';
-    const currencyCode = storeDetails?.currencyCode || 'INR';
+    const currencyCode = resolvePublicMenuCurrencyCode(storeDetails?.currencyCode);
+    const currencySymbol = resolvePublicMenuCurrencySymbol(
+        storeDetails?.currencySymbol,
+        storeDetails?.currencyCode,
+    );
     const primaryLanguage = projectData?.defaultLanguage || storeDetails?.defaultLanguage || projectData?.languages?.[0] || 'en';
     const getMenuText = useCallback(
         (value: unknown, fallback = '') => getLocalizedText(value as any, activeLanguage, primaryLanguage, fallback),
@@ -386,6 +397,7 @@ function MenuPageNew({
     const [selectedItemTrackView, setSelectedItemTrackView] = useState(true);
     const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
     const [linkNotice, setLinkNotice] = useState<string | null>(null);
+    const linkNoticeTimerRef = useRef<number | null>(null);
     const [activeCategory, setActiveCategory] = useState<any>(null);
     const [pendingBrowseCategory, setPendingBrowseCategory] = useState<any>(null);
     const [isCommandLayerPinned, setIsCommandLayerPinned] = useState(false);
@@ -442,11 +454,44 @@ function MenuPageNew({
     const [categoryVisibilityTick, setCategoryVisibilityTick] = useState(0);
 
     useEffect(() => {
-        const interval = window.setInterval(() => {
+        let timeoutId: number | null = null;
+        const tick = () => {
             setCategoryVisibilityTick((tick) => tick + 1);
-        }, 60000);
+        };
+        const scheduleNextTick = () => {
+            const delay = 60000 - (Date.now() % 60000) + 25;
+            timeoutId = window.setTimeout(() => {
+                tick();
+                scheduleNextTick();
+            }, delay);
+        };
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') tick();
+        };
 
-        return () => window.clearInterval(interval);
+        scheduleNextTick();
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            if (timeoutId !== null) window.clearTimeout(timeoutId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
+
+    const showLinkNotice = useCallback((message: string) => {
+        if (linkNoticeTimerRef.current !== null) {
+            window.clearTimeout(linkNoticeTimerRef.current);
+        }
+        setLinkNotice(message);
+        linkNoticeTimerRef.current = window.setTimeout(() => {
+            linkNoticeTimerRef.current = null;
+            setLinkNotice(null);
+        }, 2600);
+    }, []);
+
+    useEffect(() => () => {
+        if (linkNoticeTimerRef.current !== null) {
+            window.clearTimeout(linkNoticeTimerRef.current);
+        }
     }, []);
 
     // P0.2 - State Persistence: Generate unique storage key per menu
@@ -466,8 +511,10 @@ function MenuPageNew({
         setDebouncedSearch('');
     }, []);
 
-    // Get all categories from project files
-    const allCategories = useMemo(() => {
+    const categoryVisibilityNow = useMemo(() => new Date(), [categoryVisibilityTick]);
+
+    // Get active categories that own at least one active item before applying schedules.
+    const catalogCategories = useMemo(() => {
         const cats: any[] = [];
         const seenIds = new Set();
         const activeItemCategoryIds = new Set<string>();
@@ -487,8 +534,7 @@ function MenuPageNew({
                 if (
                     !seenIds.has(cat.id) &&
                     cat.active !== false &&
-                    activeItemCategoryIds.has(cat.id) &&
-                    isCategoryVisibleByTime(cat, storeDetails?.timeZone)
+                    activeItemCategoryIds.has(cat.id)
                 ) {
                     seenIds.add(cat.id);
                     cats.push(cat);
@@ -497,7 +543,20 @@ function MenuPageNew({
         });
 
         return cats;
-    }, [categoryVisibilityTick, projectData?.files, storeDetails?.timeZone]);
+    }, [projectData?.files]);
+    const allCategories = useMemo(
+        () => catalogCategories.filter((category: any) => (
+            isCategoryVisibleByTime(category, storeDetails?.timeZone, categoryVisibilityNow)
+        )),
+        [catalogCategories, categoryVisibilityNow, storeDetails?.timeZone],
+    );
+    const hiddenScheduledCategories = useMemo(
+        () => catalogCategories.filter((category: any) => (
+            category.timeSlots?.length
+            && !isCategoryVisibleByTime(category, storeDetails?.timeZone, categoryVisibilityNow)
+        )),
+        [catalogCategories, categoryVisibilityNow, storeDetails?.timeZone],
+    );
     const categoriesById = useMemo(() => {
         const map = new Map<string, any>();
         allCategories.forEach((category: any) => {
@@ -505,8 +564,67 @@ function MenuPageNew({
         });
         return map;
     }, [allCategories]);
+    const catalogCategoriesById = useMemo(() => {
+        const map = new Map<string, any>();
+        catalogCategories.forEach((category: any) => {
+            if (category?.id) map.set(category.id, category);
+        });
+        return map;
+    }, [catalogCategories]);
+    const getCategoryOpeningMessage = useCallback((category: any): string | null => {
+        const occurrence = getNextSlotOccurrence(
+            category,
+            storeDetails?.timeZone,
+            categoryVisibilityNow,
+        );
+        if (!occurrence) return null;
+
+        const time = formatTimeForDisplay(
+            occurrence.startTime,
+            storeDetails?.timeFormat,
+            activeLanguage,
+        );
+        if (occurrence.dayOffset === 0) {
+            return t('menu.opensAt', { time });
+        }
+        if (occurrence.dayOffset === 1) {
+            return t('menu.opensTomorrowAt', { time });
+        }
+
+        const dayNames = [
+            'Sunday',
+            'Monday',
+            'Tuesday',
+            'Wednesday',
+            'Thursday',
+            'Friday',
+            'Saturday',
+        ] as const;
+        const day = t(`menu.days.${dayNames[occurrence.weekday]}`);
+        return t(
+            occurrence.dayOffset === 7 ? 'menu.opensNextDayAt' : 'menu.opensDayAt',
+            { day, time },
+        );
+    }, [
+        activeLanguage,
+        categoryVisibilityNow,
+        storeDetails?.timeFormat,
+        storeDetails?.timeZone,
+        t,
+    ]);
+    const getUnavailableItemNotice = useCallback((categoryId: string): string => {
+        const catalogCategory = catalogCategoriesById.get(categoryId);
+        if (!catalogCategory) return t('menu.itemNoLongerAvailable');
+        return getCategoryOpeningMessage(catalogCategory) || t('menu.temporarilyUnavailable');
+    }, [catalogCategoriesById, getCategoryOpeningMessage, t]);
     const suggestedCategories = useMemo(() => allCategories.slice(0, 4), [allCategories]);
     const recoveryActions = useMemo(() => {
+        type RecoveryAction = {
+            label: string;
+            href: string;
+            external?: boolean;
+            track: () => Promise<void>;
+        };
         const addressParts = [
             storeDetails?.addressLine,
             storeDetails?.area,
@@ -532,7 +650,13 @@ function MenuPageNew({
         const orderHref = normalizeOBPExternalHttpsUrl(publicPresence?.orderUrl) || undefined;
         const hasWorkingHours = !!storeDetails?.workingHours && Object.keys(storeDetails.workingHours).length > 0;
         const openHoursState: TrackingData['openHoursState'] = hasWorkingHours
-            ? (getStoreStatus(storeDetails.workingHours, storeDetails.timeZone).isOpen ? 'open' : 'closed')
+            ? (getStoreStatus(
+                storeDetails.workingHours,
+                storeDetails.timeZone,
+                undefined,
+                new Date(),
+                storeDetails.specialHours,
+            ).isOpen ? 'open' : 'closed')
             : 'unknown';
         const analyticsIds: Partial<TrackingData> | null = storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId
             ? {
@@ -549,7 +673,7 @@ function MenuPageNew({
             return trackMenuAction(menuAction, analyticsIds);
         };
 
-        return [
+        const actions: Array<RecoveryAction | null> = [
             (publicPresence?.showCall !== false) && callHref ? {
                 label: t('menu.call'),
                 href: callHref,
@@ -579,7 +703,8 @@ function MenuPageNew({
                 external: true,
                 track: () => trackRecoveryAction('order'),
             } : null,
-        ].filter(Boolean);
+        ];
+        return actions.filter((action): action is RecoveryAction => action !== null);
     }, [
         analyticsPreferences.trackMenuViews,
         projectData?.projectId,
@@ -593,6 +718,7 @@ function MenuPageNew({
         storeDetails?.publicPresence,
         storeDetails?.state,
         storeDetails?.storeId,
+        storeDetails?.specialHours,
         storeDetails?.tenantId,
         storeDetails?.timeZone,
         storeDetails?.workingHours,
@@ -1088,17 +1214,20 @@ function MenuPageNew({
     useEffect(() => {
         if (!analyticsPreferences.trackMenuViews) return;
         if (!storeDetails?.tenantId || !storeDetails?.storeId || !projectData?.projectId) return;
+        const tenantId = storeDetails.tenantId;
+        const storeId = storeDetails.storeId;
+        const projectId = projectData.projectId;
 
         const normalizedSearch = debouncedSearch.trim();
         if (normalizedSearch.length < 2) return;
-        if (hasTrackedSearchTermInSession(storeDetails.tenantId, storeDetails.storeId, projectData.projectId, normalizedSearch)) return;
+        if (hasTrackedSearchTermInSession(tenantId, storeId, projectId, normalizedSearch)) return;
 
         const timer = window.setTimeout(() => {
-            markSearchTermTrackedInSession(storeDetails.tenantId, storeDetails.storeId, projectData.projectId, normalizedSearch);
+            markSearchTermTrackedInSession(tenantId, storeId, projectId, normalizedSearch);
             void trackSearch(normalizedSearch, filteredItems.length, {
-                tenantId: storeDetails.tenantId,
-                storeId: String(storeDetails.storeId),
-                projectId: projectData.projectId,
+                tenantId,
+                storeId: String(storeId),
+                projectId,
                 storeTimeZone: storeDetails.timeZone,
                 businessDayEndTime: storeDetails.businessDayEndTime,
                 includeLocation: analyticsPreferences.trackLocation,
@@ -1221,12 +1350,13 @@ function MenuPageNew({
 
     // G14 - Handle item click with history state
     const handleItemClick = useCallback((item: any) => {
-        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
-            document.activeElement.blur();
-        }
         setIsSearchFocused(false);
         const categoryId = typeof item.category === 'string' ? item.category : '';
-        const category = allCategories.find((cat: any) => cat.id === categoryId);
+        const category = categoriesById.get(categoryId);
+        if (!category || item.active === false) {
+            showLinkNotice(getUnavailableItemNotice(categoryId));
+            return;
+        }
         const analyticsCategoryName = getMenuAnalyticsText(category?.name)
             || (typeof item.category === 'object' ? getMenuAnalyticsText(item.category) : undefined);
         const activePriceAttributes = getActivePublicItemPriceAttributes(item);
@@ -1279,7 +1409,7 @@ function MenuPageNew({
             );
             applyClientDocumentMeta(item, `${window.location.origin}${nextItemUrl}`);
         }
-    }, [allCategories, analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, previewMode, projectData?.projectId, showItemPrices, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
+    }, [analyticsPreferences.trackLocation, analyticsPreferences.trackMenuViews, applyClientDocumentMeta, categoriesById, currencyCode, getMenuAnalyticsText, getMenuBasePath, getMenuLanguageSearch, getUnavailableItemNotice, previewMode, projectData?.projectId, showItemPrices, showLinkNotice, storeDetails?.storeId, storeDetails?.tenantId, trackMenuItemTap]);
 
     const handleItemShare = useCallback((item: any, method: 'native_share' | 'copy_link') => {
         if (
@@ -1417,7 +1547,6 @@ function MenuPageNew({
     // G14 - Direct link load: query-param item links are canonical; path links stay backward compatible.
     useEffect(() => {
         if (previewMode) return;
-        if (allItems.length === 0) return; // Wait for items to load
 
         const params = new URLSearchParams(window.location.search);
         const canonicalItemId = params.get('item');
@@ -1441,22 +1570,45 @@ function MenuPageNew({
             });
         }
 
-        if (!item || item.available === false || item.active === false) {
-            setLinkNotice(t('menu.itemNoLongerAvailable'));
-            window.setTimeout(() => setLinkNotice(null), 2600);
+        const categoryId = typeof item?.category === 'string' ? item.category : '';
+        if (
+            !item
+            || item.active === false
+        ) {
+            showLinkNotice(t('menu.itemNoLongerAvailable'));
             if (canonicalItemId || legacyUrlSegment) {
                 window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
             }
+            setSelectedItem(null);
+            setSelectedItemTrackView(true);
+            applyClientDocumentMeta(null);
+            historyPushedRef.current = false;
             return;
         }
 
+        if (!categoriesById.has(categoryId)) {
+            showLinkNotice(getUnavailableItemNotice(categoryId));
+            if (canonicalItemId || legacyUrlSegment) {
+                window.history.replaceState({}, '', `${getMenuBasePath()}${getMenuLanguageSearch()}`);
+            }
+            setSelectedItem(null);
+            setSelectedItemTrackView(true);
+            applyClientDocumentMeta(null);
+            historyPushedRef.current = false;
+            return;
+        }
+
+        // Minute-boundary schedule re-evaluation must not re-scroll or reopen an
+        // already admitted item. A changed item object still settles normally.
+        if (selectedItemRef.current === item) return;
+
         scrollToItemElement(item.id);
-        setSelectedItemTrackView(true);
+        setSelectedItemTrackView(item.available !== false);
         setSelectedItem(item);
         applyClientDocumentMeta(item, buildItemUrl(item));
         historyPushedRef.current = false;
 
-    }, [allItems, applyClientDocumentMeta, buildItemUrl, getMenuBasePath, getMenuLanguageSearch, getMenuText, previewMode, scrollToItemElement, t]);
+    }, [allItems, applyClientDocumentMeta, buildItemUrl, categoriesById, getMenuBasePath, getMenuLanguageSearch, getMenuText, getUnavailableItemNotice, previewMode, scrollToItemElement, showLinkNotice, t]);
 
     const scrollToCategoryElement = useCallback((categoryId: string) => {
         const element = document.getElementById(`cat-${categoryId}`);
@@ -1916,7 +2068,7 @@ function MenuPageNew({
 
     const itemDescStyle: React.CSSProperties = {
         fontFamily: moodConfig.bodyFont,
-        fontSize: isCompactGrid ? 12 : isMobile ? 12 : 13,
+        fontSize: isCompactGrid ? 13 : isMobile ? 14 : 13,
         color: moodConfig.descriptionColor || moodConfig.bodyColor,
         margin: 0,
         marginTop: 3,
@@ -1976,7 +2128,7 @@ function MenuPageNew({
         color: tone === 'warning' ? moodConfig.priceColor : moodConfig.bodyColor,
         background: tone === 'warning' ? `${moodConfig.priceColor}10` : `${moodConfig.accentColor}08`,
         fontFamily: moodConfig.bodyFont,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 500,
         lineHeight: '16px',
         maxWidth: '100%',
@@ -2216,9 +2368,9 @@ function MenuPageNew({
                     />
 
                     {/* Decision Blocks - Recommendation section at top of menu */}
-                    {FEATURE_FLAGS.ENABLE_DECISION_BLOCKS && !isSearchFilteringActive && allItems.length > 0 && (
+                    {FEATURE_FLAGS.ENABLE_DECISION_BLOCKS && !isSearchFilteringActive && visibleItems.length > 0 && (
                         <DecisionBlocks
-                            items={allItems}
+                            items={visibleItems}
                             categories={allCategories}
                             activeLanguage={activeLanguage}
                             primaryLanguage={primaryLanguage}
@@ -2247,7 +2399,7 @@ function MenuPageNew({
                     {/* Filter Chips - Below category tabs, auto-hide when irrelevant */}
                     <MenuFilterChips
                         activeLanguage={activeLanguage}
-                        items={allItems}
+                        items={visibleItems}
                         activeFilter={activeFilter}
                         onFilterChange={setActiveFilter}
                         onFilterIntentChange={handleAttributeFilterIntentChange}
@@ -2605,7 +2757,7 @@ function MenuPageNew({
                             })}
 
                             {/* Empty state */}
-                            {allCategories.length === 0 && (
+                            {allCategories.length === 0 && catalogCategories.length === 0 && (
                                 <div style={{
                                     textAlign: 'center',
                                     padding: 40,
@@ -2613,6 +2765,67 @@ function MenuPageNew({
                                     fontFamily: moodConfig.bodyFont,
                                 }}>
                                     {t('menu.noItemsYet', { items: localizedItemsPlural })}
+                                </div>
+                            )}
+                            {allCategories.length === 0 && hiddenScheduledCategories.length > 0 && (
+                                <div
+                                    aria-label={t('menu.menuCategories')}
+                                    style={{
+                                        padding: '32px 20px 40px',
+                                        color: moodConfig.bodyColor,
+                                        fontFamily: moodConfig.bodyFont,
+                                        textAlign: 'center',
+                                    }}
+                                >
+                                    <strong
+                                        style={{
+                                            color: moodConfig.headingColor,
+                                            display: 'block',
+                                            fontSize: 16,
+                                            lineHeight: 1.4,
+                                            marginBottom: 12,
+                                        }}
+                                    >
+                                        {t('menu.menuCategories')}
+                                    </strong>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 8,
+                                            margin: '0 auto',
+                                            maxWidth: 360,
+                                        }}
+                                    >
+                                        {hiddenScheduledCategories.map((category: any) => {
+                                            const openingMessage = getCategoryOpeningMessage(category)
+                                                || t('menu.temporarilyUnavailable');
+                                            const categoryName = getMenuText(category.name, t('menu.category'));
+                                            return (
+                                                <div
+                                                    key={category.id}
+                                                    style={{
+                                                        alignItems: 'baseline',
+                                                        borderBottom: `1px solid ${moodConfig.itemStyle.borderColor}`,
+                                                        display: 'flex',
+                                                        fontSize: 14,
+                                                        gap: 12,
+                                                        justifyContent: 'space-between',
+                                                        lineHeight: 1.45,
+                                                        padding: '8px 0',
+                                                        textAlign: 'start',
+                                                    }}
+                                                >
+                                                    <span style={{ color: moodConfig.headingColor, fontWeight: 600 }}>
+                                                        {categoryName}
+                                                    </span>
+                                                    <span style={{ flexShrink: 0 }}>
+                                                        {openingMessage}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )}
 
@@ -2746,6 +2959,7 @@ function MenuPageNew({
                                 locationArea={storeDetails?.area || null}
                                 city={storeDetails?.city || null}
                                 workingHours={storeDetails?.workingHours}
+                                specialHours={storeDetails?.specialHours}
                                 hoursLastUpdatedAt={(storeDetails as { hoursLastUpdatedAt?: unknown; modifiedOn?: unknown } | undefined)?.hoursLastUpdatedAt || (storeDetails as { modifiedOn?: unknown } | undefined)?.modifiedOn}
                                 timeZone={storeDetails?.timeZone}
                                 theme={bottomMetaTheme}

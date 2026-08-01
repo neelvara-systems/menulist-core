@@ -94,7 +94,10 @@ export function buildCustomerLinkPreviewReport(input: CustomerLinkPreviewInput):
   const currentCustomerLink = trimToSingleLine(input.currentCustomerLink);
   const hasCurrentCustomerLink = currentCustomerLink.length > 0;
   const validCurrentCustomerLink = isValidHttpUrl(currentCustomerLink, 'customer_link_preview_current_customer_link');
-  const hasIdentityHint = businessName.length >= 2 || cityOrArea.length >= 2;
+  const hasBusinessName = businessName.length >= 2;
+  const hasCityOrArea = cityOrArea.length >= 2;
+  const hasCompleteIdentity = hasBusinessName && hasCityOrArea;
+  const hasPartialIdentity = hasBusinessName || hasCityOrArea;
   const visibleFactCount = [
     input.businessNameVisible,
     input.menuOrServiceVisible,
@@ -115,8 +118,8 @@ export function buildCustomerLinkPreviewReport(input: CustomerLinkPreviewInput):
     ),
     makeCheck(
       'business_identity',
-      input.businessNameVisible && hasIdentityHint ? 'present' : hasIdentityHint ? 'unclear' : 'missing',
-      hasIdentityHint ? 'owner_entered' : 'not_provided',
+      input.businessNameVisible && hasCompleteIdentity ? 'present' : hasPartialIdentity ? 'unclear' : 'missing',
+      hasPartialIdentity ? 'owner_entered' : 'not_provided',
     ),
     makeCheck(
       'menu_or_service_summary',

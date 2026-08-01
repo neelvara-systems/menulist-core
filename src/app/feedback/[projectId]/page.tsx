@@ -294,6 +294,7 @@ export default async function FeedbackPage(props: PageProps) {
                 />
             ) : null}
             <MenuBreadcrumb
+                activeLanguage={storeInfo.contentLanguage}
                 ariaLabel={t('menu.businessInformation')}
                 businessName={storeInfo.storeName || t('common.business')}
                 homeHref={storeInfo.officialPageUrl}

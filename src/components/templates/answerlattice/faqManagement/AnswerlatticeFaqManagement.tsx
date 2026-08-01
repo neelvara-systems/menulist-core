@@ -54,7 +54,11 @@ import { LuArchive, LuHelpCircle, LuPlus, LuRefreshCw, LuSave } from 'react-icon
 
 const { Paragraph, Text, Title } = Typography;
 
-const DEFAULT_FAQ_VALUES = {
+const DEFAULT_FAQ_VALUES: Partial<AnswerlatticeFaq> & {
+    contextKeys: string[];
+    entityIds: string[];
+    tags: string[];
+} = {
     status: ANSWERLATTICE_FAQ_STATUS.DRAFT,
     sortOrder: 100,
     tags: [],

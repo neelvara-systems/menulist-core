@@ -160,6 +160,11 @@ It does not append the raw key. After the iframe listener mounts:
 
 The iframe element and iframe API calls use no-referrer policy. This prevents the maintained runtime from placing the host route or raw legacy key path in downstream referrer headers.
 
+The legacy `/widget/[apiKey]` compatibility page keys the complete client
+component by the exact credential. A client-side parameter change therefore
+destroys conversation, context, visitor, runtime-token, image and mutation
+state before the next credential mounts.
+
 ## Loader Config And Failure Behavior
 
 Merge order is:
@@ -173,6 +178,33 @@ The loader sends bounded install telemetry (`path`, `contextKey`, `feature`, `pa
 Config responses `401`, `403`, and `404` are terminal for that page load. The loader sets a separate runtime-denied state, closes any open panel, clears guidance, and hides the launcher. Calling public `show()` cannot bypass this state.
 
 Transient failures retain script defaults and retry with bounded backoff. Stores with restricted origins still fail closed because iframe API calls require a valid host authorization.
+
+The loader commits its page-global singleton marker only after the current
+script and exact `al_*` key pass admission. An invalid first script therefore
+cannot prevent a later corrected installation from initializing. Numeric
+script attributes require exact safe-integer syntax before clamping; partially
+numeric strings do not become configuration.
+
+The public `page()` alias is receiver-independent. Product and visitor context
+getters and emitted `context`, `identify`, and `open` payloads return copies
+rather than the loader's retained references, including a copied
+`entityHints` array. Host callbacks therefore cannot mutate already-admitted
+internal context before later iframe or predictive use.
+
+Guided-step messages already require the exact iframe source and Answerlattice
+origin. Their `stepOrder` additionally requires an exact integer number from 1
+through 12; string or other coercible forms are rejected.
+
+Search, feedback and support-request lifecycles use synchronous browser locks
+before their POSTs. Feedback/support completions are owned by the conversation
+generation and cannot repopulate a cleared or unmounted chat. Screenshot reads
+are generation-owned and abort on replacement, removal, clear or unmount, so
+an obsolete file cannot replace the latest visible selection or enter a later
+search request.
+
+The admitted host context, visitor, evidence-link and search-request shapes
+have exact local TypeScript contracts matching their runtime projectors; the
+client does not retain broad any-valued records at those boundaries.
 
 ## Origin Validation
 

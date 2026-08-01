@@ -9,12 +9,16 @@ export type PhoneNumberInput = {
 
 const DEFAULT_PHONE_COUNTRY_CODE = 'IN';
 
+function getPhoneScalarText(value: unknown): string {
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+}
+
 export function normalizePhoneDigits(value?: string | number | null): string {
-  return String(value || '').replace(/[^0-9]/g, '');
+  return getPhoneScalarText(value).replace(/[^0-9]/g, '');
 }
 
 function getPhoneCountryInfo(countryCode?: string | null) {
-  const code = String(countryCode || '').trim().toUpperCase();
+  const code = getPhoneScalarText(countryCode).trim().toUpperCase();
   return countryData.find((country) => country.code === code)
     || countryData.find((country) => country.code === DEFAULT_PHONE_COUNTRY_CODE)
     || countryData[0];
@@ -27,7 +31,7 @@ function getPhoneCountryInfoByDialCode(dialCode?: string | null) {
 }
 
 function getDialCodeForCountry(countryCode?: string | null, fallbackDialCode?: string | null): string {
-  const code = String(countryCode || '').trim().toUpperCase();
+  const code = getPhoneScalarText(countryCode).trim().toUpperCase();
   const country = code ? countryData.find((entry) => entry.code === code) : null;
   if (country?.dialCode) return country.dialCode;
 
@@ -37,7 +41,7 @@ function getDialCodeForCountry(countryCode?: string | null, fallbackDialCode?: s
 }
 
 function inferPhoneCountryFromInternationalNumber(value?: string | null) {
-  const raw = String(value || '').trim();
+  const raw = getPhoneScalarText(value).trim();
   if (!raw.startsWith('+') && !raw.startsWith('00')) return null;
 
   const digits = raw.startsWith('00')
@@ -53,17 +57,27 @@ function inferPhoneCountryFromInternationalNumber(value?: string | null) {
     }) || null;
 }
 
+function looksLikeUnprefixedInternationalNumber(digits: string, dialDigits: string): boolean {
+  return Boolean(dialDigits)
+    && digits.startsWith(dialDigits)
+    && digits.length > 10
+    && digits.length <= 15;
+}
+
 export function buildWhatsAppPhoneParam(params: PhoneNumberInput): string {
-  const raw = String(params.phoneNumber || params.phone || '').trim();
+  const raw = getPhoneScalarText(params.phoneNumber || params.phone).trim();
   const digits = normalizePhoneDigits(raw);
   if (!digits) return '';
-  if (raw.startsWith('+')) return digits;
-  if (digits.startsWith('00') && digits.length > 12) return digits.slice(2);
+  if (raw.startsWith('+')) return digits.length <= 15 ? digits : '';
+  if (digits.startsWith('00') && digits.length > 12) {
+    const withoutPrefix = digits.slice(2);
+    return withoutPrefix.length <= 15 ? withoutPrefix : '';
+  }
 
   const inferredCountry = inferPhoneCountryFromInternationalNumber(raw);
   const explicitInternational = raw.startsWith('+') || raw.startsWith('00');
   const countryFromDialCode = getPhoneCountryInfoByDialCode(params.dialCode);
-  const countryCode = String(
+  const countryCode = getPhoneScalarText(
     explicitInternational && inferredCountry
       ? inferredCountry.code
       : params.countryCode || inferredCountry?.code || countryFromDialCode?.code || DEFAULT_PHONE_COUNTRY_CODE,
@@ -72,6 +86,9 @@ export function buildWhatsAppPhoneParam(params: PhoneNumberInput): string {
     countryCode,
     explicitInternational && inferredCountry ? inferredCountry.dialCode : params.dialCode || inferredCountry?.dialCode,
   ));
-  if (!dialDigits || digits.startsWith(dialDigits)) return digits;
-  return `${dialDigits}${digits.replace(/^0+/, '')}`;
+  if (!dialDigits) return digits.length <= 15 ? digits : '';
+  const internationalDigits = looksLikeUnprefixedInternationalNumber(digits, dialDigits)
+    ? digits
+    : `${dialDigits}${digits.replace(/^0+/, '')}`;
+  return internationalDigits.length <= 15 ? internationalDigits : '';
 }

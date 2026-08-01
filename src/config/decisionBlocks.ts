@@ -292,9 +292,8 @@ export function formatDuration(duration: number, businessType?: string, business
  * 2. Stored in Firestore as DecisionBlockEntry.reason
  * 3. Translated at runtime by client using next-intl
  * 
- * IMPORTANT: Keep in sync with locale files:
- * - public/locales/menulist.ai/en.json
- * - public/locales/menulist.ai/hi.json
+ * IMPORTANT: Keep in sync with the typed translation registry:
+ * - src/data/decisionBlockTranslations.ts
  */
 export const DECISION_REASON_KEYS = {
     // ⭐ Popular Block Reasons

@@ -13,6 +13,7 @@ import { hasAnyNonEmptyDescription } from '@lib/menu/descriptionQuality';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
 import { downloadSharableItemCard, shareSharableItemCard, type SharableItemCardInput } from '@lib/menu/sharableItemCard';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
+import { buildItemImageEditorTarget } from '@lib/media/itemImageAssociationBoundary';
 import { getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
 import { MENU_PRICE_TEXT_MAX_LENGTH, normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -167,7 +168,7 @@ interface EditItemModalProps {
     onClose: any;
     selectedLanguages: string[];
     projectData: Project;
-    onImageUpload: (selectedItem: ItemForDropdown, imagesToUpload: UserUploadedFileType[]) => void;
+    onImageUpload: (selectedItem: ItemForDropdown, imagesToUpload: UserUploadedFileType[]) => Promise<void>;
     openAddImageModal: (itemData: ExtractedDataItem) => void;
     onProjectDataUpdate?: (updatedProject: Project) => Promise<void> | void;
     setUpdatedFileData: any;
@@ -236,7 +237,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     useEffect(() => {
         if (activeProject && itemData) {
             // Find the item in the latest fileData from activeProject to ensure consistency
-            const updatedItem = fileData.extractedData.data.items.find(item => item.id === itemData.id);
+            const updatedItem = fileData.extractedData?.data?.items?.find(item => item.id === itemData.id);
             if (updatedItem) {
                 setItemData(updatedItem);
             }
@@ -349,18 +350,15 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         };
     }, [hasMultipleLanguages, hasSourceDescription]);
 
-    const onUploadGeneratedImage = useCallback((imagesToUpload: UserUploadedFileType[]) => {
-        if (!itemData) return;
-        const itemForDropdown: ItemForDropdown = {
-            ...itemData,
-            itemName: itemData.name?.[selectedLanguages[0]] || itemData.id,
-            categoryName: "",
-            fileId: itemData.id,
-            descriptionLine: itemData.description?.[selectedLanguages[0]] || '',
-            attributesList: itemData.attributes?.map(attr => attr.name?.[selectedLanguages[0]] || attr.id || '') || []
-        }
-        onImageUpload(itemForDropdown, imagesToUpload);
-    }, [itemData, onImageUpload, selectedLanguages]); // Dependencies for useCallback
+    const onUploadGeneratedImage = useCallback(async (imagesToUpload: UserUploadedFileType[]) => {
+        if (!itemData) throw new Error('menu_editor_image_edit_item_missing');
+        const itemForDropdown = buildItemImageEditorTarget(projectData, {
+            fileId: fileData.uid,
+            id: itemData.id,
+        });
+        if (!itemForDropdown) throw new Error('menu_editor_image_edit_target_missing');
+        await onImageUpload(itemForDropdown, imagesToUpload);
+    }, [fileData.uid, itemData, onImageUpload, projectData]);
 
     // Memoize onChangeValue using useCallback
     const onChangeValue = useCallback((lang: string, id: string, newValue: any, attributeId?: string) => {
@@ -416,13 +414,14 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
 
     const handleRetryTranslation = useCallback(async (language: string) => {
         const sourceLangCode = getCanonicalProjectSourceLanguage(projectData.languages);
-        if (isInheritedItem || !canGenerateDescriptions || language === sourceLangCode) return;
+        if (isInheritedItem || !canGenerateDescriptions || language === sourceLangCode || !itemData) return;
         dispatch(startLoader("retrying translations"))
         try {
             const sourceLang = GlobalLanguagesList.find(lang => lang.code === sourceLangCode);
             const targetLang = GlobalLanguagesList.find(lang => lang.code === language);
             if (!sourceLang || !targetLang) throw new Error('Translation language is unavailable.');
             const { updatedItem, message: resultMessage, messageType } = await translateItem(projectData, fileData, targetLang, sourceLang, AI_ACTIONS_TYPES.ITEM_TRANSLATION, itemData);
+            if (!updatedItem) throw new Error('Translated item is unavailable.');
             setItemData(updatedItem);
             if (messageType && resultMessage) {
                 antdMessage[messageType as 'success' | 'error' | 'warning'](resultMessage);
@@ -444,10 +443,12 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     }, [canGenerateDescriptions, dispatch, fileData, isInheritedItem, itemData, projectData, setItemData]);
 
     const handleAddAttribute = useCallback(() => {
+        if (!itemData) return;
         const itemCopy = removeObjRef(itemData);
+        if (!itemCopy) return;
         let sequenceId = 1;
 
-        if (!itemCopy.attributes.length) {
+        if (!itemCopy.attributes?.length) {
             itemCopy.attributes = [];
         } else {
             sequenceId = (Number(itemCopy.attributes[itemCopy.attributes.length - 1]?.id?.split(`${itemData.id}-a`)[1]) + 1) || 1;
@@ -464,7 +465,9 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     }, [itemData, fileData.uid, selectedLanguages, setItemData]);
 
     const handleDeleteAttribute = useCallback((attributeId: string) => {
+        if (!itemData) return;
         const itemCopy = removeObjRef(itemData);
+        if (!itemCopy) return;
         itemCopy.attributes = itemCopy.attributes?.filter(attr => attr.id !== attributeId);
         setItemData(itemCopy);
     }, [itemData, setItemData]);
@@ -528,7 +531,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             antdMessage.info('Description changes are not enabled for this store.');
             return;
         }
-        if (!itemData) return;
+        if (!itemData || !storeDetails || !projectData.projectId) return;
 
         dispatch(startLoader("generating_content"));
         const sourceLanguage = GlobalLanguagesList.find(
@@ -638,7 +641,8 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         }
         const normalizedAttributes: ExtractedDataAttribute[] = [];
         for (let index = 0; index < (itemData.attributes || []).length; index += 1) {
-            const attribute = itemData.attributes[index];
+            const attribute = (itemData.attributes || [])[index];
+            if (!attribute) continue;
             const normalizedPrice = normalizeOptionalMenuPrice(attribute.price);
             if (!normalizedPrice.success) {
                 antdMessage.error(`Option ${index + 1}: ${normalizedPrice.error || 'Invalid price format.'}`);
@@ -669,17 +673,21 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         }
 
         const fileCopy = removeObjRef(fileData);
+        if (!fileCopy?.extractedData?.data?.items) {
+            antdMessage.error('Menu file data is unavailable.');
+            return;
+        }
 
         // Translation drift protection: if canonical English source text changed,
         // clear stale translations so they get retranslated instead of showing wrong data
         let finalItem: ExtractedDataItem = normalizedItemData;
-        if (modalData.status === 'edit' && modalData.item && projectData.languages?.length > 1) {
+        if (modalData.status === 'edit' && modalData.item && (projectData.languages?.length || 0) > 1) {
             const primaryLang = getCanonicalProjectSourceLanguage(projectData.languages);
             finalItem = clearStaleTranslations(
                 modalData.item,
                 normalizedItemData,
                 primaryLang,
-                projectData.languages,
+                projectData.languages || [],
                 { preserveGeneratedDescriptionTranslations: itemData.descriptionSource === 'ai' },
             );
         }
@@ -715,12 +723,12 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             )
         })) : [];
 
-        items.push({
+        if (itemData) items.push({
             key: 'Images',
             label: 'Images',
             children: (
                 <Flex vertical gap={16}>
-                    <UploadedImagesList disabled={isFieldLocked('images')} item={itemData} onProjectDataUpdate={onProjectDataUpdate} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
+                    <UploadedImagesList disabled={isFieldLocked('images')} fileId={fileData.uid} item={itemData} onProjectDataUpdate={onProjectDataUpdate} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
                     <Button disabled={isFieldLocked('images')} type="dashed" icon={<LuPlus />} onClick={() => openAddImageModal(itemData)} style={{ width: '100%' }}>Add Image</Button>
                 </Flex>
             )
@@ -922,7 +930,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                             min={-20}
                                             max={20}
                                             value={itemData?.ownerBoost || 0}
-                                            onChange={(value) => setItemData(prev => ({ ...prev!, ownerBoost: value }))}
+                                            onChange={(value: number) => setItemData(prev => ({ ...prev!, ownerBoost: value }))}
                                             tooltip={{ formatter: (val) => val === 0 ? 'Neutral' : val! > 0 ? `+${val}` : `${val}` }}
                                             marks={{ '-20': '-20', '0': '0', '20': '+20' }}
                                             style={{ flex: 1, margin: '0 8px' }}
@@ -1048,7 +1056,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                         />
                     )}
 
-                    {projectData.languages.length > 1 ? (
+                    {(projectData.languages?.length || 0) > 1 ? (
                         <Collapse
                             size='small'
                             items={collapseItems}
@@ -1076,7 +1084,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                 />
                                 <Flex vertical gap={16}>
                                     <Text strong>Images</Text>
-                                    <UploadedImagesList disabled={isFieldLocked('images')} item={itemData} onProjectDataUpdate={onProjectDataUpdate} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
+                                    <UploadedImagesList disabled={isFieldLocked('images')} fileId={fileData.uid} item={itemData} onProjectDataUpdate={onProjectDataUpdate} projectData={projectData} onUploadGeneratedImage={onUploadGeneratedImage} />
                                     <Button disabled={isFieldLocked('images')} type="dashed" icon={<LuPlus />} onClick={() => openAddImageModal(itemData)} style={{ width: '100%' }}>Add Image</Button>
                                 </Flex>
                             </Flex>

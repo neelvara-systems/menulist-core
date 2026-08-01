@@ -13,6 +13,7 @@
 
 import { z } from 'zod';
 import { getBoundedSecurityStringContext, logSecurityDiagnostic } from './securityDiagnostics';
+import { isBlockedServerNetworkTarget } from './serverNetworkTarget';
 
 /**
  * Sanitize string input - remove dangerous characters
@@ -48,16 +49,19 @@ export const idSchema = z.string()
  * Validate tenant/store IDs (numeric)
  */
 export const numericIdSchema = z.union([
-    z.string().regex(/^\d+$/).transform(Number),
+    z.string().regex(/^[1-9]\d*$/).transform(Number),
     z.number()
-]).refine(val => val > 0, 'ID must be positive');
+]).refine(
+    val => Number.isSafeInteger(val) && val > 0,
+    'ID must be a positive safe integer',
+);
 
 /**
  * Sanitize object for Firestore
  * Prevents NoSQL injection via object properties
  */
-export function sanitizeFirestoreQuery(query: Record<string, any>): Record<string, any> {
-    const sanitized: Record<string, any> = {};
+export function sanitizeFirestoreQuery(query: Record<string, unknown>): Record<string, unknown> {
+    const sanitized: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
 
     for (const [key, value] of Object.entries(query)) {
         // Only allow alphanumeric keys
@@ -71,7 +75,7 @@ export function sanitizeFirestoreQuery(query: Record<string, any>): Record<strin
         // Sanitize value based on type
         if (typeof value === 'string') {
             sanitized[key] = sanitizeString(value);
-        } else if (typeof value === 'number') {
+        } else if (typeof value === 'number' && Number.isFinite(value)) {
             sanitized[key] = value;
         } else if (typeof value === 'boolean') {
             sanitized[key] = value;
@@ -89,7 +93,7 @@ export function sanitizeFirestoreQuery(query: Record<string, any>): Record<strin
  */
 export const fileUploadSchema = z.object({
     name: z.string().max(255).regex(/^[a-zA-Z0-9._-]+$/, 'Invalid filename'),
-    size: z.number().max(10 * 1024 * 1024), // 10MB max
+    size: z.number().int().positive().max(10 * 1024 * 1024), // 10MB max
     type: z.enum([
         'image/jpeg',
         'image/png',
@@ -99,7 +103,7 @@ export const fileUploadSchema = z.object({
         'text/plain',
         'application/json'
     ])
-});
+}).strict();
 
 /**
  * Prevent path traversal attacks
@@ -123,18 +127,22 @@ export function validateURL(url: string, allowedDomains?: string[]): boolean {
 
         // Only allow HTTPS
         if (parsed.protocol !== 'https:') return false;
+        if (parsed.username || parsed.password) return false;
 
-        // Block private IPs
-        const hostname = parsed.hostname;
-        if (hostname === 'localhost') return false;
-        if (hostname.startsWith('127.')) return false;
-        if (hostname.startsWith('192.168.')) return false;
-        if (hostname.startsWith('10.')) return false;
-        if (hostname.startsWith('172.')) return false;
+        // This synchronous helper can reject unsafe literal/special hostnames.
+        // Server-side fetches must additionally resolve and pin DNS through
+        // validateServerNetworkTargetUrl.
+        const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
+        if (isBlockedServerNetworkTarget(hostname)) return false;
 
         // Check allowed domains if specified
         if (allowedDomains && allowedDomains.length > 0) {
-            return allowedDomains.some(domain => hostname.endsWith(domain));
+            return allowedDomains.some((domain) => {
+                if (typeof domain !== 'string') return false;
+                const normalizedDomain = domain.trim().toLowerCase().replace(/^\./, '').replace(/\.$/, '');
+                if (!normalizedDomain || isBlockedServerNetworkTarget(normalizedDomain)) return false;
+                return hostname === normalizedDomain || hostname.endsWith(`.${normalizedDomain}`);
+            });
         }
 
         return true;
@@ -303,7 +311,7 @@ export function validateDocumentId(docId: string): { valid: true; id: string } |
     }
 
     // Firestore doc ID constraints
-    if (docId.length > 1500) {
+    if (new TextEncoder().encode(docId).byteLength > 1500) {
         return { valid: false, error: 'Document ID too long (max 1500 bytes)' };
     }
 

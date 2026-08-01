@@ -392,6 +392,18 @@ function requireOptionalBoundedString(
     value: unknown,
     field: string,
     maximumLength: number,
+    allowNull: true,
+): string | null | undefined;
+function requireOptionalBoundedString(
+    value: unknown,
+    field: string,
+    maximumLength: number,
+    allowNull?: false,
+): string | undefined;
+function requireOptionalBoundedString(
+    value: unknown,
+    field: string,
+    maximumLength: number,
     allowNull = false,
 ): string | null | undefined {
     if (value === undefined) return undefined;

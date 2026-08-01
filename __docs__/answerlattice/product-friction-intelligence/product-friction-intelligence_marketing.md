@@ -9,6 +9,11 @@ An acceptable supporting phrase is:
 > See which product concepts generated the most mapped support evidence and
 > inspect the evidence mix before deciding what to change.
 
+The owner product may say:
+
+> Prepare a factual evidence brief for product, engineering, or knowledge
+> review without turning an advisory pattern into an automatic diagnosis.
+
 ## Proof Required Before Numeric Claims
 
 - verified support-signal instrumentation;
@@ -26,6 +31,7 @@ An acceptable supporting phrase is:
 - automatically fixes the product or approved knowledge;
 - replaces product analytics, support review, or customer research;
 - AI independently determines the correct action.
+- automatically creates, assigns, or synchronizes engineering work;
 - identifies the exact root cause of product friction;
 - proves a release caused customer confusion;
 - classifies every issue as a bug, UX problem, policy issue, or knowledge gap;

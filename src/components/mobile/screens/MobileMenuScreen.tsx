@@ -8,6 +8,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import GlobalLanguagesList from '@data/languages';
 import { applyStoreBusinessAttributeDefaults, assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { appendImageBatchProjectSelections, assertProjectUpdateSucceeded, updateProjectWithoutLoader, uploadFile } from '@database/projects';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
@@ -28,9 +29,14 @@ import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
 import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getDataUrlMimeType } from '@lib/media/imageProfiles';
+import {
+    getItemImagesSnapshot,
+    replaceItemImagesInProject,
+} from '@lib/media/itemImageAssociationBoundary';
 import { isDataUrl } from '@lib/media/mediaStorage';
 import { toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
+import { getProjectOwnerScopeFromProjectId } from '@lib/menu/projectOwnerScope';
 import { getMultiOutletProjectLogContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
 import { resolveProjectForRender } from '@lib/multiOutlet';
 import { stripResolvedOutletProjectForSave } from '@lib/multiOutlet/outletProjectPersistence';
@@ -81,6 +87,7 @@ import {
 } from '../utils/mobileMenuDiagnostics';
 import type { MobileCategoryReorderItem } from '../sheets/CategoryManagerSheet';
 import type { MobileMenuItemType as MenuItemType } from '../types';
+import type { UserUploadedFileType } from '@type/common';
 import useViewportInfo from '../../../hooks/useViewportInfo';
 
 const ItemEditSheet = dynamic(() => import('../sheets/ItemEditSheet'), { ssr: false });
@@ -98,6 +105,11 @@ const AIDefaultsSheet = dynamic(() => import('../sheets/AIDefaultsSheet'), { ssr
 const ImageUploadModal = dynamic(() => import('../../templates/main-app/projects/editorView/ImageUploadModal'), { ssr: false });
 
 type CategoryOption = { id: string; name: string; icon?: string };
+type MobileItemImageUploadTarget = {
+    fileId: string;
+    itemId: string;
+    projectId: string;
+};
 type CategorySummary = {
     active: boolean;
     id: string;
@@ -299,34 +311,43 @@ function hasMobileMenuPrice(item: MenuItemType): boolean {
     });
 }
 
-function findExtractedItemById(projectData: Project | null | undefined, itemId: string): ExtractedDataItem | null {
+function findExtractedItemById(
+    projectData: Project | null | undefined,
+    itemId: string,
+    fileId?: string,
+): (ExtractedDataItem & { fileId: string }) | null {
     if (!projectData?.files?.length) return null;
 
+    const matches: Array<ExtractedDataItem & { fileId: string }> = [];
     for (const file of projectData.files) {
+        if (fileId && file.uid !== fileId) continue;
         const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
-        const matchedItem = items.find((item) => item.id === itemId);
-        if (matchedItem) {
-            return matchedItem;
+        for (const item of items) {
+            if (item.id === itemId && typeof file.uid === 'string' && file.uid) {
+                matches.push({ ...item, fileId: file.uid });
+            }
         }
     }
 
-    return null;
+    return matches.length === 1 ? matches[0] : null;
 }
 
-function findFileContainingItem(projectData: Project | null | undefined, itemId: string): Project['files'][number] | null {
+function findFileContainingItem(
+    projectData: Project | null | undefined,
+    itemId: string,
+    fileId?: string,
+): NonNullable<Project['files']>[number] | null {
     if (!projectData?.files?.length) return null;
 
-    for (const file of projectData.files) {
+    const matches = projectData.files.filter((file) => {
+        if (fileId && file.uid !== fileId) return false;
         const items = toArray<ExtractedDataItem>(file.extractedData?.data?.items);
-        if (items.some((item) => item.id === itemId)) {
-            return file;
-        }
-    }
-
-    return null;
+        return items.some((item) => item.id === itemId);
+    });
+    return matches.length === 1 ? matches[0] : null;
 }
 
-function findFileForCategory(projectData: Project | null | undefined, categoryId?: string): Project['files'][number] | null {
+function findFileForCategory(projectData: Project | null | undefined, categoryId?: string): NonNullable<Project['files']>[number] | null {
     if (!projectData?.files?.length) return null;
     if (!categoryId) return projectData.files[0] || null;
 
@@ -344,7 +365,7 @@ function ensurePrimaryMenuFile(
     projectData: Project | null | undefined,
     tenantId?: string | number,
     storeId?: string | number,
-): Project['files'][number] | null {
+): NonNullable<Project['files']>[number] | null {
     if (!projectData) return null;
     if (!Array.isArray(projectData.files)) {
         projectData.files = [];
@@ -590,6 +611,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     const isPersistingRef = useRef(false);
     const persistenceIdleWaitersRef = useRef<Array<() => void>>([]);
     const menuUpdateGenerationRef = useRef(0);
+    const itemImageUploadRevisionRef = useRef<Map<string, number>>(new Map());
     const projectImageAutoGenerationAttemptRef = useRef<Set<string>>(new Set());
     const [itemInheritanceStates, setItemInheritanceStates] = useState<Record<string, InheritanceState>>({});
     const [categoryInheritanceStates, setCategoryInheritanceStates] = useState<Record<string, InheritanceState>>({});
@@ -755,6 +777,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         projectSummary?: any;
     }) => {
         if (!projectId) return;
+        const operationScope = getProjectOwnerScopeFromProjectId(projectId);
+        if (!operationScope) return;
 
         const summaryFromCache = projectSummary
             || projectsList.find((project: any) => project.projectId === projectId)
@@ -774,6 +798,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     ...(summaryFromCache || {}),
                     projectId,
                 },
+                expectedScope: operationScope,
                 storeName: storeContextName,
                 summaryData: summaryFromCache,
             });
@@ -859,7 +884,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
         setEditingItem((current) => {
             if (!current?.id) return current;
-            const nextExtractedItem = findExtractedItemById(savedProject, current.id);
+            const nextExtractedItem = findExtractedItemById(savedProject, current.id, current.fileId);
             if (!nextExtractedItem) return current;
 
             return {
@@ -1203,52 +1228,105 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         setActiveBatchImageJob,
     });
 
-    const updateItemImageFromUpload = useCallback((itemId: string, imageUrl: string, imageName: string) => {
+    const updateItemImageFromUpload = useCallback((
+        target: MobileItemImageUploadTarget,
+        imageUrl: string,
+        imageName: string,
+        expectedCurrentImagesSnapshot: string,
+    ): boolean => {
         const sourceProject = menuDataRef.current;
-        if (!sourceProject?.files || !imageUrl) return;
-
-        const updated = removeObjRef(sourceProject);
-        let imageUpdated = false;
-
-        updated.files?.forEach((file: any) => {
-            file.extractedData?.data?.items?.forEach((menuItem: any) => {
-                if (menuItem.id === itemId) {
-                    menuItem.images = [{ url: imageUrl, name: imageName }];
-                    imageUpdated = true;
-                }
-            });
-        });
-
-        if (imageUpdated) {
-            applyLocalMenuUpdate(updated);
+        if (
+            !sourceProject?.files
+            || sourceProject.projectId !== target.projectId
+            || !imageUrl
+        ) {
+            return false;
         }
+
+        const updated = replaceItemImagesInProject(
+            sourceProject,
+            { fileId: target.fileId, id: target.itemId },
+            [{ url: imageUrl, name: imageName }],
+            expectedCurrentImagesSnapshot,
+        );
+        if (!updated) return false;
+
+        applyLocalMenuUpdate(updated);
+        return true;
     }, [applyLocalMenuUpdate]);
 
-    const uploadItemImageInBackground = useCallback((itemId: string, imageData: string, imageName: string, uid: string) => {
+    const uploadItemImageInBackground = useCallback((
+        target: MobileItemImageUploadTarget,
+        imageData: string,
+        imageName: string,
+        uid: string,
+    ) => {
         if (!isDataUrl(imageData)) return;
+        const sourceProject = menuDataRef.current;
+        if (sourceProject?.projectId !== target.projectId) return;
+        const expectedCurrentImagesSnapshot = getItemImagesSnapshot(
+            sourceProject,
+            { fileId: target.fileId, id: target.itemId },
+        );
+        if (expectedCurrentImagesSnapshot === null) {
+            logMobileMenuFailure('mobile_menu_item_image_upload_target_invalid', new Error('Item image target is missing or ambiguous'), {
+                ...getMobileMenuProjectLogContext(target.projectId, sourceProject.masterProjectId),
+                ...getBoundedMobileMenuStringContext('fileId', target.fileId),
+                ...getBoundedMobileMenuStringContext('itemId', target.itemId),
+            });
+            Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+            return;
+        }
+
         const mimeType = getDataUrlMimeType(imageData, 'image/webp');
         const preparedName = toPreparedUploadName(imageName, mimeType, imageName);
-
-        void uploadFile({
+        const uploadKey = JSON.stringify([target.projectId, target.fileId, target.itemId]);
+        const revision = (itemImageUploadRevisionRef.current.get(uploadKey) || 0) + 1;
+        itemImageUploadRevisionRef.current.set(uploadKey, revision);
+        const uploadData: UserUploadedFileType = {
             uid,
             url: imageData,
             type: mimeType,
             name: preparedName,
-        } as any, 'itemImages')
-            .then((uploadedImage) => {
-                if (uploadedImage) {
-                    updateItemImageFromUpload(itemId, uploadedImage, preparedName);
+        };
+
+        void uploadFile(uploadData, 'itemImages')
+            .then(async (uploadedImage) => {
+                if (!uploadedImage) return;
+                const isCurrentRevision = itemImageUploadRevisionRef.current.get(uploadKey) === revision;
+                const didAttach = isCurrentRevision && updateItemImageFromUpload(
+                    target,
+                    uploadedImage,
+                    preparedName,
+                    expectedCurrentImagesSnapshot,
+                );
+                if (!didAttach) {
+                    const cleanupResult = await deleteFileByUrl(uploadedImage);
+                    if (!cleanupResult.success) {
+                        logMobileMenuFailure('mobile_menu_item_image_stale_upload_cleanup_failed', cleanupResult.error, {
+                            ...getMobileMenuProjectLogContext(target.projectId, sourceProject.masterProjectId),
+                            ...getBoundedMobileMenuStringContext('fileId', target.fileId),
+                            ...getBoundedMobileMenuStringContext('itemId', target.itemId),
+                            superseded: !isCurrentRevision,
+                        });
+                    }
                 }
             })
             .catch((error) => {
                 logMobileMenuFailure('mobile_menu_item_image_upload_failed', error, {
-                    ...getMobileMenuProjectLogContext(menuDataRef.current?.projectId, menuDataRef.current?.masterProjectId),
-                    ...getBoundedMobileMenuStringContext('itemId', itemId),
+                    ...getMobileMenuProjectLogContext(target.projectId, sourceProject.masterProjectId),
+                    ...getBoundedMobileMenuStringContext('fileId', target.fileId),
+                    ...getBoundedMobileMenuStringContext('itemId', target.itemId),
                     ...getBoundedMobileMenuStringContext('uploadUid', uid),
                     imageDataLength: imageData.length,
                     mimeTypeLength: mimeType.length,
                 });
                 Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+            })
+            .finally(() => {
+                if (itemImageUploadRevisionRef.current.get(uploadKey) === revision) {
+                    itemImageUploadRevisionRef.current.delete(uploadKey);
+                }
             });
     }, [t, updateItemImageFromUpload]);
 
@@ -1257,8 +1335,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         source = '',
         preferredInitialTab: 'upload' | 'generate' = 'upload',
         initialBatchItemIds: string[] = [],
+        itemFileId?: string,
     ) => {
-        const matchedItem = itemId ? findExtractedItemById(menuDataRef.current, itemId) : null;
+        const matchedItem = itemId
+            ? findExtractedItemById(menuDataRef.current, itemId, itemFileId)
+            : null;
         setImageModalItem(matchedItem);
         setImageModalInitialTab(preferredInitialTab);
         setImageModalInitialBatchItemIds(initialBatchItemIds);
@@ -1268,7 +1349,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
     const handleModalImageUpload = useCallback(async (
         selectedItem: ItemForDropdown,
-        imagesToUpload: any[],
+        imagesToUpload: UserUploadedFileType[] = [],
     ) => {
         const sourceProject = menuDataRef.current as Project | null;
         if (!sourceProject?.projectId) {
@@ -1560,14 +1641,16 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
         if (jobIsPreviewReady && !showReviewSheet && activeJob?.result && menuData?.projectId) {
             void (async () => {
+                const previewResult = activeJob.result;
+                if (!previewResult) return;
                 try {
                     const storeProject = buildComparisonProjectInput(menuData);
                     const masterProject = menuData?.masterProjectId
                         ? await getLinkedMasterComparisonInput(menuData)
                         : undefined;
                     if (comparisonEffectCancelled) return;
-                    const extractedItems = activeJob.result.combinedData?.items || [];
-                    const extractedCategories = activeJob.result.combinedData?.categories || [];
+                    const extractedItems = previewResult.combinedData?.items || [];
+                    const extractedCategories = previewResult.combinedData?.categories || [];
                     const comparisonMode: ComparisonMode = menuData?.masterProjectId ? 'OUTLET_LINKED' : 'SINGLE_STORE';
                     const primaryLang = getCanonicalProjectSourceLanguage(menuData?.languages);
 
@@ -1583,11 +1666,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     });
 
                     setExtractionStats({
-                        qualityScore: activeJob.result.qualityScore,
-                        qualityDetails: activeJob.result.qualityDetails,
-                        categoriesCount: activeJob.result.combinedData?.categories?.length || 0,
-                        itemsCount: activeJob.result.combinedData?.items?.length || 0,
-                        profileHighlights: buildExtractedProfileHighlights(activeJob.result.extractedBusinessProfile || activeJob.result.combinedData?.extractedBusinessProfile),
+                        qualityScore: previewResult.qualityScore,
+                        qualityDetails: previewResult.qualityDetails,
+                        categoriesCount: previewResult.combinedData?.categories?.length || 0,
+                        itemsCount: previewResult.combinedData?.items?.length || 0,
+                        profileHighlights: buildExtractedProfileHighlights(previewResult.extractedBusinessProfile || previewResult.combinedData?.extractedBusinessProfile),
                     });
                     setComparisonResult(comparison);
                     setShowReviewSheet(true);
@@ -1596,8 +1679,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     if (comparisonEffectCancelled) return;
                     logMobileMenuFailure('mobile_menu_comparison_engine_failed', error, {
                         ...getMobileMenuProjectLogContext(menuData.projectId, menuData.masterProjectId),
-                        extractedCategoryCount: activeJob.result.combinedData?.categories?.length || 0,
-                        extractedItemCount: activeJob.result.combinedData?.items?.length || 0,
+                        extractedCategoryCount: previewResult.combinedData?.categories?.length || 0,
+                        extractedItemCount: previewResult.combinedData?.items?.length || 0,
                         mode: menuData?.masterProjectId ? 'OUTLET_LINKED' : 'SINGLE_STORE',
                         ...getBoundedMobileMenuStringContext('primaryLanguage', getCanonicalProjectSourceLanguage(menuData?.languages)),
                     });
@@ -2473,12 +2556,14 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         const updated = removeObjRef(menuData);
         const targetFile = ensurePrimaryMenuFile(updated, storeDetails?.tenantId, storeDetails?.storeId);
         if (!targetFile) return;
+        const targetData = targetFile.extractedData?.data;
+        if (!targetData) return;
         const languageCodes = menuData.languages?.length
             ? menuData.languages
-            : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
+            : (targetData.languages || []).map((language: any) => language.code).filter(Boolean);
         const nextCategory = createNewCategory(targetFile, languageCodes.length ? languageCodes : ['en'], menuData.masterProjectId);
         nextCategory.active = active;
-        nextCategory.orderIndex = targetFile.extractedData.data.categories.length;
+        nextCategory.orderIndex = targetData.categories.length;
         nextCategory.name = {
             ...nextCategory.name,
             ...names,
@@ -2499,7 +2584,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     endTime: preset.endTime,
                 }))
             : undefined;
-        targetFile.extractedData.data.categories.push(nextCategory);
+        targetData.categories.push(nextCategory);
         applyLocalMenuUpdate(updated);
     };
 
@@ -4393,9 +4478,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         resetCommandActionFlow();
                     }}
                     onGenerateImage={FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && editingItem.id && canEditEditingItemImages
-                        ? () => openImageUploadModal(editingItem.id, 'item', 'generate')
+                        ? () => openImageUploadModal(editingItem.id, 'item', 'generate', [], editingItem.fileId)
                         : undefined}
-                    onManageImages={editingItem.id && canEditEditingItemImages ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
+                    onManageImages={editingItem.id && canEditEditingItemImages
+                        ? () => openImageUploadModal(editingItem.id, 'item', 'upload', [], editingItem.fileId)
+                        : undefined}
                     projectData={menuData}
                     inheritanceState={editingItemInheritanceState}
                     outletPolicy={outletPolicy}
@@ -4458,7 +4545,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                 nextDescription &&
                                 !isSameObjects(currentDescription, nextDescription)
                             );
-                            const imageChanged = updatedItem.image !== undefined && !shouldUploadImage;
+                            const imageInputChanged = updatedItem.image !== undefined;
+                            const imageChanged = imageInputChanged && !shouldUploadImage;
 
                             if (priceChanged) {
                                 if (outletPolicy?.priceOverride === false) {
@@ -4493,11 +4581,13 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                 }
                                 nextOverride.description = nextDescription;
                             }
-                            if (imageChanged) {
+                            if (imageInputChanged) {
                                 if (outletPolicy?.imageOverride !== true) {
                                     Toast.show({ content: 'Image changes are not enabled for this location.', duration: 1800 });
                                     return;
                                 }
+                            }
+                            if (imageChanged) {
                                 nextOverride.images = pendingImage ? [{ url: pendingImage, name: imageName }] : [];
                             }
 
@@ -4511,6 +4601,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             };
 
                             updated.files?.forEach((file: any) => {
+                                if (file.uid !== editingItem.fileId) return;
                                 file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
                                     if (menuItem.id !== editingItem.id) return;
                                     file.extractedData.data.items[idx] = {
@@ -4530,7 +4621,26 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                 });
                             });
 
+                            if (shouldUploadImage && (!editingItem.fileId || !updated.projectId)) {
+                                Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+                                return;
+                            }
                             applyLocalMenuUpdate(updated);
+                            if (shouldUploadImage && pendingImage) {
+                                const uploadFileId = editingItem.fileId;
+                                const uploadProjectId = updated.projectId;
+                                if (!uploadFileId || !uploadProjectId) return;
+                                uploadItemImageInBackground(
+                                    {
+                                        fileId: uploadFileId,
+                                        itemId: editingItem.id,
+                                        projectId: uploadProjectId,
+                                    },
+                                    pendingImage,
+                                    imageName,
+                                    `${editingItem.id}-mobile-image`,
+                                );
+                            }
                             Toast.show({ content: t('itemUpdated'), duration: 1000 });
                             setEditingItem(null);
                             resetCommandActionFlow();
@@ -4538,6 +4648,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         }
 
                         updated.files?.forEach((file: any) => {
+                            if (file.uid !== editingItem.fileId) return;
                             file.extractedData?.data?.items?.forEach((menuItem: any, idx: number) => {
                                 if (menuItem.id === editingItem.id) {
                                     const nextItem = rawItem ? { ...menuItem, ...rawItem } : { ...menuItem };
@@ -4592,14 +4703,25 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                 }
                             });
                         });
+                        if (shouldUploadImage && (!editingItem.fileId || !updated.projectId)) {
+                            Toast.show({ content: t('failedToSaveRefresh'), duration: 2000 });
+                            return;
+                        }
                         applyLocalMenuUpdate(updated);
                         Toast.show({ content: t('itemUpdated'), duration: 1000 });
                         setEditingItem(null);
                         resetCommandActionFlow();
 
                         if (shouldUploadImage && pendingImage) {
+                            const uploadFileId = editingItem.fileId;
+                            const uploadProjectId = updated.projectId;
+                            if (!uploadFileId || !uploadProjectId) return;
                             uploadItemImageInBackground(
-                                editingItem.id,
+                                {
+                                    fileId: uploadFileId,
+                                    itemId: editingItem.id,
+                                    projectId: uploadProjectId,
+                                },
                                 pendingImage,
                                 imageName,
                                 `${editingItem.id}-mobile-image`,
@@ -4607,7 +4729,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         }
                     }}
                     selectedLanguages={activeProjectLanguages}
-                    sourceFile={findFileContainingItem(menuData, editingItem.id)}
+                    sourceFile={findFileContainingItem(menuData, editingItem.id, editingItem.fileId)}
                 />
             ) : null}
 
@@ -4646,9 +4768,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             targetFile = ensurePrimaryMenuFile(updated, storeDetails?.tenantId, storeDetails?.storeId);
                         }
                         if (!targetFile) return;
+                        const targetData = targetFile.extractedData?.data;
+                        if (!targetData) return;
                         const languageCodes = menuData.languages?.length
                             ? menuData.languages
-                            : (targetFile.extractedData.data.languages || []).map((language: any) => language.code).filter(Boolean);
+                            : (targetData.languages || []).map((language: any) => language.code).filter(Boolean);
 
                         const categoryId = newItem.categoryId;
                         const rawItem = newItem.rawItem ? removeObjRef(newItem.rawItem) : null;
@@ -4676,7 +4800,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             createdItem.descriptionSource = 'manual';
                         }
                         createdItem.price = String(newItem.price || 0);
-                        createdItem.orderIndex = targetFile.extractedData.data.items.filter((item: any) => item.category === categoryId).length;
+                        createdItem.orderIndex = targetData.items.filter((item: any) => item.category === categoryId).length;
                         createdItem.active = newItem.active !== false;
                         createdItem.available = newItem.available !== false;
                         createdItem.isBestSeller = newItem.isBestSeller === true;
@@ -4707,7 +4831,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         const imageName = `${newItem.name || createdItem.id}.jpg`;
                         createdItem.images = pendingImage && !shouldUploadImage ? [{ url: pendingImage, name: imageName }] : [];
 
-                        targetFile.extractedData.data.items.push(createdItem);
+                        targetData.items.push(createdItem);
 
                         applyLocalMenuUpdate(updated);
                         Toast.show({ content: t('itemAdded'), duration: 1000 });
@@ -4721,7 +4845,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
                         if (shouldUploadImage && pendingImage) {
                             uploadItemImageInBackground(
-                                createdItem.id,
+                                {
+                                    fileId: targetFile.uid,
+                                    itemId: createdItem.id,
+                                    projectId: updated.projectId,
+                                },
                                 pendingImage,
                                 imageName,
                                 `${createdItem.id}-mobile-new-item`,

@@ -49,6 +49,8 @@ import {
     defaultTimeFormatString,
 } from "@lib/localization/config";
 import { UserUploadedFileType } from "@type/common";
+import type { StoreDataType } from "@type/platform/store";
+import type { TenantDataType } from "@type/platform/tenant";
 import { getUTCDate } from "@util/dateTime";
 import { Button, Card, Flex, Form, Menu, Space, Tag, Typography, message } from "antd";
 import { getCookie } from "cookies-next";
@@ -57,7 +59,17 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { motion } from "framer-motion";
 import { useFormatter, useTimeZone, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { createRef, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+    createRef,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type Dispatch,
+    type SetStateAction,
+} from "react";
 import {
     LuBarChart,
     LuBuilding2,
@@ -384,7 +396,19 @@ function BusinessSettingsPresenceMonitorCard({
     );
 }
 
-function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails }) {
+type BusinessSettingsProps = {
+    setStoreDetails: (updatedStore?: StoreDataType | null) => void;
+    storeDetails: StoreDataType | null;
+    tenantDetails: TenantDataType | null;
+};
+
+type BusinessSettingsContentProps = {
+    setStoreDetails: Dispatch<SetStateAction<StoreDataType>>;
+    storeDetails: StoreDataType;
+    tenantDetails: TenantDataType;
+};
+
+function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails }: BusinessSettingsContentProps) {
     const { userPermissions } = useContext(PlatformGlobalDataContext);
     const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
         && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
@@ -401,7 +425,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         name: "",
         size: 0,
         type: "",
-        url: null,
+        url: undefined,
     });
     const [isLogoAdjustOpen, setIsLogoAdjustOpen] = useState(false);
     const [activeSection, setActiveSection] = useState(0);
@@ -678,7 +702,9 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                 const expectedTenantId = expectedStoreDetails?.tenantId;
                                 const expectedStoreId = expectedStoreDetails?.storeId;
                                 const expectedScopeKey = `${String(expectedTenantId ?? '')}::${String(expectedStoreId ?? '')}`;
-                                if (!expectedStoreId) return;
+                                if (!expectedStoreId) {
+                                    throw new Error('business_copy_store_scope_missing');
+                                }
 
                                 const localized = await localizeBusinessCopyResult({
                                     generated,
@@ -1057,7 +1083,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
 
     const onScrollSetActive = () => {
         scrollRefs.current?.forEach((element, index) => {
-            if (element?.current?.getBoundingClientRect().top < 100) {
+            if ((element?.current?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY) < 100) {
                 setActiveSection(index);
             }
         });
@@ -1079,8 +1105,8 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
     };
 
     useEffect(() => {
-        const sectionParam = searchParams.get('section') || '';
-        const focusParam = searchParams.get('focus') || '';
+        const sectionParam = searchParams?.get('section') || '';
+        const focusParam = searchParams?.get('focus') || '';
         const targetSectionKey = sectionParam || BUSINESS_SETTINGS_FOCUS_SECTION[focusParam];
         if (!targetSectionKey) return;
 
@@ -1479,17 +1505,20 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                         savedstoresList[index] = {
                             ...savedstoresList[index],
                             name: updatedChanges.name || storeDetails.name,
-                            tenantName: updatedChanges.tenantName || storeDetails.tenantName || tenantDetails.name,
                         };
                         if (updatedChanges.tenantName) {
+                            const tenantId = tenantDetails.tenantId;
+                            if (!tenantId) {
+                                throw new Error('business_settings_tenant_scope_missing');
+                            }
                             const tenantResult = await updateTenant({
-                                tenantId: tenantDetails.tenantId,
+                                tenantId,
                                 name: updatedChanges.tenantName,
                                 storesList: savedstoresList,
                             });
                             assertTenantUpdateSucceeded(
                                 tenantResult,
-                                tenantDetails.tenantId,
+                                tenantId,
                                 'desktop_business_settings_tenant_update_rejected',
                             );
                         }
@@ -1522,8 +1551,6 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
         } else {
             const normalizedTenantPhone = normalizePhoneNumberForStorage({
                 countryCode: tenantDetails.countryCode,
-                dialCode: tenantDetails.dialCode,
-                phone: tenantDetails.phone,
                 phoneNumber: tenantDetails.phoneNumber,
             });
             changesToUpload = {
@@ -1532,8 +1559,8 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                 storeKey: changesToUpload.name?.toLowerCase().replaceAll(" ", "_"),
                 email: tenantDetails.email,
                 countryCode: normalizedTenantPhone.phone ? normalizedTenantPhone.countryCode : tenantDetails.countryCode,
-                dialCode: normalizedTenantPhone.phone ? normalizedTenantPhone.dialCode : tenantDetails.dialCode,
-                phone: normalizedTenantPhone.phone || tenantDetails.phone,
+                dialCode: normalizedTenantPhone.phone ? normalizedTenantPhone.dialCode : undefined,
+                phone: normalizedTenantPhone.phone || tenantDetails.phoneNumber,
                 phoneNumber: normalizedTenantPhone.phoneNumber || tenantDetails.phoneNumber,
                 tenantName: tenantDetails.name,
             };
@@ -1609,7 +1636,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                     name: "",
                                     size: 0,
                                     type: "",
-                                    url: storeDetails?.logo || null,
+                                    url: storeDetails?.logo || undefined,
                                 }) : undefined}
                                 onSelectFile={handleLogoSelect}
                                 placeholderDescription="Drop, paste, or choose a square logo."
@@ -1704,7 +1731,7 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
                                                         name: "",
                                                         size: 0,
                                                         type: "",
-                                                        url: null,
+                                                        url: undefined,
                                                     });
                                                 }
                                             }}
@@ -1759,7 +1786,47 @@ function BusinessSettingsContent({ storeDetails, setStoreDetails, tenantDetails 
     );
 }
 
-export default function BusinessSettings(props) {
+export default function BusinessSettings(props: BusinessSettingsProps) {
+    if (!props.tenantDetails || !props.storeDetails) return null;
     const scopeKey = `${String(props.storeDetails?.tenantId ?? '')}::${String(props.storeDetails?.storeId ?? '')}`;
-    return <BusinessSettingsContent key={scopeKey} {...props} />;
+    return (
+        <BusinessSettingsStateBoundary
+            key={scopeKey}
+            {...props}
+            tenantDetails={props.tenantDetails}
+            storeDetails={props.storeDetails}
+        />
+    );
+}
+
+type BusinessSettingsStateBoundaryProps = Omit<BusinessSettingsProps, 'storeDetails' | 'tenantDetails'> & {
+    storeDetails: StoreDataType;
+    tenantDetails: TenantDataType;
+};
+
+function BusinessSettingsStateBoundary({
+    setStoreDetails: notifyStoreSaved,
+    storeDetails: initialStoreDetails,
+    tenantDetails,
+}: BusinessSettingsStateBoundaryProps) {
+    const [storeDetails, setStoreDetails] = useState<StoreDataType>(initialStoreDetails);
+    const updateStoreDetails = useCallback<Dispatch<SetStateAction<StoreDataType>>>(
+        (update) => {
+            if (typeof update === 'function') {
+                setStoreDetails(update);
+                return;
+            }
+            setStoreDetails(update);
+            notifyStoreSaved(update);
+        },
+        [notifyStoreSaved],
+    );
+
+    return (
+        <BusinessSettingsContent
+            setStoreDetails={updateStoreDetails}
+            storeDetails={storeDetails}
+            tenantDetails={tenantDetails}
+        />
+    );
 }

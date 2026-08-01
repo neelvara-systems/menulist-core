@@ -96,7 +96,10 @@ export function buildGoogleProfileBasicsReport(input: GoogleProfileBasicsInput):
   const websiteOrCustomerLink = trimToSingleLine(input.websiteOrCustomerLink);
   const hasWebsiteOrCustomerLink = websiteOrCustomerLink.length > 0;
   const validWebsiteOrCustomerLink = isValidHttpUrl(websiteOrCustomerLink, 'google_profile_basics_website_or_customer_link');
-  const hasIdentityHint = businessName.length >= 2 || cityOrArea.length >= 2;
+  const hasBusinessName = businessName.length >= 2;
+  const hasCityOrArea = cityOrArea.length >= 2;
+  const hasCompleteIdentity = hasBusinessName && hasCityOrArea;
+  const hasPartialIdentity = hasBusinessName || hasCityOrArea;
 
   const checks: GoogleProfileBasicsItem[] = [
     makeCheck(
@@ -106,8 +109,8 @@ export function buildGoogleProfileBasicsReport(input: GoogleProfileBasicsInput):
     ),
     makeCheck(
       'business_identity',
-      input.nameMatchesRealWorld && hasIdentityHint ? 'present' : hasIdentityHint ? 'unclear' : 'missing',
-      hasIdentityHint ? 'owner_entered' : 'not_provided',
+      input.nameMatchesRealWorld && hasCompleteIdentity ? 'present' : hasPartialIdentity ? 'unclear' : 'missing',
+      hasPartialIdentity ? 'owner_entered' : 'not_provided',
     ),
     makeCheck(
       'category',

@@ -16,7 +16,10 @@ import {
     isAnswerlatticeActiveStoreInScope,
     normalizeConsistentAnswerlatticeScopeDocumentIds,
 } from "@lib/answerlattice/sessionScope";
-import { answerlatticeFirestoreAdmin } from "@lib/firebase/answerlatticeFirebaseAdmin";
+import {
+    answerlatticeAdminApp,
+    answerlatticeFirestoreAdmin,
+} from "@lib/firebase/answerlatticeFirebaseAdmin";
 import { shouldUseSharedAnswerlatticeFirebase } from "@lib/firebase/answerlatticeConfig";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
@@ -311,8 +314,7 @@ export async function validatePublicApiKey(
     const includeAnswerlatticeWidgetApi = Boolean(options.includeAnswerlatticeWidgetApi);
     const shouldUseAnswerlatticeDb = !shouldUseSharedAnswerlatticeFirebase && normalizedApiKey.startsWith('al_');
     const dedicatedAnswerlatticeDb = shouldUseAnswerlatticeDb
-        && answerlatticeFirestoreAdmin
-        && typeof (answerlatticeFirestoreAdmin as any).collection === 'function'
+        && answerlatticeAdminApp
         ? answerlatticeFirestoreAdmin
         : null;
     const preferAnswerlatticeWidgetApi = Boolean(options.preferAnswerlatticeWidgetApi && includeAnswerlatticeWidgetApi);
@@ -342,7 +344,7 @@ export async function validatePublicApiKey(
         return null;
     }
 
-    const getCredentialDb = () => shouldUseAnswerlatticeDb
+    const getCredentialDb = (): FirebaseFirestore.Firestore => shouldUseAnswerlatticeDb
         ? dedicatedAnswerlatticeDb!
         : admin.firestore();
 
@@ -420,7 +422,7 @@ export async function validatePublicApiKey(
         ]);
         const publicCredentialDocumentPaths = new Set([
             ...hashedSnapshot.docs.map((doc) => doc.ref.path),
-            ...(legacyRawSnapshot?.docs.map((doc) => doc.ref.path) || []),
+            ...(legacyRawSnapshot?.docs.map((doc: FirebaseFirestore.QueryDocumentSnapshot) => doc.ref.path) || []),
         ]);
         if (publicCredentialDocumentPaths.size > 1) {
             secureLog('[Public API] Ambiguous cross-representation API key rejected');

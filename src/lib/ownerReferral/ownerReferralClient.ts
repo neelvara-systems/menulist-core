@@ -97,7 +97,7 @@ export const fetchOwnerReferral = async (): Promise<OwnerReferralOwnerResponse> 
     const body = await readJsonResponseWithLimit<unknown>(
         response,
         OWNER_REFERRAL_OWNER_RESPONSE_MAX_BYTES,
-    ).catch(() => null);
+    ).catch((): null => null);
     if (!response.ok || !isOwnerReferralOwnerResponse(body)) {
         throw new Error(response.status === 404 ? 'owner_referral_unavailable' : 'owner_referral_load_failed');
     }

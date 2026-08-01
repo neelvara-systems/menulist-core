@@ -17,6 +17,7 @@ import {
     getAuthUserByEmail,
     getAuthUserByLoginIdentifier,
 } from '@lib/auth/serverUserContext';
+import type { AuthBootstrapStoreMapping } from '@lib/auth/serverUserContext';
 import { getPhoneUserDocumentId } from '@lib/auth/phoneUserIdentity';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
@@ -529,7 +530,12 @@ async function ensurePhoneOtpUser(phone: NormalizedPhoneOtpNumber): Promise<any>
         };
     }
 
-    const userData = {
+    const userData: {
+        [key: string]: unknown;
+        storeId: number | null;
+        stores: AuthBootstrapStoreMapping[];
+        tenantId: number | null;
+    } = {
         id: userId,
         email: generatedEmail,
         displayEmail: '',

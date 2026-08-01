@@ -2,7 +2,7 @@
 
 **Feature:** Client Menu
 **Status:** Implemented customer-facing menu documentation; not current launch certification
-**Last Updated:** July 16, 2026
+**Last Updated:** July 31, 2026
 
 ---
 
@@ -19,6 +19,32 @@ The customer menu itself does not read `menuChangeLog` or `menuSnapshots`. Owner
 ## Public Menu External Link Normalization
 
 Public menu external link normalization uses the shared OBP public-link policy for customer-facing menu footer actions, social links, unavailable-item recovery actions, and feedback review links. Owner-managed reservation, order, Maps, social, WhatsApp social, and review URLs render only after HTTPS/host validation; invalid values are hidden or fall back to internal feedback instead of becoming public `href` values.
+
+---
+
+## Public Truth Rendering Invariants
+
+- A time-slotted category is authoritative for every item-entry path. Hidden
+  categories cannot leak into Featured choices or filter chips and cannot be
+  reopened through `?item=` links or legacy `/item/` paths.
+- Category admission is evaluated from one store-timezone timestamp at the
+  next wall-clock minute boundary and when a backgrounded page becomes visible.
+  Missing or invalid timezone truth falls back to UTC, never the customer
+  device timezone.
+- If active catalog categories exist but all are outside their service window,
+  the menu renders their next localized opening day and time instead of the
+  false `No items yet` state.
+- Sold-out item links still open the truthful unavailable item detail. Removed,
+  inactive, uncategorized, and currently hidden item links show a bounded
+  notice and return to the canonical menu URL, including on an empty catalog.
+- Visible price symbols, analytics currency, `currenciesAccepted`, and catalog
+  JSON-LD resolve from the same normalized store currency code.
+- Menu-specific accent color has first priority. The Official Business Page
+  accent is the fallback, and the existing contrast guard remains the final
+  authority for customer-readable output.
+- The item detail surface is a real modal boundary: initial focus moves inside,
+  Tab remains contained, Escape closes, and focus returns to the invoking item.
+  Empty structured metadata renders nothing.
 
 ---
 
@@ -190,7 +216,15 @@ The public menu is not a website-builder surface. Store/project owners can selec
 - Public session state keys require exact tenant, store and project identity. The destination menu restores its language before writes resume, malformed scroll values are evicted, and storage denial logs bounded `public_menu_session_state_read_failed` / `public_menu_session_state_remove_failed` / `public_menu_session_state_write_failed` diagnostics without interrupting the menu.
 - Language preference storage diagnostics: public menu language preference reads/removals/writes remain browser-local. A destination project restores its own valid preference before its key can be written, preventing a client-side project switch from copying the prior menu language; invalid stored languages are evicted. Failures log bounded `public_menu_language_storage_read_failed` / `public_menu_language_storage_remove_failed` / `public_menu_language_storage_write_failed` diagnostics only and create no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - Compact multi-language payloads must not strip public descriptions needed by the language picker; descriptions, names, categories, route `?lang=`, and item share URLs must stay aligned when the customer changes language on the menu after arriving from OBP.
-- Breadcrumb language preservation diagnostics: public menu breadcrumbs preserve the current `?lang=` value when URL parsing succeeds, and still fall back to the original breadcrumb href when preservation fails. Failed preservation logs bounded `public_menu_breadcrumb_language_preserve_failed` diagnostics only and creates no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
+- Breadcrumb language preservation diagnostics: public menu, feedback and
+  outlet-OBP callers pass the server-resolved content language into the
+  breadcrumb, so the initial rendered Link destinations preserve `?lang=`.
+  The component reads the browser URL only as a compatibility fallback for
+  callers without an explicit language and retains the original href if that
+  fallback fails. Failed fallback parsing logs bounded
+  `public_menu_breadcrumb_language_preserve_failed` diagnostics only and
+  creates no Firestore write, analytics write, Storage operation, Cloud
+  Function, API route, cache invalidation, rule, index, or deploy requirement.
 - Item PDPs opened from the menu must update the client document head (`title`, canonical URL, Open Graph URL/title/description, and Twitter URL/title/description) because mobile browser share sheets can read head metadata after client-side history changes.
 - PDP item sharing uses the native device share sheet when available and falls back to copying the exact item URL. This is especially important inside installed PWAs where the browser share button is not visible.
 - Feedback nudge storage diagnostics: public menu feedback nudge de-dupe remains browser-local and tab-scoped. Visible, dismissed and triggered UI state is bound to the exact validated project so it cannot carry across a client-side menu transition. Failed sessionStorage guard reads/writes log bounded `public_menu_feedback_nudge_storage_read_failed` / `public_menu_feedback_nudge_storage_write_failed` diagnostics only and create no Firestore write, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.

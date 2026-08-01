@@ -82,7 +82,7 @@ export interface AiMenuManagerModelRouteResult {
     values?: Record<string, unknown>;
 }
 
-export function isAiMenuManagerModelProviderEnabled(provider: AiMenuManagerModelProviderName) {
+export function isAiMenuManagerModelProviderEnabled(provider: AiMenuManagerModelProviderName): boolean {
     if (!FEATURE_FLAGS.ENABLE_AI_MENU_MANAGER) {
         return false;
     }
@@ -102,9 +102,18 @@ export function isAiMenuManagerModelProviderEnabled(provider: AiMenuManagerModel
     return true;
 }
 
-export function assertAiMenuManagerModelRouteIsSafe(result: AiMenuManagerModelRouteResult) {
-    if (result.safety.mutatesTruth && result.outcome !== 'prepare_action') {
-        throw new Error('Model route cannot mutate truth outside a prepared action');
+export function assertAiMenuManagerModelRouteIsSafe(result: AiMenuManagerModelRouteResult): void {
+    const isPreparedAction = result.outcome === 'prepare_action';
+    if (result.safety.mutatesTruth !== isPreparedAction) {
+        throw new Error('Model route mutation state must match prepared-action outcome');
+    }
+
+    if (result.safety.requiresApproval !== isPreparedAction) {
+        throw new Error('Model route approval state must match prepared-action outcome');
+    }
+
+    if (Boolean(result.actionType) !== isPreparedAction) {
+        throw new Error('Model route action type must match prepared-action outcome');
     }
 
     if (result.toolName && !AI_MENU_MANAGER_SAFE_MODEL_TOOLS.includes(result.toolName)) {

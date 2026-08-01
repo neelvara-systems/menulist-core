@@ -101,7 +101,7 @@ export default function MobileProjectsProvider({
     const latestProjectsRequestRef = useRef(0);
     const hydratedScopeKeyRef = useRef<string | null>(null);
     const hasHydratedRef = useRef(false);
-    const inFlightProjectLoadsRef = useRef<Record<string, Promise<any>>>({});
+    const inFlightProjectLoadsRef = useRef<Partial<Record<string, Promise<any>>>>({});
     const projectsListRef = useRef<ProjectSummary[]>([]);
     const projectsByIdRef = useRef<Record<string, any>>({});
     const isExpectedScope = useCallback((expectedScope: ProjectExpectedScope) => (
@@ -349,7 +349,7 @@ export default function MobileProjectsProvider({
             && projectMatchesMobileScope(resolvedProject.projectId, expectedScope)
             ? resolvedProject.projectId
             : null;
-        const needsFetch = Boolean(nextProjectId) && !projectsByIdRef.current[nextProjectId];
+        const needsFetch = nextProjectId !== null && !projectsByIdRef.current[nextProjectId];
 
         if (needsFetch) {
             setIsLoading(true);

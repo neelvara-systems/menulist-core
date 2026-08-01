@@ -143,7 +143,7 @@ export const StatCard: React.FC<StatCardProps> = ({
                 percent={percentage}
                 strokeColor={getProgressColor()}
                 showInfo={false}
-                size={[null, 8]}
+                size={['100%', 8]}
                 style={{ marginBottom: 4 }}
               />
               <Space

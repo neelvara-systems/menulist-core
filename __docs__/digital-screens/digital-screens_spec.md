@@ -172,7 +172,7 @@ That includes project-level screen assignment. Screens follow the active store m
 | Boundary                    | Rule                                                                                                                                                                                   | Constitution Reference                           |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | **No screen analytics**     | No impressions, views, engagement, conversions, A/B tests. The moment owners see metrics, they start optimizing → complexity begins.                                                   | `06-internal-tracking.md` FORBIDDEN metrics      |
-| **No screen customization** | No color themes, layout options, font choices, design modes, template marketplace. One system-designed layout only.                                                                    | Feature Rejection Gate Q1: must REMOVE decisions |
+| **No screen customization** | No screen-specific color themes, layout options, font choices, design modes, or template marketplace. One system-designed layout automatically inherits the existing normalized OBP brand accent for decorative chrome only. | Feature Rejection Gate Q1: must REMOVE decisions |
 | **No screen management UI** | No screen dashboard, device list, screen settings panel, screen scheduling. Screens are automatic extension of menu, not managed devices.                                              | Constitution Law 7: No Feature Without Autonomy  |
 | **No separate pricing**     | Never sell screens as a separate product or charge per screen. This is included infrastructure — pricing per screen enters signage market and loses differentiation.                   | Spec: "Not signage software" principle           |
 | **No further polish**       | Feature is LOCKED at v2.2. Only fix: readability problems, reliability problems, real user confusion, or scale issues. No visual tweaks, no animation refinements, no CSS experiments. | Constitution Refusal #9: No novelty injection    |
@@ -714,13 +714,13 @@ ChatGPT suggested: "TV shows pairing code → owner scans from phone → screen 
 
 | Deliverable                                | Status     |
 | ------------------------------------------ | ---------- |
-| Glassmorphism UI (Menu Board + Highlights) | ✅ SHIPPED |
-| Ken Burns image zoom (Highlights)          | ✅ SHIPPED |
-| Ambient orb backgrounds                    | ✅ SHIPPED |
-| Food thumbnails in Menu Board              | ✅ SHIPPED |
-| Staggered animations (Framer Motion)       | ✅ SHIPPED |
-| Capsule progress indicators                | ✅ SHIPPED |
-| Brand fallback redesign                    | ✅ SHIPPED |
+| Compiled, viewport-bounded TV layout       | ✅ SHIPPED |
+| Non-cropping owner artwork                 | ✅ SHIPPED |
+| Content-aware Menu Board columns           | ✅ SHIPPED |
+| Density-guarded descriptions               | ✅ SHIPPED |
+| Visible first-frame transitions            | ✅ SHIPPED |
+| Bounded progress indicators                | ✅ SHIPPED |
+| Persistent business-name fallback          | ✅ SHIPPED |
 
 ### Completed (v2.2 — February 2026) — FINAL
 
@@ -730,6 +730,7 @@ ChatGPT suggested: "TV shows pairing code → owner scans from phone → screen 
 | Dietary badges (Veg/Non-Veg) on both modes               | ✅ SHIPPED  |
 | Item descriptions on both modes                          | ✅ SHIPPED  |
 | Decorative accent strip (Highlights)                     | ✅ SHIPPED  |
+| Canonical `publicPresence.accentColor` continuity         | ✅ SHIPPED  |
 | Store watermark branding (Highlights)                    | ✅ SHIPPED  |
 | AI image generation for screens — evaluated and rejected | ✅ RESOLVED |
 | Architectural Boundaries documented                      | ✅ LOCKED   |

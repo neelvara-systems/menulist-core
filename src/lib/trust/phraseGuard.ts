@@ -6,6 +6,7 @@
  */
 
 import { logger } from '@lib/monitoring/logger';
+import { getBoundedLogValueContext } from '@lib/monitoring/boundedLogContext';
 
 /**
  * Phrases that should NEVER appear in owner-facing AI outputs
@@ -93,15 +94,15 @@ export function sanitizeAIOutput(
     const check = containsForbiddenPhrase(text);
 
     if (check.hasForbidden) {
-        // Log security event for monitoring
         logger.security('Forbidden phrase detected in AI output', {
-            context,
+            ...getBoundedLogValueContext('context', context),
             matches: check.matches,
             originalLength: text.length,
-            truncatedOriginal: text.substring(0, 100) + '...',
         }, 'low');
 
-        return fallback;
+        return containsForbiddenPhrase(fallback).hasForbidden
+            ? "From our kitchen to you"
+            : fallback;
     }
 
     return text;

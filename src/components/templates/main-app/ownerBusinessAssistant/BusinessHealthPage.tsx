@@ -38,6 +38,7 @@ export function BusinessHealthPage({ projectId }: { projectId?: string }) {
     && tenantDetails.storesList.filter((store: any) => store?.active !== false && store?.storeDetails?.active !== false).length > 1;
   const handleScopeChange = useCallback((nextProjectId?: string) => {
     setScopedProjectId(nextProjectId);
+    if (!pathname) return;
     const nextPath = nextProjectId
       ? `${pathname}?projectId=${encodeURIComponent(nextProjectId)}`
       : pathname;

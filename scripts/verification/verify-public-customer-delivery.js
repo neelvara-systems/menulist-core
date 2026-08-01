@@ -30,12 +30,22 @@ excludes(page, 'const clientStoreDetails = serializeClientValue({\n        ...st
 
 [
   'const publicProjectFields = [',
-  'delete cleanItem.ownerBoost;',
-  'delete cleanItem.qualityReview;',
+  'const cleanItem = projectDefinedFields(item, [',
+  'const cleanCategory = projectDefinedFields(category, [',
+  'sanitizePublicDecisionFacts(cleanItem.decisionFacts)',
   'sanitizePublicImages(cleanItem.images)',
 ].forEach((token) => includes(projectProjection, token, 'Public project browser projection'));
+['ownerBoost', 'qualityReview', 'descriptionSource', 'sourceFileIndex'].forEach(
+  (token) => excludes(projectProjection, `                                    '${token}',`, `Public item allowlist ${token}`),
+);
 [
   'export function projectPublicClientStore',
+  'const getPlainRecord = (value: unknown)',
+  'const projectPublicPresence = (value: unknown)',
+  'const projectAnalytics = (value: unknown)',
+  'const projectPwaSettings = (value: unknown)',
+  'normalizeMenuListPlanType(source.activePlanType)',
+  '...(activePlanType ? { activePlanType } : {})',
   "'googleAnalyticsId'",
   "'promoteInstallation'",
   "'feedbackEnabled'",
@@ -74,9 +84,11 @@ excludes(sitemap, "'projects-summary'", 'Tenant sitemap stale non-invalidated ca
 ].forEach((token) => includes(manifest, token, 'Customer App manifest start-url boundary'));
 [
   'menuPath?: string | null;',
-  'if (menuPath) {',
+  "const menuPath = readOwnText(info, 'menuPath');",
+  "if (menuPath.startsWith('/') && !menuPath.startsWith('//')) {",
   'createPublicCustomerTranslator(activeLanguage)',
   'appendPublicLanguageParam(url, activeLanguage)',
+  "parsed.searchParams.set('entry_source', `shortcut-${entrySource}`);",
 ].forEach((token) => includes(shortcuts, token, 'Customer App menu shortcut admission boundary'));
 [
   'lang: activeLanguage,',

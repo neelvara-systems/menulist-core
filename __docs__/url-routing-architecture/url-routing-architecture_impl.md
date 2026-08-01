@@ -121,7 +121,7 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 | `src/database/projects/index.ts`                       | `addProject` slug gen, `updateProjectMetadata` slug change + previousSlugs |
 | `src/app/api/outlets/create/route.ts`                  | `outletSlug` generation on outlet creation                                 |
 | `src/app/client/[[...slug]]/page.tsx`                  | Stored slug resolver, previousSlugs 301, subdomain→custom domain 301       |
-| `src/config/features.ts`                               | Added `ENABLE_STORED_SLUGS` feature flag                                   |
+| Stored-slug runtime                                   | Permanent invariant; the obsolete no-op feature flag was removed            |
 | `src/middleware.ts`                                    | CDN cache headers, lowercase + trailing slash normalization                |
 | `src/app/api/onboarding/create-subscription/route.ts`  | Auto-generate subdomain, `subDomain` on tenant, `subdomain` in storesList  |
 | `src/app/api/msg-preview/[sessionId]/approve/route.ts` | **BUG FIX**: Added subdomain, slug, projectsSummary, fixed publicUrl       |
@@ -171,6 +171,13 @@ When project name changes:
 
 Deleted-project slug reservation fail-closed follow-up (July 5, 2026): `src/database/projects/index.ts` treats unknown reservation state as reserved after logging bounded `deleted_project_slug_reservation_check_failed` diagnostics. Create and duplicate flows suffix the proposed slug when the reservation lookup fails. Rename and no-slug backfill flows refuse the new slug through the same path used for a confirmed 90-day reservation, preserving QR/public URL permanence over optimistic slug reuse.
 
+Localized-name allocation follow-up (July 29, 2026): the shared permanent-slug
+allocator canonicalizes every proposed slug and uses `menu` when an otherwise
+valid localized project name produces no ASCII slug characters. Existing
+collision handling then adds the stable project-ID suffix. Creation,
+duplication and public-entry callers therefore cannot persist or emit an empty
+canonical project slug.
+
 ### 3. Client Resolver (getProjectBySlugOrDefault)
 
 **File:** `src/app/client/[[...slug]]/page.tsx:196-220`
@@ -211,14 +218,12 @@ Set on all client domain rewrites (subdomain + custom domain).
 
 ---
 
-## Feature Flag
+## Runtime Invariant
 
-```typescript
-// src/config/features.ts
-ENABLE_STORED_SLUGS: true;
-```
-
-When disabled: slugs derived from name at runtime (current behavior), no redirect support, no reserved namespace enforcement.
+Stored slugs, previous-slug redirects, and reserved-namespace enforcement are
+always active. The former `ENABLE_STORED_SLUGS` declaration had no runtime
+consumer and was removed so operators cannot mistake it for a working rollback
+switch.
 
 ---
 

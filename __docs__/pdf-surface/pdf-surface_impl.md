@@ -42,6 +42,10 @@ The routed Menu Card Export workflow owns device-local history. Its keys are ten
 ## Failure Contract
 
 - Invalid or empty source stays an owner-safe generation failure or empty-state path.
+- Because `menuUrl` is optional on the compatibility DTO, an absent, malformed,
+  credential-bearing, or non-HTTP(S) destination disables QR output even when
+  the auto-design would normally include it. A valid destination still
+  respects explicit `showQrCode` or the auto-design default.
 - A file is reported successful only after the browser delivery helper returns.
 - Native file-share cancellation and unsupported sharing are owned by the Menu Card Export shared browser file-share contract, not by this adapter.
 - Raw project/store/menu payloads and generated file bodies are excluded from diagnostics.

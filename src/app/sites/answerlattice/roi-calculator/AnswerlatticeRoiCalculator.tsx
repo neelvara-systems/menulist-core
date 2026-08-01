@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from 'react';
 
-const formatCurrency = (value: number) => `₹${Math.max(0, Math.round(value)).toLocaleString('en-IN')}`;
+export const formatSignedCurrency = (value: number) => {
+    const rounded = Math.round(value);
+    const sign = rounded < 0 ? '-' : '';
+    return `${sign}₹${Math.abs(rounded).toLocaleString('en-IN')}`;
+};
 
 function numberValue(value: string, fallback: number) {
     const parsed = Number(value);
@@ -83,11 +87,11 @@ export default function AnswerlatticeRoiCalculator() {
                     </div>
                     <div className="rounded-2xl border border-white/[0.08] bg-[#070714]/60 p-4">
                         <div className="text-xs text-[#808099]">Support time value</div>
-                        <div className="mt-2 text-3xl font-bold text-white">{formatCurrency(result.supportValue)}</div>
+                        <div className="mt-2 text-3xl font-bold text-white">{formatSignedCurrency(result.supportValue)}</div>
                     </div>
                     <div className="rounded-2xl border border-white/[0.08] bg-[#070714]/60 p-4">
                         <div className="text-xs text-[#808099]">Value after plan estimate</div>
-                        <div className="mt-2 text-3xl font-bold text-white">{formatCurrency(result.net)}</div>
+                        <div className="mt-2 text-3xl font-bold text-white">{formatSignedCurrency(result.net)}</div>
                     </div>
                 </div>
                 <div className="mt-5 rounded-2xl border border-white/[0.08] bg-[#070714]/70 p-4">

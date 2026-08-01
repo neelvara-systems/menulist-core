@@ -1,10 +1,11 @@
 import { getBusinessCatalogKind, getBusinessOfferingKind, resolveBusinessCategory } from '@data/shared/businessTypes';
+import { resolveStorePermissionScopeDocumentIdAliases } from '@lib/permissions/scopeDocumentId';
 import type { MenuCardExportSettings } from '../models/exportTypes';
 import type { MenuCardPrintSource } from '../models/printModel';
 import { resolveMenuCardBusinessPrintProfile } from '../templates/businessPrintProfiles';
 import { buildBrandTokens } from './buildBrandTokens';
 import { buildQrDestination, buildShortUrl } from './buildQrDestination';
-import { resolveText, sanitizeMenuForPrint } from './sanitizeMenuForPrint';
+import { MENU_CARD_PRINT_TEXT_LIMITS, resolveText, sanitizeMenuForPrint } from './sanitizeMenuForPrint';
 
 export type BuildPrintSourceInput = {
     project: any;
@@ -14,12 +15,57 @@ export type BuildPrintSourceInput = {
     settings: MenuCardExportSettings;
 };
 
-function parseDate(value: any): string | null {
-    if (!value) return null;
-    if (typeof value === 'string') return value;
-    if (typeof value?.toDate === 'function') return value.toDate().toISOString();
-    if (value instanceof Date) return value.toISOString();
+function readOwnField(value: unknown, key: string): unknown {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+    try {
+        return Object.prototype.hasOwnProperty.call(value, key)
+            ? (value as Record<string, unknown>)[key]
+            : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function parseDateValue(value: unknown): string | null {
+    try {
+        if (typeof value === 'string') {
+            const candidate = value.trim();
+            if (!candidate) return null;
+            const millis = Date.parse(candidate);
+            return Number.isFinite(millis) ? new Date(millis).toISOString() : null;
+        }
+        if (value instanceof Date) {
+            const millis = Date.prototype.getTime.call(value);
+            return Number.isFinite(millis) ? new Date(millis).toISOString() : null;
+        }
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+        const toDate = readOwnField(value, 'toDate');
+        if (typeof toDate !== 'function') return null;
+        const converted = Reflect.apply(toDate, value, []);
+        if (!(converted instanceof Date)) return null;
+        const millis = Date.prototype.getTime.call(converted);
+        return Number.isFinite(millis) ? new Date(millis).toISOString() : null;
+    } catch {
+        return null;
+    }
+}
+
+function resolveProjectUpdatedAt(project: unknown): string | null {
+    for (const field of ['modifiedOn', 'updatedAt', 'lastPublishedAt']) {
+        const parsed = parseDateValue(readOwnField(project, field));
+        if (parsed) return parsed;
+    }
     return null;
+}
+
+function resolveProjectId(project: unknown): string {
+    for (const field of ['projectId', 'id']) {
+        const value = readOwnField(project, field);
+        if (typeof value !== 'string') continue;
+        const candidate = value.trim();
+        if (candidate && candidate.length <= 1_500 && !candidate.includes('/')) return candidate;
+    }
+    return '';
 }
 
 function buildAddress(store: any): string | undefined {
@@ -46,12 +92,40 @@ function resolveBrandColor(project: any, store: any): string | undefined {
         || undefined;
 }
 
-function resolveLogoUrl(store: any): string | undefined {
-    return store?.logo
-        || store?.logoUrl
-        || store?.publicPresence?.logoUrl
-        || store?.businessLogo
-        || undefined;
+export const MAX_MENU_CARD_LOGO_URL_LENGTH = 4_096;
+
+export function normalizeMenuCardLogoUrl(value: unknown): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const candidate = value.trim();
+    if (!candidate || candidate.length > MAX_MENU_CARD_LOGO_URL_LENGTH) return undefined;
+
+    try {
+        const parsed = new URL(candidate);
+        if (
+            (parsed.protocol !== 'https:' && parsed.protocol !== 'http:')
+            || parsed.username
+            || parsed.password
+        ) {
+            return undefined;
+        }
+        return parsed.toString();
+    } catch {
+        return undefined;
+    }
+}
+
+function resolveLogoUrl(store: unknown): string | undefined {
+    const publicPresence = readOwnField(store, 'publicPresence');
+    for (const candidate of [
+        readOwnField(store, 'logo'),
+        readOwnField(store, 'logoUrl'),
+        readOwnField(publicPresence, 'logoUrl'),
+        readOwnField(store, 'businessLogo'),
+    ]) {
+        const normalized = normalizeMenuCardLogoUrl(candidate);
+        if (normalized) return normalized;
+    }
+    return undefined;
 }
 
 function resolveStoreBusinessType(store: any): string | undefined {
@@ -127,10 +201,19 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
     const offeringKind = getBusinessOfferingKind(businessType, businessCategory);
     const printProfile = resolveMenuCardBusinessPrintProfile({ businessCategory, catalogKind, offeringKind });
 
+    const tenantScope = resolveStorePermissionScopeDocumentIdAliases([
+        readOwnField(store, 'tenantId'),
+        readOwnField(store, 'tId'),
+    ]);
+    const storeScope = resolveStorePermissionScopeDocumentIdAliases([
+        readOwnField(store, 'storeId'),
+        readOwnField(store, 'sId'),
+    ]);
+
     return {
-        tenantId: store?.tenantId || store?.tId,
-        storeId: store?.storeId || store?.sId,
-        projectId: project?.projectId || project?.id || '',
+        tenantId: tenantScope?.documentId,
+        storeId: storeScope?.documentId,
+        projectId: resolveProjectId(project),
         menuSnapshotId: null,
         business: {
             name: store?.name || store?.storeName || store?.businessName || 'Menu',
@@ -153,8 +236,13 @@ export function buildPrintSource(input: BuildPrintSourceInput): MenuCardPrintSou
             errorCorrection: settings.preset === 'print_shop_packet' ? 'Q' : 'M',
         },
         menu: {
-            title: resolveText(project?.name, language, printProfile.fallbackTitle),
-            updatedAt: parseDate(project?.modifiedOn || project?.updatedAt || project?.lastPublishedAt),
+            title: resolveText(
+                project?.name,
+                language,
+                printProfile.fallbackTitle,
+                MENU_CARD_PRINT_TEXT_LIMITS.MENU_TITLE,
+            ),
+            updatedAt: resolveProjectUpdatedAt(project),
             language,
             currency: store?.currencySymbol || store?.currency || store?.currencyCode || '',
             currencyCode: store?.currencyCode || store?.currency || undefined,

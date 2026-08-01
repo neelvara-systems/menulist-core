@@ -2,7 +2,7 @@
 
 **Feature:** PDF Surface (Enhanced Menu PDF Generation)
 **Version:** 2.2 — Professional Bistro Layout with Michelin Typography
-**Status:** Compatibility bridge, `ENABLE_PDF_SURFACE: true`
+**Status:** Always-on compatibility bridge to Menu Card Export
 **Last Updated:** July 16, 2026
 
 ---
@@ -23,7 +23,9 @@
 
 ## Current Runtime Boundary
 
-`ENABLE_PDF_SURFACE` keeps legacy/flag-off PDF entry points available, but it no longer owns an independent output renderer. `src/lib/export/menuPdfGenerator.ts` adapts the legacy input into Menu Card Export's deterministic print source and renderer.
+Legacy PDF entry points remain available without a separate PDF Surface toggle.
+`src/lib/export/menuPdfGenerator.ts` adapts the legacy input into Menu Card
+Export's deterministic print source and renderer.
 
 When `ENABLE_MENU_CARD_EXPORT` is on, the normal owner action opens `/use-menulist/menu-card-export`. Older or flag-off callers may still call `generateMenuPdf()`, but the resulting file uses the same Menu Card Export rendering contract.
 
@@ -34,7 +36,8 @@ When `ENABLE_MENU_CARD_EXPORT` is on, the normal owner action opens `/use-menuli
 
 **Generator:** `src/lib/export/menuPdfGenerator.ts`
 
-**Feature flag:** `FEATURE_FLAGS.ENABLE_PDF_SURFACE` in `src/config/features.ts`
+**Runtime invariant:** the compatibility adapter is always available; the routed
+workflow is controlled by `FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT`.
 
 ---
 
@@ -44,7 +47,7 @@ The successor is implemented: [Menu Card Export](../menu-card-export/README.md) 
 
 Migration rule:
 
-- Keep PDF Surface only as the compatibility bridge while legacy or flag-off callers remain.
+- Keep PDF Surface only as the compatibility bridge while legacy callers remain.
 - New print workflow decisions belong in `__docs__/menu-card-export/`.
 - Do not expand PDF Surface into a full route, print-shop packet system, or design editor.
 

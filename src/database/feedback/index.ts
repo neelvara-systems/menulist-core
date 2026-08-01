@@ -7,20 +7,29 @@ import {
     normalizeAnswerlatticeFeedbackSubmitResult,
     parseAnswerlatticeFeedbackSubmitRequest,
 } from '@lib/answerlattice/feedbackBoundary';
-import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    normalizeAnswerlatticeScopeDocumentId,
+    resolveAnswerlatticeSessionScope,
+} from '@lib/answerlattice/sessionScope';
+import {
+    acquireAnswerlatticePendingMutation,
+    settleAnswerlatticePendingMutation,
+    type AnswerlatticePendingMutationEntry,
+} from '@lib/answerlattice/pendingMutationRequests';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import { resolveCurrentSessionUserDocumentId } from '@lib/auth/sessionUserDocumentId';
 import getActiveSession from '@lib/auth/getActiveSession';
 import { answerlatticeFirebaseClient } from '@lib/firebase/answerlatticeFirebaseClient';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Feedback } from '@type/feedback';
-import { collection, doc, getDocs, limit, orderBy, query, runTransaction, Timestamp, where } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, Timestamp, where } from 'firebase/firestore';
 
 const COLLECTION = DB_COLLECTIONS.FEEDBACK;
 const MAX_FEEDBACK_RESULTS = 200;
 const FEEDBACK_RESPONSE_MAX_BYTES = 64 * 1024;
 const MAX_PENDING_FEEDBACK_REQUESTS = 100;
-const pendingFeedbackRequests = new Map<string, { fingerprint: string; requestId: string }>();
+const pendingFeedbackRequests = new Map<string, AnswerlatticePendingMutationEntry>();
 
 const getCollectionRef = () => {
     return collection(answerlatticeFirebaseClient, COLLECTION);
@@ -48,18 +57,6 @@ const getActiveFeedbackScope = async (expected?: { tId: number; sId: number }) =
     return { session, tId: scope.tenantId, sId: scope.storeId };
 };
 
-const getFeedbackRequestId = (key: string, fingerprint: string) => {
-    const pending = pendingFeedbackRequests.get(key);
-    if (pending?.fingerprint === fingerprint) return pending.requestId;
-    if (pendingFeedbackRequests.size >= MAX_PENDING_FEEDBACK_REQUESTS) {
-        const oldest = pendingFeedbackRequests.keys().next().value;
-        if (oldest) pendingFeedbackRequests.delete(oldest);
-    }
-    const requestId = createRuntimeId('feedback');
-    pendingFeedbackRequests.set(key, { fingerprint, requestId });
-    return requestId;
-};
-
 export const addFeedback = async (data: unknown) => {
     return await apiCallComposer(
         async () => {
@@ -67,12 +64,21 @@ export const addFeedback = async (data: unknown) => {
             if (!normalized) throw new Error('Invalid feedback submission');
             const session = await getActiveSession();
             const scope = resolveAnswerlatticeSessionScope(session);
-            const actorId = String(session?.uId || session?.user?.id || '').trim();
+            const actorId = resolveCurrentSessionUserDocumentId(session);
             if (!scope || !actorId) throw new Error('Answerlattice feedback scope is required');
             const fingerprint = JSON.stringify(normalized);
             const requestKey = `${scope.tenantId}:${scope.storeId}:${actorId}:${normalized.type}`;
-            const requestId = getFeedbackRequestId(requestKey, fingerprint);
-            const request = parseAnswerlatticeFeedbackSubmitRequest({ requestId, submission: normalized });
+            const requestClaim = acquireAnswerlatticePendingMutation(
+                pendingFeedbackRequests,
+                requestKey,
+                fingerprint,
+                () => createRuntimeId('feedback'),
+                MAX_PENDING_FEEDBACK_REQUESTS,
+            );
+            const request = parseAnswerlatticeFeedbackSubmitRequest({
+                requestId: requestClaim.requestId,
+                submission: normalized,
+            });
             if (!request) throw new Error('Invalid feedback submission');
 
             const response = await fetch('/api/answerlattice/feedback', {
@@ -84,11 +90,15 @@ export const addFeedback = async (data: unknown) => {
                 body: JSON.stringify(request),
             });
             const payload = await readJsonResponseWithLimit<unknown>(response, FEEDBACK_RESPONSE_MAX_BYTES)
-                .catch(() => null);
+                .catch((): null => null);
             if (!response.ok) throw new Error('Feedback could not be saved');
             const result = normalizeAnswerlatticeFeedbackSubmitResult(payload);
             if (!result) throw new Error('Feedback returned an invalid response');
-            pendingFeedbackRequests.delete(requestKey);
+            settleAnswerlatticePendingMutation(
+                pendingFeedbackRequests,
+                requestKey,
+                requestClaim,
+            );
             return result.feedback;
         },
         data,
@@ -107,8 +117,8 @@ export const updateFeedbackSurfaceForWorkspace = async (
             const normalizedFeedbackId = normalizeAnswerlatticeFeedbackDocumentId(feedbackId);
             if (!normalizedFeedbackId) throw new Error('Invalid feedback document ID');
             const { session, tId, sId } = await getActiveFeedbackScope();
-            const actorId = String(session?.uId || session?.user?.id || '');
-            const actorName = String(session?.user?.name || session?.user?.email || actorId || 'Team member');
+            const actorId = resolveCurrentSessionUserDocumentId(session);
+            if (!actorId) throw new Error('Answerlattice feedback actor is required');
             const contextKey = cleanNullableText(input.contextKey, 140);
             const surfaceId = cleanNullableText(input.surfaceId, 180);
             const surfaceLabel = cleanNullableText(input.surfaceLabel, 180);
@@ -119,7 +129,7 @@ export const updateFeedbackSurfaceForWorkspace = async (
                 surfaceLabel,
                 surfaceAssignedBy: hasSurface ? actorId || null : null,
                 surfaceAssignedAt: hasSurface ? Timestamp.now() : null,
-                modifiedBy: actorName,
+                modifiedBy: actorId,
                 modifiedOn: Timestamp.now(),
             };
 
@@ -131,11 +141,15 @@ export const updateFeedbackSurfaceForWorkspace = async (
                     : null;
                 if (!persisted
                     || persisted.pId !== PRODUCT_IDS.ANSWERLATTICE
-                    || Number(persisted.tId) !== tId
-                    || Number(persisted.sId) !== sId) {
+                    || normalizeAnswerlatticeScopeDocumentId(persisted.tId) !== tId
+                    || normalizeAnswerlatticeScopeDocumentId(persisted.sId) !== sId) {
                     throw new Error('Feedback was not found in the active Answerlattice workspace');
                 }
-                transaction.update(feedbackRef, patch);
+                transaction.update(feedbackRef, {
+                    ...patch,
+                    surfaceAssignedAt: hasSurface ? serverTimestamp() : null,
+                    modifiedOn: serverTimestamp(),
+                });
             });
             return { id: normalizedFeedbackId, ...patch };
         },

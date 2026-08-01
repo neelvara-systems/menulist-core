@@ -10,6 +10,35 @@ type RuntimeLogContext = Record<string, boolean | number | string | null | undef
 
 export const RUNTIME_CLIPBOARD_COPY_UNAVAILABLE = 'runtime_clipboard_copy_unavailable';
 export const RUNTIME_CLIPBOARD_COPY_FALLBACK_FAILED = 'runtime_clipboard_copy_fallback_failed';
+const MAX_RUNTIME_DIAGNOSTIC_URL_LENGTH = 500;
+
+export const normalizeRuntimeDiagnosticUrl = (
+    value: unknown,
+    currentOrigin: unknown,
+): string | undefined => {
+    if (typeof value !== 'string' || !value || typeof currentOrigin !== 'string' || !currentOrigin) {
+        return undefined;
+    }
+
+    try {
+        const baseUrl = new URL(currentOrigin);
+        const url = new URL(value, baseUrl);
+        if (
+            (url.protocol !== 'https:' && url.protocol !== 'http:')
+            || url.username
+            || url.password
+        ) {
+            return undefined;
+        }
+
+        const minimized = url.origin === baseUrl.origin
+            ? `${url.origin}${url.pathname || '/'}`
+            : url.origin;
+        return minimized.slice(0, MAX_RUNTIME_DIAGNOSTIC_URL_LENGTH);
+    } catch {
+        return undefined;
+    }
+};
 
 export const getBoundedRuntimeStringContext = (
     label: string,

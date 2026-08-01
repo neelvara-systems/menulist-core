@@ -1,9 +1,26 @@
+import { defaultTimezone } from '@lib/localization/config';
 import { parseClockMinutes } from '@lib/menu/timeSlotPresetBoundary';
 import { formatClockTime } from '@util/dateTime';
 import {
     logHoursStatusInvalidTimeRange,
     logHoursStatusTimeZoneFallback,
 } from './hoursDiagnostics';
+import type { StoreSpecialHours, StoreSpecialHoursEntry } from '@type/platform/store';
+import {
+    addDaysToSpecialHoursDateKey,
+    getSpecialHoursEntry,
+    getStoreLocalDateKey,
+    normalizeWorkingHoursValue,
+    parseWorkingHoursRanges,
+    type WorkingHoursRange,
+} from './hoursBoundary';
+
+export {
+    getStoreLocalDateKey,
+    normalizeWorkingHoursValue,
+    parseWorkingHoursRanges,
+} from './hoursBoundary';
+export type { WorkingHoursRange } from './hoursBoundary';
 
 /**
  * Canonical weekly-hours evaluator used by owner and public surfaces.
@@ -18,17 +35,13 @@ export type StoreStatus = {
     statusText: string;
     nextChange?: string;
     currentDayHours?: string;
+    isSpecialHours?: boolean;
+    localDate?: string;
+    specialHoursLabel?: string;
 };
 
 export const WORKING_HOURS_DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
 export type WorkingHoursDayKey = (typeof WORKING_HOURS_DAY_KEYS)[number];
-
-export type WorkingHoursRange = Readonly<{
-    endMinutes: number;
-    endTime: string;
-    startMinutes: number;
-    startTime: string;
-}>;
 
 const MINUTES_PER_DAY = 24 * 60;
 
@@ -39,14 +52,20 @@ function isWorkingHoursDayKey(value: string): value is WorkingHoursDayKey {
 function getDayKeyForDate(date: Date, timeZone?: string): WorkingHoursDayKey {
     try {
         const day = new Intl.DateTimeFormat('en-US', {
-            timeZone: timeZone || 'UTC',
+            timeZone: timeZone || defaultTimezone,
             weekday: 'short',
         }).format(date).toLowerCase();
         if (isWorkingHoursDayKey(day)) return day;
         throw new Error('working_hours_day_key_invalid');
     } catch (error) {
-        logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_day_key', 'local_day_key');
-        return WORKING_HOURS_DAY_KEYS[date.getDay()];
+        logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_day_key', 'default_time_zone');
+        const fallbackDay = new Intl.DateTimeFormat('en-US', {
+            timeZone: defaultTimezone,
+            weekday: 'short',
+        }).format(date).toLowerCase();
+        return isWorkingHoursDayKey(fallbackDay)
+            ? fallbackDay
+            : WORKING_HOURS_DAY_KEYS[date.getUTCDay()];
     }
 }
 
@@ -57,52 +76,22 @@ function getTimeForDate(date: Date, timeZone?: string): string {
             hour12: false,
             hourCycle: 'h23',
             minute: '2-digit',
-            timeZone: timeZone || 'UTC',
+            timeZone: timeZone || defaultTimezone,
         }).format(date);
     } catch (error) {
-        logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_time', 'local_time');
-        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_time', 'default_time_zone');
+        return new Intl.DateTimeFormat('en-GB', {
+            hour: '2-digit',
+            hour12: false,
+            hourCycle: 'h23',
+            minute: '2-digit',
+            timeZone: defaultTimezone,
+        }).format(date);
     }
 }
 
 export function getStoreDayKey(timeZone?: string, now = new Date()): WorkingHoursDayKey {
     return getDayKeyForDate(now, timeZone);
-}
-
-export function normalizeWorkingHoursValue(value: unknown): string | null {
-    if (typeof value !== 'string') return null;
-    const normalized = value.trim();
-    if (!normalized || normalized.toLowerCase() === 'closed') return '';
-
-    const ranges = normalized.split(',').map((range) => range.trim());
-    if (!ranges.length || ranges.some((range) => !range)) return null;
-
-    const normalizedRanges: string[] = [];
-    for (const range of ranges) {
-        const match = /^((?:[01]\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]\d|2[0-3]):[0-5]\d)$/.exec(range);
-        if (!match) return null;
-        const startMinutes = parseClockMinutes(match[1]);
-        const endMinutes = parseClockMinutes(match[2]);
-        if (startMinutes === null || endMinutes === null || startMinutes === endMinutes) return null;
-        normalizedRanges.push(`${match[1]}-${match[2]}`);
-    }
-
-    return normalizedRanges.join(', ');
-}
-
-export function parseWorkingHoursRanges(value: unknown): WorkingHoursRange[] {
-    const normalized = normalizeWorkingHoursValue(value);
-    if (!normalized) return [];
-
-    return normalized.split(',').map((range) => {
-        const [startTime, endTime] = range.trim().split('-');
-        return {
-            endMinutes: parseClockMinutes(endTime) as number,
-            endTime,
-            startMinutes: parseClockMinutes(startTime) as number,
-            startTime,
-        };
-    });
 }
 
 function getDayOffset(day: WorkingHoursDayKey, offset: number): WorkingHoursDayKey {
@@ -128,6 +117,58 @@ function getRangesForDay(
     return { configuredInvalid: false, ranges: parseWorkingHoursRanges(source) };
 }
 
+function getRangesForValue(
+    value: unknown,
+    diagnosticKey: string,
+    surface: Parameters<typeof logHoursStatusInvalidTimeRange>[2],
+): { configuredInvalid: boolean; ranges: WorkingHoursRange[] } {
+    if (value !== undefined && typeof value !== 'string') {
+        logHoursStatusInvalidTimeRange(diagnosticKey, undefined, surface);
+        return { configuredInvalid: true, ranges: [] };
+    }
+    const normalized = normalizeWorkingHoursValue(value);
+    if (
+        typeof value === 'string'
+        && value.trim()
+        && value.trim().toLowerCase() !== 'closed'
+        && normalized === null
+    ) {
+        logHoursStatusInvalidTimeRange(diagnosticKey, value, surface);
+        return { configuredInvalid: true, ranges: [] };
+    }
+    return { configuredInvalid: false, ranges: parseWorkingHoursRanges(value) };
+}
+
+type EffectiveDateHours = Readonly<{
+    entry?: StoreSpecialHoursEntry;
+    isSpecial: boolean;
+    source: unknown;
+}>;
+
+function getEffectiveDateHours(
+    workingHours: Record<string, string> | undefined,
+    specialHours: StoreSpecialHours | undefined,
+    dateKey: string,
+    day: WorkingHoursDayKey,
+): EffectiveDateHours {
+    const entry = getSpecialHoursEntry(specialHours, dateKey);
+    return entry
+        ? { entry, isSpecial: true, source: entry.hours }
+        : { isSpecial: false, source: workingHours?.[day] };
+}
+
+function hasPreviousDateOvernightSpecialHours(
+    specialHours: StoreSpecialHours | undefined,
+    currentDateKey: string,
+): boolean {
+    const previousDateKey = addDaysToSpecialHoursDateKey(currentDateKey, -1);
+    const previousSpecialEntry = previousDateKey
+        ? getSpecialHoursEntry(specialHours, previousDateKey)
+        : undefined;
+    return parseWorkingHoursRanges(previousSpecialEntry?.hours)
+        .some((range) => range.endMinutes < range.startMinutes);
+}
+
 function formatRange(range: WorkingHoursRange, timeFormat?: string): string {
     return `${formatClockTime(range.startTime, timeFormat)} - ${formatClockTime(range.endTime, timeFormat)}`;
 }
@@ -146,20 +187,26 @@ function getDayDisplayName(day: WorkingHoursDayKey): string {
 }
 
 function findNextOpenTime(
-    workingHours: Record<string, string>,
+    workingHours: Record<string, string> | undefined,
+    specialHours: StoreSpecialHours | undefined,
+    currentDateKey: string,
     currentDay: WorkingHoursDayKey,
     currentMinutes: number,
     timeFormat?: string,
 ): string | undefined {
-    const laterToday = getRangesForDay(workingHours, currentDay, 'hours_engine_next_open')
+    const today = getEffectiveDateHours(workingHours, specialHours, currentDateKey, currentDay);
+    const laterToday = getRangesForValue(today.source, currentDateKey, 'hours_engine_next_open')
         .ranges
         .filter((range) => range.startMinutes > currentMinutes)
         .sort((left, right) => left.startMinutes - right.startMinutes)[0];
     if (laterToday) return `Opens at ${formatClockTime(laterToday.startTime, timeFormat)}`;
 
-    for (let offset = 1; offset <= 7; offset += 1) {
+    for (let offset = 1; offset <= 370; offset += 1) {
         const day = getDayOffset(currentDay, offset);
-        const firstRange = getRangesForDay(workingHours, day, 'hours_engine_next_open')
+        const dateKey = addDaysToSpecialHoursDateKey(currentDateKey, offset);
+        if (!dateKey) return undefined;
+        const effective = getEffectiveDateHours(workingHours, specialHours, dateKey, day);
+        const firstRange = getRangesForValue(effective.source, dateKey, 'hours_engine_next_open')
             .ranges
             .sort((left, right) => left.startMinutes - right.startMinutes)[0];
         if (!firstRange) continue;
@@ -168,7 +215,9 @@ function findNextOpenTime(
             ? `Opens tomorrow at ${opensAt}`
             : offset === 7
                 ? `Opens next ${getDayDisplayName(day)} at ${opensAt}`
-                : `Opens ${getDayDisplayName(day)} at ${opensAt}`;
+                : offset < 7
+                    ? `Opens ${getDayDisplayName(day)} at ${opensAt}`
+                    : `Opens ${dateKey} at ${opensAt}`;
     }
 
     return undefined;
@@ -176,36 +225,54 @@ function findNextOpenTime(
 
 type ActiveRange = Readonly<{
     closeDelta: number;
+    entry?: StoreSpecialHoursEntry;
+    isSpecial: boolean;
     range: WorkingHoursRange;
 }>;
 
 type ScheduleInterval = Readonly<{
     end: number;
+    entry?: StoreSpecialHoursEntry;
+    isSpecial: boolean;
     range: WorkingHoursRange;
     start: number;
 }>;
 
 function getActiveRanges(
-    workingHours: Record<string, string>,
+    workingHours: Record<string, string> | undefined,
+    specialHours: StoreSpecialHours | undefined,
+    currentDateKey: string,
     currentDay: WorkingHoursDayKey,
     currentMinutes: number,
 ): ActiveRange[] {
     const previousDay = getDayOffset(currentDay, -1);
-    const previousIntervals = getRangesForDay(workingHours, previousDay, 'hours_engine_current_status')
+    const previousDateKey = addDaysToSpecialHoursDateKey(currentDateKey, -1);
+    const currentSpecialEntry = getSpecialHoursEntry(specialHours, currentDateKey);
+    const previousEffective = previousDateKey
+        ? getEffectiveDateHours(workingHours, specialHours, previousDateKey, previousDay)
+        : undefined;
+    const previousIntervals = currentSpecialEntry || !previousEffective
+        ? []
+        : getRangesForValue(previousEffective.source, previousDateKey || previousDay, 'hours_engine_current_status')
         .ranges
         .filter((range) => range.endMinutes < range.startMinutes)
         .map((range): ScheduleInterval => ({
             end: range.endMinutes,
+            entry: previousEffective.entry,
+            isSpecial: previousEffective.isSpecial,
             range,
             start: range.startMinutes - MINUTES_PER_DAY,
         }));
 
-    const todayIntervals = getRangesForDay(workingHours, currentDay, 'hours_engine_current_status')
+    const todayEffective = getEffectiveDateHours(workingHours, specialHours, currentDateKey, currentDay);
+    const todayIntervals = getRangesForValue(todayEffective.source, currentDateKey, 'hours_engine_current_status')
         .ranges
         .map((range): ScheduleInterval => ({
             end: range.endMinutes < range.startMinutes
                 ? range.endMinutes + MINUTES_PER_DAY
                 : range.endMinutes,
+            entry: todayEffective.entry,
+            isSpecial: todayEffective.isSpecial,
             range,
             start: range.startMinutes,
         }));
@@ -218,17 +285,22 @@ function getActiveRanges(
     if (activeIndex === -1) return [];
 
     let closeAt = intervals[activeIndex].end;
-    let closingRange = intervals[activeIndex].range;
+    let closingInterval = intervals[activeIndex];
     for (let index = activeIndex + 1; index < intervals.length; index += 1) {
         const interval = intervals[index];
         if (interval.start > closeAt) break;
         if (interval.end > closeAt) {
             closeAt = interval.end;
-            closingRange = interval.range;
+            closingInterval = interval;
         }
     }
 
-    return [{ closeDelta: closeAt - currentMinutes, range: closingRange }];
+    return [{
+        closeDelta: closeAt - currentMinutes,
+        entry: closingInterval.entry,
+        isSpecial: closingInterval.isSpecial,
+        range: closingInterval.range,
+    }];
 }
 
 export function getStoreStatus(
@@ -236,8 +308,20 @@ export function getStoreStatus(
     timeZone?: string,
     timeFormat?: string,
     now = new Date(),
+    specialHours?: StoreSpecialHours,
 ): StoreStatus {
-    if (!workingHours || Array.isArray(workingHours) || Object.keys(workingHours).length === 0) {
+    const hasWeeklyHours = Boolean(
+        workingHours
+        && !Array.isArray(workingHours)
+        && Object.keys(workingHours).length > 0,
+    );
+    const currentDateKey = getStoreLocalDateKey(timeZone, now);
+    const currentSpecialEntry = getSpecialHoursEntry(specialHours, currentDateKey);
+    if (
+        !hasWeeklyHours
+        && !currentSpecialEntry
+        && !hasPreviousDateOvernightSpecialHours(specialHours, currentDateKey)
+    ) {
         return { isOpen: false, statusText: 'Hours not available' };
     }
 
@@ -247,28 +331,42 @@ export function getStoreStatus(
         return { isOpen: false, statusText: 'Hours not available' };
     }
 
-    const today = getRangesForDay(workingHours, currentDay, 'hours_engine_current_status');
+    const effectiveToday = getEffectiveDateHours(workingHours, specialHours, currentDateKey, currentDay);
+    const today = getRangesForValue(effectiveToday.source, currentDateKey, 'hours_engine_current_status');
     const currentDayHours = today.ranges.length
         ? today.ranges.map((range) => formatRange(range, timeFormat)).join(', ')
         : undefined;
-    const active = getActiveRanges(workingHours, currentDay, currentMinutes)[0];
+    const active = getActiveRanges(workingHours, specialHours, currentDateKey, currentDay, currentMinutes)[0];
     if (active) {
         return {
             currentDayHours: formatRange(active.range, timeFormat),
+            isSpecialHours: active.isSpecial,
             isOpen: true,
+            localDate: currentDateKey,
             nextChange: `Closes at ${formatClockTime(active.range.endTime, timeFormat)}`,
+            specialHoursLabel: active.entry?.label,
             statusText: 'Open',
         };
     }
 
     if (today.configuredInvalid) {
-        return { isOpen: false, statusText: 'Hours not available' };
+        return { isOpen: false, localDate: currentDateKey, statusText: 'Hours not available' };
     }
 
     return {
         currentDayHours,
+        isSpecialHours: effectiveToday.isSpecial,
         isOpen: false,
-        nextChange: findNextOpenTime(workingHours, currentDay, currentMinutes, timeFormat),
+        localDate: currentDateKey,
+        nextChange: findNextOpenTime(
+            workingHours,
+            specialHours,
+            currentDateKey,
+            currentDay,
+            currentMinutes,
+            timeFormat,
+        ),
+        specialHoursLabel: effectiveToday.entry?.label,
         statusText: 'Closed',
     };
 }
@@ -282,17 +380,24 @@ export function getMinutesUntilStoreStatusChange(
     workingHours?: Record<string, string>,
     timeZone?: string,
     now = new Date(),
+    specialHours?: StoreSpecialHours,
 ): number | null {
-    if (!workingHours || Array.isArray(workingHours) || Object.keys(workingHours).length === 0) return null;
+    const currentDateKey = getStoreLocalDateKey(timeZone, now);
+    if (
+        (!workingHours || Array.isArray(workingHours) || Object.keys(workingHours).length === 0)
+        && !getSpecialHoursEntry(specialHours, currentDateKey)
+        && !hasPreviousDateOvernightSpecialHours(specialHours, currentDateKey)
+    ) return null;
 
     const currentDay = getDayKeyForDate(now, timeZone);
     const currentMinutes = parseClockMinutes(getTimeForDate(now, timeZone));
     if (currentMinutes === null) return null;
 
-    const active = getActiveRanges(workingHours, currentDay, currentMinutes)[0];
+    const active = getActiveRanges(workingHours, specialHours, currentDateKey, currentDay, currentMinutes)[0];
     if (active) return active.closeDelta;
 
-    const nextToday = getRangesForDay(workingHours, currentDay, 'hours_engine_next_change')
+    const effectiveToday = getEffectiveDateHours(workingHours, specialHours, currentDateKey, currentDay);
+    const nextToday = getRangesForValue(effectiveToday.source, currentDateKey, 'hours_engine_next_change')
         .ranges
         .filter((range) => range.startMinutes > currentMinutes)
         .map((range) => range.startMinutes - currentMinutes)
@@ -304,6 +409,7 @@ export function useStoreStatus(
     workingHours?: Record<string, string>,
     timeZone?: string,
     timeFormat?: string,
+    specialHours?: StoreSpecialHours,
 ): StoreStatus {
-    return getStoreStatus(workingHours, timeZone, timeFormat);
+    return getStoreStatus(workingHours, timeZone, timeFormat, new Date(), specialHours);
 }

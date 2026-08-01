@@ -96,6 +96,14 @@ const buildResponse = (data: Record<string, unknown>) => {
     };
 };
 
+const buildWidgetSecurityResponseSource = (
+    verifiedContext: unknown,
+    evidenceAllowedHosts: unknown,
+): Record<string, unknown> => ({
+    answerlatticeVerifiedContext: verifiedContext,
+    answerlatticeEvidenceAllowedHosts: evidenceAllowedHosts,
+});
+
 export const GET = withAuth(async (request: NextRequest, session) => {
     if (!featureAvailable()) return NextResponse.json({ error: 'Widget security controls are not enabled.' }, { status: 403, headers: PRIVATE_NO_STORE_HEADERS });
     const readRateLimit = await applyAnswerlatticeDashboardReadRateLimit(request, session, 'widget-security');
@@ -170,7 +178,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 answerlatticeVerifiedContext: generated.record,
                 answerlatticeVerifiedContextUpdatedAt: FieldValue.serverTimestamp(),
             }, { merge: true });
-            return { ...currentData, answerlatticeVerifiedContext: generated.record };
+            return buildWidgetSecurityResponseSource(
+                generated.record,
+                currentData.answerlatticeEvidenceAllowedHosts,
+            );
         });
 
         return NextResponse.json({
@@ -243,7 +254,10 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
                 answerlatticeEvidenceAllowedHosts: normalized,
                 answerlatticeEvidenceAllowedHostsUpdatedAt: FieldValue.serverTimestamp(),
             }, { merge: true });
-            return { ...currentData, answerlatticeEvidenceAllowedHosts: normalized };
+            return buildWidgetSecurityResponseSource(
+                currentData.answerlatticeVerifiedContext,
+                normalized,
+            );
         });
         return NextResponse.json(buildResponse(updatedStoreData), {
             headers: PRIVATE_NO_STORE_HEADERS,
@@ -299,7 +313,10 @@ export const DELETE = withAuth(async (request: NextRequest, session) => {
                 answerlatticeVerifiedContext: FieldValue.delete(),
                 answerlatticeVerifiedContextUpdatedAt: FieldValue.serverTimestamp(),
             }, { merge: true });
-            return { ...currentData, answerlatticeVerifiedContext: null };
+            return buildWidgetSecurityResponseSource(
+                null,
+                currentData.answerlatticeEvidenceAllowedHosts,
+            );
         });
         return NextResponse.json(buildResponse(updatedStoreData), {
             headers: PRIVATE_NO_STORE_HEADERS,
